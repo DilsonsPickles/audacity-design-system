@@ -496,10 +496,8 @@ export default function TrackCanvas({
       ctx.closePath();
     } else {
       // Draw fill through control points
-      const startY =
-        clip.envelopePoints[0].time === 0
-          ? dbToYNonLinear(clip.envelopePoints[0].db, y, height)
-          : zeroDB_Y;
+      // Always use first point's dB value for the fill from clip start to first point
+      const startY = dbToYNonLinear(clip.envelopePoints[0].db, y, height);
       ctx.moveTo(clipX, startY);
 
       clip.envelopePoints.forEach((point) => {
@@ -590,10 +588,8 @@ export default function TrackCanvas({
       ctx.closePath();
     } else {
       // Draw fill through control points
-      const startY =
-        clip.envelopePoints[0].time === 0
-          ? dbToYNonLinear(clip.envelopePoints[0].db, y, height)
-          : zeroDB_Y;
+      // Always use first point's dB value for the fill from clip start to first point
+      const startY = dbToYNonLinear(clip.envelopePoints[0].db, y, height);
       ctx.moveTo(x, startY);
 
       clip.envelopePoints.forEach((point) => {
@@ -645,10 +641,8 @@ export default function TrackCanvas({
       ctx.lineTo(x + width, zeroDB_Y);
     } else {
       // Draw envelope through all control points (they all remain visible)
-      const startY =
-        clip.envelopePoints[0].time === 0
-          ? dbToYNonLinear(clip.envelopePoints[0].db, y, height)
-          : zeroDB_Y;
+      // Always use first point's dB value for the line from clip start to first point
+      const startY = dbToYNonLinear(clip.envelopePoints[0].db, y, height);
       ctx.moveTo(x, startY);
 
       clip.envelopePoints.forEach((point) => {
