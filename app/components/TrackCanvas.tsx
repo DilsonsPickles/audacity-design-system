@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Track, Clip, EnvelopePoint, TimeSelection } from './types';
+import { Track, Clip, EnvelopePoint, TimeSelection, EnvelopeDragState } from './types';
 import { theme } from '../theme';
 
 interface TrackCanvasProps {
@@ -14,6 +14,7 @@ interface TrackCanvasProps {
   focusedTrackIndex: number | null;
   timeSelection: TimeSelection | null;
   hoveredClipHeader: { clipId: number; trackIndex: number } | null;
+  envelopeDragState: EnvelopeDragState | null;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -64,6 +65,7 @@ export default function TrackCanvas({
   focusedTrackIndex,
   timeSelection,
   hoveredClipHeader,
+  envelopeDragState,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -630,6 +632,14 @@ export default function TrackCanvas({
     // Use solid red color for envelope line
     const envelopeLineColor = 'red';
 
+    // Get list of hidden point indices if dragging this clip
+    const hiddenIndices =
+      envelopeDragState &&
+      envelopeDragState.clip.id === clip.id &&
+      envelopeDragState.trackIndex === trackIndex
+        ? envelopeDragState.hiddenPointIndices || []
+        : [];
+
     // Draw the actual envelope line
     ctx.strokeStyle = envelopeLineColor;
     ctx.lineWidth = 2;
@@ -642,14 +652,17 @@ export default function TrackCanvas({
       ctx.moveTo(x, zeroDB_Y);
       ctx.lineTo(x + width, zeroDB_Y);
     } else {
-      // Draw envelope through control points
+      // Draw envelope through control points (skipping hidden ones for the line)
       const startY =
         clip.envelopePoints[0].time === 0
           ? dbToYNonLinear(clip.envelopePoints[0].db, y, height)
           : zeroDB_Y;
       ctx.moveTo(x, startY);
 
-      clip.envelopePoints.forEach((point) => {
+      clip.envelopePoints.forEach((point, index) => {
+        // Skip hidden points when drawing the line
+        if (hiddenIndices.includes(index)) return;
+
         const px = x + (point.time / clip.duration) * width;
         const py = dbToYNonLinear(point.db, y, height);
         ctx.lineTo(px, py);
@@ -663,8 +676,11 @@ export default function TrackCanvas({
 
     ctx.stroke();
 
-    // Draw control points
-    clip.envelopePoints.forEach((point) => {
+    // Draw control points (skip hidden ones)
+    clip.envelopePoints.forEach((point, index) => {
+      // Skip rendering hidden points
+      if (hiddenIndices.includes(index)) return;
+
       const px = x + (point.time / clip.duration) * width;
       const py = dbToYNonLinear(point.db, y, height);
 

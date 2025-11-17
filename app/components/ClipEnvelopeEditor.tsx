@@ -462,72 +462,27 @@ export default function ClipEnvelopeEditor() {
       const newTracks = [...tracks];
       const targetClip = newTracks[trackIndex].clips.find((c) => c.id === clip.id);
       if (targetClip && envelopeDragStateRef.current) {
-        const { originalTime, deletedPoints } = envelopeDragStateRef.current;
-
-        // Check which deleted points should be restored
-        const pointsToRestore: EnvelopePoint[] = [];
-        const stillDeletedPoints: EnvelopePoint[] = [];
-
-        deletedPoints.forEach((deletedPoint) => {
-          // A point should be restored if it's no longer between originalTime and relativeTime
-          const minTime = Math.min(originalTime, relativeTime);
-          const maxTime = Math.max(originalTime, relativeTime);
-
-          const isBetween = deletedPoint.time > minTime && deletedPoint.time < maxTime;
-
-          if (!isBetween) {
-            // No longer crossed, restore it
-            pointsToRestore.push(deletedPoint);
-          } else {
-            // Still crossed, keep it deleted
-            stillDeletedPoints.push(deletedPoint);
-          }
-        });
-
-        // Restore points that are no longer crossed
-        pointsToRestore.forEach((point) => {
-          targetClip.envelopePoints.push(point);
-        });
+        const { originalTime } = envelopeDragStateRef.current;
 
         // Update the point position
         targetClip.envelopePoints[pointIndex] = { time: relativeTime, db };
 
-        // Check if we're crossing any new points
-        const pointsToDelete: { index: number; point: EnvelopePoint }[] = [];
+        // Find which points should be hidden (crossed points between original and current position)
+        const minTime = Math.min(originalTime, relativeTime);
+        const maxTime = Math.max(originalTime, relativeTime);
+        const hiddenIndices: number[] = [];
 
         for (let i = 0; i < targetClip.envelopePoints.length; i++) {
           if (i === pointIndex) continue;
 
           const otherPoint = targetClip.envelopePoints[i];
-
-          // If we moved right and crossed a point on the right, delete it
-          if (relativeTime > originalTime && otherPoint.time > originalTime && otherPoint.time <= relativeTime) {
-            // Only delete if not already in deletedPoints
-            if (!stillDeletedPoints.some(p => p.time === otherPoint.time && p.db === otherPoint.db)) {
-              pointsToDelete.push({ index: i, point: otherPoint });
-            }
-          }
-          // If we moved left and crossed a point on the left, delete it
-          else if (relativeTime < originalTime && otherPoint.time < originalTime && otherPoint.time >= relativeTime) {
-            // Only delete if not already in deletedPoints
-            if (!stillDeletedPoints.some(p => p.time === otherPoint.time && p.db === otherPoint.db)) {
-              pointsToDelete.push({ index: i, point: otherPoint });
-            }
+          // Hide points that are strictly between the original and current positions
+          if (otherPoint.time > minTime && otherPoint.time < maxTime) {
+            hiddenIndices.push(i);
           }
         }
 
-        // Delete newly crossed points (in reverse order to maintain indices)
-        pointsToDelete.sort((a, b) => b.index - a.index).forEach(({ index, point }) => {
-          targetClip.envelopePoints.splice(index, 1);
-          stillDeletedPoints.push(point);
-          // Adjust pointIndex if we deleted points before it
-          if (index < pointIndex) {
-            envelopeDragStateRef.current!.pointIndex--;
-          }
-        });
-
-        // Update the deleted points list
-        envelopeDragStateRef.current.deletedPoints = stillDeletedPoints;
+        envelopeDragStateRef.current.hiddenPointIndices = hiddenIndices;
 
         targetClip.envelopePoints.sort((a, b) => a.time - b.time);
         setTracks(newTracks);
@@ -604,13 +559,38 @@ export default function ClipEnvelopeEditor() {
           (y - envelopeDragStateRef.current.startY) ** 2
       );
 
-      // If no movement, delete the point only if it's an existing point (not newly created)
-      if (distance < 3 && !envelopeDragStateRef.current.isNewPoint) {
-        const { clip, pointIndex, trackIndex } = envelopeDragStateRef.current;
-        const newTracks = [...tracks];
-        const targetClip = newTracks[trackIndex].clips.find((c) => c.id === clip.id);
-        if (targetClip) {
+      const { clip, pointIndex, trackIndex, clipX, clipWidth, originalTime } = envelopeDragStateRef.current;
+      const newTracks = [...tracks];
+      const targetClip = newTracks[trackIndex].clips.find((c) => c.id === clip.id);
+
+      if (targetClip) {
+        // If no movement, delete the point only if it's an existing point (not newly created)
+        if (distance < 3 && !envelopeDragStateRef.current.isNewPoint) {
           targetClip.envelopePoints.splice(pointIndex, 1);
+          setTracks(newTracks);
+        } else if (distance >= 3) {
+          // Point was moved - delete any points that were crossed
+          const finalTime = targetClip.envelopePoints[pointIndex].time;
+          const minTime = Math.min(originalTime, finalTime);
+          const maxTime = Math.max(originalTime, finalTime);
+
+          // Find and remove points between original and final position
+          const pointsToRemove: number[] = [];
+          for (let i = 0; i < targetClip.envelopePoints.length; i++) {
+            if (i === pointIndex) continue;
+
+            const otherPoint = targetClip.envelopePoints[i];
+            // Delete points that are strictly between the original and final positions
+            if (otherPoint.time > minTime && otherPoint.time < maxTime) {
+              pointsToRemove.push(i);
+            }
+          }
+
+          // Remove points in reverse order to maintain indices
+          pointsToRemove.sort((a, b) => b - a).forEach(i => {
+            targetClip.envelopePoints.splice(i, 1);
+          });
+
           setTracks(newTracks);
         }
       }
@@ -801,6 +781,7 @@ export default function ClipEnvelopeEditor() {
             focusedTrackIndex={focusedTrackIndex}
             timeSelection={timeSelection}
             hoveredClipHeader={hoveredClipHeader}
+            envelopeDragState={envelopeDragStateRef.current}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
