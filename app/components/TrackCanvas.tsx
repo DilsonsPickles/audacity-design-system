@@ -739,7 +739,6 @@ export default function TrackCanvas({
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
     />
   );
 }

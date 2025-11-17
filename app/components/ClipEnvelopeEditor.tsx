@@ -69,6 +69,7 @@ export default function ClipEnvelopeEditor() {
   const dragStateRef = useRef<DragState | null>(null);
   const envelopeDragStateRef = useRef<EnvelopeDragState | null>(null);
   const timeSelectionDragStateRef = useRef<TimeSelectionDragState | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Initialize tracks with sample clips
   useEffect(() => {
@@ -109,6 +110,7 @@ export default function ClipEnvelopeEditor() {
       duration,
       waveform: generateWaveform(duration),
       envelopePoints: [],
+      selected: false,
     });
 
     const initialTracks: Track[] = [
@@ -142,21 +144,92 @@ export default function ClipEnvelopeEditor() {
     setTracks(initialTracks);
   }, []);
 
+  // Add document-level mouse event listeners for dragging beyond canvas
+  useEffect(() => {
+    const handleDocumentMouseMove = (e: MouseEvent) => {
+      if (!canvasRef.current) return;
+
+      // Only handle if we have an active drag state
+      if (!timeSelectionDragStateRef.current && !dragStateRef.current && !envelopeDragStateRef.current) {
+        return;
+      }
+
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Handle time selection dragging
+      if (timeSelectionDragStateRef.current) {
+        timeSelectionDragStateRef.current.currentX = x;
+
+        const startTime = (timeSelectionDragStateRef.current.startX - LEFT_PADDING) / PIXELS_PER_SECOND;
+        const endTime = (x - LEFT_PADDING) / PIXELS_PER_SECOND;
+
+        setTimeSelection({
+          startTime: Math.min(startTime, endTime),
+          endTime: Math.max(startTime, endTime),
+        });
+
+        // Update selected tracks based on drag range
+        const currentTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
+        const startTrackIndex = timeSelectionDragStateRef.current.startTrackIndex;
+
+        // Clamp indices to valid track range
+        const clampedStartTrack = Math.max(0, Math.min(tracks.length - 1, startTrackIndex));
+        const clampedCurrentTrack = Math.max(0, Math.min(tracks.length - 1, currentTrackIndex));
+
+        const minTrack = Math.min(clampedStartTrack, clampedCurrentTrack);
+        const maxTrack = Math.max(clampedStartTrack, clampedCurrentTrack);
+
+        const selectedTracks: number[] = [];
+        for (let i = minTrack; i <= maxTrack; i++) {
+          selectedTracks.push(i);
+        }
+        setSelectedTrackIndices(selectedTracks);
+      }
+    };
+
+    const handleDocumentMouseUp = (e: MouseEvent) => {
+      // Clear all drag states
+      timeSelectionDragStateRef.current = null;
+      dragStateRef.current = null;
+      if (envelopeDragStateRef.current) {
+        setTooltip(prev => ({ ...prev, visible: false }));
+        envelopeDragStateRef.current = null;
+      }
+    };
+
+    document.addEventListener('mousemove', handleDocumentMouseMove);
+    document.addEventListener('mouseup', handleDocumentMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleDocumentMouseMove);
+      document.removeEventListener('mouseup', handleDocumentMouseUp);
+    };
+  }, [tracks]);
+
   const handleToggleEnvelope = () => {
     setEnvelopeMode(!envelopeMode);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
+    canvasRef.current = canvas; // Store canvas ref for document-level events
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Determine which track was clicked
+    // Determine which track was clicked (-1 if clicking in empty space)
     const clickedTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
-    if (clickedTrackIndex >= 0 && clickedTrackIndex < tracks.length) {
-      setSelectedTrackIndices([clickedTrackIndex]);
-      setFocusedTrackIndex(clickedTrackIndex);
+    const isInTrackBounds = clickedTrackIndex >= 0 && clickedTrackIndex < tracks.length;
+
+    if (isInTrackBounds) {
+      const trackY = INITIAL_GAP + clickedTrackIndex * (TRACK_HEIGHT + TRACK_GAP);
+      // Check if actually within the track height (not in gap)
+      if (y >= trackY && y <= trackY + TRACK_HEIGHT) {
+        setSelectedTrackIndices([clickedTrackIndex]);
+        setFocusedTrackIndex(clickedTrackIndex);
+      }
     }
 
     // Check for clip header dragging (works in both modes)
@@ -182,11 +255,8 @@ export default function ClipEnvelopeEditor() {
           });
           setTracks(newTracks);
 
-          // Set time selection to the clip's duration
-          setTimeSelection({
-            startTime: clip.startTime,
-            endTime: clip.startTime + clip.duration,
-          });
+          // Clear any existing time selection
+          setTimeSelection(null);
 
           dragStateRef.current = {
             clip,
@@ -209,6 +279,15 @@ export default function ClipEnvelopeEditor() {
         return;
       }
     }
+
+    // Clicked in empty space - deselect all clips
+    const newTracks = [...tracks];
+    newTracks.forEach((track) => {
+      track.clips.forEach((c) => {
+        c.selected = false;
+      });
+    });
+    setTracks(newTracks);
 
     // Start time selection if clicking anywhere else
     timeSelectionDragStateRef.current = {
@@ -435,8 +514,13 @@ export default function ClipEnvelopeEditor() {
       // Update selected tracks based on drag range
       const currentTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
       const startTrackIndex = timeSelectionDragStateRef.current.startTrackIndex;
-      const minTrack = Math.max(0, Math.min(startTrackIndex, currentTrackIndex));
-      const maxTrack = Math.min(tracks.length - 1, Math.max(startTrackIndex, currentTrackIndex));
+
+      // Clamp indices to valid track range
+      const clampedStartTrack = Math.max(0, Math.min(tracks.length - 1, startTrackIndex));
+      const clampedCurrentTrack = Math.max(0, Math.min(tracks.length - 1, currentTrackIndex));
+
+      const minTrack = Math.min(clampedStartTrack, clampedCurrentTrack);
+      const maxTrack = Math.max(clampedStartTrack, clampedCurrentTrack);
 
       const selectedTracks: number[] = [];
       for (let i = minTrack; i <= maxTrack; i++) {
@@ -575,16 +659,30 @@ export default function ClipEnvelopeEditor() {
     const rect = canvas.getBoundingClientRect();
     const y = e.clientY - rect.top;
 
-    // Determine which track the mouse was released on and set it as focused
+    // End time selection
+    if (timeSelectionDragStateRef.current) {
+      // Check if mouse is released below all tracks (in empty space)
+      const clickedTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
+
+      // If mouse is beyond the last track, focus the last track
+      if (clickedTrackIndex >= tracks.length) {
+        setFocusedTrackIndex(tracks.length - 1);
+        if (!selectedTrackIndices.includes(tracks.length - 1)) {
+          setSelectedTrackIndices([...selectedTrackIndices, tracks.length - 1]);
+        }
+      } else if (clickedTrackIndex >= 0 && clickedTrackIndex < tracks.length) {
+        // Normal case: focus the track where mouse was released
+        setFocusedTrackIndex(clickedTrackIndex);
+      }
+
+      timeSelectionDragStateRef.current = null;
+      return;
+    }
+
+    // Determine which track the mouse was released on and set it as focused (for non-time-selection cases)
     const releasedTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
     if (releasedTrackIndex >= 0 && releasedTrackIndex < tracks.length) {
       setFocusedTrackIndex(releasedTrackIndex);
-    }
-
-    // End time selection
-    if (timeSelectionDragStateRef.current) {
-      timeSelectionDragStateRef.current = null;
-      return;
     }
 
     if (envelopeDragStateRef.current) {

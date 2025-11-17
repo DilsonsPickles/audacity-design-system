@@ -114,14 +114,14 @@ export const lightTheme: Theme = {
 
   // Clip colors per track
   clipBackground: {
-    track1: '#A2C7FF',
+    track1: '#6DB9FF', // Blue body
     track2: '#C1BFFE',
     track3: '#E8BAE0',
     default: '#3a5a7a',
   },
 
   clipHeader: {
-    track1: '#84B5FF',
+    track1: '#3FA8FF', // Blue header
     track2: '#ADABFC',
     track3: '#E1A3D6',
     default: '#2a3a4a',
