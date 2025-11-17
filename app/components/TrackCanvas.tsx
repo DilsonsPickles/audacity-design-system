@@ -632,14 +632,6 @@ export default function TrackCanvas({
     // Use solid red color for envelope line
     const envelopeLineColor = 'red';
 
-    // Get list of hidden point indices if dragging this clip
-    const hiddenIndices =
-      envelopeDragState &&
-      envelopeDragState.clip.id === clip.id &&
-      envelopeDragState.trackIndex === trackIndex
-        ? envelopeDragState.hiddenPointIndices || []
-        : [];
-
     // Draw the actual envelope line
     ctx.strokeStyle = envelopeLineColor;
     ctx.lineWidth = 2;
@@ -652,17 +644,14 @@ export default function TrackCanvas({
       ctx.moveTo(x, zeroDB_Y);
       ctx.lineTo(x + width, zeroDB_Y);
     } else {
-      // Draw envelope through control points (skipping hidden ones for the line)
+      // Draw envelope through all control points (they all remain visible)
       const startY =
         clip.envelopePoints[0].time === 0
           ? dbToYNonLinear(clip.envelopePoints[0].db, y, height)
           : zeroDB_Y;
       ctx.moveTo(x, startY);
 
-      clip.envelopePoints.forEach((point, index) => {
-        // Skip hidden points when drawing the line
-        if (hiddenIndices.includes(index)) return;
-
+      clip.envelopePoints.forEach((point) => {
         const px = x + (point.time / clip.duration) * width;
         const py = dbToYNonLinear(point.db, y, height);
         ctx.lineTo(px, py);
@@ -676,11 +665,8 @@ export default function TrackCanvas({
 
     ctx.stroke();
 
-    // Draw control points (skip hidden ones)
-    clip.envelopePoints.forEach((point, index) => {
-      // Skip rendering hidden points
-      if (hiddenIndices.includes(index)) return;
-
+    // Draw all control points (they all remain visible in their original positions)
+    clip.envelopePoints.forEach((point) => {
       const px = x + (point.time / clip.duration) * width;
       const py = dbToYNonLinear(point.db, y, height);
 
