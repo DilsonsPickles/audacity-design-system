@@ -11,6 +11,7 @@ interface TrackCanvasProps {
   pixelsPerSecond: number;
   canvasWidth: number;
   selectedTrackIndices: number[];
+  focusedTrackIndex: number | null;
   timeSelection: TimeSelection | null;
   hoveredClipHeader: { clipId: number; trackIndex: number } | null;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -28,6 +29,7 @@ export default function TrackCanvas({
   pixelsPerSecond,
   canvasWidth,
   selectedTrackIndices,
+  focusedTrackIndex,
   timeSelection,
   hoveredClipHeader,
   onMouseDown,
@@ -54,7 +56,7 @@ export default function TrackCanvas({
 
     ctx.scale(dpr, dpr);
     render(ctx);
-  }, [tracks, envelopeMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, timeSelection, hoveredClipHeader]);
+  }, [tracks, envelopeMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, focusedTrackIndex, timeSelection, hoveredClipHeader]);
 
   const render = (ctx: CanvasRenderingContext2D) => {
     const dpr = window.devicePixelRatio || 1;
@@ -68,7 +70,7 @@ export default function TrackCanvas({
     tracks.forEach((track, trackIndex) => {
       const y = INITIAL_GAP + trackIndex * (trackHeight + TRACK_GAP);
       const isSelected = selectedTrackIndices.includes(trackIndex);
-      const isFocused = isSelected; // For now, focused state follows selection state
+      const isFocused = trackIndex === focusedTrackIndex;
 
       // Draw track background
       // Canvas background: #212433
@@ -142,13 +144,13 @@ export default function TrackCanvas({
     let finalClipColor = clipBgColor;
     if (envelopeMode) {
       if (trackIndex === 0) {
-        finalClipColor = '#51637F'; // Blue
+        finalClipColor = '#7A8FB8'; // Blue (more saturated)
       } else if (trackIndex === 1) {
-        finalClipColor = '#605F7F'; // Violet
+        finalClipColor = '#8A88B8'; // Violet (more saturated)
       } else if (trackIndex === 2) {
-        finalClipColor = '#856B81'; // Magenta
+        finalClipColor = '#B888A8'; // Magenta (more saturated)
       } else {
-        finalClipColor = '#51637F'; // Default to blue
+        finalClipColor = '#7A8FB8'; // Default to blue
       }
     }
 
@@ -283,12 +285,12 @@ export default function TrackCanvas({
     ctx.fillText(clip.name, x + 5, y + CLIP_HEADER_HEIGHT / 2);
     ctx.restore();
 
-    // Draw envelope if it has points or if envelope mode is active
+    // Draw envelope fill if it has points or if envelope mode is active (only outside selection)
     if (envelopeMode || clip.envelopePoints.length > 0) {
-      drawEnvelope(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT, envelopeMode);
+      drawEnvelopeFill(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT, envelopeMode, null, false);
     }
 
-    // Draw time selection highlight for clip bodies - after envelope, before waveform
+    // Draw time selection highlight - after envelope fill so it shows on top
     if (timeSelection && isSelected) {
       const clipStartTime = clip.startTime;
       const clipEndTime = clip.startTime + clip.duration;
@@ -314,11 +316,21 @@ export default function TrackCanvas({
         // Draw selection only on the waveform area (below the clip header)
         ctx.fillStyle = bodySelectionColor;
         ctx.fillRect(clipStartX, y + CLIP_HEADER_HEIGHT, clipWidth, height - CLIP_HEADER_HEIGHT);
+
+        // Draw automation overlay on top of selection if clip has automation
+        if (clip.envelopePoints.length > 0) {
+          drawEnvelopeFillInSelection(ctx, clip, trackIndex, clipStartX, y + CLIP_HEADER_HEIGHT, clipWidth, height - CLIP_HEADER_HEIGHT);
+        }
       }
     }
 
-    // Draw waveform (adjusted to start below header) - drawn after envelope and selection so it appears on top
+    // Draw waveform (after envelope fill and selection so it appears on top)
     drawWaveform(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT);
+
+    // Draw envelope line and control points if in envelope mode - after waveform so line is on top
+    if (envelopeMode) {
+      drawEnvelopeLine(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT);
+    }
   };
 
   const drawWaveform = (
@@ -406,15 +418,14 @@ export default function TrackCanvas({
     ctx.stroke();
   };
 
-  const drawEnvelope = (
+  const drawEnvelopeFillInSelection = (
     ctx: CanvasRenderingContext2D,
     clip: Clip,
     trackIndex: number,
-    x: number,
+    selectionX: number,
     y: number,
-    width: number,
-    height: number,
-    showControlPoints: boolean
+    selectionWidth: number,
+    height: number
   ) => {
     const dbToY = (db: number) => {
       const minDb = -60;
@@ -426,28 +437,128 @@ export default function TrackCanvas({
     const zeroDB_Y = dbToY(0);
     const clipBottom = y + height;
 
-    // Get envelope color based on track index
-    // When envelope mode is on, use lighter, semi-transparent colors
-    // When envelope mode is off, use darker, more saturated colors for visibility
-    let envelopeColor = { r: 162, g: 199, b: 255 }; // Default blue
-    let envelopeFillColor = { r: 80, g: 165, b: 255 }; // Darker blue for fill
-
+    // Use colors that blend with the selection highlight
+    let envelopeFillColor = '#70BFE6'; // Default blue (more selection color mixed in)
     if (trackIndex === 0) {
-      envelopeColor = { r: 162, g: 199, b: 255 }; // Blue #A2C7FF
-      envelopeFillColor = { r: 80, g: 165, b: 255 }; // #50A5FF (clip header color)
+      envelopeFillColor = '#70BFE6'; // Blue (blend with #A0FDFF selection)
     } else if (trackIndex === 1) {
-      envelopeColor = { r: 193, g: 191, b: 254 }; // Violet #C1BFFE
-      envelopeFillColor = { r: 154, g: 150, b: 255 }; // #9A96FF (clip header color)
+      envelopeFillColor = '#B8B8F0'; // Violet (blend with #DBF1FF selection)
     } else if (trackIndex === 2) {
-      envelopeColor = { r: 232, g: 186, b: 224 }; // Magenta #E8BAE0
-      envelopeFillColor = { r: 231, g: 135, b: 208 }; // #E787D0 (clip header color)
+      envelopeFillColor = '#E8A8D8'; // Magenta (blend with #FFE7FF selection)
     }
 
-    // First, draw the translucent fill below the envelope line
-    // Use darker fill color when not in envelope mode for better visibility
-    const fillOpacity = showControlPoints ? 0.15 : 0.6;
-    const fillColor = showControlPoints ? envelopeColor : envelopeFillColor;
-    ctx.fillStyle = `rgba(${fillColor.r}, ${fillColor.g}, ${fillColor.b}, ${fillOpacity})`;
+    // Calculate clip position
+    const clipX = LEFT_PADDING + clip.startTime * pixelsPerSecond;
+    const clipWidth = clip.duration * pixelsPerSecond;
+
+    // Draw the fill, clipped to the selection area
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(selectionX, y, selectionWidth, height);
+    ctx.clip();
+
+    ctx.fillStyle = envelopeFillColor;
+    ctx.beginPath();
+
+    if (clip.envelopePoints.length === 0) {
+      // No control points - draw default fill at 0dB
+      ctx.moveTo(clipX, zeroDB_Y);
+      ctx.lineTo(clipX + clipWidth, zeroDB_Y);
+      ctx.lineTo(clipX + clipWidth, clipBottom);
+      ctx.lineTo(clipX, clipBottom);
+      ctx.closePath();
+    } else {
+      // Draw fill through control points
+      const startY =
+        clip.envelopePoints[0].time === 0
+          ? dbToY(clip.envelopePoints[0].db)
+          : zeroDB_Y;
+      ctx.moveTo(clipX, startY);
+
+      clip.envelopePoints.forEach((point) => {
+        const px = clipX + (point.time / clip.duration) * clipWidth;
+        const py = dbToY(point.db);
+        ctx.lineTo(px, py);
+      });
+
+      const lastPoint = clip.envelopePoints[clip.envelopePoints.length - 1];
+      const endY = lastPoint.time < clip.duration ? dbToY(lastPoint.db) : dbToY(lastPoint.db);
+
+      if (lastPoint.time < clip.duration) {
+        ctx.lineTo(clipX + clipWidth, endY);
+      }
+
+      // Complete the fill shape by going down to the bottom
+      ctx.lineTo(clipX + clipWidth, clipBottom);
+      ctx.lineTo(clipX, clipBottom);
+      ctx.closePath();
+    }
+
+    ctx.fill();
+    ctx.restore();
+  };
+
+  const drawEnvelopeFill = (
+    ctx: CanvasRenderingContext2D,
+    clip: Clip,
+    trackIndex: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    envelopeMode: boolean,
+    timeSelection: TimeSelection | null,
+    isSelected: boolean
+  ) => {
+    const dbToY = (db: number) => {
+      const minDb = -60;
+      const maxDb = 12;
+      const normalized = (db - minDb) / (maxDb - minDb);
+      return y + height - normalized * height;
+    };
+
+    const zeroDB_Y = dbToY(0);
+    const clipBottom = y + height;
+
+    // Check if there's a selection on this track
+    const hasSelection = timeSelection && isSelected;
+
+    // Get envelope fill color based on track index
+    // Use more saturated colors based on clip background colors
+    let envelopeFillColor = '#B3C8E6'; // Default blue
+    if (envelopeMode) {
+      // Lighter colors when envelope mode is on
+      if (trackIndex === 0) {
+        envelopeFillColor = '#B3C8E6'; // Blue
+      } else if (trackIndex === 1) {
+        envelopeFillColor = '#D0CFE6'; // Violet
+      } else if (trackIndex === 2) {
+        envelopeFillColor = '#E8C7E0'; // Magenta
+      }
+    } else {
+      if (hasSelection) {
+        // Selected state - use colors that work with selection highlight
+        if (trackIndex === 0) {
+          envelopeFillColor = '#5B8AC9'; // Blue (darker for selection)
+        } else if (trackIndex === 1) {
+          envelopeFillColor = '#8785D6'; // Violet (darker for selection)
+        } else if (trackIndex === 2) {
+          envelopeFillColor = '#C978B8'; // Magenta (darker for selection)
+        }
+      } else {
+        // Normal state - more saturated colors (closer to clip bg)
+        if (trackIndex === 0) {
+          envelopeFillColor = '#7BA0D9'; // Blue (more saturated)
+        } else if (trackIndex === 1) {
+          envelopeFillColor = '#A7A5E6'; // Violet (more saturated)
+        } else if (trackIndex === 2) {
+          envelopeFillColor = '#D998C8'; // Magenta (more saturated)
+        }
+      }
+    }
+
+    // Draw the fill
+    ctx.fillStyle = envelopeFillColor;
     ctx.beginPath();
 
     if (clip.envelopePoints.length === 0) {
@@ -485,62 +596,86 @@ export default function TrackCanvas({
     }
 
     ctx.fill();
+  };
 
-    // Draw the envelope line only when in envelope mode
-    if (showControlPoints) {
-      // Draw the actual envelope line
-      ctx.strokeStyle = `rgb(${envelopeColor.r}, ${envelopeColor.g}, ${envelopeColor.b})`;
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'butt';
-      ctx.lineJoin = 'miter';
-      ctx.beginPath();
+  const drawEnvelopeLine = (
+    ctx: CanvasRenderingContext2D,
+    clip: Clip,
+    trackIndex: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ) => {
+    const dbToY = (db: number) => {
+      const minDb = -60;
+      const maxDb = 12;
+      const normalized = (db - minDb) / (maxDb - minDb);
+      return y + height - normalized * height;
+    };
 
-      if (clip.envelopePoints.length === 0) {
-        // No control points - draw default line at 0dB
-        ctx.moveTo(x, zeroDB_Y);
-        ctx.lineTo(x + width, zeroDB_Y);
-      } else {
-        // Draw envelope through control points
-        const startY =
-          clip.envelopePoints[0].time === 0
-            ? dbToY(clip.envelopePoints[0].db)
-            : zeroDB_Y;
-        ctx.moveTo(x, startY);
+    const zeroDB_Y = dbToY(0);
 
-        clip.envelopePoints.forEach((point) => {
-          const px = x + (point.time / clip.duration) * width;
-          const py = dbToY(point.db);
-          ctx.lineTo(px, py);
-        });
-
-        const lastPoint = clip.envelopePoints[clip.envelopePoints.length - 1];
-        if (lastPoint.time < clip.duration) {
-          ctx.lineTo(x + width, dbToY(lastPoint.db));
-        }
-      }
-
-      ctx.stroke();
+    // Get envelope line color for envelope mode (when control points are visible)
+    let envelopeLineColor = { r: 162, g: 199, b: 255 }; // Default blue
+    if (trackIndex === 0) {
+      envelopeLineColor = { r: 162, g: 199, b: 255 }; // Blue #A2C7FF
+    } else if (trackIndex === 1) {
+      envelopeLineColor = { r: 193, g: 191, b: 254 }; // Violet #C1BFFE
+    } else if (trackIndex === 2) {
+      envelopeLineColor = { r: 232, g: 186, b: 224 }; // Magenta #E8BAE0
     }
 
-    // Draw control points when in envelope mode
-    if (showControlPoints) {
+    // Draw the actual envelope line
+    ctx.strokeStyle = `rgb(${envelopeLineColor.r}, ${envelopeLineColor.g}, ${envelopeLineColor.b})`;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+    ctx.beginPath();
+
+    if (clip.envelopePoints.length === 0) {
+      // No control points - draw default line at 0dB
+      ctx.moveTo(x, zeroDB_Y);
+      ctx.lineTo(x + width, zeroDB_Y);
+    } else {
+      // Draw envelope through control points
+      const startY =
+        clip.envelopePoints[0].time === 0
+          ? dbToY(clip.envelopePoints[0].db)
+          : zeroDB_Y;
+      ctx.moveTo(x, startY);
+
       clip.envelopePoints.forEach((point) => {
         const px = x + (point.time / clip.duration) * width;
         const py = dbToY(point.db);
-
-        // Outer circle with clip color
-        ctx.fillStyle = `rgb(${envelopeColor.r}, ${envelopeColor.g}, ${envelopeColor.b})`;
-        ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Inner white circle
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(px, py, 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.lineTo(px, py);
       });
+
+      const lastPoint = clip.envelopePoints[clip.envelopePoints.length - 1];
+      if (lastPoint.time < clip.duration) {
+        ctx.lineTo(x + width, dbToY(lastPoint.db));
+      }
     }
+
+    ctx.stroke();
+
+    // Draw control points
+    clip.envelopePoints.forEach((point) => {
+      const px = x + (point.time / clip.duration) * width;
+      const py = dbToY(point.db);
+
+      // Outer circle with clip color
+      ctx.fillStyle = `rgb(${envelopeLineColor.r}, ${envelopeLineColor.g}, ${envelopeLineColor.b})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner white circle
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
   };
 
   return (

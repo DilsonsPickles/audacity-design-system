@@ -58,7 +58,7 @@ export default function TimelineRuler({
       const width = endX - startX;
 
       // Convert hex #BFEEFF to rgba with transparency
-      ctx.fillStyle = 'rgba(191, 238, 255, 0.5)';
+      ctx.fillStyle = '#BBD8E8';
       ctx.fillRect(startX, 0, width, height);
     }
 

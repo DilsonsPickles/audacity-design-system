@@ -1,6 +1,11 @@
 'use client';
 
-export default function Ruler() {
+interface RulerProps {
+  isFocused?: boolean;
+  onClick?: () => void;
+}
+
+export default function Ruler({ isFocused = false, onClick }: RulerProps) {
   const labels = [
     { label: '+1.0', pos: '0%' },
     { label: '+0.5', pos: '25%' },
@@ -10,7 +15,20 @@ export default function Ruler() {
   ];
 
   return (
-    <div className="h-[114px] mb-[2px] border-l border-[#3a3a3a] relative">
+    <div className="mt-[2px] mb-[2px] relative">
+      {/* Focus border in the gap */}
+      {isFocused && (
+        <>
+          <div className="absolute -top-[2px] left-0 right-0 h-[2px] bg-[#84B5FF]" />
+          <div className="absolute -bottom-[2px] left-0 right-0 h-[2px] bg-[#84B5FF]" />
+          <div className="absolute top-0 -right-0 bottom-0 w-[2px] bg-[#84B5FF]" />
+        </>
+      )}
+
+      <div
+        className="h-[114px] border-l border-[#3a3a3a] relative cursor-pointer"
+        onClick={onClick}
+      >
       {/* 20px spacer for clip header */}
       <div
         className="absolute top-0 left-0 right-0 h-[20px]"
@@ -32,6 +50,7 @@ export default function Ruler() {
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

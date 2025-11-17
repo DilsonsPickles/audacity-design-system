@@ -6,10 +6,11 @@ import { theme } from '../theme';
 interface TrackHeaderProps {
   trackName: string;
   isSelected?: boolean;
+  isFocused?: boolean;
   onSelect?: () => void;
 }
 
-export default function TrackHeader({ trackName, isSelected = false, onSelect }: TrackHeaderProps) {
+export default function TrackHeader({ trackName, isSelected = false, isFocused = false, onSelect }: TrackHeaderProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const getBackgroundColor = () => {
@@ -19,15 +20,27 @@ export default function TrackHeader({ trackName, isSelected = false, onSelect }:
   };
 
   return (
-    <div
-      className="h-[114px] p-3 flex flex-col mb-[2px] transition-colors cursor-pointer"
-      style={{ backgroundColor: getBackgroundColor() }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={onSelect}
-    >
-      {/* Row 1: Icon, Track name, Ellipsis button */}
-      <div className="flex items-center gap-2 mb-3">
+    <div className="mt-[2px] mb-[2px] relative">
+      {/* Focus border in the gap */}
+      {isFocused && (
+        <>
+          <div className="absolute -top-[2px] left-0 right-0 h-[2px] bg-[#84B5FF]" />
+          <div className="absolute -bottom-[2px] left-0 right-0 h-[2px] bg-[#84B5FF]" />
+          <div className="absolute top-0 -left-0 bottom-0 w-[2px] bg-[#84B5FF]" />
+        </>
+      )}
+
+      <div
+        className="h-[114px] p-3 flex flex-col transition-colors cursor-pointer relative"
+        style={{
+          backgroundColor: getBackgroundColor(),
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={onSelect}
+      >
+      {/* Row 1: Icon, Track name, Ellipsis button - 20px height */}
+      <div className="flex items-center gap-2 h-5 mb-2">
         <div
           className="w-5 h-5 flex items-center justify-center text-sm"
           style={{ color: theme.text }}
@@ -46,8 +59,8 @@ export default function TrackHeader({ trackName, isSelected = false, onSelect }:
         </button>
       </div>
 
-      {/* Row 2: Pan knob, Volume slider, Mute/Solo buttons */}
-      <div className="flex items-center mb-2">
+      {/* Row 2: Pan knob, Volume slider, Mute/Solo buttons - 32px height */}
+      <div className="flex items-center h-8 mb-2">
         {/* Pan knob placeholder */}
         <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs" style={{ borderColor: theme.trackHeaderBorder }}>
           ⟳
@@ -108,6 +121,7 @@ export default function TrackHeader({ trackName, isSelected = false, onSelect }:
       >
         Effects
       </button>
+      </div>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { theme } from '../theme';
 // Configuration
 const TRACK_HEIGHT = 114;
 const TRACK_GAP = 2;
+const INITIAL_GAP = 2; // 2px gap above first track
 const PIXELS_PER_SECOND = 100;
 const CANVAS_WIDTH = 2000;
 const CLIP_HEADER_HEIGHT = 20;
@@ -22,6 +23,7 @@ export default function ClipEnvelopeEditor() {
   const [envelopeMode, setEnvelopeMode] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [selectedTrackIndices, setSelectedTrackIndices] = useState<number[]>([]);
+  const [focusedTrackIndex, setFocusedTrackIndex] = useState<number | null>(null);
   const [timeSelection, setTimeSelection] = useState<TimeSelection | null>(null);
   const [hoveredClipHeader, setHoveredClipHeader] = useState<{ clipId: number; trackIndex: number } | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; db: number; visible: boolean }>({
@@ -117,15 +119,16 @@ export default function ClipEnvelopeEditor() {
     const y = e.clientY - rect.top;
 
     // Determine which track was clicked
-    const clickedTrackIndex = Math.floor(y / (TRACK_HEIGHT + TRACK_GAP));
+    const clickedTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
     if (clickedTrackIndex >= 0 && clickedTrackIndex < tracks.length) {
       setSelectedTrackIndices([clickedTrackIndex]);
+      setFocusedTrackIndex(clickedTrackIndex);
     }
 
     // Check for clip header dragging (works in both modes)
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackY = trackIndex * (TRACK_HEIGHT + TRACK_GAP);
+      const trackY = INITIAL_GAP + trackIndex * (TRACK_HEIGHT + TRACK_GAP);
 
       if (y < trackY || y > trackY + TRACK_HEIGHT) continue;
 
@@ -201,7 +204,7 @@ export default function ClipEnvelopeEditor() {
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackY = trackIndex * (TRACK_HEIGHT + TRACK_GAP);
+      const trackY = INITIAL_GAP + trackIndex * (TRACK_HEIGHT + TRACK_GAP);
 
       if (y < trackY || y > trackY + TRACK_HEIGHT) continue;
 
@@ -407,7 +410,7 @@ export default function ClipEnvelopeEditor() {
       });
 
       // Update selected tracks based on drag range
-      const currentTrackIndex = Math.floor(y / (TRACK_HEIGHT + TRACK_GAP));
+      const currentTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
       const startTrackIndex = timeSelectionDragStateRef.current.startTrackIndex;
       const minTrack = Math.max(0, Math.min(startTrackIndex, currentTrackIndex));
       const maxTrack = Math.min(tracks.length - 1, Math.max(startTrackIndex, currentTrackIndex));
@@ -528,7 +531,7 @@ export default function ClipEnvelopeEditor() {
 
     // Update clip position
     const newStartTime = Math.max(0, (x - dragStateRef.current.offsetX - LEFT_PADDING) / PIXELS_PER_SECOND);
-    const newTrackIndex = Math.floor(y / (TRACK_HEIGHT + TRACK_GAP));
+    const newTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
 
     const newTracks = [...tracks];
     const { clip, trackIndex } = dragStateRef.current;
@@ -564,6 +567,14 @@ export default function ClipEnvelopeEditor() {
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+
+    // Determine which track the mouse was released on and set it as focused
+    const releasedTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
+    if (releasedTrackIndex >= 0 && releasedTrackIndex < tracks.length) {
+      setFocusedTrackIndex(releasedTrackIndex);
+    }
 
     // End time selection
     if (timeSelectionDragStateRef.current) {
@@ -611,7 +622,7 @@ export default function ClipEnvelopeEditor() {
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackY = trackIndex * (TRACK_HEIGHT + TRACK_GAP);
+      const trackY = INITIAL_GAP + trackIndex * (TRACK_HEIGHT + TRACK_GAP);
 
       if (y < trackY || y > trackY + TRACK_HEIGHT) continue;
 
@@ -648,7 +659,7 @@ export default function ClipEnvelopeEditor() {
       <div className="flex flex-1 overflow-hidden">
         {/* Track headers */}
         <div
-          className="w-[200px] border-r flex flex-col"
+          className="w-[280px] border-r flex flex-col"
           style={{
             backgroundColor: theme.trackHeaderPanel,
             borderColor: theme.trackHeaderBorder,
@@ -670,7 +681,7 @@ export default function ClipEnvelopeEditor() {
             <button
               className="h-[28px] px-3 text-sm rounded border"
               style={{
-                backgroundColor: '#CDCED7',
+                backgroundColor: '',
                 color: theme.text,
                 borderColor: theme.trackHeaderBorder,
               }}
@@ -694,7 +705,11 @@ export default function ClipEnvelopeEditor() {
                 key={track.id}
                 trackName={track.name}
                 isSelected={selectedTrackIndices.includes(index)}
-                onSelect={() => setSelectedTrackIndices([index])}
+                isFocused={focusedTrackIndex === index}
+                onSelect={() => {
+                  setSelectedTrackIndices([index]);
+                  setFocusedTrackIndex(index);
+                }}
               />
             ))}
           </div>
@@ -721,6 +736,7 @@ export default function ClipEnvelopeEditor() {
             pixelsPerSecond={PIXELS_PER_SECOND}
             canvasWidth={CANVAS_WIDTH}
             selectedTrackIndices={selectedTrackIndices}
+            focusedTrackIndex={focusedTrackIndex}
             timeSelection={timeSelection}
             hoveredClipHeader={hoveredClipHeader}
             onMouseDown={handleMouseDown}
@@ -731,15 +747,22 @@ export default function ClipEnvelopeEditor() {
 
         {/* Rulers (fixed on right) */}
         <div
-          className="fixed right-0 top-[50px] w-[50px] h-[calc(100vh-50px)] pointer-events-none z-10 border-l"
+          className="fixed right-0 top-[50px] w-[50px] h-[calc(100vh-50px)] z-10 border-l"
           style={{
             backgroundColor: theme.ruler,
             borderColor: theme.rulerBorder,
             paddingTop: '40px',
           }}
         >
-          {tracks.map((track) => (
-            <Ruler key={track.id} />
+          {tracks.map((track, index) => (
+            <Ruler
+              key={track.id}
+              isFocused={focusedTrackIndex === index}
+              onClick={() => {
+                setSelectedTrackIndices([index]);
+                setFocusedTrackIndex(index);
+              }}
+            />
           ))}
         </div>
       </div>
