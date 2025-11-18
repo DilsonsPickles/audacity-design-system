@@ -77,7 +77,11 @@ export default function TrackCanvas({
     if (!canvas || tracks.length === 0) return;
 
     canvas.width = canvasWidth;
-    canvas.height = 2 + tracks.length * trackHeight + Math.max(0, tracks.length - 1) * 2; // 2px initial gap + track heights + 2px gaps between tracks
+    // Calculate minimum height needed for tracks
+    const minHeightForTracks = 2 + tracks.length * trackHeight + Math.max(0, tracks.length - 1) * 2;
+    // Extend canvas to bottom of viewport (subtract toolbar height of 50px)
+    const viewportHeight = window.innerHeight - 50;
+    canvas.height = Math.max(minHeightForTracks, viewportHeight);
 
     const dpr = window.devicePixelRatio || 1;
     canvas.style.width = canvas.width + 'px';
@@ -136,14 +140,18 @@ export default function TrackCanvas({
         ctx.stroke();
       }
 
-      // Draw time selection only on selected tracks (areas outside clips)
-      if (timeSelection && isSelected) {
+      // Draw time selection overlay on all tracks (less opaque on unselected tracks)
+      if (timeSelection) {
         const startX = LEFT_PADDING + timeSelection.startTime * pixelsPerSecond;
         const endX = LEFT_PADDING + timeSelection.endTime * pixelsPerSecond;
         const width = endX - startX;
 
-        // Draw default selection color across entire track
-        ctx.fillStyle = 'rgba(171, 231, 255, 0.2)';
+        // Draw selection color - less opaque on unselected tracks
+        if (isSelected) {
+          ctx.fillStyle = 'rgba(171, 231, 255, 0.2)';
+        } else {
+          ctx.fillStyle = 'rgba(171, 231, 255, 0.08)'; // Less opaque for unselected tracks
+        }
         ctx.fillRect(startX, y, width, trackHeight);
       }
 
@@ -160,6 +168,24 @@ export default function TrackCanvas({
         drawClip(ctx, clip, trackIndex, timeSelection, isSelected, hiddenIndices);
       });
     });
+
+    // Draw time selection overlay in empty space below all tracks
+    if (timeSelection) {
+      const startX = LEFT_PADDING + timeSelection.startTime * pixelsPerSecond;
+      const endX = LEFT_PADDING + timeSelection.endTime * pixelsPerSecond;
+      const width = endX - startX;
+
+      // Calculate where empty space starts (below last track)
+      const lastTrackY = INITIAL_GAP + (tracks.length - 1) * (trackHeight + TRACK_GAP);
+      const emptySpaceStartY = lastTrackY + trackHeight + TRACK_GAP;
+      const canvasHeight = canvas.height / (window.devicePixelRatio || 1);
+      const emptySpaceHeight = canvasHeight - emptySpaceStartY;
+
+      if (emptySpaceHeight > 0) {
+        ctx.fillStyle = 'rgba(171, 231, 255, 0.08)'; // Same opacity as unselected tracks
+        ctx.fillRect(startX, emptySpaceStartY, width, emptySpaceHeight);
+      }
+    }
   };
 
   const drawClip = (
@@ -309,7 +335,7 @@ export default function TrackCanvas({
         // Set header selection color based on track
         let headerSelectionColor = '#78ECFF'; // Blue
         if (trackIndex === 1) {
-          headerSelectionColor = '#C6DDFF'; // Violet
+          headerSelectionColor = clip.selected ? '#C6DDFF' : '#C6DDFF'; // Violet (same for both)
         } else if (trackIndex === 2) {
           headerSelectionColor = '#FFCFFF'; // Magenta
         }
@@ -354,27 +380,46 @@ export default function TrackCanvas({
         const clipEndX = LEFT_PADDING + overlapEnd * pixelsPerSecond;
         const clipWidth = clipEndX - clipStartX;
 
-        // Set body selection color based on track
-        let bodySelectionColor = '#A0FDFF'; // Blue
-        if (trackIndex === 1) {
-          bodySelectionColor = '#DBF1FF'; // Violet
-        } else if (trackIndex === 2) {
-          bodySelectionColor = '#FFE7FF'; // Magenta
+        // Set body selection color based on track (darker in envelope mode)
+        let bodySelectionColor = '#70D4FF'; // Blue (darker)
+        if (envelopeMode) {
+          // Even darker for envelope mode
+          bodySelectionColor = '#50B4E6'; // Blue (darker for envelope mode)
+          if (trackIndex === 1) {
+            bodySelectionColor = '#98B4E6'; // Violet (darker for envelope mode)
+          } else if (trackIndex === 2) {
+            bodySelectionColor = '#D8A8E6'; // Magenta (darker for envelope mode)
+          }
+        } else {
+          // For unselected clips in normal mode, use lighter colors
+          if (!clip.selected) {
+            if (trackIndex === 1) {
+              bodySelectionColor = '#DBF1FF'; // Violet body (unselected)
+            } else if (trackIndex === 2) {
+              bodySelectionColor = '#E8C8FF'; // Magenta (darker)
+            }
+          } else {
+            if (trackIndex === 1) {
+              bodySelectionColor = '#B8D4FF'; // Violet (darker)
+            } else if (trackIndex === 2) {
+              bodySelectionColor = '#E8C8FF'; // Magenta (darker)
+            }
+          }
         }
 
         // Draw selection only on the waveform area (below the clip header)
         ctx.fillStyle = bodySelectionColor;
         ctx.fillRect(clipStartX, y + CLIP_HEADER_HEIGHT, clipWidth, height - CLIP_HEADER_HEIGHT);
 
-        // Draw automation overlay on top of selection if clip has automation
-        if (clip.envelopePoints.length > 0) {
+        // Draw automation overlay on top of selection in envelope mode
+        if (envelopeMode || clip.envelopePoints.length > 0) {
           drawEnvelopeFillInSelection(ctx, clip, trackIndex, clipStartX, y + CLIP_HEADER_HEIGHT, clipWidth, height - CLIP_HEADER_HEIGHT, hiddenPointIndices);
         }
       }
     }
 
     // Draw waveform (after envelope fill and selection so it appears on top)
-    drawWaveform(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT);
+    drawWaveform(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT, timeSelection, isSelected);
 
     // Draw envelope line and control points if in envelope mode - after waveform so line is on top
     if (envelopeMode) {
@@ -389,7 +434,9 @@ export default function TrackCanvas({
     x: number,
     y: number,
     width: number,
-    height: number
+    height: number,
+    timeSelection: TimeSelection | null,
+    isSelected: boolean
   ) => {
     const waveform = clip.waveform;
     if (waveform.length === 0) return;
@@ -433,38 +480,71 @@ export default function TrackCanvas({
       return Math.pow(10, db / 20);
     };
 
-    // Set waveform color based on track
+    // Check if this clip overlaps with the time selection
+    const clipStartTime = clip.startTime;
+    const clipEndTime = clip.startTime + clip.duration;
+    const hasSelectionOverlap = timeSelection &&
+                                timeSelection.endTime > clipStartTime &&
+                                timeSelection.startTime < clipEndTime;
+
+    // Set waveform color based on track and selection state
     let waveformColor = '#122332'; // Default blue
+    let waveformSelectedColor = '#2A4A5A'; // Lighter blue for selection
+
     if (trackIndex === 0) {
       waveformColor = '#122332'; // Blue
+      waveformSelectedColor = '#2A4A5A'; // Lighter blue
     } else if (trackIndex === 1) {
       waveformColor = '#1F1F33'; // Violet
+      waveformSelectedColor = '#3A3A50'; // Lighter violet
     } else if (trackIndex === 2) {
-      waveformColor = '#2F1D29'; // Magenta
+      waveformColor = '#2E1F2A'; // Magenta
+      waveformSelectedColor = '#4A3A45'; // Lighter magenta
     }
 
-    ctx.strokeStyle = waveformColor;
     ctx.lineWidth = 1;
-    ctx.beginPath();
 
-    for (let i = 0; i < waveform.length; i++) {
-      const px = x + (i / waveform.length) * width;
+    // Draw waveform in segments based on selection
+    let segmentStartIndex = 0;
+    let wasInSelection = false;
+
+    for (let i = 0; i <= waveform.length; i++) {
       const time = (i / waveform.length) * clip.duration;
-      const gain = getGainAtTime(time);
-      const amplitude = waveform[i] * gain;
+      const absoluteTime = clipStartTime + time;
 
-      // Clamp amplitude to prevent overflow beyond clip boundaries
-      const clampedAmplitude = Math.max(-1, Math.min(1, amplitude));
-      const py = centerY + clampedAmplitude * maxAmplitude;
+      // Determine if this point is within the selection
+      const inSelection = hasSelectionOverlap &&
+                         timeSelection &&
+                         absoluteTime >= timeSelection.startTime &&
+                         absoluteTime <= timeSelection.endTime;
 
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
+      // When selection state changes or we reach the end, draw the segment
+      if (i === waveform.length || (i > 0 && inSelection !== wasInSelection)) {
+        // Draw segment from segmentStartIndex to i
+        ctx.strokeStyle = wasInSelection ? waveformSelectedColor : waveformColor;
+        ctx.beginPath();
+
+        for (let j = segmentStartIndex; j < i; j++) {
+          const px = x + (j / waveform.length) * width;
+          const jTime = (j / waveform.length) * clip.duration;
+          const gain = getGainAtTime(jTime);
+          const amplitude = waveform[j] * gain;
+          const clampedAmplitude = Math.max(-1, Math.min(1, amplitude));
+          const py = centerY + clampedAmplitude * maxAmplitude;
+
+          if (j === segmentStartIndex) {
+            ctx.moveTo(px, py);
+          } else {
+            ctx.lineTo(px, py);
+          }
+        }
+
+        ctx.stroke();
+
+        segmentStartIndex = i;
+        wasInSelection = inSelection;
       }
     }
-
-    ctx.stroke();
   };
 
   const drawEnvelopeFillInSelection = (
@@ -480,14 +560,14 @@ export default function TrackCanvas({
     const zeroDB_Y = dbToYNonLinear(0, y, height);
     const clipBottom = y + height;
 
-    // Use colors that blend with the selection highlight
-    let envelopeFillColor = '#70BFE6'; // Default blue (more selection color mixed in)
+    // Use extremely light colors that blend with the selection highlight
+    let envelopeFillColor = '#D0F0FF'; // Default blue (extremely light)
     if (trackIndex === 0) {
-      envelopeFillColor = '#70BFE6'; // Blue (blend with #A0FDFF selection)
+      envelopeFillColor = '#D0F0FF'; // Blue (extremely light to blend with #70D4FF selection)
     } else if (trackIndex === 1) {
-      envelopeFillColor = '#B8B8F0'; // Violet (blend with #DBF1FF selection)
+      envelopeFillColor = '#E8F0FF'; // Violet (extremely light to blend with #B8D4FF selection)
     } else if (trackIndex === 2) {
-      envelopeFillColor = '#E8A8D8'; // Magenta (blend with #FFE7FF selection)
+      envelopeFillColor = '#FCE8FC'; // Magenta (extremely light to blend with #E8C8FF selection)
     }
 
     // Calculate clip position
@@ -571,35 +651,35 @@ export default function TrackCanvas({
     const hasSelection = timeSelection && isSelected;
 
     // Get envelope fill color based on track index
-    // Use more saturated colors based on clip background colors
-    let envelopeFillColor = '#B3C8E6'; // Default blue
+    // Use more saturated colors based on clip background colors with transparency
+    let envelopeFillColor = 'rgba(141, 212, 255, 0.5)'; // Default blue with 50% opacity
     if (envelopeMode) {
-      // Lighter colors when envelope mode is on
+      // Colors when envelope mode is on (matching selection overlay colors)
       if (trackIndex === 0) {
-        envelopeFillColor = '#B3C8E6'; // Blue
+        envelopeFillColor = 'rgba(141, 212, 255, 0.5)'; // Blue with transparency
       } else if (trackIndex === 1) {
-        envelopeFillColor = '#D0CFE6'; // Violet
+        envelopeFillColor = 'rgba(200, 216, 255, 0.5)'; // Violet with transparency
       } else if (trackIndex === 2) {
-        envelopeFillColor = '#E8C7E0'; // Magenta
+        envelopeFillColor = 'rgba(240, 200, 240, 0.5)'; // Magenta with transparency
       }
     } else {
       if (hasSelection) {
         // Selected state - use colors that work with selection highlight
         if (trackIndex === 0) {
-          envelopeFillColor = '#5B8AC9'; // Blue (darker for selection)
+          envelopeFillColor = 'rgba(91, 138, 201, 0.5)'; // Blue (darker for selection) with transparency
         } else if (trackIndex === 1) {
-          envelopeFillColor = '#8785D6'; // Violet (darker for selection)
+          envelopeFillColor = 'rgba(135, 133, 214, 0.5)'; // Violet (darker for selection) with transparency
         } else if (trackIndex === 2) {
-          envelopeFillColor = '#C978B8'; // Magenta (darker for selection)
+          envelopeFillColor = 'rgba(201, 120, 184, 0.5)'; // Magenta (darker for selection) with transparency
         }
       } else {
-        // Normal state - more saturated colors (closer to clip bg)
+        // Normal state - more saturated colors (closer to clip bg) with transparency
         if (trackIndex === 0) {
-          envelopeFillColor = '#7BA0D9'; // Blue (more saturated)
+          envelopeFillColor = 'rgba(123, 160, 217, 0.5)'; // Blue (more saturated) with transparency
         } else if (trackIndex === 1) {
-          envelopeFillColor = '#A7A5E6'; // Violet (more saturated)
+          envelopeFillColor = 'rgba(167, 165, 230, 0.5)'; // Violet (more saturated) with transparency
         } else if (trackIndex === 2) {
-          envelopeFillColor = '#D998C8'; // Magenta (more saturated)
+          envelopeFillColor = 'rgba(217, 152, 200, 0.5)'; // Magenta (more saturated) with transparency
         }
       }
     }
