@@ -513,10 +513,10 @@ export default function TrackCanvas({
       const absoluteTime = clipStartTime + time;
 
       // Determine if this point is within the selection
-      const inSelection = hasSelectionOverlap &&
+      const inSelection: boolean = !!(hasSelectionOverlap &&
                          timeSelection &&
                          absoluteTime >= timeSelection.startTime &&
-                         absoluteTime <= timeSelection.endTime;
+                         absoluteTime <= timeSelection.endTime);
 
       // When selection state changes or we reach the end, draw the segment
       if (i === waveform.length || (i > 0 && inSelection !== wasInSelection)) {
