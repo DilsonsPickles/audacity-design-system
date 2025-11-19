@@ -7,15 +7,15 @@ import ResizableRuler from './ResizableRuler';
 import TrackCanvas from './TrackCanvas';
 import TimelineRuler from './TimelineRuler';
 import Tooltip from './Tooltip';
-import { Track, Clip, EnvelopePoint, DragState, EnvelopeDragState, TimeSelection, TimeSelectionDragState, TrackResizeDragState } from './types';
+import { Track, Clip, EnvelopePoint, DragState, EnvelopeDragState, TimeSelection, TimeSelectionDragState, TrackResizeDragState, EnvelopeSegmentDragState } from './types';
 import { theme } from '../theme';
 
 // Configuration
 const TRACK_HEIGHT = 114;
 const TRACK_GAP = 2;
 const INITIAL_GAP = 2; // 2px gap above first track
-const PIXELS_PER_SECOND = 100;
-const CANVAS_WIDTH = 2000;
+const PIXELS_PER_SECOND = 200;
+const CANVAS_WIDTH = 4000;
 const CLIP_HEADER_HEIGHT = 20;
 const LEFT_PADDING = 12;
 const INFINITY_ZONE_HEIGHT = 1; // Last 1px represents -infinity dB
@@ -23,6 +23,7 @@ const SNAP_THRESHOLD_DB = 6; // Snap within 6dB of other points
 const SNAP_THRESHOLD_TIME = 0.05; // Snap within 0.05 seconds of other points horizontally
 
 // Non-linear dB scale conversion helpers
+// Uses a power curve with 0dB positioned at about 2/3 down the clip
 const dbToYNonLinear = (db: number, y: number, height: number): number => {
   const minDb = -60;
   const maxDb = 12;
@@ -33,8 +34,14 @@ const dbToYNonLinear = (db: number, y: number, height: number): number => {
     return y + height;
   }
 
-  // Linear mapping for normal dB range, leaving bottom 1px for -infinity
-  const normalized = (db - minDb) / (maxDb - minDb);
+  // Power curve mapping with 0dB at ~2/3 down
+  // Using power of 3.0 to position 0dB lower in the clip
+  const dbRange = maxDb - minDb; // 72 dB total range
+  const linear = (db - minDb) / dbRange; // 0 to 1
+
+  // Apply power curve: higher power pushes 0dB lower
+  const normalized = Math.pow(linear, 3.0);
+
   return y + usableHeight - normalized * usableHeight;
 };
 
@@ -48,9 +55,15 @@ const yToDbNonLinear = (yPos: number, y: number, height: number): number => {
     return -Infinity;
   }
 
-  // Linear mapping for normal dB range
-  const normalized = (y + usableHeight - yPos) / usableHeight;
-  return Math.max(minDb, Math.min(maxDb, minDb + normalized * (maxDb - minDb)));
+  // Inverse power curve mapping
+  const dbRange = maxDb - minDb; // 72 dB
+  const normalizedY = (y + usableHeight - yPos) / usableHeight;
+
+  // Inverse of power curve: x = y^(1/3)
+  const linear = Math.pow(normalizedY, 1.0 / 3.0);
+  const db = minDb + linear * dbRange;
+
+  return Math.max(minDb, Math.min(maxDb, db));
 };
 
 // Helper to get track height (with default fallback)
@@ -115,10 +128,12 @@ export default function ClipEnvelopeEditor() {
   });
   const dragStateRef = useRef<DragState | null>(null);
   const envelopeDragStateRef = useRef<EnvelopeDragState | null>(null);
+  const envelopeSegmentDragStateRef = useRef<EnvelopeSegmentDragState | null>(null);
   const timeSelectionDragStateRef = useRef<TimeSelectionDragState | null>(null);
   const trackResizeDragStateRef = useRef<TrackResizeDragState | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [cursorStyle, setCursorStyle] = useState<string>('default');
+  const [hoveredSegment, setHoveredSegment] = useState<{ trackIndex: number; clipId: number; segmentIndex: number } | null>(null);
 
   // Initialize tracks with sample clips
   useEffect(() => {
@@ -255,6 +270,7 @@ export default function ClipEnvelopeEditor() {
       timeSelectionDragStateRef.current = null;
       dragStateRef.current = null;
       trackResizeDragStateRef.current = null;
+      envelopeSegmentDragStateRef.current = null;
       setCursorStyle('default');
       if (envelopeDragStateRef.current) {
         setTooltip(prev => ({ ...prev, visible: false }));
@@ -510,13 +526,97 @@ export default function ClipEnvelopeEditor() {
 
           const segments = buildEnvelopeSegments();
           let minDistance = Infinity;
+          let closestSegmentIndex = -1;
 
-          for (const segment of segments) {
+          for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
             const dist = distanceToLineSegment(x, y, segment.x1, segment.y1, segment.x2, segment.y2);
-            minDistance = Math.min(minDistance, dist);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestSegmentIndex = i;
+            }
           }
 
-          if (minDistance <= 16) {
+          // Wide zone (16px) for segment dragging, narrow zone (4px) for adding points
+          if (minDistance <= 16 && minDistance > 4) {
+            // Start segment drag
+
+            // If no points exist, create two points at 0dB at start and end, then drag them together
+            if (clip.envelopePoints.length === 0) {
+              const newTracks = [...tracks];
+              const targetClip = newTracks[trackIndex].clips.find((c) => c.id === clip.id);
+              if (targetClip) {
+                targetClip.envelopePoints = [
+                  { time: 0, db: 0 },
+                  { time: clip.duration, db: 0 }
+                ];
+                setTracks(newTracks);
+
+                envelopeSegmentDragStateRef.current = {
+                  clip: targetClip,
+                  segmentStartIndex: 0,
+                  segmentEndIndex: 1,
+                  trackIndex,
+                  clipX,
+                  clipWidth,
+                  clipY,
+                  clipHeight,
+                  startY: y,
+                  startDb1: 0,
+                  startDb2: 0,
+                };
+              }
+              return true;
+            }
+
+            // Determine which two points define this segment
+            let segmentStartIndex = -1;
+            let segmentEndIndex = -1;
+
+            if (clip.envelopePoints.length === 1) {
+              // Only one point - treat it as dragging that single point
+              segmentStartIndex = 0;
+              segmentEndIndex = 0;
+            } else {
+              // Multiple points - find the segment indices
+              if (closestSegmentIndex === 0 && clip.envelopePoints[0].time > 0) {
+                // Segment from start to first point - drag first point only
+                segmentStartIndex = 0;
+                segmentEndIndex = 0;
+              } else {
+                // Calculate actual segment index accounting for start segment
+                const hasStartSegment = clip.envelopePoints[0].time > 0;
+                const adjustedIndex = hasStartSegment ? closestSegmentIndex - 1 : closestSegmentIndex;
+
+                if (adjustedIndex >= 0 && adjustedIndex < clip.envelopePoints.length - 1) {
+                  segmentStartIndex = adjustedIndex;
+                  segmentEndIndex = adjustedIndex + 1;
+                } else if (adjustedIndex === clip.envelopePoints.length - 1) {
+                  // Last segment (from last point to end) - drag last point only
+                  segmentStartIndex = clip.envelopePoints.length - 1;
+                  segmentEndIndex = clip.envelopePoints.length - 1;
+                }
+              }
+            }
+
+            if (segmentStartIndex !== -1) {
+              envelopeSegmentDragStateRef.current = {
+                clip,
+                segmentStartIndex,
+                segmentEndIndex,
+                trackIndex,
+                clipX,
+                clipWidth,
+                clipY,
+                clipHeight,
+                startY: y,
+                startDb1: clip.envelopePoints[segmentStartIndex].db,
+                startDb2: segmentStartIndex !== segmentEndIndex ? clip.envelopePoints[segmentEndIndex].db : clip.envelopePoints[segmentStartIndex].db,
+              };
+            }
+            return true;
+          } else if (minDistance <= 4) {
+            // Add new point (narrow zone)
             const relativeTime = ((x - clipX) / clipWidth) * clip.duration;
             const db = yToDbNonLinear(y, clipY, clipHeight);
             const newPoint: EnvelopePoint = { time: relativeTime, db };
@@ -574,6 +674,15 @@ export default function ClipEnvelopeEditor() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Update cursor and hover states when not dragging anything
+    if (!trackResizeDragStateRef.current &&
+        !envelopeSegmentDragStateRef.current &&
+        !timeSelectionDragStateRef.current &&
+        !envelopeDragStateRef.current &&
+        !dragStateRef.current) {
+      updateCursor(canvas, x, y);
+    }
+
     // Handle track resize dragging
     if (trackResizeDragStateRef.current) {
       const { trackIndex, startY, startHeight } = trackResizeDragStateRef.current;
@@ -583,6 +692,64 @@ export default function ClipEnvelopeEditor() {
       const newTracks = [...tracks];
       newTracks[trackIndex] = { ...newTracks[trackIndex], height: newHeight };
       setTracks(newTracks);
+      return;
+    }
+
+    // Handle envelope segment dragging
+    if (envelopeSegmentDragStateRef.current) {
+      const { clip, segmentStartIndex, segmentEndIndex, clipY, clipHeight, trackIndex, startY, startDb1, startDb2 } =
+        envelopeSegmentDragStateRef.current;
+
+      // Clamp Y position to stay within clip body, excluding the infinity zone
+      const usableHeight = clipHeight - INFINITY_ZONE_HEIGHT;
+      // Subtract a tiny amount to ensure we stay just above the infinity zone
+      const clampedY = Math.max(clipY, Math.min(clipY + usableHeight - 0.5, y));
+
+      const deltaDb = yToDbNonLinear(clampedY, clipY, clipHeight) - yToDbNonLinear(startY, clipY, clipHeight);
+
+      // Calculate new dB values
+      let newDb1 = startDb1 + deltaDb;
+      let newDb2 = startDb2 + deltaDb;
+
+      // Clamp both values to valid range (-60 to 12 dB)
+      const minDb = -60;
+      const maxDb = 12;
+
+      // Find the limiting factor - which point hits the boundary first
+      if (newDb1 > maxDb || newDb2 > maxDb) {
+        const excess1 = Math.max(0, newDb1 - maxDb);
+        const excess2 = Math.max(0, newDb2 - maxDb);
+        const maxExcess = Math.max(excess1, excess2);
+        newDb1 -= maxExcess;
+        newDb2 -= maxExcess;
+      } else if (newDb1 < minDb || newDb2 < minDb) {
+        const deficit1 = Math.max(0, minDb - newDb1);
+        const deficit2 = Math.max(0, minDb - newDb2);
+        const maxDeficit = Math.max(deficit1, deficit2);
+        newDb1 += maxDeficit;
+        newDb2 += maxDeficit;
+      }
+
+      const newTracks = [...tracks];
+      const targetClip = newTracks[trackIndex].clips.find((c) => c.id === clip.id);
+
+      if (targetClip) {
+        // Update both points' dB values with clamped values
+        targetClip.envelopePoints[segmentStartIndex] = {
+          ...targetClip.envelopePoints[segmentStartIndex],
+          db: newDb1,
+        };
+
+        if (segmentStartIndex !== segmentEndIndex) {
+          targetClip.envelopePoints[segmentEndIndex] = {
+            ...targetClip.envelopePoints[segmentEndIndex],
+            db: newDb2,
+          };
+        }
+
+        setTracks(newTracks);
+      }
+
       return;
     }
 
@@ -648,8 +815,7 @@ export default function ClipEnvelopeEditor() {
         // Update hidden indices in drag state
         envelopeDragStateRef.current.hiddenPointIndices = hiddenIndices;
 
-        // Check for snapping to other points' dB and time values (excluding hidden and dragged points)
-        let snappedDb = db;
+        // Check for snapping to other points' time values only (excluding hidden and dragged points)
         let snappedTime = relativeTime;
 
         for (let i = 0; i < targetClip.envelopePoints.length; i++) {
@@ -658,36 +824,30 @@ export default function ClipEnvelopeEditor() {
 
           const otherPoint = targetClip.envelopePoints[i];
 
-          // Check vertical (dB) snapping
-          const dbDistance = Math.abs(db - otherPoint.db);
-          if (dbDistance < SNAP_THRESHOLD_DB) {
-            snappedDb = otherPoint.db;
-          }
-
-          // Check horizontal (time) snapping
+          // Check horizontal (time) snapping only
           const timeDistance = Math.abs(relativeTime - otherPoint.time);
           if (timeDistance < SNAP_THRESHOLD_TIME) {
             snappedTime = otherPoint.time;
           }
         }
 
-        // Show tooltip with snapped dB value
+        // Show tooltip with dB value
         setTooltip({
           x: e.clientX,
           y: e.clientY,
-          db: snappedDb,
+          db: db,
           visible: true,
         });
 
-        // Simply update the point position with snapped values
-        targetClip.envelopePoints[pointIndex] = { time: snappedTime, db: snappedDb };
+        // Update the point position with snapped time, but free vertical movement
+        targetClip.envelopePoints[pointIndex] = { time: snappedTime, db: db };
 
         // Sort the points and update the pointIndex to track the moved point
         targetClip.envelopePoints.sort((a, b) => a.time - b.time);
 
         // Find the new index of the point we're dragging
         const newPointIndex = targetClip.envelopePoints.findIndex(
-          (p) => p.time === snappedTime && p.db === snappedDb
+          (p) => p.time === snappedTime && p.db === db
         );
 
         if (newPointIndex !== -1) {
@@ -700,8 +860,8 @@ export default function ClipEnvelopeEditor() {
       return;
     }
 
+    // Handle clip dragging
     if (!dragStateRef.current) {
-      updateCursor(canvas, x, y);
       return;
     }
 
@@ -745,6 +905,12 @@ export default function ClipEnvelopeEditor() {
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
     const y = e.clientY - rect.top;
+
+    // End envelope segment dragging
+    if (envelopeSegmentDragStateRef.current) {
+      envelopeSegmentDragStateRef.current = null;
+      return;
+    }
 
     // End time selection
     if (timeSelectionDragStateRef.current) {
@@ -826,7 +992,9 @@ export default function ClipEnvelopeEditor() {
 
     let overClipHeader = false;
     let overEnvelopeLine = false;
+    let overEnvelopeSegment = false;
     let foundHoveredHeader: { clipId: number; trackIndex: number } | null = null;
+    let foundHoveredSegment: { trackIndex: number; clipId: number; segmentIndex: number } | null = null;
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
@@ -849,24 +1017,28 @@ export default function ClipEnvelopeEditor() {
         // Check if hovering over envelope line (only in envelope mode)
         if (envelopeMode && x >= clipX && x <= clipX + clipWidth) {
           const waveformY = trackY + CLIP_HEADER_HEIGHT;
-          const waveformHeight = TRACK_HEIGHT - CLIP_HEADER_HEIGHT;
+          const waveformHeight = trackHeight - CLIP_HEADER_HEIGHT;
 
           const zeroDB_Y = dbToYNonLinear(0, waveformY, waveformHeight);
           const relativeX = (x - clipX) / clipWidth;
           const time = relativeX * clip.duration;
 
-          // Find the envelope Y position at this X
+          // Find the envelope Y position at this X and which segment we're in
           let envelopeY = zeroDB_Y;
+          let segmentIndex = -1;
 
           if (clip.envelopePoints.length === 0) {
             envelopeY = zeroDB_Y;
+            segmentIndex = 0;
           } else {
             const points = clip.envelopePoints;
 
             if (time <= points[0].time) {
               envelopeY = points[0].time === 0 ? dbToYNonLinear(points[0].db, waveformY, waveformHeight) : zeroDB_Y;
+              segmentIndex = 0;
             } else if (time >= points[points.length - 1].time) {
               envelopeY = dbToYNonLinear(points[points.length - 1].db, waveformY, waveformHeight);
+              segmentIndex = points.length;
             } else {
               // Find the two points we're between
               for (let i = 0; i < points.length - 1; i++) {
@@ -874,20 +1046,30 @@ export default function ClipEnvelopeEditor() {
                   const t = (time - points[i].time) / (points[i + 1].time - points[i].time);
                   const db = points[i].db + t * (points[i + 1].db - points[i].db);
                   envelopeY = dbToYNonLinear(db, waveformY, waveformHeight);
+                  segmentIndex = i + 1;
                   break;
                 }
               }
             }
           }
 
-          // Check if mouse is near the envelope line (within 8 pixels)
-          if (Math.abs(y - envelopeY) < 8) {
+          const distance = Math.abs(y - envelopeY);
+
+          // Check for segment hover (4-16px range)
+          if (distance > 4 && distance <= 16) {
+            overEnvelopeSegment = true;
+            foundHoveredSegment = { trackIndex, clipId: clip.id, segmentIndex };
+            break;
+          }
+
+          // Check if mouse is near the envelope line for adding points (within 4 pixels)
+          if (distance <= 4) {
             overEnvelopeLine = true;
             break;
           }
         }
       }
-      if (overClipHeader || overEnvelopeLine) break;
+      if (overClipHeader || overEnvelopeLine || overEnvelopeSegment) break;
     }
 
     // Update hovered clip header state
@@ -899,8 +1081,19 @@ export default function ClipEnvelopeEditor() {
       setHoveredClipHeader(null);
     }
 
+    // Update hovered segment state
+    if (foundHoveredSegment) {
+      if (!hoveredSegment || hoveredSegment.clipId !== foundHoveredSegment.clipId || hoveredSegment.trackIndex !== foundHoveredSegment.trackIndex || hoveredSegment.segmentIndex !== foundHoveredSegment.segmentIndex) {
+        setHoveredSegment(foundHoveredSegment);
+      }
+    } else if (hoveredSegment) {
+      setHoveredSegment(null);
+    }
+
     // Set cursor based on what we're hovering over
-    if (overEnvelopeLine) {
+    if (overEnvelopeSegment) {
+      canvas.style.cursor = 'ns-resize'; // Show vertical resize cursor for segment dragging
+    } else if (overEnvelopeLine) {
       canvas.style.cursor = 'copy'; // 'copy' shows a cursor with a plus
     } else if (overClipHeader) {
       canvas.style.cursor = 'grab';
@@ -1004,6 +1197,7 @@ export default function ClipEnvelopeEditor() {
             focusedTrackIndex={focusedTrackIndex}
             timeSelection={timeSelection}
             hoveredClipHeader={hoveredClipHeader}
+            hoveredSegment={hoveredSegment}
             envelopeDragState={envelopeDragStateRef.current}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}

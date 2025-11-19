@@ -15,6 +15,7 @@ interface TrackCanvasProps {
   timeSelection: TimeSelection | null;
   hoveredClipHeader: { clipId: number; trackIndex: number } | null;
   envelopeDragState: EnvelopeDragState | null;
+  hoveredSegment: { trackIndex: number; clipId: number; segmentIndex: number } | null;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -41,6 +42,7 @@ const LEFT_PADDING = 12;
 const INFINITY_ZONE_HEIGHT = 1; // Last 1px represents -infinity dB
 
 // Non-linear dB scale conversion helpers
+// Uses a power curve with 0dB positioned at about 2/3 down the clip
 const dbToYNonLinear = (db: number, y: number, height: number): number => {
   const minDb = -60;
   const maxDb = 12;
@@ -51,8 +53,14 @@ const dbToYNonLinear = (db: number, y: number, height: number): number => {
     return y + height;
   }
 
-  // Linear mapping for normal dB range, leaving bottom 1px for -infinity
-  const normalized = (db - minDb) / (maxDb - minDb);
+  // Power curve mapping with 0dB at ~2/3 down
+  // Using power of 3.0 to position 0dB lower in the clip
+  const dbRange = maxDb - minDb; // 72 dB total range
+  const linear = (db - minDb) / dbRange; // 0 to 1
+
+  // Apply power curve: higher power pushes 0dB lower
+  const normalized = Math.pow(linear, 3.0);
+
   return y + usableHeight - normalized * usableHeight;
 };
 
@@ -66,9 +74,15 @@ const yToDbNonLinear = (yPos: number, y: number, height: number): number => {
     return -Infinity;
   }
 
-  // Linear mapping for normal dB range
-  const normalized = (y + usableHeight - yPos) / usableHeight;
-  return Math.max(minDb, Math.min(maxDb, minDb + normalized * (maxDb - minDb)));
+  // Inverse power curve mapping
+  const dbRange = maxDb - minDb; // 72 dB
+  const normalizedY = (y + usableHeight - yPos) / usableHeight;
+
+  // Inverse of power curve: x = y^(1/3)
+  const linear = Math.pow(normalizedY, 1.0 / 3.0);
+  const db = minDb + linear * dbRange;
+
+  return Math.max(minDb, Math.min(maxDb, db));
 };
 
 export default function TrackCanvas({
@@ -82,6 +96,7 @@ export default function TrackCanvas({
   timeSelection,
   hoveredClipHeader,
   envelopeDragState,
+  hoveredSegment,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -121,7 +136,7 @@ export default function TrackCanvas({
 
     ctx.scale(dpr, dpr);
     render(ctx);
-  }, [tracks, envelopeMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, focusedTrackIndex, timeSelection, hoveredClipHeader, envelopeDragState]);
+  }, [tracks, envelopeMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, focusedTrackIndex, timeSelection, hoveredClipHeader, envelopeDragState, hoveredSegment]);
 
   const render = (ctx: CanvasRenderingContext2D) => {
     const dpr = window.devicePixelRatio || 1;
@@ -478,13 +493,13 @@ export default function TrackCanvas({
             if (trackIndex === 1) {
               bodySelectionColor = '#DBF1FF'; // Violet body (unselected)
             } else if (trackIndex === 2) {
-              bodySelectionColor = '#E8C8FF'; // Magenta (darker)
+              bodySelectionColor = '#FFE7FF'; // Magenta body (unselected)
             }
           } else {
             if (trackIndex === 1) {
               bodySelectionColor = '#B8D4FF'; // Violet (darker)
             } else if (trackIndex === 2) {
-              bodySelectionColor = '#E8C8FF'; // Magenta (darker)
+              bodySelectionColor = '#FFE7FF'; // Magenta body (selected)
             }
           }
         }
@@ -832,46 +847,162 @@ export default function TrackCanvas({
 
     // Use solid red color for envelope line
     const envelopeLineColor = 'red';
-
-    // Draw the actual envelope line
-    ctx.strokeStyle = envelopeLineColor;
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'butt';
-    ctx.lineJoin = 'miter';
-    ctx.beginPath();
+    const envelopeLineHoverColor = theme.envelopeLineHover;
 
     if (clip.envelopePoints.length === 0) {
       // No control points - draw default line at 0dB
+      const isHovered = hoveredSegment && hoveredSegment.trackIndex === trackIndex && hoveredSegment.clipId === clip.id && hoveredSegment.segmentIndex === 0;
+
+      ctx.strokeStyle = isHovered ? envelopeLineHoverColor : envelopeLineColor;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+      ctx.beginPath();
       ctx.moveTo(x, zeroDB_Y);
       ctx.lineTo(x + width, zeroDB_Y);
+      ctx.stroke();
     } else {
       // Filter out hidden points for drawing the line
       const visiblePoints = clip.envelopePoints.filter((_, index) => !hiddenPointIndices.includes(index));
 
       if (visiblePoints.length === 0) {
         // All points are hidden - draw default line at 0dB
+        const isHovered = hoveredSegment && hoveredSegment.trackIndex === trackIndex && hoveredSegment.clipId === clip.id && hoveredSegment.segmentIndex === 0;
+
+        ctx.strokeStyle = isHovered ? envelopeLineHoverColor : envelopeLineColor;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+        ctx.beginPath();
         ctx.moveTo(x, zeroDB_Y);
         ctx.lineTo(x + width, zeroDB_Y);
+        ctx.stroke();
       } else {
-        // Draw envelope through visible control points only
-        // Always use first visible point's dB value for the line from clip start to first point
+        // Draw envelope through visible control points - draw each segment separately to allow hover effects
         const startY = dbToYNonLinear(visiblePoints[0].db, y, height);
+
+        // First segment: from clip start to first point
+        const isSegment0Hovered = hoveredSegment && hoveredSegment.trackIndex === trackIndex && hoveredSegment.clipId === clip.id && hoveredSegment.segmentIndex === 0;
+        ctx.strokeStyle = isSegment0Hovered ? envelopeLineHoverColor : envelopeLineColor;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+        ctx.beginPath();
         ctx.moveTo(x, startY);
+        const firstPx = x + (visiblePoints[0].time / clip.duration) * width;
+        const firstPy = dbToYNonLinear(visiblePoints[0].db, y, height);
+        ctx.lineTo(firstPx, firstPy);
+        ctx.stroke();
 
-        visiblePoints.forEach((point) => {
-          const px = x + (point.time / clip.duration) * width;
-          const py = dbToYNonLinear(point.db, y, height);
-          ctx.lineTo(px, py);
-        });
+        // Segments between control points
+        for (let i = 0; i < visiblePoints.length - 1; i++) {
+          const isSegmentHovered = hoveredSegment && hoveredSegment.trackIndex === trackIndex && hoveredSegment.clipId === clip.id && hoveredSegment.segmentIndex === i + 1;
+          const point1 = visiblePoints[i];
+          const point2 = visiblePoints[i + 1];
+          const px1 = x + (point1.time / clip.duration) * width;
+          const py1 = dbToYNonLinear(point1.db, y, height);
+          const px2 = x + (point2.time / clip.duration) * width;
+          const py2 = dbToYNonLinear(point2.db, y, height);
 
+          ctx.strokeStyle = isSegmentHovered ? envelopeLineHoverColor : envelopeLineColor;
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'butt';
+          ctx.lineJoin = 'miter';
+          ctx.beginPath();
+          ctx.moveTo(px1, py1);
+          ctx.lineTo(px2, py2);
+          ctx.stroke();
+        }
+
+        // Last segment: from last point to clip end
         const lastPoint = visiblePoints[visiblePoints.length - 1];
         if (lastPoint.time < clip.duration) {
-          ctx.lineTo(x + width, dbToYNonLinear(lastPoint.db, y, height));
+          const isLastSegmentHovered = hoveredSegment && hoveredSegment.trackIndex === trackIndex && hoveredSegment.clipId === clip.id && hoveredSegment.segmentIndex === visiblePoints.length;
+          const lastPx = x + (lastPoint.time / clip.duration) * width;
+          const lastPy = dbToYNonLinear(lastPoint.db, y, height);
+
+          ctx.strokeStyle = isLastSegmentHovered ? envelopeLineHoverColor : envelopeLineColor;
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'butt';
+          ctx.lineJoin = 'miter';
+          ctx.beginPath();
+          ctx.moveTo(lastPx, lastPy);
+          ctx.lineTo(x + width, lastPy);
+          ctx.stroke();
         }
       }
     }
 
-    ctx.stroke();
+    // Draw hover overlay for hovered segments
+    if (hoveredSegment && hoveredSegment.trackIndex === trackIndex && hoveredSegment.clipId === clip.id) {
+      const segmentIndex = hoveredSegment.segmentIndex;
+      const HOVER_ZONE_HEIGHT = 16; // Match the hit zone height from ClipEnvelopeEditor
+
+      ctx.fillStyle = 'rgba(255, 170, 0, 0.15)'; // Semi-transparent orange overlay
+
+      if (clip.envelopePoints.length === 0) {
+        // No points - draw hover over the entire default line
+        const y0 = dbToYNonLinear(0, y, height);
+        ctx.fillRect(x, y0 - HOVER_ZONE_HEIGHT / 2, width, HOVER_ZONE_HEIGHT);
+      } else {
+        const visiblePoints = clip.envelopePoints.filter((_, index) => !hiddenPointIndices.includes(index));
+
+        if (visiblePoints.length === 0) {
+          // All points hidden - draw hover over default line
+          const y0 = dbToYNonLinear(0, y, height);
+          ctx.fillRect(x, y0 - HOVER_ZONE_HEIGHT / 2, width, HOVER_ZONE_HEIGHT);
+        } else {
+          // Draw hover zone for specific segment
+          if (segmentIndex === 0) {
+            // First segment: from clip start to first point
+            const startY = dbToYNonLinear(visiblePoints[0].db, y, height);
+            const firstPx = x + (visiblePoints[0].time / clip.duration) * width;
+            const firstPy = dbToYNonLinear(visiblePoints[0].db, y, height);
+
+            // Draw a polygon for the hover zone
+            ctx.beginPath();
+            ctx.moveTo(x, startY - HOVER_ZONE_HEIGHT / 2);
+            ctx.lineTo(firstPx, firstPy - HOVER_ZONE_HEIGHT / 2);
+            ctx.lineTo(firstPx, firstPy + HOVER_ZONE_HEIGHT / 2);
+            ctx.lineTo(x, startY + HOVER_ZONE_HEIGHT / 2);
+            ctx.closePath();
+            ctx.fill();
+          } else if (segmentIndex > 0 && segmentIndex <= visiblePoints.length - 1) {
+            // Segment between two points
+            const point1 = visiblePoints[segmentIndex - 1];
+            const point2 = visiblePoints[segmentIndex];
+            const px1 = x + (point1.time / clip.duration) * width;
+            const py1 = dbToYNonLinear(point1.db, y, height);
+            const px2 = x + (point2.time / clip.duration) * width;
+            const py2 = dbToYNonLinear(point2.db, y, height);
+
+            // Draw a polygon for the hover zone
+            ctx.beginPath();
+            ctx.moveTo(px1, py1 - HOVER_ZONE_HEIGHT / 2);
+            ctx.lineTo(px2, py2 - HOVER_ZONE_HEIGHT / 2);
+            ctx.lineTo(px2, py2 + HOVER_ZONE_HEIGHT / 2);
+            ctx.lineTo(px1, py1 + HOVER_ZONE_HEIGHT / 2);
+            ctx.closePath();
+            ctx.fill();
+          } else if (segmentIndex === visiblePoints.length) {
+            // Last segment: from last point to clip end
+            const lastPoint = visiblePoints[visiblePoints.length - 1];
+            if (lastPoint.time < clip.duration) {
+              const lastPx = x + (lastPoint.time / clip.duration) * width;
+              const lastPy = dbToYNonLinear(lastPoint.db, y, height);
+
+              ctx.beginPath();
+              ctx.moveTo(lastPx, lastPy - HOVER_ZONE_HEIGHT / 2);
+              ctx.lineTo(x + width, lastPy - HOVER_ZONE_HEIGHT / 2);
+              ctx.lineTo(x + width, lastPy + HOVER_ZONE_HEIGHT / 2);
+              ctx.lineTo(lastPx, lastPy + HOVER_ZONE_HEIGHT / 2);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+        }
+      }
+    }
 
     // Draw control points (skip hidden ones)
     clip.envelopePoints.forEach((point, index) => {

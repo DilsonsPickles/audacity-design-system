@@ -60,3 +60,17 @@ export interface TrackResizeDragState {
   startY: number; // Initial Y position
   startHeight: number; // Initial height of the track
 }
+
+export interface EnvelopeSegmentDragState {
+  clip: Clip;
+  segmentStartIndex: number; // Index of the point at the start of the segment
+  segmentEndIndex: number; // Index of the point at the end of the segment
+  trackIndex: number;
+  clipX: number;
+  clipWidth: number;
+  clipY: number;
+  clipHeight: number;
+  startY: number; // Initial Y position of mouse
+  startDb1: number; // Initial dB of first point
+  startDb2: number; // Initial dB of second point
+}

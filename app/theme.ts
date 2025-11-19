@@ -71,6 +71,7 @@ export interface Theme {
 
   // Envelope
   envelopeLine: string;
+  envelopeLineHover: string;
   envelopeFill: string;
   envelopeFillIdle: string; // When envelope mode is off
   envelopeHitZone: string;
@@ -116,14 +117,14 @@ export const lightTheme: Theme = {
   clipBackground: {
     track1: '#6DB9FF', // Blue body
     track2: '#C1BFFE',
-    track3: '#E8BAE0',
+    track3: '#ECA0D9', // Magenta body non-selected
     default: '#3a5a7a',
   },
 
   clipHeader: {
     track1: '#3FA8FF', // Blue header
     track2: '#ADABFC',
-    track3: '#E1A3D6',
+    track3: '#E787D0', // Magenta header
     default: '#2a3a4a',
   },
 
@@ -169,6 +170,7 @@ export const lightTheme: Theme = {
 
   // Envelope
   envelopeLine: '#ff6600',
+  envelopeLineHover: '#ffaa00',
   envelopeFill: 'rgba(255, 102, 0, 0.15)',
   envelopeFillIdle: 'rgba(255, 102, 0, 0.35)',
   envelopeHitZone: 'rgba(255, 102, 0, 0.15)',
@@ -267,6 +269,7 @@ export const darkTheme: Theme = {
 
   // Envelope
   envelopeLine: '#ff6600',
+  envelopeLineHover: '#ffaa00',
   envelopeFill: 'rgba(255, 102, 0, 0.15)',
   envelopeFillIdle: 'rgba(255, 102, 0, 0.35)',
   envelopeHitZone: 'rgba(255, 102, 0, 0.15)',
