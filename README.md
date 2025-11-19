@@ -1,8 +1,90 @@
-# Audacity Clip Envelope Prototype
+# Audacity Design System
 
-A Next.js prototype demonstrating clip envelope editing for Audacity.
+A monorepo containing reusable UI components for audio editing applications, built with React, TypeScript, and modern tooling.
 
-## Features
+## 📦 Packages
+
+### `@audacity-ui/core`
+Core types and utilities for the Audacity Design System.
+
+```bash
+pnpm add @audacity-ui/core
+```
+
+**Exports:**
+- TypeScript interfaces: `Clip`, `Track`, `EnvelopePoint`, `TimeSelection`, etc.
+- Drag state types: `DragState`, `EnvelopeDragState`, `EnvelopeSegmentDragState`
+
+### `@audacity-ui/tokens`
+Design tokens including colors, themes, and styling constants.
+
+```bash
+pnpm add @audacity-ui/tokens
+```
+
+**Exports:**
+- `lightTheme` - Light theme configuration
+- `darkTheme` - Dark theme configuration
+- `Theme` interface
+
+## 🏗️ Structure
+
+```
+audacity-design-system/
+├── packages/
+│   ├── core/                 # Core types and utilities
+│   └── tokens/               # Design tokens and themes
+├── apps/
+│   └── (future demos)
+├── docs/                     # Architecture documentation
+└── clip-envelope/            # Current demo (will migrate to apps/)
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js >= 18
+- pnpm >= 8
+
+### Installation
+
+```bash
+# Install pnpm if you haven't
+npm install -g pnpm
+
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Run in development mode (watch mode)
+pnpm dev
+```
+
+### Working with Packages
+
+**Build a specific package:**
+```bash
+cd packages/core
+pnpm build
+```
+
+**Watch mode for development:**
+```bash
+cd packages/core
+pnpm dev
+```
+
+## 📖 Documentation
+
+- [Design System Architecture](docs/design-system-architecture.md) - Comprehensive plan for the design system
+- [Automation Overlay States](docs/automation-overlay-states.md) - Documentation of automation overlay states
+- [Clip Styling States](docs/clip-styling-states.md) - Complete clip styling state matrix
+
+## 🎯 Current Demo
+
+The clip envelope prototype demonstrates:
 
 - **Multi-track canvas** with draggable clips
 - **Clip envelope editing** with visual control points
@@ -11,7 +93,7 @@ A Next.js prototype demonstrating clip envelope editing for Audacity.
 - **Track selection** with visual feedback
 - **Envelope visualization** with translucent fill showing applied gain
 
-## Getting Started
+### Running the Demo
 
 ```bash
 cd clip-envelope
@@ -21,31 +103,35 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the prototype.
 
-## Usage
+## 🛠️ Tech Stack
 
-### Basic Operations
-- **Click and drag** on empty space to create a time selection
-- **Drag vertically** across tracks to select multiple tracks
-- **Click on a clip header** to select the clip and create a time selection matching its duration
-- **Drag a clip header** to move the clip horizontally or between tracks
+- **Framework**: React 19, Next.js 16
+- **Language**: TypeScript 5
+- **Build Tool**: tsup (esbuild)
+- **Package Manager**: pnpm
+- **Styling**: Tailwind CSS 4
+- **Rendering**: HTML5 Canvas
 
-### Envelope Editing
-1. Click the "Clip Envelopes" button in the toolbar to enable envelope mode
-2. **Click near the envelope line** (within 16px) to create control points
-3. **Click and drag control points** to adjust gain (-60dB to +12dB)
-4. **Click on a control point** without dragging to delete it
-5. **Dragging a point past another** point deletes the crossed point
-6. The waveform updates in real-time to show the applied gain
-7. Envelope changes persist when switching off envelope mode
+## 🔮 Roadmap
 
-## Technologies
+- [x] Setup monorepo infrastructure
+- [x] Create `@audacity-ui/core` package
+- [x] Create `@audacity-ui/tokens` package
+- [ ] Create `@audacity-ui/components` (basic UI components)
+- [ ] Create `@audacity-ui/audio-components` (complex audio components)
+- [ ] Setup Storybook for component documentation
+- [ ] Migrate demo to use published packages
+- [ ] Setup CI/CD for automated publishing
+- [ ] Publish to npm registry
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- HTML Canvas for rendering
+## 📝 License
 
-## License
+MIT
 
-This is a prototype for Audacity development.
+## 🤝 Contributing
+
+This is currently a prototype project for Audacity development.
+
+---
+
+**Built with ❤️ for the Audacity community**

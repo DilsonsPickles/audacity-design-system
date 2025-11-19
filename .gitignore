@@ -4,5 +4,13 @@
 # Claude Code
 .claude/
 
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
 # Next.js app has its own .gitignore
 # See clip-envelope/.gitignore for Next.js specific ignores

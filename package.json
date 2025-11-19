@@ -1,0 +1,30 @@
+{
+  "name": "audacity-design-system",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Audacity Design System - Reusable UI components for audio editing applications",
+  "scripts": {
+    "dev": "pnpm --parallel --recursive dev",
+    "build": "pnpm --recursive build",
+    "lint": "pnpm --recursive lint",
+    "test": "pnpm --recursive test"
+  },
+  "keywords": [
+    "audacity",
+    "design-system",
+    "audio",
+    "components",
+    "ui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DilsonsPickles/audacity-design-system.git"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  }
+}

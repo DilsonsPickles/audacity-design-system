@@ -1,0 +1,36 @@
+{
+  "name": "@audacity-ui/core",
+  "version": "0.1.0",
+  "description": "Core types and utilities for Audacity Design System",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "lint": "echo 'No linting configured yet'"
+  },
+  "keywords": [
+    "audacity",
+    "design-system",
+    "types",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DilsonsPickles/audacity-design-system.git",
+    "directory": "packages/core"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5"
+  }
+}
