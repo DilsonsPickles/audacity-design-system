@@ -524,7 +524,7 @@ export default function TrackCanvas({
     if (waveform.length === 0) return;
 
     const centerY = y + height / 2;
-    const maxAmplitude = height / 2 - 10;
+    const maxAmplitude = height / 2; // Use full clip body height
 
     // Helper function to get gain at a specific time
     const getGainAtTime = (time: number): number => {
@@ -611,8 +611,9 @@ export default function TrackCanvas({
           const jTime = (j / waveform.length) * clip.duration;
           const gain = getGainAtTime(jTime);
           const amplitude = waveform[j] * gain;
-          const clampedAmplitude = Math.max(-1, Math.min(1, amplitude));
-          const py = centerY + clampedAmplitude * maxAmplitude;
+          // Apply gain to waveform and clamp the final Y position to clip boundaries
+          const scaledY = centerY + amplitude * maxAmplitude;
+          const py = Math.max(y, Math.min(y + height, scaledY));
 
           if (j === segmentStartIndex) {
             ctx.moveTo(px, py);
