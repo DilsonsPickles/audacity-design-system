@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Toolbar from './Toolbar';
-import TrackHeader from './TrackHeader';
-import Ruler from './Ruler';
+import ResizableTrackHeader from './ResizableTrackHeader';
+import ResizableRuler from './ResizableRuler';
 import TrackCanvas from './TrackCanvas';
 import TimelineRuler from './TimelineRuler';
 import Tooltip from './Tooltip';
-import { Track, Clip, EnvelopePoint, DragState, EnvelopeDragState, TimeSelection, TimeSelectionDragState } from './types';
+import { Track, Clip, EnvelopePoint, DragState, EnvelopeDragState, TimeSelection, TimeSelectionDragState, TrackResizeDragState } from './types';
 import { theme } from '../theme';
 
 // Configuration
@@ -53,6 +53,53 @@ const yToDbNonLinear = (yPos: number, y: number, height: number): number => {
   return Math.max(minDb, Math.min(maxDb, minDb + normalized * (maxDb - minDb)));
 };
 
+// Helper to get track height (with default fallback)
+const getTrackHeight = (track: Track): number => {
+  return track.height ?? TRACK_HEIGHT;
+};
+
+// Helper to calculate track Y position
+const getTrackY = (tracks: Track[], trackIndex: number): number => {
+  let y = INITIAL_GAP;
+  for (let i = 0; i < trackIndex; i++) {
+    y += getTrackHeight(tracks[i]) + TRACK_GAP;
+  }
+  return y;
+};
+
+// Helper to check if mouse is in resize zone (2px gap below track)
+const isInResizeZone = (y: number, tracks: Track[], trackIndex: number): boolean => {
+  if (trackIndex < 0 || trackIndex >= tracks.length) return false;
+  const trackY = getTrackY(tracks, trackIndex);
+  const trackHeight = getTrackHeight(tracks[trackIndex]);
+  const gapY = trackY + trackHeight;
+  return y >= gapY && y < gapY + TRACK_GAP;
+};
+
+// Helper to find which track index the mouse is over (or in gap below)
+const getTrackIndexAtY = (y: number, tracks: Track[]): { trackIndex: number; inResizeZone: boolean } => {
+  let currentY = INITIAL_GAP;
+
+  for (let i = 0; i < tracks.length; i++) {
+    const trackHeight = getTrackHeight(tracks[i]);
+
+    // Check if in track body
+    if (y >= currentY && y < currentY + trackHeight) {
+      return { trackIndex: i, inResizeZone: false };
+    }
+
+    // Check if in gap below track (resize zone)
+    if (y >= currentY + trackHeight && y < currentY + trackHeight + TRACK_GAP) {
+      return { trackIndex: i, inResizeZone: true };
+    }
+
+    currentY += trackHeight + TRACK_GAP;
+  }
+
+  // Beyond all tracks
+  return { trackIndex: -1, inResizeZone: false };
+};
+
 export default function ClipEnvelopeEditor() {
   const [envelopeMode, setEnvelopeMode] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -69,7 +116,9 @@ export default function ClipEnvelopeEditor() {
   const dragStateRef = useRef<DragState | null>(null);
   const envelopeDragStateRef = useRef<EnvelopeDragState | null>(null);
   const timeSelectionDragStateRef = useRef<TimeSelectionDragState | null>(null);
+  const trackResizeDragStateRef = useRef<TrackResizeDragState | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [cursorStyle, setCursorStyle] = useState<string>('default');
 
   // Initialize tracks with sample clips
   useEffect(() => {
@@ -150,13 +199,25 @@ export default function ClipEnvelopeEditor() {
       if (!canvasRef.current) return;
 
       // Only handle if we have an active drag state
-      if (!timeSelectionDragStateRef.current && !dragStateRef.current && !envelopeDragStateRef.current) {
+      if (!timeSelectionDragStateRef.current && !dragStateRef.current && !envelopeDragStateRef.current && !trackResizeDragStateRef.current) {
         return;
       }
 
       const rect = canvasRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+
+      // Handle track resize dragging
+      if (trackResizeDragStateRef.current) {
+        const { trackIndex, startY, startHeight } = trackResizeDragStateRef.current;
+        const deltaY = y - startY;
+        const newHeight = Math.max(44, startHeight + deltaY); // Minimum height of 44px
+
+        const newTracks = [...tracks];
+        newTracks[trackIndex] = { ...newTracks[trackIndex], height: newHeight };
+        setTracks(newTracks);
+        return;
+      }
 
       // Handle time selection dragging
       if (timeSelectionDragStateRef.current) {
@@ -193,6 +254,8 @@ export default function ClipEnvelopeEditor() {
       // Clear all drag states
       timeSelectionDragStateRef.current = null;
       dragStateRef.current = null;
+      trackResizeDragStateRef.current = null;
+      setCursorStyle('default');
       if (envelopeDragStateRef.current) {
         setTooltip(prev => ({ ...prev, visible: false }));
         envelopeDragStateRef.current = null;
@@ -219,25 +282,36 @@ export default function ClipEnvelopeEditor() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Check if clicking in resize zone first
+    const { trackIndex: mouseTrackIndex, inResizeZone } = getTrackIndexAtY(y, tracks);
+
+    if (inResizeZone && mouseTrackIndex >= 0) {
+      // Start track resize operation
+      trackResizeDragStateRef.current = {
+        trackIndex: mouseTrackIndex,
+        startY: y,
+        startHeight: getTrackHeight(tracks[mouseTrackIndex]),
+      };
+      setCursorStyle('ns-resize');
+      return;
+    }
+
     // Determine which track was clicked (-1 if clicking in empty space)
-    const clickedTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
+    const clickedTrackIndex = mouseTrackIndex;
     const isInTrackBounds = clickedTrackIndex >= 0 && clickedTrackIndex < tracks.length;
 
     if (isInTrackBounds) {
-      const trackY = INITIAL_GAP + clickedTrackIndex * (TRACK_HEIGHT + TRACK_GAP);
-      // Check if actually within the track height (not in gap)
-      if (y >= trackY && y <= trackY + TRACK_HEIGHT) {
-        setSelectedTrackIndices([clickedTrackIndex]);
-        setFocusedTrackIndex(clickedTrackIndex);
-      }
+      setSelectedTrackIndices([clickedTrackIndex]);
+      setFocusedTrackIndex(clickedTrackIndex);
     }
 
     // Check for clip header dragging (works in both modes)
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackY = INITIAL_GAP + trackIndex * (TRACK_HEIGHT + TRACK_GAP);
+      const trackY = getTrackY(tracks, trackIndex);
+      const trackHeight = getTrackHeight(track);
 
-      if (y < trackY || y > trackY + TRACK_HEIGHT) continue;
+      if (y < trackY || y > trackY + trackHeight) continue;
 
       for (const clip of track.clips) {
         const clipX = LEFT_PADDING + clip.startTime * PIXELS_PER_SECOND;
@@ -303,15 +377,16 @@ export default function ClipEnvelopeEditor() {
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackY = INITIAL_GAP + trackIndex * (TRACK_HEIGHT + TRACK_GAP);
+      const trackY = getTrackY(tracks, trackIndex);
+      const trackHeight = getTrackHeight(track);
 
-      if (y < trackY || y > trackY + TRACK_HEIGHT) continue;
+      if (y < trackY || y > trackY + trackHeight) continue;
 
       for (const clip of track.clips) {
         const clipX = LEFT_PADDING + clip.startTime * PIXELS_PER_SECOND;
         const clipWidth = clip.duration * PIXELS_PER_SECOND;
         const clipY = trackY + CLIP_HEADER_HEIGHT;
-        const clipHeight = TRACK_HEIGHT - CLIP_HEADER_HEIGHT;
+        const clipHeight = trackHeight - CLIP_HEADER_HEIGHT;
 
         if (x >= clipX && x <= clipX + clipWidth) {
           // Check for existing point
@@ -499,6 +574,18 @@ export default function ClipEnvelopeEditor() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Handle track resize dragging
+    if (trackResizeDragStateRef.current) {
+      const { trackIndex, startY, startHeight } = trackResizeDragStateRef.current;
+      const deltaY = y - startY;
+      const newHeight = Math.max(44, startHeight + deltaY); // Minimum height of 44px
+
+      const newTracks = [...tracks];
+      newTracks[trackIndex] = { ...newTracks[trackIndex], height: newHeight };
+      setTracks(newTracks);
+      return;
+    }
+
     // Handle time selection dragging
     if (timeSelectionDragStateRef.current) {
       timeSelectionDragStateRef.current.currentX = x;
@@ -620,7 +707,7 @@ export default function ClipEnvelopeEditor() {
 
     // Update clip position
     const newStartTime = Math.max(0, (x - dragStateRef.current.offsetX - LEFT_PADDING) / PIXELS_PER_SECOND);
-    const newTrackIndex = Math.floor((y - INITIAL_GAP) / (TRACK_HEIGHT + TRACK_GAP));
+    const { trackIndex: newTrackIndex } = getTrackIndexAtY(y, tracks);
 
     const newTracks = [...tracks];
     const { clip, trackIndex } = dragStateRef.current;
@@ -729,15 +816,24 @@ export default function ClipEnvelopeEditor() {
   };
 
   const updateCursor = (canvas: HTMLCanvasElement, x: number, y: number) => {
+    // Check if cursor is in resize zone first
+    const { trackIndex: mouseTrackIndex, inResizeZone } = getTrackIndexAtY(y, tracks);
+    if (inResizeZone) {
+      canvas.style.cursor = 'ns-resize';
+      setCursorStyle('ns-resize');
+      return;
+    }
+
     let overClipHeader = false;
     let overEnvelopeLine = false;
     let foundHoveredHeader: { clipId: number; trackIndex: number } | null = null;
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackY = INITIAL_GAP + trackIndex * (TRACK_HEIGHT + TRACK_GAP);
+      const trackY = getTrackY(tracks, trackIndex);
+      const trackHeight = getTrackHeight(track);
 
-      if (y < trackY || y > trackY + TRACK_HEIGHT) continue;
+      if (y < trackY || y > trackY + trackHeight) continue;
 
       for (const clip of track.clips) {
         const clipX = LEFT_PADDING + clip.startTime * PIXELS_PER_SECOND;
@@ -862,14 +958,22 @@ export default function ClipEnvelopeEditor() {
           {/* Track list */}
           <div className="flex-1 overflow-y-auto">
             {tracks.map((track, index) => (
-              <TrackHeader
+              <ResizableTrackHeader
                 key={track.id}
-                trackName={track.name}
+                track={track}
+                index={index}
                 isSelected={selectedTrackIndices.includes(index)}
                 isFocused={focusedTrackIndex === index}
+                height={getTrackHeight(track)}
+                isFirstTrack={index === 0}
                 onSelect={() => {
                   setSelectedTrackIndices([index]);
                   setFocusedTrackIndex(index);
+                }}
+                onHeightChange={(newHeight) => {
+                  const newTracks = [...tracks];
+                  newTracks[index] = { ...newTracks[index], height: newHeight };
+                  setTracks(newTracks);
                 }}
               />
             ))}
@@ -917,12 +1021,18 @@ export default function ClipEnvelopeEditor() {
           }}
         >
           {tracks.map((track, index) => (
-            <Ruler
+            <ResizableRuler
               key={track.id}
               isFocused={focusedTrackIndex === index}
+              height={getTrackHeight(track)}
               onClick={() => {
                 setSelectedTrackIndices([index]);
                 setFocusedTrackIndex(index);
+              }}
+              onHeightChange={(newHeight) => {
+                const newTracks = [...tracks];
+                newTracks[index] = { ...newTracks[index], height: newHeight };
+                setTracks(newTracks);
               }}
             />
           ))}

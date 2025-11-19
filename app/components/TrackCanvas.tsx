@@ -7,7 +7,7 @@ import { theme } from '../theme';
 interface TrackCanvasProps {
   tracks: Track[];
   envelopeMode: boolean;
-  trackHeight: number;
+  trackHeight: number; // Default track height
   pixelsPerSecond: number;
   canvasWidth: number;
   selectedTrackIndices: number[];
@@ -19,6 +19,22 @@ interface TrackCanvasProps {
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
 }
+
+// Helper to get track height (with default fallback)
+const getTrackHeight = (track: Track, defaultHeight: number): number => {
+  return track.height ?? defaultHeight;
+};
+
+// Helper to calculate track Y position
+const getTrackY = (tracks: Track[], trackIndex: number, defaultHeight: number): number => {
+  const TRACK_GAP = 2;
+  const INITIAL_GAP = 2;
+  let y = INITIAL_GAP;
+  for (let i = 0; i < trackIndex; i++) {
+    y += getTrackHeight(tracks[i], defaultHeight) + TRACK_GAP;
+  }
+  return y;
+};
 
 const CLIP_HEADER_HEIGHT = 20;
 const LEFT_PADDING = 12;
@@ -77,8 +93,19 @@ export default function TrackCanvas({
     if (!canvas || tracks.length === 0) return;
 
     canvas.width = canvasWidth;
-    // Calculate minimum height needed for tracks
-    const minHeightForTracks = 2 + tracks.length * trackHeight + Math.max(0, tracks.length - 1) * 2;
+    // Calculate minimum height needed for tracks (considering individual track heights)
+    const TRACK_GAP = 2;
+    const INITIAL_GAP = 2;
+    let totalTrackHeight = INITIAL_GAP;
+    tracks.forEach((track, index) => {
+      totalTrackHeight += getTrackHeight(track, trackHeight);
+      if (index < tracks.length - 1) {
+        totalTrackHeight += TRACK_GAP;
+      }
+    });
+    totalTrackHeight += TRACK_GAP; // Final gap at bottom
+
+    const minHeightForTracks = totalTrackHeight;
     // Extend canvas to bottom of viewport (subtract toolbar height of 50px)
     const viewportHeight = window.innerHeight - 50;
     canvas.height = Math.max(minHeightForTracks, viewportHeight);
@@ -106,7 +133,8 @@ export default function TrackCanvas({
     const INITIAL_GAP = 2; // 2px gap above first track
 
     tracks.forEach((track, trackIndex) => {
-      const y = INITIAL_GAP + trackIndex * (trackHeight + TRACK_GAP);
+      const y = getTrackY(tracks, trackIndex, trackHeight);
+      const currentTrackHeight = getTrackHeight(track, trackHeight);
       const isSelected = selectedTrackIndices.includes(trackIndex);
       const isFocused = trackIndex === focusedTrackIndex;
 
@@ -116,10 +144,10 @@ export default function TrackCanvas({
       // Selected tracks: 10% white overlay on top of canvas
       if (isSelected) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.fillRect(0, y, canvasWidth, trackHeight);
+        ctx.fillRect(0, y, canvasWidth, currentTrackHeight);
       } else {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.fillRect(0, y, canvasWidth, trackHeight);
+        ctx.fillRect(0, y, canvasWidth, currentTrackHeight);
       }
 
       // Draw focused track outline (2px blue outline in the gap - top and bottom only)
@@ -135,8 +163,8 @@ export default function TrackCanvas({
 
         // Bottom border (in the 2px gap below)
         ctx.beginPath();
-        ctx.moveTo(0, y + trackHeight + 1);
-        ctx.lineTo(canvasWidth, y + trackHeight + 1);
+        ctx.moveTo(0, y + currentTrackHeight + 1);
+        ctx.lineTo(canvasWidth, y + currentTrackHeight + 1);
         ctx.stroke();
       }
 
@@ -152,7 +180,7 @@ export default function TrackCanvas({
         } else {
           ctx.fillStyle = 'rgba(171, 231, 255, 0.08)'; // Less opaque for unselected tracks
         }
-        ctx.fillRect(startX, y, width, trackHeight);
+        ctx.fillRect(startX, y, width, currentTrackHeight);
       }
 
       // Draw clips
@@ -165,7 +193,7 @@ export default function TrackCanvas({
           hiddenIndices = envelopeDragState.hiddenPointIndices;
         }
 
-        drawClip(ctx, clip, trackIndex, timeSelection, isSelected, hiddenIndices);
+        drawClip(ctx, clip, trackIndex, currentTrackHeight, timeSelection, isSelected, hiddenIndices);
       });
     });
 
@@ -176,8 +204,9 @@ export default function TrackCanvas({
       const width = endX - startX;
 
       // Calculate where empty space starts (below last track)
-      const lastTrackY = INITIAL_GAP + (tracks.length - 1) * (trackHeight + TRACK_GAP);
-      const emptySpaceStartY = lastTrackY + trackHeight + TRACK_GAP;
+      const lastTrackY = getTrackY(tracks, tracks.length - 1, trackHeight);
+      const lastTrackHeight = getTrackHeight(tracks[tracks.length - 1], trackHeight);
+      const emptySpaceStartY = lastTrackY + lastTrackHeight + TRACK_GAP;
       const canvasHeight = canvas.height / (window.devicePixelRatio || 1);
       const emptySpaceHeight = canvasHeight - emptySpaceStartY;
 
@@ -192,6 +221,7 @@ export default function TrackCanvas({
     ctx: CanvasRenderingContext2D,
     clip: Clip,
     trackIndex: number,
+    currentTrackHeight: number,
     timeSelection: TimeSelection | null,
     isSelected: boolean,
     hiddenPointIndices: number[] = []
@@ -199,9 +229,9 @@ export default function TrackCanvas({
     const TRACK_GAP = 2;
     const INITIAL_GAP = 2;
     const x = LEFT_PADDING + clip.startTime * pixelsPerSecond;
-    const y = INITIAL_GAP + trackIndex * (trackHeight + TRACK_GAP);
+    const y = getTrackY(tracks, trackIndex, trackHeight);
     const width = clip.duration * pixelsPerSecond;
-    const height = trackHeight;
+    const height = currentTrackHeight;
     const radius = 4;
 
     // Clip background with rounded top corners

@@ -3,9 +3,10 @@
 interface RulerProps {
   isFocused?: boolean;
   onClick?: () => void;
+  height?: number; // Custom height for track (optional, defaults to 114px)
 }
 
-export default function Ruler({ isFocused = false, onClick }: RulerProps) {
+export default function Ruler({ isFocused = false, onClick, height = 114 }: RulerProps) {
   const labels = [
     { label: '+1.0', pos: '0%' },
     { label: '+0.5', pos: '25%' },
@@ -26,7 +27,8 @@ export default function Ruler({ isFocused = false, onClick }: RulerProps) {
       )}
 
       <div
-        className="h-[114px] border-l border-[#3a3a3a] relative cursor-pointer"
+        className="border-l border-[#3a3a3a] relative cursor-pointer"
+        style={{ height: `${height}px` }}
         onClick={onClick}
       >
       {/* 20px spacer for clip header */}

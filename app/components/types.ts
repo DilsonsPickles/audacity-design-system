@@ -17,6 +17,7 @@ export interface Track {
   id: number;
   name: string;
   clips: Clip[];
+  height?: number; // Custom height for track (optional, defaults to TRACK_HEIGHT)
 }
 
 export interface DragState {
@@ -52,4 +53,10 @@ export interface TimeSelectionDragState {
   startX: number;
   currentX: number;
   startTrackIndex: number;
+}
+
+export interface TrackResizeDragState {
+  trackIndex: number; // Index of track being resized
+  startY: number; // Initial Y position
+  startHeight: number; // Initial height of the track
 }
