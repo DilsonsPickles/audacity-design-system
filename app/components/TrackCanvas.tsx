@@ -483,9 +483,9 @@ export default function TrackCanvas({
           // Even darker for envelope mode
           bodySelectionColor = '#50B4E6'; // Blue (darker for envelope mode)
           if (trackIndex === 1) {
-            bodySelectionColor = '#98B4E6'; // Violet (darker for envelope mode)
+            bodySelectionColor = '#7888D6'; // Violet (darker for envelope mode)
           } else if (trackIndex === 2) {
-            bodySelectionColor = '#D8A8E6'; // Magenta (darker for envelope mode)
+            bodySelectionColor = '#B888D6'; // Magenta (darker for envelope mode)
           }
         } else {
           // For unselected clips in normal mode, use lighter colors
@@ -510,7 +510,7 @@ export default function TrackCanvas({
 
         // Draw automation overlay on top of selection in envelope mode
         if (envelopeMode || clip.envelopePoints.length > 0) {
-          drawEnvelopeFillInSelection(ctx, clip, trackIndex, clipStartX, y + CLIP_HEADER_HEIGHT, clipWidth, height - CLIP_HEADER_HEIGHT, hiddenPointIndices);
+          drawEnvelopeFillInSelection(ctx, clip, trackIndex, clipStartX, y + CLIP_HEADER_HEIGHT, clipWidth, height - CLIP_HEADER_HEIGHT, envelopeMode, hiddenPointIndices);
         }
       }
     }
@@ -653,19 +653,23 @@ export default function TrackCanvas({
     y: number,
     selectionWidth: number,
     height: number,
+    envelopeMode: boolean,
     hiddenPointIndices: number[] = []
   ) => {
     const zeroDB_Y = dbToYNonLinear(0, y, height);
     const clipBottom = y + height;
 
-    // Use extremely light colors that blend with the selection highlight
-    let envelopeFillColor = '#D0F0FF'; // Default blue (extremely light)
-    if (trackIndex === 0) {
-      envelopeFillColor = '#D0F0FF'; // Blue (extremely light to blend with #70D4FF selection)
-    } else if (trackIndex === 1) {
-      envelopeFillColor = '#E8F0FF'; // Violet (extremely light to blend with #B8D4FF selection)
-    } else if (trackIndex === 2) {
-      envelopeFillColor = '#FCE8FC'; // Magenta (extremely light to blend with #E8C8FF selection)
+    // Use clip base color blended with 80% white for envelope fill in selection when envelope mode is ON
+    // Use pure white when envelope mode is OFF (idle automation overlay)
+    let envelopeFillColor = '#C6E4FF'; // Blue blended with white
+    if (envelopeMode) {
+      if (trackIndex === 1) {
+        envelopeFillColor = '#E7E6FF'; // Violet blended with white
+      } else if (trackIndex === 2) {
+        envelopeFillColor = '#F9E6F4'; // Magenta blended with white
+      }
+    } else {
+      envelopeFillColor = '#FFFFFF'; // Pure white for idle automation overlay in time selection
     }
 
     // Calculate clip position
