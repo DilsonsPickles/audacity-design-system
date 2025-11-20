@@ -1,0 +1,75 @@
+/* Button Component */
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #14151a;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+/* Default size - 28px height */
+.button--default {
+  padding: 6px 12px;
+  line-height: 16px;
+  height: 28px;
+}
+
+/* Small size - 24px height */
+.button--small {
+  padding: 4px 12px;
+  line-height: 16px;
+  height: 24px;
+}
+
+.button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(103, 124, 228, 0.3);
+}
+
+/* Secondary variant */
+.button--secondary {
+  background-color: rgba(194, 196, 207, 0.7);
+}
+
+.button--secondary:hover:not(.button--disabled) {
+  background-color: rgba(194, 196, 207, 0.5);
+}
+
+.button--secondary:active:not(.button--disabled) {
+  background-color: #c2c4cf;
+}
+
+/* Disabled state */
+.button--disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Icon */
+.button__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 0;
+}
+
+/* Text */
+.button__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 16px;
+}

@@ -1,230 +1,288 @@
+/* TrackControlPanel - Figma Design System Spec */
+
+/* CSS Variables matching Figma tokens */
+:root {
+  /* Background colors */
+  --tcp-bg-idle: #eeeef1;
+  --tcp-bg-hover: #f2f2f7;
+  --tcp-bg-active: #f8f8f9;
+
+  /* Control colors */
+  --tcp-control-slider-bg: #cfcfd9;
+  --tcp-control-value-active: #677ce4;
+  --tcp-control-handle-bg: #f8f8f9;
+  --tcp-control-handle-border: #5b5b5f;
+  --tcp-control-gauge: #cfcfd9;
+  --tcp-control-knob-bg: #f8f8f9;
+  --tcp-control-knob-border: #14151a80;
+  --tcp-control-meter-bg: #cfcfd9;
+
+  /* Button colors */
+  --tcp-button-ghost-idle: rgba(0, 0, 0, 0);
+  --tcp-button-solid-idle: rgba(194, 196, 207, 0.7);
+
+  /* Text and icons */
+  --tcp-text-primary: #14151a;
+  --tcp-icon-default: #14151a;
+
+  /* Spacing */
+  --tcp-padding: 12px;
+  --tcp-padding-sm: 8px;
+  --tcp-gap: 8px;
+  --tcp-gap-sm: 4px;
+
+  /* Border radius */
+  --tcp-radius-sm: 2px;
+  --tcp-radius-md: 4px;
+
+  /* Sizes */
+  --tcp-height-default: 114px;
+  --tcp-height-truncated: 82px;
+  --tcp-height-collapsed: 44px;
+}
+
+/* Main container */
 .track-control-panel {
-  background: #ffffff;
-  border: 2px solid #d1d5db;
-  border-radius: 8px;
-  padding: 16px;
-  width: 100%;
-  max-width: 880px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  display: flex;
+  gap: 1px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  border-radius: var(--tcp-radius-md) 0 0 var(--tcp-radius-md);
+  overflow: hidden;
+  width: 268px;
+}
+
+/* Height variants */
+.track-control-panel--default {
+  height: var(--tcp-height-default);
+}
+
+.track-control-panel--truncated {
+  height: var(--tcp-height-truncated);
+}
+
+.track-control-panel--collapsed {
+  height: var(--tcp-height-collapsed);
+}
+
+/* State variants - background colors */
+.track-control-panel--idle .track-control-panel__main,
+.track-control-panel--idle .track-control-panel__meter {
+  background-color: var(--tcp-bg-idle);
+}
+
+.track-control-panel--hover .track-control-panel__main,
+.track-control-panel--hover .track-control-panel__meter {
+  background-color: var(--tcp-bg-hover);
+}
+
+.track-control-panel--active .track-control-panel__main,
+.track-control-panel--active .track-control-panel__meter {
+  background-color: var(--tcp-bg-active);
+}
+
+/* Main content area */
+.track-control-panel__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tcp-gap);
+  padding: var(--tcp-padding);
+  min-width: 0;
 }
 
 /* Header */
-.track-control-header {
+.track-control-panel__header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  width: 100%;
 }
 
-.track-name {
+.track-control-panel__track-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--tcp-gap-sm);
+  min-width: 0;
 }
 
-.track-icon {
-  width: 24px;
-  height: 24px;
-  color: #374151;
+.track-control-panel__track-name-text {
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--tcp-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.track-name-text {
-  font-size: 18px;
-  font-weight: 400;
-  color: #111827;
-  line-height: 1.4;
-}
-
-.track-menu-button {
-  background: transparent;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  color: #6b7280;
+.track-control-panel__icon-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.track-menu-button:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-/* Controls Row */
-.track-controls-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-/* Record Button */
-.record-button {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #e5e7eb;
-  border: 3px solid #9ca3af;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.record-button:hover {
-  background: #d1d5db;
-  border-color: #6b7280;
-}
-
-.record-button.recording {
-  background: #ef4444;
-  border-color: #dc2626;
-}
-
-.record-meter {
   width: 20px;
   height: 20px;
-  border-radius: 50%;
-  background: #ffffff;
+  background: var(--tcp-button-ghost-idle);
+  border: none;
+  border-radius: var(--tcp-radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.track-control-panel__icon {
+  font-size: 16px;
+  color: var(--tcp-icon-default);
+  line-height: 1;
+}
+
+/* Controls row */
+.track-control-panel__controls-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.meter-indicator {
-  width: 4px;
-  height: 12px;
-  background: #374151;
-  border-radius: 2px;
-}
-
-.record-button.recording .meter-indicator {
-  background: #dc2626;
-}
-
-/* Slider */
-.slider-container {
-  flex: 1;
-  position: relative;
-  height: 48px;
-  display: flex;
-  align-items: center;
-}
-
-.volume-slider {
+  gap: var(--tcp-gap);
   width: 100%;
-  height: 8px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  outline: none;
+}
+
+/* Volume Slider */
+.track-control-panel__slider-container {
   position: relative;
-  z-index: 2;
-  cursor: pointer;
+  flex: 1;
+  height: 16px;
+  min-width: 0;
 }
 
-.volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 2px solid #6b7280;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.volume-slider::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 2px solid #6b7280;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.volume-slider:hover::-webkit-slider-thumb {
-  border-color: #374151;
-  box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.1);
-}
-
-.volume-slider:hover::-moz-range-thumb {
-  border-color: #374151;
-  box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.1);
-}
-
-.slider-track {
+.track-control-panel__slider-input {
   position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+  margin: 0;
+}
+
+.track-control-panel__slider-track {
+  position: absolute;
+  top: 50%;
   left: 0;
   right: 0;
-  height: 8px;
-  background: #d1d5db;
+  transform: translateY(-50%);
+  height: 4px;
+  background: var(--tcp-control-slider-bg);
   border-radius: 4px;
+  overflow: hidden;
+}
+
+.track-control-panel__slider-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--tcp-control-value-active);
+  transition: width 0.05s ease;
+}
+
+.track-control-panel__slider-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  background: var(--tcp-control-handle-bg);
+  border: 1px solid var(--tcp-control-handle-border);
+  border-radius: 9px;
   pointer-events: none;
   z-index: 1;
 }
 
-.slider-fill {
-  height: 100%;
-  background: #6366f1;
-  border-radius: 4px 0 0 4px;
-  transition: width 0.1s;
-}
-
-/* Toggle Buttons */
-.toggle-button {
-  width: 48px;
-  height: 48px;
-  border-radius: 4px;
-  background: #d1d5db;
-  border: none;
-  font-size: 16px;
-  font-weight: 600;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
+/* Button group */
+.track-control-panel__button-group {
+  display: flex;
+  gap: var(--tcp-gap-sm);
   flex-shrink: 0;
 }
 
-.toggle-button:hover {
-  background: #b5bac4;
+.track-control-panel__toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--tcp-button-solid-idle);
+  border: none;
+  border-radius: var(--tcp-radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--tcp-icon-default);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
 }
 
-.toggle-button.active {
-  background: #6366f1;
+.track-control-panel__toggle-button--active {
+  background: var(--tcp-control-value-active);
   color: #ffffff;
 }
 
-.toggle-button.active:hover {
-  background: #4f46e5;
-}
-
-/* Effects Button */
-.effects-button {
+/* Effects button */
+.track-control-panel__effects-button {
   width: 100%;
-  height: 64px;
-  background: #e5e7eb;
+  padding: 4px var(--tcp-padding-sm);
+  background: var(--tcp-button-solid-idle);
   border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #111827;
+  border-radius: var(--tcp-radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--tcp-text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  overflow: hidden;
 }
 
-.effects-button:hover {
-  background: #d1d5db;
+/* Volume Meter */
+.track-control-panel__meter {
+  width: 24px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.effects-button:active {
-  background: #b5bac4;
+.track-control-panel__meter-bar {
+  position: relative;
+  flex: 1;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.track-control-panel__meter-clip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--tcp-control-meter-bg);
+}
+
+.track-control-panel__meter-main {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--tcp-control-meter-bg);
+}
+
+/* Collapsed state - hide controls */
+.track-control-panel--collapsed .track-control-panel__controls-row,
+.track-control-panel--collapsed .track-control-panel__effects-button {
+  display: none;
 }

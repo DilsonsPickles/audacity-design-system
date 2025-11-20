@@ -16,7 +16,7 @@ const meta = {
     },
     trackType: {
       control: 'radio',
-      options: ['mono', 'stereo'],
+      options: ['mono', 'stereo', 'label'],
       description: 'Type of audio track',
     },
     volume: {
@@ -35,9 +35,15 @@ const meta = {
       control: 'boolean',
       description: 'Solo state',
     },
-    isRecording: {
-      control: 'boolean',
-      description: 'Recording state',
+    state: {
+      control: 'radio',
+      options: ['idle', 'hover', 'active'],
+      description: 'Visual state',
+    },
+    height: {
+      control: 'radio',
+      options: ['default', 'truncated', 'collapsed'],
+      description: 'Height variant',
     },
   },
 } satisfies Meta<typeof TrackControlPanel>;
@@ -45,79 +51,190 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Default story
-export const Default: Story = {
+// Default story - matches Figma "Mono/Default/Idle"
+export const MonoDefaultIdle: Story = {
   args: {
     trackName: 'Mono track 1',
     trackType: 'mono',
-    volume: 75,
+    volume: 67,
     pan: 0,
     isMuted: false,
     isSolo: false,
-    isRecording: false,
+    state: 'idle',
+    height: 'default',
   },
 };
 
-// Muted track
+// Hover state - matches Figma "Mono/Default/Hover"
+export const MonoDefaultHover: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    state: 'hover',
+  },
+};
+
+// Active state - matches Figma "Mono/Default/Active"
+export const MonoDefaultActive: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    state: 'active',
+  },
+};
+
+// Truncated height - matches Figma "Mono/Truncated/Idle"
+export const MonoTruncatedIdle: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    height: 'truncated',
+  },
+};
+
+// Truncated hover
+export const MonoTruncatedHover: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    height: 'truncated',
+    state: 'hover',
+  },
+};
+
+// Truncated active
+export const MonoTruncatedActive: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    height: 'truncated',
+    state: 'active',
+  },
+};
+
+// Collapsed height - matches Figma "Mono/Collapsed/Idle"
+export const MonoCollapsedIdle: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    height: 'collapsed',
+  },
+};
+
+// Collapsed hover
+export const MonoCollapsedHover: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    height: 'collapsed',
+    state: 'hover',
+  },
+};
+
+// Collapsed active
+export const MonoCollapsedActive: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    height: 'collapsed',
+    state: 'active',
+  },
+};
+
+// Stereo track - matches Figma "Stereo/Default/Idle"
+export const StereoDefaultIdle: Story = {
+  args: {
+    trackName: 'Stereo track 1',
+    trackType: 'stereo',
+    volume: 67,
+    pan: 0,
+    isMuted: false,
+    isSolo: false,
+    state: 'idle',
+    height: 'default',
+  },
+};
+
+// Stereo hover
+export const StereoDefaultHover: Story = {
+  args: {
+    ...StereoDefaultIdle.args,
+    state: 'hover',
+  },
+};
+
+// Stereo active
+export const StereoDefaultActive: Story = {
+  args: {
+    ...StereoDefaultIdle.args,
+    state: 'active',
+  },
+};
+
+// Label track - matches Figma "Label/Default/Idle"
+export const LabelDefaultIdle: Story = {
+  args: {
+    trackName: 'Label track 1',
+    trackType: 'label',
+    volume: 67,
+    pan: 0,
+    isMuted: false,
+    isSolo: false,
+    state: 'idle',
+    height: 'default',
+  },
+};
+
+// With muted state
 export const Muted: Story = {
   args: {
-    ...Default.args,
+    ...MonoDefaultIdle.args,
     trackName: 'Muted Track',
     isMuted: true,
   },
 };
 
-// Solo track
+// With solo state
 export const Solo: Story = {
   args: {
-    ...Default.args,
+    ...MonoDefaultIdle.args,
     trackName: 'Solo Track',
     isSolo: true,
   },
 };
 
-// Recording
-export const Recording: Story = {
+// Both muted and solo
+export const MutedAndSolo: Story = {
   args: {
-    ...Default.args,
-    trackName: 'Recording Track',
-    isRecording: true,
+    ...MonoDefaultIdle.args,
+    trackName: 'Muted & Solo',
+    isMuted: true,
+    isSolo: true,
   },
 };
 
-// Stereo track
-export const StereoTrack: Story = {
-  args: {
-    ...Default.args,
-    trackName: 'Stereo Track',
-    trackType: 'stereo',
-  },
-};
-
-// Low volume
+// Different volume levels
 export const LowVolume: Story = {
   args: {
-    ...Default.args,
+    ...MonoDefaultIdle.args,
     trackName: 'Quiet Track',
     volume: 25,
   },
 };
 
-// High volume
 export const HighVolume: Story = {
   args: {
-    ...Default.args,
+    ...MonoDefaultIdle.args,
     trackName: 'Loud Track',
     volume: 95,
   },
 };
 
-// Multiple states combined
-export const MutedAndSolo: Story = {
+// Different pan positions
+export const PannedLeft: Story = {
   args: {
-    ...Default.args,
-    trackName: 'Muted & Solo',
-    isMuted: true,
-    isSolo: true,
+    ...MonoDefaultIdle.args,
+    trackName: 'Panned Left',
+    pan: -75,
+  },
+};
+
+export const PannedRight: Story = {
+  args: {
+    ...MonoDefaultIdle.args,
+    trackName: 'Panned Right',
+    pan: 75,
   },
 };

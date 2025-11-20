@@ -1,0 +1,40 @@
+.toggle-button {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: #36373d;
+  color: #ffffff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s ease;
+}
+
+.toggle-button:hover:not(.toggle-button--disabled) {
+  background-color: #3e3f45;
+}
+
+.toggle-button--active {
+  background-color: #677ce4;
+}
+
+.toggle-button--active:hover:not(.toggle-button--disabled) {
+  background-color: #7a8ee8;
+}
+
+.toggle-button--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-button:focus-visible {
+  outline: 2px solid #677ce4;
+  outline-offset: 2px;
+}

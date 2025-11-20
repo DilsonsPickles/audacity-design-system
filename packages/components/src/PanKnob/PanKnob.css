@@ -1,0 +1,76 @@
+/* PanKnob - Starting fresh */
+
+.pan-knob {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+
+/* Gauge - 30px circle, starts at 225deg (180 + 45) with 270deg arc */
+.pan-knob__gauge {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 225deg,
+    #cfcfd9 0deg,
+    #cfcfd9 270deg,
+    transparent 270deg
+  );
+}
+
+/* Value sweep - shows pan amount in accent color */
+.pan-knob__value-sweep {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Knob group - rotates as one unit */
+.pan-knob__knob-group {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  transition: transform 0.1s ease;
+}
+
+/* Dial border - 24px circle centered filled with #808185 */
+.pan-knob__dial-border {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #808185;
+}
+
+/* Dial - 20px circle centered filled with #F8F8F9 */
+.pan-knob__dial {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #f8f8f9;
+}
+
+/* Indicator - 2px x 6px bar, centered horizontally, 2px from top */
+.pan-knob__indicator {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 6px;
+  background-color: #14151a;
+  border-radius: 1px;
+}

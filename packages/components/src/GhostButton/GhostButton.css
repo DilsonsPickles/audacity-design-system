@@ -1,0 +1,27 @@
+.ghost-button {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s ease;
+}
+
+.ghost-button:hover:not(.ghost-button--disabled) {
+  background-color: #36373d;
+}
+
+.ghost-button--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ghost-button:focus-visible {
+  outline: 2px solid #677ce4;
+  outline-offset: 2px;
+}
