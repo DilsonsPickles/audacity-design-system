@@ -37,11 +37,14 @@
   overflow-x: hidden;
   background: #E3E3E8;
   padding: 2px 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .track-control-side-panel__track {
-  margin-bottom: 2px;
   /* Height controlled by ResizablePanel */
+  /* 2px gap between tracks handled by parent flex gap */
 }
 
 /* Ensure TrackControlPanel fills the ResizablePanel container */
