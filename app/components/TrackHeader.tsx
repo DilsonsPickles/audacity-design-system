@@ -39,12 +39,13 @@ export default function TrackHeader({ trackName, isSelected = false, isFocused =
       )}
 
       <div
-        className="p-3 flex transition-colors cursor-pointer relative"
+        className="flex transition-colors cursor-pointer relative"
         style={{
           backgroundColor: getBackgroundColor(),
           height: `${height}px`,
           flexDirection: isCollapsed ? 'row' : 'column',
           alignItems: isCollapsed ? 'center' : 'stretch',
+          padding: '12px',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

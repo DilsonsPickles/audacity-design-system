@@ -7,6 +7,7 @@ import { theme } from '../theme';
 interface TrackCanvasProps {
   tracks: Track[];
   envelopeMode: boolean;
+  envelopeAltMode: boolean;
   trackHeight: number; // Default track height
   pixelsPerSecond: number;
   canvasWidth: number;
@@ -88,6 +89,7 @@ const yToDbNonLinear = (yPos: number, y: number, height: number): number => {
 export default function TrackCanvas({
   tracks,
   envelopeMode,
+  envelopeAltMode,
   trackHeight,
   pixelsPerSecond,
   canvasWidth,
@@ -136,7 +138,7 @@ export default function TrackCanvas({
 
     ctx.scale(dpr, dpr);
     render(ctx);
-  }, [tracks, envelopeMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, focusedTrackIndex, timeSelection, hoveredClipHeader, envelopeDragState, hoveredSegment]);
+  }, [tracks, envelopeMode, envelopeAltMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, focusedTrackIndex, timeSelection, hoveredClipHeader, envelopeDragState, hoveredSegment]);
 
   const render = (ctx: CanvasRenderingContext2D) => {
     const dpr = window.devicePixelRatio || 1;
@@ -276,7 +278,7 @@ export default function TrackCanvas({
 
     // Determine final clip color (use envelope mode colors if active)
     let finalClipColor = clipBgColor;
-    if (envelopeMode) {
+    if (envelopeMode || envelopeAltMode) {
       if (trackIndex === 0) {
         finalClipColor = '#7A8FB8'; // Blue (more saturated)
       } else if (trackIndex === 1) {
@@ -479,7 +481,7 @@ export default function TrackCanvas({
 
         // Set body selection color based on track (darker in envelope mode)
         let bodySelectionColor = '#70D4FF'; // Blue (darker)
-        if (envelopeMode) {
+        if (envelopeMode || envelopeAltMode) {
           // Even darker for envelope mode
           bodySelectionColor = '#50B4E6'; // Blue (darker for envelope mode)
           if (trackIndex === 1) {
@@ -519,7 +521,7 @@ export default function TrackCanvas({
     drawWaveform(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT, timeSelection, isSelected);
 
     // Draw envelope line and control points if in envelope mode - after waveform so line is on top
-    if (envelopeMode) {
+    if (envelopeMode || envelopeAltMode) {
       drawEnvelopeLine(ctx, clip, trackIndex, x, y + CLIP_HEADER_HEIGHT, width, height - CLIP_HEADER_HEIGHT, hiddenPointIndices);
     }
   };
@@ -662,7 +664,7 @@ export default function TrackCanvas({
     // Use clip base color blended with 80% white for envelope fill in selection when envelope mode is ON
     // Use pure white when envelope mode is OFF (idle automation overlay)
     let envelopeFillColor = '#C6E4FF'; // Blue blended with white
-    if (envelopeMode) {
+    if (envelopeMode || envelopeAltMode) {
       if (trackIndex === 1) {
         envelopeFillColor = '#E7E6FF'; // Violet blended with white
       } else if (trackIndex === 2) {
@@ -818,8 +820,8 @@ export default function TrackCanvas({
   ) => {
     const zeroDB_Y = dbToYNonLinear(0, y, height);
 
-    // Use solid red color for envelope line
-    const envelopeLineColor = 'red';
+    // Use cyan for alt mode, red for regular mode
+    const envelopeLineColor = envelopeAltMode ? 'cyan' : 'red';
     const envelopeLineHoverColor = theme.envelopeLineHover;
 
     if (clip.envelopePoints.length === 0) {

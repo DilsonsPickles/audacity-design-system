@@ -115,6 +115,7 @@ const getTrackIndexAtY = (y: number, tracks: Track[]): { trackIndex: number; inR
 
 export default function ClipEnvelopeEditor() {
   const [envelopeMode, setEnvelopeMode] = useState(false);
+  const [envelopeAltMode, setEnvelopeAltMode] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [selectedTrackIndices, setSelectedTrackIndices] = useState<number[]>([]);
   const [focusedTrackIndex, setFocusedTrackIndex] = useState<number | null>(null);
@@ -289,6 +290,16 @@ export default function ClipEnvelopeEditor() {
 
   const handleToggleEnvelope = () => {
     setEnvelopeMode(!envelopeMode);
+    if (!envelopeMode) {
+      setEnvelopeAltMode(false); // Turn off alt mode when enabling regular mode
+    }
+  };
+
+  const handleToggleEnvelopeAlt = () => {
+    setEnvelopeAltMode(!envelopeAltMode);
+    if (!envelopeAltMode) {
+      setEnvelopeMode(false); // Turn off regular mode when enabling alt mode
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -361,8 +372,8 @@ export default function ClipEnvelopeEditor() {
       }
     }
 
-    // Check for envelope point interaction (envelope mode only)
-    if (envelopeMode) {
+    // Check for envelope point interaction (envelope mode or alt mode)
+    if (envelopeMode || envelopeAltMode) {
       const envelopeInteraction = handleEnvelopeClick(x, y);
       if (envelopeInteraction) {
         // Don't start time selection if we're interacting with envelope
@@ -537,10 +548,64 @@ export default function ClipEnvelopeEditor() {
             }
           }
 
-          // Wide zone (16px) for segment dragging, narrow zone (4px) for adding points
-          // If no points exist, treat entire zone as point addition zone
-          if (minDistance <= 16 && minDistance > 4 && clip.envelopePoints.length > 0) {
-            // Start segment drag (only if clip has at least one point)
+          // Alt mode: drag segments in 0-16px range (no point creation by clicking on line)
+          // Regular mode: drag segments in 4-16px range, add points in 0-4px range
+
+          if (envelopeAltMode && minDistance <= 16 && clip.envelopePoints.length > 0) {
+            // Alt mode: Start potential segment drag or point creation (determined on mouse move)
+
+            // Determine which two points define this segment
+            let segmentStartIndex = -1;
+            let segmentEndIndex = -1;
+
+            if (clip.envelopePoints.length === 1) {
+              // Only one point - treat it as dragging that single point
+              segmentStartIndex = 0;
+              segmentEndIndex = 0;
+            } else {
+              // Multiple points - find the segment indices
+              if (closestSegmentIndex === 0 && clip.envelopePoints[0].time > 0) {
+                // Segment from start to first point - drag first point only
+                segmentStartIndex = 0;
+                segmentEndIndex = 0;
+              } else {
+                // Calculate actual segment index accounting for start segment
+                const hasStartSegment = clip.envelopePoints[0].time > 0;
+                const adjustedIndex = hasStartSegment ? closestSegmentIndex - 1 : closestSegmentIndex;
+
+                if (adjustedIndex >= 0 && adjustedIndex < clip.envelopePoints.length - 1) {
+                  segmentStartIndex = adjustedIndex;
+                  segmentEndIndex = adjustedIndex + 1;
+                } else if (adjustedIndex === clip.envelopePoints.length - 1) {
+                  // Last segment (from last point to end) - drag last point only
+                  segmentStartIndex = clip.envelopePoints.length - 1;
+                  segmentEndIndex = clip.envelopePoints.length - 1;
+                }
+              }
+            }
+
+            if (segmentStartIndex !== -1) {
+              envelopeSegmentDragStateRef.current = {
+                clip,
+                segmentStartIndex,
+                segmentEndIndex,
+                trackIndex,
+                clipX,
+                clipWidth,
+                clipY,
+                clipHeight,
+                startY: y,
+                startDb1: clip.envelopePoints[segmentStartIndex].db,
+                startDb2: segmentStartIndex !== segmentEndIndex ? clip.envelopePoints[segmentEndIndex].db : clip.envelopePoints[segmentStartIndex].db,
+                isAltMode: true, // Mark as alt mode for different behavior
+                clickX: x, // Store click position for point creation
+                clickY: y,
+                hasMoved: false, // Track if mouse has moved
+              };
+            }
+            return true;
+          } else if (envelopeMode && minDistance <= 16 && minDistance > 4 && clip.envelopePoints.length > 0) {
+            // Regular mode: drag segments in 4-16px range
 
             // Determine which two points define this segment
             let segmentStartIndex = -1;
@@ -588,8 +653,8 @@ export default function ClipEnvelopeEditor() {
               };
             }
             return true;
-          } else if (minDistance <= 16) {
-            // Add new point (narrow zone)
+          } else if (envelopeMode && minDistance <= 16) {
+            // Regular mode: Add new point in narrow zone (0-4px or 0-16px if no points)
             const relativeTime = ((x - clipX) / clipWidth) * clip.duration;
             const db = yToDbNonLinear(y, clipY, clipHeight);
             const newPoint: EnvelopePoint = { time: relativeTime, db };
@@ -607,15 +672,17 @@ export default function ClipEnvelopeEditor() {
 
             setTracks(newTracks);
 
-            // Immediately start dragging the newly created point
-            const updatedClip = newTracks[trackIndex].clips.find((c) => c.id === clip.id);
-            if (updatedClip) {
-              const newPointIndex = updatedClip.envelopePoints.findIndex(
-                p => p.time === relativeTime && p.db === db
-              );
-              if (newPointIndex !== -1) {
-                envelopeDragStateRef.current = {
-                  clip: updatedClip,
+            // In regular mode, immediately start dragging the newly created point
+            // In alt mode, just create the point without starting drag
+            if (envelopeMode) {
+              const updatedClip = newTracks[trackIndex].clips.find((c) => c.id === clip.id);
+              if (updatedClip) {
+                const newPointIndex = updatedClip.envelopePoints.findIndex(
+                  p => p.time === relativeTime && p.db === db
+                );
+                if (newPointIndex !== -1) {
+                  envelopeDragStateRef.current = {
+                    clip: updatedClip,
                   pointIndex: newPointIndex,
                   trackIndex,
                   clipX,
@@ -629,6 +696,7 @@ export default function ClipEnvelopeEditor() {
                   isNewPoint: true, // Mark this as a newly created point
                   hiddenPointIndices: [],
                 };
+                }
               }
             }
 
@@ -670,8 +738,22 @@ export default function ClipEnvelopeEditor() {
 
     // Handle envelope segment dragging
     if (envelopeSegmentDragStateRef.current) {
-      const { clip, segmentStartIndex, segmentEndIndex, clipY, clipHeight, trackIndex, startY, startDb1, startDb2 } =
-        envelopeSegmentDragStateRef.current;
+      const dragState = envelopeSegmentDragStateRef.current;
+      const { clip, segmentStartIndex, segmentEndIndex, clipY, clipHeight, trackIndex, startY, startDb1, startDb2, isAltMode, clickX, clickY, hasMoved } =
+        dragState;
+
+      // In alt mode, check if mouse has moved enough to start dragging
+      if (isAltMode && !hasMoved && clickX !== undefined && clickY !== undefined) {
+        const MOVE_THRESHOLD = 3; // pixels
+        const distance = Math.sqrt((x - clickX) ** 2 + (y - clickY) ** 2);
+        if (distance > MOVE_THRESHOLD) {
+          // Mark as moved so we know this is a drag operation
+          dragState.hasMoved = true;
+        } else {
+          // Not moved enough yet, don't process the drag
+          return;
+        }
+      }
 
       // Clamp Y position to stay within clip body, excluding the infinity zone
       const usableHeight = clipHeight - INFINITY_ZONE_HEIGHT;
@@ -877,10 +959,33 @@ export default function ClipEnvelopeEditor() {
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     // End envelope segment dragging
     if (envelopeSegmentDragStateRef.current) {
+      const { isAltMode, hasMoved, clickX, clickY, clip, trackIndex, clipX, clipWidth, clipY, clipHeight } = envelopeSegmentDragStateRef.current;
+
+      // In alt mode, if we haven't moved, create a point at the click location
+      if (isAltMode && !hasMoved && clickX !== undefined && clickY !== undefined) {
+        const relativeTime = ((clickX - clipX) / clipWidth) * clip.duration;
+        const db = yToDbNonLinear(clickY, clipY, clipHeight);
+        const newPoint: EnvelopePoint = { time: relativeTime, db };
+
+        const newTracks = [...tracks];
+        newTracks[trackIndex].clips = newTracks[trackIndex].clips.map((c) =>
+          c.id === clip.id
+            ? {
+                ...c,
+                envelopePoints: [...c.envelopePoints, newPoint].sort(
+                  (a, b) => a.time - b.time
+                ),
+              }
+            : c
+        );
+        setTracks(newTracks);
+      }
+
       envelopeSegmentDragStateRef.current = null;
       return;
     }
@@ -987,8 +1092,8 @@ export default function ClipEnvelopeEditor() {
           break;
         }
 
-        // Check if hovering over envelope line (only in envelope mode)
-        if (envelopeMode && x >= clipX && x <= clipX + clipWidth) {
+        // Check if hovering over envelope line (in envelope mode or alt mode)
+        if ((envelopeMode || envelopeAltMode) && x >= clipX && x <= clipX + clipWidth) {
           const waveformY = trackY + CLIP_HEADER_HEIGHT;
           const waveformHeight = trackHeight - CLIP_HEADER_HEIGHT;
 
@@ -1028,19 +1133,26 @@ export default function ClipEnvelopeEditor() {
 
           const distance = Math.abs(y - envelopeY);
 
-          // Check for segment hover (4-16px range) - only if clip has at least one point
-          if (distance > 4 && distance <= 16 && clip.envelopePoints.length > 0) {
+          // In alt mode: hover and drag segments directly (0-16px from line)
+          // In regular mode: segment hover/drag in 4-16px range, point addition in 0-4px range
+          if (envelopeAltMode && distance <= 16 && clip.envelopePoints.length > 0) {
+            // Alt mode: hovering over line segment for dragging
             overEnvelopeSegment = true;
             foundHoveredSegment = { trackIndex, clipId: clip.id, segmentIndex };
             break;
-          }
-
-          // Check if mouse is near the envelope line for adding points
-          // If no points, use wider zone (16px), otherwise narrow zone (4px)
-          const addPointThreshold = clip.envelopePoints.length === 0 ? 16 : 4;
-          if (distance <= addPointThreshold) {
-            overEnvelopeLine = true;
-            break;
+          } else if (envelopeMode) {
+            // Regular mode: segment hover in 4-16px range
+            if (distance > 4 && distance <= 16 && clip.envelopePoints.length > 0) {
+              overEnvelopeSegment = true;
+              foundHoveredSegment = { trackIndex, clipId: clip.id, segmentIndex };
+              break;
+            }
+            // Regular mode: point addition zone in 0-4px range (or 0-16px if no points)
+            const addPointThreshold = clip.envelopePoints.length === 0 ? 16 : 4;
+            if (distance <= addPointThreshold) {
+              overEnvelopeLine = true;
+              break;
+            }
           }
         }
       }
@@ -1067,9 +1179,11 @@ export default function ClipEnvelopeEditor() {
 
     // Set cursor based on what we're hovering over
     if (overEnvelopeSegment) {
-      canvas.style.cursor = 'ns-resize'; // Show vertical resize cursor for segment dragging
+      // Show ns-resize cursor only in regular mode, default in alt mode
+      canvas.style.cursor = envelopeMode ? 'ns-resize' : 'default';
     } else if (overEnvelopeLine) {
-      canvas.style.cursor = 'copy'; // 'copy' shows a cursor with a plus
+      // Show 'copy' cursor (plus sign) only in regular mode, default in alt mode
+      canvas.style.cursor = envelopeMode ? 'copy' : 'default';
     } else if (overClipHeader) {
       canvas.style.cursor = 'grab';
     } else {
@@ -1079,7 +1193,12 @@ export default function ClipEnvelopeEditor() {
 
   return (
     <div className="flex flex-col h-screen" style={{ backgroundColor: theme.canvas }}>
-      <Toolbar envelopeMode={envelopeMode} onToggleEnvelope={handleToggleEnvelope} />
+      <Toolbar
+        envelopeMode={envelopeMode}
+        envelopeAltMode={envelopeAltMode}
+        onToggleEnvelope={handleToggleEnvelope}
+        onToggleEnvelopeAlt={handleToggleEnvelopeAlt}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Track headers */}
@@ -1124,7 +1243,7 @@ export default function ClipEnvelopeEditor() {
           </div>
 
           {/* Track list */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pl-3">
             {tracks.map((track, index) => (
               <ResizableTrackHeader
                 key={track.id}
@@ -1165,6 +1284,7 @@ export default function ClipEnvelopeEditor() {
           <TrackCanvas
             tracks={tracks}
             envelopeMode={envelopeMode}
+            envelopeAltMode={envelopeAltMode}
             trackHeight={TRACK_HEIGHT}
             pixelsPerSecond={PIXELS_PER_SECOND}
             canvasWidth={CANVAS_WIDTH}

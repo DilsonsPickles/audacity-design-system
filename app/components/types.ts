@@ -73,4 +73,8 @@ export interface EnvelopeSegmentDragState {
   startY: number; // Initial Y position of mouse
   startDb1: number; // Initial dB of first point
   startDb2: number; // Initial dB of second point
+  isAltMode?: boolean; // True if in alt mode (click creates point, drag moves segment)
+  clickX?: number; // X position of initial click (for point creation)
+  clickY?: number; // Y position of initial click (for point creation)
+  hasMoved?: boolean; // True if mouse has moved (determines drag vs click)
 }
