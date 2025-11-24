@@ -38,6 +38,10 @@ jobs:
       - name: Build packages
         run: pnpm --filter @audacity-ui/core build && pnpm --filter @audacity-ui/tokens build && pnpm --filter @audacity-ui/components build
 
+      - name: Install demo dependencies
+        working-directory: apps/demo/clip-envelope
+        run: npm ci
+
       - name: Build demo
         working-directory: apps/demo/clip-envelope
         run: npm run build
