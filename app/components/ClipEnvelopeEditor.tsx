@@ -135,6 +135,7 @@ export default function ClipEnvelopeEditor() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [cursorStyle, setCursorStyle] = useState<string>('default');
   const [hoveredSegment, setHoveredSegment] = useState<{ trackIndex: number; clipId: number; segmentIndex: number } | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{ trackIndex: number; clipId: number; pointIndex: number } | null>(null);
 
   // Initialize tracks with sample clips
   useEffect(() => {
@@ -551,8 +552,27 @@ export default function ClipEnvelopeEditor() {
           // Alt mode: drag segments in 0-16px range (no point creation by clicking on line)
           // Regular mode: drag segments in 4-16px range, add points in 0-4px range
 
-          if (envelopeAltMode && minDistance <= 16 && clip.envelopePoints.length > 0) {
+          if (envelopeAltMode && minDistance <= 16) {
             // Alt mode: Start potential segment drag or point creation (determined on mouse move)
+
+            // If no points exist, create a point immediately
+            if (clip.envelopePoints.length === 0) {
+              const relativeTime = ((x - clipX) / clipWidth) * clip.duration;
+              const db = yToDbNonLinear(y, clipY, clipHeight);
+              const newPoint: EnvelopePoint = { time: relativeTime, db };
+
+              const newTracks = [...tracks];
+              newTracks[trackIndex].clips = newTracks[trackIndex].clips.map((c) =>
+                c.id === clip.id
+                  ? {
+                      ...c,
+                      envelopePoints: [newPoint],
+                    }
+                  : c
+              );
+              setTracks(newTracks);
+              return true;
+            }
 
             // Determine which two points define this segment
             let segmentStartIndex = -1;
@@ -1071,8 +1091,10 @@ export default function ClipEnvelopeEditor() {
     let overClipHeader = false;
     let overEnvelopeLine = false;
     let overEnvelopeSegment = false;
+    let overEnvelopePoint = false;
     let foundHoveredHeader: { clipId: number; trackIndex: number } | null = null;
     let foundHoveredSegment: { trackIndex: number; clipId: number; segmentIndex: number } | null = null;
+    let foundHoveredPoint: { trackIndex: number; clipId: number; pointIndex: number } | null = null;
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
@@ -1096,6 +1118,26 @@ export default function ClipEnvelopeEditor() {
         if ((envelopeMode || envelopeAltMode) && x >= clipX && x <= clipX + clipWidth) {
           const waveformY = trackY + CLIP_HEADER_HEIGHT;
           const waveformHeight = trackHeight - CLIP_HEADER_HEIGHT;
+
+          // Check for control point hover first (in alt mode only)
+          if (envelopeAltMode && clip.envelopePoints.length > 0) {
+            const POINT_HOVER_THRESHOLD = 15; // Same as CLICK_THRESHOLD
+            for (let i = 0; i < clip.envelopePoints.length; i++) {
+              const point = clip.envelopePoints[i];
+              const px = clipX + (point.time / clip.duration) * clipWidth;
+              const py = dbToYNonLinear(point.db, waveformY, waveformHeight);
+              const distance = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+
+              if (distance <= POINT_HOVER_THRESHOLD) {
+                overEnvelopePoint = true;
+                foundHoveredPoint = { trackIndex, clipId: clip.id, pointIndex: i };
+                break;
+              }
+            }
+
+            // If hovering over a point, skip segment detection
+            if (overEnvelopePoint) break;
+          }
 
           const zeroDB_Y = dbToYNonLinear(0, waveformY, waveformHeight);
           const relativeX = (x - clipX) / clipWidth;
@@ -1156,7 +1198,7 @@ export default function ClipEnvelopeEditor() {
           }
         }
       }
-      if (overClipHeader || overEnvelopeLine || overEnvelopeSegment) break;
+      if (overClipHeader || overEnvelopeLine || overEnvelopeSegment || overEnvelopePoint) break;
     }
 
     // Update hovered clip header state
@@ -1166,6 +1208,15 @@ export default function ClipEnvelopeEditor() {
       }
     } else if (hoveredClipHeader) {
       setHoveredClipHeader(null);
+    }
+
+    // Update hovered point state
+    if (foundHoveredPoint) {
+      if (!hoveredPoint || hoveredPoint.clipId !== foundHoveredPoint.clipId || hoveredPoint.trackIndex !== foundHoveredPoint.trackIndex || hoveredPoint.pointIndex !== foundHoveredPoint.pointIndex) {
+        setHoveredPoint(foundHoveredPoint);
+      }
+    } else if (hoveredPoint) {
+      setHoveredPoint(null);
     }
 
     // Update hovered segment state
@@ -1293,6 +1344,7 @@ export default function ClipEnvelopeEditor() {
             timeSelection={timeSelection}
             hoveredClipHeader={hoveredClipHeader}
             hoveredSegment={hoveredSegment}
+            hoveredPoint={hoveredPoint}
             envelopeDragState={envelopeDragStateRef.current}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}

@@ -17,6 +17,7 @@ interface TrackCanvasProps {
   hoveredClipHeader: { clipId: number; trackIndex: number } | null;
   envelopeDragState: EnvelopeDragState | null;
   hoveredSegment: { trackIndex: number; clipId: number; segmentIndex: number } | null;
+  hoveredPoint: { trackIndex: number; clipId: number; pointIndex: number } | null;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -99,6 +100,7 @@ export default function TrackCanvas({
   hoveredClipHeader,
   envelopeDragState,
   hoveredSegment,
+  hoveredPoint,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -138,7 +140,7 @@ export default function TrackCanvas({
 
     ctx.scale(dpr, dpr);
     render(ctx);
-  }, [tracks, envelopeMode, envelopeAltMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, focusedTrackIndex, timeSelection, hoveredClipHeader, envelopeDragState, hoveredSegment]);
+  }, [tracks, envelopeMode, envelopeAltMode, trackHeight, pixelsPerSecond, canvasWidth, selectedTrackIndices, focusedTrackIndex, timeSelection, hoveredClipHeader, envelopeDragState, hoveredSegment, hoveredPoint]);
 
   const render = (ctx: CanvasRenderingContext2D) => {
     const dpr = window.devicePixelRatio || 1;
@@ -987,16 +989,21 @@ export default function TrackCanvas({
       const px = x + (point.time / clip.duration) * width;
       const py = dbToYNonLinear(point.db, y, height);
 
-      // Outer circle with red color
+      // Check if this point is hovered (in alt mode)
+      const isHovered = hoveredPoint && hoveredPoint.trackIndex === trackIndex && hoveredPoint.clipId === clip.id && hoveredPoint.pointIndex === index;
+      const outerRadius = isHovered ? 7 : 5;
+      const innerRadius = isHovered ? 5 : 3;
+
+      // Outer circle with red/cyan color
       ctx.fillStyle = envelopeLineColor;
       ctx.beginPath();
-      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
       ctx.fill();
 
       // Inner white circle
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
       ctx.fill();
     });
   };
