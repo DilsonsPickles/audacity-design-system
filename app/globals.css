@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@audacity-ui/components/style.css";
 
 :root {
   --background: #ffffff;
