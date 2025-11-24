@@ -40,7 +40,7 @@ jobs:
 
       - name: Build demo
         working-directory: apps/demo/clip-envelope
-        run: npm ci && npm run build
+        run: npm run build
         env:
           NODE_ENV: production
 
