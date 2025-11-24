@@ -1,0 +1,26 @@
+.toolbar {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+}
+
+.toolbar__button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolbar__button-icon {
+  font-size: 16px;
+}
+
+.toolbar__button-text {
+  font-size: 14px;
+}

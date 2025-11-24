@@ -9,6 +9,7 @@ import TimelineRuler from './TimelineRuler';
 import Tooltip from './Tooltip';
 import { Track, Clip, EnvelopePoint, DragState, EnvelopeDragState, TimeSelection, TimeSelectionDragState, TrackResizeDragState, EnvelopeSegmentDragState } from './types';
 import { theme } from '../theme';
+import './ClipEnvelopeEditor.css';
 
 // Configuration
 const TRACK_HEIGHT = 114;
@@ -1243,7 +1244,7 @@ export default function ClipEnvelopeEditor() {
   };
 
   return (
-    <div className="flex flex-col h-screen" style={{ backgroundColor: theme.canvas }}>
+    <div className="clip-envelope-editor" style={{ backgroundColor: theme.canvas }}>
       <Toolbar
         envelopeMode={envelopeMode}
         envelopeAltMode={envelopeAltMode}
@@ -1251,10 +1252,10 @@ export default function ClipEnvelopeEditor() {
         onToggleEnvelopeAlt={handleToggleEnvelopeAlt}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="clip-envelope-editor__content">
         {/* Track headers */}
         <div
-          className="w-[280px] border-r flex flex-col"
+          className="clip-envelope-editor__sidebar"
           style={{
             backgroundColor: theme.trackHeaderPanel,
             borderColor: theme.trackHeaderBorder,
@@ -1262,21 +1263,20 @@ export default function ClipEnvelopeEditor() {
         >
           {/* Track header panel */}
           <div
-            className="h-[40px] flex items-center justify-between px-3 border-b"
+            className="clip-envelope-editor__sidebar-header"
             style={{
               borderColor: theme.trackHeaderBorder,
             }}
           >
             <span
-              className="font-medium text-sm"
+              className="clip-envelope-editor__sidebar-title"
               style={{ color: theme.text }}
             >
               Tracks
             </span>
             <button
-              className="h-[28px] px-3 text-sm rounded border"
+              className="clip-envelope-editor__add-track-button"
               style={{
-                backgroundColor: '',
                 color: theme.text,
                 borderColor: theme.trackHeaderBorder,
               }}
@@ -1294,7 +1294,7 @@ export default function ClipEnvelopeEditor() {
           </div>
 
           {/* Track list */}
-          <div className="flex-1 overflow-y-auto pl-3">
+          <div className="clip-envelope-editor__track-list">
             {tracks.map((track, index) => (
               <ResizableTrackHeader
                 key={track.id}
@@ -1319,9 +1319,9 @@ export default function ClipEnvelopeEditor() {
         </div>
 
         {/* Canvas container */}
-        <div className="flex-1 overflow-auto relative flex flex-col">
+        <div className="clip-envelope-editor__canvas-container">
           {/* Timeline ruler */}
-          <div className="sticky top-0 z-10">
+          <div className="clip-envelope-editor__ruler">
             <TimelineRuler
               canvasWidth={CANVAS_WIDTH}
               pixelsPerSecond={PIXELS_PER_SECOND}

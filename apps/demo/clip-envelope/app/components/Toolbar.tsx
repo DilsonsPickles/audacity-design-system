@@ -1,6 +1,7 @@
 'use client';
 
 import { theme } from '../theme';
+import './Toolbar.css';
 
 interface ToolbarProps {
   envelopeMode: boolean;
@@ -12,7 +13,7 @@ interface ToolbarProps {
 export default function Toolbar({ envelopeMode, envelopeAltMode, onToggleEnvelope, onToggleEnvelopeAlt }: ToolbarProps) {
   return (
     <div
-      className="h-[50px] flex items-center px-4 gap-2"
+      className="toolbar"
       style={{
         backgroundColor: theme.toolbar,
         borderBottom: `1px solid ${theme.toolbarBorder}`
@@ -20,7 +21,7 @@ export default function Toolbar({ envelopeMode, envelopeAltMode, onToggleEnvelop
     >
       <button
         onClick={onToggleEnvelope}
-        className="flex items-center gap-2 px-4 py-2 rounded border transition-all"
+        className="toolbar__button"
         style={{
           backgroundColor: envelopeMode ? theme.buttonActiveBg : theme.buttonBg,
           borderColor: envelopeMode ? theme.buttonActiveBorder : theme.buttonBorder,
@@ -39,13 +40,13 @@ export default function Toolbar({ envelopeMode, envelopeAltMode, onToggleEnvelop
           }
         }}
       >
-        <i className="fas fa-wave-square text-base"></i>
-        <span className="text-sm">Clip Envelopes</span>
+        <i className="fas fa-wave-square toolbar__button-icon"></i>
+        <span className="toolbar__button-text">Clip Envelopes</span>
       </button>
 
       <button
         onClick={onToggleEnvelopeAlt}
-        className="flex items-center gap-2 px-4 py-2 rounded border transition-all"
+        className="toolbar__button"
         style={{
           backgroundColor: envelopeAltMode ? theme.buttonActiveBg : theme.buttonBg,
           borderColor: envelopeAltMode ? theme.buttonActiveBorder : theme.buttonBorder,
@@ -64,8 +65,8 @@ export default function Toolbar({ envelopeMode, envelopeAltMode, onToggleEnvelop
           }
         }}
       >
-        <i className="fas fa-wave-square text-base"></i>
-        <span className="text-sm">Clip Envelopes Alt</span>
+        <i className="fas fa-wave-square toolbar__button-icon"></i>
+        <span className="toolbar__button-text">Clip Envelopes Alt</span>
       </button>
     </div>
   );
