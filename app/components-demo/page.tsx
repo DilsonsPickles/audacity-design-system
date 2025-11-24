@@ -27,13 +27,8 @@ export default function ComponentsDemo() {
           pan={0}
           isMuted={isMuted}
           isSolo={isSolo}
-          isRecording={isRecording}
-          onVolumeChange={setVolume}
-          onMuteToggle={() => setIsMuted(!isMuted)}
-          onSoloToggle={() => setIsSolo(!isSolo)}
-          onRecordToggle={() => setIsRecording(!isRecording)}
-          onEffectsClick={() => alert('Effects clicked!')}
-          onMenuClick={() => alert('Menu clicked!')}
+          state="idle"
+          height="default"
         />
       </div>
 
