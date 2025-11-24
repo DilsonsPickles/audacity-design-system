@@ -78,3 +78,33 @@ export interface EnvelopeSegmentDragState {
   startDb1: number; // Initial dB of first point
   startDb2: number; // Initial dB of second point
 }
+
+/**
+ * Theme colors for clip rendering
+ */
+export interface ClipTheme {
+  // Clip colors
+  clipBackground: string;
+  clipBorder: string;
+  clipHeaderBackground: string;
+  clipHeaderText: string;
+
+  // Waveform colors
+  waveformColor: string;
+
+  // Envelope colors
+  envelopeLineColor: string;
+  envelopeLineColorHover: string;
+  envelopePointColor: string;
+  envelopePointColorHover: string;
+  envelopeFillColor: string;
+
+  // Selection/overlay colors
+  timeSelectionOverlay: string;
+  automationOverlayActive: string;
+  automationOverlayIdle: string;
+
+  // Segment hover
+  segmentHoverColor: string;
+  segmentHoverOverlay: string;
+}

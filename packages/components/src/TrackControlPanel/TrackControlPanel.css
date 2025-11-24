@@ -52,19 +52,20 @@
   border-radius: var(--tcp-radius-md) 0 0 var(--tcp-radius-md);
   overflow: hidden;
   width: 268px;
+  height: 100%;
 }
 
-/* Height variants */
+/* Height variants - only used when not inside a container that controls height */
 .track-control-panel--default {
-  height: var(--tcp-height-default);
+  /* min-height removed - parent controls height when inside ResizablePanel */
 }
 
 .track-control-panel--truncated {
-  height: var(--tcp-height-truncated);
+  /* min-height removed - parent controls height when inside ResizablePanel */
 }
 
 .track-control-panel--collapsed {
-  height: var(--tcp-height-collapsed);
+  /* min-height removed - parent controls height when inside ResizablePanel */
 }
 
 /* State variants - background colors */
@@ -91,6 +92,7 @@
   gap: var(--tcp-gap);
   padding: var(--tcp-padding);
   min-width: 0;
+  align-self: stretch;
 }
 
 /* Header */
@@ -248,12 +250,13 @@
 
 /* Volume Meter */
 .track-control-panel__meter {
-  width: 24px;
+  width: 8px;
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex-shrink: 0;
+  align-self: stretch;
 }
 
 .track-control-panel__meter-bar {

@@ -1,4 +1,5 @@
 import React from 'react';
+import '../assets/fonts/musescore-icon.css';
 import './Button.css';
 
 export interface ButtonProps {
@@ -59,7 +60,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled}
     >
       {showIcon && icon && (
-        <span className="button__icon">
+        <span className="button__icon musescore-icon">
           {icon}
         </span>
       )}

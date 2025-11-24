@@ -12,7 +12,8 @@ export type IconName =
   | 'stop'
   | 'record'
   | 'rewind'
-  | 'forward';
+  | 'forward'
+  | 'plus';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -26,6 +27,7 @@ const ICON_MAP: Record<IconName, string> = {
   record: '\uE006',
   rewind: '\uE007',
   forward: '\uE008',
+  plus: '\uEF2A',
 };
 
 export interface IconProps {

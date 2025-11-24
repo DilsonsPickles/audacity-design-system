@@ -1,0 +1,55 @@
+.track-control-side-panel {
+  /* Secondary color for light mode */
+  background: #E3E3E8;
+}
+
+.track-control-side-panel .side-panel__content {
+  /* Remove default padding - header and list have their own */
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.track-control-side-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 8px 12px 12px;
+  height: 40px;
+  background: #E3E3E8;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.track-control-side-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #14151A;
+  margin: 0;
+  line-height: 20px;
+}
+
+/* Track list */
+.track-control-side-panel__list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #E3E3E8;
+  padding: 2px 0 0 12px;
+}
+
+.track-control-side-panel__track {
+  margin-bottom: 2px;
+  /* Height controlled by ResizablePanel */
+}
+
+/* Ensure TrackControlPanel fills the ResizablePanel container */
+.track-control-side-panel__track .resizable-panel__content {
+  height: 100%;
+}
+
+.track-control-side-panel__track .resizable-panel__content > * {
+  height: 100%;
+  max-width: 100%;
+}

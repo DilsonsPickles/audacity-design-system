@@ -5,6 +5,7 @@
   "description": "Audacity Design System - Reusable UI components for audio editing applications",
   "scripts": {
     "dev": "pnpm --parallel --recursive dev",
+    "sandbox": "pnpm --filter @audacity-ui/sandbox dev",
     "build": "pnpm --recursive build",
     "lint": "pnpm --recursive lint",
     "test": "pnpm --recursive test"

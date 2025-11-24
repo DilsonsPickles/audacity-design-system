@@ -1,0 +1,18 @@
+/**
+ * Clip Component Styles
+ */
+
+.clip {
+  display: block;
+  box-sizing: border-box;
+}
+
+.clip--selected {
+  /* Selected state styling can be enhanced here if needed */
+}
+
+/* Ensure proper rendering on high-DPI displays */
+.clip {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
