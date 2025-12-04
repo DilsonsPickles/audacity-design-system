@@ -39,6 +39,9 @@
   --tcp-height-default: 114px;
   --tcp-height-truncated: 82px;
   --tcp-height-collapsed: 44px;
+
+  /* Focus */
+  --tcp-focus-color: #84B5FF;
 }
 
 /* Main container */
@@ -53,6 +56,13 @@
   overflow: hidden;
   width: 268px;
   height: 100%;
+  position: relative;
+}
+
+/* Focus state - outline on all sides */
+.track-control-panel--focused {
+  outline: 2px solid var(--tcp-focus-color);
+  outline-offset: 0;
 }
 
 /* Height variants - only used when not inside a container that controls height */

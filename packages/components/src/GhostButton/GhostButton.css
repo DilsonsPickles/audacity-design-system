@@ -10,6 +10,7 @@
   align-items: center;
   justify-content: center;
   transition: background-color 0.1s ease;
+  color: var(--tcp-icon-default, #14151A);
 }
 
 .ghost-button:hover:not(.ghost-button--disabled) {

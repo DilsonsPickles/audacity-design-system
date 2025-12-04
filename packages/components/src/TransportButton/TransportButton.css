@@ -1,0 +1,78 @@
+/* TransportButton - Figma Design System Spec */
+
+/* CSS Variables matching Figma tokens */
+:root {
+  /* Transport button colors */
+  --transport-btn-idle: rgba(194, 196, 207, 0.7);
+  --transport-btn-hover: rgba(194, 196, 207, 0.5);
+  --transport-btn-pressed: #c2c4cf;
+
+  /* Icon color */
+  --transport-icon-color: #14151a;
+
+  /* Border radius */
+  --transport-border-radius: 3px;
+}
+
+/* Button base styles */
+.transport-button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--transport-border-radius);
+  background-color: var(--transport-btn-idle);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.1s ease;
+}
+
+/* Icon styles */
+.transport-button__icon {
+  font-size: 14px;
+  line-height: 0;
+  color: var(--transport-icon-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+/* State: Idle */
+.transport-button--idle {
+  background-color: var(--transport-btn-idle);
+}
+
+/* State: Hover */
+.transport-button--hover {
+  background-color: var(--transport-btn-hover);
+  cursor: pointer;
+}
+
+/* State: Pressed */
+.transport-button--pressed {
+  background-color: var(--transport-btn-pressed);
+}
+
+/* State: Disabled */
+.transport-button--disabled {
+  background-color: var(--transport-btn-idle);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Focus visible state */
+.transport-button:focus-visible {
+  outline: 2px solid #677ce4;
+  outline-offset: 2px;
+}
+
+/* Remove default button styles */
+.transport-button::-moz-focus-inner {
+  border: 0;
+}

@@ -1,4 +1,5 @@
 import type { Preview } from '@storybook/react';
+import '@audacity-ui/components/style.css';
 
 const preview: Preview = {
   parameters: {

@@ -59,6 +59,24 @@ export interface TimeSelectionDragState {
   startTrackIndex: number;
 }
 
+/**
+ * Configuration for time selection behavior
+ */
+export interface TimeSelectionConfig {
+  /** Pixels per second - zoom level */
+  pixelsPerSecond: number;
+  /** Left padding before timeline starts (in pixels) */
+  leftPadding: number;
+  /** Array of tracks with height information */
+  tracks: Track[];
+  /** Default track height when not specified */
+  defaultTrackHeight: number;
+  /** Gap between tracks (in pixels) */
+  trackGap: number;
+  /** Initial gap above first track (in pixels) */
+  initialGap: number;
+}
+
 export interface TrackResizeDragState {
   trackIndex: number; // Index of track being resized
   startY: number; // Initial Y position

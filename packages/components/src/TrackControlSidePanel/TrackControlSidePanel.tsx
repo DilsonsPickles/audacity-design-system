@@ -33,6 +33,11 @@ export interface TrackControlSidePanelProps {
   trackHeights?: number[];
 
   /**
+   * Index of the focused track (shows focus border)
+   */
+  focusedTrackIndex?: number | null;
+
+  /**
    * Called when panel is resized
    */
   onResize?: (width: number) => void;
@@ -54,6 +59,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   minWidth = 280,
   maxWidth = 280,
   trackHeights = [],
+  focusedTrackIndex = null,
   onResize,
   onAddTrack,
   className = '',
@@ -88,6 +94,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       <div className="track-control-side-panel__list">
         {childArray.map((child, index) => {
           const height = trackHeights[index] || 114; // Default to 114px
+          const isFocused = focusedTrackIndex === index;
           return (
             <ResizablePanel
               key={child.key || index}
@@ -95,9 +102,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               minHeight={44}
               maxHeight={400}
               className="track-control-side-panel__track"
+              isFirstPanel={index === 0}
             >
               {cloneElement(child, {
                 ...child.props,
+                isFocused,
               })}
             </ResizablePanel>
           );

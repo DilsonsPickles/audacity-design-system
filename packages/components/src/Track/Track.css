@@ -1,0 +1,33 @@
+:root {
+  --track-focus-color: #84B5FF;
+}
+
+.track-wrapper {
+  display: block;
+  position: relative;
+}
+
+/* Focus borders - top and bottom only, outside the track */
+.track-wrapper--focused::before,
+.track-wrapper--focused::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--track-focus-color);
+  pointer-events: none;
+}
+
+.track-wrapper--focused::before {
+  top: -2px;
+}
+
+.track-wrapper--focused::after {
+  bottom: -2px;
+}
+
+.track-canvas {
+  display: block;
+  cursor: default;
+}

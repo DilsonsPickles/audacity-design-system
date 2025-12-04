@@ -14,12 +14,14 @@ export interface TrackControlPanelProps {
   pan?: number; // -100 to 100
   isMuted?: boolean;
   isSolo?: boolean;
+  isFocused?: boolean;
   onVolumeChange?: (volume: number) => void;
   onPanChange?: (pan: number) => void;
   onMuteToggle?: () => void;
   onSoloToggle?: () => void;
   onEffectsClick?: () => void;
   onMenuClick?: () => void;
+  onClick?: () => void;
   className?: string;
   state?: 'idle' | 'hover' | 'active';
   height?: 'default' | 'truncated' | 'collapsed';
@@ -32,12 +34,14 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   pan = 0,
   isMuted = false,
   isSolo = false,
+  isFocused = false,
   onVolumeChange,
   onPanChange,
   onMuteToggle,
   onSoloToggle,
   onEffectsClick,
   onMenuClick,
+  onClick,
   className = '',
   state = 'idle',
   height = 'default',
@@ -51,9 +55,10 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   return (
     <div
-      className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${className}`}
+      className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
     >
       <div className="track-control-panel__main">
         {/* Header */}

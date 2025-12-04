@@ -105,19 +105,16 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     if (!isResizing) {
       const rect = e.currentTarget.getBoundingClientRect();
       const y = e.clientY - rect.top;
-      const topPadding = isFirstPanel ? 2 : 0;
-      const panelHeight = topPadding + height;
 
       let inResizeZone = false;
 
       if (resizeEdge === 'bottom' || resizeEdge === 'both') {
-        const bottomResizeStart = panelHeight - resizeThreshold;
-        inResizeZone = y >= bottomResizeStart && y <= panelHeight;
+        const bottomResizeStart = height - resizeThreshold;
+        inResizeZone = y >= bottomResizeStart && y <= height;
       }
 
       if (!inResizeZone && (resizeEdge === 'top' || resizeEdge === 'both')) {
-        const topResizeEnd = topPadding + resizeThreshold;
-        inResizeZone = y >= topPadding && y <= topResizeEnd;
+        inResizeZone = y >= 0 && y <= resizeThreshold;
       }
 
       setResizeCursor(inResizeZone);
@@ -127,19 +124,16 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
-    const topPadding = isFirstPanel ? 2 : 0;
-    const panelHeight = topPadding + height;
 
     let inResizeZone = false;
 
     if (resizeEdge === 'bottom' || resizeEdge === 'both') {
-      const bottomResizeStart = panelHeight - resizeThreshold;
-      inResizeZone = y >= bottomResizeStart && y <= panelHeight;
+      const bottomResizeStart = height - resizeThreshold;
+      inResizeZone = y >= bottomResizeStart && y <= height;
     }
 
     if (!inResizeZone && (resizeEdge === 'top' || resizeEdge === 'both')) {
-      const topResizeEnd = topPadding + resizeThreshold;
-      inResizeZone = y >= topPadding && y <= topResizeEnd;
+      inResizeZone = y >= 0 && y <= resizeThreshold;
     }
 
     if (inResizeZone) {
@@ -161,9 +155,8 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     <div
       className={`resizable-panel ${className}`}
       style={{
-        marginTop: isFirstPanel ? '2px' : '0',
-        marginBottom: '2px',
         position: 'relative',
+        height: `${height}px`,
       }}
     >
       <div

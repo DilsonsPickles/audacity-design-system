@@ -93,6 +93,9 @@ export interface Theme {
   text: string;
   textInverted: string;
 
+  // Icons
+  iconPrimary: string;
+
   // UI elements
   buttonBg: string;
   buttonBorder: string;
@@ -102,6 +105,9 @@ export interface Theme {
   buttonActiveBorder: string;
   buttonText: string;
   buttonActiveText: string;
+
+  // Focus states
+  focusBorder: string;
 }
 
 export const lightTheme: Theme = {
@@ -192,6 +198,9 @@ export const lightTheme: Theme = {
   text: '#14151A',
   textInverted: '#ffffff',
 
+  // Icons
+  iconPrimary: '#14151A',
+
   // UI elements
   buttonBg: '#e0e0e5',
   buttonBorder: '#c0c0c5',
@@ -201,6 +210,9 @@ export const lightTheme: Theme = {
   buttonActiveBorder: '#5a8aba',
   buttonText: '#333',
   buttonActiveText: '#fff',
+
+  // Focus states
+  focusBorder: '#84B5FF',
 };
 
 export const darkTheme: Theme = {
@@ -291,6 +303,9 @@ export const darkTheme: Theme = {
   text: '#e0e0e0',
   textInverted: '#1a1a1a',
 
+  // Icons
+  iconPrimary: '#e0e0e0',
+
   // UI elements
   buttonBg: '#3a3a3a',
   buttonBorder: '#4a4a4a',
@@ -300,6 +315,9 @@ export const darkTheme: Theme = {
   buttonActiveBorder: '#5a8aba',
   buttonText: '#ccc',
   buttonActiveText: '#fff',
+
+  // Focus states
+  focusBorder: '#84B5FF',
 };
 
 // Default theme

@@ -9,6 +9,7 @@ import TimelineRuler from './TimelineRuler';
 import Tooltip from './Tooltip';
 import { Track, Clip, EnvelopePoint, DragState, EnvelopeDragState, TimeSelection, TimeSelectionDragState, TrackResizeDragState, EnvelopeSegmentDragState } from './types';
 import { theme } from '../theme';
+import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
 import './ClipEnvelopeEditor.css';
 
 // Configuration
@@ -115,11 +116,25 @@ const getTrackIndexAtY = (y: number, tracks: Track[]): { trackIndex: number; inR
 };
 
 export default function ClipEnvelopeEditor() {
+  // Get state from context
+  const { tracks, selectedTrackIndices, focusedTrackIndex } = useTracksState();
+  const dispatch = useTracksDispatch();
+
+  // Helper functions to update state via context (makes migration easier)
+  const setTracks = (newTracks: Track[]) => {
+    dispatch({ type: 'SET_TRACKS', payload: newTracks });
+  };
+
+  const setSelectedTrackIndices = (indices: number[]) => {
+    dispatch({ type: 'SET_SELECTED_TRACKS', payload: indices });
+  };
+
+  const setFocusedTrackIndex = (index: number | null) => {
+    dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
+  };
+
   const [envelopeMode, setEnvelopeMode] = useState(false);
   const [envelopeAltMode, setEnvelopeAltMode] = useState(false);
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [selectedTrackIndices, setSelectedTrackIndices] = useState<number[]>([]);
-  const [focusedTrackIndex, setFocusedTrackIndex] = useState<number | null>(null);
   const [timeSelection, setTimeSelection] = useState<TimeSelection | null>(null);
   const [hoveredClipHeader, setHoveredClipHeader] = useState<{ clipId: number; trackIndex: number } | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; db: number; visible: boolean }>({
@@ -137,79 +152,6 @@ export default function ClipEnvelopeEditor() {
   const [cursorStyle, setCursorStyle] = useState<string>('default');
   const [hoveredSegment, setHoveredSegment] = useState<{ trackIndex: number; clipId: number; segmentIndex: number } | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<{ trackIndex: number; clipId: number; pointIndex: number } | null>(null);
-
-  // Initialize tracks with sample clips
-  useEffect(() => {
-    let clipIdCounter = 1;
-
-    const generateWaveform = (duration: number): number[] => {
-      const sampleCount = Math.floor(duration * 50000); // Very high sample count for solid waveform appearance
-      const waveform: number[] = [];
-
-      for (let i = 0; i < sampleCount; i++) {
-        const t = i / sampleCount;
-
-        // Create envelope variation that mimics speech patterns
-        // Speech has bursts of activity with varying amplitude
-        const speechEnvelope =
-          Math.abs(Math.sin(t * Math.PI * 3 + Math.random() * 0.5)) * // Syllable-like patterns
-          (0.3 + Math.abs(Math.sin(t * Math.PI * 0.5)) * 0.7) * // Sentence-level variation
-          (0.5 + Math.random() * 0.5); // Random variation
-
-        // High-frequency content (voice formants)
-        const voiceContent =
-          Math.sin(t * Math.PI * 200 + Math.random() * 2) * 0.4 +
-          Math.sin(t * Math.PI * 500 + Math.random() * 3) * 0.3 +
-          Math.sin(t * Math.PI * 1200 + Math.random() * 5) * 0.2 +
-          (Math.random() - 0.5) * 0.3; // Noise for breathiness
-
-        const value = voiceContent * speechEnvelope;
-        waveform.push(Math.max(-1, Math.min(1, value)));
-      }
-
-      return waveform;
-    };
-
-    const createClip = (id: number, name: string, startTime: number, duration: number): Clip => ({
-      id,
-      name,
-      startTime,
-      duration,
-      waveform: generateWaveform(duration),
-      envelopePoints: [],
-      selected: false,
-    });
-
-    const initialTracks: Track[] = [
-      {
-        id: 1,
-        name: 'Track 1',
-        clips: [
-          createClip(clipIdCounter++, 'Vocals', 0.5, 2.0),
-          createClip(clipIdCounter++, 'Harmony', 3.0, 1.5),
-        ],
-      },
-      {
-        id: 2,
-        name: 'Track 2',
-        clips: [
-          createClip(clipIdCounter++, 'Bass', 0.2, 1.2),
-          createClip(clipIdCounter++, 'Synth', 2.0, 2.5),
-          createClip(clipIdCounter++, 'Lead', 5.0, 1.0),
-        ],
-      },
-      {
-        id: 3,
-        name: 'Track 3',
-        clips: [
-          createClip(clipIdCounter++, 'Drums', 1.0, 3.0),
-          createClip(clipIdCounter++, 'Percussion', 5.5, 1.5),
-        ],
-      },
-    ];
-
-    setTracks(initialTracks);
-  }, []);
 
   // Add document-level mouse event listeners for dragging beyond canvas
   useEffect(() => {
@@ -1305,8 +1247,7 @@ export default function ClipEnvelopeEditor() {
                 height={getTrackHeight(track)}
                 isFirstTrack={index === 0}
                 onSelect={() => {
-                  setSelectedTrackIndices([index]);
-                  setFocusedTrackIndex(index);
+                  dispatch({ type: 'SELECT_TRACK', payload: index });
                 }}
                 onHeightChange={(newHeight) => {
                   const newTracks = [...tracks];

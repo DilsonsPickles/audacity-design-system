@@ -40,7 +40,7 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
       disabled={disabled}
       aria-label={ariaLabel}
     >
-      <Icon name={icon} size={16} color="#949494" />
+      <Icon name={icon} size={16} />
     </button>
   );
 };

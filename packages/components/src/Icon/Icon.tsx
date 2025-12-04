@@ -13,7 +13,20 @@ export type IconName =
   | 'record'
   | 'rewind'
   | 'forward'
-  | 'plus';
+  | 'skip-back'
+  | 'skip-forward'
+  | 'plus'
+  | 'automation'
+  | 'cloud'
+  | 'copy'
+  | 'paste'
+  | 'cut'
+  | 'spectrogram'
+  | 'cog'
+  | 'trash'
+  | 'silence'
+  | 'trim'
+  | 'waveform';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -21,13 +34,26 @@ const ICON_MAP: Record<IconName, string> = {
   menu: '\uEF13',
   undo: '\uE001',
   redo: '\uE002',
-  play: '\uE003',
-  pause: '\uE004',
-  stop: '\uE005',
-  record: '\uE006',
+  play: '\uF446',
+  pause: '\uF44B',
+  stop: '\uF447',
+  record: '\uF44A',
   rewind: '\uE007',
   forward: '\uE008',
+  'skip-back': '\uF448',
+  'skip-forward': '\uF449',
   plus: '\uEF2A',
+  automation: '\uF45C',
+  cloud: '\uF435',
+  copy: '\uF398',
+  paste: '\uF399',
+  cut: '\uF39A',
+  spectrogram: '\uF442',
+  cog: '\uEF55',
+  trash: '\uEF2C',
+  silence: '\uF43A',
+  trim: '\uF43B',
+  waveform: '\uF43C',
 };
 
 export interface IconProps {

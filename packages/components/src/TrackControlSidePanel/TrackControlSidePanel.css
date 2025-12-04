@@ -39,7 +39,8 @@
   padding: 2px 0 0 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 2px !important;
+  row-gap: 2px !important;
 }
 
 .track-control-side-panel__track {
