@@ -10,11 +10,15 @@ export interface GhostButtonProps {
   /**
    * Click handler
    */
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /**
    * Whether the button is disabled
    */
   disabled?: boolean;
+  /**
+   * Whether the button is in active state (e.g., menu is open)
+   */
+  active?: boolean;
   /**
    * Additional CSS class names
    */
@@ -29,13 +33,14 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
   icon = 'menu',
   onClick,
   disabled = false,
+  active = false,
   className = '',
   ariaLabel,
 }) => {
   return (
     <button
       type="button"
-      className={`ghost-button ${disabled ? 'ghost-button--disabled' : ''} ${className}`}
+      className={`ghost-button ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}

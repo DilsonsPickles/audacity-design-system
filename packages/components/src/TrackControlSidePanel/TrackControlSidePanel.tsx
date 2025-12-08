@@ -1,8 +1,10 @@
-import React, { ReactElement, cloneElement } from 'react';
+import React, { ReactElement, cloneElement, useState } from 'react';
 import { SidePanel } from '../SidePanel';
 import { ResizablePanel } from '../ResizablePanel';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
+import { ContextMenu } from '../ContextMenu';
+import { ContextMenuItem } from '../ContextMenuItem';
 import type { TrackControlPanelProps } from '../TrackControlPanel';
 import './TrackControlSidePanel.css';
 
@@ -43,9 +45,39 @@ export interface TrackControlSidePanelProps {
   onResize?: (width: number) => void;
 
   /**
+   * Called when a track is resized
+   */
+  onTrackResize?: (trackIndex: number, height: number) => void;
+
+  /**
    * Called when "Add new" button is clicked
    */
   onAddTrack?: () => void;
+
+  /**
+   * Called when a track should be deleted
+   */
+  onDeleteTrack?: (trackIndex: number) => void;
+
+  /**
+   * Called when a track should move up
+   */
+  onMoveTrackUp?: (trackIndex: number) => void;
+
+  /**
+   * Called when a track should move down
+   */
+  onMoveTrackDown?: (trackIndex: number) => void;
+
+  /**
+   * Called when track view mode changes
+   */
+  onTrackViewChange?: (trackIndex: number, viewMode: 'waveform' | 'spectrogram' | 'split') => void;
+
+  /**
+   * Track view modes for each track
+   */
+  trackViewModes?: Array<'waveform' | 'spectrogram' | 'split' | undefined>;
 
   /**
    * Additional CSS class
@@ -61,10 +93,52 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   trackHeights = [],
   focusedTrackIndex = null,
   onResize,
+  onTrackResize,
   onAddTrack,
+  onDeleteTrack,
+  onMoveTrackUp,
+  onMoveTrackDown,
+  onTrackViewChange,
+  trackViewModes = [],
   className = '',
 }) => {
   const childArray = React.Children.toArray(children) as ReactElement<TrackControlPanelProps>[];
+  const [menuState, setMenuState] = useState<{ isOpen: boolean; trackIndex: number; x: number; y: number }>({
+    isOpen: false,
+    trackIndex: -1,
+    x: 0,
+    y: 0,
+  });
+
+  const handleMenuClick = (trackIndex: number, event?: React.MouseEvent) => {
+    // If event is provided, use the button's position
+    if (event) {
+      const button = event.currentTarget as HTMLElement;
+      const rect = button.getBoundingClientRect();
+      setMenuState({
+        isOpen: true,
+        trackIndex,
+        x: rect.left, // Align to left of button
+        y: rect.bottom + 1, // 1px below the button
+      });
+    } else {
+      // Fallback: Get the track control panel element to position menu
+      const trackElement = document.querySelector(`.track-control-side-panel__track:nth-child(${trackIndex + 1})`);
+      if (trackElement) {
+        const rect = trackElement.getBoundingClientRect();
+        setMenuState({
+          isOpen: true,
+          trackIndex,
+          x: rect.right + 4,
+          y: rect.top + 40,
+        });
+      }
+    }
+  };
+
+  const handleMenuClose = () => {
+    setMenuState({ isOpen: false, trackIndex: -1, x: 0, y: 0 });
+  };
 
   return (
     <SidePanel
@@ -103,15 +177,78 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               maxHeight={400}
               className="track-control-side-panel__track"
               isFirstPanel={index === 0}
+              onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
             >
               {cloneElement(child, {
                 ...child.props,
                 isFocused,
+                isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
+                onMenuClick: (event: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(index, event),
               })}
             </ResizablePanel>
           );
         })}
       </div>
+
+      {/* Context Menu */}
+      <ContextMenu
+        isOpen={menuState.isOpen}
+        x={menuState.x}
+        y={menuState.y}
+        onClose={handleMenuClose}
+      >
+        <ContextMenuItem
+          label="Delete"
+          onClick={() => {
+            onDeleteTrack?.(menuState.trackIndex);
+            handleMenuClose();
+          }}
+        />
+        <ContextMenuItem
+          label="Move track up"
+          onClick={() => {
+            onMoveTrackUp?.(menuState.trackIndex);
+            handleMenuClose();
+          }}
+          disabled={menuState.trackIndex === 0}
+        />
+        <ContextMenuItem
+          label="Move track down"
+          onClick={() => {
+            onMoveTrackDown?.(menuState.trackIndex);
+            handleMenuClose();
+          }}
+          disabled={menuState.trackIndex === childArray.length - 1}
+        />
+        <div className="context-menu-separator" />
+        <ContextMenuItem
+          label="Track view"
+          hasSubmenu={true}
+          onClose={handleMenuClose}
+        >
+          <ContextMenuItem
+            label="Waveform"
+            icon={trackViewModes[menuState.trackIndex] === 'waveform' || trackViewModes[menuState.trackIndex] === undefined ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+            onClick={() => {
+              onTrackViewChange?.(menuState.trackIndex, 'waveform');
+            }}
+          />
+          <ContextMenuItem
+            label="Spectrogram"
+            icon={trackViewModes[menuState.trackIndex] === 'spectrogram' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+            onClick={() => {
+              onTrackViewChange?.(menuState.trackIndex, 'spectrogram');
+            }}
+          />
+          <ContextMenuItem
+            label="Split view"
+            icon={trackViewModes[menuState.trackIndex] === 'split' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+            onClick={() => {
+              onTrackViewChange?.(menuState.trackIndex, 'split');
+            }}
+          />
+        </ContextMenuItem>
+      </ContextMenu>
     </SidePanel>
   );
 };

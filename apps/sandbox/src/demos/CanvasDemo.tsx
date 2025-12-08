@@ -1,8 +1,30 @@
 import React from 'react';
 import { TracksProvider } from '../contexts/TracksContext';
 import { Canvas } from '../components/Canvas';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, GhostButton, ToggleButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, ToolbarDivider, GhostButton, ToggleButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor } from '@audacity-ui/components';
 import { useTracks } from '../contexts/TracksContext';
+
+// Generate realistic waveform data
+function generateWaveform(durationSeconds: number, samplesPerSecond: number = 100): number[] {
+  const totalSamples = Math.floor(durationSeconds * samplesPerSecond);
+  const waveform: number[] = [];
+
+  for (let i = 0; i < totalSamples; i++) {
+    const t = i / samplesPerSecond;
+    // Combine multiple frequencies for a more realistic waveform
+    const wave1 = Math.sin(2 * Math.PI * 2 * t) * 0.3;  // Low frequency
+    const wave2 = Math.sin(2 * Math.PI * 5 * t) * 0.2;  // Mid frequency
+    const wave3 = Math.sin(2 * Math.PI * 10 * t) * 0.1; // Higher frequency
+    // Add some randomness for noise
+    const noise = (Math.random() - 0.5) * 0.1;
+    // Envelope for more natural fade in/out
+    const envelope = Math.sin((i / totalSamples) * Math.PI) * 0.8 + 0.2;
+
+    waveform.push((wave1 + wave2 + wave3 + noise) * envelope);
+  }
+
+  return waveform;
+}
 
 // Sample track data
 const sampleTracks = [
@@ -16,7 +38,7 @@ const sampleTracks = [
         name: 'Vocal Take 1',
         start: 0.5,
         duration: 4.0,
-        waveform: [],
+        waveform: generateWaveform(4.0),
         envelopePoints: [],
       },
       {
@@ -24,7 +46,7 @@ const sampleTracks = [
         name: 'Vocal Take 2',
         start: 5.0,
         duration: 3.5,
-        waveform: [],
+        waveform: generateWaveform(3.5),
         envelopePoints: [],
       },
     ],
@@ -39,7 +61,7 @@ const sampleTracks = [
         name: 'Guitar',
         start: 2.0,
         duration: 6.0,
-        waveform: [],
+        waveform: generateWaveform(6.0),
         envelopePoints: [],
       },
     ],
@@ -54,7 +76,7 @@ const sampleTracks = [
         name: 'Drums',
         start: 1.0,
         duration: 3.0,
-        waveform: [],
+        waveform: generateWaveform(3.0),
         envelopePoints: [],
       },
       {
@@ -62,7 +84,23 @@ const sampleTracks = [
         name: 'Percussion',
         start: 5.5,
         duration: 1.5,
-        waveform: [],
+        waveform: generateWaveform(1.5),
+        envelopePoints: [],
+      },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Track 4 (Stereo)',
+    height: 114,
+    clips: [
+      {
+        id: 6,
+        name: 'Synth Pad',
+        start: 1.5,
+        duration: 5.0,
+        waveformLeft: generateWaveform(5.0),
+        waveformRight: generateWaveform(5.0),
         envelopePoints: [],
       },
     ],
@@ -98,38 +136,42 @@ function CanvasDemoContent() {
     dispatch({ type: 'SET_ENVELOPE_MODE', payload: !state.envelopeMode });
   };
 
+  const handleToggleSpectrogram = () => {
+    dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: !state.spectrogramMode });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       <Toolbar>
         <ToolbarButtonGroup gap={4}>
-          <GhostButton>
-            <Icon name="fa-bars" size={16} />
-          </GhostButton>
-          <GhostButton>
-            <Icon name="fa-folder-open" size={16} />
-          </GhostButton>
+          <GhostButton icon="menu" />
+          <GhostButton icon="mixer" />
         </ToolbarButtonGroup>
 
         <ToolbarDivider />
 
         <ToolbarButtonGroup gap={2}>
-          <GhostButton>
-            <Icon name="fa-backward-step" size={16} />
-          </GhostButton>
-          <GhostButton>
-            <Icon name="fa-play" size={16} />
-          </GhostButton>
-          <GhostButton>
-            <Icon name="fa-forward-step" size={16} />
-          </GhostButton>
+          <GhostButton icon="skip-back" />
+          <GhostButton icon="play" />
+          <GhostButton icon="skip-forward" />
         </ToolbarButtonGroup>
 
         <ToolbarDivider />
 
         <ToolbarButtonGroup gap={4}>
-          <ToggleButton isActive={state.envelopeMode} onClick={handleToggleEnvelope}>
-            <Icon name="fa-wave-square" size={16} />
+          <ToggleButton active={state.envelopeMode} onClick={handleToggleEnvelope}>
+            <Icon name="automation" size={16} />
           </ToggleButton>
+        </ToolbarButtonGroup>
+
+        <ToolbarDivider />
+
+        <ToolbarButtonGroup gap={4}>
+          <ToggleToolButton
+            icon="waveform"
+            isActive={state.spectrogramMode}
+            onClick={handleToggleSpectrogram}
+          />
         </ToolbarButtonGroup>
       </Toolbar>
 
@@ -137,7 +179,26 @@ function CanvasDemoContent() {
         {/* Track Control Side Panel - Full Height */}
         <TrackControlSidePanel
           trackHeights={state.tracks.map(t => t.height || 114)}
+          trackViewModes={state.tracks.map(t => t.viewMode)}
           focusedTrackIndex={state.focusedTrackIndex}
+          onTrackResize={(trackIndex, height) => {
+            dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
+          }}
+          onDeleteTrack={(trackIndex) => {
+            console.log('Delete track:', trackIndex);
+            // TODO: Implement delete track
+          }}
+          onMoveTrackUp={(trackIndex) => {
+            console.log('Move track up:', trackIndex);
+            // TODO: Implement move track up
+          }}
+          onMoveTrackDown={(trackIndex) => {
+            console.log('Move track down:', trackIndex);
+            // TODO: Implement move track down
+          }}
+          onTrackViewChange={(trackIndex, viewMode) => {
+            dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
+          }}
         >
           {state.tracks.map((track, index) => (
             <TrackControlPanel
@@ -157,15 +218,11 @@ function CanvasDemoContent() {
           ))}
         </TrackControlSidePanel>
 
-        {/* Timeline Ruler + Canvas Area (same scroll container) */}
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433' }}
-        >
-          <div style={{ minWidth: '5000px' }}>
-            {/* Timeline Ruler */}
-            <div ref={canvasContainerRef}>
+        {/* Timeline Ruler + Canvas Area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Timeline Ruler - Fixed at top */}
+          <div ref={canvasContainerRef} style={{ position: 'relative', backgroundColor: '#1a1b26', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ transform: `translateX(-${scrollX}px)`, width: '5000px', position: 'relative' }}>
               <TimelineRuler
                 pixelsPerSecond={100}
                 scrollX={0}
@@ -175,10 +232,37 @@ function CanvasDemoContent() {
                 timeSelection={state.timeSelection}
                 selectionColor="rgba(112, 181, 255, 0.5)"
               />
+              {/* Playhead icon only in ruler */}
+              <PlayheadCursor
+                position={state.playheadPosition}
+                pixelsPerSecond={100}
+                leftPadding={11.5}
+                height={0}
+                showTopIcon={true}
+                iconTopOffset={24}
+              />
             </div>
+          </div>
 
-            {/* Canvas */}
-            <Canvas pixelsPerSecond={100} width={5000} />
+          {/* Canvas - Scrollable */}
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            style={{ flex: 1, overflowX: 'scroll', overflowY: 'hidden', backgroundColor: '#212433' }}
+          >
+            <div style={{ minWidth: '5000px', height: '100%', position: 'relative' }}>
+              <Canvas pixelsPerSecond={100} width={5000} />
+              {/* Playhead stalk only (no icon) */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
+                <PlayheadCursor
+                  position={state.playheadPosition}
+                  pixelsPerSecond={100}
+                  leftPadding={12}
+                  height={1000}
+                  showTopIcon={false}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -14,8 +14,11 @@ export * from './PanKnob';
 export * from './Slider';
 export * from './ToggleButton';
 export * from './ToolButton';
+export * from './ToggleToolButton';
 export * from './TrackControlPanel';
 export * from './TransportButton';
+export * from './ContextMenu';
+export * from './ContextMenuItem';
 
 /**
  * Audio Components
@@ -33,6 +36,8 @@ export * from './SidePanel';
 export * from './TimelineRuler';
 export * from './TimeSelectionCanvasOverlay';
 export * from './TimeSelectionRulerOverlay';
+export * from './SpectralSelectionOverlay';
+export * from './PlayheadCursor';
 export * from './Toolbar';
 export * from './TrackControlSidePanel';
 

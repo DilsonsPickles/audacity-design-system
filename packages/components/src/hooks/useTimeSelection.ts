@@ -24,6 +24,7 @@ interface ExtendedDragState extends TimeSelectionDragState {
   mode: DragMode;
   initialSelection?: TimeSelection | null;
   initialSelectedTracks?: number[];
+  startedInsideClip?: boolean; // Track whether drag started inside a clip
 }
 
 export interface UseTimeSelectionOptions extends TimeSelectionConfig {
@@ -35,14 +36,24 @@ export interface UseTimeSelectionOptions extends TimeSelectionConfig {
   currentSelectedTracks: number[];
   /** Callback when time selection changes */
   onTimeSelectionChange: (selection: TimeSelection | null) => void;
+  /** Callback when time selection is finalized (on mouse up) */
+  onTimeSelectionFinalized?: (selection: TimeSelection | null) => void;
   /** Callback when selected track indices change */
   onSelectedTracksChange: (trackIndices: number[]) => void;
   /** Callback when focused track changes */
   onFocusedTrackChange: (trackIndex: number | null) => void;
+  /** Callback to clear spectral selection when time selection starts */
+  onClearSpectralSelection?: () => void;
+  /** Callback to convert time selection to spectral selection when dragged inside clip bounds - returns true if conversion happened */
+  onConvertToSpectralSelection?: (startTime: number, endTime: number, trackIndex: number, clipId: number, currentX: number, currentY: number) => boolean;
   /** Whether time selection is enabled */
   enabled?: boolean;
   /** Edge detection threshold in pixels */
   edgeThreshold?: number;
+  /** Clip header height (for detecting clip body) */
+  clipHeaderHeight?: number;
+  /** Whether in spectrogram mode */
+  spectrogramMode?: boolean;
 }
 
 export interface UseTimeSelectionReturn {
@@ -51,7 +62,7 @@ export interface UseTimeSelectionReturn {
   /** Cursor style to apply to the container */
   cursorStyle: string;
   /** Function to start a time selection drag - call from container's onMouseDown */
-  startDrag: (x: number, y: number) => void;
+  startDrag: (x: number, y: number, allowConversionToSpectral?: boolean) => void;
   /** Function to handle mouse move for cursor updates - call from container's onMouseMove */
   handleMouseMove: (x: number, y: number) => void;
   /** Function to check if we just finished dragging (to prevent click events) */
@@ -72,10 +83,15 @@ export function useTimeSelection({
   trackGap,
   initialGap,
   onTimeSelectionChange,
+  onTimeSelectionFinalized,
   onSelectedTracksChange,
   onFocusedTrackChange,
+  onClearSpectralSelection,
+  onConvertToSpectralSelection,
   enabled = true,
   edgeThreshold = 6,
+  clipHeaderHeight = 20,
+  spectrogramMode = false,
 }: UseTimeSelectionOptions): UseTimeSelectionReturn {
   const dragStateRef = useRef<ExtendedDragState | null>(null);
   const wasDraggingRef = useRef<boolean>(false);
@@ -98,6 +114,40 @@ export function useTimeSelection({
     }
     return null;
   }, [currentTimeSelection, pixelsPerSecond, leftPadding, edgeThreshold]);
+
+  /**
+   * Find which clip (if any) contains the given position
+   */
+  const findClipAtPosition = useCallback((x: number, y: number): { trackIndex: number; clipId: number } | null => {
+    let currentY = initialGap;
+
+    for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
+      const track = tracks[trackIndex] as any;
+      const trackHeight = track.height || defaultTrackHeight;
+
+      // Check if y is within this track's clip body (not header)
+      const clipBodyY = currentY + clipHeaderHeight;
+      const clipBodyHeight = trackHeight - clipHeaderHeight;
+
+      if (y >= clipBodyY && y < clipBodyY + clipBodyHeight) {
+        // Check each clip in this track
+        if (track.clips) {
+          for (const clip of track.clips) {
+            const clipStartX = leftPadding + clip.start * pixelsPerSecond;
+            const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
+
+            if (x >= clipStartX && x <= clipEndX) {
+              return { trackIndex, clipId: clip.id };
+            }
+          }
+        }
+      }
+
+      currentY += trackHeight + trackGap;
+    }
+
+    return null;
+  }, [tracks, pixelsPerSecond, leftPadding, defaultTrackHeight, trackGap, initialGap, clipHeaderHeight]);
 
   /**
    * Handle mouse move for cursor updates and dragging
@@ -165,16 +215,10 @@ export function useTimeSelection({
           });
         }
       } else if (mode === 'create') {
-        // Creating new selection
         dragStateRef.current.currentX = x;
 
         const startTime = pixelsToTime(dragStateRef.current.startX, pixelsPerSecond, leftPadding);
         const endTime = pixelsToTime(x, pixelsPerSecond, leftPadding);
-
-        onTimeSelectionChange({
-          startTime: Math.min(startTime, endTime),
-          endTime: Math.max(startTime, endTime),
-        });
 
         // Update selected tracks based on drag range
         const currentTrackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
@@ -186,6 +230,37 @@ export function useTimeSelection({
 
         // Get all tracks in the range
         const selectedIndices = getTrackRange(clampedStartTrack, clampedCurrentTrack);
+
+        // If the drag started inside a clip (i.e., converted from spectral selection),
+        // check if we should convert back to spectral when entering a spectral clip
+        if (dragStateRef.current.startedInsideClip && spectrogramMode && onConvertToSpectralSelection) {
+          const clipAtPosition = findClipAtPosition(x, y);
+
+          if (clipAtPosition) {
+            const { trackIndex, clipId } = clipAtPosition;
+
+            // Check if this track has spectral view enabled
+            const track = tracks[trackIndex] as any;
+            const hasSpectralView = track.viewMode === 'spectrogram' || track.viewMode === 'split';
+
+            if (hasSpectralView) {
+              // Convert back to spectral selection
+              const converted = onConvertToSpectralSelection(startTime, endTime, trackIndex, clipId, x, y);
+              if (converted) {
+                // Clear the time selection and drag state
+                onTimeSelectionChange(null);
+                dragStateRef.current = null;
+                return;
+              }
+            }
+          }
+        }
+
+        // Normal time selection behavior
+        onTimeSelectionChange({
+          startTime: Math.min(startTime, endTime),
+          endTime: Math.max(startTime, endTime),
+        });
         onSelectedTracksChange(selectedIndices);
       }
     };
@@ -195,17 +270,23 @@ export function useTimeSelection({
       if (!dragStateRef.current || !container) return;
 
       const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      const { mode } = dragStateRef.current;
+      const { mode, startX } = dragStateRef.current;
 
-      // Set flag to prevent click handlers from firing immediately after drag
-      wasDraggingRef.current = true;
+      // Only set wasDragging flag if we actually moved the mouse (not just a click)
+      const didActuallyDrag = Math.abs(x - startX) > 2; // 2px threshold for accidental movement
 
-      // Clear the flag after a short delay (longer than click event propagation)
-      setTimeout(() => {
-        wasDraggingRef.current = false;
-      }, 50);
+      if (didActuallyDrag) {
+        // Set flag to prevent click handlers from firing immediately after drag
+        wasDraggingRef.current = true;
+
+        // Clear the flag after a short delay (longer than click event propagation)
+        setTimeout(() => {
+          wasDraggingRef.current = false;
+        }, 50);
+      }
 
       if (mode === 'create') {
         // Determine focused track (where mouse was released)
@@ -221,11 +302,15 @@ export function useTimeSelection({
       // For resize modes, don't change selected tracks or focused track
       // They are preserved from when the resize started
 
+      // Call finalized callback with current selection before clearing drag state
+      if (onTimeSelectionFinalized && currentTimeSelection) {
+        onTimeSelectionFinalized(currentTimeSelection);
+      }
+
       // Clear drag state
       dragStateRef.current = null;
 
-      // Update cursor based on mouse position
-      const x = e.clientX - rect.left;
+      // Update cursor based on mouse position (x and y already calculated above)
       handleMouseMove(x, y);
     };
 
@@ -249,16 +334,20 @@ export function useTimeSelection({
     trackGap,
     initialGap,
     onTimeSelectionChange,
+    onTimeSelectionFinalized,
     onSelectedTracksChange,
     onFocusedTrackChange,
     handleMouseMove,
+    spectrogramMode,
+    onConvertToSpectralSelection,
+    findClipAtPosition,
   ]);
 
   /**
    * Start a time selection drag or edge resize
    * Call this from the container's onMouseDown handler
    */
-  const startDrag = (x: number, y: number) => {
+  const startDrag = (x: number, y: number, allowConversionToSpectral?: boolean) => {
     if (!enabled) return;
 
     // Check if clicking on an edge
@@ -290,15 +379,27 @@ export function useTimeSelection({
       // Start creating new selection
       const trackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
 
+      // Check if starting inside a clip (or explicitly allowed via parameter)
+      const startedInsideClip = allowConversionToSpectral !== undefined
+        ? allowConversionToSpectral
+        : (findClipAtPosition(x, y) !== null);
+
       dragStateRef.current = {
         startX: x,
         currentX: x,
         startTrackIndex: trackIndex,
         mode: 'create',
+        startedInsideClip,
       };
 
       // Clear any existing time selection
       onTimeSelectionChange(null);
+
+      // Clear any existing spectral selection
+      if (onClearSpectralSelection) {
+        onClearSpectralSelection();
+      }
+
       setCursorStyle('text');
     }
   };

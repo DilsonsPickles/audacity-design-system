@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Track, useAudioSelection, TimeSelectionCanvasOverlay } from '@audacity-ui/components';
+import { Track, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
 import './Canvas.css';
 
@@ -31,7 +31,7 @@ export function Canvas({
   pixelsPerSecond = 100,
   backgroundColor = '#212433',
 }: CanvasProps) {
-  const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection } = useTracksState();
+  const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode, playheadPosition } = useTracksState();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -44,12 +44,20 @@ export function Canvas({
   // Calculate total height based on all tracks + 2px gaps (top + between tracks)
   const totalHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
 
-  // Setup audio selection (composite hook for time, track, and clip selection)
+  // Check if any track has spectrogram or split view enabled
+  const hasSpectralView = spectrogramMode || tracks.some(track =>
+    track.viewMode === 'spectrogram' || track.viewMode === 'split'
+  );
+
+  // Setup audio selection (composite hook for time, track, clip, and spectral selection)
   const selection = useAudioSelection(
     {
       containerRef,
       currentTimeSelection: timeSelection,
       currentSelectedTracks: selectedTrackIndices,
+      currentSpectralSelection: spectralSelection,
+      spectrogramMode: hasSpectralView,
+      clipHeaderHeight: 20,
       pixelsPerSecond,
       leftPadding: LEFT_PADDING,
       tracks,
@@ -59,13 +67,56 @@ export function Canvas({
       enabled: true,
     },
     {
-      onTimeSelectionChange: (sel) => dispatch({ type: 'SET_TIME_SELECTION', payload: sel }),
+      onTimeSelectionChange: (sel) => {
+        console.log('onTimeSelectionChange called:', sel, 'spectrogramMode:', spectrogramMode);
+        dispatch({ type: 'SET_TIME_SELECTION', payload: sel });
+      },
+      onTimeSelectionFinalized: (sel) => {
+        if (sel) {
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
+        }
+      },
       onSelectedTracksChange: (trackIndices) => dispatch({ type: 'SET_SELECTED_TRACKS', payload: trackIndices }),
       onFocusedTrackChange: (trackIndex) => dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex }),
+      onSpectralSelectionChange: (sel) => {
+        console.log('onSpectralSelectionChange called:', sel);
+        dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: sel });
+      },
+      onSpectralSelectionFinalized: (sel) => {
+        if (sel) {
+          console.log('[onSpectralSelectionFinalized] Setting playhead to startTime:', sel.startTime, 'endTime:', sel.endTime);
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
+        }
+      },
       onTrackSelect: (trackIndex) => dispatch({ type: 'SELECT_TRACK', payload: trackIndex }),
       onClipSelect: (trackIndex, clipId) => dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId } }),
     }
   );
+
+  // Handle click to move playhead
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only update playhead if we're not dragging
+    if (selection.selection.wasJustDragging()) return;
+
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const time = (x - LEFT_PADDING) / pixelsPerSecond;
+
+    // Check if click was below all tracks (in empty space)
+    const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
+
+    if (y > totalTracksHeight) {
+      // Clicked in empty space below tracks - deselect everything
+      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: null });
+      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+    }
+
+    // Always move playhead on click
+    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, time) });
+  };
 
   // Calculate time selection overlay position and height
   const getTimeSelectionOverlayBounds = () => {
@@ -99,8 +150,13 @@ export function Canvas({
   const overlayBounds = getTimeSelectionOverlayBounds();
 
   return (
-    <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, overflow: 'visible' }}>
-      <div {...selection.containerProps}>
+    <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible' }}>
+      <div
+        {...selection.containerProps}
+        onClick={handleContainerClick}
+        onDragStart={(e) => e.preventDefault()}
+        style={{ ...selection.containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none' }}
+      >
         {tracks.map((track, trackIndex) => {
           const trackHeight = track.height || 114;
           const isSelected = selectedTrackIndices.includes(trackIndex);
@@ -127,6 +183,8 @@ export function Canvas({
                 clips={track.clips}
                 height={trackHeight}
                 trackIndex={trackIndex}
+                spectrogramMode={track.viewMode === 'spectrogram'}
+                splitView={track.viewMode === 'split'}
                 isSelected={isSelected}
                 isFocused={isFocused}
                 pixelsPerSecond={pixelsPerSecond}
@@ -148,6 +206,18 @@ export function Canvas({
           height={overlayBounds.height}
           backgroundColor="rgba(112, 181, 255, 0.3)"
           borderColor="transparent"
+        />
+
+        {/* Spectral Selection Overlay */}
+        <SpectralSelectionOverlay
+          spectralSelection={spectralSelection}
+          pixelsPerSecond={pixelsPerSecond}
+          leftPadding={LEFT_PADDING}
+          trackHeights={tracks.map(t => t.height || DEFAULT_TRACK_HEIGHT)}
+          trackGap={TRACK_GAP}
+          initialGap={TOP_GAP}
+          clipHeaderHeight={20}
+          tracks={tracks}
         />
       </div>
     </div>

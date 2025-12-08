@@ -38,20 +38,16 @@ jobs:
       - name: Build packages
         run: pnpm --filter @audacity-ui/core build && pnpm --filter @audacity-ui/tokens build && pnpm --filter @audacity-ui/components build
 
-      - name: Install demo dependencies
-        working-directory: apps/demo/clip-envelope
-        run: npm ci
-
-      - name: Build demo
-        working-directory: apps/demo/clip-envelope
-        run: npm run build
+      - name: Build sandbox app
+        working-directory: apps/sandbox
+        run: pnpm build
         env:
-          NODE_ENV: production
+          BASE_PATH: /clip-envelope-prototype
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./apps/demo/clip-envelope/out
+          path: ./apps/sandbox/dist
 
   deploy:
     environment:

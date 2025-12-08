@@ -20,12 +20,22 @@ interface Track {
   id: number;
   name: string;
   height?: number;
+  viewMode?: 'waveform' | 'spectrogram' | 'split';
   clips: Clip[];
 }
 
 interface TimeSelection {
   startTime: number;
   endTime: number;
+}
+
+interface SpectralSelection {
+  trackIndex: number;
+  clipId: number;
+  startTime: number;
+  endTime: number;
+  minFrequency: number; // 0-1 (normalized)
+  maxFrequency: number; // 0-1 (normalized)
 }
 
 // State interface
@@ -35,8 +45,13 @@ export interface TracksState {
   focusedTrackIndex: number | null;
   envelopeMode: boolean;
   envelopeAltMode: boolean;
+  spectrogramMode: boolean;
   timeSelection: TimeSelection | null;
+  spectralSelection: SpectralSelection | null;
+  playheadPosition: number; // in seconds
   hoveredPoint: { trackIndex: number; clipId: number; pointIndex: number } | null;
+  // Stores track view modes before spectrogram overlay was applied
+  viewModesBeforeOverlay: (('waveform' | 'spectrogram' | 'split') | undefined)[] | null;
 }
 
 // Action types
@@ -49,9 +64,13 @@ export type TracksAction =
   | { type: 'SET_FOCUSED_TRACK'; payload: number | null }
   | { type: 'SET_ENVELOPE_MODE'; payload: boolean }
   | { type: 'SET_ENVELOPE_ALT_MODE'; payload: boolean }
+  | { type: 'SET_SPECTROGRAM_MODE'; payload: boolean }
   | { type: 'SET_TIME_SELECTION'; payload: TimeSelection | null }
+  | { type: 'SET_SPECTRAL_SELECTION'; payload: SpectralSelection | null }
+  | { type: 'SET_PLAYHEAD_POSITION'; payload: number }
   | { type: 'SET_HOVERED_POINT'; payload: { trackIndex: number; clipId: number; pointIndex: number } | null }
   | { type: 'UPDATE_TRACK_HEIGHT'; payload: { index: number; height: number } }
+  | { type: 'UPDATE_TRACK_VIEW'; payload: { index: number; viewMode: 'waveform' | 'spectrogram' | 'split' } }
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'SELECT_TRACK'; payload: number };
 
@@ -62,8 +81,12 @@ const initialState: TracksState = {
   focusedTrackIndex: null,
   envelopeMode: false,
   envelopeAltMode: false,
+  spectrogramMode: false,
   timeSelection: null,
+  spectralSelection: null,
+  playheadPosition: 0,
   hoveredPoint: null,
+  viewModesBeforeOverlay: null,
 };
 
 // Reducer
@@ -110,8 +133,70 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         envelopeMode: action.payload ? false : state.envelopeMode
       };
 
+    case 'SET_SPECTROGRAM_MODE': {
+      const isEnabling = action.payload;
+
+      if (isEnabling) {
+        // Save current view modes before applying overlay
+        const savedViewModes = state.tracks.map(track => track.viewMode);
+
+        // Apply spectrogram overlay to all tracks
+        const newTracks = state.tracks.map(track => ({
+          ...track,
+          viewMode: 'spectrogram' as const,
+        }));
+
+        return {
+          ...state,
+          spectrogramMode: true,
+          viewModesBeforeOverlay: savedViewModes,
+          tracks: newTracks,
+        };
+      } else {
+        // Restore previous view modes
+        const newTracks = state.tracks.map((track, index) => ({
+          ...track,
+          viewMode: state.viewModesBeforeOverlay?.[index],
+        }));
+
+        // If there's a spectral selection and the track is being restored to waveform view,
+        // convert it to a time selection
+        let newSpectralSelection = state.spectralSelection;
+        let newTimeSelection = state.timeSelection;
+
+        if (state.spectralSelection) {
+          const trackIndex = state.spectralSelection.trackIndex;
+          const restoredViewMode = state.viewModesBeforeOverlay?.[trackIndex];
+
+          if (restoredViewMode === 'waveform' || restoredViewMode === undefined) {
+            // Convert spectral selection to time selection
+            newTimeSelection = {
+              startTime: state.spectralSelection.startTime,
+              endTime: state.spectralSelection.endTime,
+            };
+            newSpectralSelection = null;
+          }
+        }
+
+        return {
+          ...state,
+          spectrogramMode: false,
+          viewModesBeforeOverlay: null,
+          tracks: newTracks,
+          spectralSelection: newSpectralSelection,
+          timeSelection: newTimeSelection,
+        };
+      }
+    }
+
     case 'SET_TIME_SELECTION':
       return { ...state, timeSelection: action.payload };
+
+    case 'SET_SPECTRAL_SELECTION':
+      return { ...state, spectralSelection: action.payload };
+
+    case 'SET_PLAYHEAD_POSITION':
+      return { ...state, playheadPosition: action.payload };
 
     case 'SET_HOVERED_POINT':
       return { ...state, hoveredPoint: action.payload };
@@ -123,6 +208,39 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         height: action.payload.height,
       };
       return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_TRACK_VIEW': {
+      const newTracks = [...state.tracks];
+      newTracks[action.payload.index] = {
+        ...newTracks[action.payload.index],
+        viewMode: action.payload.viewMode,
+      };
+
+      // If changing to waveform view and there's a spectral selection on this track,
+      // convert it to a time selection
+      let newSpectralSelection = state.spectralSelection;
+      let newTimeSelection = state.timeSelection;
+
+      if (
+        action.payload.viewMode === 'waveform' &&
+        state.spectralSelection &&
+        state.spectralSelection.trackIndex === action.payload.index
+      ) {
+        // Convert spectral selection to time selection
+        newTimeSelection = {
+          startTime: state.spectralSelection.startTime,
+          endTime: state.spectralSelection.endTime,
+        };
+        newSpectralSelection = null;
+      }
+
+      return {
+        ...state,
+        tracks: newTracks,
+        spectralSelection: newSpectralSelection,
+        timeSelection: newTimeSelection,
+      };
     }
 
     case 'SELECT_CLIP': {

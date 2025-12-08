@@ -15,12 +15,13 @@ export interface TrackControlPanelProps {
   isMuted?: boolean;
   isSolo?: boolean;
   isFocused?: boolean;
+  isMenuOpen?: boolean;
   onVolumeChange?: (volume: number) => void;
   onPanChange?: (pan: number) => void;
   onMuteToggle?: () => void;
   onSoloToggle?: () => void;
   onEffectsClick?: () => void;
-  onMenuClick?: () => void;
+  onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
   className?: string;
   state?: 'idle' | 'hover' | 'active';
@@ -35,6 +36,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   isMuted = false,
   isSolo = false,
   isFocused = false,
+  isMenuOpen = false,
   onVolumeChange,
   onPanChange,
   onMuteToggle,
@@ -71,6 +73,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
           <GhostButton
             onClick={onMenuClick}
+            active={isMenuOpen}
             ariaLabel="Track menu"
           />
         </div>
