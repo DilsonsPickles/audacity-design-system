@@ -109,22 +109,9 @@ const sampleTracks = [
 
 function CanvasDemoContent() {
   const { state, dispatch } = useTracks();
-  const [canvasWidth, setCanvasWidth] = React.useState(800);
   const [scrollX, setScrollX] = React.useState(0);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const updateWidth = () => {
-      if (canvasContainerRef.current) {
-        setCanvasWidth(canvasContainerRef.current.clientWidth);
-      }
-    };
-
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
-  }, []);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;

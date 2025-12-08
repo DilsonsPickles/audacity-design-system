@@ -11,7 +11,9 @@ interface Clip {
   name: string;
   start: number;
   duration: number;
-  waveform: number[];
+  waveform?: number[];
+  waveformLeft?: number[];
+  waveformRight?: number[];
   envelopePoints: EnvelopePoint[];
   selected?: boolean;
 }

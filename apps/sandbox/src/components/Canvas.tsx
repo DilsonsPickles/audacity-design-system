@@ -31,7 +31,7 @@ export function Canvas({
   pixelsPerSecond = 100,
   backgroundColor = '#212433',
 }: CanvasProps) {
-  const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode, playheadPosition } = useTracksState();
+  const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode } = useTracksState();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +60,7 @@ export function Canvas({
       clipHeaderHeight: 20,
       pixelsPerSecond,
       leftPadding: LEFT_PADDING,
-      tracks,
+      tracks: tracks as any, // Type cast to handle local vs core type mismatch
       defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
       trackGap: TRACK_GAP,
       initialGap: TOP_GAP,
@@ -89,7 +89,7 @@ export function Canvas({
         }
       },
       onTrackSelect: (trackIndex) => dispatch({ type: 'SELECT_TRACK', payload: trackIndex }),
-      onClipSelect: (trackIndex, clipId) => dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId } }),
+      onClipSelect: (trackIndex, clipId) => dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clipId as number } }),
     }
   );
 
@@ -149,13 +149,15 @@ export function Canvas({
 
   const overlayBounds = getTimeSelectionOverlayBounds();
 
+  const containerProps = selection.containerProps as any;
+
   return (
     <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible' }}>
       <div
-        {...selection.containerProps}
+        {...containerProps}
         onClick={handleContainerClick}
-        onDragStart={(e) => e.preventDefault()}
-        style={{ ...selection.containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none' }}
+        onDragStart={(e: React.DragEvent) => e.preventDefault()}
+        style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none' } as React.CSSProperties}
       >
         {tracks.map((track, trackIndex) => {
           const trackHeight = track.height || 114;
@@ -180,7 +182,7 @@ export function Canvas({
               }}
             >
               <Track
-                clips={track.clips}
+                clips={track.clips as any}
                 height={trackHeight}
                 trackIndex={trackIndex}
                 spectrogramMode={track.viewMode === 'spectrogram'}
