@@ -188,6 +188,13 @@ function CanvasDemoContent() {
           <ToolButton icon="paste" />
         </ToolbarButtonGroup>
 
+        <div style={{ width: '8px' }} />
+
+        <ToolbarButtonGroup gap={2}>
+          <ToolButton icon="trim" />
+          <ToolButton icon="silence" />
+        </ToolbarButtonGroup>
+
         <ToolbarDivider />
 
         <ToolbarButtonGroup gap={4}>
