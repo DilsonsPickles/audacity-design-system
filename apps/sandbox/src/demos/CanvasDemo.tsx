@@ -175,6 +175,13 @@ function CanvasDemoContent() {
 
         <ToolbarDivider />
 
+        <ToolbarButtonGroup gap={2}>
+          <ToolButton icon="zoom-in" />
+          <ToolButton icon="zoom-out" />
+        </ToolbarButtonGroup>
+
+        <ToolbarDivider />
+
         <ToolbarButtonGroup gap={4}>
           <ToggleButton active={state.envelopeMode} onClick={handleToggleEnvelope}>
             <Icon name="automation" size={16} />

@@ -17,6 +17,8 @@ export type IconName =
   | 'skip-forward'
   | 'loop'
   | 'plus'
+  | 'zoom-in'
+  | 'zoom-out'
   | 'automation'
   | 'cloud'
   | 'copy'
@@ -46,6 +48,8 @@ const ICON_MAP: Record<IconName, string> = {
   'skip-forward': '\uF449',
   loop: '\uEF1F',
   plus: '\uEF2A',
+  'zoom-in': '\uEF22',
+  'zoom-out': '\uEF23',
   automation: '\uF45C',
   cloud: '\uF435',
   copy: '\uF398',
