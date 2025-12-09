@@ -176,6 +176,14 @@ function CanvasDemoContent() {
         <ToolbarDivider />
 
         <ToolbarButtonGroup gap={2}>
+          <ToolButton icon="cut" />
+          <ToolButton icon="copy" />
+          <ToolButton icon="paste" />
+        </ToolbarButtonGroup>
+
+        <ToolbarDivider />
+
+        <ToolbarButtonGroup gap={2}>
           <ToolButton icon="zoom-in" />
           <ToolButton icon="zoom-out" />
         </ToolbarButtonGroup>
