@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from '../contexts/TracksContext';
 import { Canvas } from '../components/Canvas';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, GhostButton, TransportButton, ToggleButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, ToolbarDivider, GhostButton, TransportButton, ToolButton, ToggleButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor } from '@audacity-ui/components';
 import { useTracks } from '../contexts/TracksContext';
 
 // Generate realistic waveform data
