@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { TimeSelection } from '@audacity-ui/core';
+import { TimeSelection, SpectralSelection } from '@audacity-ui/core';
 import './TimelineRuler.css';
 
 export interface TimelineRulerProps {
@@ -32,6 +32,10 @@ export interface TimelineRulerProps {
    */
   timeSelection?: TimeSelection | null;
   /**
+   * Spectral selection to display as grey highlight (for partial-height marquee)
+   */
+  spectralSelection?: SpectralSelection | null;
+  /**
    * Background color
    */
   backgroundColor?: string;
@@ -51,6 +55,10 @@ export interface TimelineRulerProps {
    * Color for time selection overlay in ruler
    */
   selectionColor?: string;
+  /**
+   * Color for spectral selection highlight in ruler
+   */
+  spectralHighlightColor?: string;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -64,11 +72,13 @@ export function TimelineRuler({
   height = DEFAULT_HEIGHT,
   leftPadding = DEFAULT_LEFT_PADDING,
   timeSelection = null,
+  spectralSelection = null,
   backgroundColor = '#E3E3E8',
   textColor = '#14151A',
   lineColor = '#D4D5D9',
   tickColor = '#828387',
   selectionColor = 'rgba(255, 255, 255, 0.5)',
+  spectralHighlightColor = 'rgba(130, 131, 135, 0.3)',
 }: TimelineRulerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -94,13 +104,23 @@ export function TimelineRuler({
     // Draw time selection in bottom half (if present)
     const midHeight = Math.floor(height / 2);
     if (timeSelection) {
-      const startX = timeSelection.startTime * pixelsPerSecond + leftPadding;
-      const endX = timeSelection.endTime * pixelsPerSecond + leftPadding;
+      // Don't add leftPadding - selection should align with canvas below which has leftPadding=0
+      const startX = timeSelection.startTime * pixelsPerSecond - scrollX;
+      const endX = timeSelection.endTime * pixelsPerSecond - scrollX;
 
       ctx.fillStyle = selectionColor;
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
 
       // Borders removed for cleaner look with blend mode
+    }
+
+    // Draw spectral selection as grey highlight in bottom half (for partial-height marquee)
+    if (spectralSelection && !timeSelection) {
+      const startX = spectralSelection.startTime * pixelsPerSecond - scrollX;
+      const endX = spectralSelection.endTime * pixelsPerSecond - scrollX;
+
+      ctx.fillStyle = spectralHighlightColor;
+      ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
     }
 
     // Draw horizontal divider line at middle (skip the leftPadding area)
@@ -124,7 +144,7 @@ export function TimelineRuler({
       lineColor,
       tickColor
     );
-  }, [pixelsPerSecond, scrollX, totalDuration, width, height, leftPadding, timeSelection, backgroundColor, textColor, lineColor, tickColor, selectionColor]);
+  }, [pixelsPerSecond, scrollX, totalDuration, width, height, leftPadding, timeSelection, spectralSelection, backgroundColor, textColor, lineColor, tickColor, selectionColor, spectralHighlightColor]);
 
   return (
     <canvas

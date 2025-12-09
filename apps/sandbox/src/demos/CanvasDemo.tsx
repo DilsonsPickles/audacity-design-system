@@ -245,6 +245,7 @@ function CanvasDemoContent() {
                 height={40}
                 leftPadding={12}
                 timeSelection={rulerTimeSelection}
+                spectralSelection={state.spectralSelection}
                 selectionColor="rgba(112, 181, 255, 0.5)"
               />
               {/* Playhead icon only in ruler */}

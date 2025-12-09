@@ -53,6 +53,15 @@ export interface TimeSelection {
   endTime: number;
 }
 
+export interface SpectralSelection {
+  startTime: number;
+  endTime: number;
+  minFrequency: number;
+  maxFrequency: number;
+  trackIndex: number;
+  clipId: number;
+}
+
 export interface TimeSelectionDragState {
   startX: number;
   currentX: number;
