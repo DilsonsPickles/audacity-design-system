@@ -180,7 +180,7 @@ function CanvasDemoContent() {
           <ToolButton icon="zoom-out" />
         </ToolbarButtonGroup>
 
-        <div style={{ width: '8px' }} />
+        <div style={{ width: '4px' }} />
 
         <ToolbarButtonGroup gap={2}>
           <ToolButton icon="cut" />
@@ -188,7 +188,7 @@ function CanvasDemoContent() {
           <ToolButton icon="paste" />
         </ToolbarButtonGroup>
 
-        <div style={{ width: '8px' }} />
+        <div style={{ width: '4px' }} />
 
         <ToolbarButtonGroup gap={2}>
           <ToolButton icon="trim" />
