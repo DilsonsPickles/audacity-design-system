@@ -33,10 +33,10 @@ function initializeTracks(): Track[] {
     return waveform;
   };
 
-  const createClip = (id: number, name: string, start: number, duration: number): Clip => ({
+  const createClip = (id: number, name: string, startTime: number, duration: number): Clip => ({
     id,
     name,
-    start,
+    startTime,
     duration,
     waveform: generateWaveform(duration),
     envelopePoints: [],

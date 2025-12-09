@@ -44,8 +44,6 @@ export interface UseSpectralSelectionConfig {
   tracks: SpectralTrack[];
   /** Pixels per second - zoom level */
   pixelsPerSecond: number;
-  /** Left padding in pixels */
-  leftPadding: number;
   /** Default track height */
   defaultTrackHeight: number;
   /** Track gap in pixels */
@@ -66,7 +64,7 @@ export interface UseSpectralSelectionCallbacks {
   /** Callback to clear time selection when spectral selection starts */
   onClearTimeSelection?: () => void;
   /** Callback to convert spectral selection to time selection when dragged out of bounds */
-  onConvertToTimeSelection?: (startTime: number, endTime: number, trackIndices: number[], currentX: number, currentY: number, dragStartX: number, dragStartY: number) => void;
+  onConvertToTimeSelection?: (startTime: number, endTime: number, trackIndices: number[], currentX: number, currentY: number, dragStartX: number, dragStartY: number, spectralSelection: SpectralSelection) => void;
 }
 
 type ResizeMode =
@@ -105,7 +103,6 @@ export function useSpectralSelection(
     currentSpectralSelection,
     tracks,
     pixelsPerSecond,
-    leftPadding,
     defaultTrackHeight,
     trackGap,
     initialGap,
@@ -118,6 +115,7 @@ export function useSpectralSelection(
   const dragStateRef = useRef<DragState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [cursorStyle, setCursorStyle] = useState('default');
+  const wasDraggingRef = useRef(false);
 
   /**
    * Check if a position is within a clip that supports spectral selection
@@ -233,8 +231,9 @@ export function useSpectralSelection(
   }, [tracks, pixelsPerSecond, defaultTrackHeight, trackGap, initialGap, clipHeaderHeight]);
 
   /**
-   * Check if Y position is outside the clip body bounds (in pixel space)
-   * For split view, only the top half (spectrogram area) is valid
+   * Check if Y position is outside the track bounds
+   * We allow the cursor to be in the header area (to select full frequency range)
+   * but return true if cursor goes outside the track entirely (into another track or empty space)
    */
   const isYOutsideClipBounds = useCallback((y: number, trackIndex: number): boolean => {
     let trackY = initialGap;
@@ -244,16 +243,18 @@ export function useSpectralSelection(
 
     const track = tracks[trackIndex];
     const trackHeight = track.height || defaultTrackHeight;
-    const clipBodyY = trackY + clipHeaderHeight;
-    const clipBodyHeight = trackHeight - clipHeaderHeight;
 
-    // Check if Y is above or below the clip body
-    if (y < clipBodyY || y > clipBodyY + clipBodyHeight) {
+    // If Y is outside this track (above or below), trigger conversion
+    // This allows header area but not outside the track bounds
+    if (y < trackY || y > trackY + trackHeight) {
       return true;
     }
 
     // In split view, spectral selection is only valid in top half (spectrogram area)
+    // If cursor is below the split line, it's outside spectral bounds
     if (track.viewMode === 'split') {
+      const clipBodyY = trackY + clipHeaderHeight;
+      const clipBodyHeight = trackHeight - clipHeaderHeight;
       const splitY = clipBodyY + clipBodyHeight / 2;
       return y > splitY; // Below the split line = outside spectral area
     }
@@ -278,6 +279,20 @@ export function useSpectralSelection(
     // Check if X is left or right of the clip (exact pixel match, no buffer)
     return x < clipStartX || x > clipEndX;
   }, [tracks, pixelsPerSecond]);
+
+  /**
+   * Clamp time to be within clip boundaries
+   */
+  const clampTimeToClip = useCallback((time: number, trackIndex: number, clipId: number): number => {
+    const track = tracks[trackIndex];
+    const clip = track.clips.find(c => c.id === clipId);
+    if (!clip) return time;
+
+    const clipStart = clip.start;
+    const clipEnd = clip.start + clip.duration;
+
+    return Math.max(clipStart, Math.min(clipEnd, time));
+  }, [tracks]);
 
   /**
    * Convert Y position within clip body to normalized frequency (0-1)
@@ -309,17 +324,20 @@ export function useSpectralSelection(
 
   /**
    * Convert X position to time
+   * NOTE: Clips are positioned WITHOUT leftPadding (see Track.tsx line 118)
+   * Mouse X is also relative to the canvas container (no leftPadding offset)
    */
   const xToTime = useCallback((x: number): number => {
-    return (x - leftPadding) / pixelsPerSecond;
-  }, [leftPadding, pixelsPerSecond]);
+    return x / pixelsPerSecond;
+  }, [pixelsPerSecond]);
 
   /**
    * Convert time to X position
+   * NOTE: Clips are positioned WITHOUT leftPadding
    */
   const timeToX = useCallback((time: number): number => {
-    return leftPadding + time * pixelsPerSecond;
-  }, [leftPadding, pixelsPerSecond]);
+    return time * pixelsPerSecond;
+  }, [pixelsPerSecond]);
 
   /**
    * Convert normalized frequency to Y position
@@ -345,6 +363,40 @@ export function useSpectralSelection(
 
     return spectralAreaTop + yInSpectralArea;
   }, [tracks, defaultTrackHeight, trackGap, initialGap, clipHeaderHeight]);
+
+  /**
+   * Check if the spectral selection spans the full frequency range
+   * Returns true if BOTH top and bottom edges are at or beyond the clip body boundaries
+   * (meaning the selection covers all frequencies = equivalent to time selection)
+   */
+  const isSelectionFullFrequencyRange = useCallback((minFreq: number, maxFreq: number, trackIndex: number): boolean => {
+    let trackY = initialGap;
+    for (let i = 0; i < trackIndex; i++) {
+      trackY += (tracks[i].height || defaultTrackHeight) + trackGap;
+    }
+
+    const track = tracks[trackIndex];
+    const trackHeight = track.height || defaultTrackHeight;
+    const clipBodyY = trackY + clipHeaderHeight;
+    const clipBodyHeight = trackHeight - clipHeaderHeight;
+
+    // In split view, only use top half for spectral area
+    const spectralAreaHeight = track.viewMode === 'split' ? clipBodyHeight / 2 : clipBodyHeight;
+
+    // Convert frequency bounds to Y positions
+    const topY = frequencyToY(maxFreq, trackIndex);
+    const bottomY = frequencyToY(minFreq, trackIndex);
+
+    const spectralAreaTop = clipBodyY;
+    const spectralAreaBottom = clipBodyY + spectralAreaHeight;
+
+    // Check if selection spans the full frequency range
+    // Top edge at or above the top boundary AND bottom edge at or below the bottom boundary
+    const topAtBoundary = topY <= spectralAreaTop;
+    const bottomAtBoundary = bottomY >= spectralAreaBottom;
+
+    return topAtBoundary && bottomAtBoundary;
+  }, [tracks, defaultTrackHeight, trackGap, initialGap, clipHeaderHeight, frequencyToY]);
 
   /**
    * Detect resize mode based on position relative to current selection
@@ -488,34 +540,126 @@ export function useSpectralSelection(
     const { trackIndex, clipId, startX, startY, mode, initialSelection } = dragStateRef.current;
 
     if (mode === 'create') {
-      // Creating new selection
-      // Check if mouse is outside clip bounds (pixel-space check)
-      const currentYOutside = isYOutsideClipBounds(y, trackIndex);
-      const currentXOutside = isXOutsideClipBounds(x, trackIndex, clipId);
+      // Check if cursor is outside bounds - convert to time selection if:
+      // - X is outside the clip horizontally, OR
+      // - Y is in a different track
+      const yOutsideBounds = isYOutsideClipBounds(y, trackIndex);
+      const xOutsideBounds = isXOutsideClipBounds(x, trackIndex, clipId);
 
-      // Calculate raw times (preserve direction for anchor calculation)
-      const rawStartTime = xToTime(startX);
-      const rawEndTime = xToTime(x);
+      // Convert if we're in another track or outside clip horizontally
+      if ((yOutsideBounds || xOutsideBounds) && onConvertToTimeSelection) {
+        // First, save the current spectral selection state before converting
+        // Calculate the current selection bounds
+        const rawStartTime = xToTime(startX);
+        const rawEndTime = xToTime(x);
 
-      // Convert to time selection if mouse cursor leaves the clip boundary
-      if (onConvertToTimeSelection && (currentYOutside || currentXOutside)) {
-        // Clear spectral selection FIRST to prevent visual artifact
-        onSpectralSelectionChange(null);
-        // Clear drag state immediately
+        // Clamp times to clip boundaries for the visual marquee
+        const clampedStartTime = clampTimeToClip(rawStartTime, trackIndex, clipId);
+        const clampedEndTime = clampTimeToClip(rawEndTime, trackIndex, clipId);
+        const clampedSelStartTime = Math.min(clampedStartTime, clampedEndTime);
+        const clampedSelEndTime = Math.max(clampedStartTime, clampedEndTime);
+
+        // Calculate frequencies
+        let freq1 = yToFrequency(startY, trackIndex);
+        let freq2 = yToFrequency(y, trackIndex);
+
+        // Apply stereo channel constraints if needed
+        const track = tracks[trackIndex];
+        const clip = track.clips.find(c => c.id === clipId);
+        const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
+        const isSpectrogramMode = track.viewMode === 'spectrogram';
+
+        if (isSpectrogramMode && isStereo) {
+          const startedInLChannel = freq1 >= 0.5;
+          if (startedInLChannel) {
+            freq1 = Math.max(0.5, Math.min(1.0, freq1));
+            freq2 = Math.max(0.5, Math.min(1.0, freq2));
+          } else {
+            freq1 = Math.max(0.0, Math.min(0.5, freq1));
+            freq2 = Math.max(0.0, Math.min(0.5, freq2));
+          }
+        }
+
+        const minFrequency = Math.min(freq1, freq2);
+        const maxFrequency = Math.max(freq1, freq2);
+
+        // Create the spectral selection object
+        const spectralSelectionToKeep: SpectralSelection = {
+          trackIndex,
+          clipId,
+          startTime: clampedSelStartTime,
+          endTime: clampedSelEndTime,
+          minFrequency,
+          maxFrequency,
+        };
+
+        // Update the spectral selection so it remains visible on the clip
+        onSpectralSelectionChange(spectralSelectionToKeep);
+
+        // Get all selected track indices (just the current track for spectral selection)
+        const trackIndices = [trackIndex];
+
+        // Use unclamped times for the time selection (can extend beyond clip)
+        const startTime = Math.min(rawStartTime, rawEndTime);
+        const endTime = Math.max(rawStartTime, rawEndTime);
+
+        console.log('[useSpectralSelection] Converting to time selection - out of bounds');
+
+        // Convert to time selection, passing the spectral selection to preserve
+        onConvertToTimeSelection(
+          startTime,
+          endTime,
+          trackIndices,
+          x,
+          y,
+          startX,
+          startY,
+          spectralSelectionToKeep
+        );
+
+        // Clear the drag state - conversion callback will handle starting time selection drag
         dragStateRef.current = null;
         setIsDragging(false);
-        // Pass RAW times (not normalized) so the time selection hook can determine anchor edge correctly
-        onConvertToTimeSelection(rawStartTime, rawEndTime, [trackIndex], x, y, startX, startY);
         return;
       }
 
-      // Normalized times for rendering the selection (only used when inside clip)
-      const startTime = Math.min(rawStartTime, rawEndTime);
-      const endTime = Math.max(rawStartTime, rawEndTime);
+      // Creating new selection - clamp to clip boundaries
+      const rawStartTime = xToTime(startX);
+      const rawEndTime = xToTime(x);
+
+      // Clamp times to clip boundaries
+      const clampedStartTime = clampTimeToClip(rawStartTime, trackIndex, clipId);
+      const clampedEndTime = clampTimeToClip(rawEndTime, trackIndex, clipId);
+
+      const startTime = Math.min(clampedStartTime, clampedEndTime);
+      const endTime = Math.max(clampedStartTime, clampedEndTime);
 
       // Convert Y positions to frequencies (automatically clamped to clip bounds)
-      const freq1 = yToFrequency(startY, trackIndex);
-      const freq2 = yToFrequency(y, trackIndex);
+      let freq1 = yToFrequency(startY, trackIndex);
+      let freq2 = yToFrequency(y, trackIndex);
+
+      // For stereo spectrogram, constrain frequencies to stay within the channel where drag started
+      const track = tracks[trackIndex];
+      const clip = track.clips.find(c => c.id === clipId);
+      const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
+      const isSpectrogramMode = track.viewMode === 'spectrogram';
+
+      if (isSpectrogramMode && isStereo) {
+        // Determine which channel the drag started in based on startY frequency
+        // L channel (top): 0.5-1.0, R channel (bottom): 0.0-0.5
+        const startedInLChannel = freq1 >= 0.5;
+
+        if (startedInLChannel) {
+          // Constrain to L channel (0.5-1.0)
+          freq1 = Math.max(0.5, Math.min(1.0, freq1));
+          freq2 = Math.max(0.5, Math.min(1.0, freq2));
+        } else {
+          // Constrain to R channel (0.0-0.5)
+          freq1 = Math.max(0.0, Math.min(0.5, freq1));
+          freq2 = Math.max(0.0, Math.min(0.5, freq2));
+        }
+      }
+
       const minFrequency = Math.min(freq1, freq2);
       const maxFrequency = Math.max(freq1, freq2);
 
@@ -542,6 +686,8 @@ export function useSpectralSelection(
       // Check if X is outside clip bounds (pixel-space check)
       const xOutsideBounds = isXOutsideClipBounds(x, trackIndex, clipId);
 
+      // Clamp the current position to stay within clip bounds during resize
+      // (We don't want to convert to time selection when resizing, only when creating)
       const currentFreq = yToFrequency(y, trackIndex);
 
       // Calculate center frequency for inverse resizing
@@ -552,8 +698,29 @@ export function useSpectralSelection(
         case 'move':
           // Move entire selection both horizontally and vertically
           const deltaTime = currentTime - xToTime(startX);
-          startTime = initialSelection.startTime + deltaTime;
-          endTime = initialSelection.endTime + deltaTime;
+          let newStartTime = initialSelection.startTime + deltaTime;
+          let newEndTime = initialSelection.endTime + deltaTime;
+
+          // Get clip boundaries
+          const track = tracks[trackIndex];
+          const clip = track.clips.find(c => c.id === clipId);
+          if (clip) {
+            const clipStart = clip.start;
+            const clipEnd = clip.start + clip.duration;
+            const selectionDuration = initialSelection.endTime - initialSelection.startTime;
+
+            // Clamp the movement so the entire selection stays within clip bounds
+            if (newStartTime < clipStart) {
+              newStartTime = clipStart;
+              newEndTime = clipStart + selectionDuration;
+            } else if (newEndTime > clipEnd) {
+              newEndTime = clipEnd;
+              newStartTime = clipEnd - selectionDuration;
+            }
+          }
+
+          startTime = newStartTime;
+          endTime = newEndTime;
 
           const startYFreq = yToFrequency(startY, trackIndex);
           const deltaFreq = currentFreq - startYFreq;
@@ -563,131 +730,76 @@ export function useSpectralSelection(
           // Clamp frequencies to allow user to select full range
           minFrequency = Math.max(0, Math.min(1, minFrequency));
           maxFrequency = Math.max(0, Math.min(1, maxFrequency));
-
-          // Check if moved beyond clip bounds (vertical or horizontal)
-          if (onConvertToTimeSelection && (yOutsideBounds || xOutsideBounds)) {
-            onConvertToTimeSelection(startTime, endTime, [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-left':
           startTime = currentTime;
-
-          // Check if dragged beyond bounds (pixel-space check)
-          if (onConvertToTimeSelection && xOutsideBounds) {
-            onConvertToTimeSelection(Math.min(startTime, initialSelection.endTime), Math.max(startTime, initialSelection.endTime), [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-right':
           endTime = currentTime;
-
-          // Check if dragged beyond bounds (pixel-space check)
-          if (onConvertToTimeSelection && xOutsideBounds) {
-            onConvertToTimeSelection(Math.min(endTime, initialSelection.startTime), Math.max(endTime, initialSelection.startTime), [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-top':
           // Move top edge and bottom edge inversely around center
           const topDelta = currentFreq - initialSelection.maxFrequency;
           maxFrequency = currentFreq;
           minFrequency = initialSelection.minFrequency - topDelta;
-
-          // Convert if mouse leaves clip bounds vertically
-          if (onConvertToTimeSelection && yOutsideBounds) {
-            onConvertToTimeSelection(startTime, endTime, [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-bottom':
           // Move bottom edge and top edge inversely around center
           const bottomDelta = currentFreq - initialSelection.minFrequency;
           minFrequency = currentFreq;
           maxFrequency = initialSelection.maxFrequency - bottomDelta;
-
-          // Convert if mouse leaves clip bounds vertically
-          if (onConvertToTimeSelection && yOutsideBounds) {
-            onConvertToTimeSelection(startTime, endTime, [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-tl':
           // Corner resize - only resize the edges being dragged
           startTime = currentTime;
           maxFrequency = currentFreq;
-
-          // Check if dragged beyond clip bounds (vertical or horizontal)
-          if (onConvertToTimeSelection && (yOutsideBounds || xOutsideBounds)) {
-            onConvertToTimeSelection(Math.min(startTime, initialSelection.endTime), Math.max(startTime, initialSelection.endTime), [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-tr':
           // Corner resize - only resize the edges being dragged
           endTime = currentTime;
           maxFrequency = currentFreq;
-
-          // Check if dragged beyond clip bounds (vertical or horizontal)
-          if (onConvertToTimeSelection && (yOutsideBounds || xOutsideBounds)) {
-            onConvertToTimeSelection(Math.min(endTime, initialSelection.startTime), Math.max(endTime, initialSelection.startTime), [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-bl':
           // Corner resize - only resize the edges being dragged
           startTime = currentTime;
           minFrequency = currentFreq;
-
-          // Check if dragged beyond clip bounds (vertical or horizontal)
-          if (onConvertToTimeSelection && (yOutsideBounds || xOutsideBounds)) {
-            onConvertToTimeSelection(Math.min(startTime, initialSelection.endTime), Math.max(startTime, initialSelection.endTime), [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
         case 'resize-br':
           // Corner resize - only resize the edges being dragged
           endTime = currentTime;
           minFrequency = currentFreq;
-
-          // Check if dragged beyond clip bounds (vertical or horizontal)
-          if (onConvertToTimeSelection && (yOutsideBounds || xOutsideBounds)) {
-            onConvertToTimeSelection(Math.min(endTime, initialSelection.startTime), Math.max(endTime, initialSelection.startTime), [trackIndex], x, y, startX, startY);
-            onSpectralSelectionChange(null);
-            dragStateRef.current = null;
-            setIsDragging(false);
-            return;
-          }
           break;
       }
 
       // Clamp frequencies to 0-1 range
       minFrequency = Math.max(0, Math.min(1, minFrequency));
       maxFrequency = Math.max(0, Math.min(1, maxFrequency));
+
+      // For stereo spectrogram, constrain frequencies to stay within the channel of the initial selection
+      const track = tracks[trackIndex];
+      const clip = track.clips.find(c => c.id === clipId);
+      const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
+      const isSpectrogramMode = track.viewMode === 'spectrogram';
+
+      if (isSpectrogramMode && isStereo && initialSelection) {
+        // Determine which channel the selection was in based on initial frequencies
+        // L channel (top): 0.5-1.0, R channel (bottom): 0.0-0.5
+        const wasInLChannel = initialSelection.minFrequency >= 0.5 || initialSelection.maxFrequency > 0.5;
+
+        if (wasInLChannel) {
+          // Constrain to L channel (0.5-1.0)
+          minFrequency = Math.max(0.5, Math.min(1.0, minFrequency));
+          maxFrequency = Math.max(0.5, Math.min(1.0, maxFrequency));
+        } else {
+          // Constrain to R channel (0.0-0.5)
+          minFrequency = Math.max(0.0, Math.min(0.5, minFrequency));
+          maxFrequency = Math.max(0.0, Math.min(0.5, maxFrequency));
+        }
+      }
+
+      // Clamp times to clip boundaries
+      startTime = clampTimeToClip(startTime, trackIndex, clipId);
+      endTime = clampTimeToClip(endTime, trackIndex, clipId);
 
       // Ensure proper ordering
       if (startTime > endTime) {
@@ -724,15 +836,39 @@ export function useSpectralSelection(
    */
   const endDrag = useCallback(() => {
     if (dragStateRef.current?.isDragging) {
+      const { startX, startY, currentX, currentY, mode } = dragStateRef.current;
+
+      // Only set wasDragging flag if we actually moved the mouse (not just a click)
+      const deltaX = Math.abs(currentX - startX);
+      const deltaY = Math.abs(currentY - startY);
+      const didActuallyDrag = deltaX > 2 || deltaY > 2; // 2px threshold for accidental movement
+
+      if (didActuallyDrag) {
+        // Set flag to prevent click handlers from firing immediately after drag
+        wasDraggingRef.current = true;
+
+        // Clear the wasDragging flag after a short delay
+        setTimeout(() => {
+          wasDraggingRef.current = false;
+        }, 10);
+
+        // Notify that selection is finalized (only if we actually dragged)
+        if (onSpectralSelectionFinalized) {
+          onSpectralSelectionFinalized(currentSpectralSelection);
+        }
+      } else {
+        // Was just a click (not a drag)
+        // If we were creating a new selection, clear the spectral selection
+        if (mode === 'create') {
+          onSpectralSelectionChange(null);
+        }
+        // If we were resizing, keep the selection as is (it's already been updated)
+      }
+
       dragStateRef.current = null;
       setIsDragging(false);
-
-      // Notify that selection is finalized
-      if (onSpectralSelectionFinalized) {
-        onSpectralSelectionFinalized(currentSpectralSelection);
-      }
     }
-  }, [currentSpectralSelection, onSpectralSelectionFinalized]);
+  }, [currentSpectralSelection, onSpectralSelectionFinalized, onSpectralSelectionChange]);
 
   // Add global mouse up listener to end drag
   useEffect(() => {
@@ -754,5 +890,6 @@ export function useSpectralSelection(
     isDragging,
     cursorStyle,
     isPositionOnSpectralClip,
+    wasJustDragging: () => wasDraggingRef.current,
   };
 }

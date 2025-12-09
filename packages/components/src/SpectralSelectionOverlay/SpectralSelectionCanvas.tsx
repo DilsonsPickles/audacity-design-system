@@ -88,6 +88,13 @@ export function SpectralSelectionCanvas({
 
     const spectralAreaHeight = isSplitView ? clipBodyHeight / 2 : clipBodyHeight;
 
+    // Check if selection spans full frequency range for time-selection-style overlay
+    // For mono/split: full range is 0-1
+    // For stereo spectrogram: also consider full L channel (0.5-1) or full R channel (0-0.5)
+    const isFullHeight = (minFrequency === 0 && maxFrequency === 1) ||
+                         (isSpectrogramMode && isStereo && minFrequency === 0.5 && maxFrequency === 1.0) ||
+                         (isSpectrogramMode && isStereo && minFrequency === 0.0 && maxFrequency === 0.5);
+
     // For stereo spectrogram, render on both L and R channels
     if (isSpectrogramMode && isStereo) {
       // Stereo spectrogram: L channel on top half, R channel on bottom half
@@ -102,6 +109,15 @@ export function SpectralSelectionCanvas({
         trackIndex,
         coordinateConfig
       );
+
+      // Draw full-height overlay BEFORE clipping (so it covers the header too)
+      if (isFullHeight) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen'; // Use same blend mode as time selection
+        ctx.fillStyle = 'rgba(112, 181, 255, 0.6)'; // Increased opacity to match time selection brightness
+        ctx.fillRect(boundsL.leftX, trackY, boundsL.width, trackHeight);
+        ctx.restore();
+      }
 
       ctx.save();
       ctx.beginPath();
@@ -166,6 +182,15 @@ export function SpectralSelectionCanvas({
         trackIndex,
         coordinateConfig
       );
+
+      // Draw full-height overlay BEFORE clipping (so it covers the header too)
+      if (isFullHeight) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen'; // Use same blend mode as time selection
+        ctx.fillStyle = 'rgba(112, 181, 255, 0.6)'; // Increased opacity to match time selection brightness
+        ctx.fillRect(bounds.leftX, trackY, bounds.width, trackHeight);
+        ctx.restore();
+      }
 
       ctx.save();
       ctx.beginPath();

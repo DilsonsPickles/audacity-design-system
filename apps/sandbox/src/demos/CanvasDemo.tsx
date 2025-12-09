@@ -127,6 +127,33 @@ function CanvasDemoContent() {
     dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: !state.spectrogramMode });
   };
 
+  // Calculate the effective time selection for the ruler
+  // If spectral selection is full-height, show it as a time selection in the ruler
+  const rulerTimeSelection = React.useMemo(() => {
+    if (state.spectralSelection) {
+      const { minFrequency, maxFrequency, startTime, endTime, trackIndex } = state.spectralSelection;
+
+      // Check if it's a stereo track
+      const track = state.tracks[trackIndex];
+      const clip = track?.clips.find(c => c.id === state.spectralSelection?.clipId);
+      const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
+      const isSpectrogramMode = track?.viewMode === 'spectrogram';
+
+      // Full-height spectral selection cases:
+      // 1. Mono/split: full range 0-1
+      // 2. Stereo spectrogram: full L channel (0.5-1) or full R channel (0-0.5)
+      const isFullHeight = (minFrequency === 0 && maxFrequency === 1) ||
+                           (isSpectrogramMode && isStereo && minFrequency === 0.5 && maxFrequency === 1.0) ||
+                           (isSpectrogramMode && isStereo && minFrequency === 0.0 && maxFrequency === 0.5);
+
+      if (isFullHeight) {
+        return { startTime, endTime };
+      }
+    }
+    // Otherwise show regular time selection
+    return state.timeSelection;
+  }, [state.spectralSelection, state.timeSelection, state.tracks]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       <Toolbar>
@@ -216,14 +243,15 @@ function CanvasDemoContent() {
                 totalDuration={50}
                 width={5000}
                 height={40}
-                timeSelection={state.timeSelection}
+                leftPadding={12}
+                timeSelection={rulerTimeSelection}
                 selectionColor="rgba(112, 181, 255, 0.5)"
               />
               {/* Playhead icon only in ruler */}
               <PlayheadCursor
                 position={state.playheadPosition}
                 pixelsPerSecond={100}
-                leftPadding={11.5}
+                leftPadding={0}
                 height={0}
                 showTopIcon={true}
                 iconTopOffset={24}
@@ -238,13 +266,13 @@ function CanvasDemoContent() {
             style={{ flex: 1, overflowX: 'scroll', overflowY: 'hidden', backgroundColor: '#212433' }}
           >
             <div style={{ minWidth: '5000px', height: '100%', position: 'relative' }}>
-              <Canvas pixelsPerSecond={100} width={5000} />
+              <Canvas pixelsPerSecond={100} width={5000} leftPadding={0} />
               {/* Playhead stalk only (no icon) */}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
                 <PlayheadCursor
                   position={state.playheadPosition}
                   pixelsPerSecond={100}
-                  leftPadding={12}
+                  leftPadding={0}
                   height={1000}
                   showTopIcon={false}
                 />

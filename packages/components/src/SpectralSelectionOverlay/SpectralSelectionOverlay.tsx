@@ -21,10 +21,6 @@ export interface SpectralSelectionOverlayProps {
    */
   pixelsPerSecond: number;
   /**
-   * Left padding in pixels
-   */
-  leftPadding: number;
-  /**
    * Track heights array
    */
   trackHeights: number[];
@@ -59,7 +55,6 @@ export interface SpectralSelectionOverlayProps {
 export function SpectralSelectionOverlay({
   spectralSelection,
   pixelsPerSecond,
-  leftPadding,
   trackHeights,
   trackGap,
   initialGap,
@@ -89,7 +84,6 @@ export function SpectralSelectionOverlay({
   // Calculate if hovering over center line
   const coordinateConfig: CoordinateConfig = {
     pixelsPerSecond,
-    leftPadding,
     trackHeights,
     trackGap,
     initialGap,

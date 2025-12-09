@@ -8,10 +8,10 @@ import { Track } from '../types';
  * Convert pixel X position to time in seconds
  * @param x - Pixel position on canvas
  * @param pixelsPerSecond - Zoom level (pixels per second)
- * @param leftPadding - Left padding before timeline starts
+ * @param leftPadding - Left padding before timeline starts (DEPRECATED - pass 0)
  * @returns Time in seconds
  */
-export function pixelsToTime(x: number, pixelsPerSecond: number, leftPadding: number): number {
+export function pixelsToTime(x: number, pixelsPerSecond: number, leftPadding: number = 0): number {
   return (x - leftPadding) / pixelsPerSecond;
 }
 
@@ -19,10 +19,10 @@ export function pixelsToTime(x: number, pixelsPerSecond: number, leftPadding: nu
  * Convert time in seconds to pixel X position
  * @param time - Time in seconds
  * @param pixelsPerSecond - Zoom level (pixels per second)
- * @param leftPadding - Left padding before timeline starts
+ * @param leftPadding - Left padding before timeline starts (DEPRECATED - pass 0)
  * @returns Pixel X position
  */
-export function timeToPixels(time: number, pixelsPerSecond: number, leftPadding: number): number {
+export function timeToPixels(time: number, pixelsPerSecond: number, leftPadding: number = 0): number {
   return time * pixelsPerSecond + leftPadding;
 }
 

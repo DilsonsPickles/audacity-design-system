@@ -18,6 +18,11 @@ export interface CanvasProps {
    * @default '#212433'
    */
   backgroundColor?: string;
+  /**
+   * Left padding in pixels (for alignment with ruler)
+   * @default 0
+   */
+  leftPadding?: number;
 }
 
 /**
@@ -30,6 +35,7 @@ export function Canvas({
   width = 5000,
   pixelsPerSecond = 100,
   backgroundColor = '#212433',
+  leftPadding = 0,
 }: CanvasProps) {
   const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode } = useTracksState();
   const dispatch = useTracksDispatch();
@@ -38,7 +44,6 @@ export function Canvas({
   // Configuration constants
   const TOP_GAP = 2;
   const TRACK_GAP = 2;
-  const LEFT_PADDING = 12;
   const DEFAULT_TRACK_HEIGHT = 114;
 
   // Calculate total height based on all tracks + 2px gaps (top + between tracks)
@@ -59,7 +64,7 @@ export function Canvas({
       spectrogramMode: hasSpectralView,
       clipHeaderHeight: 20,
       pixelsPerSecond,
-      leftPadding: LEFT_PADDING,
+      leftPadding: 0,  // No leftPadding - unified coordinate system
       tracks: tracks as any, // Type cast to handle local vs core type mismatch
       defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
       trackGap: TRACK_GAP,
@@ -84,7 +89,9 @@ export function Canvas({
       },
       onSpectralSelectionFinalized: (sel) => {
         if (sel) {
-          console.log('[onSpectralSelectionFinalized] Setting playhead to startTime:', sel.startTime, 'endTime:', sel.endTime);
+          console.log('[onSpectralSelectionFinalized] Selection:', sel);
+          console.log('[onSpectralSelectionFinalized] startTime:', sel.startTime, 'endTime:', sel.endTime);
+          console.log('[onSpectralSelectionFinalized] Setting playhead to startTime (should be left edge):', sel.startTime);
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
         }
       },
@@ -93,16 +100,42 @@ export function Canvas({
     }
   );
 
-  // Handle click to move playhead
+  // Handle click to move playhead and select track
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log('[handleContainerClick] Called');
+
+    // First, call the containerProps onClick handler to preserve drag prevention logic
+    if (containerProps.onClick) {
+      containerProps.onClick(e);
+    }
+
     // Only update playhead if we're not dragging
-    if (selection.selection.wasJustDragging()) return;
+    const wasJustDragging = selection.selection.wasJustDragging();
+    console.log('[handleContainerClick] wasJustDragging:', wasJustDragging);
+    if (wasJustDragging) {
+      console.log('[handleContainerClick] Skipping playhead update - was dragging');
+      return;
+    }
 
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const time = (x - LEFT_PADDING) / pixelsPerSecond;
+    // Canvas uses NO leftPadding - clips are positioned at clip.start * pixelsPerSecond
+    const time = x / pixelsPerSecond;
+    console.log('[handleContainerClick] Moving playhead to click position:', time);
+
+    // Calculate which track was clicked (if any)
+    let clickedTrackIndex: number | null = null;
+    let currentY = TOP_GAP;
+    for (let i = 0; i < tracks.length; i++) {
+      const trackHeight = tracks[i].height || DEFAULT_TRACK_HEIGHT;
+      if (y >= currentY && y < currentY + trackHeight) {
+        clickedTrackIndex = i;
+        break;
+      }
+      currentY += trackHeight + TRACK_GAP;
+    }
 
     // Check if click was below all tracks (in empty space)
     const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
@@ -112,6 +145,11 @@ export function Canvas({
       dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: null });
       dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+    } else if (clickedTrackIndex !== null) {
+      // Clicked on a track - select it
+      console.log('[handleContainerClick] Selecting track:', clickedTrackIndex);
+      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
     }
 
     // Always move playhead on click
@@ -151,11 +189,18 @@ export function Canvas({
 
   const containerProps = selection.containerProps as any;
 
+  // Compose the onClick handlers to preserve both drag prevention and playhead movement
+  const composedOnClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    handleContainerClick(e);
+  };
+
   return (
     <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible' }}>
       <div
-        {...containerProps}
-        onClick={handleContainerClick}
+        ref={containerRef}
+        onMouseDown={containerProps.onMouseDown}
+        onMouseMove={containerProps.onMouseMove}
+        onClick={composedOnClick}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
         style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none' } as React.CSSProperties}
       >
@@ -176,7 +221,7 @@ export function Canvas({
               style={{
                 position: 'absolute',
                 top: `${yOffset}px`,
-                left: 0,
+                left: `${leftPadding}px`,
                 width: `${width}px`,
                 height: `${trackHeight}px`,
               }}
@@ -203,7 +248,7 @@ export function Canvas({
         <TimeSelectionCanvasOverlay
           timeSelection={timeSelection}
           pixelsPerSecond={pixelsPerSecond}
-          leftPadding={LEFT_PADDING}
+          leftPadding={0}
           top={overlayBounds.top}
           height={overlayBounds.height}
           backgroundColor="rgba(112, 181, 255, 0.3)"
@@ -214,7 +259,6 @@ export function Canvas({
         <SpectralSelectionOverlay
           spectralSelection={spectralSelection}
           pixelsPerSecond={pixelsPerSecond}
-          leftPadding={LEFT_PADDING}
           trackHeights={tracks.map(t => t.height || DEFAULT_TRACK_HEIGHT)}
           trackGap={TRACK_GAP}
           initialGap={TOP_GAP}

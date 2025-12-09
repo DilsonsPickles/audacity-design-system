@@ -115,6 +115,7 @@ export function drawCornerHandles(
 
 /**
  * Draw darkening overlays above and below the selection
+ * OR draw time-selection-style overlay if selection spans full frequency range
  */
 export function drawDarkenedOverlays(
   ctx: CanvasRenderingContext2D,
@@ -125,19 +126,27 @@ export function drawDarkenedOverlays(
   trackHeight: number,
   clipHeaderHeight: number
 ): void {
-  // Draw darker overlay above the selection (within clip bounds)
-  if (maxFrequency < 1) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    const overlayTopY = trackY + clipHeaderHeight;
-    const overlayHeight = bounds.topY - overlayTopY;
-    ctx.fillRect(bounds.leftX, overlayTopY, bounds.width, overlayHeight);
-  }
+  // Check if selection spans full frequency range (0 to 1)
+  const isFullHeight = minFrequency === 0 && maxFrequency === 1;
 
-  // Draw darker overlay below the selection (within clip bounds)
-  if (minFrequency > 0) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    const overlayBottomY = bounds.bottomY;
-    const overlayHeight = (trackY + trackHeight) - overlayBottomY;
-    ctx.fillRect(bounds.leftX, overlayBottomY, bounds.width, overlayHeight);
+  if (isFullHeight) {
+    // Full-height overlay is drawn BEFORE clipping in SpectralSelectionCanvas
+    // So we don't draw it here - just skip the darkening overlays
+  } else {
+    // Draw darker overlay above the selection (within clip bounds)
+    if (maxFrequency < 1) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      const overlayTopY = trackY + clipHeaderHeight;
+      const overlayHeight = bounds.topY - overlayTopY;
+      ctx.fillRect(bounds.leftX, overlayTopY, bounds.width, overlayHeight);
+    }
+
+    // Draw darker overlay below the selection (within clip bounds)
+    if (minFrequency > 0) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      const overlayBottomY = bounds.bottomY;
+      const overlayHeight = (trackY + trackHeight) - overlayBottomY;
+      ctx.fillRect(bounds.leftX, overlayBottomY, bounds.width, overlayHeight);
+    }
   }
 }

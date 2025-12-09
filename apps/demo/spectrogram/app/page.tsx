@@ -3,8 +3,7 @@
 import {
   Toolbar,
   GhostButton,
-  ToggleButton,
-  Icon,
+  ToggleToolButton,
   TrackControlSidePanel,
   TrackControlPanel,
 } from "@audacity-ui/components";
@@ -24,30 +23,18 @@ export default function SpectrogramDemo() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw" }}>
       <Toolbar>
-        <GhostButton>
-          <Icon name="fa-bars" size={16} />
-        </GhostButton>
-        <GhostButton>
-          <Icon name="fa-folder-open" size={16} />
-        </GhostButton>
+        <GhostButton icon="menu" />
+        <GhostButton icon="cloud" />
 
         <div style={{ width: "1px", height: "24px", backgroundColor: "#d4d5d9", margin: "0 8px" }} />
 
-        <GhostButton>
-          <Icon name="fa-backward-step" size={16} />
-        </GhostButton>
-        <GhostButton>
-          <Icon name="fa-play" size={16} />
-        </GhostButton>
-        <GhostButton>
-          <Icon name="fa-forward-step" size={16} />
-        </GhostButton>
+        <GhostButton icon="skip-back" />
+        <GhostButton icon="play" />
+        <GhostButton icon="skip-forward" />
 
         <div style={{ width: "1px", height: "24px", backgroundColor: "#d4d5d9", margin: "0 8px" }} />
 
-        <ToggleButton isActive={spectrogramMode} onClick={() => setSpectrogramMode(!spectrogramMode)}>
-          <Icon name="fa-chart-simple" size={16} />
-        </ToggleButton>
+        <ToggleToolButton icon="waveform" isActive={spectrogramMode} onClick={() => setSpectrogramMode(!spectrogramMode)} />
       </Toolbar>
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

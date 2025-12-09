@@ -103,11 +103,11 @@ export function TimelineRuler({
       // Borders removed for cleaner look with blend mode
     }
 
-    // Draw horizontal divider line at middle
+    // Draw horizontal divider line at middle (skip the leftPadding area)
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, midHeight + 0.5); // Offset by 0.5 for crisp 1px line
+    ctx.moveTo(leftPadding, midHeight + 0.5); // Start after the left padding box
     ctx.lineTo(width, midHeight + 0.5);
     ctx.stroke();
 

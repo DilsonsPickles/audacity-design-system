@@ -25,6 +25,7 @@ interface ExtendedDragState extends TimeSelectionDragState {
   initialSelection?: TimeSelection | null;
   initialSelectedTracks?: number[];
   startedInsideClip?: boolean; // Track whether drag started inside a clip
+  fixedTimeBounds?: { startTime: number; endTime: number }; // Fixed time bounds from spectral conversion
 }
 
 export interface UseTimeSelectionOptions extends TimeSelectionConfig {
@@ -62,7 +63,7 @@ export interface UseTimeSelectionReturn {
   /** Cursor style to apply to the container */
   cursorStyle: string;
   /** Function to start a time selection drag - call from container's onMouseDown */
-  startDrag: (x: number, y: number, allowConversionToSpectral?: boolean) => void;
+  startDrag: (x: number, y: number, allowConversionToSpectral?: boolean, fixedTimeBounds?: { startTime: number; endTime: number }) => void;
   /** Function to handle mouse move for cursor updates - call from container's onMouseMove */
   handleMouseMove: (x: number, y: number) => void;
   /** Function to check if we just finished dragging (to prevent click events) */
@@ -103,8 +104,8 @@ export function useTimeSelection({
   const getEdgeProximity = useCallback((x: number): 'start' | 'end' | null => {
     if (!currentTimeSelection) return null;
 
-    const startX = timeToPixels(currentTimeSelection.startTime, pixelsPerSecond, leftPadding);
-    const endX = timeToPixels(currentTimeSelection.endTime, pixelsPerSecond, leftPadding);
+    const startX = timeToPixels(currentTimeSelection.startTime, pixelsPerSecond, 0);
+    const endX = timeToPixels(currentTimeSelection.endTime, pixelsPerSecond, 0);
 
     if (Math.abs(x - startX) <= edgeThreshold) {
       return 'start';
@@ -117,6 +118,7 @@ export function useTimeSelection({
 
   /**
    * Find which clip (if any) contains the given position
+   * Includes both clip header and clip body for conversion detection
    */
   const findClipAtPosition = useCallback((x: number, y: number): { trackIndex: number; clipId: number } | null => {
     let currentY = initialGap;
@@ -125,15 +127,12 @@ export function useTimeSelection({
       const track = tracks[trackIndex] as any;
       const trackHeight = track.height || defaultTrackHeight;
 
-      // Check if y is within this track's clip body (not header)
-      const clipBodyY = currentY + clipHeaderHeight;
-      const clipBodyHeight = trackHeight - clipHeaderHeight;
-
-      if (y >= clipBodyY && y < clipBodyY + clipBodyHeight) {
+      // Check if y is within this track (including both header and body)
+      if (y >= currentY && y < currentY + trackHeight) {
         // Check each clip in this track
         if (track.clips) {
           for (const clip of track.clips) {
-            const clipStartX = leftPadding + clip.start * pixelsPerSecond;
+            const clipStartX = clip.start * pixelsPerSecond;
             const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
 
             if (x >= clipStartX && x <= clipEndX) {
@@ -184,7 +183,7 @@ export function useTimeSelection({
 
       if (mode === 'resize-start' && initialSelection) {
         // Resizing start edge - allow inverting by dragging past end edge
-        const newStartTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, leftPadding));
+        const newStartTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, 0));
 
         // If dragged past the end, swap start and end
         if (newStartTime > initialSelection.endTime) {
@@ -200,7 +199,7 @@ export function useTimeSelection({
         }
       } else if (mode === 'resize-end' && initialSelection) {
         // Resizing end edge - allow inverting by dragging past start edge
-        const newEndTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, leftPadding));
+        const newEndTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, 0));
 
         // If dragged past the start, swap start and end
         if (newEndTime < initialSelection.startTime) {
@@ -217,8 +216,19 @@ export function useTimeSelection({
       } else if (mode === 'create') {
         dragStateRef.current.currentX = x;
 
-        const startTime = pixelsToTime(dragStateRef.current.startX, pixelsPerSecond, leftPadding);
-        const endTime = pixelsToTime(x, pixelsPerSecond, leftPadding);
+        // Use fixed time bounds if they exist (from spectral conversion), otherwise calculate from mouse position
+        let startTime: number;
+        let endTime: number;
+
+        if (dragStateRef.current.fixedTimeBounds) {
+          // Use fixed time bounds from spectral conversion - these don't change during drag
+          startTime = dragStateRef.current.fixedTimeBounds.startTime;
+          endTime = dragStateRef.current.fixedTimeBounds.endTime;
+        } else {
+          // Normal behavior - calculate from mouse positions
+          startTime = pixelsToTime(dragStateRef.current.startX, pixelsPerSecond, 0);
+          endTime = pixelsToTime(x, pixelsPerSecond, 0);
+        }
 
         // Update selected tracks based on drag range
         const currentTrackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
@@ -244,7 +254,7 @@ export function useTimeSelection({
             const hasSpectralView = track.viewMode === 'spectrogram' || track.viewMode === 'split';
 
             if (hasSpectralView) {
-              // Convert back to spectral selection
+              // Convert back to spectral selection using the fixed time bounds
               const converted = onConvertToSpectralSelection(startTime, endTime, trackIndex, clipId, x, y);
               if (converted) {
                 // Clear the time selection and drag state
@@ -347,7 +357,7 @@ export function useTimeSelection({
    * Start a time selection drag or edge resize
    * Call this from the container's onMouseDown handler
    */
-  const startDrag = (x: number, y: number, allowConversionToSpectral?: boolean) => {
+  const startDrag = (x: number, y: number, allowConversionToSpectral?: boolean, fixedTimeBounds?: { startTime: number; endTime: number }) => {
     if (!enabled) return;
 
     // Check if clicking on an edge
@@ -379,10 +389,21 @@ export function useTimeSelection({
       // Start creating new selection
       const trackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
 
-      // Check if starting inside a clip (or explicitly allowed via parameter)
-      const startedInsideClip = allowConversionToSpectral !== undefined
-        ? allowConversionToSpectral
-        : (findClipAtPosition(x, y) !== null);
+      // Check if starting inside a spectral-enabled clip (or explicitly allowed via parameter)
+      // Only allow conversion to spectral if we started in a spectral clip or if explicitly converting from spectral
+      let startedInsideClip = false;
+      if (allowConversionToSpectral !== undefined) {
+        // Explicit conversion from spectral selection
+        startedInsideClip = allowConversionToSpectral;
+      } else {
+        // Check if we started inside a spectral-enabled clip
+        const clipAtStart = findClipAtPosition(x, y);
+        if (clipAtStart && spectrogramMode) {
+          const track = tracks[clipAtStart.trackIndex] as any;
+          const hasSpectralView = track.viewMode === 'spectrogram' || track.viewMode === 'split';
+          startedInsideClip = hasSpectralView;
+        }
+      }
 
       dragStateRef.current = {
         startX: x,
@@ -390,10 +411,15 @@ export function useTimeSelection({
         startTrackIndex: trackIndex,
         mode: 'create',
         startedInsideClip,
+        fixedTimeBounds, // Store the fixed time bounds from spectral conversion
       };
 
-      // Clear any existing time selection
-      onTimeSelectionChange(null);
+      // Clear any existing time selection UNLESS we're converting from spectral
+      // (indicated by allowConversionToSpectral being true and a selection existing)
+      // This allows the user to drag the time selection back into the clip
+      if (!(allowConversionToSpectral && currentTimeSelection)) {
+        onTimeSelectionChange(null);
+      }
 
       // Clear any existing spectral selection
       if (onClearSpectralSelection) {

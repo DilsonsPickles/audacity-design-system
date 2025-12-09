@@ -136,7 +136,7 @@ export function useAudioSelection(
   } = config;
 
   // Extract these for the conversion callback
-  const { pixelsPerSecond, leftPadding } = timeSelectionConfig;
+  const { pixelsPerSecond } = timeSelectionConfig;
 
   const {
     onTimeSelectionChange,
@@ -241,8 +241,8 @@ export function useAudioSelection(
         onTimeSelectionChange(null);
 
         // Calculate which edge to anchor based on current position vs time bounds
-        const startPixel = leftPadding + startTime * pixelsPerSecond;
-        const endPixel = leftPadding + endTime * pixelsPerSecond;
+        const startPixel = startTime * pixelsPerSecond;
+        const endPixel = endTime * pixelsPerSecond;
         const distToStart = Math.abs(currentX - startPixel);
         const distToEnd = Math.abs(currentX - endPixel);
 
@@ -281,7 +281,6 @@ export function useAudioSelection(
       currentSpectralSelection,
       tracks: timeSelectionConfig.tracks as any, // Track types are compatible at runtime
       pixelsPerSecond: timeSelectionConfig.pixelsPerSecond,
-      leftPadding: timeSelectionConfig.leftPadding,
       defaultTrackHeight: timeSelectionConfig.defaultTrackHeight,
       trackGap: timeSelectionConfig.trackGap,
       initialGap: timeSelectionConfig.initialGap,
@@ -294,42 +293,41 @@ export function useAudioSelection(
       onClearTimeSelection: () => {
         onTimeSelectionChange(null);
       },
-      onConvertToTimeSelection: (startTime: number, endTime: number, trackIndices: number[], currentX: number, currentY: number, dragStartX: number, dragStartY: number) => {
-        // Store the current spectral selection and drag start position before converting
+      onConvertToTimeSelection: (startTime: number, endTime: number, trackIndices: number[], currentX: number, currentY: number, dragStartX: number, dragStartY: number, spectralSelection: SpectralSelection) => {
+        console.log('[onConvertToTimeSelection] Converting spectral to time selection', spectralSelection);
+
+        // Store the spectral selection and drag start position before converting
         // so we can restore it if the user drags back into the clip
-        preConversionSpectralSelectionRef.current = currentSpectralSelection;
+        preConversionSpectralSelectionRef.current = spectralSelection;
         preConversionDragStartRef.current = { x: dragStartX, y: dragStartY };
 
         // Mark that this time selection came from leaving clip bounds
         // This prevents it from converting back to spectral when entering a different clip
         timeSelectionFromLeavingClipBoundsRef.current = true;
 
-        // Normalize the times (startTime might be > endTime if dragging left)
+        // Normalize the time bounds
         const normalizedStartTime = Math.min(startTime, endTime);
         const normalizedEndTime = Math.max(startTime, endTime);
 
         // Create a time selection from the spectral selection bounds
-        onTimeSelectionChange({ startTime: normalizedStartTime, endTime: normalizedEndTime });
+        onTimeSelectionChange({
+          startTime: normalizedStartTime,
+          endTime: normalizedEndTime,
+        });
         // Update selected tracks
         onSelectedTracksChange(trackIndices);
-        // Clear the spectral selection (this will make spectralSelection.isDragging become false)
-        if (onSpectralSelectionChange) {
-          onSpectralSelectionChange(null);
-        }
 
-        // Determine which edge to anchor based on the DRAG START position (not normalized times)
-        // The drag start position tells us which edge the user originally clicked
-        const dragStartPixel = dragStartX;
+        // DON'T clear the spectral selection - keep it visible as a reference
+        // (It will be non-interactive since we're no longer dragging it)
 
-        // If startTime < endTime, user dragged right, so anchor at startTime (dragStartX position)
-        // If startTime > endTime, user dragged left, so anchor at endTime (dragStartX position)
-        // In both cases, we anchor at dragStartX because that's where they started
-        const anchorEdgeX = dragStartPixel;
-
-        // Start a time selection resize drag from the anchored edge
-        // This will make the time selection resize from the correct edge
-        // Pass true to allow conversion back to spectral (since this came from spectral)
-        timeSelection.startDrag(anchorEdgeX, dragStartY, true);
+        // Start a time selection drag from the original drag start position
+        // This allows the user to continue dragging (and potentially drag back into clip)
+        timeSelection.startDrag(
+          dragStartX,
+          dragStartY,
+          true, // allowConversionToSpectral
+          undefined // Don't use fixed time bounds - let the drag continue naturally
+        );
       },
     }
   );
@@ -352,7 +350,14 @@ export function useAudioSelection(
       if (isOnSpectralClip) {
         const didStart = spectralSelection.startDrag(x, y);
         console.log('[handleMouseDown] spectral didStart:', didStart);
-        if (didStart) return; // If spectral selection started, don't start time selection
+        if (didStart) {
+          return; // If spectral selection started, don't start time selection
+        } else {
+          // Clicked on spectral clip body but didn't start a drag (no existing selection to resize)
+          // Don't start time selection either - let the click handler move playhead
+          console.log('[handleMouseDown] clicked on spectral clip body, allowing click to propagate for playhead movement');
+          return;
+        }
       }
     }
 
@@ -420,7 +425,7 @@ export function useAudioSelection(
     selection: {
       isDragging: timeSelection.isDragging || spectralSelection.isDragging,
       cursorStyle: currentCursor,
-      wasJustDragging: timeSelection.wasJustDragging,
+      wasJustDragging: () => timeSelection.wasJustDragging() || spectralSelection.wasJustDragging(),
     },
   };
 }

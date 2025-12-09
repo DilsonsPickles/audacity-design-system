@@ -4,7 +4,6 @@
 
 export interface CoordinateConfig {
   pixelsPerSecond: number;
-  leftPadding: number;
   trackHeights: number[];
   trackGap: number;
   initialGap: number;
@@ -14,9 +13,11 @@ export interface CoordinateConfig {
 
 /**
  * Convert time to X pixel position
+ * NOTE: Clips are positioned WITHOUT leftPadding (see Track.tsx line 118)
+ * So we should NOT add leftPadding here
  */
 export function timeToX(time: number, config: CoordinateConfig): number {
-  return config.leftPadding + time * config.pixelsPerSecond;
+  return time * config.pixelsPerSecond;
 }
 
 /**

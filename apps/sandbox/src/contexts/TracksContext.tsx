@@ -195,7 +195,11 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       return { ...state, timeSelection: action.payload };
 
     case 'SET_SPECTRAL_SELECTION':
-      return { ...state, spectralSelection: action.payload };
+      // Don't move playhead while dragging - only update on finalize
+      return {
+        ...state,
+        spectralSelection: action.payload,
+      };
 
     case 'SET_PLAYHEAD_POSITION':
       return { ...state, playheadPosition: action.payload };
