@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from '../contexts/TracksContext';
 import { Canvas } from '../components/Canvas';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, GhostButton, ToggleButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, ToolbarDivider, GhostButton, TransportButton, ToggleButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor } from '@audacity-ui/components';
 import { useTracks } from '../contexts/TracksContext';
 
 // Generate realistic waveform data
@@ -165,9 +165,9 @@ function CanvasDemoContent() {
         <ToolbarDivider />
 
         <ToolbarButtonGroup gap={2}>
-          <GhostButton icon="skip-back" />
-          <GhostButton icon="play" />
-          <GhostButton icon="skip-forward" />
+          <TransportButton icon="skip-back" />
+          <TransportButton icon="play" />
+          <TransportButton icon="skip-forward" />
         </ToolbarButtonGroup>
 
         <ToolbarDivider />

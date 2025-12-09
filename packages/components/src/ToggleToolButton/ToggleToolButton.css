@@ -19,25 +19,25 @@
 
 /* Off state (default) */
 .toggle-tool-button--off {
-  background-color: transparent;
+  background-color: #d3d4dc;
   color: #14151a;
 }
 
 /* Off hover state */
 .toggle-tool-button--off-hover {
-  background-color: #e8e9eb;
+  background-color: #c2c4cf;
   color: #14151a;
 }
 
 /* On state (active/toggled) */
 .toggle-tool-button--on {
-  background-color: #0f62fe;
+  background-color: rgba(103, 124, 228, 0.5);
   color: #ffffff;
 }
 
 /* On hover state */
 .toggle-tool-button--on-hover {
-  background-color: #0353e9;
+  background-color: rgba(103, 124, 228, 0.6);
   color: #ffffff;
 }
 

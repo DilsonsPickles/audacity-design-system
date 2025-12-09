@@ -3,9 +3,9 @@
 /* CSS Variables matching Figma tokens */
 :root {
   /* Transport button colors */
-  --transport-btn-idle: rgba(194, 196, 207, 0.7);
-  --transport-btn-hover: rgba(194, 196, 207, 0.5);
-  --transport-btn-pressed: #c2c4cf;
+  --transport-btn-idle: #d3d4dc;
+  --transport-btn-hover: #c2c4cf;
+  --transport-btn-pressed: #b0b2bd;
 
   /* Icon color */
   --transport-icon-color: #14151a;
@@ -31,16 +31,12 @@
   transition: background-color 0.1s ease;
 }
 
-/* Icon styles */
+/* Icon styles - Icon component handles font and sizing */
 .transport-button__icon {
-  font-size: 14px;
   line-height: 0;
-  color: var(--transport-icon-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
 }
 
 /* State: Idle */
