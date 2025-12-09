@@ -167,6 +167,8 @@ function CanvasDemoContent() {
         <ToolbarButtonGroup gap={2}>
           <TransportButton icon="skip-back" />
           <TransportButton icon="play" />
+          <TransportButton icon="stop" />
+          <TransportButton icon="record" />
           <TransportButton icon="skip-forward" />
         </ToolbarButtonGroup>
 
