@@ -170,6 +170,7 @@ function CanvasDemoContent() {
           <TransportButton icon="stop" />
           <TransportButton icon="record" />
           <TransportButton icon="skip-forward" />
+          <TransportButton icon="loop" />
         </ToolbarButtonGroup>
 
         <ToolbarDivider />
