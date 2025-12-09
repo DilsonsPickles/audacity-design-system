@@ -1,12 +1,12 @@
 import React from 'react';
-import '../assets/fonts/musescore-icon.css';
+import { Icon, IconName } from '../Icon';
 import './ToolButton.css';
 
 export interface ToolButtonProps {
   /**
-   * Icon character from MusescoreIcon font
+   * Icon name from MusescoreIcon font
    */
-  icon: string;
+  icon: IconName;
   /**
    * Button state
    */
@@ -84,7 +84,7 @@ export function ToolButton({
       disabled={disabled}
       type="button"
     >
-      <span className="tool-button__icon musescore-icon">{icon}</span>
+      <Icon name={icon} size={12} className="tool-button__icon" />
     </button>
   );
 }
