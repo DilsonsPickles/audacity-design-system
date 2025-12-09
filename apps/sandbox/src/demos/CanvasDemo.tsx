@@ -165,10 +165,10 @@ function CanvasDemoContent() {
         <ToolbarDivider />
 
         <ToolbarButtonGroup gap={2}>
-          <TransportButton icon="skip-back" />
           <TransportButton icon="play" />
           <TransportButton icon="stop" />
           <TransportButton icon="record" />
+          <TransportButton icon="skip-back" />
           <TransportButton icon="skip-forward" />
           <TransportButton icon="loop" />
         </ToolbarButtonGroup>
