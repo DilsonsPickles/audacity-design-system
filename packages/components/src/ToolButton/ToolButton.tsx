@@ -84,7 +84,7 @@ export function ToolButton({
       disabled={disabled}
       type="button"
     >
-      <Icon name={icon} size={12} className="tool-button__icon" />
+      <Icon name={icon} size={16} className="tool-button__icon" />
     </button>
   );
 }
