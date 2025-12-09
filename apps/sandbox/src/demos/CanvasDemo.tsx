@@ -178,12 +178,17 @@ function CanvasDemoContent() {
         <ToolbarButtonGroup gap={2}>
           <ToolButton icon="zoom-in" />
           <ToolButton icon="zoom-out" />
+        </ToolbarButtonGroup>
+
+        <ToolbarDivider gap={8} />
+
+        <ToolbarButtonGroup gap={2}>
           <ToolButton icon="cut" />
           <ToolButton icon="copy" />
           <ToolButton icon="paste" />
         </ToolbarButtonGroup>
 
-        <ToolbarDivider gap={8} />
+        <ToolbarDivider />
 
         <ToolbarButtonGroup gap={4}>
           <ToggleButton active={state.envelopeMode} onClick={handleToggleEnvelope}>
