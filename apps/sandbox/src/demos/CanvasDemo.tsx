@@ -178,19 +178,9 @@ function CanvasDemoContent() {
         <ToolbarButtonGroup gap={2}>
           <ToolButton icon="zoom-in" />
           <ToolButton icon="zoom-out" />
-        </ToolbarButtonGroup>
-
-        <div style={{ width: '4px' }} />
-
-        <ToolbarButtonGroup gap={2}>
           <ToolButton icon="cut" />
           <ToolButton icon="copy" />
           <ToolButton icon="paste" />
-        </ToolbarButtonGroup>
-
-        <div style={{ width: '4px' }} />
-
-        <ToolbarButtonGroup gap={2}>
           <ToolButton icon="trim" />
           <ToolButton icon="silence" />
         </ToolbarButtonGroup>
