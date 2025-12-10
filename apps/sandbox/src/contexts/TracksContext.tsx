@@ -40,6 +40,40 @@ interface SpectralSelection {
   maxFrequency: number; // 0-1 (normalized)
 }
 
+export interface EnvelopeDragState {
+  clip: Clip;
+  pointIndex: number;
+  trackIndex: number;
+  clipX: number;
+  clipWidth: number;
+  clipY: number;
+  clipHeight: number;
+  startX: number;
+  startY: number;
+  deletedPoints: EnvelopePoint[];
+  originalTime: number;
+  isNewPoint?: boolean;
+  hiddenPointIndices: number[];
+}
+
+export interface EnvelopeSegmentDragState {
+  clip: Clip;
+  segmentStartIndex: number;
+  segmentEndIndex: number;
+  trackIndex: number;
+  clipX: number;
+  clipWidth: number;
+  clipY: number;
+  clipHeight: number;
+  startY: number;
+  startDb1: number;
+  startDb2: number;
+  isAltMode?: boolean;
+  clickX?: number;
+  clickY?: number;
+  hasMoved?: boolean;
+}
+
 // State interface
 export interface TracksState {
   tracks: Track[];
@@ -74,7 +108,8 @@ export type TracksAction =
   | { type: 'UPDATE_TRACK_HEIGHT'; payload: { index: number; height: number } }
   | { type: 'UPDATE_TRACK_VIEW'; payload: { index: number; viewMode: 'waveform' | 'spectrogram' | 'split' } }
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
-  | { type: 'SELECT_TRACK'; payload: number };
+  | { type: 'SELECT_TRACK'; payload: number }
+  | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } };
 
 // Initial state
 const initialState: TracksState = {
@@ -273,6 +308,20 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: [action.payload],
         focusedTrackIndex: action.payload,
       };
+    }
+
+    case 'UPDATE_CLIP_ENVELOPE_POINTS': {
+      const { trackIndex, clipId, envelopePoints } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        clips: newTracks[trackIndex].clips.map(clip =>
+          clip.id === clipId
+            ? { ...clip, envelopePoints }
+            : clip
+        ),
+      };
+      return { ...state, tracks: newTracks };
     }
 
     default:

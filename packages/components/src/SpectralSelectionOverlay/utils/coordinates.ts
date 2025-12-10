@@ -2,6 +2,8 @@
  * Coordinate conversion utilities for spectral selection
  */
 
+import { CLIP_CONTENT_OFFSET } from '../../constants';
+
 export interface CoordinateConfig {
   pixelsPerSecond: number;
   trackHeights: number[];
@@ -13,11 +15,10 @@ export interface CoordinateConfig {
 
 /**
  * Convert time to X pixel position
- * NOTE: Clips are positioned WITHOUT leftPadding (see Track.tsx line 118)
- * So we should NOT add leftPadding here
+ * Clips and selections are positioned with CLIP_CONTENT_OFFSET for visual alignment
  */
 export function timeToX(time: number, config: CoordinateConfig): number {
-  return time * config.pixelsPerSecond;
+  return CLIP_CONTENT_OFFSET + time * config.pixelsPerSecond;
 }
 
 /**

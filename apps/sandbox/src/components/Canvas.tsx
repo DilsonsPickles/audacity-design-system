@@ -1,6 +1,8 @@
-import { useRef } from 'react';
-import { Track, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay } from '@audacity-ui/components';
-import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
+import { useRef, useEffect } from 'react';
+import { Track, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
+import { useTracksState, useTracksDispatch, EnvelopeDragState, EnvelopeSegmentDragState } from '../contexts/TracksContext';
+import { handleEnvelopeClick } from '../utils/envelopeInteraction';
+import { yToDbNonLinear, ENVELOPE_MOVE_THRESHOLD } from '../utils/envelopeUtils';
 import './Canvas.css';
 
 export interface CanvasProps {
@@ -37,9 +39,13 @@ export function Canvas({
   backgroundColor = '#212433',
   leftPadding = 0,
 }: CanvasProps) {
-  const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode } = useTracksState();
+  const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode, envelopeMode, envelopeAltMode } = useTracksState();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Envelope editing state
+  const envelopeDragStateRef = useRef<EnvelopeDragState | null>(null);
+  const envelopeSegmentDragStateRef = useRef<EnvelopeSegmentDragState | null>(null);
 
   // Configuration constants
   const TOP_GAP = 2;
@@ -122,8 +128,8 @@ export function Canvas({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Calculate time from click position, accounting for leftPadding
-    const time = (x - leftPadding) / pixelsPerSecond;
+    // Calculate time from click position, accounting for CLIP_CONTENT_OFFSET
+    const time = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
     console.log('[handleContainerClick] Moving playhead to click position:', time);
 
     // Calculate which track was clicked (if any)
@@ -190,6 +196,167 @@ export function Canvas({
 
   const containerProps = selection.containerProps as any;
 
+  // Envelope mouse down handler - check for envelope interaction BEFORE spectral/time selection
+  const handleEnvelopeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || (!envelopeMode && !envelopeAltMode)) {
+      // No envelope mode active, pass through to audio selection
+      containerProps.onMouseDown?.(e);
+      return;
+    }
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const result = handleEnvelopeClick(
+      x,
+      y,
+      tracks as any,
+      envelopeMode,
+      envelopeAltMode,
+      pixelsPerSecond,
+      CLIP_CONTENT_OFFSET,
+      TRACK_GAP,
+      TOP_GAP
+    );
+
+    if (result.type === 'point-drag') {
+      envelopeDragStateRef.current = result.dragState as EnvelopeDragState;
+      return; // Don't pass through to audio selection
+    } else if (result.type === 'segment-drag') {
+      envelopeSegmentDragStateRef.current = result.dragState as EnvelopeSegmentDragState;
+      return; // Don't pass through to audio selection
+    } else if (result.type === 'add-point' && result.newPoint) {
+      // Add point immediately
+      const { trackIndex, clipId, point } = result.newPoint;
+      const currentClip = tracks[trackIndex].clips.find(c => c.id === clipId);
+      if (currentClip) {
+        const newPoints = [...currentClip.envelopePoints, point].sort((a, b) => a.time - b.time);
+        dispatch({
+          type: 'UPDATE_CLIP_ENVELOPE_POINTS',
+          payload: { trackIndex, clipId, envelopePoints: newPoints },
+        });
+      }
+      return; // Don't pass through to audio selection
+    }
+
+    // No envelope interaction, pass through to audio selection
+    containerProps.onMouseDown?.(e);
+  };
+
+  // Document-level mouse move and up for envelope dragging
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+
+      // Handle envelope segment dragging
+      if (envelopeSegmentDragStateRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const dragState = envelopeSegmentDragStateRef.current;
+
+        // Check if mouse has moved enough to trigger drag (for alt mode)
+        if (dragState.isAltMode && !dragState.hasMoved && dragState.clickX !== undefined && dragState.clickY !== undefined) {
+          const distance = Math.sqrt((x - dragState.clickX) ** 2 + (y - dragState.clickY) ** 2);
+          if (distance > ENVELOPE_MOVE_THRESHOLD) {
+            dragState.hasMoved = true;
+          } else {
+            return; // Not moved enough yet
+          }
+        }
+
+        // Drag the segment
+        const deltaDb = yToDbNonLinear(y, dragState.clipY, dragState.clipHeight) -
+                        yToDbNonLinear(dragState.startY, dragState.clipY, dragState.clipHeight);
+
+        const newDb1 = Math.max(-60, Math.min(12, dragState.startDb1 + deltaDb));
+        const newDb2 = Math.max(-60, Math.min(12, dragState.startDb2 + deltaDb));
+
+        const newPoints = [...dragState.clip.envelopePoints];
+        newPoints[dragState.segmentStartIndex] = { ...newPoints[dragState.segmentStartIndex], db: newDb1 };
+        if (dragState.segmentStartIndex !== dragState.segmentEndIndex) {
+          newPoints[dragState.segmentEndIndex] = { ...newPoints[dragState.segmentEndIndex], db: newDb2 };
+        }
+
+        dispatch({
+          type: 'UPDATE_CLIP_ENVELOPE_POINTS',
+          payload: {
+            trackIndex: dragState.trackIndex,
+            clipId: dragState.clip.id,
+            envelopePoints: newPoints,
+          },
+        });
+      }
+
+      // Handle envelope point dragging
+      if (envelopeDragStateRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const dragState = envelopeDragStateRef.current;
+        const relativeTime = ((x - dragState.clipX) / dragState.clipWidth) * dragState.clip.duration;
+        const db = yToDbNonLinear(y, dragState.clipY, dragState.clipHeight);
+
+        const newPoints = [...dragState.clip.envelopePoints];
+        newPoints[dragState.pointIndex] = {
+          time: Math.max(0, Math.min(dragState.clip.duration, relativeTime)),
+          db: Math.max(-60, Math.min(12, db)),
+        };
+
+        dispatch({
+          type: 'UPDATE_CLIP_ENVELOPE_POINTS',
+          payload: {
+            trackIndex: dragState.trackIndex,
+            clipId: dragState.clip.id,
+            envelopePoints: newPoints.sort((a, b) => a.time - b.time),
+          },
+        });
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      // Handle envelope segment drag end - check for click vs drag in alt mode
+      if (envelopeSegmentDragStateRef.current) {
+        const dragState = envelopeSegmentDragStateRef.current;
+
+        // Alt mode: if didn't move, add a point at click location
+        if (dragState.isAltMode && !dragState.hasMoved && dragState.clickX !== undefined && dragState.clickY !== undefined) {
+          const relativeTime = ((dragState.clickX - dragState.clipX) / dragState.clipWidth) * dragState.clip.duration;
+          const db = yToDbNonLinear(dragState.clickY, dragState.clipY, dragState.clipHeight);
+          const newPoint = { time: relativeTime, db };
+
+          const newPoints = [...dragState.clip.envelopePoints, newPoint].sort((a, b) => a.time - b.time);
+          dispatch({
+            type: 'UPDATE_CLIP_ENVELOPE_POINTS',
+            payload: {
+              trackIndex: dragState.trackIndex,
+              clipId: dragState.clip.id,
+              envelopePoints: newPoints,
+            },
+          });
+        }
+
+        envelopeSegmentDragStateRef.current = null;
+      }
+
+      // Clear envelope point drag
+      if (envelopeDragStateRef.current) {
+        envelopeDragStateRef.current = null;
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [tracks, dispatch, pixelsPerSecond, CLIP_CONTENT_OFFSET, TOP_GAP, TRACK_GAP]);
+
   // Compose the onClick handlers to preserve both drag prevention and playhead movement
   const composedOnClick = (e: React.MouseEvent<HTMLDivElement>) => {
     handleContainerClick(e);
@@ -199,7 +366,7 @@ export function Canvas({
     <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible' }}>
       <div
         ref={containerRef}
-        onMouseDown={containerProps.onMouseDown}
+        onMouseDown={handleEnvelopeMouseDown}
         onMouseMove={containerProps.onMouseMove}
         onClick={composedOnClick}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
@@ -233,12 +400,12 @@ export function Canvas({
                 trackIndex={trackIndex}
                 spectrogramMode={track.viewMode === 'spectrogram'}
                 splitView={track.viewMode === 'split'}
+                envelopeMode={envelopeMode}
                 isSelected={isSelected}
                 isFocused={isFocused}
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
                 backgroundColor={backgroundColor}
-                leftPadding={leftPadding}
                 {...selection.getClipProps(trackIndex)}
                 {...selection.getTrackProps(trackIndex)}
                 onClipHeaderClick={(_clipId, clipStartTime) => {

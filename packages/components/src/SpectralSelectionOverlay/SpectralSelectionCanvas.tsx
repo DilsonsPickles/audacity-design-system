@@ -5,12 +5,13 @@
  * All interaction logic is handled by parent components and hooks.
  *
  * IMPORTANT: Coordinate System
- * - Clips are positioned at `clip.start * pixelsPerSecond` WITHOUT leftPadding
+ * - Clips are positioned at `CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond`
  * - Mouse coordinates are relative to the canvas container (no leftPadding offset)
  * - Canvas clipping ensures the marquee never renders outside clip boundaries
  */
 
 import React, { useRef, useEffect } from 'react';
+import { CLIP_CONTENT_OFFSET } from '../constants';
 import {
   getSelectionBounds,
   drawMarqueeBorder,
@@ -75,8 +76,8 @@ export function SpectralSelectionCanvas({
     const trackHeight = coordinateConfig.trackHeights[trackIndex];
 
     // Calculate clip boundaries in pixels
-    // NOTE: Clips are positioned WITHOUT leftPadding (see Track.tsx line 118)
-    const clipStartX = clip.start * coordinateConfig.pixelsPerSecond;
+    // Clips are positioned WITH CLIP_CONTENT_OFFSET for visual alignment
+    const clipStartX = CLIP_CONTENT_OFFSET + clip.start * coordinateConfig.pixelsPerSecond;
     const clipEndX = clipStartX + clip.duration * coordinateConfig.pixelsPerSecond;
     const clipBodyY = trackY + coordinateConfig.clipHeaderHeight;
     const clipBodyHeight = trackHeight - coordinateConfig.clipHeaderHeight;
