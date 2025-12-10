@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './PlayheadCursor.css';
+import { CLIP_CONTENT_OFFSET } from '../constants';
 
 export interface PlayheadCursorProps {
   /**
@@ -10,10 +11,6 @@ export interface PlayheadCursorProps {
    * Pixels per second (zoom level)
    */
   pixelsPerSecond: number;
-  /**
-   * Left padding in pixels
-   */
-  leftPadding: number;
   /**
    * Height of the stalk (full canvas height)
    */
@@ -50,14 +47,13 @@ export interface PlayheadCursorProps {
 export function PlayheadCursor({
   position,
   pixelsPerSecond,
-  leftPadding,
   height,
   showTopIcon = false,
   iconTopOffset = 0,
   onPositionChange,
   minPosition = 0,
 }: PlayheadCursorProps) {
-  const x = leftPadding + position * pixelsPerSecond;
+  const x = CLIP_CONTENT_OFFSET + position * pixelsPerSecond;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -117,7 +113,7 @@ export function PlayheadCursor({
       const x = e.clientX - rect.left - scrollX;
 
       // Calculate new position in seconds
-      const newPosition = (x - leftPadding) / pixelsPerSecond;
+      const newPosition = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
 
       // Constrain to minimum position
       const constrainedPosition = Math.max(minPosition, newPosition);
@@ -137,7 +133,7 @@ export function PlayheadCursor({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, onPositionChange, leftPadding, pixelsPerSecond, minPosition]);
+  }, [isDragging, onPositionChange, pixelsPerSecond, minPosition]);
 
   const handleIconMouseDown = (e: React.MouseEvent) => {
     if (!onPositionChange) return;

@@ -17,6 +17,7 @@ import {
   clampTrackIndex,
   getTrackRange
 } from '@audacity-ui/core';
+import { CLIP_CONTENT_OFFSET } from '../constants';
 
 type DragMode = 'create' | 'resize-start' | 'resize-end' | null;
 
@@ -132,10 +133,11 @@ export function useTimeSelection({
         // Check each clip in this track
         if (track.clips) {
           for (const clip of track.clips) {
-            const clipStartX = clip.start * pixelsPerSecond;
+            const clipStartX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
             const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
 
-            if (x >= clipStartX && x <= clipEndX) {
+            // Use > for left boundary (not >=) to require being INSIDE the clip, not just at the edge
+            if (x > clipStartX && x <= clipEndX) {
               return { trackIndex, clipId: clip.id };
             }
           }
@@ -183,7 +185,7 @@ export function useTimeSelection({
 
       if (mode === 'resize-start' && initialSelection) {
         // Resizing start edge - allow inverting by dragging past end edge
-        const newStartTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, 0));
+        const newStartTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET));
 
         // If dragged past the end, swap start and end
         if (newStartTime > initialSelection.endTime) {
@@ -199,7 +201,7 @@ export function useTimeSelection({
         }
       } else if (mode === 'resize-end' && initialSelection) {
         // Resizing end edge - allow inverting by dragging past start edge
-        const newEndTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, 0));
+        const newEndTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET));
 
         // If dragged past the start, swap start and end
         if (newEndTime < initialSelection.startTime) {
@@ -233,8 +235,8 @@ export function useTimeSelection({
           endTime = dragStateRef.current.fixedTimeBounds.endTime;
         } else {
           // Normal behavior - calculate from mouse positions
-          startTime = pixelsToTime(dragStateRef.current.startX, pixelsPerSecond, 0);
-          endTime = pixelsToTime(x, pixelsPerSecond, 0);
+          startTime = pixelsToTime(dragStateRef.current.startX, pixelsPerSecond, CLIP_CONTENT_OFFSET);
+          endTime = pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET);
         }
 
         // Update selected tracks based on drag range

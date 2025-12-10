@@ -5,6 +5,11 @@
  */
 
 /**
+ * Constants
+ */
+export * from './constants';
+
+/**
  * UI Components
  */
 export * from './Button';

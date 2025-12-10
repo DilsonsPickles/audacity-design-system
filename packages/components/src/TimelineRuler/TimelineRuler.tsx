@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { TimeSelection, SpectralSelection } from '@audacity-ui/core';
+import { CLIP_CONTENT_OFFSET } from '../constants';
 import './TimelineRuler.css';
 
 export interface TimelineRulerProps {
@@ -23,10 +24,6 @@ export interface TimelineRulerProps {
    * Height of the ruler in pixels
    */
   height?: number;
-  /**
-   * Left padding in pixels (for alignment with track content)
-   */
-  leftPadding?: number;
   /**
    * Time selection to display in bottom half
    */
@@ -62,7 +59,6 @@ export interface TimelineRulerProps {
 }
 
 const DEFAULT_HEIGHT = 40;
-const DEFAULT_LEFT_PADDING = 12;
 
 export function TimelineRuler({
   pixelsPerSecond,
@@ -70,7 +66,6 @@ export function TimelineRuler({
   totalDuration,
   width,
   height = DEFAULT_HEIGHT,
-  leftPadding = DEFAULT_LEFT_PADDING,
   timeSelection = null,
   spectralSelection = null,
   backgroundColor = '#E3E3E8',
@@ -104,9 +99,8 @@ export function TimelineRuler({
     // Draw time selection in bottom half (if present)
     const midHeight = Math.floor(height / 2);
     if (timeSelection) {
-      // Don't add leftPadding - selection should align with canvas below which has leftPadding=0
-      const startX = timeSelection.startTime * pixelsPerSecond - scrollX;
-      const endX = timeSelection.endTime * pixelsPerSecond - scrollX;
+      const startX = CLIP_CONTENT_OFFSET + timeSelection.startTime * pixelsPerSecond - scrollX;
+      const endX = CLIP_CONTENT_OFFSET + timeSelection.endTime * pixelsPerSecond - scrollX;
 
       ctx.fillStyle = selectionColor;
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
@@ -116,18 +110,18 @@ export function TimelineRuler({
 
     // Draw spectral selection as grey highlight in bottom half (for partial-height marquee)
     if (spectralSelection && !timeSelection) {
-      const startX = spectralSelection.startTime * pixelsPerSecond - scrollX;
-      const endX = spectralSelection.endTime * pixelsPerSecond - scrollX;
+      const startX = CLIP_CONTENT_OFFSET + spectralSelection.startTime * pixelsPerSecond - scrollX;
+      const endX = CLIP_CONTENT_OFFSET + spectralSelection.endTime * pixelsPerSecond - scrollX;
 
       ctx.fillStyle = spectralHighlightColor;
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
     }
 
-    // Draw horizontal divider line at middle (skip the leftPadding area)
+    // Draw horizontal divider line at middle (skip the CLIP_CONTENT_OFFSET area)
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(leftPadding, midHeight + 0.5); // Start after the left padding box
+    ctx.moveTo(CLIP_CONTENT_OFFSET, midHeight + 0.5); // Start after the left padding box
     ctx.lineTo(width, midHeight + 0.5);
     ctx.stroke();
 
@@ -139,12 +133,11 @@ export function TimelineRuler({
       totalDuration,
       width,
       height,
-      leftPadding,
       textColor,
       lineColor,
       tickColor
     );
-  }, [pixelsPerSecond, scrollX, totalDuration, width, height, leftPadding, timeSelection, spectralSelection, backgroundColor, textColor, lineColor, tickColor, selectionColor, spectralHighlightColor]);
+  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, backgroundColor, textColor, lineColor, tickColor, selectionColor, spectralHighlightColor]);
 
   return (
     <canvas
@@ -166,7 +159,6 @@ function drawTimeMarkers(
   totalDuration: number,
   width: number,
   height: number,
-  leftPadding: number,
   textColor: string,
   topTickColor: string,
   bottomTickColor: string
@@ -201,9 +193,9 @@ function drawTimeMarkers(
   for (let time = startTime; time <= endTime; time += minorInterval) {
     // Avoid floating point precision issues
     const roundedTime = Math.round(time / minorInterval) * minorInterval;
-    const x = roundedTime * pixelsPerSecond - scrollX + leftPadding;
+    const x = CLIP_CONTENT_OFFSET + roundedTime * pixelsPerSecond - scrollX;
 
-    if (x < leftPadding || x > width) continue;
+    if (x < CLIP_CONTENT_OFFSET || x > width) continue;
 
     // Check if this is a major tick
     const isMajor = Math.abs(roundedTime % majorInterval) < 0.001;
@@ -230,9 +222,9 @@ function drawTimeMarkers(
   // Draw top section ticks (only for major intervals)
   ctx.strokeStyle = topTickColor;
   for (let time = startTime; time <= endTime; time += majorInterval) {
-    const x = time * pixelsPerSecond - scrollX + leftPadding;
+    const x = CLIP_CONTENT_OFFSET + time * pixelsPerSecond - scrollX;
 
-    if (x < leftPadding || x > width) continue;
+    if (x < CLIP_CONTENT_OFFSET || x > width) continue;
 
     const tickX = Math.floor(x) + 0.5; // Offset by 0.5 for crisp 1px line
 
@@ -245,9 +237,9 @@ function drawTimeMarkers(
 
   // Draw time labels for major ticks only
   for (let time = startTime; time <= endTime; time += majorInterval) {
-    const x = time * pixelsPerSecond - scrollX + leftPadding;
+    const x = CLIP_CONTENT_OFFSET + time * pixelsPerSecond - scrollX;
 
-    if (x < leftPadding || x > width) continue;
+    if (x < CLIP_CONTENT_OFFSET || x > width) continue;
 
     const label = formatTime(time);
     // Position label in top section, left-aligned to tick mark

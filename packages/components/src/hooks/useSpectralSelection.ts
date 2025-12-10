@@ -5,13 +5,13 @@
  * in spectrogram mode. Handles creating and resizing spectral selections.
  *
  * Coordinate System:
- * - Clips are positioned at `clip.start * pixelsPerSecond` (NO leftPadding)
- * - Mouse X/Y are relative to canvas container (matches clip positioning)
- * - All boundary checks must use the same coordinate system
- * - See Track.tsx:118 for clip rendering reference
+ * - Clips are positioned at `CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond`
+ * - Mouse X/Y are relative to canvas container
+ * - All boundary checks and coordinate conversions must account for CLIP_CONTENT_OFFSET
  */
 
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { CLIP_CONTENT_OFFSET } from '../constants';
 
 export interface SpectralSelection {
   trackIndex: number;
@@ -116,6 +116,7 @@ export function useSpectralSelection(
   const [isDragging, setIsDragging] = useState(false);
   const [cursorStyle, setCursorStyle] = useState('default');
   const wasDraggingRef = useRef(false);
+  const justConvertedRef = useRef(false);
 
   /**
    * Check if a position is within a clip that supports spectral selection
@@ -151,9 +152,8 @@ export function useSpectralSelection(
 
         // Check if X is within any clip in this track
         for (const clip of track.clips) {
-          // NOTE: leftPadding is NOT used here because clips are positioned without it
-          // (see coordinate system note at top of file)
-          const clipStartX = clip.start * pixelsPerSecond;
+          // Clips are rendered WITH CLIP_CONTENT_OFFSET for visual alignment
+          const clipStartX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
           const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
 
           if (x >= clipStartX && x <= clipEndX) {
@@ -191,8 +191,8 @@ export function useSpectralSelection(
       if (y >= currentY && y < currentY + trackHeight) {
         // Check each clip in this track
         for (const clip of track.clips) {
-          // NOTE: Clips are rendered WITHOUT leftPadding (see Track.tsx line 118)
-          const clipStartX = clip.start * pixelsPerSecond;
+          // Clips are rendered WITH CLIP_CONTENT_OFFSET for visual alignment
+          const clipStartX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
           const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
           const clipBodyY = currentY + clipHeaderHeight;
           const clipBodyHeight = trackHeight - clipHeaderHeight;
@@ -271,13 +271,14 @@ export function useSpectralSelection(
     const clip = track.clips.find(c => c.id === clipId);
     if (!clip) return true;
 
-    // NOTE: Clips are rendered WITHOUT leftPadding (see Track.tsx line 118)
-    // Mouse X is relative to the canvas container, same coordinate system
-    const clipStartX = clip.start * pixelsPerSecond;
+    // Clips are rendered WITH CLIP_CONTENT_OFFSET for visual alignment
+    const clipStartX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
     const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
 
-    // Check if X is left or right of the clip (exact pixel match, no buffer)
-    return x < clipStartX || x > clipEndX;
+    // Check if X is outside the clip bounds
+    // Use <= for left edge to trigger conversion when exactly at boundary (prevents visual sticking)
+    // Use > for right edge to match existing behavior
+    return x <= clipStartX || x > clipEndX;
   }, [tracks, pixelsPerSecond]);
 
   /**
@@ -328,7 +329,7 @@ export function useSpectralSelection(
    * Mouse X is also relative to the canvas container (no leftPadding offset)
    */
   const xToTime = useCallback((x: number): number => {
-    return x / pixelsPerSecond;
+    return (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
   }, [pixelsPerSecond]);
 
   /**
@@ -336,7 +337,7 @@ export function useSpectralSelection(
    * NOTE: Clips are positioned WITHOUT leftPadding
    */
   const timeToX = useCallback((time: number): number => {
-    return time * pixelsPerSecond;
+    return CLIP_CONTENT_OFFSET + time * pixelsPerSecond;
   }, [pixelsPerSecond]);
 
   /**
@@ -482,6 +483,7 @@ export function useSpectralSelection(
    */
   const startDrag = useCallback((x: number, y: number): boolean => {
     if (!enabled) return false;
+    if (justConvertedRef.current) return false; // Don't start new drag right after conversion
 
     // First check if we're resizing an existing selection
     const resizeMode = detectResizeMode(x, y);
@@ -533,6 +535,7 @@ export function useSpectralSelection(
    */
   const handleMouseMove = useCallback((x: number, y: number) => {
     if (!dragStateRef.current?.isDragging) return;
+    if (justConvertedRef.current) return; // Don't process if we just converted to time selection
 
     dragStateRef.current.currentX = x;
     dragStateRef.current.currentY = y;
@@ -602,9 +605,6 @@ export function useSpectralSelection(
         // Use unclamped times for the time selection (can extend beyond clip)
         const startTime = Math.min(rawStartTime, rawEndTime);
         const endTime = Math.max(rawStartTime, rawEndTime);
-
-        console.log('[useSpectralSelection] Converting to time selection - out of bounds');
-
         // Convert to time selection, passing the spectral selection to preserve
         onConvertToTimeSelection(
           startTime,
@@ -620,6 +620,11 @@ export function useSpectralSelection(
         // Clear the drag state - conversion callback will handle starting time selection drag
         dragStateRef.current = null;
         setIsDragging(false);
+        justConvertedRef.current = true;
+        // Clear the flag after a short delay to allow time selection to take over
+        setTimeout(() => {
+          justConvertedRef.current = false;
+        }, 100);
         return;
       }
 

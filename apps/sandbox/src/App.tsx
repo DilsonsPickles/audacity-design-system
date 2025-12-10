@@ -321,7 +321,6 @@ function CanvasDemoContent() {
                 totalDuration={50}
                 width={5000}
                 height={40}
-                leftPadding={12}
                 timeSelection={rulerTimeSelection}
                 spectralSelection={state.spectralSelection}
                 selectionColor="rgba(112, 181, 255, 0.5)"
@@ -330,7 +329,6 @@ function CanvasDemoContent() {
               <PlayheadCursor
                 position={state.playheadPosition}
                 pixelsPerSecond={100}
-                leftPadding={12}
                 height={0}
                 showTopIcon={true}
                 iconTopOffset={24}
@@ -355,7 +353,6 @@ function CanvasDemoContent() {
                 <PlayheadCursor
                   position={state.playheadPosition}
                   pixelsPerSecond={100}
-                  leftPadding={12}
                   height={1000}
                   showTopIcon={false}
                 />

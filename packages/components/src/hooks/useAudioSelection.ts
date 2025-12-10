@@ -294,8 +294,6 @@ export function useAudioSelection(
         onTimeSelectionChange(null);
       },
       onConvertToTimeSelection: (startTime: number, endTime: number, trackIndices: number[], currentX: number, currentY: number, dragStartX: number, dragStartY: number, spectralSelection: SpectralSelection) => {
-        console.log('[onConvertToTimeSelection] Converting spectral to time selection', spectralSelection);
-
         // Store the spectral selection and drag start position before converting
         // so we can restore it if the user drags back into the clip
         preConversionSpectralSelectionRef.current = spectralSelection;
@@ -321,11 +319,11 @@ export function useAudioSelection(
         // (It will be non-interactive since we're no longer dragging it)
 
         // Start a time selection drag from the original drag start position
-        // This allows the user to continue dragging (and potentially drag back into clip)
+        // This preserves the selection anchor point and start time
         timeSelection.startDrag(
           dragStartX,
           dragStartY,
-          true, // allowConversionToSpectral
+          true, // allowConversionToSpectral - allow dragging back into clip
           undefined // Don't use fixed time bounds - let the drag continue naturally
         );
       },
@@ -339,30 +337,24 @@ export function useAudioSelection(
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    console.log('[handleMouseDown] spectrogramMode:', spectrogramMode);
-
     // If in spectrogram mode, check if position is on a spectral-enabled clip
     // before attempting spectral selection
     if (spectrogramMode) {
       const isOnSpectralClip = spectralSelection.isPositionOnSpectralClip(x, y);
-      console.log('[handleMouseDown] isOnSpectralClip:', isOnSpectralClip);
 
       if (isOnSpectralClip) {
         const didStart = spectralSelection.startDrag(x, y);
-        console.log('[handleMouseDown] spectral didStart:', didStart);
         if (didStart) {
           return; // If spectral selection started, don't start time selection
         } else {
           // Clicked on spectral clip body but didn't start a drag (no existing selection to resize)
           // Don't start time selection either - let the click handler move playhead
-          console.log('[handleMouseDown] clicked on spectral clip body, allowing click to propagate for playhead movement');
           return;
         }
       }
     }
 
     // Otherwise, use time selection
-    console.log('[handleMouseDown] starting time selection');
     timeSelection.startDrag(x, y);
   }, [containerRef, spectrogramMode, spectralSelection, timeSelection]);
 
