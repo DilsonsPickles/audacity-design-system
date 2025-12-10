@@ -38,8 +38,10 @@ export * from './TimeSelectionCanvasOverlay';
 export * from './TimeSelectionRulerOverlay';
 export * from './SpectralSelectionOverlay';
 export * from './PlayheadCursor';
+export * from './ProjectToolbar';
 export * from './Toolbar';
 export * from './TrackControlSidePanel';
+export * from './TimeCode';
 
 /**
  * Hooks

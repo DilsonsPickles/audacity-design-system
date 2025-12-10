@@ -64,7 +64,7 @@ export function Canvas({
       spectrogramMode: hasSpectralView,
       clipHeaderHeight: 20,
       pixelsPerSecond,
-      leftPadding: 0,  // No leftPadding - unified coordinate system
+      leftPadding,  // Use leftPadding for alignment with playhead
       tracks: tracks as any, // Type cast to handle local vs core type mismatch
       defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
       trackGap: TRACK_GAP,
@@ -121,8 +121,9 @@ export function Canvas({
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    // Canvas uses NO leftPadding - clips are positioned at clip.start * pixelsPerSecond
-    const time = x / pixelsPerSecond;
+
+    // Calculate time from click position, accounting for leftPadding
+    const time = (x - leftPadding) / pixelsPerSecond;
     console.log('[handleContainerClick] Moving playhead to click position:', time);
 
     // Calculate which track was clicked (if any)
@@ -152,7 +153,7 @@ export function Canvas({
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
     }
 
-    // Always move playhead on click
+    // Always move playhead on click (allow it to go to 0 - stalk can touch the gap)
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, time) });
   };
 
@@ -221,7 +222,7 @@ export function Canvas({
               style={{
                 position: 'absolute',
                 top: `${yOffset}px`,
-                left: `${leftPadding}px`,
+                left: 0,
                 width: `${width}px`,
                 height: `${trackHeight}px`,
               }}
@@ -237,8 +238,12 @@ export function Canvas({
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
                 backgroundColor={backgroundColor}
+                leftPadding={leftPadding}
                 {...selection.getClipProps(trackIndex)}
                 {...selection.getTrackProps(trackIndex)}
+                onClipHeaderClick={(_clipId, clipStartTime) => {
+                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: clipStartTime });
+                }}
               />
             </div>
           );
@@ -248,7 +253,7 @@ export function Canvas({
         <TimeSelectionCanvasOverlay
           timeSelection={timeSelection}
           pixelsPerSecond={pixelsPerSecond}
-          leftPadding={0}
+          leftPadding={leftPadding}
           top={overlayBounds.top}
           height={overlayBounds.height}
           backgroundColor="rgba(112, 181, 255, 0.3)"

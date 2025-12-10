@@ -216,6 +216,13 @@ export function useTimeSelection({
       } else if (mode === 'create') {
         dragStateRef.current.currentX = x;
 
+        // Only create time selection if drag distance exceeds threshold (prevents accidental selection on click)
+        const dragDistance = Math.abs(x - dragStateRef.current.startX);
+        if (dragDistance <= 5) {
+          // Not enough movement yet - don't create selection
+          return;
+        }
+
         // Use fixed time bounds if they exist (from spectral conversion), otherwise calculate from mouse position
         let startTime: number;
         let endTime: number;
@@ -286,7 +293,7 @@ export function useTimeSelection({
       const { mode, startX } = dragStateRef.current;
 
       // Only set wasDragging flag if we actually moved the mouse (not just a click)
-      const didActuallyDrag = Math.abs(x - startX) > 2; // 2px threshold for accidental movement
+      const didActuallyDrag = Math.abs(x - startX) > 5; // 5px threshold for accidental movement
 
       if (didActuallyDrag) {
         // Set flag to prevent click handlers from firing immediately after drag

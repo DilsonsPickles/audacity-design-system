@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './PlayheadCursor.css';
 
 export interface PlayheadCursorProps {
@@ -28,6 +28,15 @@ export interface PlayheadCursorProps {
    * @default 0
    */
   iconTopOffset?: number;
+  /**
+   * Callback when position changes (via dragging)
+   */
+  onPositionChange?: (position: number) => void;
+  /**
+   * Minimum position in seconds (prevents dragging past this point)
+   * @default 0
+   */
+  minPosition?: number;
 }
 
 /**
@@ -45,9 +54,12 @@ export function PlayheadCursor({
   height,
   showTopIcon = false,
   iconTopOffset = 0,
+  onPositionChange,
+  minPosition = 0,
 }: PlayheadCursorProps) {
   const x = leftPadding + position * pixelsPerSecond;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (showTopIcon && canvasRef.current) {
@@ -86,6 +98,56 @@ export function PlayheadCursor({
     }
   }, [showTopIcon]);
 
+  // Drag handlers for playhead icon
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!onPositionChange) return;
+
+      // Get scroll offset from the transformed parent
+      const scrollableDiv = document.querySelector('[style*="transform: translateX"]') as HTMLElement;
+      if (!scrollableDiv) return;
+
+      const transform = scrollableDiv.style.transform;
+      const scrollXMatch = transform.match(/translateX\((-?\d+)px\)/);
+      const scrollX = scrollXMatch ? parseInt(scrollXMatch[1], 10) : 0;
+
+      const rect = scrollableDiv.getBoundingClientRect();
+      const x = e.clientX - rect.left - scrollX;
+
+      // Calculate new position in seconds
+      const newPosition = (x - leftPadding) / pixelsPerSecond;
+
+      // Constrain to minimum position
+      const constrainedPosition = Math.max(minPosition, newPosition);
+
+      onPositionChange(constrainedPosition);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.body.style.cursor = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, onPositionChange, leftPadding, pixelsPerSecond, minPosition]);
+
+  const handleIconMouseDown = (e: React.MouseEvent) => {
+    if (!onPositionChange) return;
+    console.log('Playhead mousedown triggered');
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    document.body.style.cursor = 'ew-resize';
+  };
+
   return (
     <div
       className="playhead-cursor"
@@ -111,19 +173,28 @@ export function PlayheadCursor({
 
       {/* Playhead head at top (for timeline ruler) */}
       {showTopIcon && (
-        <canvas
-          ref={canvasRef}
-          width={17}
-          height={17}
+        <div
+          onMouseDown={handleIconMouseDown}
           style={{
             position: 'absolute',
             top: `${iconTopOffset}px`,
             left: '50%',
             transform: 'translateX(calc(-50% + 0.5px))',
-            pointerEvents: 'none',
+            cursor: onPositionChange ? 'ew-resize' : 'default',
+            pointerEvents: onPositionChange ? 'auto' : 'none',
             zIndex: 4,
           }}
-        />
+        >
+          <canvas
+            ref={canvasRef}
+            width={17}
+            height={17}
+            style={{
+              display: 'block',
+              pointerEvents: 'none',
+            }}
+          />
+        </div>
       )}
     </div>
   );

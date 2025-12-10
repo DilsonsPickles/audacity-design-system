@@ -1,8 +1,8 @@
 import React from 'react';
-import { TracksProvider } from '../contexts/TracksContext';
-import { Canvas } from '../components/Canvas';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, GhostButton, TransportButton, ToolButton, ToggleButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor } from '@audacity-ui/components';
-import { useTracks } from '../contexts/TracksContext';
+import { TracksProvider } from './contexts/TracksContext';
+import { Canvas } from './components/Canvas';
+import { ProjectToolbar, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat } from '@audacity-ui/components';
+import { useTracks } from './contexts/TracksContext';
 
 // Generate realistic waveform data
 function generateWaveform(durationSeconds: number, samplesPerSecond: number = 100): number[] {
@@ -107,9 +107,15 @@ const sampleTracks = [
   },
 ];
 
+type Workspace = 'classic' | 'spectral-editing';
+
 function CanvasDemoContent() {
   const { state, dispatch } = useTracks();
   const [scrollX, setScrollX] = React.useState(0);
+  const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export'>('project');
+  const [workspace, setWorkspace] = React.useState<Workspace>('classic');
+  const [currentTime, setCurrentTime] = React.useState(0);
+  const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -156,14 +162,37 @@ function CanvasDemoContent() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
+      <ProjectToolbar
+        activeItem={activeMenuItem}
+        onMenuItemClick={setActiveMenuItem}
+        centerContent={
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3d3e42' }}>
+              <Icon name="mixer" size={16} />
+              <span style={{ fontSize: '13px' }}>Mixer</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3d3e42' }}>
+              <Icon name="cog" size={16} />
+              <span style={{ fontSize: '13px' }}>Audio setup</span>
+            </div>
+          </>
+        }
+        rightContent={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#3d3e42' }}>Workspace</span>
+            <select
+              style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
+              value={workspace}
+              onChange={(e) => setWorkspace(e.target.value as Workspace)}
+            >
+              <option value="classic">Classic</option>
+              <option value="spectral-editing">Spectral editing</option>
+            </select>
+          </div>
+        }
+      />
       <Toolbar>
-        <ToolbarButtonGroup gap={4}>
-          <GhostButton icon="menu" />
-          <GhostButton icon="mixer" />
-        </ToolbarButtonGroup>
-
-        <ToolbarDivider />
-
+        {/* Transport controls - shown in all workspaces */}
         <ToolbarButtonGroup gap={2}>
           <TransportButton icon="play" />
           <TransportButton icon="stop" />
@@ -173,33 +202,62 @@ function CanvasDemoContent() {
           <TransportButton icon="loop" />
         </ToolbarButtonGroup>
 
+        {workspace === 'classic' && (
+          <>
+            <ToolbarDivider />
+
+            <ToolbarButtonGroup gap={2}>
+              <ToggleToolButton
+                icon="automation"
+                isActive={state.envelopeMode}
+                onClick={handleToggleEnvelope}
+              />
+            </ToolbarButtonGroup>
+
+            <ToolbarButtonGroup gap={2}>
+              <ToolButton icon="zoom-in" />
+              <ToolButton icon="zoom-out" />
+            </ToolbarButtonGroup>
+
+            <ToolbarButtonGroup gap={2}>
+              <ToolButton icon="cut" />
+              <ToolButton icon="copy" />
+              <ToolButton icon="paste" />
+            </ToolbarButtonGroup>
+
+            <ToolbarButtonGroup gap={2}>
+              <ToolButton icon="trim" />
+              <ToolButton icon="silence" />
+            </ToolbarButtonGroup>
+          </>
+        )}
+
+        {workspace === 'spectral-editing' && (
+          <>
+            <ToolbarButtonGroup gap={2}>
+              <ToolButton icon="zoom-in" />
+              <ToolButton icon="zoom-out" />
+            </ToolbarButtonGroup>
+
+            <ToolbarButtonGroup gap={2}>
+              <ToggleToolButton
+                icon="waveform"
+                isActive={state.spectrogramMode}
+                onClick={handleToggleSpectrogram}
+              />
+            </ToolbarButtonGroup>
+          </>
+        )}
+
         <ToolbarDivider />
 
+        {/* TimeCode display */}
         <ToolbarButtonGroup gap={2}>
-          <ToolButton icon="zoom-in" />
-          <ToolButton icon="zoom-out" />
-          <ToolButton icon="cut" />
-          <ToolButton icon="copy" />
-          <ToolButton icon="paste" />
-          <ToolButton icon="trim" />
-          <ToolButton icon="silence" />
-        </ToolbarButtonGroup>
-
-        <ToolbarDivider />
-
-        <ToolbarButtonGroup gap={4}>
-          <ToggleButton active={state.envelopeMode} onClick={handleToggleEnvelope}>
-            <Icon name="automation" size={16} />
-          </ToggleButton>
-        </ToolbarButtonGroup>
-
-        <ToolbarDivider />
-
-        <ToolbarButtonGroup gap={4}>
-          <ToggleToolButton
-            icon="waveform"
-            isActive={state.spectrogramMode}
-            onClick={handleToggleSpectrogram}
+          <TimeCode
+            value={currentTime}
+            format={timeCodeFormat}
+            onChange={setCurrentTime}
+            onFormatChange={setTimeCodeFormat}
           />
         </ToolbarButtonGroup>
       </Toolbar>
@@ -267,10 +325,14 @@ function CanvasDemoContent() {
               <PlayheadCursor
                 position={state.playheadPosition}
                 pixelsPerSecond={100}
-                leftPadding={0}
+                leftPadding={12}
                 height={0}
                 showTopIcon={true}
                 iconTopOffset={24}
+                onPositionChange={(newPosition) => {
+                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+                }}
+                minPosition={0} // Allow playhead stalk to touch the 12px gap area
               />
             </div>
           </div>
@@ -282,13 +344,13 @@ function CanvasDemoContent() {
             style={{ flex: 1, overflowX: 'scroll', overflowY: 'hidden', backgroundColor: '#212433' }}
           >
             <div style={{ minWidth: '5000px', height: '100%', position: 'relative' }}>
-              <Canvas pixelsPerSecond={100} width={5000} leftPadding={0} />
+              <Canvas pixelsPerSecond={100} width={5000} leftPadding={12} />
               {/* Playhead stalk only (no icon) */}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
                 <PlayheadCursor
                   position={state.playheadPosition}
                   pixelsPerSecond={100}
-                  leftPadding={0}
+                  leftPadding={12}
                   height={1000}
                   showTopIcon={false}
                 />
@@ -321,7 +383,7 @@ function CanvasDemoContent() {
   );
 }
 
-export default function CanvasDemo() {
+export default function App() {
   return (
     <TracksProvider initialTracks={sampleTracks}>
       <CanvasDemoContent />

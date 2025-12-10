@@ -73,9 +73,20 @@ export interface TrackProps {
   backgroundColor?: string;
 
   /**
+   * Left padding in pixels (for alignment with ruler)
+   * @default 0
+   */
+  leftPadding?: number;
+
+  /**
    * Callback when a clip is clicked
    */
   onClipClick?: (clipId: string | number) => void;
+
+  /**
+   * Callback when a clip header is clicked
+   */
+  onClipHeaderClick?: (clipId: string | number, clipStartTime: number) => void;
 
   /**
    * Callback when track background is clicked
@@ -98,7 +109,9 @@ export const Track: React.FC<TrackProps> = ({
   width,
   yOffset = 0,
   backgroundColor = '#212433',
+  leftPadding = 0,
   onClipClick,
+  onClipHeaderClick,
   onTrackClick,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -123,7 +136,7 @@ export const Track: React.FC<TrackProps> = ({
 
     // Draw clips
     clips.forEach(clip => {
-      const clipX = clip.start * pixelsPerSecond;
+      const clipX = leftPadding + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
       const clipHeaderHeight = 20;
 
@@ -602,7 +615,7 @@ export const Track: React.FC<TrackProps> = ({
     // Check if hovering over a clip header
     let overClipHeader = false;
     for (const clip of clips) {
-      const clipX = clip.start * pixelsPerSecond;
+      const clipX = leftPadding + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
 
       if (x >= clipX && x < clipX + clipWidth && y <= CLIP_HEADER_HEIGHT) {
@@ -629,12 +642,14 @@ export const Track: React.FC<TrackProps> = ({
     // Check if a clip header was clicked
     let clipClicked = false;
     for (const clip of clips) {
-      const clipX = clip.start * pixelsPerSecond;
+      const clipX = leftPadding + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
 
       // Only select clip if click is within the header area (top 20px of the clip)
       if (x >= clipX && x < clipX + clipWidth && y <= CLIP_HEADER_HEIGHT) {
+        event.stopPropagation(); // Prevent canvas click handler from firing
         onClipClick?.(clip.id);
+        onClipHeaderClick?.(clip.id, clip.start);
         clipClicked = true;
         break;
       }

@@ -86,7 +86,7 @@ const initialState: TracksState = {
   spectrogramMode: false,
   timeSelection: null,
   spectralSelection: null,
-  playheadPosition: 0,
+  playheadPosition: 1,
   hoveredPoint: null,
   viewModesBeforeOverlay: null,
 };
