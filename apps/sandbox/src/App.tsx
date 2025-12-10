@@ -114,10 +114,12 @@ function CanvasDemoContent() {
   const [scrollX, setScrollX] = React.useState(0);
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export'>('project');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
-  const [currentTime, setCurrentTime] = React.useState(0);
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Sync playhead position with TimeCode display
+  const currentTime = state.playheadPosition;
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
@@ -256,7 +258,10 @@ function CanvasDemoContent() {
           <TimeCode
             value={currentTime}
             format={timeCodeFormat}
-            onChange={setCurrentTime}
+            onChange={(newTime) => {
+              // When user edits TimeCode, update the playhead position
+              dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime });
+            }}
             onFormatChange={setTimeCodeFormat}
           />
         </ToolbarButtonGroup>
