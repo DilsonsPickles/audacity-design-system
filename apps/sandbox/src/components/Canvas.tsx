@@ -223,6 +223,17 @@ export function Canvas({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // If there's a spectral selection at this position, prioritize it over envelope
+    // This prevents envelope handles from interfering with spectral marquee center line
+    if (spectralSelection && hasSpectralView && selection.selection.isPositionOnSpectralClip) {
+      const isOnSpectralClip = selection.selection.isPositionOnSpectralClip(x, y);
+      if (isOnSpectralClip) {
+        // Let spectral selection handle it
+        containerProps.onMouseDown?.(e);
+        return;
+      }
+    }
+
     const result = handleEnvelopeClick(
       x,
       y,

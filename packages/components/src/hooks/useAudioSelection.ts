@@ -77,6 +77,8 @@ export interface UseAudioSelectionReturn {
     cursorStyle: string;
     /** Check if we just finished dragging (for custom logic) */
     wasJustDragging: () => boolean;
+    /** Check if position is on a spectral-enabled clip */
+    isPositionOnSpectralClip?: (x: number, y: number) => boolean;
   };
 }
 
@@ -418,6 +420,7 @@ export function useAudioSelection(
       isDragging: timeSelection.isDragging || spectralSelection.isDragging,
       cursorStyle: currentCursor,
       wasJustDragging: () => timeSelection.wasJustDragging() || spectralSelection.wasJustDragging(),
+      isPositionOnSpectralClip: spectralSelection.isPositionOnSpectralClip,
     },
   };
 }
