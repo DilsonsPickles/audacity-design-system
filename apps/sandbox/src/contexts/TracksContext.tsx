@@ -54,6 +54,7 @@ export interface EnvelopeDragState {
   originalTime: number;
   isNewPoint?: boolean;
   hiddenPointIndices: number[];
+  hasMoved?: boolean;
 }
 
 export interface EnvelopeSegmentDragState {

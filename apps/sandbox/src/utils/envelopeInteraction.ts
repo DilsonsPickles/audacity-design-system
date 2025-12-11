@@ -27,9 +27,10 @@ interface Track {
 }
 
 interface EnvelopeInteractionResult {
-  type: 'point-drag' | 'segment-drag' | 'add-point' | 'none';
+  type: 'point-drag' | 'segment-drag' | 'add-point' | 'remove-point' | 'none';
   dragState?: EnvelopeDragState | EnvelopeSegmentDragState;
   newPoint?: { trackIndex: number; clipId: number; point: EnvelopePoint };
+  removePoint?: { trackIndex: number; clipId: number; pointIndex: number };
 }
 
 const CLIP_HEADER_HEIGHT = 20;
@@ -91,6 +92,7 @@ export function handleEnvelopeClick(
                 deletedPoints: [],
                 originalTime: point.time,
                 hiddenPointIndices: [],
+                hasMoved: false,
               } as EnvelopeDragState,
             };
           }

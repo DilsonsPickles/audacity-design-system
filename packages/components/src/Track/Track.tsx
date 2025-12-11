@@ -190,6 +190,12 @@ export interface TrackProps {
   envelopeMode?: boolean;
 
   /**
+   * Hidden envelope point indices for the current drag operation
+   * Map of clipId to array of hidden point indices
+   */
+  envelopeHiddenPointIndices?: Map<string | number, number[]>;
+
+  /**
    * Whether the track is selected
    */
   isSelected?: boolean;
@@ -247,6 +253,7 @@ export const Track: React.FC<TrackProps> = ({
   spectrogramMode = false,
   splitView = false,
   envelopeMode = false,
+  envelopeHiddenPointIndices,
   isSelected = false,
   isFocused = false,
   pixelsPerSecond = 100,
@@ -770,7 +777,8 @@ export const Track: React.FC<TrackProps> = ({
 
       // Draw envelope line and control points after waveform (if envelope mode is active)
       if (envelopeMode) {
-        drawEnvelopeLine(ctx, clip, clipX, clipHeaderHeight, clipWidth, height - clipHeaderHeight);
+        const hiddenIndices = envelopeHiddenPointIndices?.get(clip.id) || [];
+        drawEnvelopeLine(ctx, clip, clipX, clipHeaderHeight, clipWidth, height - clipHeaderHeight, hiddenIndices);
       }
     });
 
@@ -781,9 +789,12 @@ export const Track: React.FC<TrackProps> = ({
       x: number,
       y: number,
       clipWidth: number,
-      clipHeight: number
+      clipHeight: number,
+      hiddenPointIndices: number[] = []
     ) {
       const points = clip.envelopePoints || [];
+      // Filter out hidden points (points being "eaten" during drag)
+      const visiblePoints = points.filter((_, index) => !hiddenPointIndices.includes(index));
       const envelopeLineColor = '#ff0000'; // Red line
       const zeroDB_Y = dbToYNonLinear(0, y, clipHeight);
 
@@ -794,24 +805,24 @@ export const Track: React.FC<TrackProps> = ({
       ctx.lineJoin = 'miter';
       ctx.beginPath();
 
-      if (points.length === 0) {
-        // No control points - draw default line at 0dB
+      if (visiblePoints.length === 0) {
+        // No visible control points - draw default line at 0dB
         ctx.moveTo(x, zeroDB_Y);
         ctx.lineTo(x + clipWidth, zeroDB_Y);
       } else {
-        // Start from first point
-        const startY = dbToYNonLinear(points[0].db, y, clipHeight);
+        // Start from first visible point
+        const startY = dbToYNonLinear(visiblePoints[0].db, y, clipHeight);
         ctx.moveTo(x, startY);
 
-        // Draw through all points
-        points.forEach((point) => {
+        // Draw through all visible points
+        visiblePoints.forEach((point) => {
           const px = x + (point.time / clip.duration) * clipWidth;
           const py = dbToYNonLinear(point.db, y, clipHeight);
           ctx.lineTo(px, py);
         });
 
         // Extend to end of clip
-        const lastPoint = points[points.length - 1];
+        const lastPoint = visiblePoints[visiblePoints.length - 1];
         if (lastPoint.time < clip.duration) {
           const endY = dbToYNonLinear(lastPoint.db, y, clipHeight);
           ctx.lineTo(x + clipWidth, endY);
@@ -820,8 +831,66 @@ export const Track: React.FC<TrackProps> = ({
 
       ctx.stroke();
 
-      // Draw control points (only if there are points)
-      points.forEach((point) => {
+      // Draw hit area visualization (semi-transparent overlay showing interactive zones)
+      const ENVELOPE_LINE_FAR_THRESHOLD = 8; // 8 pixels above and below the line
+
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'; // Very light red overlay
+
+      if (visiblePoints.length === 0) {
+        // No visible control points - show hit area around default 0dB line
+        ctx.fillRect(x, zeroDB_Y - ENVELOPE_LINE_FAR_THRESHOLD, clipWidth, ENVELOPE_LINE_FAR_THRESHOLD * 2);
+      } else {
+        // Draw hit area for each segment
+        const startY = dbToYNonLinear(visiblePoints[0].db, y, clipHeight);
+
+        // First segment: from clip start to first point
+        const firstPx = x + (visiblePoints[0].time / clip.duration) * clipWidth;
+        const firstPy = dbToYNonLinear(visiblePoints[0].db, y, clipHeight);
+
+        ctx.beginPath();
+        ctx.moveTo(x, startY - ENVELOPE_LINE_FAR_THRESHOLD);
+        ctx.lineTo(firstPx, firstPy - ENVELOPE_LINE_FAR_THRESHOLD);
+        ctx.lineTo(firstPx, firstPy + ENVELOPE_LINE_FAR_THRESHOLD);
+        ctx.lineTo(x, startY + ENVELOPE_LINE_FAR_THRESHOLD);
+        ctx.closePath();
+        ctx.fill();
+
+        // Segments between control points
+        for (let i = 0; i < visiblePoints.length - 1; i++) {
+          const point1 = visiblePoints[i];
+          const point2 = visiblePoints[i + 1];
+          const px1 = x + (point1.time / clip.duration) * clipWidth;
+          const py1 = dbToYNonLinear(point1.db, y, clipHeight);
+          const px2 = x + (point2.time / clip.duration) * clipWidth;
+          const py2 = dbToYNonLinear(point2.db, y, clipHeight);
+
+          ctx.beginPath();
+          ctx.moveTo(px1, py1 - ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.lineTo(px2, py2 - ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.lineTo(px2, py2 + ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.lineTo(px1, py1 + ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Last segment: from last point to clip end
+        const lastPoint = visiblePoints[visiblePoints.length - 1];
+        if (lastPoint.time < clip.duration) {
+          const lastPx = x + (lastPoint.time / clip.duration) * clipWidth;
+          const lastPy = dbToYNonLinear(lastPoint.db, y, clipHeight);
+
+          ctx.beginPath();
+          ctx.moveTo(lastPx, lastPy - ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.lineTo(x + clipWidth, lastPy - ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.lineTo(x + clipWidth, lastPy + ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.lineTo(lastPx, lastPy + ENVELOPE_LINE_FAR_THRESHOLD);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // Draw control points (only visible points) - on top of hit area
+      visiblePoints.forEach((point) => {
         const px = x + (point.time / clip.duration) * clipWidth;
         const py = dbToYNonLinear(point.db, y, clipHeight);
 
@@ -841,7 +910,7 @@ export const Track: React.FC<TrackProps> = ({
         ctx.fill();
       });
     }
-  }, [clips, height, trackIndex, spectrogramMode, splitView, envelopeMode, isSelected, isFocused, pixelsPerSecond, width, backgroundColor]);
+  }, [clips, height, trackIndex, spectrogramMode, splitView, envelopeMode, envelopeHiddenPointIndices, isSelected, isFocused, pixelsPerSecond, width, backgroundColor]);
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
