@@ -215,10 +215,9 @@ export function Canvas({
 
   const containerProps = selection.containerProps as any;
 
-  // Envelope mouse down handler - check for envelope interaction BEFORE spectral/time selection
+  // Main mouse down handler - handles clip dragging and envelope interaction
   const handleEnvelopeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current || (!envelopeMode && !envelopeAltMode)) {
-      // No envelope mode active, pass through to audio selection
+    if (!containerRef.current) {
       containerProps.onMouseDown?.(e);
       return;
     }
@@ -227,8 +226,8 @@ export function Canvas({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // If there's a spectral selection at this position, prioritize it over envelope
-    // This prevents envelope handles from interfering with spectral marquee center line
+    // If there's a spectral selection at this position, prioritize it over everything
+    // This prevents envelope/clip handles from interfering with spectral marquee center line
     if (spectralSelection && hasSpectralView && selection.selection.isPositionOnSpectralClip) {
       const isOnSpectralClip = selection.selection.isPositionOnSpectralClip(x, y);
       if (isOnSpectralClip) {
@@ -238,7 +237,7 @@ export function Canvas({
       }
     }
 
-    // Check for clip header dragging (priority over envelope)
+    // Check for clip header dragging (always check, regardless of envelope mode)
     let currentY = TOP_GAP;
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
@@ -278,29 +277,31 @@ export function Canvas({
       currentY += trackHeight + TRACK_GAP;
     }
 
-    const result = handleEnvelopeClick(
-      x,
-      y,
-      tracks as any,
-      envelopeMode,
-      true, // Always use alt mode behavior: click = add point, drag = move segment
-      pixelsPerSecond,
-      CLIP_CONTENT_OFFSET,
-      TRACK_GAP,
-      TOP_GAP
-    );
+    // Check for envelope interaction (only if envelope mode is active)
+    if (envelopeMode || envelopeAltMode) {
+      const result = handleEnvelopeClick(
+        x,
+        y,
+        tracks as any,
+        envelopeMode,
+        true, // Always use alt mode behavior: click = add point, drag = move segment
+        pixelsPerSecond,
+        CLIP_CONTENT_OFFSET,
+        TRACK_GAP,
+        TOP_GAP
+      );
 
-    if (result.type === 'point-drag') {
-      envelopeDragStateRef.current = result.dragState as EnvelopeDragState;
-      envelopeInteractionOccurredRef.current = true;
-      e.stopPropagation(); // Prevent click event from firing
-      return; // Don't pass through to audio selection
-    } else if (result.type === 'segment-drag') {
-      envelopeSegmentDragStateRef.current = result.dragState as EnvelopeSegmentDragState;
-      envelopeInteractionOccurredRef.current = true;
-      e.stopPropagation(); // Prevent click event from firing
-      return; // Don't pass through to audio selection
-    } else if (result.type === 'add-point' && result.newPoint) {
+      if (result.type === 'point-drag') {
+        envelopeDragStateRef.current = result.dragState as EnvelopeDragState;
+        envelopeInteractionOccurredRef.current = true;
+        e.stopPropagation(); // Prevent click event from firing
+        return; // Don't pass through to audio selection
+      } else if (result.type === 'segment-drag') {
+        envelopeSegmentDragStateRef.current = result.dragState as EnvelopeSegmentDragState;
+        envelopeInteractionOccurredRef.current = true;
+        e.stopPropagation(); // Prevent click event from firing
+        return; // Don't pass through to audio selection
+      } else if (result.type === 'add-point' && result.newPoint) {
       // Add point immediately
       const { trackIndex, clipId, point } = result.newPoint;
       const currentClip = tracks[trackIndex].clips.find(c => c.id === clipId);
@@ -322,9 +323,10 @@ export function Canvas({
       envelopeInteractionOccurredRef.current = true;
       e.stopPropagation(); // Prevent click event from firing
       return; // Don't pass through to audio selection
+      }
     }
 
-    // No envelope interaction, pass through to audio selection
+    // No clip or envelope interaction, pass through to audio selection
     containerProps.onMouseDown?.(e);
   };
 
