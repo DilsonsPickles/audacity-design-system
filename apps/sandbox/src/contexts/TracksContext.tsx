@@ -75,6 +75,14 @@ export interface EnvelopeSegmentDragState {
   hasMoved?: boolean;
 }
 
+export interface ClipDragState {
+  clip: Clip;
+  trackIndex: number;
+  offsetX: number;        // Offset from clip left edge to mouse
+  initialX: number;       // Initial mouse X position
+  initialTrackIndex: number;  // Track where drag started
+}
+
 // State interface
 export interface TracksState {
   tracks: Track[];
@@ -110,7 +118,8 @@ export type TracksAction =
   | { type: 'UPDATE_TRACK_VIEW'; payload: { index: number; viewMode: 'waveform' | 'spectrogram' | 'split' } }
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'SELECT_TRACK'; payload: number }
-  | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } };
+  | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
+  | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } };
 
 // Initial state
 const initialState: TracksState = {
@@ -322,6 +331,39 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
             : clip
         ),
       };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'MOVE_CLIP': {
+      const { clipId, fromTrackIndex, toTrackIndex, newStartTime } = action.payload;
+      const newTracks = [...state.tracks];
+
+      // Find the clip in the source track
+      const clip = newTracks[fromTrackIndex].clips.find(c => c.id === clipId);
+      if (!clip) return state;
+
+      if (fromTrackIndex === toTrackIndex) {
+        // Moving within the same track - just update start time
+        newTracks[fromTrackIndex] = {
+          ...newTracks[fromTrackIndex],
+          clips: newTracks[fromTrackIndex].clips.map(c =>
+            c.id === clipId ? { ...c, start: newStartTime } : c
+          ),
+        };
+      } else {
+        // Moving to a different track
+        // Remove from source track
+        newTracks[fromTrackIndex] = {
+          ...newTracks[fromTrackIndex],
+          clips: newTracks[fromTrackIndex].clips.filter(c => c.id !== clipId),
+        };
+        // Add to destination track with new start time
+        newTracks[toTrackIndex] = {
+          ...newTracks[toTrackIndex],
+          clips: [...newTracks[toTrackIndex].clips, { ...clip, start: newStartTime }],
+        };
+      }
+
       return { ...state, tracks: newTracks };
     }
 

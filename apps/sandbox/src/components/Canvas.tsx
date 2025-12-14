@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { Track, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
-import { useTracksState, useTracksDispatch, EnvelopeDragState, EnvelopeSegmentDragState } from '../contexts/TracksContext';
+import { useTracksState, useTracksDispatch, EnvelopeDragState, EnvelopeSegmentDragState, ClipDragState } from '../contexts/TracksContext';
 import { handleEnvelopeClick } from '../utils/envelopeInteraction';
 import { yToDbNonLinear, ENVELOPE_MOVE_THRESHOLD } from '../utils/envelopeUtils';
 import './Canvas.css';
@@ -48,6 +48,9 @@ export function Canvas({
   const envelopeSegmentDragStateRef = useRef<EnvelopeSegmentDragState | null>(null);
   const envelopeInteractionOccurredRef = useRef<boolean>(false);
 
+  // Clip dragging state
+  const clipDragStateRef = useRef<ClipDragState | null>(null);
+
   // Track which envelope points are currently hidden (for eating behavior)
   const [envelopeHiddenPoints, setEnvelopeHiddenPoints] = useState<{
     trackIndex: number;
@@ -59,6 +62,7 @@ export function Canvas({
   const TOP_GAP = 2;
   const TRACK_GAP = 2;
   const DEFAULT_TRACK_HEIGHT = 114;
+  const CLIP_HEADER_HEIGHT = 20;
 
   // Calculate total height based on all tracks + 2px gaps (top + between tracks)
   const totalHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
@@ -234,6 +238,46 @@ export function Canvas({
       }
     }
 
+    // Check for clip header dragging (priority over envelope)
+    let currentY = TOP_GAP;
+    for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
+      const track = tracks[trackIndex];
+      const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
+
+      if (y >= currentY && y < currentY + trackHeight) {
+        for (const clip of track.clips) {
+          const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
+          const clipWidth = clip.duration * pixelsPerSecond;
+          const clipHeaderY = currentY;
+
+          // Check if click is on clip header
+          if (x >= clipX && x <= clipX + clipWidth &&
+              y >= clipHeaderY && y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
+            // Select the clip
+            dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clip.id } });
+
+            // Clear time selection when starting clip drag
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+            // Start clip drag
+            clipDragStateRef.current = {
+              clip,
+              trackIndex,
+              offsetX: x - clipX,
+              initialX: x,
+              initialTrackIndex: trackIndex,
+            };
+
+            envelopeInteractionOccurredRef.current = true;
+            e.stopPropagation();
+            return;
+          }
+        }
+      }
+
+      currentY += trackHeight + TRACK_GAP;
+    }
+
     const result = handleEnvelopeClick(
       x,
       y,
@@ -288,6 +332,55 @@ export function Canvas({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
+
+      // Handle clip dragging
+      if (clipDragStateRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const dragState = clipDragStateRef.current;
+
+        // Calculate new start time
+        const newStartTime = Math.max(0, (x - dragState.offsetX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+        // Find which track the cursor is over
+        let currentY = TOP_GAP;
+        let newTrackIndex = dragState.trackIndex;
+        for (let i = 0; i < tracks.length; i++) {
+          const trackHeight = tracks[i].height || DEFAULT_TRACK_HEIGHT;
+          if (y >= currentY && y < currentY + trackHeight) {
+            newTrackIndex = i;
+            break;
+          }
+          currentY += trackHeight + TRACK_GAP;
+        }
+
+        // Update cursor style
+        if (containerRef.current) {
+          containerRef.current.style.cursor = 'grabbing';
+        }
+
+        // Move the clip
+        dispatch({
+          type: 'MOVE_CLIP',
+          payload: {
+            clipId: dragState.clip.id,
+            fromTrackIndex: dragState.trackIndex,
+            toTrackIndex: newTrackIndex,
+            newStartTime,
+          },
+        });
+
+        // Update drag state if track changed
+        if (newTrackIndex !== dragState.trackIndex) {
+          dragState.trackIndex = newTrackIndex;
+          // Update selected track when clip moves to a different track
+          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [newTrackIndex] });
+        }
+
+        return;
+      }
 
       // Handle envelope segment dragging
       if (envelopeSegmentDragStateRef.current) {
@@ -432,6 +525,16 @@ export function Canvas({
     };
 
     const handleMouseUp = () => {
+      // Handle clip drag end
+      if (clipDragStateRef.current) {
+        // Reset cursor
+        if (containerRef.current) {
+          containerRef.current.style.cursor = 'default';
+        }
+        clipDragStateRef.current = null;
+        return;
+      }
+
       // Handle envelope segment drag end - check for click vs drag in alt mode
       if (envelopeSegmentDragStateRef.current) {
         const dragState = envelopeSegmentDragStateRef.current;
