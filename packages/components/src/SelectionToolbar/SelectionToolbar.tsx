@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { TimeCode, TimeCodeFormat } from '../TimeCode/TimeCode';
+import { CloudProjectIndicator } from '../CloudProjectIndicator';
 import './SelectionToolbar.css';
 
 export interface SelectionToolbarProps {
@@ -58,6 +59,18 @@ export interface SelectionToolbarProps {
    */
   onSelectionEndChange?: (value: number) => void;
   /**
+   * Whether to show the cloud project indicator
+   */
+  showCloudIndicator?: boolean;
+  /**
+   * Whether the cloud project is currently uploading
+   */
+  isCloudUploading?: boolean;
+  /**
+   * Whether to show the duration timecode
+   */
+  showDuration?: boolean;
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -77,6 +90,9 @@ export function SelectionToolbar({
   onFormatChange,
   onSelectionStartChange,
   onSelectionEndChange,
+  showCloudIndicator = false,
+  isCloudUploading = false,
+  showDuration = true,
   className = '',
 }: SelectionToolbarProps) {
   // Calculate duration
@@ -104,6 +120,12 @@ export function SelectionToolbar({
 
       {/* Right side - Selection timecodes and duration */}
       <div className="selection-toolbar__right">
+        {showCloudIndicator && (
+          <>
+            <CloudProjectIndicator isUploading={isCloudUploading} />
+            <div className="selection-toolbar__divider" />
+          </>
+        )}
         <span className="selection-toolbar__label">Selection</span>
         <div className="selection-toolbar__timecodes">
           <TimeCode
@@ -125,16 +147,20 @@ export function SelectionToolbar({
           />
         </div>
 
-        <span className="selection-toolbar__label">Duration</span>
-        <div className="selection-toolbar__timecodes">
-          <TimeCode
-            value={durationValue}
-            format={format}
-            sampleRate={sampleRate}
-            frameRate={frameRate}
-            showFormatSelector={true}
-          />
-        </div>
+        {showDuration && (
+          <>
+            <span className="selection-toolbar__label">Duration</span>
+            <div className="selection-toolbar__timecodes">
+              <TimeCode
+                value={durationValue}
+                format={format}
+                sampleRate={sampleRate}
+                frameRate={frameRate}
+                showFormatSelector={true}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -57,7 +57,7 @@ export function SignInActionBar({
         </div>
         <Button
           variant="secondary"
-          size="small"
+          size="default"
           onClick={onSignOut}
         >
           Sign out

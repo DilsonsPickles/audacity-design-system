@@ -1,0 +1,65 @@
+/**
+ * Checkbox Styles
+ */
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+/* Unchecked states */
+.checkbox--unchecked.checkbox--default {
+  background-color: var(--background-control-bg-checkbox-idle, rgba(194, 196, 207, 0.7));
+}
+
+.checkbox--unchecked.checkbox--hover {
+  background-color: var(--background-control-bg-checkbox-hover, rgba(194, 196, 207, 0.5));
+}
+
+.checkbox--unchecked.checkbox--pressed {
+  background-color: var(--background-control-bg-checkbox-pressed, #c2c4cf);
+}
+
+/* Checked states */
+.checkbox--checked.checkbox--default {
+  background-color: var(--background-control-bg-checkbox-idle, rgba(194, 196, 207, 0.7));
+}
+
+.checkbox--checked.checkbox--hover {
+  background-color: var(--background-control-bg-checkbox-hover, rgba(194, 196, 207, 0.5));
+}
+
+.checkbox--checked.checkbox--pressed {
+  background-color: var(--background-control-bg-checkbox-pressed, #c2c4cf);
+}
+
+/* Disabled state */
+.checkbox--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Checkmark icon */
+.checkbox__icon {
+  font-family: 'MusescoreIcon', sans-serif;
+  font-size: 16px;
+  line-height: 16px;
+  color: var(--icon-icon-default, #14151a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+/* Focus state */
+.checkbox:focus {
+  outline: none;
+}

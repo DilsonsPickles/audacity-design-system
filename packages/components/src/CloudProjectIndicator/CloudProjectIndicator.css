@@ -1,0 +1,21 @@
+/**
+ * CloudProjectIndicator Styles
+ */
+
+.cloud-project-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cloud-project-indicator__icon {
+  font-family: 'MusescoreIcon', sans-serif;
+  font-size: 16px;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}

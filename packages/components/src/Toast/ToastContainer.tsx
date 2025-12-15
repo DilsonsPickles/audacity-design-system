@@ -85,6 +85,25 @@ export const toast = {
     toasts = [];
     emitChange();
   },
+
+  progress(title: string, description?: string, initialProgress = 0) {
+    const id = this.show({
+      type: 'info',
+      title,
+      description,
+      showProgress: true,
+      progress: initialProgress,
+      duration: 0, // Don't auto-dismiss
+    });
+    return id;
+  },
+
+  updateProgress(id: string, progress: number, timeRemaining?: string) {
+    toasts = toasts.map((t) =>
+      t.id === id ? { ...t, progress, timeRemaining } : t
+    );
+    emitChange();
+  },
 };
 
 export function ToastContainer({

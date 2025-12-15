@@ -1,8 +1,9 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
+import { DebugPanel } from './components/DebugPanel';
 
 // Generate realistic waveform data
 function generateWaveform(durationSeconds: number, samplesPerSecond: number = 100): number[] {
@@ -112,17 +113,29 @@ type Workspace = 'classic' | 'spectral-editing';
 function CanvasDemoContent() {
   const { state, dispatch } = useTracks();
   const [scrollX, setScrollX] = React.useState(0);
-  const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export'>('project');
+  const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('project');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isSignedIn, setIsSignedIn] = React.useState(false);
   const [isCreateAccountOpen, setIsCreateAccountOpen] = React.useState(false);
+  const [isSyncingDialogOpen, setIsSyncingDialogOpen] = React.useState(false);
+  const [isCloudProject, setIsCloudProject] = React.useState(false);
   const [projectName, setProjectName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [emailError, setEmailError] = React.useState(false);
   const [passwordError, setPasswordError] = React.useState(false);
+  const [validationErrorMessage, setValidationErrorMessage] = React.useState('');
+  const [dontShowSyncAgain, setDontShowSyncAgain] = React.useState(false);
+
+  // Debug panel state
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = React.useState(false);
+  const [isCloudUploading, setIsCloudUploading] = React.useState(false);
+  const [showDuration, setShowDuration] = React.useState(false);
+  const [showProjectRate, setShowProjectRate] = React.useState(false);
+  const [operatingSystem, setOperatingSystem] = React.useState<OperatingSystem>('windows');
+  const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -172,9 +185,16 @@ function CanvasDemoContent() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
+      <ApplicationHeader os={operatingSystem} />
       <ProjectToolbar
         activeItem={activeMenuItem}
-        onMenuItemClick={setActiveMenuItem}
+        onMenuItemClick={(item) => {
+          setActiveMenuItem(item);
+          if (item === 'debug') {
+            setIsDebugPanelOpen(true);
+          }
+        }}
+        showDebugMenu={true}
         centerContent={
           <>
             <GhostButton icon="mixer" label="Mixer" />
@@ -385,6 +405,9 @@ function CanvasDemoContent() {
         selectionStart={state.timeSelection?.startTime ?? null}
         selectionEnd={state.timeSelection?.endTime ?? null}
         format={timeCodeFormat}
+        showCloudIndicator={isCloudProject || isCloudUploading}
+        isCloudUploading={isCloudUploading}
+        showDuration={showDuration}
         onFormatChange={setTimeCodeFormat}
         onSelectionStartChange={(newStart) => {
           if (state.timeSelection) {
@@ -426,15 +449,54 @@ function CanvasDemoContent() {
             secondaryText="Cancel"
             onPrimaryClick={() => {
               if (isSignedIn) {
-                // User is signed in, save the project
-                toast('Project saved successfully!', 'success');
+                // User is signed in, close share dialog, show syncing dialog, and start upload
                 setIsShareDialogOpen(false);
-                setProjectName('');
+                setIsSyncingDialogOpen(true);
+
+                // Show uploading progress toast (10 seconds)
+                const uploadToastId = toast.progress('Uploading project to audio.com...');
+                setIsCloudUploading(true); // Start showing upload icon
+
+                // Simulate upload progress over 10 seconds
+                const totalDuration = 10000; // 10 seconds
+                const updateInterval = 100; // Update every 100ms
+                let progress = 0;
+                const startTime = Date.now();
+
+                const interval = setInterval(() => {
+                  progress += 1;
+                  const elapsed = Date.now() - startTime;
+                  const remaining = Math.max(0, totalDuration - elapsed);
+                  const secondsRemaining = Math.ceil(remaining / 1000);
+                  const timeRemainingText = secondsRemaining === 1
+                    ? '1 second remaining'
+                    : `${secondsRemaining} seconds remaining`;
+
+                  toast.updateProgress(uploadToastId, progress, timeRemainingText);
+
+                  if (progress >= 100) {
+                    clearInterval(interval);
+                    // Dismiss upload toast and show success
+                    setTimeout(() => {
+                      toast.dismiss(uploadToastId);
+                      setIsCloudUploading(false); // Stop showing upload icon
+                      setIsCloudProject(true); // Mark project as cloud project
+                      toast.success(
+                        'Success!',
+                        'All saved changes will now update to the cloud. You can manage this file from your uploaded projects page on audio.com',
+                        [
+                          { label: 'View on audio.com', onClick: () => console.log('View on audio.com') }
+                        ],
+                        0 // No auto-dismiss
+                      );
+                    }, 200);
+                  }
+                }, updateInterval);
               } else if (projectName.trim()) {
                 // User needs to sign in, open Create Account dialog on top
                 setIsCreateAccountOpen(true);
               } else {
-                toast('Please enter a project name', 'error');
+                toast.error('Please enter a project name');
               }
             }}
             onSecondaryClick={() => {
@@ -473,23 +535,24 @@ function CanvasDemoContent() {
               setPasswordError(hasPasswordError);
 
               if (hasEmailError || hasPasswordError) {
-                toast('Please fill in all fields', 'error');
+                toast.error('Please fill in all fields');
                 return;
               }
 
               // Check for correct credentials
               if (email === 'admin' && password === 'password') {
-                toast('Sign in successful!', 'success');
+                toast.success('Sign in successful!');
                 setIsCreateAccountOpen(false);
                 setIsSignedIn(true);
                 setEmail('');
                 setPassword('');
                 setEmailError(false);
                 setPasswordError(false);
+                setValidationErrorMessage('');
               } else {
-                toast('Invalid email or password', 'error');
                 setEmailError(true);
                 setPasswordError(true);
+                setValidationErrorMessage('Incorrect email or password. Please try again');
               }
             }}
             onSecondaryClick={() => {
@@ -498,6 +561,7 @@ function CanvasDemoContent() {
               setPassword('');
               setEmailError(false);
               setPasswordError(false);
+              setValidationErrorMessage('');
             }}
           />
         }
@@ -511,7 +575,7 @@ function CanvasDemoContent() {
             <SocialSignInButton
               provider="google"
               onClick={() => {
-                toast('Signed in with Google!', 'success');
+                toast.success('Signed in with Google!');
                 setIsCreateAccountOpen(false);
                 setIsSignedIn(true);
                 setEmail('');
@@ -521,7 +585,7 @@ function CanvasDemoContent() {
             <SocialSignInButton
               provider="facebook"
               onClick={() => {
-                toast('Signed in with Facebook!', 'success');
+                toast.success('Signed in with Facebook!');
                 setIsCreateAccountOpen(false);
                 setIsSignedIn(true);
                 setEmail('');
@@ -538,6 +602,7 @@ function CanvasDemoContent() {
             onChange={(value) => {
               setEmail(value);
               setEmailError(false);
+              setValidationErrorMessage('');
             }}
             placeholder="Enter email"
             width="100%"
@@ -551,6 +616,7 @@ function CanvasDemoContent() {
             onChange={(value) => {
               setPassword(value);
               setPasswordError(false);
+              setValidationErrorMessage('');
             }}
             placeholder="Enter password"
             width="100%"
@@ -558,14 +624,136 @@ function CanvasDemoContent() {
             error={passwordError}
           />
 
+          {validationErrorMessage && (
+            <div style={{
+              fontSize: '12px',
+              lineHeight: 'normal',
+              color: '#c41e3a',
+              marginTop: '-8px'
+            }}>
+              {validationErrorMessage}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '4px', fontSize: '12px', lineHeight: 'normal' }}>
             <span>Already have an account?</span>
-            <TextLink onClick={() => toast('Sign in clicked', 'info')}>
+            <TextLink onClick={() => toast.info('Sign in clicked')}>
               Sign in here
             </TextLink>
           </div>
         </div>
       </Dialog>
+
+      {/* Syncing Your Project Dialog */}
+      <Dialog
+        isOpen={isSyncingDialogOpen}
+        onClose={() => {
+          setIsSyncingDialogOpen(false);
+          setIsShareDialogOpen(false);
+          setProjectName('');
+        }}
+        title="Save to audio.com"
+        width={400}
+        footer={
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px',
+            width: '100%',
+            boxSizing: 'border-box',
+            backgroundColor: 'var(--background-surface-bg-surface-primary-idle, #f8f8f9)',
+            borderTop: '1px solid var(--stroke-main-stroke-primary, #d4d5d9)',
+            flexShrink: 0
+          }}>
+            <LabeledCheckbox
+              label="Don't show this again"
+              checked={dontShowSyncAgain}
+              onChange={setDontShowSyncAgain}
+            />
+
+            {/* OK Button */}
+            <Button
+              variant="primary"
+              size="default"
+              onClick={() => {
+                setIsSyncingDialogOpen(false);
+                setProjectName('');
+              }}
+            >
+              OK
+            </Button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 'var(--font-size-body-bold, 12px)',
+            fontWeight: 600,
+            lineHeight: '16px',
+            color: 'var(--text-txt-primary, #14151a)'
+          }}>
+            Syncing your project
+          </div>
+          <div style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 'var(--font-size-body, 12px)',
+            fontWeight: 400,
+            lineHeight: '16px',
+            color: 'var(--text-txt-primary, #14151a)'
+          }}>
+            The project will sync in the background while you work. You can check the sync status in the bottom right corner of Audacity at any time.
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Debug Panel */}
+      <DebugPanel
+        isOpen={isDebugPanelOpen}
+        onClose={() => {
+          setIsDebugPanelOpen(false);
+          setActiveMenuItem('project');
+        }}
+        isSignedIn={isSignedIn}
+        onSignedInChange={setIsSignedIn}
+        isCloudProject={isCloudProject}
+        onCloudProjectChange={setIsCloudProject}
+        isCloudUploading={isCloudUploading}
+        onCloudUploadingChange={setIsCloudUploading}
+        showDuration={showDuration}
+        onShowDurationChange={setShowDuration}
+        showProjectRate={showProjectRate}
+        onShowProjectRateChange={setShowProjectRate}
+        operatingSystem={operatingSystem}
+        onOperatingSystemChange={setOperatingSystem}
+        trackCount={debugTrackCount}
+        onTrackCountChange={setDebugTrackCount}
+        onGenerateTracks={() => {
+          // Generate tracks based on debugTrackCount
+          const newTracks = Array.from({ length: debugTrackCount }, (_, i) => ({
+            id: i + 1,
+            name: `Track ${i + 1}`,
+            height: 114,
+            clips: [
+              {
+                id: i * 10 + 1,
+                name: `Clip ${i + 1}`,
+                start: Math.random() * 3,
+                duration: 2 + Math.random() * 3,
+                waveform: generateWaveform(2 + Math.random() * 3),
+                envelopePoints: [],
+              },
+            ],
+          }));
+          dispatch({ type: 'SET_TRACKS', payload: newTracks });
+          toast.success('Generated tracks successfully');
+        }}
+        onClearAllTracks={() => {
+          dispatch({ type: 'SET_TRACKS', payload: [] });
+          toast.info('Cleared all tracks');
+        }}
+      />
     </div>
   );
 }

@@ -54,7 +54,7 @@ export function DialogFooter({
       <div className="dialog-footer__button-group">
         <Button
           variant="secondary"
-          size="small"
+          size="default"
           onClick={onSecondaryClick}
           disabled={secondaryDisabled}
         >
@@ -62,7 +62,7 @@ export function DialogFooter({
         </Button>
         <Button
           variant="primary"
-          size="small"
+          size="default"
           onClick={onPrimaryClick}
           disabled={primaryDisabled}
         >

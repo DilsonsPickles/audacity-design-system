@@ -10,11 +10,11 @@ export interface ProjectToolbarProps {
   /**
    * Currently active menu item
    */
-  activeItem?: 'home' | 'project' | 'export';
+  activeItem?: 'home' | 'project' | 'export' | 'debug';
   /**
    * Callback when a menu item is clicked
    */
-  onMenuItemClick?: (item: 'home' | 'project' | 'export') => void;
+  onMenuItemClick?: (item: 'home' | 'project' | 'export' | 'debug') => void;
   /**
    * Center content (e.g., "Mixer", "Audio setup")
    */
@@ -23,6 +23,10 @@ export interface ProjectToolbarProps {
    * Right content (e.g., workspace selector, buttons)
    */
   rightContent?: React.ReactNode;
+  /**
+   * Whether to show the debug menu item
+   */
+  showDebugMenu?: boolean;
   /**
    * Optional className for custom styling
    */
@@ -42,6 +46,7 @@ export function ProjectToolbar({
   onMenuItemClick,
   centerContent,
   rightContent,
+  showDebugMenu = false,
   className = '',
 }: ProjectToolbarProps) {
   return (
@@ -68,6 +73,14 @@ export function ProjectToolbar({
         >
           Export
         </button>
+        {showDebugMenu && (
+          <button
+            className={`project-toolbar__menu-item ${activeItem === 'debug' ? 'project-toolbar__menu-item--active' : ''}`}
+            onClick={() => onMenuItemClick?.('debug')}
+          >
+            Debug
+          </button>
+        )}
       </div>
 
       {centerContent && (

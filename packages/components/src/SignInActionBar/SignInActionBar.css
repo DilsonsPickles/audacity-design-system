@@ -4,10 +4,12 @@
 
 .sign-in-action-bar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 8px;
   width: 100%;
+  height: 44px;
+  box-sizing: border-box;
   background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
   border-bottom: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
 }
@@ -33,6 +35,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: var(--button-solid-on-primary-btn-solid-on-primary-idle, rgba(194, 196, 207, 0.7));
 }
 
 .sign-in-action-bar__avatar img {
