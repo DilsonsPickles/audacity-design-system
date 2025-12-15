@@ -423,14 +423,22 @@ function CanvasDemoContent() {
             primaryText="Done"
             secondaryText="Cancel"
             onPrimaryClick={() => {
-              if (projectName.trim()) {
+              if (isSignedIn) {
+                // User is signed in, save the project
+                toast('Project saved successfully!', 'success');
                 setIsShareDialogOpen(false);
+                setProjectName('');
+              } else if (projectName.trim()) {
+                // User needs to sign in, open Create Account dialog on top
                 setIsCreateAccountOpen(true);
               } else {
                 toast('Please enter a project name', 'error');
               }
             }}
-            onSecondaryClick={() => setIsShareDialogOpen(false)}
+            onSecondaryClick={() => {
+              setIsShareDialogOpen(false);
+              setProjectName('');
+            }}
             primaryDisabled={!projectName.trim()}
           />
         }
@@ -455,11 +463,24 @@ function CanvasDemoContent() {
             primaryText="Continue"
             secondaryText="Cancel"
             onPrimaryClick={() => {
-              toast('Account created successfully!', 'success');
-              setIsCreateAccountOpen(false);
-              setIsSignedIn(true);
+              // Check for correct credentials
+              if (email === 'admin' && password === 'password') {
+                toast('Sign in successful!', 'success');
+                setIsCreateAccountOpen(false);
+                setIsSignedIn(true);
+                setEmail('');
+                setPassword('');
+              } else if (email.trim() && password.trim()) {
+                toast('Invalid email or password', 'error');
+              } else {
+                toast('Please fill in all fields', 'error');
+              }
             }}
-            onSecondaryClick={() => setIsCreateAccountOpen(false)}
+            onSecondaryClick={() => {
+              setIsCreateAccountOpen(false);
+              setEmail('');
+              setPassword('');
+            }}
           />
         }
       >
@@ -472,13 +493,21 @@ function CanvasDemoContent() {
             <SocialSignInButton
               provider="google"
               onClick={() => {
-                toast('Google sign-in clicked', 'info');
+                toast('Signed in with Google!', 'success');
+                setIsCreateAccountOpen(false);
+                setIsSignedIn(true);
+                setEmail('');
+                setPassword('');
               }}
             />
             <SocialSignInButton
               provider="facebook"
               onClick={() => {
-                toast('Facebook sign-in clicked', 'info');
+                toast('Signed in with Facebook!', 'success');
+                setIsCreateAccountOpen(false);
+                setIsSignedIn(true);
+                setEmail('');
+                setPassword('');
               }}
             />
           </div>
