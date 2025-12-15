@@ -48,6 +48,7 @@ export * from './ProjectToolbar';
 export * from './Toolbar';
 export * from './TrackControlSidePanel';
 export * from './TimeCode';
+export * from './SelectionToolbar';
 
 /**
  * Hooks
