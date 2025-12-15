@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog } from '@audacity-ui/components';
+import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, SignInActionBar } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 
 // Generate realistic waveform data
@@ -116,6 +116,7 @@ function CanvasDemoContent() {
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
+  const [isSignedIn, setIsSignedIn] = React.useState(false);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -406,6 +407,13 @@ function CanvasDemoContent() {
         title="Save to audio.com"
         onClose={() => setIsShareDialogOpen(false)}
         width={400}
+        headerContent={
+          <SignInActionBar
+            signedIn={isSignedIn}
+            userName="Alex Dawson"
+            onSignOut={() => setIsSignedIn(false)}
+          />
+        }
       >
         <p>Dialog content will go here</p>
       </Dialog>

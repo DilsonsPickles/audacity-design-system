@@ -27,6 +27,7 @@ export * from './ContextMenuItem';
 export * from './Toast';
 export * from './Dialog';
 export * from './DialogHeader';
+export * from './SignInActionBar';
 
 /**
  * Audio Components
