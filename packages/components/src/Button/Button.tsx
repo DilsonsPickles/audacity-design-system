@@ -6,7 +6,7 @@ export interface ButtonProps {
   /**
    * Button variant
    */
-  variant?: 'secondary';
+  variant?: 'primary' | 'secondary';
   /**
    * Button size
    */

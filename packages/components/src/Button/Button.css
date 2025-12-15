@@ -35,6 +35,19 @@
   box-shadow: 0 0 0 2px rgba(103, 124, 228, 0.3);
 }
 
+/* Primary variant */
+.button--primary {
+  background-color: rgba(103, 124, 228, 0.5);
+}
+
+.button--primary:hover:not(.button--disabled) {
+  background-color: rgba(103, 124, 228, 0.6);
+}
+
+.button--primary:active:not(.button--disabled) {
+  background-color: rgba(103, 124, 228, 0.7);
+}
+
 /* Secondary variant */
 .button--secondary {
   background-color: rgba(194, 196, 207, 0.7);

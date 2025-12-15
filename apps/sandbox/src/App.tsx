@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, SignInActionBar } from '@audacity-ui/components';
+import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 
 // Generate realistic waveform data
@@ -412,6 +412,17 @@ function CanvasDemoContent() {
             signedIn={isSignedIn}
             userName="Alex Dawson"
             onSignOut={() => setIsSignedIn(false)}
+          />
+        }
+        footer={
+          <DialogFooter
+            primaryText="Done"
+            secondaryText="Cancel"
+            onPrimaryClick={() => {
+              toast('Audio saved successfully!', 'success');
+              setIsShareDialogOpen(false);
+            }}
+            onSecondaryClick={() => setIsShareDialogOpen(false)}
           />
         }
       >
