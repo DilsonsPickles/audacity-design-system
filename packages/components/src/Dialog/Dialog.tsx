@@ -151,12 +151,8 @@ export function Dialog({
           {children}
         </div>
 
-        {/* Footer */}
-        {footer && (
-          <div className="dialog__footer">
-            {footer}
-          </div>
-        )}
+        {/* Footer - rendered as sibling to body, ignores body padding */}
+        {footer}
       </div>
     </div>
   );
