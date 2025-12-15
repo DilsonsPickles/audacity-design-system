@@ -13,12 +13,12 @@
 
 /* Position variants */
 .toast-container--bottom-right {
-  bottom: 16px;
+  bottom: 56px; /* 16px gap + 40px toolbar height */
   right: 16px;
 }
 
 .toast-container--bottom-left {
-  bottom: 16px;
+  bottom: 56px; /* 16px gap + 40px toolbar height */
   left: 16px;
 }
 

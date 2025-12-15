@@ -114,7 +114,6 @@ export function SelectionToolbar({
             onChange={onSelectionStartChange}
             onFormatChange={onFormatChange}
             showFormatSelector={false}
-            disabled={selectionStart === null}
           />
           <TimeCode
             value={endValue}
@@ -123,7 +122,6 @@ export function SelectionToolbar({
             frameRate={frameRate}
             onChange={onSelectionEndChange}
             showFormatSelector={false}
-            disabled={selectionEnd === null}
           />
           <TimeCode
             value={durationValue}
@@ -131,7 +129,6 @@ export function SelectionToolbar({
             sampleRate={sampleRate}
             frameRate={frameRate}
             showFormatSelector={true}
-            disabled={duration === null}
           />
         </div>
       </div>
