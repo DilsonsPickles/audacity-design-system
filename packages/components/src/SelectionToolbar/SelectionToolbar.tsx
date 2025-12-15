@@ -102,7 +102,7 @@ export function SelectionToolbar({
         </div>
       </div>
 
-      {/* Right side - Selection timecodes */}
+      {/* Right side - Selection timecodes and duration */}
       <div className="selection-toolbar__right">
         <span className="selection-toolbar__label">Selection</span>
         <div className="selection-toolbar__timecodes">
@@ -123,6 +123,10 @@ export function SelectionToolbar({
             onChange={onSelectionEndChange}
             showFormatSelector={false}
           />
+        </div>
+
+        <span className="selection-toolbar__label">Duration</span>
+        <div className="selection-toolbar__timecodes">
           <TimeCode
             value={durationValue}
             format={format}
