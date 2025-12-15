@@ -22,6 +22,7 @@ export interface Track {
   name: string;
   clips: Clip[];
   height?: number; // Custom height for track (optional, defaults to TRACK_HEIGHT)
+  channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
 }
 
 export interface DragState {
@@ -90,6 +91,15 @@ export interface TrackResizeDragState {
   trackIndex: number; // Index of track being resized
   startY: number; // Initial Y position
   startHeight: number; // Initial height of the track
+}
+
+export interface StereoChannelResizeDragState {
+  trackIndex: number; // Index of stereo track being resized
+  clipId: number; // ID of the clip being resized
+  startY: number; // Initial Y position when drag started
+  startSplitRatio: number; // Initial channel split ratio
+  clipY: number; // Y position of the clip top
+  clipHeight: number; // Total height of the clip
 }
 
 export interface EnvelopeSegmentDragState {

@@ -33,9 +33,7 @@
 .dialog__header-content {
   display: flex;
   align-items: center;
-  padding: 8px;
   background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
-  border-bottom: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
   flex-shrink: 0;
 }
 
