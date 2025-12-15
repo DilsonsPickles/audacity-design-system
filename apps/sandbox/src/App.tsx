@@ -177,6 +177,10 @@ function CanvasDemoContent() {
               <Icon name="cog" size={16} />
               <span style={{ fontSize: '13px' }}>Audio setup</span>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3d3e42' }}>
+              <Icon name="cloud" size={16} />
+              <span style={{ fontSize: '13px' }}>Share audio</span>
+            </div>
           </>
         }
         rightContent={
