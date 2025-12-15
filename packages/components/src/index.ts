@@ -25,6 +25,7 @@ export * from './TransportButton';
 export * from './ContextMenu';
 export * from './ContextMenuItem';
 export * from './Toast';
+export * from './Dialog';
 
 /**
  * Audio Components
