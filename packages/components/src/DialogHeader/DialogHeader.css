@@ -1,0 +1,63 @@
+/**
+ * DialogHeader - Dialog header component styles
+ */
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 8px;
+  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
+  border-bottom: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  flex-shrink: 0;
+}
+
+.dialog-header__content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog-header__logo {
+  width: 16px;
+  height: 13.333px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.dialog-header__title {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog-header__close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 28px;
+  margin: 0 -8px 0 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--icon-icon-default, #14151a);
+  flex-shrink: 0;
+}
+
+.dialog-header__close-button:hover {
+  background-color: rgba(194, 196, 207, 0.3);
+}
+
+.dialog-header__close-button:active {
+  background-color: rgba(194, 196, 207, 0.5);
+}

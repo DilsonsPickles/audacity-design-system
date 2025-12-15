@@ -31,7 +31,8 @@ export type IconName =
   | 'trim'
   | 'waveform'
   | 'playhead'
-  | 'caret-down';
+  | 'caret-down'
+  | 'close';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -64,6 +65,7 @@ const ICON_MAP: Record<IconName, string> = {
   waveform: '\uF43C',
   playhead: '\uF478',
   'caret-down': '\uEF12',
+  close: '\uEF14',
 };
 
 export interface IconProps {

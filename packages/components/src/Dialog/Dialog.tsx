@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { DialogHeader } from '../DialogHeader';
 import './Dialog.css';
 
 export interface DialogProps {
@@ -27,6 +28,10 @@ export interface DialogProps {
    * Optional header content (appears below title)
    */
   headerContent?: React.ReactNode;
+  /**
+   * Optional logo URL for header
+   */
+  logo?: string;
   /**
    * Callback when dialog should close
    */
@@ -65,6 +70,7 @@ export function Dialog({
   children,
   footer,
   headerContent,
+  logo,
   onClose,
   onClickOutside,
   closeOnClickOutside = true,
@@ -127,21 +133,11 @@ export function Dialog({
         aria-labelledby="dialog-title"
       >
         {/* Header */}
-        <div className="dialog__header">
-          <div className="dialog__title" id="dialog-title">
-            {title}
-          </div>
-          {onClose && (
-            <button
-              className="dialog__close-button"
-              onClick={onClose}
-              aria-label="Close dialog"
-              type="button"
-            >
-              ×
-            </button>
-          )}
-        </div>
+        <DialogHeader
+          title={title}
+          logo={logo}
+          onClose={onClose}
+        />
 
         {/* Optional header content */}
         {headerContent && (
