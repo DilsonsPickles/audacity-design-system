@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ProjectToolbar, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat } from '@audacity-ui/components';
+import { ProjectToolbar, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 
 // Generate realistic waveform data
@@ -371,16 +371,59 @@ function CanvasDemoContent() {
           fontSize: '12px',
         }}
       >
-        <div>
-          <strong>Envelope Mode:</strong> {state.envelopeMode ? 'ON' : 'OFF'}
+        <div style={{ marginBottom: '12px' }}>
+          <div>
+            <strong>Envelope Mode:</strong> {state.envelopeMode ? 'ON' : 'OFF'}
+          </div>
+          <div>
+            <strong>Selected Tracks:</strong> {state.selectedTrackIndices.join(', ') || 'None'}
+          </div>
+          <div>
+            <strong>Focused Track:</strong> {state.focusedTrackIndex !== null ? state.focusedTrackIndex : 'None'}
+          </div>
         </div>
-        <div>
-          <strong>Selected Tracks:</strong> {state.selectedTrackIndices.join(', ') || 'None'}
-        </div>
-        <div>
-          <strong>Focused Track:</strong> {state.focusedTrackIndex !== null ? state.focusedTrackIndex : 'None'}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => toast.success('Success!', 'Operation completed successfully.')}
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+          >
+            Show Success Toast
+          </button>
+          <button
+            onClick={() => toast.error('Error!', 'Something went wrong. Please try again.')}
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+          >
+            Show Error Toast
+          </button>
+          <button
+            onClick={() => toast.warning('Warning!', 'This action may have unintended consequences.')}
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+          >
+            Show Warning Toast
+          </button>
+          <button
+            onClick={() => toast.info('Info', 'Here is some helpful information for you.')}
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+          >
+            Show Info Toast
+          </button>
+          <button
+            onClick={() => toast.success(
+              'Success!',
+              'All saved changes will now update to the cloud. You can manage this file from your uploaded projects page on audio.com',
+              [
+                { label: 'View on audio.com', onClick: () => console.log('View clicked') }
+              ]
+            )}
+            style={{ padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+          >
+            Show Toast with Actions
+          </button>
         </div>
       </div>
+
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 }

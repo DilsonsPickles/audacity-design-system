@@ -1,0 +1,133 @@
+/**
+ * Toast Component Styles
+ */
+
+.toast {
+  width: 360px;
+  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
+  border-radius: 8px;
+  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+  padding: 12px;
+  padding-right: 24px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  animation: toast-slide-in 0.3s ease-out;
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast.toast--exiting {
+  animation: toast-slide-out 0.2s ease-in forwards;
+}
+
+@keyframes toast-slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Icon */
+.toast__icon {
+  font-family: 'MusescoreIcon', sans-serif;
+  font-size: 16px;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+  flex-shrink: 0;
+}
+
+/* Content Container */
+.toast__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Text Container */
+.toast__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Title */
+.toast__title {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+}
+
+/* Description */
+.toast__description {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-txt-secondary, rgba(20, 21, 26, 0.75));
+}
+
+/* Actions Container */
+.toast__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Action Button */
+.toast__action-button {
+  background-color: var(--button-solid-on-primary-btn-solid-on-primary-idle, rgba(194, 196, 207, 0.7));
+  border: none;
+  border-radius: 2px;
+  padding: 6px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.toast__action-button:hover {
+  background-color: rgba(194, 196, 207, 0.85);
+}
+
+.toast__action-button:active {
+  background-color: rgba(194, 196, 207, 0.6);
+}
+
+/* Type-specific styling (if needed for icons or colors) */
+.toast--success {
+  /* Can add success-specific styling here */
+}
+
+.toast--error {
+  /* Can add error-specific styling here */
+}
+
+.toast--warning {
+  /* Can add warning-specific styling here */
+}
+
+.toast--info {
+  /* Can add info-specific styling here */
+}

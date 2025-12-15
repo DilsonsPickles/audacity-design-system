@@ -24,6 +24,7 @@ export * from './TrackControlPanel';
 export * from './TransportButton';
 export * from './ContextMenu';
 export * from './ContextMenuItem';
+export * from './Toast';
 
 /**
  * Audio Components

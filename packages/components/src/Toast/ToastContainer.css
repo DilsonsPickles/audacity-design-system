@@ -1,0 +1,42 @@
+/**
+ * ToastContainer Styles
+ */
+
+.toast-container {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+/* Position variants */
+.toast-container--bottom-right {
+  bottom: 80px;
+  right: 80px;
+}
+
+.toast-container--bottom-left {
+  bottom: 80px;
+  left: 80px;
+}
+
+.toast-container--top-right {
+  top: 80px;
+  right: 80px;
+}
+
+.toast-container--top-left {
+  top: 80px;
+  left: 80px;
+}
+
+/* Toast wrapper for individual animations */
+.toast-wrapper {
+  pointer-events: auto;
+}
+
+.toast-wrapper--exiting {
+  pointer-events: none;
+}
