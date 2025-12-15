@@ -789,6 +789,8 @@ function CanvasDemoContent() {
         }}
         dontShowAgain={dontShowSaveModalAgain}
         onDontShowAgainChange={setDontShowSaveModalAgain}
+        cloudImageUrl="/saveToCloud.png"
+        computerImageUrl="/saveToComputer.png"
       />
 
       {/* Debug Panel */}
