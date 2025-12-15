@@ -121,6 +121,8 @@ function CanvasDemoContent() {
   const [projectName, setProjectName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [emailError, setEmailError] = React.useState(false);
+  const [passwordError, setPasswordError] = React.useState(false);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -463,6 +465,18 @@ function CanvasDemoContent() {
             primaryText="Continue"
             secondaryText="Cancel"
             onPrimaryClick={() => {
+              // Validate fields are filled
+              const hasEmailError = !email.trim();
+              const hasPasswordError = !password.trim();
+
+              setEmailError(hasEmailError);
+              setPasswordError(hasPasswordError);
+
+              if (hasEmailError || hasPasswordError) {
+                toast('Please fill in all fields', 'error');
+                return;
+              }
+
               // Check for correct credentials
               if (email === 'admin' && password === 'password') {
                 toast('Sign in successful!', 'success');
@@ -470,16 +484,20 @@ function CanvasDemoContent() {
                 setIsSignedIn(true);
                 setEmail('');
                 setPassword('');
-              } else if (email.trim() && password.trim()) {
-                toast('Invalid email or password', 'error');
+                setEmailError(false);
+                setPasswordError(false);
               } else {
-                toast('Please fill in all fields', 'error');
+                toast('Invalid email or password', 'error');
+                setEmailError(true);
+                setPasswordError(true);
               }
             }}
             onSecondaryClick={() => {
               setIsCreateAccountOpen(false);
               setEmail('');
               setPassword('');
+              setEmailError(false);
+              setPasswordError(false);
             }}
           />
         }
@@ -517,19 +535,27 @@ function CanvasDemoContent() {
           <LabeledInput
             label="Email"
             value={email}
-            onChange={setEmail}
+            onChange={(value) => {
+              setEmail(value);
+              setEmailError(false);
+            }}
             placeholder="Enter email"
             width="100%"
             type="email"
+            error={emailError}
           />
 
           <LabeledInput
             label="Password"
             value={password}
-            onChange={setPassword}
+            onChange={(value) => {
+              setPassword(value);
+              setPasswordError(false);
+            }}
             placeholder="Enter password"
             width="100%"
             type="password"
+            error={passwordError}
           />
 
           <div style={{ display: 'flex', gap: '4px', fontSize: '12px', lineHeight: 'normal' }}>
