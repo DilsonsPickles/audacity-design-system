@@ -423,10 +423,15 @@ function CanvasDemoContent() {
             primaryText="Done"
             secondaryText="Cancel"
             onPrimaryClick={() => {
-              toast('Audio saved successfully!', 'success');
-              setIsShareDialogOpen(false);
+              if (projectName.trim()) {
+                setIsShareDialogOpen(false);
+                setIsCreateAccountOpen(true);
+              } else {
+                toast('Please enter a project name', 'error');
+              }
             }}
             onSecondaryClick={() => setIsShareDialogOpen(false)}
+            primaryDisabled={!projectName.trim()}
           />
         }
       >
