@@ -30,7 +30,7 @@
 
 .dialog-header__title {
   font-family: Inter, system-ui, -apple-system, sans-serif;
-  font-size: 16px;
+  font-size: var(--font-size-body, 12px);
   font-weight: 400;
   line-height: 16px;
   color: var(--text-txt-primary, #14151a);

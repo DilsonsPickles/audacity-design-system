@@ -115,7 +115,6 @@ function CanvasDemoContent() {
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export'>('project');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
-  const [isSignedIn, setIsSignedIn] = React.useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
