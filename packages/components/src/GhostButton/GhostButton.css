@@ -9,16 +9,43 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   transition: background-color 0.1s ease;
   color: var(--tcp-icon-default, #14151A);
+}
+
+/* Ghost button with label (for project toolbar) */
+.ghost-button--with-label {
+  width: auto;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
+}
+
+.ghost-button__label {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  user-select: none;
+  color: #3d3e42;
 }
 
 .ghost-button:hover:not(.ghost-button--disabled):not(.ghost-button--active) {
   background-color: rgba(194, 196, 207, 0.5);
 }
 
+/* With label variant uses lighter hover state */
+.ghost-button--with-label:hover:not(.ghost-button--disabled):not(.ghost-button--active) {
+  background-color: #ececed;
+}
+
 .ghost-button:active:not(.ghost-button--disabled):not(.ghost-button--active) {
   background-color: #c2c4cf;
+}
+
+.ghost-button--with-label:active:not(.ghost-button--disabled):not(.ghost-button--active) {
+  background-color: #e0e0e1;
 }
 
 .ghost-button--active {

@@ -8,6 +8,10 @@ export interface GhostButtonProps {
    */
   icon?: IconName;
   /**
+   * Optional label text to display next to the icon
+   */
+  label?: string;
+  /**
    * Click handler
    */
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -31,6 +35,7 @@ export interface GhostButtonProps {
 
 export const GhostButton: React.FC<GhostButtonProps> = ({
   icon = 'menu',
+  label,
   onClick,
   disabled = false,
   active = false,
@@ -40,12 +45,13 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
   return (
     <button
       type="button"
-      className={`ghost-button ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
+      className={`ghost-button ${label ? 'ghost-button--with-label' : ''} ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
     >
       <Icon name={icon} size={16} />
+      {label && <span className="ghost-button__label">{label}</span>}
     </button>
   );
 };

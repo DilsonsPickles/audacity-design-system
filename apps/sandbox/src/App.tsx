@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ProjectToolbar, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, Icon, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar } from '@audacity-ui/components';
+import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 
 // Generate realistic waveform data
@@ -169,18 +169,9 @@ function CanvasDemoContent() {
         onMenuItemClick={setActiveMenuItem}
         centerContent={
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3d3e42' }}>
-              <Icon name="mixer" size={16} />
-              <span style={{ fontSize: '13px' }}>Mixer</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3d3e42' }}>
-              <Icon name="cog" size={16} />
-              <span style={{ fontSize: '13px' }}>Audio setup</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3d3e42' }}>
-              <Icon name="cloud" size={16} />
-              <span style={{ fontSize: '13px' }}>Share audio</span>
-            </div>
+            <GhostButton icon="mixer" label="Mixer" />
+            <GhostButton icon="cog" label="Audio setup" />
+            <GhostButton icon="cloud" label="Share audio" />
           </>
         }
         rightContent={
