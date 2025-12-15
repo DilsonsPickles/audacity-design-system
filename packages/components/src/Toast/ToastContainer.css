@@ -13,23 +13,23 @@
 
 /* Position variants */
 .toast-container--bottom-right {
-  bottom: 80px;
-  right: 80px;
+  bottom: 16px;
+  right: 16px;
 }
 
 .toast-container--bottom-left {
-  bottom: 80px;
-  left: 80px;
+  bottom: 16px;
+  left: 16px;
 }
 
 .toast-container--top-right {
-  top: 80px;
-  right: 80px;
+  top: 16px;
+  right: 16px;
 }
 
 .toast-container--top-left {
-  top: 80px;
-  left: 80px;
+  top: 16px;
+  left: 16px;
 }
 
 /* Toast wrapper for individual animations */
