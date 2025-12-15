@@ -23,6 +23,7 @@ interface Track {
   name: string;
   height?: number;
   viewMode?: 'waveform' | 'spectrogram' | 'split';
+  channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
   clips: Clip[];
 }
 
@@ -83,6 +84,15 @@ export interface ClipDragState {
   initialTrackIndex: number;  // Track where drag started
 }
 
+export interface StereoChannelResizeDragState {
+  trackIndex: number; // Index of stereo track being resized
+  clipId: number; // ID of the clip being resized
+  startY: number; // Initial Y position when drag started
+  startSplitRatio: number; // Initial channel split ratio
+  clipY: number; // Y position of the clip top
+  clipHeight: number; // Total height of the clip
+}
+
 // State interface
 export interface TracksState {
   tracks: Track[];
@@ -115,6 +125,7 @@ export type TracksAction =
   | { type: 'SET_PLAYHEAD_POSITION'; payload: number }
   | { type: 'SET_HOVERED_POINT'; payload: { trackIndex: number; clipId: number; pointIndex: number } | null }
   | { type: 'UPDATE_TRACK_HEIGHT'; payload: { index: number; height: number } }
+  | { type: 'UPDATE_CHANNEL_SPLIT_RATIO'; payload: { index: number; ratio: number } }
   | { type: 'UPDATE_TRACK_VIEW'; payload: { index: number; viewMode: 'waveform' | 'spectrogram' | 'split' } }
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'SELECT_TRACK'; payload: number }
@@ -257,6 +268,15 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       newTracks[action.payload.index] = {
         ...newTracks[action.payload.index],
         height: action.payload.height,
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_CHANNEL_SPLIT_RATIO': {
+      const newTracks = [...state.tracks];
+      newTracks[action.payload.index] = {
+        ...newTracks[action.payload.index],
+        channelSplitRatio: action.payload.ratio,
       };
       return { ...state, tracks: newTracks };
     }

@@ -67,7 +67,7 @@ const ICON_MAP: Record<IconName, string> = {
   playhead: '\uF478',
   'caret-down': '\uEF12',
   close: '\uEF14',
-  user: '\uF479',
+  user: '\uEF99',
 };
 
 export interface IconProps {
