@@ -19,7 +19,7 @@
 .project-toolbar__center {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 4px;
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
