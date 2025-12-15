@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput } from '@audacity-ui/components';
+import { ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 
 // Generate realistic waveform data
@@ -117,7 +117,10 @@ function CanvasDemoContent() {
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isSignedIn, setIsSignedIn] = React.useState(false);
+  const [isCreateAccountOpen, setIsCreateAccountOpen] = React.useState(false);
   const [projectName, setProjectName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -434,6 +437,74 @@ function CanvasDemoContent() {
           placeholder="Enter project name"
           width="100%"
         />
+      </Dialog>
+
+      {/* Create Account Dialog */}
+      <Dialog
+        isOpen={isCreateAccountOpen}
+        title="Save to audio.com"
+        onClose={() => setIsCreateAccountOpen(false)}
+        width={420}
+        footer={
+          <DialogFooter
+            primaryText="Continue"
+            secondaryText="Cancel"
+            onPrimaryClick={() => {
+              toast('Account created successfully!', 'success');
+              setIsCreateAccountOpen(false);
+              setIsSignedIn(true);
+            }}
+            onSecondaryClick={() => setIsCreateAccountOpen(false)}
+          />
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p style={{ fontSize: '12px', lineHeight: '16px', margin: 0 }}>
+            Create a free cloud storage account to access your projects and audio from any device
+          </p>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <SocialSignInButton
+              provider="google"
+              onClick={() => {
+                toast('Google sign-in clicked', 'info');
+              }}
+            />
+            <SocialSignInButton
+              provider="facebook"
+              onClick={() => {
+                toast('Facebook sign-in clicked', 'info');
+              }}
+            />
+          </div>
+
+          <LabeledFormDivider label="Or use email and password" />
+
+          <LabeledInput
+            label="Email"
+            value={email}
+            onChange={setEmail}
+            placeholder="Enter email"
+            width="100%"
+            type="email"
+          />
+
+          <LabeledInput
+            label="Password"
+            value={password}
+            onChange={setPassword}
+            placeholder="Enter password"
+            width="100%"
+            type="password"
+          />
+
+          <div style={{ display: 'flex', gap: '4px', fontSize: '12px', lineHeight: 'normal' }}>
+            <span>Already have an account?</span>
+            <TextLink onClick={() => toast('Sign in clicked', 'info')}>
+              Sign in here
+            </TextLink>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

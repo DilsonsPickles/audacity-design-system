@@ -31,6 +31,9 @@ export * from './DialogFooter';
 export * from './SignInActionBar';
 export * from './TextInput';
 export * from './LabeledInput';
+export * from './SocialSignInButton';
+export * from './LabeledFormDivider';
+export * from './TextLink';
 
 /**
  * Audio Components
