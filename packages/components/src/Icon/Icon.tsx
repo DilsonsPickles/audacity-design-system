@@ -38,8 +38,8 @@ export type IconName =
 const ICON_MAP: Record<IconName, string> = {
   mixer: '\uF41B',
   menu: '\uEF13',
-  undo: '\uE001',
-  redo: '\uE002',
+  undo: '\uEF19',
+  redo: '\uEF1A',
   play: '\uF446',
   pause: '\uF44B',
   stop: '\uF447',

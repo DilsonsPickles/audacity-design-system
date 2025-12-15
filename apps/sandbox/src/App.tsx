@@ -191,6 +191,8 @@ function CanvasDemoContent() {
               <option value="classic">Classic</option>
               <option value="spectral-editing">Spectral editing</option>
             </select>
+            <GhostButton icon="undo" />
+            <GhostButton icon="redo" />
           </div>
         }
       />
