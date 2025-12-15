@@ -39,6 +39,12 @@ export * from './Checkbox';
 export * from './LabeledCheckbox';
 export * from './CloudProjectIndicator';
 export * from './ApplicationHeader';
+export * from './Menu';
+export * from './SaveProjectModal';
+export * from './Tab';
+export * from './HomeTab';
+export * from './SearchField';
+export * from './ProjectThumbnail';
 
 /**
  * Audio Components

@@ -5,6 +5,43 @@
  * Contains colors, spacing, and theme definitions
  */
 
+/**
+ * Typography Tokens
+ */
+export interface TypographyStyle {
+  fontFamily: string;
+  fontSize: string;
+  fontWeight: number;
+  lineHeight: string;
+}
+
+export const typography = {
+  titleBoldFont: {
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '32px',
+    fontWeight: 700,
+    lineHeight: '48px',
+  },
+  tabFont: {
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '16px',
+    fontWeight: 600,
+    lineHeight: '24px',
+  },
+  bodyBold: {
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '12px',
+    fontWeight: 600,
+    lineHeight: '16px',
+  },
+  body: {
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '12px',
+    fontWeight: 400,
+    lineHeight: '16px',
+  },
+} as const;
+
 export interface Theme {
   // Main backgrounds
   canvas: string;

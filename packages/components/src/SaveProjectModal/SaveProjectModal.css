@@ -1,0 +1,174 @@
+/**
+ * Save Project Modal Styles
+ */
+
+.save-project-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: transparent;
+  z-index: 9998;
+}
+
+.save-project-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 720px;
+  background-color: var(--background-primary-color, #f8f8f9);
+  border: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  border-radius: 8px;
+  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+/* Body */
+.save-project-modal__body {
+  padding: 16px 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.save-project-modal__heading {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--text-txt-primary, #14151a);
+  text-align: center;
+  margin: 0;
+}
+
+.save-project-modal__options {
+  display: flex;
+  gap: 16px;
+}
+
+.save-project-modal__option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.save-project-modal__option-image {
+  aspect-ratio: 16 / 9;
+  background-color: #d9d9d9;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-project-modal__option-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.save-project-modal__option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.save-project-modal__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.save-project-modal__option-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+}
+
+.save-project-modal__option-description {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+}
+
+.save-project-modal__button {
+  padding: 6px 12px;
+  background-color: var(--button-solid-on-primary-btn-solid-on-primary-idle, rgba(194, 196, 207, 0.7));
+  border: none;
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+  cursor: default;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  align-self: flex-start;
+}
+
+.save-project-modal__button:hover {
+  background-color: var(--button-solid-on-primary-btn-solid-on-primary-hover, rgba(194, 196, 207, 0.85));
+}
+
+/* Footer */
+.save-project-modal__footer {
+  height: 48px;
+  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
+  border-top: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.save-project-modal__checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+  user-select: none;
+}
+
+.save-project-modal__checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  background-color: var(--background-control-bg-checkbox-idle, rgba(194, 196, 207, 0.7));
+  border: none;
+  cursor: default;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+}
+
+.save-project-modal__checkbox:checked {
+  background-color: var(--background-control-bg-checkbox-checked, #677ce4);
+}
+
+.save-project-modal__checkbox:checked::after {
+  content: '\uEF31';
+  font-family: 'Segoe MDL2 Assets', sans-serif;
+  font-size: 12px;
+  color: #ffffff;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.save-project-modal__checkbox-text {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-txt-primary, #14151a);
+  font-weight: 400;
+}

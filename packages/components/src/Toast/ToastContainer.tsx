@@ -98,6 +98,17 @@ export const toast = {
     return id;
   },
 
+  syncing(title: string = 'Syncing to audio.com...', initialProgress = 0) {
+    const id = this.show({
+      type: 'syncing',
+      title,
+      showProgress: true,
+      progress: initialProgress,
+      duration: 0, // Don't auto-dismiss
+    });
+    return id;
+  },
+
   updateProgress(id: string, progress: number, timeRemaining?: string) {
     toasts = toasts.map((t) =>
       t.id === id ? { ...t, progress, timeRemaining } : t

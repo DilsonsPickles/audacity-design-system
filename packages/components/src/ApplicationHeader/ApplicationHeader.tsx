@@ -8,6 +8,7 @@
 
 import React from 'react';
 import './ApplicationHeader.css';
+import { Menu, MenuItem } from '../Menu';
 
 const AudacityLogo = () => (
   <svg
@@ -62,6 +63,10 @@ export interface ApplicationHeaderProps {
    */
   onMenuItemClick?: (item: string) => void;
   /**
+   * Menu item definitions for dropdown menus
+   */
+  menuDefinitions?: Record<string, MenuItem[]>;
+  /**
    * Callback when window control is clicked
    */
   onWindowControl?: (action: 'minimize' | 'maximize' | 'close') => void;
@@ -94,9 +99,28 @@ export function ApplicationHeader({
   appName = 'Audacity',
   menuItems = DEFAULT_MENU_ITEMS,
   onMenuItemClick,
+  menuDefinitions,
   onWindowControl,
   className = '',
 }: ApplicationHeaderProps) {
+  const [openMenu, setOpenMenu] = React.useState<string | null>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = React.useState<HTMLElement | null>(null);
+
+  const handleMenuClick = (item: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    // If menu has definitions, open dropdown
+    if (menuDefinitions && menuDefinitions[item]) {
+      setOpenMenu(item);
+      setMenuAnchorEl(event.currentTarget);
+    } else {
+      // Otherwise just fire callback
+      onMenuItemClick?.(item);
+    }
+  };
+
+  const handleMenuClose = () => {
+    setOpenMenu(null);
+    setMenuAnchorEl(null);
+  };
   if (os === 'macos') {
     return (
       <div className={`application-header application-header--macos ${className}`}>
@@ -162,12 +186,22 @@ export function ApplicationHeader({
           <button
             key={item}
             className="application-header__menu-item"
-            onClick={() => onMenuItemClick?.(item)}
+            onClick={(e) => handleMenuClick(item, e)}
           >
             {item}
           </button>
         ))}
       </div>
+
+      {/* Dropdown menu */}
+      {openMenu && menuDefinitions && menuDefinitions[openMenu] && (
+        <Menu
+          items={menuDefinitions[openMenu]}
+          isOpen={true}
+          anchorEl={menuAnchorEl}
+          onClose={handleMenuClose}
+        />
+      )}
     </div>
   );
 }

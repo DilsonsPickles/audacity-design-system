@@ -21,6 +21,7 @@ export type IconName =
   | 'zoom-out'
   | 'automation'
   | 'cloud'
+  | 'cloud-sync'
   | 'copy'
   | 'paste'
   | 'cut'
@@ -33,7 +34,8 @@ export type IconName =
   | 'playhead'
   | 'caret-down'
   | 'close'
-  | 'user';
+  | 'user'
+  | 'book';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -55,6 +57,7 @@ const ICON_MAP: Record<IconName, string> = {
   'zoom-out': '\uEF16',
   automation: '\uF45C',
   cloud: '\uF435',
+  'cloud-sync': '\uF450',
   copy: '\uF398',
   paste: '\uF399',
   cut: '\uF39A',
@@ -68,6 +71,7 @@ const ICON_MAP: Record<IconName, string> = {
   'caret-down': '\uEF12',
   close: '\uEF14',
   user: '\uEF99',
+  book: '\uF441',
 };
 
 export interface IconProps {

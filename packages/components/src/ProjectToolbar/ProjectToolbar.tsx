@@ -1,4 +1,5 @@
 import React from 'react';
+import { Tab } from '../Tab';
 import './ProjectToolbar.css';
 
 export interface ProjectToolbarProps {
@@ -55,41 +56,37 @@ export function ProjectToolbar({
       style={{ height: `${height}px` }}
     >
       <div className="project-toolbar__left">
-        <button
-          className={`project-toolbar__menu-item ${activeItem === 'home' ? 'project-toolbar__menu-item--active' : ''}`}
+        <Tab
+          label="Home"
+          isActive={activeItem === 'home'}
           onClick={() => onMenuItemClick?.('home')}
-        >
-          Home
-        </button>
-        <button
-          className={`project-toolbar__menu-item ${activeItem === 'project' ? 'project-toolbar__menu-item--active' : ''}`}
+        />
+        <Tab
+          label="Project"
+          isActive={activeItem === 'project'}
           onClick={() => onMenuItemClick?.('project')}
-        >
-          Project
-        </button>
-        <button
-          className={`project-toolbar__menu-item ${activeItem === 'export' ? 'project-toolbar__menu-item--active' : ''}`}
+        />
+        <Tab
+          label="Export"
+          isActive={activeItem === 'export'}
           onClick={() => onMenuItemClick?.('export')}
-        >
-          Export
-        </button>
+        />
         {showDebugMenu && (
-          <button
-            className={`project-toolbar__menu-item ${activeItem === 'debug' ? 'project-toolbar__menu-item--active' : ''}`}
+          <Tab
+            label="Debug"
+            isActive={activeItem === 'debug'}
             onClick={() => onMenuItemClick?.('debug')}
-          >
-            Debug
-          </button>
+          />
         )}
       </div>
 
-      {centerContent && (
+      {activeItem !== 'home' && centerContent && (
         <div className="project-toolbar__center">
           {centerContent}
         </div>
       )}
 
-      {rightContent && (
+      {activeItem !== 'home' && rightContent && (
         <div className="project-toolbar__right">
           {rightContent}
         </div>

@@ -35,8 +35,36 @@
 /* Toast wrapper for individual animations */
 .toast-wrapper {
   pointer-events: auto;
+  animation: toast-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom right;
 }
 
 .toast-wrapper--exiting {
   pointer-events: none;
+  animation: toast-exit 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+  transform-origin: bottom right;
+}
+
+/* Entrance animation - subtle slide and fade in */
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Exit animation - subtle fade and scale out */
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.95);
+  }
 }

@@ -18,7 +18,7 @@ export interface ToastProps {
   /** Unique identifier for the toast */
   id: string;
   /** Type of toast message */
-  type?: 'success' | 'error' | 'warning' | 'info';
+  type?: 'success' | 'error' | 'warning' | 'info' | 'syncing';
   /** Toast title */
   title: string;
   /** Toast description/message */
@@ -45,6 +45,7 @@ const ICONS = {
   warning: '\uE802', // warning icon
   info: '\uE803',    // info icon
   upload: '\uEF25',  // upload icon
+  syncing: '\uF450', // cloud-sync icon
 };
 
 export function Toast({
@@ -84,7 +85,7 @@ export function Toast({
       <div className="toast__body">
         {/* Icon */}
         <div className="toast__icon">
-          {showProgress ? ICONS.upload : ICONS[type]}
+          {type === 'syncing' ? ICONS.syncing : showProgress ? ICONS.upload : ICONS[type]}
         </div>
 
         {/* Content */}
