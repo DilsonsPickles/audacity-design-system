@@ -117,7 +117,7 @@ function CanvasDemoContent() {
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isSignedIn, setIsSignedIn] = React.useState(false);
-  const [trackName, setTrackName] = React.useState('');
+  const [projectName, setProjectName] = React.useState('');
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -428,10 +428,10 @@ function CanvasDemoContent() {
         }
       >
         <LabeledInput
-          label="Track name"
-          value={trackName}
-          onChange={setTrackName}
-          placeholder="Enter track name"
+          label="Project name"
+          value={projectName}
+          onChange={setProjectName}
+          placeholder="Enter project name"
           width="100%"
         />
       </Dialog>
