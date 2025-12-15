@@ -232,8 +232,15 @@ export const CreateAccountDialog: Story = {
 };
 
 /**
- * Complete Flow - Share Audio → Create Account
- * Demonstrates the full dialog sequence when saving a project
+ * Complete Flow - Share Audio with Layered Sign-In
+ * Demonstrates the full dialog sequence when saving a project.
+ *
+ * Flow:
+ * 1. Enter project name and click "Done"
+ * 2. Create Account dialog appears ON TOP (Share Audio stays open behind)
+ * 3. Sign in with credentials (username: admin, password: password) or social buttons
+ * 4. After successful sign-in, return to Share Audio dialog in signed-in state
+ * 5. Click "Done" again to save the project
  */
 export const CompleteFlow: Story = {
   render: () => {
@@ -251,18 +258,24 @@ export const CompleteFlow: Story = {
           <Button variant="primary" onClick={() => setIsShareOpen(true)}>
             Start: Save to audio.com
           </Button>
-          <p style={{ marginTop: '16px', fontSize: '12px', color: '#666' }}>
-            This demonstrates the complete flow:<br />
-            1. Enter project name<br />
-            2. Click "Done" to proceed to account creation
+          <p style={{ marginTop: '16px', fontSize: '12px', color: '#666', maxWidth: '500px', margin: '16px auto 0' }}>
+            <strong>Complete Flow:</strong><br />
+            1. Enter project name and click "Done"<br />
+            2. Sign-in dialog appears on top (Share Audio stays behind)<br />
+            3. Sign in (username: <code>admin</code>, password: <code>password</code>) or use social buttons<br />
+            4. After sign-in, return to Share Audio in signed-in state<br />
+            5. Click "Done" to save project
           </p>
         </div>
 
-        {/* Share Audio Dialog */}
+        {/* Share Audio Dialog - Stays open when Create Account appears */}
         <Dialog
           isOpen={isShareOpen}
           title="Save to audio.com"
-          onClose={() => setIsShareOpen(false)}
+          onClose={() => {
+            setIsShareOpen(false);
+            setProjectName('');
+          }}
           width={400}
           headerContent={
             <SignInActionBar
@@ -276,14 +289,22 @@ export const CompleteFlow: Story = {
               primaryText="Done"
               secondaryText="Cancel"
               onPrimaryClick={() => {
-                if (projectName.trim()) {
+                if (isSignedIn) {
+                  // User is signed in, save the project
+                  toast('Project saved successfully!', 'success');
                   setIsShareOpen(false);
+                  setProjectName('');
+                } else if (projectName.trim()) {
+                  // User needs to sign in, open Create Account dialog on top
                   setIsCreateAccountOpen(true);
                 } else {
                   toast('Please enter a project name', 'error');
                 }
               }}
-              onSecondaryClick={() => setIsShareOpen(false)}
+              onSecondaryClick={() => {
+                setIsShareOpen(false);
+                setProjectName('');
+              }}
               primaryDisabled={!projectName.trim()}
             />
           }
@@ -297,26 +318,39 @@ export const CompleteFlow: Story = {
           />
         </Dialog>
 
-        {/* Create Account Dialog */}
+        {/* Create Account Dialog - Appears on top of Share Audio */}
         <Dialog
           isOpen={isCreateAccountOpen}
           title="Save to audio.com"
-          onClose={() => setIsCreateAccountOpen(false)}
+          onClose={() => {
+            setIsCreateAccountOpen(false);
+            setEmail('');
+            setPassword('');
+          }}
           width={420}
           footer={
             <DialogFooter
               primaryText="Continue"
               secondaryText="Cancel"
               onPrimaryClick={() => {
-                if (email.trim() && password.trim()) {
-                  toast('Account created successfully!', 'success');
+                // Validate credentials
+                if (email === 'admin' && password === 'password') {
+                  toast('Sign in successful!', 'success');
                   setIsCreateAccountOpen(false);
                   setIsSignedIn(true);
+                  setEmail('');
+                  setPassword('');
+                } else if (email.trim() && password.trim()) {
+                  toast('Invalid email or password', 'error');
                 } else {
                   toast('Please fill in all fields', 'error');
                 }
               }}
-              onSecondaryClick={() => setIsCreateAccountOpen(false)}
+              onSecondaryClick={() => {
+                setIsCreateAccountOpen(false);
+                setEmail('');
+                setPassword('');
+              }}
             />
           }
         >
@@ -329,17 +363,21 @@ export const CompleteFlow: Story = {
               <SocialSignInButton
                 provider="google"
                 onClick={() => {
-                  toast('Account created with Google!', 'success');
+                  toast('Signed in with Google!', 'success');
                   setIsCreateAccountOpen(false);
                   setIsSignedIn(true);
+                  setEmail('');
+                  setPassword('');
                 }}
               />
               <SocialSignInButton
                 provider="facebook"
                 onClick={() => {
-                  toast('Account created with Facebook!', 'success');
+                  toast('Signed in with Facebook!', 'success');
                   setIsCreateAccountOpen(false);
                   setIsSignedIn(true);
+                  setEmail('');
+                  setPassword('');
                 }}
               />
             </div>
