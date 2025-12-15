@@ -304,11 +304,21 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }))
       }));
 
+      // Find the selected clip to create a time selection
+      const selectedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+      const newTimeSelection = selectedClip
+        ? {
+            startTime: selectedClip.start,
+            endTime: selectedClip.start + selectedClip.duration
+          }
+        : state.timeSelection;
+
       return {
         ...state,
         tracks: newTracks,
         selectedTrackIndices: [trackIndex],
         focusedTrackIndex: trackIndex,
+        timeSelection: newTimeSelection,
       };
     }
 
