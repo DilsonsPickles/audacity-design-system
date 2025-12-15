@@ -222,9 +222,18 @@ function CanvasDemoContent() {
             </ToolbarButtonGroup>
 
             <ToolbarButtonGroup gap={2}>
-              <ToolButton icon="cut" />
-              <ToolButton icon="copy" />
-              <ToolButton icon="paste" />
+              <ToolButton
+                icon="cut"
+                onClick={() => toast.info('Cut', 'Selected audio has been cut to clipboard', undefined, 10000)}
+              />
+              <ToolButton
+                icon="copy"
+                onClick={() => toast.info('Copy', 'Selected audio has been copied to clipboard', undefined, 10000)}
+              />
+              <ToolButton
+                icon="paste"
+                onClick={() => toast.info('Paste', 'Audio has been pasted from clipboard', undefined, 10000)}
+              />
             </ToolbarButtonGroup>
 
             <ToolbarButtonGroup gap={2}>
@@ -423,7 +432,7 @@ function CanvasDemoContent() {
       </div>
 
       {/* Toast Container */}
-      <ToastContainer />
+      <ToastContainer maxToasts={5} />
     </div>
   );
 }
