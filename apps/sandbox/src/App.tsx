@@ -145,14 +145,29 @@ function CanvasDemoContent() {
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
 
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
-    console.log('Scroll event:', scrollLeft);
+    const scrollTop = e.currentTarget.scrollTop;
     setScrollX(scrollLeft);
+
+    // Sync vertical scroll with track headers
+    if (trackHeaderScrollRef.current && trackHeaderScrollRef.current !== e.currentTarget) {
+      trackHeaderScrollRef.current.scrollTop = scrollTop;
+    }
+  };
+
+  const handleTrackHeaderScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+
+    // Sync vertical scroll with canvas
+    if (scrollContainerRef.current && scrollContainerRef.current !== e.currentTarget) {
+      scrollContainerRef.current.scrollTop = scrollTop;
+    }
   };
 
   const handleToggleEnvelope = () => {
@@ -407,47 +422,53 @@ function CanvasDemoContent() {
         />
       ) : (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* Track Control Side Panel - Full Height */}
-          <TrackControlSidePanel
-            trackHeights={state.tracks.map(t => t.height || 114)}
-            trackViewModes={state.tracks.map(t => t.viewMode)}
-            focusedTrackIndex={state.focusedTrackIndex}
-            onTrackResize={(trackIndex, height) => {
-              dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
-            }}
-            onDeleteTrack={(trackIndex) => {
-              console.log('Delete track:', trackIndex);
-              // TODO: Implement delete track
-            }}
-            onMoveTrackUp={(trackIndex) => {
-              console.log('Move track up:', trackIndex);
-              // TODO: Implement move track up
-            }}
-            onMoveTrackDown={(trackIndex) => {
-              console.log('Move track down:', trackIndex);
-              // TODO: Implement move track down
-            }}
-            onTrackViewChange={(trackIndex, viewMode) => {
-              dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
-            }}
+          {/* Track Control Side Panel - Scrollable */}
+          <div
+            ref={trackHeaderScrollRef}
+            onScroll={handleTrackHeaderScroll}
+            style={{ overflowY: 'auto', overflowX: 'hidden', flexShrink: 0 }}
           >
-            {state.tracks.map((track, index) => (
-              <TrackControlPanel
-                key={track.id}
-                trackName={track.name}
-                trackType="mono"
-                volume={75}
-                pan={0}
-                isMuted={false}
-                isSolo={false}
-                onMuteToggle={() => {}}
-                onSoloToggle={() => {}}
-                state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
-                height="default"
-                onClick={() => dispatch({ type: 'SELECT_TRACK', payload: index })}
-              />
-            ))}
-          </TrackControlSidePanel>
+            <TrackControlSidePanel
+              trackHeights={state.tracks.map(t => t.height || 114)}
+              trackViewModes={state.tracks.map(t => t.viewMode)}
+              focusedTrackIndex={state.focusedTrackIndex}
+              onTrackResize={(trackIndex, height) => {
+                dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
+              }}
+              onDeleteTrack={(trackIndex) => {
+                console.log('Delete track:', trackIndex);
+                // TODO: Implement delete track
+              }}
+              onMoveTrackUp={(trackIndex) => {
+                console.log('Move track up:', trackIndex);
+                // TODO: Implement move track up
+              }}
+              onMoveTrackDown={(trackIndex) => {
+                console.log('Move track down:', trackIndex);
+                // TODO: Implement move track down
+              }}
+              onTrackViewChange={(trackIndex, viewMode) => {
+                dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
+              }}
+            >
+              {state.tracks.map((track, index) => (
+                <TrackControlPanel
+                  key={track.id}
+                  trackName={track.name}
+                  trackType="mono"
+                  volume={75}
+                  pan={0}
+                  isMuted={false}
+                  isSolo={false}
+                  onMuteToggle={() => {}}
+                  onSoloToggle={() => {}}
+                  state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
+                  height="default"
+                  onClick={() => dispatch({ type: 'SELECT_TRACK', payload: index })}
+                />
+              ))}
+            </TrackControlSidePanel>
+          </div>
 
           {/* Timeline Ruler + Canvas Area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -479,11 +500,11 @@ function CanvasDemoContent() {
               </div>
             </div>
 
-            {/* Canvas - Scrollable */}
+            {/* Canvas - Scrollable (both directions) */}
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              style={{ flex: 1, overflowX: 'scroll', overflowY: 'hidden', backgroundColor: '#212433' }}
+              style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433' }}
             >
               <div style={{ minWidth: '5000px', height: '100%', position: 'relative' }}>
                 <Canvas pixelsPerSecond={100} width={5000} leftPadding={12} />
