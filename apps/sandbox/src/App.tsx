@@ -289,6 +289,8 @@ function CanvasDemoContent() {
                   state.tracks.forEach((_, index) => {
                     dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index, viewMode: 'spectrogram' } });
                   });
+                  // Also enable the spectrogram mode button
+                  dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
                 }
               }}
             >
