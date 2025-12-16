@@ -160,7 +160,16 @@ function CanvasDemoContent() {
   };
 
   const handleToggleSpectrogram = () => {
-    dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: !state.spectrogramMode });
+    const newSpectrogramMode = !state.spectrogramMode;
+    dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: newSpectrogramMode });
+
+    // Toggle all tracks between waveform and spectrogram
+    state.tracks.forEach((_, index) => {
+      dispatch({
+        type: 'UPDATE_TRACK_VIEW',
+        payload: { index, viewMode: newSpectrogramMode ? 'spectrogram' : 'waveform' }
+      });
+    });
   };
 
   // Calculate the effective time selection for the ruler
