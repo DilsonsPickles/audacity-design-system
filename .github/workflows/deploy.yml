@@ -30,13 +30,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: pnpm --filter './packages/*' -r build
+
+      - name: Verify components build
+        run: ls -la packages/components/dist/
 
       - name: Build sandbox app
         run: pnpm --filter @audacity-ui/sandbox build
