@@ -79,6 +79,8 @@ export interface UseAudioSelectionReturn {
     wasJustDragging: () => boolean;
     /** Check if position is on a spectral-enabled clip */
     isPositionOnSpectralClip?: (x: number, y: number) => boolean;
+    /** Whether currently creating a new spectral selection */
+    isCreating: boolean;
   };
 }
 
@@ -421,6 +423,7 @@ export function useAudioSelection(
       cursorStyle: currentCursor,
       wasJustDragging: () => timeSelection.wasJustDragging() || spectralSelection.wasJustDragging(),
       isPositionOnSpectralClip: spectralSelection.isPositionOnSpectralClip,
+      isCreating: spectralSelection.isCreating,
     },
   };
 }
