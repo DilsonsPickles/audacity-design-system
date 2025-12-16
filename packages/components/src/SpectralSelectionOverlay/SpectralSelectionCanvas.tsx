@@ -167,8 +167,8 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, boundsL);
-      // Only highlight center line when not creating a new selection
-      const shouldHighlightL = !isCreating && (isHoveringCenterLine || isDragging);
+      // Only highlight center line when hovering OR when being dragged (not during creation or resize)
+      const shouldHighlightL = isHoveringCenterLine;
       console.log('[SpectralSelectionCanvas L] isCreating:', isCreating, 'isDragging:', isDragging, 'isHoveringCenterLine:', isHoveringCenterLine, 'shouldHighlight:', shouldHighlightL);
       drawCenterLine(ctx, boundsL, shouldHighlightL);
       // Only show corner handles on the primary selection (channel where selection originated)
@@ -222,8 +222,8 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, boundsR);
-      // Only highlight center line when not creating a new selection
-      drawCenterLine(ctx, boundsR, !isCreating && (isHoveringCenterLine || isDragging));
+      // Only highlight center line when hovering OR when being dragged (not during creation or resize)
+      drawCenterLine(ctx, boundsR, isHoveringCenterLine);
       // Only show corner handles on the primary selection (channel where selection originated)
       if (isInRChannel) {
         drawCornerHandles(ctx, boundsR);
@@ -267,8 +267,8 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, bounds);
-      // Only highlight center line when not creating a new selection
-      drawCenterLine(ctx, bounds, !isCreating && (isHoveringCenterLine || isDragging));
+      // Only highlight center line when hovering OR when being dragged (not during creation or resize)
+      drawCenterLine(ctx, bounds, isHoveringCenterLine);
       drawCornerHandles(ctx, bounds);
 
       ctx.restore();
