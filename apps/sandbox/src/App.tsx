@@ -293,22 +293,13 @@ function CanvasDemoContent() {
                 const newWorkspace = e.target.value as Workspace;
                 setWorkspace(newWorkspace);
 
-                // When switching to spectral editing, set all tracks to spectrogram mode
+                // When switching to spectral editing, enable spectrogram mode
                 if (newWorkspace === 'spectral-editing') {
-                  state.tracks.forEach((_, index) => {
-                    dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index, viewMode: 'spectrogram' } });
-                  });
-                  // Also enable the spectrogram mode button
+                  // SET_SPECTROGRAM_MODE will save current viewModes and set all tracks to spectrogram
                   dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
                 } else if (newWorkspace === 'classic') {
-                  // When switching back to classic, set all tracks to waveform mode
-                  console.log('[Workspace] Switching to classic, setting tracks to waveform');
-                  state.tracks.forEach((_, index) => {
-                    console.log('[Workspace] Setting track', index, 'to waveform');
-                    dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index, viewMode: 'waveform' } });
-                  });
-                  // Also disable the spectrogram mode button
-                  console.log('[Workspace] Disabling spectrogram mode button');
+                  // When switching back to classic, disable spectrogram mode
+                  // This will restore tracks to their saved viewModes from before spectral mode
                   dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
                 }
               }}

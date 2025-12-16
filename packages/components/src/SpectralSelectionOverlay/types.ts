@@ -9,6 +9,7 @@ export interface SpectralSelection {
   endTime: number;
   minFrequency: number; // 0-1 (normalized, 0 = bottom, 1 = top)
   maxFrequency: number; // 0-1 (normalized)
+  originChannel?: 'L' | 'R' | 'mono'; // Which channel the selection was started in
 }
 
 export interface Track {

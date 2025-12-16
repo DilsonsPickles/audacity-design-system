@@ -20,6 +20,7 @@ export interface SpectralSelection {
   endTime: number;
   minFrequency: number; // 0-1 (normalized)
   maxFrequency: number; // 0-1 (normalized)
+  originChannel?: 'L' | 'R' | 'mono'; // Which channel the selection was started in
 }
 
 interface SpectralTrack {
@@ -402,7 +403,7 @@ export function useSpectralSelection(
   const detectResizeMode = useCallback((x: number, y: number): ResizeMode | null => {
     if (!currentSpectralSelection) return null;
 
-    const { trackIndex, startTime, endTime, minFrequency, maxFrequency } = currentSpectralSelection;
+    const { trackIndex, startTime, endTime, minFrequency, maxFrequency, clipId } = currentSpectralSelection;
 
     // Convert selection bounds to pixel coordinates
     const leftX = timeToX(startTime);
@@ -411,8 +412,45 @@ export function useSpectralSelection(
     const bottomY = frequencyToY(minFrequency, trackIndex);
 
     // Check if position is within selection bounds (with some tolerance)
-    const withinX = x >= leftX - EDGE_THRESHOLD && x <= rightX + EDGE_THRESHOLD;
-    const withinY = y >= topY - EDGE_THRESHOLD && y <= bottomY + EDGE_THRESHOLD;
+    let withinX = x >= leftX - EDGE_THRESHOLD && x <= rightX + EDGE_THRESHOLD;
+    let withinY = y >= topY - EDGE_THRESHOLD && y <= bottomY + EDGE_THRESHOLD;
+
+    // For stereo tracks, also check the mirrored channel bounds
+    const track = tracks[trackIndex];
+    const clip = track.clips.find(c => c.id === clipId);
+    const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
+    const isSpectrogramMode = track.viewMode === 'spectrogram';
+    const isSplitView = track.viewMode === 'split';
+
+    if ((isSpectrogramMode || isSplitView) && isStereo) {
+      // Determine if selection is in L or R channel
+      const isInLChannel = minFrequency >= 0.5;
+      const isInRChannel = maxFrequency <= 0.5;
+
+      // Calculate mirrored frequency range
+      let mirroredMinFreq: number, mirroredMaxFreq: number;
+      if (isInLChannel) {
+        // Mirror L channel (0.5-1.0) to R channel (0-0.5)
+        mirroredMinFreq = (minFrequency - 0.5) * 2;
+        mirroredMaxFreq = (maxFrequency - 0.5) * 2;
+      } else if (isInRChannel) {
+        // Mirror R channel (0-0.5) to L channel (0.5-1.0)
+        mirroredMinFreq = minFrequency / 2 + 0.5;
+        mirroredMaxFreq = maxFrequency / 2 + 0.5;
+      } else {
+        // Selection spans both channels, no mirroring needed
+        mirroredMinFreq = minFrequency;
+        mirroredMaxFreq = maxFrequency;
+      }
+
+      // Check mirrored bounds
+      const mirroredTopY = frequencyToY(mirroredMaxFreq, trackIndex);
+      const mirroredBottomY = frequencyToY(mirroredMinFreq, trackIndex);
+      const withinMirroredY = y >= mirroredTopY - EDGE_THRESHOLD && y <= mirroredBottomY + EDGE_THRESHOLD;
+
+      // Allow interaction on either the original or mirrored channel
+      withinY = withinY || withinMirroredY;
+    }
 
     if (!withinX || !withinY) return null;
 
@@ -584,6 +622,15 @@ export function useSpectralSelection(
         const minFrequency = Math.min(freq1, freq2);
         const maxFrequency = Math.max(freq1, freq2);
 
+        // Determine origin channel for stereo tracks
+        let originChannel: 'L' | 'R' | 'mono' | undefined;
+        if ((isSpectrogramMode || isSplitView) && isStereo) {
+          const startedInLChannel = freq1 >= 0.5;
+          originChannel = startedInLChannel ? 'L' : 'R';
+        } else if (!isStereo) {
+          originChannel = 'mono';
+        }
+
         // Create the spectral selection object
         const spectralSelectionToKeep: SpectralSelection = {
           trackIndex,
@@ -592,6 +639,7 @@ export function useSpectralSelection(
           endTime: clampedSelEndTime,
           minFrequency,
           maxFrequency,
+          originChannel,
         };
 
         // Update the spectral selection so it remains visible on the clip
@@ -667,6 +715,15 @@ export function useSpectralSelection(
       const minFrequency = Math.min(freq1, freq2);
       const maxFrequency = Math.max(freq1, freq2);
 
+      // Determine origin channel for stereo tracks
+      let originChannel: 'L' | 'R' | 'mono' | undefined;
+      if ((isSpectrogramMode || isSplitView) && isStereo) {
+        const startedInLChannel = freq1 >= 0.5;
+        originChannel = startedInLChannel ? 'L' : 'R';
+      } else if (!isStereo) {
+        originChannel = 'mono';
+      }
+
       onSpectralSelectionChange({
         trackIndex,
         clipId,
@@ -674,6 +731,7 @@ export function useSpectralSelection(
         endTime,
         minFrequency,
         maxFrequency,
+        originChannel,
       });
     } else if (initialSelection) {
       // Resizing existing selection
@@ -858,6 +916,7 @@ export function useSpectralSelection(
         endTime,
         minFrequency,
         maxFrequency,
+        originChannel: initialSelection?.originChannel, // Preserve original channel when resizing/moving
       });
     }
   }, [xToTime, yToFrequency, isYOutsideClipBounds, isXOutsideClipBounds, onSpectralSelectionChange, onConvertToTimeSelection]);

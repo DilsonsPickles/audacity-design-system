@@ -38,7 +38,39 @@ export function drawDashedLine(
 }
 
 /**
- * Draw marquee border (dashed rectangle)
+ * Draw a dashed line with only black segments (for mirrored selection)
+ */
+export function drawBlackDashedLine(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): void {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const segments = Math.floor(length / DASH_LENGTH);
+
+  ctx.strokeStyle = '#000000';
+
+  for (let i = 0; i < segments; i++) {
+    const t1 = (i * DASH_LENGTH) / length;
+    const t2 = Math.min(((i + 1) * DASH_LENGTH) / length, 1);
+    const startX = x1 + dx * t1;
+    const startY = y1 + dy * t1;
+    const endX = x1 + dx * t2;
+    const endY = y1 + dy * t2;
+
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Draw marquee border (dashed rectangle with alternating white and black)
  */
 export function drawMarqueeBorder(
   ctx: CanvasRenderingContext2D,
@@ -51,6 +83,22 @@ export function drawMarqueeBorder(
   drawDashedLine(ctx, bounds.rightX, bounds.topY, bounds.rightX, bounds.bottomY); // Right
   drawDashedLine(ctx, bounds.rightX, bounds.bottomY, bounds.leftX, bounds.bottomY); // Bottom
   drawDashedLine(ctx, bounds.leftX, bounds.bottomY, bounds.leftX, bounds.topY); // Left
+}
+
+/**
+ * Draw marquee border with only black dashes (for mirrored selection)
+ */
+export function drawBlackMarqueeBorder(
+  ctx: CanvasRenderingContext2D,
+  bounds: SelectionBounds
+): void {
+  ctx.lineWidth = 1;
+
+  // Draw all four sides with black dashes only
+  drawBlackDashedLine(ctx, bounds.leftX, bounds.topY, bounds.rightX, bounds.topY); // Top
+  drawBlackDashedLine(ctx, bounds.rightX, bounds.topY, bounds.rightX, bounds.bottomY); // Right
+  drawBlackDashedLine(ctx, bounds.rightX, bounds.bottomY, bounds.leftX, bounds.bottomY); // Bottom
+  drawBlackDashedLine(ctx, bounds.leftX, bounds.bottomY, bounds.leftX, bounds.topY); // Left
 }
 
 /**

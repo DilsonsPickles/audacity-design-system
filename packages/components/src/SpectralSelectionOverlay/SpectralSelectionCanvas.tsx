@@ -15,6 +15,7 @@ import { CLIP_CONTENT_OFFSET } from '../constants';
 import {
   getSelectionBounds,
   drawMarqueeBorder,
+  drawBlackMarqueeBorder,
   drawCenterLine,
   drawCornerHandles,
   drawDarkenedOverlays,
@@ -114,8 +115,16 @@ export function SpectralSelectionCanvas({
       const rChannelHeight = baseHeight * (1 - channelSplitRatio);
 
       // Determine which channel the selection is in
+      // For border/handles: only show on the channel where selection started
       const isInLChannel = minFrequency >= 0.5;
       const isInRChannel = maxFrequency <= 0.5;
+
+      // Only draw marquee UI (border, center line, handles) on the origin channel
+      // If originChannel is not set, fall back to center-based logic for backward compatibility
+      const shouldDrawUIOnL = selection.originChannel === 'L' ||
+                              (!selection.originChannel && (minFrequency + maxFrequency) / 2 >= 0.5);
+      const shouldDrawUIOnR = selection.originChannel === 'R' ||
+                              (!selection.originChannel && (minFrequency + maxFrequency) / 2 < 0.5);
 
       // Render on L channel (top half)
       // L channel displays frequencies 0.5-1.0, remapped to 0-1
@@ -166,15 +175,11 @@ export function SpectralSelectionCanvas({
         coordinateConfig.clipHeaderHeight
       );
 
+      // Always show white/black border, corner handles, and center line on both channels
       drawMarqueeBorder(ctx, boundsL);
-      // Only highlight center line when hovering OR when being dragged (not during creation or resize)
+      drawCornerHandles(ctx, boundsL);
       const shouldHighlightL = isHoveringCenterLine;
-      console.log('[SpectralSelectionCanvas L] isCreating:', isCreating, 'isDragging:', isDragging, 'isHoveringCenterLine:', isHoveringCenterLine, 'shouldHighlight:', shouldHighlightL);
       drawCenterLine(ctx, boundsL, shouldHighlightL);
-      // Only show corner handles on the primary selection (channel where selection originated)
-      if (isInLChannel) {
-        drawCornerHandles(ctx, boundsL);
-      }
 
       ctx.restore();
 
@@ -221,13 +226,10 @@ export function SpectralSelectionCanvas({
         coordinateConfig.clipHeaderHeight
       );
 
+      // Always show white/black border, corner handles, and center line on both channels
       drawMarqueeBorder(ctx, boundsR);
-      // Only highlight center line when hovering OR when being dragged (not during creation or resize)
+      drawCornerHandles(ctx, boundsR);
       drawCenterLine(ctx, boundsR, isHoveringCenterLine);
-      // Only show corner handles on the primary selection (channel where selection originated)
-      if (isInRChannel) {
-        drawCornerHandles(ctx, boundsR);
-      }
 
       ctx.restore();
     } else {
