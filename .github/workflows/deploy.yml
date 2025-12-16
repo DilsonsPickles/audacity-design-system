@@ -38,6 +38,9 @@ jobs:
       - name: Build packages
         run: pnpm --filter @audacity-ui/core build && pnpm --filter @audacity-ui/tokens build && pnpm --filter @audacity-ui/components build
 
+      - name: Link workspace packages
+        run: pnpm install --offline
+
       - name: Build sandbox app
         run: pnpm --filter @audacity-ui/sandbox build
         env:
