@@ -58,6 +58,9 @@ export function Canvas({
     hiddenIndices: number[];
   } | null>(null);
 
+  // Track if channel resize is active
+  const [isChannelResizing, setIsChannelResizing] = useState(false);
+
   // Configuration constants
   const TOP_GAP = 2;
   const TRACK_GAP = 2;
@@ -87,11 +90,10 @@ export function Canvas({
       defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
       trackGap: TRACK_GAP,
       initialGap: TOP_GAP,
-      enabled: true,
+      enabled: !isChannelResizing, // Disable selection when channel resizing
     },
     {
       onTimeSelectionChange: (sel) => {
-        console.log('onTimeSelectionChange called:', sel, 'spectrogramMode:', spectrogramMode);
         dispatch({ type: 'SET_TIME_SELECTION', payload: sel });
       },
       onTimeSelectionFinalized: (sel) => {
@@ -102,14 +104,10 @@ export function Canvas({
       onSelectedTracksChange: (trackIndices) => dispatch({ type: 'SET_SELECTED_TRACKS', payload: trackIndices }),
       onFocusedTrackChange: (trackIndex) => dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex }),
       onSpectralSelectionChange: (sel) => {
-        console.log('onSpectralSelectionChange called:', sel);
         dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: sel });
       },
       onSpectralSelectionFinalized: (sel) => {
         if (sel) {
-          console.log('[onSpectralSelectionFinalized] Selection:', sel);
-          console.log('[onSpectralSelectionFinalized] startTime:', sel.startTime, 'endTime:', sel.endTime);
-          console.log('[onSpectralSelectionFinalized] Setting playhead to startTime (should be left edge):', sel.startTime);
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
         }
       },
@@ -120,11 +118,8 @@ export function Canvas({
 
   // Handle click to move playhead and select track
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    console.log('[handleContainerClick] Called');
-
     // Skip if envelope interaction occurred
     if (envelopeInteractionOccurredRef.current) {
-      console.log('[handleContainerClick] Skipping - envelope interaction occurred');
       envelopeInteractionOccurredRef.current = false;
       return;
     }
@@ -136,9 +131,7 @@ export function Canvas({
 
     // Only update playhead if we're not dragging
     const wasJustDragging = selection.selection.wasJustDragging();
-    console.log('[handleContainerClick] wasJustDragging:', wasJustDragging);
     if (wasJustDragging) {
-      console.log('[handleContainerClick] Skipping playhead update - was dragging');
       return;
     }
 
@@ -149,7 +142,6 @@ export function Canvas({
 
     // Calculate time from click position, accounting for CLIP_CONTENT_OFFSET
     const time = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
-    console.log('[handleContainerClick] Moving playhead to click position:', time);
 
     // Calculate which track was clicked (if any)
     let clickedTrackIndex: number | null = null;
@@ -173,7 +165,6 @@ export function Canvas({
       dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     } else if (clickedTrackIndex !== null) {
       // Clicked on a track - select it
-      console.log('[handleContainerClick] Selecting track:', clickedTrackIndex);
       dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
     }
@@ -255,8 +246,9 @@ export function Canvas({
             // Select the clip
             dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clip.id } });
 
-            // Clear time selection when starting clip drag
+            // Clear time selection and spectral selection when starting clip drag
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: null });
 
             // Start clip drag
             clipDragStateRef.current = {
@@ -669,11 +661,20 @@ export function Canvas({
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
                 backgroundColor={backgroundColor}
+                channelSplitRatio={track.channelSplitRatio}
                 {...selection.getClipProps(trackIndex)}
                 {...selection.getTrackProps(trackIndex)}
                 onClipHeaderClick={(_clipId, clipStartTime) => {
                   dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: clipStartTime });
                 }}
+                onChannelSplitChange={(newSplitRatio) => {
+                  dispatch({
+                    type: 'UPDATE_CHANNEL_SPLIT_RATIO',
+                    payload: { index: trackIndex, ratio: newSplitRatio }
+                  });
+                }}
+                onChannelResizeStart={() => setIsChannelResizing(true)}
+                onChannelResizeEnd={() => setIsChannelResizing(false)}
               />
             </div>
           );
@@ -699,6 +700,7 @@ export function Canvas({
           initialGap={TOP_GAP}
           clipHeaderHeight={20}
           tracks={tracks}
+          isDragging={selection.selection.isDragging}
         />
       </div>
     </div>

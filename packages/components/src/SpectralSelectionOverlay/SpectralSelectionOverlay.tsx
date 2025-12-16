@@ -40,12 +40,21 @@ export interface SpectralSelectionOverlayProps {
    * Track clips data (to find clip positions)
    */
   tracks: Array<{
+    id?: number;
+    name?: string;
+    height?: number;
+    viewMode?: 'waveform' | 'spectrogram' | 'split';
+    channelSplitRatio?: number;
     clips: Array<{
       id: number | string;
       start: number;
       duration: number;
     }>;
   }>;
+  /**
+   * Whether the selection is being dragged
+   */
+  isDragging?: boolean;
 }
 
 /**
@@ -60,6 +69,7 @@ export function SpectralSelectionOverlay({
   initialGap,
   clipHeaderHeight = 20,
   tracks,
+  isDragging = false,
 }: SpectralSelectionOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -131,6 +141,7 @@ export function SpectralSelectionOverlay({
         width={totalWidth}
         height={totalHeight}
         isHoveringCenterLine={isHovering}
+        isDragging={isDragging}
       />
     </div>
   );

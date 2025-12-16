@@ -133,11 +133,8 @@ export function useSpectralSelection(
 
       // Check if Y is within this track's clip body area
       if (y >= clipBodyY && y < clipBodyY + clipBodyHeight) {
-        console.log(`[isPositionOnSpectralClip] Track ${trackIndex} viewMode:`, track.viewMode, 'y:', y, 'clipBodyY:', clipBodyY);
-
         // Check if track has spectral view enabled
         if (track.viewMode !== 'spectrogram' && track.viewMode !== 'split') {
-          console.log(`[isPositionOnSpectralClip] Track ${trackIndex} is waveform, returning false`);
           return false; // Track doesn't support spectral selection
         }
 
@@ -145,7 +142,6 @@ export function useSpectralSelection(
         if (track.viewMode === 'split') {
           const splitY = clipBodyY + clipBodyHeight / 2;
           if (y > splitY) {
-            console.log(`[isPositionOnSpectralClip] Click in waveform area of split view, returning false`);
             return false; // Click in waveform area of split view
           }
         }
@@ -157,19 +153,16 @@ export function useSpectralSelection(
           const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
 
           if (x >= clipStartX && x <= clipEndX) {
-            console.log(`[isPositionOnSpectralClip] Found spectral clip, returning true`);
             return true; // Position is on a spectral-enabled clip
           }
         }
 
-        console.log(`[isPositionOnSpectralClip] In track but not on clip, returning false`);
         return false; // Position is in track but not on a clip
       }
 
       currentY += trackHeight + trackGap;
     }
 
-    console.log(`[isPositionOnSpectralClip] Not in any track, returning false`);
     return false; // Position not in any track
   }, [tracks, pixelsPerSecond, defaultTrackHeight, trackGap, initialGap, clipHeaderHeight]);
 
@@ -313,9 +306,13 @@ export function useSpectralSelection(
     // In split view, only use top half for frequency calculation
     const spectralAreaHeight = track.viewMode === 'split' ? clipBodyHeight / 2 : clipBodyHeight;
     const spectralAreaTop = clipBodyY;
+    const spectralAreaBottom = spectralAreaTop + spectralAreaHeight;
+
+    // Clamp Y to spectral area bounds to prevent dragging into waveform area
+    const clampedY = Math.max(spectralAreaTop, Math.min(spectralAreaBottom, y));
 
     // Y position within spectral area (0 = top, spectralAreaHeight = bottom)
-    const yInSpectralArea = y - spectralAreaTop;
+    const yInSpectralArea = clampedY - spectralAreaTop;
 
     // Normalize to 0-1, then invert (0 = bottom/low freq, 1 = top/high freq)
     const frequency = 1 - (yInSpectralArea / spectralAreaHeight);
@@ -571,8 +568,9 @@ export function useSpectralSelection(
         const clip = track.clips.find(c => c.id === clipId);
         const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
         const isSpectrogramMode = track.viewMode === 'spectrogram';
+        const isSplitView = track.viewMode === 'split';
 
-        if (isSpectrogramMode && isStereo) {
+        if ((isSpectrogramMode || isSplitView) && isStereo) {
           const startedInLChannel = freq1 >= 0.5;
           if (startedInLChannel) {
             freq1 = Math.max(0.5, Math.min(1.0, freq1));
@@ -643,13 +641,14 @@ export function useSpectralSelection(
       let freq1 = yToFrequency(startY, trackIndex);
       let freq2 = yToFrequency(y, trackIndex);
 
-      // For stereo spectrogram, constrain frequencies to stay within the channel where drag started
+      // For stereo spectrogram/split, constrain frequencies to stay within the channel where drag started
       const track = tracks[trackIndex];
       const clip = track.clips.find(c => c.id === clipId);
       const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
       const isSpectrogramMode = track.viewMode === 'spectrogram';
+      const isSplitView = track.viewMode === 'split';
 
-      if (isSpectrogramMode && isStereo) {
+      if ((isSpectrogramMode || isSplitView) && isStereo) {
         // Determine which channel the drag started in based on startY frequency
         // L channel (top): 0.5-1.0, R channel (bottom): 0.0-0.5
         const startedInLChannel = freq1 >= 0.5;
@@ -729,12 +728,23 @@ export function useSpectralSelection(
 
           const startYFreq = yToFrequency(startY, trackIndex);
           const deltaFreq = currentFreq - startYFreq;
-          minFrequency = initialSelection.minFrequency + deltaFreq;
-          maxFrequency = initialSelection.maxFrequency + deltaFreq;
+          let newMinFreq = initialSelection.minFrequency + deltaFreq;
+          let newMaxFreq = initialSelection.maxFrequency + deltaFreq;
 
-          // Clamp frequencies to allow user to select full range
-          minFrequency = Math.max(0, Math.min(1, minFrequency));
-          maxFrequency = Math.max(0, Math.min(1, maxFrequency));
+          // Preserve selection height when clamping - don't allow it to resize when hitting boundaries
+          const freqHeight = initialSelection.maxFrequency - initialSelection.minFrequency;
+
+          // Clamp to 0-1 range while maintaining height
+          if (newMinFreq < 0) {
+            newMinFreq = 0;
+            newMaxFreq = freqHeight;
+          } else if (newMaxFreq > 1) {
+            newMaxFreq = 1;
+            newMinFreq = 1 - freqHeight;
+          }
+
+          minFrequency = newMinFreq;
+          maxFrequency = newMaxFreq;
           break;
         case 'resize-left':
           startTime = currentTime;
@@ -780,25 +790,52 @@ export function useSpectralSelection(
       minFrequency = Math.max(0, Math.min(1, minFrequency));
       maxFrequency = Math.max(0, Math.min(1, maxFrequency));
 
-      // For stereo spectrogram, constrain frequencies to stay within the channel of the initial selection
+      // For stereo spectrogram or split view, constrain frequencies to stay within the channel of the initial selection during resize
       const track = tracks[trackIndex];
       const clip = track.clips.find(c => c.id === clipId);
       const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
       const isSpectrogramMode = track.viewMode === 'spectrogram';
+      const isSplitView = track.viewMode === 'split';
 
-      if (isSpectrogramMode && isStereo && initialSelection) {
+      if ((isSpectrogramMode || isSplitView) && isStereo && initialSelection) {
         // Determine which channel the selection was in based on initial frequencies
         // L channel (top): 0.5-1.0, R channel (bottom): 0.0-0.5
         const wasInLChannel = initialSelection.minFrequency >= 0.5 || initialSelection.maxFrequency > 0.5;
 
-        if (wasInLChannel) {
-          // Constrain to L channel (0.5-1.0)
-          minFrequency = Math.max(0.5, Math.min(1.0, minFrequency));
-          maxFrequency = Math.max(0.5, Math.min(1.0, maxFrequency));
+        if (mode === 'move') {
+          // For move operations, preserve selection height when hitting channel boundaries
+          const freqHeight = maxFrequency - minFrequency;
+
+          if (wasInLChannel) {
+            // Constrain to L channel (0.5-1.0) while maintaining height
+            if (minFrequency < 0.5) {
+              minFrequency = 0.5;
+              maxFrequency = 0.5 + freqHeight;
+            } else if (maxFrequency > 1.0) {
+              maxFrequency = 1.0;
+              minFrequency = 1.0 - freqHeight;
+            }
+          } else {
+            // Constrain to R channel (0.0-0.5) while maintaining height
+            if (minFrequency < 0.0) {
+              minFrequency = 0.0;
+              maxFrequency = 0.0 + freqHeight;
+            } else if (maxFrequency > 0.5) {
+              maxFrequency = 0.5;
+              minFrequency = 0.5 - freqHeight;
+            }
+          }
         } else {
-          // Constrain to R channel (0.0-0.5)
-          minFrequency = Math.max(0.0, Math.min(0.5, minFrequency));
-          maxFrequency = Math.max(0.0, Math.min(0.5, maxFrequency));
+          // For resize operations, allow edges to hit boundaries independently
+          if (wasInLChannel) {
+            // Constrain to L channel (0.5-1.0)
+            minFrequency = Math.max(0.5, Math.min(1.0, minFrequency));
+            maxFrequency = Math.max(0.5, Math.min(1.0, maxFrequency));
+          } else {
+            // Constrain to R channel (0.0-0.5)
+            minFrequency = Math.max(0.0, Math.min(0.5, minFrequency));
+            maxFrequency = Math.max(0.0, Math.min(0.5, maxFrequency));
+          }
         }
       }
 

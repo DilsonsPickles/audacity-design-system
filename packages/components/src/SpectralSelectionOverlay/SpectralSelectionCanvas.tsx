@@ -34,6 +34,8 @@ export interface SpectralSelectionCanvasProps {
   height: number;
   /** Whether mouse is hovering over center line */
   isHoveringCenterLine?: boolean;
+  /** Whether the selection is being dragged */
+  isDragging?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export function SpectralSelectionCanvas({
   width,
   height,
   isHoveringCenterLine = false,
+  isDragging = false,
 }: SpectralSelectionCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -86,29 +89,53 @@ export function SpectralSelectionCanvas({
     const isSplitView = (track as any).viewMode === 'split';
     const isSpectrogramMode = (track as any).viewMode === 'spectrogram';
     const isStereo = (clip as any).waveformLeft && (clip as any).waveformRight;
+    const channelSplitRatio = (track as any).channelSplitRatio ?? 0.5;
 
     const spectralAreaHeight = isSplitView ? clipBodyHeight / 2 : clipBodyHeight;
 
     // Check if selection spans full frequency range for time-selection-style overlay
-    // For mono/split: full range is 0-1
-    // For stereo spectrogram: also consider full L channel (0.5-1) or full R channel (0-0.5)
+    // For mono: full range is 0-1
+    // For stereo spectrogram or split view: also consider full L channel (0.5-1) or full R channel (0-0.5)
     const isFullHeight = (minFrequency === 0 && maxFrequency === 1) ||
-                         (isSpectrogramMode && isStereo && minFrequency === 0.5 && maxFrequency === 1.0) ||
-                         (isSpectrogramMode && isStereo && minFrequency === 0.0 && maxFrequency === 0.5);
+                         ((isSpectrogramMode || isSplitView) && isStereo && minFrequency === 0.5 && maxFrequency === 1.0) ||
+                         ((isSpectrogramMode || isSplitView) && isStereo && minFrequency === 0.0 && maxFrequency === 0.5);
 
-    // For stereo spectrogram, render on both L and R channels
-    if (isSpectrogramMode && isStereo) {
-      // Stereo spectrogram: L channel on top half, R channel on bottom half
-      const halfHeight = clipBodyHeight / 2;
+    // For stereo tracks in spectrogram or split view, render on both L and R channels
+    if ((isSpectrogramMode || isSplitView) && isStereo) {
+      // Stereo: L channel on top, R channel on bottom
+      // Use channelSplitRatio to determine channel heights
+      // In split view: spectral area is top half, then split by ratio
+      // In spectrogram mode: full clip body split by ratio
+      const baseHeight = isSplitView ? spectralAreaHeight : clipBodyHeight;
+      const lChannelHeight = baseHeight * channelSplitRatio;
+      const rChannelHeight = baseHeight * (1 - channelSplitRatio);
+
+      // Determine which channel the selection is in
+      const isInLChannel = minFrequency >= 0.5;
+      const isInRChannel = maxFrequency <= 0.5;
 
       // Render on L channel (top half)
+      // L channel displays frequencies 0.5-1.0, remapped to 0-1
+      // Mirror selections across channels in both spectrogram and split view
+      let lMinFreq: number, lMaxFreq: number;
+      if (isInLChannel) {
+        // Selection is in L channel - remap 0.5-1.0 to 0-1
+        lMinFreq = Math.max(0, Math.min(1, (minFrequency - 0.5) * 2));
+        lMaxFreq = Math.max(0, Math.min(1, (maxFrequency - 0.5) * 2));
+      } else {
+        // Selection is in R channel - mirror it to L channel (remap 0-0.5 to 0-1)
+        lMinFreq = Math.max(0, Math.min(1, minFrequency * 2));
+        lMaxFreq = Math.max(0, Math.min(1, maxFrequency * 2));
+      }
+
       const boundsL = getSelectionBounds(
         startTime,
         endTime,
-        minFrequency,
-        maxFrequency,
+        lMinFreq,
+        lMaxFreq,
         trackIndex,
-        coordinateConfig
+        coordinateConfig,
+        'L'
       );
 
       // Draw full-height overlay BEFORE clipping (so it covers the header too)
@@ -122,7 +149,8 @@ export function SpectralSelectionCanvas({
 
       ctx.save();
       ctx.beginPath();
-      ctx.rect(clipStartX, clipBodyY, clipEndX - clipStartX, halfHeight);
+      // Clip L channel - subtract 0.5px to prevent overlapping divider line
+      ctx.rect(clipStartX, clipBodyY, clipEndX - clipStartX, lChannelHeight - 0.5);
       ctx.clip();
 
       drawDarkenedOverlays(
@@ -136,26 +164,42 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, boundsL);
-      drawCenterLine(ctx, boundsL, isHoveringCenterLine);
+      drawCenterLine(ctx, boundsL, isHoveringCenterLine || isDragging);
       drawCornerHandles(ctx, boundsL);
 
       ctx.restore();
 
-      // Render on R channel (bottom half)
-      // Adjust the bounds to render in the bottom half
-      const boundsR = {
-        leftX: boundsL.leftX,
-        rightX: boundsL.rightX,
-        topY: boundsL.topY + halfHeight,
-        bottomY: boundsL.bottomY + halfHeight,
-        centerY: boundsL.centerY + halfHeight,
-        width: boundsL.width,
-        height: boundsL.height,
-      };
+      // Render on R channel (below L channel in spectral area)
+      // R channel displays frequencies 0-0.5, remapped to 0-1
+      // Mirror selections across channels in both spectrogram and split view
+      let rMinFreq: number, rMaxFreq: number;
+      if (isInRChannel) {
+        // Selection is in R channel - remap 0-0.5 to 0-1
+        rMinFreq = Math.max(0, Math.min(1, minFrequency * 2));
+        rMaxFreq = Math.max(0, Math.min(1, maxFrequency * 2));
+      } else {
+        // Selection is in L channel - mirror it to R channel (remap 0.5-1.0 to 0-1)
+        rMinFreq = Math.max(0, Math.min(1, (minFrequency - 0.5) * 2));
+        rMaxFreq = Math.max(0, Math.min(1, (maxFrequency - 0.5) * 2));
+      }
+      console.log('[SpectralSelectionCanvas R] rMinFreq:', rMinFreq, 'rMaxFreq:', rMaxFreq);
+
+      const boundsR = getSelectionBounds(
+        startTime,
+        endTime,
+        rMinFreq,
+        rMaxFreq,
+        trackIndex,
+        coordinateConfig,
+        'R'
+      );
 
       ctx.save();
       ctx.beginPath();
-      ctx.rect(clipStartX, clipBodyY + halfHeight, clipEndX - clipStartX, halfHeight);
+      // Clip R channel - start 0.5px below divider, subtract 0.5px from height if in split view
+      const rChannelTop = clipBodyY + lChannelHeight + 0.5;
+      const rChannelClipHeight = isSplitView ? rChannelHeight - 0.5 : rChannelHeight;
+      ctx.rect(clipStartX, rChannelTop, clipEndX - clipStartX, rChannelClipHeight);
       ctx.clip();
 
       drawDarkenedOverlays(
@@ -169,7 +213,7 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, boundsR);
-      drawCenterLine(ctx, boundsR, isHoveringCenterLine);
+      drawCenterLine(ctx, boundsR, isHoveringCenterLine || isDragging);
       drawCornerHandles(ctx, boundsR);
 
       ctx.restore();
@@ -195,7 +239,8 @@ export function SpectralSelectionCanvas({
 
       ctx.save();
       ctx.beginPath();
-      ctx.rect(clipStartX, clipBodyY, clipEndX - clipStartX, spectralAreaHeight);
+      // Clip to spectral area - in split view this is the top half only
+      ctx.rect(clipStartX, clipBodyY, clipEndX - clipStartX, spectralAreaHeight - 0.5);
       ctx.clip();
 
       drawDarkenedOverlays(
@@ -209,12 +254,12 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, bounds);
-      drawCenterLine(ctx, bounds, isHoveringCenterLine);
+      drawCenterLine(ctx, bounds, isHoveringCenterLine || isDragging);
       drawCornerHandles(ctx, bounds);
 
       ctx.restore();
     }
-  }, [selection, tracks, coordinateConfig, isHoveringCenterLine]);
+  }, [selection, tracks, coordinateConfig, isHoveringCenterLine, isDragging]);
 
   return (
     <canvas

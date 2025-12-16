@@ -33,6 +33,7 @@ const sampleTracks = [
     id: 1,
     name: 'Track 1',
     height: 114,
+    channelSplitRatio: 0.5,
     clips: [
       {
         id: 1,
@@ -56,6 +57,7 @@ const sampleTracks = [
     id: 2,
     name: 'Track 2',
     height: 114,
+    channelSplitRatio: 0.5,
     clips: [
       {
         id: 3,
@@ -71,6 +73,7 @@ const sampleTracks = [
     id: 3,
     name: 'Track 3',
     height: 114,
+    channelSplitRatio: 0.5,
     clips: [
       {
         id: 4,
@@ -94,6 +97,7 @@ const sampleTracks = [
     id: 4,
     name: 'Track 4 (Stereo)',
     height: 114,
+    channelSplitRatio: 0.5,
     clips: [
       {
         id: 6,
@@ -494,7 +498,7 @@ function CanvasDemoContent() {
       )}
 
       {/* Toast Container */}
-      <ToastContainer maxToasts={5} />
+      <ToastContainer />
 
       {/* Share Audio Dialog */}
       <Dialog
