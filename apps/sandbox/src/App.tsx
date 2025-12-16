@@ -302,10 +302,13 @@ function CanvasDemoContent() {
                   dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
                 } else if (newWorkspace === 'classic') {
                   // When switching back to classic, set all tracks to waveform mode
+                  console.log('[Workspace] Switching to classic, setting tracks to waveform');
                   state.tracks.forEach((_, index) => {
+                    console.log('[Workspace] Setting track', index, 'to waveform');
                     dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index, viewMode: 'waveform' } });
                   });
                   // Also disable the spectrogram mode button
+                  console.log('[Workspace] Disabling spectrogram mode button');
                   dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
                 }
               }}
