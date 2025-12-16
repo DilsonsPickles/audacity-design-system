@@ -241,6 +241,27 @@ export interface TrackProps {
    * Callback when track background is clicked
    */
   onTrackClick?: () => void;
+
+  /**
+   * Channel split ratio for stereo tracks (0-1, default 0.5)
+   * Controls the vertical distribution between L and R channels
+   */
+  channelSplitRatio?: number;
+
+  /**
+   * Callback when channel split divider is dragged (for stereo tracks)
+   */
+  onChannelSplitChange?: (newSplitRatio: number) => void;
+
+  /**
+   * Callback when channel resize drag starts
+   */
+  onChannelResizeStart?: () => void;
+
+  /**
+   * Callback when channel resize drag ends
+   */
+  onChannelResizeEnd?: () => void;
 }
 
 /**
@@ -263,9 +284,20 @@ export const Track: React.FC<TrackProps> = ({
   onClipClick,
   onClipHeaderClick,
   onTrackClick,
+  channelSplitRatio = 0.5,
+  onChannelSplitChange,
+  onChannelResizeStart,
+  onChannelResizeEnd,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cursorStyle, setCursorStyle] = useState<string>('default');
+  const [isHoveringDivider, setIsHoveringDivider] = useState<boolean>(false);
+  const [channelResizeDrag, setChannelResizeDrag] = useState<{
+    startY: number;
+    startSplitRatio: number;
+    clipY: number;
+    clipHeight: number;
+  } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -560,12 +592,14 @@ export const Track: React.FC<TrackProps> = ({
           const isStereo = clip.waveformLeft && clip.waveformRight;
 
           if (isStereo) {
-            // Stereo spectrogram: L channel on top, R channel on bottom
-            const halfHeight = waveformAreaHeight / 2;
+            // Stereo spectrogram: L channel on top, R channel on bottom, split by channelSplitRatio
+            const splitRatio = channelSplitRatio;
+            const lChannelHeight = waveformAreaHeight * splitRatio;
+            const rChannelHeight = waveformAreaHeight * (1 - splitRatio);
             const frequencyBands = 64;
             const fftWindowSize = 256;
 
-            // Draw L channel spectrogram (top half)
+            // Draw L channel spectrogram (top portion based on splitRatio)
             const samplesPerPixelL = clip.waveformLeft!.length / clipWidth;
             for (let px = 0; px < clipWidth; px++) {
               const sampleIndex = Math.floor(px * samplesPerPixelL);
@@ -592,21 +626,31 @@ export const Track: React.FC<TrackProps> = ({
 
                 const alpha = Math.max(0.3, intensity);
                 ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                const y = waveformAreaTop + (1 - (band / frequencyBands)) * halfHeight;
-                const bandHeight = Math.max(1, halfHeight / frequencyBands);
+                const y = waveformAreaTop + (1 - (band / frequencyBands)) * lChannelHeight;
+                const bandHeight = Math.max(1, lChannelHeight / frequencyBands);
                 ctx.fillRect(clipX + px, y, 1, bandHeight);
               }
             }
 
             // Draw separator line between L and R
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            const dividerY = waveformAreaTop + lChannelHeight;
+
+            // Draw hover/drag highlight
+            if (isHoveringDivider || channelResizeDrag) {
+              const HIGHLIGHT_HEIGHT = 8;
+              ctx.fillStyle = 'rgba(112, 181, 255, 0.4)';
+              ctx.fillRect(clipX, dividerY - HIGHLIGHT_HEIGHT / 2, clipWidth, HIGHLIGHT_HEIGHT);
+            }
+
+            // Draw divider line (solid black)
+            ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(clipX, waveformAreaTop + halfHeight);
-            ctx.lineTo(clipX + clipWidth, waveformAreaTop + halfHeight);
+            ctx.moveTo(clipX, dividerY);
+            ctx.lineTo(clipX + clipWidth, dividerY);
             ctx.stroke();
 
-            // Draw R channel spectrogram (bottom half)
+            // Draw R channel spectrogram (bottom portion based on splitRatio)
             const samplesPerPixelR = clip.waveformRight!.length / clipWidth;
             for (let px = 0; px < clipWidth; px++) {
               const sampleIndex = Math.floor(px * samplesPerPixelR);
@@ -633,8 +677,8 @@ export const Track: React.FC<TrackProps> = ({
 
                 const alpha = Math.max(0.3, intensity);
                 ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                const y = waveformAreaTop + halfHeight + (1 - (band / frequencyBands)) * halfHeight;
-                const bandHeight = Math.max(1, halfHeight / frequencyBands);
+                const y = dividerY + (1 - (band / frequencyBands)) * rChannelHeight;
+                const bandHeight = Math.max(1, rChannelHeight / frequencyBands);
                 ctx.fillRect(clipX + px, y, 1, bandHeight);
               }
             }
@@ -682,10 +726,12 @@ export const Track: React.FC<TrackProps> = ({
           const isStereo = clip.waveformLeft && clip.waveformRight;
 
           if (isStereo) {
-            // Stereo: L channel on top half, R channel on bottom half
-            const halfHeight = waveformAreaHeight / 2;
-            const lChannelCenterY = waveformAreaTop + halfHeight / 2;
-            const rChannelCenterY = waveformAreaTop + halfHeight + halfHeight / 2;
+            // Stereo: L channel on top, R channel on bottom, split by channelSplitRatio
+            const splitRatio = channelSplitRatio; // Default to 50/50 split
+            const lChannelHeight = waveformAreaHeight * splitRatio;
+            const rChannelHeight = waveformAreaHeight * (1 - splitRatio);
+            const lChannelCenterY = waveformAreaTop + lChannelHeight / 2;
+            const rChannelCenterY = waveformAreaTop + lChannelHeight + rChannelHeight / 2;
 
             // Draw L channel
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
@@ -701,7 +747,7 @@ export const Track: React.FC<TrackProps> = ({
               const time = (px / clipWidth) * clip.duration;
               const gain = getGainAtTime(time, clip.duration, clip.envelopePoints);
               const amplitude = Math.abs(sample) * gain;
-              const waveformHeight = amplitude * (halfHeight / 2) * 0.9;
+              const waveformHeight = amplitude * (lChannelHeight / 2) * 0.9;
 
               const x = clipX + px;
               const yTop = lChannelCenterY - waveformHeight;
@@ -712,12 +758,21 @@ export const Track: React.FC<TrackProps> = ({
             }
             ctx.stroke();
 
-            // Draw 1px black separator line
+            // Draw separator line between L and R channels
+            const dividerY = waveformAreaTop + lChannelHeight;
+
+            // Draw hover/drag highlight
+            if (isHoveringDivider || channelResizeDrag) {
+              const HIGHLIGHT_HEIGHT = 8; // 4px above and below
+              ctx.fillStyle = 'rgba(112, 181, 255, 0.3)'; // Blue highlight
+              ctx.fillRect(clipX, dividerY - HIGHLIGHT_HEIGHT / 2, clipWidth, HIGHLIGHT_HEIGHT);
+            }
+
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(clipX, waveformAreaTop + halfHeight);
-            ctx.lineTo(clipX + clipWidth, waveformAreaTop + halfHeight);
+            ctx.moveTo(clipX, dividerY);
+            ctx.lineTo(clipX + clipWidth, dividerY);
             ctx.stroke();
 
             // Draw R channel
@@ -734,7 +789,7 @@ export const Track: React.FC<TrackProps> = ({
               const time = (px / clipWidth) * clip.duration;
               const gain = getGainAtTime(time, clip.duration, clip.envelopePoints);
               const amplitude = Math.abs(sample) * gain;
-              const waveformHeight = amplitude * (halfHeight / 2) * 0.9;
+              const waveformHeight = amplitude * (rChannelHeight / 2) * 0.9;
 
               const x = clipX + px;
               const yTop = rChannelCenterY - waveformHeight;
@@ -910,7 +965,7 @@ export const Track: React.FC<TrackProps> = ({
         ctx.fill();
       });
     }
-  }, [clips, height, trackIndex, spectrogramMode, splitView, envelopeMode, envelopeHiddenPointIndices, isSelected, isFocused, pixelsPerSecond, width, backgroundColor]);
+  }, [clips, height, trackIndex, spectrogramMode, splitView, envelopeMode, envelopeHiddenPointIndices, isSelected, isFocused, pixelsPerSecond, width, backgroundColor, channelSplitRatio, isHoveringDivider, channelResizeDrag]);
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -922,22 +977,139 @@ export const Track: React.FC<TrackProps> = ({
 
     // Clip header height (should match the value used in rendering)
     const CLIP_HEADER_HEIGHT = 20;
+    const DIVIDER_HIT_ZONE = 4; // Pixels above and below divider line
 
-    // Check if hovering over a clip header
+    // Handle active channel resize drag
+    if (channelResizeDrag) {
+      const deltaY = y - channelResizeDrag.startY;
+      const newSplitRatio = Math.max(0.1, Math.min(0.9,
+        channelResizeDrag.startSplitRatio + (deltaY / channelResizeDrag.clipHeight)
+      ));
+      onChannelSplitChange?.(newSplitRatio);
+      return;
+    }
+
+    // Check if hovering over a clip header or channel divider
     let overClipHeader = false;
+    let overChannelDivider = false;
+
     for (const clip of clips) {
       const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
 
-      if (x >= clipX && x < clipX + clipWidth && y <= CLIP_HEADER_HEIGHT) {
-        overClipHeader = true;
-        break;
+      if (x >= clipX && x < clipX + clipWidth) {
+        // Check if over clip header
+        if (y <= CLIP_HEADER_HEIGHT) {
+          overClipHeader = true;
+          break;
+        }
+
+        // Check if over channel divider (for stereo clips)
+        const isStereo = clip.waveformLeft && clip.waveformRight;
+        if (isStereo && y > CLIP_HEADER_HEIGHT) {
+          const waveformAreaTop = CLIP_HEADER_HEIGHT;
+          const waveformAreaHeight = height - CLIP_HEADER_HEIGHT;
+          const dividerY = waveformAreaTop + waveformAreaHeight * channelSplitRatio;
+
+          if (Math.abs(y - dividerY) <= DIVIDER_HIT_ZONE) {
+            overChannelDivider = true;
+            break;
+          }
+        }
       }
     }
 
-    // Update cursor style
-    setCursorStyle(overClipHeader ? 'pointer' : 'default');
+    // Update cursor style and hover state
+    setIsHoveringDivider(overChannelDivider);
+    if (overChannelDivider) {
+      setCursorStyle('ns-resize');
+    } else if (overClipHeader) {
+      setCursorStyle('pointer');
+    } else {
+      setCursorStyle('default');
+    }
   };
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const CLIP_HEADER_HEIGHT = 20;
+    const DIVIDER_HIT_ZONE = 4;
+
+    // Check if clicking on a channel divider
+    for (const clip of clips) {
+      const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
+      const clipWidth = clip.duration * pixelsPerSecond;
+
+      if (x >= clipX && x < clipX + clipWidth) {
+        // Check if over channel divider (for stereo clips)
+        const isStereo = clip.waveformLeft && clip.waveformRight;
+        if (isStereo && y > CLIP_HEADER_HEIGHT) {
+          const waveformAreaTop = CLIP_HEADER_HEIGHT;
+          const waveformAreaHeight = height - CLIP_HEADER_HEIGHT;
+          const dividerY = waveformAreaTop + waveformAreaHeight * channelSplitRatio;
+
+          if (Math.abs(y - dividerY) <= DIVIDER_HIT_ZONE) {
+            // Start channel resize drag
+            setChannelResizeDrag({
+              startY: y,
+              startSplitRatio: channelSplitRatio,
+              clipY: waveformAreaTop,
+              clipHeight: waveformAreaHeight,
+            });
+            onChannelResizeStart?.();
+            event.preventDefault();
+            event.stopPropagation(); // Prevent event from bubbling to container
+            return;
+          }
+        }
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (channelResizeDrag) {
+      setChannelResizeDrag(null);
+      onChannelResizeEnd?.();
+    }
+  };
+
+  // Add global mouse handlers for dragging outside the canvas
+  useEffect(() => {
+    if (!channelResizeDrag) return;
+
+    const handleGlobalMouseMove = (event: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const y = event.clientY - rect.top;
+
+      const deltaY = y - channelResizeDrag.startY;
+      const newSplitRatio = Math.max(0.1, Math.min(0.9,
+        channelResizeDrag.startSplitRatio + (deltaY / channelResizeDrag.clipHeight)
+      ));
+      onChannelSplitChange?.(newSplitRatio);
+    };
+
+    const handleGlobalMouseUp = () => {
+      setChannelResizeDrag(null);
+      onChannelResizeEnd?.();
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [channelResizeDrag, onChannelSplitChange]);
 
   const handleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -979,6 +1151,8 @@ export const Track: React.FC<TrackProps> = ({
         width={width}
         height={height}
         onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
         className="track-canvas"
         style={{ cursor: cursorStyle }}
