@@ -300,6 +300,13 @@ function CanvasDemoContent() {
                   });
                   // Also enable the spectrogram mode button
                   dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
+                } else if (newWorkspace === 'classic') {
+                  // When switching back to classic, set all tracks to waveform mode
+                  state.tracks.forEach((_, index) => {
+                    dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index, viewMode: 'waveform' } });
+                  });
+                  // Also disable the spectrogram mode button
+                  dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
                 }
               }}
             >
