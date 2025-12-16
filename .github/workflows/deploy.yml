@@ -39,8 +39,7 @@ jobs:
         run: pnpm --filter @audacity-ui/core build && pnpm --filter @audacity-ui/tokens build && pnpm --filter @audacity-ui/components build
 
       - name: Build sandbox app
-        working-directory: apps/sandbox
-        run: pnpm build
+        run: pnpm --filter @audacity-ui/sandbox build
         env:
           BASE_PATH: /audacity-design-system
 
