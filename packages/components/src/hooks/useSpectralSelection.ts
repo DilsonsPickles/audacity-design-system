@@ -933,5 +933,6 @@ export function useSpectralSelection(
     cursorStyle,
     isPositionOnSpectralClip,
     wasJustDragging: () => wasDraggingRef.current,
+    isCreating: dragStateRef.current?.mode === 'create',
   };
 }

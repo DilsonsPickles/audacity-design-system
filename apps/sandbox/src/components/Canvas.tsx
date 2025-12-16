@@ -701,6 +701,7 @@ export function Canvas({
           clipHeaderHeight={20}
           tracks={tracks}
           isDragging={selection.selection.isDragging}
+          isCreating={selection.selection.isCreating}
         />
       </div>
     </div>

@@ -35,7 +35,13 @@ export type IconName =
   | 'caret-down'
   | 'close'
   | 'user'
-  | 'book';
+  | 'book'
+  | 'brush'
+  | 'volume'
+  | 'metronome'
+  | 'plug'
+  | 'microphone'
+  | 'keyboard';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -72,6 +78,12 @@ const ICON_MAP: Record<IconName, string> = {
   close: '\uEF14',
   user: '\uEF99',
   book: '\uF441',
+  brush: '\uF444',
+  volume: '\uEF4E',
+  metronome: '\uEF20',
+  plug: '\uF440',
+  microphone: '\uF41B',
+  keyboard: '\uF35D',
 };
 
 export interface IconProps {

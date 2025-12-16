@@ -118,7 +118,7 @@ export const toast = {
 };
 
 export function ToastContainer({
-  maxToasts = 3,
+  maxToasts = 5,
   position = 'bottom-right',
 }: ToastContainerProps) {
   const [currentToasts, setCurrentToasts] = useState<ManagedToast[]>([]);

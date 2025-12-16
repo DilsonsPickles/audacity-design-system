@@ -36,6 +36,8 @@ export interface SpectralSelectionCanvasProps {
   isHoveringCenterLine?: boolean;
   /** Whether the selection is being dragged */
   isDragging?: boolean;
+  /** Whether we're actively creating a new selection (marquee in progress) */
+  isCreating?: boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export function SpectralSelectionCanvas({
   height,
   isHoveringCenterLine = false,
   isDragging = false,
+  isCreating = false,
 }: SpectralSelectionCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -164,8 +167,12 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, boundsL);
-      drawCenterLine(ctx, boundsL, isHoveringCenterLine || isDragging);
-      drawCornerHandles(ctx, boundsL);
+      // Only highlight center line when not creating a new selection
+      drawCenterLine(ctx, boundsL, !isCreating && (isHoveringCenterLine || isDragging));
+      // Only show corner handles on the primary selection (channel where selection originated)
+      if (isInLChannel) {
+        drawCornerHandles(ctx, boundsL);
+      }
 
       ctx.restore();
 
@@ -213,8 +220,12 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, boundsR);
-      drawCenterLine(ctx, boundsR, isHoveringCenterLine || isDragging);
-      drawCornerHandles(ctx, boundsR);
+      // Only highlight center line when not creating a new selection
+      drawCenterLine(ctx, boundsR, !isCreating && (isHoveringCenterLine || isDragging));
+      // Only show corner handles on the primary selection (channel where selection originated)
+      if (isInRChannel) {
+        drawCornerHandles(ctx, boundsR);
+      }
 
       ctx.restore();
     } else {
@@ -254,12 +265,13 @@ export function SpectralSelectionCanvas({
       );
 
       drawMarqueeBorder(ctx, bounds);
-      drawCenterLine(ctx, bounds, isHoveringCenterLine || isDragging);
+      // Only highlight center line when not creating a new selection
+      drawCenterLine(ctx, bounds, !isCreating && (isHoveringCenterLine || isDragging));
       drawCornerHandles(ctx, bounds);
 
       ctx.restore();
     }
-  }, [selection, tracks, coordinateConfig, isHoveringCenterLine, isDragging]);
+  }, [selection, tracks, coordinateConfig, isHoveringCenterLine, isDragging, isCreating]);
 
   return (
     <canvas

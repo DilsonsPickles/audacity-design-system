@@ -55,6 +55,10 @@ export interface SpectralSelectionOverlayProps {
    * Whether the selection is being dragged
    */
   isDragging?: boolean;
+  /**
+   * Whether we're actively creating a new selection (marquee in progress)
+   */
+  isCreating?: boolean;
 }
 
 /**
@@ -70,6 +74,7 @@ export function SpectralSelectionOverlay({
   clipHeaderHeight = 20,
   tracks,
   isDragging = false,
+  isCreating = false,
 }: SpectralSelectionOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -142,6 +147,7 @@ export function SpectralSelectionOverlay({
         height={totalHeight}
         isHoveringCenterLine={isHovering}
         isDragging={isDragging}
+        isCreating={isCreating}
       />
     </div>
   );
