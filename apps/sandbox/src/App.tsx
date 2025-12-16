@@ -221,7 +221,6 @@ function CanvasDemoContent() {
               clearInterval(interval);
               setTimeout(() => {
                 toast.dismiss(syncToastId);
-                toast.success('Synced!', 'Your project has been saved to audio.com', undefined, 3000);
               }, 200);
             }
           }, updateInterval);
@@ -624,7 +623,6 @@ function CanvasDemoContent() {
 
               // Check for correct credentials
               if (email === 'admin' && password === 'password') {
-                toast.success('Sign in successful!');
                 setIsCreateAccountOpen(false);
                 setIsSignedIn(true);
                 setEmail('');
@@ -658,7 +656,6 @@ function CanvasDemoContent() {
             <SocialSignInButton
               provider="google"
               onClick={() => {
-                toast.success('Signed in with Google!');
                 setIsCreateAccountOpen(false);
                 setIsSignedIn(true);
                 setEmail('');
@@ -668,7 +665,6 @@ function CanvasDemoContent() {
             <SocialSignInButton
               provider="facebook"
               onClick={() => {
-                toast.success('Signed in with Facebook!');
                 setIsCreateAccountOpen(false);
                 setIsSignedIn(true);
                 setEmail('');
