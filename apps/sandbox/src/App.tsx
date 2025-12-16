@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 
@@ -134,6 +134,7 @@ function CanvasDemoContent() {
   const [dontShowSyncAgain, setDontShowSyncAgain] = React.useState(false);
   const [isSaveProjectModalOpen, setIsSaveProjectModalOpen] = React.useState(false);
   const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = React.useState(false);
+  const [isPreferencesModalOpen, setIsPreferencesModalOpen] = React.useState(false);
 
   // Debug panel state
   const [isDebugPanelOpen, setIsDebugPanelOpen] = React.useState(false);
@@ -232,8 +233,20 @@ function CanvasDemoContent() {
     },
   ];
 
+  // Define menu items for Edit menu
+  const editMenuItems: MenuItem[] = [
+    {
+      label: 'Preferences',
+      shortcut: 'Ctrl+,',
+      onClick: () => {
+        setIsPreferencesModalOpen(true);
+      }
+    },
+  ];
+
   const menuDefinitions = {
     File: fileMenuItems,
+    Edit: editMenuItems,
   };
 
   return (
@@ -795,6 +808,12 @@ function CanvasDemoContent() {
         onDontShowAgainChange={setDontShowSaveModalAgain}
         cloudImageUrl="/saveToCloud.png"
         computerImageUrl="/saveToComputer.png"
+      />
+
+      {/* Preferences Modal */}
+      <PreferencesModal
+        isOpen={isPreferencesModalOpen}
+        onClose={() => setIsPreferencesModalOpen(false)}
       />
 
       {/* Debug Panel */}

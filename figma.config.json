@@ -1,0 +1,13 @@
+{
+  "codeConnect": {
+    "include": [
+      "packages/components/src/**/*.figma.tsx",
+      "packages/components/src/**/*.tsx"
+    ],
+    "exclude": ["**/node_modules/**", "**/*.stories.tsx"],
+    "parser": "react"
+  },
+  "documentUrlSubstitutions": {
+    "localFile": "https://github.com/DilsonsPickles/audacity-design-system/blob/master"
+  }
+}
