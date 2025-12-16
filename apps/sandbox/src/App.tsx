@@ -280,7 +280,17 @@ function CanvasDemoContent() {
             <select
               style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
               value={workspace}
-              onChange={(e) => setWorkspace(e.target.value as Workspace)}
+              onChange={(e) => {
+                const newWorkspace = e.target.value as Workspace;
+                setWorkspace(newWorkspace);
+
+                // When switching to spectral editing, set all tracks to spectrogram mode
+                if (newWorkspace === 'spectral-editing') {
+                  state.tracks.forEach((_, index) => {
+                    dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index, viewMode: 'spectrogram' } });
+                  });
+                }
+              }}
             >
               <option value="classic">Classic</option>
               <option value="spectral-editing">Spectral editing</option>
