@@ -35,14 +35,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build packages
-        run: pnpm --filter @audacity-ui/core build && pnpm --filter @audacity-ui/tokens build && pnpm --filter @audacity-ui/components build
-
-      - name: Link workspace packages
-        run: pnpm install --offline
-
-      - name: Build sandbox app
-        run: pnpm --filter @audacity-ui/sandbox build
+      - name: Build all packages and apps
+        run: pnpm -r --workspace-concurrency=1 build
         env:
           BASE_PATH: /audacity-design-system
 
