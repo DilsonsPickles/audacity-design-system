@@ -114,7 +114,6 @@ export function useSpectralSelection(
 
   const dragStateRef = useRef<DragState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
   const [cursorStyle, setCursorStyle] = useState('default');
   const wasDraggingRef = useRef(false);
   const justConvertedRef = useRef(false);
@@ -498,7 +497,6 @@ export function useSpectralSelection(
         initialSelection: { ...currentSpectralSelection },
       };
       setIsDragging(true);
-      setIsCreating(false); // Not creating, just resizing/moving
       return true;
     }
 
@@ -526,7 +524,6 @@ export function useSpectralSelection(
     }
 
     setIsDragging(true);
-    setIsCreating(true); // Mark that we're creating a new selection
     return true;
   }, [enabled, detectResizeMode, currentSpectralSelection, findClipAtPosition, onClearTimeSelection]);
 
@@ -912,7 +909,6 @@ export function useSpectralSelection(
 
       dragStateRef.current = null;
       setIsDragging(false);
-      setIsCreating(false); // Reset creating state
     }
   }, [currentSpectralSelection, onSpectralSelectionFinalized, onSpectralSelectionChange]);
 
@@ -937,6 +933,6 @@ export function useSpectralSelection(
     cursorStyle,
     isPositionOnSpectralClip,
     wasJustDragging: () => wasDraggingRef.current,
-    isCreating,
+    isCreating: isDragging && dragStateRef.current?.mode === 'create',
   };
 }
