@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm --parallel --recursive dev",
     "sandbox": "pnpm --filter @audacity-ui/sandbox dev",
-    "build": "pnpm --filter './packages/*' build && pnpm --filter './apps/*' build",
+    "build": "pnpm -r --workspace-concurrency=1 build",
     "lint": "pnpm --recursive lint",
     "test": "pnpm --recursive test"
   },
