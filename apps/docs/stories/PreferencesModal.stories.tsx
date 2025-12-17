@@ -53,6 +53,13 @@ export const AppearancePage: Story = {
   },
 };
 
+export const AudioSettingsPage: Story = {
+  render: (args) => <PreferencesModalDemo {...args} />,
+  args: {
+    currentPage: 'audio-settings',
+  },
+};
+
 // Always open for visual testing
 export const AlwaysOpen: Story = {
   render: (args) => {

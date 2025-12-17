@@ -235,3 +235,18 @@
 .preferences-page__link:hover {
   color: #5568d3;
 }
+
+.preferences-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preferences-page__section-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  color: #14151a;
+  margin: 0;
+}

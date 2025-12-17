@@ -115,7 +115,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
           <div className="preferences-modal__scroll-container">
             {selectedPage === 'general' && <GeneralPage />}
             {selectedPage === 'appearance' && <PlaceholderPage title="Appearance" />}
-            {selectedPage === 'audio-settings' && <PlaceholderPage title="Audio Settings" />}
+            {selectedPage === 'audio-settings' && <AudioSettingsPage />}
             {/* Add other pages as needed */}
           </div>
         </div>
@@ -210,6 +210,133 @@ function GeneralPage() {
         Update checking requires network access. In order to protect your privacy,
         Audacity does not store any personal information. See our{' '}
         <a href="#" className="preferences-page__link">Privacy Policy</a> for more info.
+      </div>
+    </div>
+  );
+}
+
+// Audio Settings Page Content
+function AudioSettingsPage() {
+  const hostOptions: DropdownOption[] = [
+    { value: 'mme', label: 'MME' },
+    { value: 'wasapi', label: 'Windows WASAPI' },
+    { value: 'directsound', label: 'Windows DirectSound' },
+  ];
+
+  const deviceOptions: DropdownOption[] = [
+    { value: 'scarlett', label: 'Scarlett Solo USB' },
+    { value: 'realtek', label: 'Realtek High Definition Audio' },
+    { value: 'default', label: 'Default Device' },
+  ];
+
+  const channelOptions: DropdownOption[] = [
+    { value: 'mono', label: '1 (mono)' },
+    { value: 'stereo', label: '2 (stereo)' },
+  ];
+
+  const sampleRateOptions: DropdownOption[] = [
+    { value: '44100', label: '44100 Hz' },
+    { value: '48000', label: '48000 Hz' },
+    { value: '96000', label: '96000 Hz' },
+  ];
+
+  const sampleFormatOptions: DropdownOption[] = [
+    { value: '16bit', label: '16-bit PCM' },
+    { value: '24bit', label: '24-bit PCM' },
+    { value: '32bit', label: '32-bit float' },
+  ];
+
+  return (
+    <div className="preferences-page">
+      {/* Section 1: Inputs and outputs */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Inputs and outputs</h3>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Host</label>
+          <Dropdown
+            options={hostOptions}
+            value="mme"
+            width="290px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Playback device</label>
+          <Dropdown
+            options={deviceOptions}
+            value="scarlett"
+            width="290px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Recording device</label>
+          <Dropdown
+            options={deviceOptions}
+            value="scarlett"
+            width="290px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Recording channels</label>
+          <Dropdown
+            options={channelOptions}
+            value="stereo"
+            width="188px"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 2: Buffer settings */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Inputs and outputs</h3>
+
+        <div className="preferences-page__field" style={{ width: '85px' }}>
+          <label className="preferences-page__label">Buffer length</label>
+          <LabeledInput
+            label=""
+            value="50 ms"
+            width="85px"
+          />
+        </div>
+
+        <div className="preferences-page__field" style={{ width: '85px' }}>
+          <label className="preferences-page__label">Latency compensation</label>
+          <LabeledInput
+            label=""
+            value="50 ms"
+            width="85px"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 3: Sample rate */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Sample rate</h3>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Default sample rate</label>
+          <Dropdown
+            options={sampleRateOptions}
+            value="44100"
+            width="188px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Default sample format</label>
+          <Dropdown
+            options={sampleFormatOptions}
+            value="32bit"
+            width="188px"
+          />
+        </div>
       </div>
     </div>
   );
