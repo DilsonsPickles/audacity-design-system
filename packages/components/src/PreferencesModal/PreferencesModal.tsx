@@ -4,6 +4,7 @@ import { Button } from '../Button';
 import { Dropdown, DropdownOption } from '../Dropdown';
 import { LabeledCheckbox } from '../LabeledCheckbox';
 import { LabeledInput } from '../LabeledInput';
+import { LabeledRadio } from '../LabeledRadio';
 import { Separator } from '../Separator';
 import { Icon } from '../Icon';
 import './PreferencesModal.css';
@@ -116,6 +117,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
             {selectedPage === 'general' && <GeneralPage />}
             {selectedPage === 'appearance' && <PlaceholderPage title="Appearance" />}
             {selectedPage === 'audio-settings' && <AudioSettingsPage />}
+            {selectedPage === 'playback-recording' && <PlaybackRecordingPage />}
             {/* Add other pages as needed */}
           </div>
         </div>
@@ -335,6 +337,117 @@ function AudioSettingsPage() {
             options={sampleFormatOptions}
             value="32bit"
             width="188px"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Playback/Recording Page Content
+function PlaybackRecordingPage() {
+  const [soloMode, setSoloMode] = useState<'multiple' | 'single'>('multiple');
+
+  const playbackQualityOptions: DropdownOption[] = [
+    { value: 'best', label: 'Best quality' },
+    { value: 'high', label: 'High quality' },
+    { value: 'medium', label: 'Medium quality' },
+  ];
+
+  const ditheringOptions: DropdownOption[] = [
+    { value: 'none', label: 'None' },
+    { value: 'rectangle', label: 'Rectangle' },
+    { value: 'triangle', label: 'Triangle' },
+  ];
+
+  return (
+    <div className="preferences-page">
+      {/* Section 1: Playback performance */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Playback performance</h3>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Playback quality</label>
+          <Dropdown
+            options={playbackQualityOptions}
+            value="best"
+            width="188px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Dithering</label>
+          <Dropdown
+            options={ditheringOptions}
+            value="none"
+            width="188px"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 2: Solo button behavior */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Solo button behavior</h3>
+
+        <div className="preferences-page__radio-group">
+          <LabeledRadio
+            label="Solo can be activated for multiple tracks at the same time"
+            checked={soloMode === 'multiple'}
+            onChange={() => setSoloMode('multiple')}
+            name="solo-mode"
+            value="multiple"
+          />
+          <LabeledRadio
+            label="When solo is activated, it deactivates solo for all other tracks"
+            checked={soloMode === 'single'}
+            onChange={() => setSoloMode('single')}
+            name="solo-mode"
+            value="single"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 3: Move cursor along the timeline during playback */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Move cursor along the timeline during playback</h3>
+
+        <div className="preferences-page__field" style={{ width: '85px' }}>
+          <label className="preferences-page__label">Short skip</label>
+          <LabeledInput
+            label=""
+            value="5 seconds"
+            width="85px"
+          />
+        </div>
+
+        <div className="preferences-page__field" style={{ width: '85px' }}>
+          <label className="preferences-page__label">Long skip</label>
+          <LabeledInput
+            label=""
+            value="15 seconds"
+            width="85px"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 4: Recording behaviour */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Recording behaviour</h3>
+
+        <div className="preferences-page__checkboxes">
+          <LabeledCheckbox
+            label="Show mic metering"
+            checked={true}
+          />
+          <LabeledCheckbox
+            label="Enable input monitoring"
+            checked={false}
           />
         </div>
       </div>

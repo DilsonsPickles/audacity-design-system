@@ -246,7 +246,13 @@
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 700;
-  line-height: 16px;
+  line-height: 24px;
   color: #14151a;
   margin: 0;
+}
+
+.preferences-page__radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }

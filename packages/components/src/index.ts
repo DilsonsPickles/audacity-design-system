@@ -39,6 +39,8 @@ export * from './TextLink';
 export * from './ProgressBar';
 export * from './Checkbox';
 export * from './LabeledCheckbox';
+export * from './Radio';
+export * from './LabeledRadio';
 export * from './CloudProjectIndicator';
 export * from './ApplicationHeader';
 export * from './Menu';

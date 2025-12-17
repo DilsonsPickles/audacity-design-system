@@ -1,0 +1,19 @@
+/* Labeled Radio */
+
+.labeled-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.labeled-radio__label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: #14151a;
+  cursor: pointer;
+  user-select: none;
+}
