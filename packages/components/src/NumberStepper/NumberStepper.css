@@ -51,7 +51,7 @@
 }
 
 .number-stepper__arrow {
-  flex: 1;
+  height: 14px;
   border: none;
   background: transparent;
   cursor: pointer;
