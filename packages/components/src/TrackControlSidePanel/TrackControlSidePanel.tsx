@@ -83,6 +83,16 @@ export interface TrackControlSidePanelProps {
    * Additional CSS class
    */
   className?: string;
+
+  /**
+   * Ref for the scrollable track list container
+   */
+  scrollRef?: React.RefObject<HTMLDivElement>;
+
+  /**
+   * Called when the track list is scrolled
+   */
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
@@ -101,6 +111,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onTrackViewChange,
   trackViewModes = [],
   className = '',
+  scrollRef,
+  onScroll,
 }) => {
   const childArray = React.Children.toArray(children) as ReactElement<TrackControlPanelProps>[];
   const [menuState, setMenuState] = useState<{ isOpen: boolean; trackIndex: number; x: number; y: number }>({
@@ -165,7 +177,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       </div>
 
       {/* Track list */}
-      <div className="track-control-side-panel__list">
+      <div className="track-control-side-panel__list" ref={scrollRef} onScroll={onScroll}>
         {childArray.map((child, index) => {
           const height = trackHeights[index] || 114; // Default to 114px
           const isFocused = focusedTrackIndex === index;

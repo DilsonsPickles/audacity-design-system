@@ -41,6 +41,14 @@
   flex-direction: column;
   gap: 2px !important;
   row-gap: 2px !important;
+  /* Hide scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.track-control-side-panel__list::-webkit-scrollbar {
+  display: none;
 }
 
 .track-control-side-panel__track {
