@@ -79,9 +79,9 @@
 }
 
 .number-stepper__arrow--up .number-stepper__icon::before {
-  content: '\e906'; /* Caret up icon */
+  content: '\uEF10'; /* Caret up icon */
 }
 
 .number-stepper__arrow--down .number-stepper__icon::before {
-  content: '\e907'; /* Caret down icon */
+  content: '\uEF12'; /* Caret down icon */
 }
