@@ -41,6 +41,7 @@ export * from './Checkbox';
 export * from './LabeledCheckbox';
 export * from './Radio';
 export * from './LabeledRadio';
+export * from './NumberStepper';
 export * from './CloudProjectIndicator';
 export * from './ApplicationHeader';
 export * from './Menu';

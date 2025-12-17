@@ -5,6 +5,7 @@ import { Dropdown, DropdownOption } from '../Dropdown';
 import { LabeledCheckbox } from '../LabeledCheckbox';
 import { LabeledInput } from '../LabeledInput';
 import { LabeledRadio } from '../LabeledRadio';
+import { NumberStepper } from '../NumberStepper';
 import { Separator } from '../Separator';
 import { Icon } from '../Icon';
 import './PreferencesModal.css';
@@ -118,6 +119,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
             {selectedPage === 'appearance' && <PlaceholderPage title="Appearance" />}
             {selectedPage === 'audio-settings' && <AudioSettingsPage />}
             {selectedPage === 'playback-recording' && <PlaybackRecordingPage />}
+            {selectedPage === 'spectral-display' && <SpectralDisplayPage />}
             {/* Add other pages as needed */}
           </div>
         </div>
@@ -448,6 +450,163 @@ function PlaybackRecordingPage() {
           <LabeledCheckbox
             label="Enable input monitoring"
             checked={false}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Spectral Display Page Content
+function SpectralDisplayPage() {
+  const scaleOptions: DropdownOption[] = [
+    { value: 'mel', label: 'Mel' },
+    { value: 'linear', label: 'Linear' },
+    { value: 'logarithmic', label: 'Logarithmic' },
+  ];
+
+  const schemeOptions: DropdownOption[] = [
+    { value: 'inverse-grayscale', label: 'Inverse grayscale' },
+    { value: 'grayscale', label: 'Grayscale' },
+    { value: 'color', label: 'Color' },
+  ];
+
+  const algorithmOptions: DropdownOption[] = [
+    { value: 'frequencies', label: 'Frequencies' },
+    { value: 'reassignment', label: 'Reassignment' },
+    { value: 'pitch-eac', label: 'Pitch (EAC)' },
+  ];
+
+  const windowSizeOptions: DropdownOption[] = [
+    { value: '32768', label: '32768 - most narrowband' },
+    { value: '16384', label: '16384' },
+    { value: '8192', label: '8192' },
+    { value: '4096', label: '4096' },
+    { value: '2048', label: '2048' },
+    { value: '1024', label: '1024' },
+    { value: '512', label: '512' },
+    { value: '256', label: '256 - most wideband' },
+  ];
+
+  const windowTypeOptions: DropdownOption[] = [
+    { value: 'blackman-harris', label: 'Blackman-Harris' },
+    { value: 'hann', label: 'Hann' },
+    { value: 'hamming', label: 'Hamming' },
+  ];
+
+  const zeroPaddingOptions: DropdownOption[] = [
+    { value: '1', label: '1' },
+    { value: '2', label: '2' },
+    { value: '4', label: '4' },
+    { value: '8', label: '8' },
+  ];
+
+  return (
+    <div className="preferences-page">
+      {/* Section 1: Selection */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Selection</h3>
+        <LabeledCheckbox
+          label="Enable spectral selection"
+          checked={true}
+        />
+      </div>
+
+      <Separator />
+
+      {/* Section 2: Scale */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Scale</h3>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Scale</label>
+          <Dropdown
+            options={scaleOptions}
+            value="mel"
+            width="188px"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 3: Colours */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Colours</h3>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Gain</label>
+          <NumberStepper
+            value="20 dB"
+            width="86px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Range</label>
+          <NumberStepper
+            value="80 dB"
+            width="86px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">High boost</label>
+          <NumberStepper
+            value="20 dB/dec"
+            width="188px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Scheme</label>
+          <Dropdown
+            options={schemeOptions}
+            value="inverse-grayscale"
+            width="188px"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 4: Algorithm */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Algorithm</h3>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Algorithm</label>
+          <Dropdown
+            options={algorithmOptions}
+            value="frequencies"
+            width="290px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Window size</label>
+          <Dropdown
+            options={windowSizeOptions}
+            value="32768"
+            width="290px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Scheme</label>
+          <Dropdown
+            options={windowTypeOptions}
+            value="blackman-harris"
+            width="290px"
+          />
+        </div>
+
+        <div className="preferences-page__field">
+          <label className="preferences-page__label">Zero padding factor</label>
+          <Dropdown
+            options={zeroPaddingOptions}
+            value="2"
+            width="86px"
           />
         </div>
       </div>

@@ -1,0 +1,87 @@
+.number-stepper {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #d4d5d9;
+  border-radius: 3px;
+  height: 28px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.number-stepper:hover:not(.number-stepper--disabled) {
+  border-color: #677ce4;
+}
+
+.number-stepper--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.number-stepper__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  color: #14151a;
+  padding: 0 8px;
+  min-width: 0;
+}
+
+.number-stepper__input::placeholder {
+  color: #8c8c91;
+}
+
+.number-stepper__input:disabled {
+  cursor: not-allowed;
+}
+
+.number-stepper__arrows {
+  display: flex;
+  flex-direction: column;
+  width: 22px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.number-stepper__arrow {
+  flex: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #14151a;
+  transition: background-color 0.15s ease;
+}
+
+.number-stepper__arrow:hover:not(:disabled) {
+  background-color: rgba(103, 124, 228, 0.1);
+}
+
+.number-stepper__arrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.number-stepper__icon {
+  font-family: 'MusescoreIcon', sans-serif;
+  font-size: 16px;
+  line-height: 1;
+  display: block;
+}
+
+.number-stepper__arrow--up .number-stepper__icon::before {
+  content: '\e906'; /* Caret up icon */
+}
+
+.number-stepper__arrow--down .number-stepper__icon::before {
+  content: '\e907'; /* Caret down icon */
+}
