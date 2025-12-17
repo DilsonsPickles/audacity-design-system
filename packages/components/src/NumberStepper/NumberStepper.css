@@ -47,6 +47,7 @@
   width: 22px;
   height: 100%;
   flex-shrink: 0;
+  position: relative;
 }
 
 .number-stepper__arrow {
@@ -61,10 +62,15 @@
   justify-content: center;
   color: #14151a;
   transition: background-color 0.15s ease;
+  position: relative;
 }
 
 .number-stepper__arrow:hover:not(:disabled) {
-  background-color: rgba(103, 124, 228, 0.1);
+  background-color: rgba(194, 196, 207, 0.5);
+}
+
+.number-stepper__arrow:active:not(:disabled) {
+  background-color: #c2c4cf;
 }
 
 .number-stepper__arrow:disabled {
