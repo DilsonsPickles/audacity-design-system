@@ -43,10 +43,20 @@ jobs:
         env:
           BASE_PATH: /audacity-design-system
 
+      - name: Build Storybook
+        run: pnpm --filter @audacity-ui/docs build-storybook
+
+      - name: Combine builds
+        run: |
+          mkdir -p _site
+          cp -r apps/sandbox/dist/* _site/
+          mkdir -p _site/storybook
+          cp -r apps/docs/storybook-static/* _site/storybook/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./apps/sandbox/dist
+          path: ./_site
 
   deploy:
     environment:
