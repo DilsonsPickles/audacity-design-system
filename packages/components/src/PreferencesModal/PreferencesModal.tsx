@@ -299,22 +299,24 @@ function AudioSettingsPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Inputs and outputs</h3>
 
-        <div className="preferences-page__field" style={{ width: '85px' }}>
-          <label className="preferences-page__label">Buffer length</label>
-          <LabeledInput
-            label=""
-            value="50 ms"
-            width="85px"
-          />
-        </div>
+        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
+          <div className="preferences-page__field preferences-page__field--narrow">
+            <label className="preferences-page__label">Buffer length</label>
+            <LabeledInput
+              label=""
+              value="50 ms"
+              width="85px"
+            />
+          </div>
 
-        <div className="preferences-page__field" style={{ width: '85px' }}>
-          <label className="preferences-page__label">Latency compensation</label>
-          <LabeledInput
-            label=""
-            value="50 ms"
-            width="85px"
-          />
+          <div className="preferences-page__field preferences-page__field--narrow">
+            <label className="preferences-page__label">Latency compensation</label>
+            <LabeledInput
+              label=""
+              value="50 ms"
+              width="85px"
+            />
+          </div>
         </div>
       </div>
 
@@ -324,22 +326,24 @@ function AudioSettingsPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Sample rate</h3>
 
-        <div className="preferences-page__field">
-          <label className="preferences-page__label">Default sample rate</label>
-          <Dropdown
-            options={sampleRateOptions}
-            value="44100"
-            width="188px"
-          />
-        </div>
+        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
+          <div className="preferences-page__field preferences-page__field--medium">
+            <label className="preferences-page__label">Default sample rate</label>
+            <Dropdown
+              options={sampleRateOptions}
+              value="44100"
+              width="188px"
+            />
+          </div>
 
-        <div className="preferences-page__field">
-          <label className="preferences-page__label">Default sample format</label>
-          <Dropdown
-            options={sampleFormatOptions}
-            value="32bit"
-            width="188px"
-          />
+          <div className="preferences-page__field preferences-page__field--medium">
+            <label className="preferences-page__label">Default sample format</label>
+            <Dropdown
+              options={sampleFormatOptions}
+              value="32bit"
+              width="188px"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -368,22 +372,24 @@ function PlaybackRecordingPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Playback performance</h3>
 
-        <div className="preferences-page__field">
-          <label className="preferences-page__label">Playback quality</label>
-          <Dropdown
-            options={playbackQualityOptions}
-            value="best"
-            width="188px"
-          />
-        </div>
+        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
+          <div className="preferences-page__field preferences-page__field--medium">
+            <label className="preferences-page__label">Playback quality</label>
+            <Dropdown
+              options={playbackQualityOptions}
+              value="best"
+              width="188px"
+            />
+          </div>
 
-        <div className="preferences-page__field">
-          <label className="preferences-page__label">Dithering</label>
-          <Dropdown
-            options={ditheringOptions}
-            value="none"
-            width="188px"
-          />
+          <div className="preferences-page__field preferences-page__field--medium">
+            <label className="preferences-page__label">Dithering</label>
+            <Dropdown
+              options={ditheringOptions}
+              value="none"
+              width="188px"
+            />
+          </div>
         </div>
       </div>
 
@@ -417,22 +423,24 @@ function PlaybackRecordingPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Move cursor along the timeline during playback</h3>
 
-        <div className="preferences-page__field" style={{ width: '85px' }}>
-          <label className="preferences-page__label">Short skip</label>
-          <LabeledInput
-            label=""
-            value="5 seconds"
-            width="85px"
-          />
-        </div>
+        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
+          <div className="preferences-page__field preferences-page__field--narrow">
+            <label className="preferences-page__label">Short skip</label>
+            <LabeledInput
+              label=""
+              value="5 seconds"
+              width="85px"
+            />
+          </div>
 
-        <div className="preferences-page__field" style={{ width: '85px' }}>
-          <label className="preferences-page__label">Long skip</label>
-          <LabeledInput
-            label=""
-            value="15 seconds"
-            width="85px"
-          />
+          <div className="preferences-page__field preferences-page__field--narrow">
+            <label className="preferences-page__label">Long skip</label>
+            <LabeledInput
+              label=""
+              value="15 seconds"
+              width="85px"
+            />
+          </div>
         </div>
       </div>
 
