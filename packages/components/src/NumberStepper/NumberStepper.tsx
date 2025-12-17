@@ -144,7 +144,7 @@ export function NumberStepper({
           disabled={disabled}
           tabIndex={-1}
         >
-          <span className="number-stepper__icon"></span>
+          <span className="number-stepper__icon musescore-icon">{'\uEF10'}</span>
         </button>
         <button
           type="button"
@@ -153,7 +153,7 @@ export function NumberStepper({
           disabled={disabled}
           tabIndex={-1}
         >
-          <span className="number-stepper__icon"></span>
+          <span className="number-stepper__icon musescore-icon">{'\uEF12'}</span>
         </button>
       </div>
     </div>
