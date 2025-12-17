@@ -534,23 +534,26 @@ function SpectralDisplayPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Colours</h3>
 
-        <div className="preferences-page__field">
-          <label className="preferences-page__label">Gain</label>
-          <NumberStepper
-            value="20 dB"
-            width="86px"
-          />
+        {/* Grid layout for Gain and Range */}
+        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
+          <div className="preferences-page__field preferences-page__field--narrow">
+            <label className="preferences-page__label">Gain</label>
+            <NumberStepper
+              value="20 dB"
+              width="86px"
+            />
+          </div>
+
+          <div className="preferences-page__field preferences-page__field--narrow">
+            <label className="preferences-page__label">Range</label>
+            <NumberStepper
+              value="80 dB"
+              width="86px"
+            />
+          </div>
         </div>
 
-        <div className="preferences-page__field">
-          <label className="preferences-page__label">Range</label>
-          <NumberStepper
-            value="80 dB"
-            width="86px"
-          />
-        </div>
-
-        <div className="preferences-page__field">
+        <div className="preferences-page__field preferences-page__field--medium">
           <label className="preferences-page__label">High boost</label>
           <NumberStepper
             value="20 dB/dec"
@@ -558,7 +561,7 @@ function SpectralDisplayPage() {
           />
         </div>
 
-        <div className="preferences-page__field">
+        <div className="preferences-page__field preferences-page__field--medium">
           <label className="preferences-page__label">Scheme</label>
           <Dropdown
             options={schemeOptions}

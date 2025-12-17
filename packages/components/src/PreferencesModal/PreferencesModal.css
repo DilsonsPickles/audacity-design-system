@@ -256,3 +256,83 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* Grid System */
+.preferences-page__grid {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Column variants */
+.preferences-page__grid--cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.preferences-page__grid--cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.preferences-page__grid--cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.preferences-page__grid--cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Auto-fit columns (responsive) */
+.preferences-page__grid--auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
+}
+
+/* Gap variants */
+.preferences-page__grid--gap-sm {
+  gap: 8px;
+}
+
+.preferences-page__grid--gap-md {
+  gap: 16px;
+}
+
+.preferences-page__grid--gap-lg {
+  gap: 24px;
+}
+
+/* Column span utilities */
+.preferences-page__grid-item--span-1 {
+  grid-column: span 1;
+}
+
+.preferences-page__grid-item--span-2 {
+  grid-column: span 2;
+}
+
+.preferences-page__grid-item--span-3 {
+  grid-column: span 3;
+}
+
+.preferences-page__grid-item--span-4 {
+  grid-column: span 4;
+}
+
+.preferences-page__grid-item--full {
+  grid-column: 1 / -1;
+}
+
+/* Field width utilities */
+.preferences-page__field--narrow {
+  max-width: 86px;
+}
+
+.preferences-page__field--medium {
+  max-width: 188px;
+}
+
+.preferences-page__field--wide {
+  max-width: 290px;
+}
+
+.preferences-page__field--full {
+  max-width: none;
+}
