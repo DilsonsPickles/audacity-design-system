@@ -1,12 +1,13 @@
 .number-stepper {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   background-color: white;
   border: 1px solid #d4d5d9;
   border-radius: 3px;
   height: 28px;
   position: relative;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .number-stepper:hover:not(.number-stepper--disabled) {
@@ -28,7 +29,7 @@
   font-weight: 400;
   line-height: normal;
   color: #14151a;
-  padding: 0 8px;
+  padding: 0 0 0 8px;
   min-width: 0;
 }
 
