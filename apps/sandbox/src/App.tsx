@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackType } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 
@@ -209,7 +209,7 @@ function CanvasDemoContent() {
     };
   }, [showFocusDebug]);
 
-  // Keyboard handler for deleting selected clips
+  // Keyboard handler for deleting selected clips and focused tracks
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle Delete/Backspace if not in an input field
@@ -220,7 +220,17 @@ function CanvasDemoContent() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
 
-        // Find all selected clips and delete them
+        // Check if there's a focused track to delete
+        if (state.focusedTrackIndex !== null && state.focusedTrackIndex >= 0) {
+          dispatch({
+            type: 'DELETE_TRACK',
+            payload: state.focusedTrackIndex,
+          });
+          toast.info('Track deleted');
+          return;
+        }
+
+        // Otherwise, find all selected clips and delete them
         state.tracks.forEach((track, trackIndex) => {
           track.clips.forEach((clip) => {
             if (clip.selected) {
@@ -238,7 +248,7 @@ function CanvasDemoContent() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [state.tracks, dispatch]);
+  }, [state.tracks, state.focusedTrackIndex, dispatch]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
@@ -530,6 +540,18 @@ function CanvasDemoContent() {
             onTrackResize={(trackIndex, height) => {
               dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
             }}
+            onAddTrackType={(type: TrackType) => {
+              const newTrack = {
+                id: state.tracks.length + 1,
+                name: type === 'label' ? `Label ${state.tracks.length + 1}` : `Track ${state.tracks.length + 1}`,
+                height: type === 'label' ? 82 : 114,
+                channelSplitRatio: 0.5,
+                clips: [],
+              };
+              dispatch({ type: 'ADD_TRACK', payload: newTrack });
+              toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} track added`);
+            }}
+            showMidiOption={false}
             onDeleteTrack={(trackIndex) => {
               dispatch({
                 type: 'DELETE_TRACK',
@@ -548,22 +570,28 @@ function CanvasDemoContent() {
               dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
             }}
           >
-            {state.tracks.map((track, index) => (
-              <TrackControlPanel
-                key={track.id}
-                trackName={track.name}
-                trackType="mono"
-                volume={75}
-                pan={0}
-                isMuted={false}
-                isSolo={false}
-                onMuteToggle={() => {}}
-                onSoloToggle={() => {}}
-                state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
-                height="default"
-                onClick={() => dispatch({ type: 'SELECT_TRACK', payload: index })}
-              />
-            ))}
+            {state.tracks.map((track, index) => {
+              // Determine track type from track name (temporary until we add trackType to state)
+              const trackType = track.name.toLowerCase().includes('label') ? 'label' : 'mono';
+
+              return (
+                <TrackControlPanel
+                  key={track.id}
+                  trackName={track.name}
+                  trackType={trackType}
+                  volume={75}
+                  pan={0}
+                  isMuted={false}
+                  isSolo={false}
+                  onMuteToggle={() => {}}
+                  onSoloToggle={() => {}}
+                  onAddLabelClick={() => toast.info('Add label clicked')}
+                  state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
+                  height="default"
+                  onClick={() => dispatch({ type: 'SELECT_TRACK', payload: index })}
+                />
+              );
+            })}
           </TrackControlSidePanel>
 
           {/* Timeline Ruler + Canvas Area */}

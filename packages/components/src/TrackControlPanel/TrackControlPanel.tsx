@@ -21,6 +21,7 @@ export interface TrackControlPanelProps {
   onMuteToggle?: () => void;
   onSoloToggle?: () => void;
   onEffectsClick?: () => void;
+  onAddLabelClick?: () => void;
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
   className?: string;
@@ -42,6 +43,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onMuteToggle,
   onSoloToggle,
   onEffectsClick,
+  onAddLabelClick,
   onMenuClick,
   onClick,
   className = '',
@@ -55,6 +57,21 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   const actualState = state !== 'idle' ? state : (isHovered ? 'hover' : 'idle');
 
+  // Determine track icon based on type
+  const getTrackIcon = () => {
+    switch (trackType) {
+      case 'label':
+        return 'label';
+      case 'stereo':
+        return 'microphone';
+      case 'mono':
+      default:
+        return 'microphone';
+    }
+  };
+
+  const isLabelTrack = trackType === 'label';
+
   return (
     <div
       className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${className}`}
@@ -67,7 +84,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         <div className="track-control-panel__header">
           <div className="track-control-panel__track-name">
             <button className="track-control-panel__icon-button" aria-label="Track icon">
-              <Icon name="mixer" size={16} />
+              <Icon name={getTrackIcon()} size={16} />
             </button>
             <span className="track-control-panel__track-name-text">{trackName}</span>
           </div>
@@ -78,8 +95,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           />
         </div>
 
-        {/* Controls Row */}
-        {height !== 'collapsed' && (
+        {/* Controls Row - Hidden for label tracks */}
+        {!isLabelTrack && height !== 'collapsed' && (
           <div className="track-control-panel__controls-row">
             {/* Pan Knob */}
             <PanKnob
@@ -114,15 +131,15 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
         )}
 
-        {/* Effects Button */}
+        {/* Bottom Button */}
         {height === 'default' && (
           <Button
             variant="secondary"
             size="small"
-            onClick={onEffectsClick}
+            onClick={isLabelTrack ? onAddLabelClick : onEffectsClick}
             showIcon={false}
           >
-            Effects
+            {isLabelTrack ? 'Add label' : 'Effects'}
           </Button>
         )}
       </div>

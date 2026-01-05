@@ -5,6 +5,7 @@ import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
+import { AddTrackFlyout, TrackType } from '../AddTrackFlyout';
 import type { TrackControlPanelProps } from '../TrackControlPanel';
 import './TrackControlSidePanel.css';
 
@@ -50,9 +51,19 @@ export interface TrackControlSidePanelProps {
   onTrackResize?: (trackIndex: number, height: number) => void;
 
   /**
-   * Called when "Add new" button is clicked
+   * Called when "Add new" button is clicked (deprecated - use onAddTrackType)
    */
   onAddTrack?: () => void;
+
+  /**
+   * Called when a track type is selected from the flyout
+   */
+  onAddTrackType?: (type: TrackType) => void;
+
+  /**
+   * Whether to show the MIDI option in the add track flyout
+   */
+  showMidiOption?: boolean;
 
   /**
    * Called when a track should be deleted
@@ -105,6 +116,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onResize,
   onTrackResize,
   onAddTrack,
+  onAddTrackType,
+  showMidiOption = false,
   onDeleteTrack,
   onMoveTrackUp,
   onMoveTrackDown,
@@ -121,6 +134,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     x: 0,
     y: 0,
   });
+  const [addTrackFlyoutOpen, setAddTrackFlyoutOpen] = useState(false);
+  const [addTrackFlyoutPosition, setAddTrackFlyoutPosition] = useState({ x: 0, y: 0 });
+  const addButtonRef = React.useRef<HTMLDivElement>(null);
 
   const handleMenuClick = (trackIndex: number, event?: React.MouseEvent) => {
     // If event is provided, use the button's position
@@ -165,15 +181,30 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       {/* Header */}
       <div className="track-control-side-panel__header">
         <h2 className="track-control-side-panel__title">Tracks</h2>
-        <Button
-          variant="secondary"
-          size="default"
-          onClick={onAddTrack}
-          showIcon={true}
-          icon={<Icon name="plus" size={16} />}
-        >
-          Add new
-        </Button>
+        <div ref={addButtonRef}>
+          <Button
+            variant="secondary"
+            size="default"
+            onClick={() => {
+              // If using new onAddTrackType callback, show flyout
+              if (onAddTrackType && addButtonRef.current) {
+                const rect = addButtonRef.current.getBoundingClientRect();
+                setAddTrackFlyoutPosition({
+                  x: rect.left + rect.width / 2 - 96, // Center the flyout (192px / 2 = 96)
+                  y: rect.bottom + 8, // 8px gap below button
+                });
+                setAddTrackFlyoutOpen(!addTrackFlyoutOpen);
+              } else if (onAddTrack) {
+                // Fallback to old callback for backward compatibility
+                onAddTrack();
+              }
+            }}
+            showIcon={true}
+            icon={<Icon name="plus" size={16} />}
+          >
+            Add new
+          </Button>
+        </div>
       </div>
 
       {/* Track list */}
@@ -232,35 +263,60 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           }}
           disabled={menuState.trackIndex === childArray.length - 1}
         />
-        <div className="context-menu-separator" />
-        <ContextMenuItem
-          label="Track view"
-          hasSubmenu={true}
-          onClose={handleMenuClose}
-        >
-          <ContextMenuItem
-            label="Waveform"
-            icon={trackViewModes[menuState.trackIndex] === 'waveform' || trackViewModes[menuState.trackIndex] === undefined ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
-            onClick={() => {
-              onTrackViewChange?.(menuState.trackIndex, 'waveform');
-            }}
-          />
-          <ContextMenuItem
-            label="Spectrogram"
-            icon={trackViewModes[menuState.trackIndex] === 'spectrogram' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
-            onClick={() => {
-              onTrackViewChange?.(menuState.trackIndex, 'spectrogram');
-            }}
-          />
-          <ContextMenuItem
-            label="Split view"
-            icon={trackViewModes[menuState.trackIndex] === 'split' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
-            onClick={() => {
-              onTrackViewChange?.(menuState.trackIndex, 'split');
-            }}
-          />
-        </ContextMenuItem>
+        {/* Track view menu - hidden for label tracks */}
+        {(() => {
+          const trackChild = childArray[menuState.trackIndex];
+          const isLabelTrack = trackChild?.props?.trackType === 'label';
+
+          if (isLabelTrack) return null;
+
+          return (
+            <>
+              <div className="context-menu-separator" />
+              <ContextMenuItem
+                label="Track view"
+                hasSubmenu={true}
+                onClose={handleMenuClose}
+              >
+                <ContextMenuItem
+                  label="Waveform"
+                  icon={trackViewModes[menuState.trackIndex] === 'waveform' || trackViewModes[menuState.trackIndex] === undefined ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+                  onClick={() => {
+                    onTrackViewChange?.(menuState.trackIndex, 'waveform');
+                  }}
+                />
+                <ContextMenuItem
+                  label="Spectrogram"
+                  icon={trackViewModes[menuState.trackIndex] === 'spectrogram' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+                  onClick={() => {
+                    onTrackViewChange?.(menuState.trackIndex, 'spectrogram');
+                  }}
+                />
+                <ContextMenuItem
+                  label="Split view"
+                  icon={trackViewModes[menuState.trackIndex] === 'split' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+                  onClick={() => {
+                    onTrackViewChange?.(menuState.trackIndex, 'split');
+                  }}
+                />
+              </ContextMenuItem>
+            </>
+          );
+        })()}
       </ContextMenu>
+
+      {/* Add Track Flyout */}
+      <AddTrackFlyout
+        isOpen={addTrackFlyoutOpen}
+        x={addTrackFlyoutPosition.x}
+        y={addTrackFlyoutPosition.y}
+        showMidiOption={showMidiOption}
+        onSelectTrackType={(type: TrackType) => {
+          onAddTrackType?.(type);
+          setAddTrackFlyoutOpen(false);
+        }}
+        onClose={() => setAddTrackFlyoutOpen(false)}
+      />
     </SidePanel>
   );
 };

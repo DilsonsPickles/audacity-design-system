@@ -24,6 +24,7 @@ export * from './TrackControlPanel';
 export * from './TransportButton';
 export * from './ContextMenu';
 export * from './ContextMenuItem';
+export * from './AddTrackFlyout';
 export * from './Toast';
 export * from './Dialog';
 export * from './DialogHeader';
