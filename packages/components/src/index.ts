@@ -42,25 +42,36 @@ export * from './LabeledCheckbox';
 export * from './Radio';
 export * from './LabeledRadio';
 export * from './NumberStepper';
+export * from './Tooltip';
 export * from './CloudProjectIndicator';
 export * from './ApplicationHeader';
 export * from './Menu';
 export * from './SaveProjectModal';
 export * from './PreferencesModal';
+export * from './PreferencePanel';
 export * from './Tab';
 export * from './TabItem';
 export * from './TabList';
 export * from './HomeTab';
 export * from './SearchField';
 export * from './ProjectThumbnail';
+export * from './PreferenceThumbnail';
+export * from './ShortcutTableRow';
+export * from './ShortcutTableHeader';
 
 /**
  * Audio Components
  */
 export * from './Clip';
+export * from './ClipDisplay';
+export * from './ClipHeader';
+export * from './ClipBody';
+export * from './AutomationCurvePoint';
 export * from './EnvelopePoint';
 export * from './EnvelopeCurve';
+export * from './EnvelopeInteractionLayer';
 export * from './Track';
+export { TrackNew } from './Track/TrackNew';
 
 /**
  * Layout & Behavior Utilities
@@ -79,6 +90,20 @@ export * from './TimeCode';
 export * from './SelectionToolbar';
 
 /**
+ * Contexts
+ */
+export * from './contexts/AccessibilityProfileContext';
+export * from './contexts/PreferencesContext';
+
+/**
  * Hooks
  */
 export * from './hooks';
+
+/**
+ * Utilities
+ */
+export * from './utils/waveform';
+export * from './utils/spectrogram';
+// Note: envelope utilities are available via direct import from '@audacity-ui/components/utils/envelope'
+// Not re-exported here to avoid naming conflicts with EnvelopePoint component

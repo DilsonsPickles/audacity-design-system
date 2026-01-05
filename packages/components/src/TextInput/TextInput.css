@@ -2,6 +2,8 @@
  * TextInput - Text input field styles
  */
 
+@import '../styles/focus.css';
+
 .text-input {
   position: relative;
   display: flex;
@@ -11,7 +13,8 @@
   background-color: var(--background-input-bg-input-field, #ffffff);
   border: 1px solid var(--stroke-input-stroke-input-field-idle, #d4d5d9);
   border-radius: 3px;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
 }
 
 .text-input__field {
@@ -35,12 +38,13 @@
 
 /* State: Hover */
 .text-input--hover {
-  border-color: var(--stroke-input-stroke-input-field-hover, rgba(103, 124, 228, 0.7));
+  border-color: var(--input-hover-border-color);
 }
 
 /* State: Active (focused) */
 .text-input--active {
-  border-color: var(--stroke-input-stroke-input-field-active, #677ce4);
+  border-color: var(--focus-border-color);
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
 }
 
 /* State: Disabled */

@@ -1,0 +1,23 @@
+.clip-display {
+  border: 1px solid #000;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Selected state: add inset white border 1px inside the black border */
+.clip-display--selected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #FFF;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 20;
+  box-sizing: border-box;
+  padding: 1px;
+}

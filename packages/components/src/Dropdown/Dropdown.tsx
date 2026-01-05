@@ -36,6 +36,10 @@ export interface DropdownProps {
    * Width of the dropdown (CSS value)
    */
   width?: string;
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
 }
 
 export const Dropdown: React.FC<DropdownProps> = ({
@@ -45,11 +49,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
   disabled = false,
   onChange,
   className = '',
-  width = '162px',
+  width,
+  tabIndex,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number>(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
   const displayText = selectedOption ? selectedOption.label : placeholder;
@@ -73,13 +80,23 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const handleToggle = () => {
     if (!disabled) {
-      setIsOpen(!isOpen);
+      const newIsOpen = !isOpen;
+      setIsOpen(newIsOpen);
+      if (newIsOpen) {
+        // Set initial hovered index to the first item when opening
+        setHoveredIndex(0);
+      }
     }
   };
 
   const handleSelect = (optionValue: string) => {
     onChange?.(optionValue);
     setIsOpen(false);
+    setHoveredIndex(-1);
+    // Return focus to trigger button after selection
+    if (triggerRef.current) {
+      triggerRef.current.focus();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -87,17 +104,43 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      setIsOpen(!isOpen);
-    } else if (e.key === 'Escape') {
+      if (isOpen) {
+        // If dropdown is open and an item is hovered, select it
+        if (hoveredIndex >= 0 && hoveredIndex < options.length) {
+          handleSelect(options[hoveredIndex].value);
+        }
+      } else {
+        // If dropdown is closed, open it
+        handleToggle();
+      }
+    } else if (e.key === 'Escape' && isOpen) {
+      // Only handle Escape if dropdown is open
+      e.preventDefault();
+      e.stopPropagation(); // Prevent Dialog from closing
       setIsOpen(false);
+      setHoveredIndex(-1);
+      // Return focus to the trigger button
+      if (triggerRef.current) {
+        triggerRef.current.focus();
+      }
     } else if (e.key === 'ArrowDown' && isOpen) {
+      // Only handle arrow keys when dropdown is already open
       e.preventDefault();
       setHoveredIndex((prev) => (prev < options.length - 1 ? prev + 1 : prev));
     } else if (e.key === 'ArrowUp' && isOpen) {
+      // Only handle arrow keys when dropdown is already open
       e.preventDefault();
       setHoveredIndex((prev) => (prev > 0 ? prev - 1 : prev));
     }
+    // When dropdown is closed, arrow keys will be handled by parent (TabGroupField)
   };
+
+  // Focus management: when dropdown opens, focus the menu
+  useEffect(() => {
+    if (isOpen && menuRef.current) {
+      menuRef.current.focus();
+    }
+  }, [isOpen]);
 
   const getStateClass = () => {
     if (disabled) return 'dropdown--disabled';
@@ -109,23 +152,30 @@ export const Dropdown: React.FC<DropdownProps> = ({
     <div
       ref={dropdownRef}
       className={`dropdown ${className}`}
-      style={{ width }}
+      style={width ? { width } : undefined}
       onKeyDown={handleKeyDown}
     >
       <button
+        ref={triggerRef}
         type="button"
         className={`dropdown__trigger ${getStateClass()}`}
         onClick={handleToggle}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        tabIndex={tabIndex}
       >
         <span className="dropdown__text">{displayText}</span>
         <span className="dropdown__icon musescore-icon">{'\uEF12'}</span>
       </button>
 
       {isOpen && !disabled && (
-        <div className="dropdown__menu" role="listbox">
+        <div
+          ref={menuRef}
+          className="dropdown__menu"
+          role="listbox"
+          tabIndex={-1}
+        >
           {options.map((option, index) => (
             <div
               key={option.value}

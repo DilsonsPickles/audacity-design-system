@@ -26,6 +26,10 @@ export interface LabeledCheckboxProps {
    */
   onChange?: (checked: boolean) => void;
   /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -39,6 +43,7 @@ export function LabeledCheckbox({
   checked = false,
   disabled = false,
   onChange,
+  tabIndex,
   className = '',
 }: LabeledCheckboxProps) {
   const handleClick = () => {
@@ -51,11 +56,13 @@ export function LabeledCheckbox({
     <div
       className={`labeled-checkbox ${className}`}
       onClick={handleClick}
+      style={{ cursor: disabled ? 'default' : 'pointer' }}
     >
       <Checkbox
         checked={checked}
         disabled={disabled}
         onChange={onChange}
+        tabIndex={tabIndex}
         aria-label={label}
       />
       <span className="labeled-checkbox__label">

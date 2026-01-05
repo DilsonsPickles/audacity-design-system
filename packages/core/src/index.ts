@@ -9,3 +9,8 @@ export * from './types';
 
 // Export utilities
 export * from './utils/coordinates';
+export * from './utils/audio';
+
+// Export accessibility profiles
+export * from './accessibility/types';
+export * from './accessibility/profiles';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { Dropdown, DropdownOption } from '../Dropdown';
@@ -8,6 +8,14 @@ import { LabeledRadio } from '../LabeledRadio';
 import { NumberStepper } from '../NumberStepper';
 import { Separator } from '../Separator';
 import { Icon } from '../Icon';
+import { PreferenceThumbnail } from '../PreferenceThumbnail';
+import { PreferencePanel } from '../PreferencePanel';
+import { ShortcutTableHeader } from '../ShortcutTableHeader';
+import { ShortcutTableRow } from '../ShortcutTableRow';
+import { SearchField } from '../SearchField';
+import { useTabGroup } from '../hooks/useTabGroup';
+import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { usePreferences } from '../contexts/PreferencesContext';
 import './PreferencesModal.css';
 
 export type PreferencesPage =
@@ -66,6 +74,223 @@ const menuItems: PreferencesMenuItem[] = [
   { id: 'advanced-options', label: 'Advanced options', icon: '\uEF55' }, // cog
 ];
 
+interface SidebarButtonProps {
+  item: PreferencesMenuItem;
+  itemIndex: number;
+  totalItems: number;
+  isSelected: boolean;
+  onSelect: (page: PreferencesPage, moveFocusToContent?: boolean, sourceButton?: HTMLButtonElement) => void;
+  buttonRef: (el: HTMLButtonElement | null) => void;
+  itemRefs: React.RefObject<(HTMLButtonElement | null)[]>;
+  activeIndexRef: React.MutableRefObject<number>;
+}
+
+interface TabGroupFieldProps {
+  groupId: string;
+  itemIndex: number;
+  totalItems: number;
+  itemRefs: React.RefObject<(HTMLElement | null)[]>;
+  activeIndexRef: React.MutableRefObject<number>;
+  activeIndex?: number;
+  onActiveIndexChange?: (index: number) => void;
+  resetKey?: string | number;
+  children: React.ReactNode;
+}
+
+/**
+ * Wrapper component that applies tab group behavior to form fields
+ */
+function TabGroupField({
+  groupId,
+  itemIndex,
+  totalItems,
+  itemRefs,
+  activeIndexRef,
+  activeIndex = 0,
+  onActiveIndexChange,
+  resetKey,
+  children,
+}: TabGroupFieldProps) {
+  const fieldRef = useRef<HTMLDivElement>(null);
+
+  const { tabIndex, onKeyDown, onFocus, onBlur } = useTabGroup({
+    groupId,
+    itemIndex,
+    totalItems,
+    itemRefs,
+    activeIndexRef,
+    activeIndex,
+    resetKey,
+    onItemActivate: (newIndex) => {
+      onActiveIndexChange?.(newIndex);
+    },
+  });
+
+  // Store ref to focusable element for navigation
+  useEffect(() => {
+    if (!fieldRef.current || !itemRefs.current) return;
+
+    const focusableElement = fieldRef.current.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [role="checkbox"], [role="radio"]'
+    );
+
+    if (focusableElement) {
+      // Store the fieldRef wrapper so blur handler can detect focus within descendants
+      // (e.g., dropdown menus), but attach event listeners to the focusable element
+      itemRefs.current[itemIndex] = fieldRef.current;
+
+      const handlers: Array<{ type: string; handler: (e: Event) => void }> = [];
+
+      // Add keyboard handler
+      if (onKeyDown) {
+        const keydownHandler = (e: Event) => {
+          const keyEvent = e as KeyboardEvent;
+          // Don't handle Space/Enter - let the element's own handler deal with it
+          if (keyEvent.key === ' ' || keyEvent.key === 'Enter') {
+            return;
+          }
+          onKeyDown(e as any);
+        };
+        focusableElement.addEventListener('keydown', keydownHandler);
+        handlers.push({ type: 'keydown', handler: keydownHandler });
+      }
+
+      // Add focus handler
+      if (onFocus) {
+        const focusHandler = (e: Event) => {
+          onFocus(e as any);
+        };
+        focusableElement.addEventListener('focus', focusHandler);
+        handlers.push({ type: 'focus', handler: focusHandler });
+      }
+
+      // Add blur handler
+      if (onBlur) {
+        const blurHandler = (e: Event) => {
+          onBlur(e as any);
+        };
+        focusableElement.addEventListener('blur', blurHandler);
+        handlers.push({ type: 'blur', handler: blurHandler });
+      }
+
+      return () => {
+        handlers.forEach(({ type, handler }) => {
+          focusableElement.removeEventListener(type, handler);
+        });
+      };
+    }
+  }, [onKeyDown, onFocus, onBlur, itemIndex, itemRefs]);
+
+  // Clone children and inject tabIndex prop into interactive components
+  const childrenWithProps = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      // Check if it's a Dropdown, LabeledInput, LabeledCheckbox, LabeledRadio, NumberStepper, or Button component
+      if (child.type === Dropdown) {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+      // For LabeledInput, we need to pass tabIndex to the underlying input
+      if ((child.type as any).name === 'LabeledInput' || child.type === LabeledInput) {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+      // For LabeledCheckbox components
+      if ((child.type as any).name === 'LabeledCheckbox' || child.type === LabeledCheckbox) {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+      // For LabeledRadio components
+      if ((child.type as any).name === 'LabeledRadio' || child.type === LabeledRadio) {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+      // For NumberStepper components
+      if ((child.type as any).name === 'NumberStepper') {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+      // For Button components
+      if (child.type === Button || (child.type as any).name === 'Button') {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+    }
+    return child;
+  });
+
+  // Check if children contain LabeledRadio - if so, don't add field classes
+  const hasRadio = React.Children.toArray(children).some((child) => {
+    if (React.isValidElement(child)) {
+      return (child.type as any).name === 'LabeledRadio' || child.type === LabeledRadio;
+    }
+    return false;
+  });
+
+  return (
+    <div ref={fieldRef} className={hasRadio ? '' : 'preferences-page__field preferences-page__field--small'}>
+      {childrenWithProps}
+    </div>
+  );
+}
+
+function SidebarButton({
+  item,
+  itemIndex,
+  totalItems,
+  isSelected,
+  onSelect,
+  buttonRef,
+  itemRefs,
+  activeIndexRef,
+}: SidebarButtonProps) {
+  // Use the useTabGroup hook for profile-aware navigation
+  const { tabIndex, onKeyDown, onFocus, onBlur } = useTabGroup({
+    groupId: 'preferences-sidebar',
+    itemIndex,
+    totalItems,
+    itemRefs,
+    activeIndexRef,
+    onItemActivate: (index) => {
+      // When arrow keys are used in AU4 profile, change the page
+      const targetItem = menuItems[index];
+      if (targetItem) {
+        onSelect(targetItem.id, false);
+      }
+    },
+  });
+
+  return (
+    <button
+      ref={buttonRef}
+      className={`preferences-modal__menu-item ${
+        isSelected ? 'preferences-modal__menu-item--selected' : ''
+      }`}
+      onClick={() => onSelect(item.id)}
+      onFocus={(e) => {
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        onBlur?.(e);
+      }}
+      onKeyDown={(e) => {
+        // Handle Enter/Space to activate and move focus to content
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(item.id, true, e.currentTarget);
+        }
+        // Call the profile-aware handler from useTabGroup
+        onKeyDown?.(e);
+      }}
+      role="tab"
+      aria-selected={isSelected}
+      aria-controls="preferences-content"
+      tabIndex={tabIndex}
+    >
+      <span className="preferences-modal__menu-icon musescore-icon">
+        {item.icon}
+      </span>
+      <span className="preferences-modal__menu-label">{item.label}</span>
+      {isSelected && (
+        <div className="preferences-modal__menu-indicator" />
+      )}
+    </button>
+  );
+}
+
 export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   isOpen,
   onClose,
@@ -74,11 +299,92 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   className = '',
 }) => {
   const [selectedPage, setSelectedPage] = useState<PreferencesPage>(currentPage);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [focusedRegion, setFocusedRegion] = useState<'sidebar' | 'content'>('sidebar');
+  const sidebarButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const sidebarActiveIndexRef = useRef<number>(0);
+  const { activeProfile } = useAccessibilityProfile();
 
-  const handlePageChange = (page: PreferencesPage) => {
+  // Footer tab group state
+  const footerRefs = useRef<(HTMLElement | null)[]>([]);
+  const footerActiveIndexRef = useRef<number>(0);
+  const [footerActiveIndex, setFooterActiveIndex] = useState<number>(0);
+
+  // Sync footer state with ref
+  useEffect(() => {
+    footerActiveIndexRef.current = footerActiveIndex;
+  }, [footerActiveIndex]);
+
+  // Reset footer active index when modal opens or page changes
+  useEffect(() => {
+    if (isOpen) {
+      setFooterActiveIndex(0);
+      footerActiveIndexRef.current = 0;
+    }
+  }, [isOpen, selectedPage]);
+
+  const handlePageChange = (page: PreferencesPage, moveFocusToContent = false, sourceButton?: HTMLButtonElement) => {
     setSelectedPage(page);
     onPageChange?.(page);
+
+    // When selecting via Enter/Space, move focus to content
+    if (moveFocusToContent && contentRef.current) {
+      // Small delay to ensure content has rendered
+      setTimeout(() => {
+        if (!contentRef.current) return;
+
+        // Find first focusable element, excluding container divs
+        const firstFocusable = contentRef.current.querySelector<HTMLElement>(
+          'button:not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"])'
+        );
+        if (firstFocusable) {
+          firstFocusable.focus();
+          setFocusedRegion('content');
+        } else {
+          // If no focusable elements in content, keep focus on the nav button
+          sourceButton?.focus();
+        }
+      }, 10);
+    }
   };
+
+  // Handle F6 keyboard navigation between regions
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F6 to cycle between regions
+      if (e.key === 'F6') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Shift+F6: Go to sidebar
+          if (sidebarRef.current) {
+            const firstButton = sidebarRef.current.querySelector<HTMLButtonElement>('button');
+            firstButton?.focus();
+            setFocusedRegion('sidebar');
+          }
+        } else {
+          // F6: Go to content
+          if (contentRef.current) {
+            const firstFocusable = contentRef.current.querySelector<HTMLElement>(
+              'button:not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"])'
+            );
+            if (firstFocusable) {
+              firstFocusable.focus();
+              setFocusedRegion('content');
+            }
+          }
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -89,54 +395,104 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
       title="Preferences"
       className={`preferences-modal ${className}`}
       width="880px"
+      maximizable={true}
+      closeOnClickOutside={false}
     >
       <div className="preferences-modal__content">
         {/* Sidebar Menu */}
-        <div className="preferences-modal__sidebar">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              className={`preferences-modal__menu-item ${
-                selectedPage === item.id ? 'preferences-modal__menu-item--selected' : ''
-              }`}
-              onClick={() => handlePageChange(item.id)}
-            >
-              <span className="preferences-modal__menu-icon musescore-icon">
-                {item.icon}
-              </span>
-              <span className="preferences-modal__menu-label">{item.label}</span>
-              {selectedPage === item.id && (
-                <div className="preferences-modal__menu-indicator" />
-              )}
-            </button>
-          ))}
-        </div>
+        <nav
+          ref={sidebarRef}
+          className="preferences-modal__sidebar"
+          role="tablist"
+          aria-label="Preferences navigation"
+          aria-orientation="vertical"
+        >
+          {menuItems.map((item, index) => {
+            const itemIndex = menuItems.findIndex(mi => mi.id === item.id);
+            return (
+              <SidebarButton
+                key={item.id}
+                item={item}
+                itemIndex={itemIndex}
+                totalItems={menuItems.length}
+                isSelected={selectedPage === item.id}
+                onSelect={handlePageChange}
+                buttonRef={(el) => {
+                  sidebarButtonRefs.current[itemIndex] = el;
+                }}
+                itemRefs={sidebarButtonRefs}
+                activeIndexRef={sidebarActiveIndexRef}
+              />
+            );
+          })}
+        </nav>
 
         {/* Content Area */}
-        <div className="preferences-modal__body">
-          <div className="preferences-modal__scroll-container">
+        <main
+          ref={contentRef}
+          className="preferences-modal__body"
+          role="tabpanel"
+          id="preferences-content"
+          aria-label={`${selectedPage} preferences`}
+        >
+          <div className="preferences-modal__scroll-container" tabIndex={-1}>
             {selectedPage === 'general' && <GeneralPage />}
             {selectedPage === 'appearance' && <PlaceholderPage title="Appearance" />}
             {selectedPage === 'audio-settings' && <AudioSettingsPage />}
             {selectedPage === 'playback-recording' && <PlaybackRecordingPage />}
             {selectedPage === 'spectral-display' && <SpectralDisplayPage />}
+            {selectedPage === 'editing' && <EditingPage />}
+            {selectedPage === 'shortcuts' && <ShortcutsPage />}
             {/* Add other pages as needed */}
           </div>
-        </div>
+        </main>
       </div>
 
       {/* Footer */}
       <div className="preferences-modal__footer">
-        <Button variant="secondary" onClick={() => {/* Reset */}}>
-          Reset preferences
-        </Button>
+        <TabGroupField
+          groupId="dialog-footer"
+          itemIndex={0}
+          totalItems={3}
+          itemRefs={footerRefs}
+          activeIndexRef={footerActiveIndexRef}
+          activeIndex={footerActiveIndex}
+          onActiveIndexChange={setFooterActiveIndex}
+          resetKey={selectedPage}
+        >
+          <Button variant="secondary" onClick={() => {/* Reset */}}>
+            Reset preferences
+          </Button>
+        </TabGroupField>
         <div className="preferences-modal__footer-actions">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={onClose}>
-            OK
-          </Button>
+          <TabGroupField
+            groupId="dialog-footer"
+            itemIndex={1}
+            totalItems={3}
+            itemRefs={footerRefs}
+            activeIndexRef={footerActiveIndexRef}
+            activeIndex={footerActiveIndex}
+            onActiveIndexChange={setFooterActiveIndex}
+            resetKey={selectedPage}
+          >
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+          </TabGroupField>
+          <TabGroupField
+            groupId="dialog-footer"
+            itemIndex={2}
+            totalItems={3}
+            itemRefs={footerRefs}
+            activeIndexRef={footerActiveIndexRef}
+            activeIndex={footerActiveIndex}
+            onActiveIndexChange={setFooterActiveIndex}
+            resetKey={selectedPage}
+          >
+            <Button variant="primary" onClick={onClose}>
+              OK
+            </Button>
+          </TabGroupField>
         </div>
       </div>
     </Dialog>
@@ -154,66 +510,69 @@ function GeneralPage() {
 
   return (
     <div className="preferences-page">
-      <div className="preferences-page__field">
-        <label className="preferences-page__label">Language</label>
-        <Dropdown
-          options={languageOptions}
-          value="en"
-          width="290px"
-        />
-      </div>
-
-      <div className="preferences-page__field">
-        <label className="preferences-page__label">Number format</label>
-        <Dropdown
-          options={languageOptions}
-          value="en"
-          width="290px"
-        />
-        <span className="preferences-page__hint">Example: 1,000,000.99</span>
-      </div>
-
-      <Separator />
-
-      <div className="preferences-page__field">
-        <label className="preferences-page__label">Temporary files location</label>
-        <div className="preferences-page__input-group">
-          <LabeledInput
-            label=""
-            value="C:\Users\mc\AppData\Local\audacity"
-            width="100%"
+      <div className="preferences-page__section">
+        <div className="preferences-page__field preferences-page__field--small">
+          <label className="preferences-page__label">Language</label>
+          <Dropdown
+            options={languageOptions}
+            value="en"
           />
-          <Button variant="secondary">
-            Browse
-          </Button>
         </div>
-        <span className="preferences-page__hint">
-          Folder in which unsaved projects and other data are kept
-        </span>
-      </div>
 
-      <div className="preferences-page__field">
-        <label className="preferences-page__label">Free space</label>
-        <div className="preferences-page__value">547.2 GB</div>
+        <div className="preferences-page__field preferences-page__field--small">
+          <label className="preferences-page__label">Number format</label>
+          <Dropdown
+            options={languageOptions}
+            value="en"
+          />
+          <span className="preferences-page__hint">Example: 1,000,000.99</span>
+        </div>
       </div>
 
       <Separator />
 
-      <div className="preferences-page__checkboxes">
-        <LabeledCheckbox
-          label="Show what's new on launch"
-          checked={true}
-        />
-        <LabeledCheckbox
-          label="Check to see if a new version of Audacity is available"
-          checked={true}
-        />
+      <div className="preferences-page__section">
+        <div className="preferences-page__field preferences-page__field--large">
+          <label className="preferences-page__label">Temporary files location</label>
+          <div className="preferences-page__input-group">
+            <LabeledInput
+              label=""
+              value="C:\Users\mc\AppData\Local\audacity"
+            />
+            <Button variant="secondary">
+              Browse
+            </Button>
+          </div>
+          <span className="preferences-page__hint">
+            Folder in which unsaved projects and other data are kept
+          </span>
+        </div>
+
+        <div className="preferences-page__field preferences-page__field--large">
+          <label className="preferences-page__label">Free space</label>
+          <div className="preferences-page__value">547.2 GB</div>
+        </div>
       </div>
 
-      <div className="preferences-page__info-box">
-        Update checking requires network access. In order to protect your privacy,
-        Audacity does not store any personal information. See our{' '}
-        <a href="#" className="preferences-page__link">Privacy Policy</a> for more info.
+      <Separator />
+
+      <div className="preferences-page__section">
+        <div className="preferences-page__checkboxes">
+          <LabeledCheckbox
+            label="Show what's new on launch"
+            checked={true}
+          />
+          <LabeledCheckbox
+            label="Check to see if a new version of Audacity is available"
+            checked={true}
+          />
+        </div>
+
+        <div className="preferences-page__info-box">
+          Update checking requires network access. In order to protect your privacy,
+          Audacity does not store any personal information. See our{' '}
+          <a href="#" className="preferences-page__link">Privacy Policy</a> for more info.
+        </div>
       </div>
     </div>
   );
@@ -221,10 +580,13 @@ function GeneralPage() {
 
 // Audio Settings Page Content
 function AudioSettingsPage() {
+  const { preferences, updatePreference } = usePreferences();
+
   const hostOptions: DropdownOption[] = [
     { value: 'mme', label: 'MME' },
     { value: 'wasapi', label: 'Windows WASAPI' },
     { value: 'directsound', label: 'Windows DirectSound' },
+    { value: 'core-audio', label: 'Core Audio' },
   ];
 
   const deviceOptions: DropdownOption[] = [
@@ -250,74 +612,159 @@ function AudioSettingsPage() {
     { value: '32bit', label: '32-bit float' },
   ];
 
+  // Separate tab groups for each section
+  const inputsOutputsRefs = useRef<(HTMLElement | null)[]>([]);
+  const inputsOutputsActiveIndexRef = useRef<number>(0);
+  const [inputsOutputsActiveIndex, setInputsOutputsActiveIndex] = useState<number>(0);
+
+  const bufferRefs = useRef<(HTMLElement | null)[]>([]);
+  const bufferActiveIndexRef = useRef<number>(0);
+  const [bufferActiveIndex, setBufferActiveIndex] = useState<number>(0);
+
+  const sampleRateRefs = useRef<(HTMLElement | null)[]>([]);
+  const sampleRateActiveIndexRef = useRef<number>(0);
+  const [sampleRateActiveIndex, setSampleRateActiveIndex] = useState<number>(0);
+
+  // Reset all active indices to 0 on mount
+  useEffect(() => {
+    setInputsOutputsActiveIndex(0);
+    inputsOutputsActiveIndexRef.current = 0;
+    setBufferActiveIndex(0);
+    bufferActiveIndexRef.current = 0;
+    setSampleRateActiveIndex(0);
+    sampleRateActiveIndexRef.current = 0;
+  }, []);
+
+  // Sync state with refs
+  useEffect(() => {
+    inputsOutputsActiveIndexRef.current = inputsOutputsActiveIndex;
+  }, [inputsOutputsActiveIndex]);
+
+  useEffect(() => {
+    bufferActiveIndexRef.current = bufferActiveIndex;
+  }, [bufferActiveIndex]);
+
+  useEffect(() => {
+    sampleRateActiveIndexRef.current = sampleRateActiveIndex;
+  }, [sampleRateActiveIndex]);
+
   return (
     <div className="preferences-page">
       {/* Section 1: Inputs and outputs */}
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Inputs and outputs</h3>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="inputs-outputs"
+          itemIndex={0}
+          totalItems={4}
+          itemRefs={inputsOutputsRefs}
+          activeIndexRef={inputsOutputsActiveIndexRef}
+          activeIndex={inputsOutputsActiveIndex}
+          onActiveIndexChange={setInputsOutputsActiveIndex}
+          resetKey="audio-settings"
+        >
           <label className="preferences-page__label">Host</label>
           <Dropdown
             options={hostOptions}
-            value="mme"
-            width="290px"
+            value={preferences.audioHost}
+            onChange={(value) => updatePreference('audioHost', value)}
           />
-        </div>
+        </TabGroupField>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="inputs-outputs"
+          itemIndex={1}
+          totalItems={4}
+          itemRefs={inputsOutputsRefs}
+          activeIndexRef={inputsOutputsActiveIndexRef}
+          activeIndex={inputsOutputsActiveIndex}
+          onActiveIndexChange={setInputsOutputsActiveIndex}
+          resetKey="audio-settings"
+        >
           <label className="preferences-page__label">Playback device</label>
           <Dropdown
             options={deviceOptions}
-            value="scarlett"
-            width="290px"
+            value={preferences.playbackDevice}
+            onChange={(value) => updatePreference('playbackDevice', value)}
           />
-        </div>
+        </TabGroupField>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="inputs-outputs"
+          itemIndex={2}
+          totalItems={4}
+          itemRefs={inputsOutputsRefs}
+          activeIndexRef={inputsOutputsActiveIndexRef}
+          activeIndex={inputsOutputsActiveIndex}
+          onActiveIndexChange={setInputsOutputsActiveIndex}
+          resetKey="audio-settings"
+        >
           <label className="preferences-page__label">Recording device</label>
           <Dropdown
             options={deviceOptions}
-            value="scarlett"
-            width="290px"
+            value={preferences.recordingDevice}
+            onChange={(value) => updatePreference('recordingDevice', value)}
           />
-        </div>
+        </TabGroupField>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="inputs-outputs"
+          itemIndex={3}
+          totalItems={4}
+          itemRefs={inputsOutputsRefs}
+          activeIndexRef={inputsOutputsActiveIndexRef}
+          activeIndex={inputsOutputsActiveIndex}
+          onActiveIndexChange={setInputsOutputsActiveIndex}
+          resetKey="audio-settings"
+        >
           <label className="preferences-page__label">Recording channels</label>
           <Dropdown
             options={channelOptions}
             value="stereo"
-            width="188px"
           />
-        </div>
+        </TabGroupField>
       </div>
 
       <Separator />
 
       {/* Section 2: Buffer settings */}
       <div className="preferences-page__section">
-        <h3 className="preferences-page__section-title">Inputs and outputs</h3>
+        <h3 className="preferences-page__section-title">Buffer and latency</h3>
 
-        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
-          <div className="preferences-page__field preferences-page__field--narrow">
-            <label className="preferences-page__label">Buffer length</label>
-            <LabeledInput
-              label=""
-              value="50 ms"
-              width="85px"
-            />
-          </div>
+        <TabGroupField
+          groupId="buffer-latency"
+          itemIndex={0}
+          totalItems={2}
+          itemRefs={bufferRefs}
+          activeIndexRef={bufferActiveIndexRef}
+          activeIndex={bufferActiveIndex}
+          onActiveIndexChange={setBufferActiveIndex}
+          resetKey="audio-settings"
+        >
+          <label className="preferences-page__label">Buffer length</label>
+          <LabeledInput
+            label=""
+            value="50 ms"
+          />
+        </TabGroupField>
 
-          <div className="preferences-page__field preferences-page__field--narrow">
-            <label className="preferences-page__label">Latency compensation</label>
-            <LabeledInput
-              label=""
-              value="50 ms"
-              width="85px"
-            />
-          </div>
-        </div>
+        <TabGroupField
+          groupId="buffer-latency"
+          itemIndex={1}
+          totalItems={2}
+          itemRefs={bufferRefs}
+          activeIndexRef={bufferActiveIndexRef}
+          activeIndex={bufferActiveIndex}
+          onActiveIndexChange={setBufferActiveIndex}
+          resetKey="audio-settings"
+        >
+          <label className="preferences-page__label">Latency compensation</label>
+          <LabeledInput
+            label=""
+            value="50 ms"
+          />
+        </TabGroupField>
       </div>
 
       <Separator />
@@ -326,25 +773,39 @@ function AudioSettingsPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Sample rate</h3>
 
-        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
-          <div className="preferences-page__field preferences-page__field--medium">
-            <label className="preferences-page__label">Default sample rate</label>
-            <Dropdown
-              options={sampleRateOptions}
-              value="44100"
-              width="188px"
-            />
-          </div>
+        <TabGroupField
+          groupId="sample-rate"
+          itemIndex={0}
+          totalItems={2}
+          itemRefs={sampleRateRefs}
+          activeIndexRef={sampleRateActiveIndexRef}
+          activeIndex={sampleRateActiveIndex}
+          onActiveIndexChange={setSampleRateActiveIndex}
+          resetKey="audio-settings"
+        >
+          <label className="preferences-page__label">Default sample rate</label>
+          <Dropdown
+            options={sampleRateOptions}
+            value="44100"
+          />
+        </TabGroupField>
 
-          <div className="preferences-page__field preferences-page__field--medium">
-            <label className="preferences-page__label">Default sample format</label>
-            <Dropdown
-              options={sampleFormatOptions}
-              value="32bit"
-              width="188px"
-            />
-          </div>
-        </div>
+        <TabGroupField
+          groupId="sample-rate"
+          itemIndex={1}
+          totalItems={2}
+          itemRefs={sampleRateRefs}
+          activeIndexRef={sampleRateActiveIndexRef}
+          activeIndex={sampleRateActiveIndex}
+          onActiveIndexChange={setSampleRateActiveIndex}
+          resetKey="audio-settings"
+        >
+          <label className="preferences-page__label">Default sample format</label>
+          <Dropdown
+            options={sampleFormatOptions}
+            value="32bit"
+          />
+        </TabGroupField>
       </div>
     </div>
   );
@@ -352,7 +813,7 @@ function AudioSettingsPage() {
 
 // Playback/Recording Page Content
 function PlaybackRecordingPage() {
-  const [soloMode, setSoloMode] = useState<'multiple' | 'single'>('multiple');
+  const { preferences, updatePreference } = usePreferences();
 
   const playbackQualityOptions: DropdownOption[] = [
     { value: 'best', label: 'Best quality' },
@@ -366,31 +827,87 @@ function PlaybackRecordingPage() {
     { value: 'triangle', label: 'Triangle' },
   ];
 
+  // Tab group states
+  const playbackPerformanceRefs = useRef<(HTMLElement | null)[]>([]);
+  const playbackPerformanceActiveIndexRef = useRef<number>(0);
+  const [playbackPerformanceActiveIndex, setPlaybackPerformanceActiveIndex] = useState<number>(0);
+
+  const soloBehaviorRefs = useRef<(HTMLElement | null)[]>([]);
+  const soloBehaviorActiveIndexRef = useRef<number>(0);
+  const [soloBehaviorActiveIndex, setSoloBehaviorActiveIndex] = useState<number>(0);
+
+  const cursorMovementRefs = useRef<(HTMLElement | null)[]>([]);
+  const cursorMovementActiveIndexRef = useRef<number>(0);
+  const [cursorMovementActiveIndex, setCursorMovementActiveIndex] = useState<number>(0);
+
+  const recordingBehaviorRefs = useRef<(HTMLElement | null)[]>([]);
+  const recordingBehaviorActiveIndexRef = useRef<number>(0);
+  const [recordingBehaviorActiveIndex, setRecordingBehaviorActiveIndex] = useState<number>(0);
+
+  const soloBehaviorTabRefs = useRef<(HTMLElement | null)[]>([]);
+  const soloBehaviorTabActiveIndexRef = useRef<number>(0);
+  const [soloBehaviorTabActiveIndex, setSoloBehaviorTabActiveIndex] = useState<number>(0);
+
+  // Sync state with refs
+  useEffect(() => {
+    playbackPerformanceActiveIndexRef.current = playbackPerformanceActiveIndex;
+  }, [playbackPerformanceActiveIndex]);
+
+  useEffect(() => {
+    soloBehaviorActiveIndexRef.current = soloBehaviorActiveIndex;
+  }, [soloBehaviorActiveIndex]);
+
+  useEffect(() => {
+    cursorMovementActiveIndexRef.current = cursorMovementActiveIndex;
+  }, [cursorMovementActiveIndex]);
+
+  useEffect(() => {
+    recordingBehaviorActiveIndexRef.current = recordingBehaviorActiveIndex;
+  }, [recordingBehaviorActiveIndex]);
+
+  useEffect(() => {
+    soloBehaviorTabActiveIndexRef.current = soloBehaviorTabActiveIndex;
+  }, [soloBehaviorTabActiveIndex]);
+
   return (
     <div className="preferences-page">
       {/* Section 1: Playback performance */}
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Playback performance</h3>
 
-        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
-          <div className="preferences-page__field preferences-page__field--medium">
-            <label className="preferences-page__label">Playback quality</label>
-            <Dropdown
-              options={playbackQualityOptions}
-              value="best"
-              width="188px"
-            />
-          </div>
+        <TabGroupField
+          groupId="playback-performance"
+          itemIndex={0}
+          totalItems={2}
+          itemRefs={playbackPerformanceRefs}
+          activeIndexRef={playbackPerformanceActiveIndexRef}
+          activeIndex={playbackPerformanceActiveIndex}
+          onActiveIndexChange={setPlaybackPerformanceActiveIndex}
+          resetKey="playback-recording"
+        >
+          <label className="preferences-page__label">Playback quality</label>
+          <Dropdown
+            options={playbackQualityOptions}
+            value="best"
+          />
+        </TabGroupField>
 
-          <div className="preferences-page__field preferences-page__field--medium">
-            <label className="preferences-page__label">Dithering</label>
-            <Dropdown
-              options={ditheringOptions}
-              value="none"
-              width="188px"
-            />
-          </div>
-        </div>
+        <TabGroupField
+          groupId="playback-performance"
+          itemIndex={1}
+          totalItems={2}
+          itemRefs={playbackPerformanceRefs}
+          activeIndexRef={playbackPerformanceActiveIndexRef}
+          activeIndex={playbackPerformanceActiveIndex}
+          onActiveIndexChange={setPlaybackPerformanceActiveIndex}
+          resetKey="playback-recording"
+        >
+          <label className="preferences-page__label">Dithering</label>
+          <Dropdown
+            options={ditheringOptions}
+            value="none"
+          />
+        </TabGroupField>
       </div>
 
       <Separator />
@@ -400,20 +917,42 @@ function PlaybackRecordingPage() {
         <h3 className="preferences-page__section-title">Solo button behavior</h3>
 
         <div className="preferences-page__radio-group">
-          <LabeledRadio
-            label="Solo can be activated for multiple tracks at the same time"
-            checked={soloMode === 'multiple'}
-            onChange={() => setSoloMode('multiple')}
-            name="solo-mode"
-            value="multiple"
-          />
-          <LabeledRadio
-            label="When solo is activated, it deactivates solo for all other tracks"
-            checked={soloMode === 'single'}
-            onChange={() => setSoloMode('single')}
-            name="solo-mode"
-            value="single"
-          />
+          <TabGroupField
+            groupId="solo-behavior-tab"
+            itemIndex={0}
+            totalItems={2}
+            itemRefs={soloBehaviorTabRefs}
+            activeIndexRef={soloBehaviorTabActiveIndexRef}
+            activeIndex={soloBehaviorTabActiveIndex}
+            onActiveIndexChange={setSoloBehaviorTabActiveIndex}
+            resetKey="playback-recording"
+          >
+            <LabeledRadio
+              label="Solo can be activated for multiple tracks at the same time"
+              checked={preferences.soloMode === 'multiple'}
+              onChange={() => updatePreference('soloMode', 'multiple')}
+              name="solo-mode"
+              value="multiple"
+            />
+          </TabGroupField>
+          <TabGroupField
+            groupId="solo-behavior-tab"
+            itemIndex={1}
+            totalItems={2}
+            itemRefs={soloBehaviorTabRefs}
+            activeIndexRef={soloBehaviorTabActiveIndexRef}
+            activeIndex={soloBehaviorTabActiveIndex}
+            onActiveIndexChange={setSoloBehaviorTabActiveIndex}
+            resetKey="playback-recording"
+          >
+            <LabeledRadio
+              label="When solo is activated, it deactivates solo for all other tracks"
+              checked={preferences.soloMode === 'single'}
+              onChange={() => updatePreference('soloMode', 'single')}
+              name="solo-mode"
+              value="single"
+            />
+          </TabGroupField>
         </div>
       </div>
 
@@ -423,25 +962,39 @@ function PlaybackRecordingPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Move cursor along the timeline during playback</h3>
 
-        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
-          <div className="preferences-page__field preferences-page__field--narrow">
-            <label className="preferences-page__label">Short skip</label>
-            <LabeledInput
-              label=""
-              value="5 seconds"
-              width="85px"
-            />
-          </div>
+        <TabGroupField
+          groupId="cursor-movement"
+          itemIndex={0}
+          totalItems={2}
+          itemRefs={cursorMovementRefs}
+          activeIndexRef={cursorMovementActiveIndexRef}
+          activeIndex={cursorMovementActiveIndex}
+          onActiveIndexChange={setCursorMovementActiveIndex}
+          resetKey="playback-recording"
+        >
+          <label className="preferences-page__label">Short skip</label>
+          <NumberStepper
+            value={preferences.shortSkip}
+            onChange={(value) => updatePreference('shortSkip', value)}
+          />
+        </TabGroupField>
 
-          <div className="preferences-page__field preferences-page__field--narrow">
-            <label className="preferences-page__label">Long skip</label>
-            <LabeledInput
-              label=""
-              value="15 seconds"
-              width="85px"
-            />
-          </div>
-        </div>
+        <TabGroupField
+          groupId="cursor-movement"
+          itemIndex={1}
+          totalItems={2}
+          itemRefs={cursorMovementRefs}
+          activeIndexRef={cursorMovementActiveIndexRef}
+          activeIndex={cursorMovementActiveIndex}
+          onActiveIndexChange={setCursorMovementActiveIndex}
+          resetKey="playback-recording"
+        >
+          <label className="preferences-page__label">Long skip</label>
+          <NumberStepper
+            value={preferences.longSkip}
+            onChange={(value) => updatePreference('longSkip', value)}
+          />
+        </TabGroupField>
       </div>
 
       <Separator />
@@ -450,16 +1003,39 @@ function PlaybackRecordingPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Recording behaviour</h3>
 
-        <div className="preferences-page__checkboxes">
+        <TabGroupField
+          groupId="recording-behavior"
+          itemIndex={0}
+          totalItems={2}
+          itemRefs={recordingBehaviorRefs}
+          activeIndexRef={recordingBehaviorActiveIndexRef}
+          activeIndex={recordingBehaviorActiveIndex}
+          onActiveIndexChange={setRecordingBehaviorActiveIndex}
+          resetKey="playback-recording"
+        >
           <LabeledCheckbox
             label="Show mic metering"
-            checked={true}
+            checked={preferences.showMicMetering}
+            onChange={(checked) => updatePreference('showMicMetering', checked)}
           />
+        </TabGroupField>
+
+        <TabGroupField
+          groupId="recording-behavior"
+          itemIndex={1}
+          totalItems={2}
+          itemRefs={recordingBehaviorRefs}
+          activeIndexRef={recordingBehaviorActiveIndexRef}
+          activeIndex={recordingBehaviorActiveIndex}
+          onActiveIndexChange={setRecordingBehaviorActiveIndex}
+          resetKey="playback-recording"
+        >
           <LabeledCheckbox
             label="Enable input monitoring"
-            checked={false}
+            checked={preferences.enableInputMonitoring}
+            onChange={(checked) => updatePreference('enableInputMonitoring', checked)}
           />
-        </div>
+        </TabGroupField>
       </div>
     </div>
   );
@@ -467,6 +1043,8 @@ function PlaybackRecordingPage() {
 
 // Spectral Display Page Content
 function SpectralDisplayPage() {
+  const { preferences, updatePreference } = usePreferences();
+
   const scaleOptions: DropdownOption[] = [
     { value: 'mel', label: 'Mel' },
     { value: 'linear', label: 'Linear' },
@@ -509,6 +1087,24 @@ function SpectralDisplayPage() {
     { value: '8', label: '8' },
   ];
 
+  // Tab group states
+  const coloursRefs = useRef<(HTMLElement | null)[]>([]);
+  const coloursActiveIndexRef = useRef<number>(0);
+  const [coloursActiveIndex, setColoursActiveIndex] = useState<number>(0);
+
+  const algorithmRefs = useRef<(HTMLElement | null)[]>([]);
+  const algorithmActiveIndexRef = useRef<number>(0);
+  const [algorithmActiveIndex, setAlgorithmActiveIndex] = useState<number>(0);
+
+  // Sync state with refs
+  useEffect(() => {
+    coloursActiveIndexRef.current = coloursActiveIndex;
+  }, [coloursActiveIndex]);
+
+  useEffect(() => {
+    algorithmActiveIndexRef.current = algorithmActiveIndex;
+  }, [algorithmActiveIndex]);
+
   return (
     <div className="preferences-page">
       {/* Section 1: Selection */}
@@ -526,12 +1122,11 @@ function SpectralDisplayPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Scale</h3>
 
-        <div className="preferences-page__field">
+        <div className="preferences-page__field preferences-page__field--small">
           <label className="preferences-page__label">Scale</label>
           <Dropdown
             options={scaleOptions}
             value="mel"
-            width="188px"
           />
         </div>
       </div>
@@ -542,41 +1137,72 @@ function SpectralDisplayPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Colours</h3>
 
-        {/* Grid layout for Gain and Range */}
-        <div className="preferences-page__grid preferences-page__grid--cols-2 preferences-page__grid--gap-md">
-          <div className="preferences-page__field preferences-page__field--narrow">
-            <label className="preferences-page__label">Gain</label>
-            <NumberStepper
-              value="20 dB"
-              width="86px"
-            />
-          </div>
+        <TabGroupField
+          groupId="spectral-colours"
+          itemIndex={0}
+          totalItems={4}
+          itemRefs={coloursRefs}
+          activeIndexRef={coloursActiveIndexRef}
+          activeIndex={coloursActiveIndex}
+          onActiveIndexChange={setColoursActiveIndex}
+          resetKey="spectral-display"
+        >
+          <label className="preferences-page__label">Gain</label>
+          <NumberStepper
+            value={preferences.spectralGain}
+            onChange={(value) => updatePreference('spectralGain', value)}
+          />
+        </TabGroupField>
 
-          <div className="preferences-page__field preferences-page__field--narrow">
-            <label className="preferences-page__label">Range</label>
-            <NumberStepper
-              value="80 dB"
-              width="86px"
-            />
-          </div>
-        </div>
+        <TabGroupField
+          groupId="spectral-colours"
+          itemIndex={1}
+          totalItems={4}
+          itemRefs={coloursRefs}
+          activeIndexRef={coloursActiveIndexRef}
+          activeIndex={coloursActiveIndex}
+          onActiveIndexChange={setColoursActiveIndex}
+          resetKey="spectral-display"
+        >
+          <label className="preferences-page__label">Range</label>
+          <NumberStepper
+            value="80 dB"
+          />
+        </TabGroupField>
 
-        <div className="preferences-page__field preferences-page__field--medium">
+        <TabGroupField
+          groupId="spectral-colours"
+          itemIndex={2}
+          totalItems={4}
+          itemRefs={coloursRefs}
+          activeIndexRef={coloursActiveIndexRef}
+          activeIndex={coloursActiveIndex}
+          onActiveIndexChange={setColoursActiveIndex}
+          resetKey="spectral-display"
+        >
           <label className="preferences-page__label">High boost</label>
           <NumberStepper
             value="20 dB/dec"
-            width="188px"
           />
-        </div>
+        </TabGroupField>
 
-        <div className="preferences-page__field preferences-page__field--medium">
+        <TabGroupField
+          groupId="spectral-colours"
+          itemIndex={3}
+          totalItems={4}
+          itemRefs={coloursRefs}
+          activeIndexRef={coloursActiveIndexRef}
+          activeIndex={coloursActiveIndex}
+          onActiveIndexChange={setColoursActiveIndex}
+          resetKey="spectral-display"
+        >
           <label className="preferences-page__label">Scheme</label>
           <Dropdown
             options={schemeOptions}
-            value="inverse-grayscale"
-            width="188px"
+            value={preferences.spectralScheme}
+            onChange={(value) => updatePreference('spectralScheme', value)}
           />
-        </div>
+        </TabGroupField>
       </div>
 
       <Separator />
@@ -585,40 +1211,497 @@ function SpectralDisplayPage() {
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Algorithm</h3>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="spectral-algorithm"
+          itemIndex={0}
+          totalItems={4}
+          itemRefs={algorithmRefs}
+          activeIndexRef={algorithmActiveIndexRef}
+          activeIndex={algorithmActiveIndex}
+          onActiveIndexChange={setAlgorithmActiveIndex}
+          resetKey="spectral-display"
+        >
           <label className="preferences-page__label">Algorithm</label>
           <Dropdown
             options={algorithmOptions}
             value="frequencies"
-            width="290px"
           />
-        </div>
+        </TabGroupField>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="spectral-algorithm"
+          itemIndex={1}
+          totalItems={4}
+          itemRefs={algorithmRefs}
+          activeIndexRef={algorithmActiveIndexRef}
+          activeIndex={algorithmActiveIndex}
+          onActiveIndexChange={setAlgorithmActiveIndex}
+          resetKey="spectral-display"
+        >
           <label className="preferences-page__label">Window size</label>
           <Dropdown
             options={windowSizeOptions}
             value="32768"
-            width="290px"
           />
-        </div>
+        </TabGroupField>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="spectral-algorithm"
+          itemIndex={2}
+          totalItems={4}
+          itemRefs={algorithmRefs}
+          activeIndexRef={algorithmActiveIndexRef}
+          activeIndex={algorithmActiveIndex}
+          onActiveIndexChange={setAlgorithmActiveIndex}
+          resetKey="spectral-display"
+        >
           <label className="preferences-page__label">Scheme</label>
           <Dropdown
             options={windowTypeOptions}
             value="blackman-harris"
-            width="290px"
           />
-        </div>
+        </TabGroupField>
 
-        <div className="preferences-page__field">
+        <TabGroupField
+          groupId="spectral-algorithm"
+          itemIndex={3}
+          totalItems={4}
+          itemRefs={algorithmRefs}
+          activeIndexRef={algorithmActiveIndexRef}
+          activeIndex={algorithmActiveIndex}
+          onActiveIndexChange={setAlgorithmActiveIndex}
+          resetKey="spectral-display"
+        >
           <label className="preferences-page__label">Zero padding factor</label>
           <Dropdown
             options={zeroPaddingOptions}
             value="2"
-            width="86px"
           />
+        </TabGroupField>
+      </div>
+    </div>
+  );
+}
+
+// Audio Editing Page Content
+function EditingPage() {
+  const [deletingBehavior, setDeletingBehavior] = useState<'leave-gap' | 'close-gap'>('leave-gap');
+  const [closeGapBehavior, setCloseGapBehavior] = useState<'selected-clip' | 'same-track' | 'all-tracks'>('selected-clip');
+  const [pastingBehavior, setPastingBehavior] = useState<'overlaps' | 'pushes'>('overlaps');
+  const [pastingPushesBehavior, setPastingPushesBehavior] = useState<'same-track' | 'all-tracks'>('same-track');
+  const [alwaysPasteAsNewClip, setAlwaysPasteAsNewClip] = useState(false);
+  const [pastingBetweenProjects, setPastingBetweenProjects] = useState<'smart' | 'selected-only' | 'ask'>('smart');
+  const [stereoHeightsBehavior, setStereoHeightsBehavior] = useState<'always' | 'workspace' | 'never'>('workspace');
+  const [workspaceType, setWorkspaceType] = useState({
+    classic: false,
+    music: false,
+    advancedAudioEditing: true,
+    myNewWorkspace: false,
+  });
+  const [stereoToMono, setStereoToMono] = useState<'ask' | 'mix-together' | 'left-only'>('mix-together');
+
+  return (
+    <div className="preferences-page">
+      {/* Effect behavior */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Effect behavior</h3>
+        <LabeledCheckbox
+          label="Apply effects to all audio when no selection is made"
+          checked={true}
+        />
+      </div>
+
+      <Separator />
+
+      {/* Choose behavior when deleting a portion of a clip */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Choose behavior when deleting a portion of a clip</h3>
+
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <PreferenceThumbnail
+            src="https://via.placeholder.com/188x106?text=Leave+Gap"
+            alt="Leave gap when deleting"
+            label="Leave gap"
+            checked={deletingBehavior === 'leave-gap'}
+            onChange={() => setDeletingBehavior('leave-gap')}
+            name="deleting-behavior"
+            value="leave-gap"
+          />
+          <PreferenceThumbnail
+            src="https://via.placeholder.com/188x106?text=Close+Gap"
+            alt="Close gap (ripple) when deleting"
+            label="Close gap (ripple)"
+            checked={deletingBehavior === 'close-gap'}
+            onChange={() => setDeletingBehavior('close-gap')}
+            name="deleting-behavior"
+            value="close-gap"
+          />
+        </div>
+
+        {deletingBehavior === 'close-gap' && (
+          <PreferencePanel title="When closing the gap, do the following">
+            <LabeledRadio
+              label="The selected clip moves back to fill the gap"
+              checked={closeGapBehavior === 'selected-clip'}
+              onChange={() => setCloseGapBehavior('selected-clip')}
+              name="close-gap-behavior"
+              value="selected-clip"
+            />
+            <LabeledRadio
+              label="All clips on the same track move back to fill the gap"
+              checked={closeGapBehavior === 'same-track'}
+              onChange={() => setCloseGapBehavior('same-track')}
+              name="close-gap-behavior"
+              value="same-track"
+            />
+            <LabeledRadio
+              label="All clips on all tracks move back to fill the gap"
+              checked={closeGapBehavior === 'all-tracks'}
+              onChange={() => setCloseGapBehavior('all-tracks')}
+              name="close-gap-behavior"
+              value="all-tracks"
+            />
+          </PreferencePanel>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Choose behavior when pasting audio */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Choose behavior when pasting audio</h3>
+
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <PreferenceThumbnail
+            src="https://via.placeholder.com/188x106?text=Overlaps"
+            alt="Pasting overlaps other clips"
+            label="Pasting overlaps other clips"
+            checked={pastingBehavior === 'overlaps'}
+            onChange={() => setPastingBehavior('overlaps')}
+            name="pasting-behavior"
+            value="overlaps"
+          />
+          <PreferenceThumbnail
+            src="https://via.placeholder.com/188x106?text=Pushes"
+            alt="Pasting pushes other clips"
+            label="Pasting pushes other clips"
+            checked={pastingBehavior === 'pushes'}
+            onChange={() => setPastingBehavior('pushes')}
+            name="pasting-behavior"
+            value="pushes"
+          />
+        </div>
+
+        {pastingBehavior === 'pushes' && (
+          <PreferencePanel title="When making room for pasted audio, do the following">
+            <LabeledRadio
+              label="Pasting audio pushes other clips on the same track"
+              checked={pastingPushesBehavior === 'same-track'}
+              onChange={() => setPastingPushesBehavior('same-track')}
+              name="pasting-pushes-behavior"
+              value="same-track"
+            />
+            <LabeledRadio
+              label="Pasting audio pushes all clips on all tracks"
+              checked={pastingPushesBehavior === 'all-tracks'}
+              onChange={() => setPastingPushesBehavior('all-tracks')}
+              name="pasting-pushes-behavior"
+              value="all-tracks"
+            />
+          </PreferencePanel>
+        )}
+
+        <LabeledCheckbox
+          label="Always paste audio as a new clip"
+          checked={alwaysPasteAsNewClip}
+          onChange={(checked) => setAlwaysPasteAsNewClip(checked)}
+        />
+      </div>
+
+      <Separator />
+
+      {/* Pasting audio between projects */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Pasting audio between projects</h3>
+
+        <div className="preferences-page__radio-group preferences-page__radio-group--bold">
+          <LabeledRadio
+            label="Smart clip"
+            checked={pastingBetweenProjects === 'smart'}
+            onChange={() => setPastingBetweenProjects('smart')}
+            name="pasting-between-projects"
+            value="smart"
+            bold={true}
+            description="The entire source clip will be pasted into your project, allowing you to access trimmed audio data at anytime."
+          />
+
+          <LabeledRadio
+            label="Selected audio only"
+            checked={pastingBetweenProjects === 'selected-only'}
+            onChange={() => setPastingBetweenProjects('selected-only')}
+            name="pasting-between-projects"
+            value="selected-only"
+            bold={true}
+            description="Only the selected portion of the source clip will be pasted."
+          />
+
+          <LabeledRadio
+            label="Ask me each time"
+            checked={pastingBetweenProjects === 'ask'}
+            onChange={() => setPastingBetweenProjects('ask')}
+            name="pasting-between-projects"
+            value="ask"
+            bold={true}
+            description="Show dialog each time audio is pasted."
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Asymmetric stereo heights */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Asymmetric stereo heights</h3>
+
+        <img
+          src="https://via.placeholder.com/188x64?text=Stereo+Heights"
+          alt="Asymmetric stereo heights example"
+          style={{ width: '188px', height: '64px', borderRadius: '4px', backgroundColor: '#d4d5d9' }}
+        />
+
+        <div style={{
+          marginTop: '8px',
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '12px',
+          fontWeight: 400,
+          lineHeight: '16px',
+          color: '#14151a'
+        }}>
+          Dragging on the center line may adjust the height of the channels:
+        </div>
+
+        <div className="preferences-page__radio-group">
+          <LabeledRadio
+            label="Always"
+            checked={stereoHeightsBehavior === 'always'}
+            onChange={() => setStereoHeightsBehavior('always')}
+            name="stereo-heights"
+            value="always"
+          />
+
+          <LabeledRadio
+            label="Depending on workspace"
+            checked={stereoHeightsBehavior === 'workspace'}
+            onChange={() => setStereoHeightsBehavior('workspace')}
+            name="stereo-heights"
+            value="workspace"
+          />
+
+          {stereoHeightsBehavior === 'workspace' && (
+            <div style={{ marginLeft: '24px', marginTop: '4px' }}>
+              <div className="preferences-page__checkboxes">
+                <LabeledCheckbox
+                  label="Classic"
+                  checked={workspaceType.classic}
+                  onChange={(checked) => setWorkspaceType({ ...workspaceType, classic: checked })}
+                />
+                <LabeledCheckbox
+                  label="Music"
+                  checked={workspaceType.music}
+                  onChange={(checked) => setWorkspaceType({ ...workspaceType, music: checked })}
+                />
+                <LabeledCheckbox
+                  label="Advanced audio editing"
+                  checked={workspaceType.advancedAudioEditing}
+                  onChange={(checked) => setWorkspaceType({ ...workspaceType, advancedAudioEditing: checked })}
+                />
+                <LabeledCheckbox
+                  label="My new workspace"
+                  checked={workspaceType.myNewWorkspace}
+                  onChange={(checked) => setWorkspaceType({ ...workspaceType, myNewWorkspace: checked })}
+                />
+              </div>
+            </div>
+          )}
+
+          <LabeledRadio
+            label="Never"
+            checked={stereoHeightsBehavior === 'never'}
+            onChange={() => setStereoHeightsBehavior('never')}
+            name="stereo-heights"
+            value="never"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* When converting stereo to mono */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">When converting stereo to mono</h3>
+
+        <div className="preferences-page__radio-group">
+          <LabeledRadio
+            label="Always ask"
+            checked={stereoToMono === 'ask'}
+            onChange={() => setStereoToMono('ask')}
+            name="stereo-to-mono"
+            value="ask"
+          />
+
+          <LabeledRadio
+            label="Mix the left and right channels together"
+            checked={stereoToMono === 'mix-together'}
+            onChange={() => setStereoToMono('mix-together')}
+            name="stereo-to-mono"
+            value="mix-together"
+          />
+
+          <LabeledRadio
+            label="Pick the left channel only"
+            checked={stereoToMono === 'left-only'}
+            onChange={() => setStereoToMono('left-only')}
+            name="stereo-to-mono"
+            value="left-only"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Shortcuts Page Content
+function ShortcutsPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchBy, setSearchBy] = useState<'name' | 'shortcut'>('name');
+  const [selectedShortcut, setSelectedShortcut] = useState<string | null>(null);
+
+  const shortcuts = [
+    { id: '1', action: 'About Audacity', shortcut: '' },
+    { id: '2', action: 'About MuseScore...', shortcut: '' },
+    { id: '3', action: 'About MuseXML...', shortcut: '' },
+    { id: '4', action: 'About Qt...', shortcut: '' },
+    { id: '5', action: 'Add label', shortcut: '⌘B' },
+    { id: '6', action: 'Add realtime effects', shortcut: 'E' },
+    { id: '7', action: 'Align end to end', shortcut: '' },
+    { id: '8', action: 'Align end to playhead', shortcut: '' },
+    { id: '9', action: 'Align end to selection end', shortcut: '' },
+    { id: '10', action: 'Align start to playhead', shortcut: '' },
+    { id: '11', action: 'Align start to selection end', shortcut: '' },
+    { id: '12', action: 'Align start to zero', shortcut: '' },
+    { id: '13', action: 'Apply effect to selection', shortcut: '⌘E' },
+    { id: '14', action: 'Auto duck', shortcut: '' },
+    { id: '15', action: 'Bass and treble', shortcut: '' },
+    { id: '16', action: 'Change pitch', shortcut: '' },
+    { id: '17', action: 'Change speed', shortcut: '' },
+    { id: '18', action: 'Change tempo', shortcut: '' },
+    { id: '19', action: 'Click removal', shortcut: '' },
+    { id: '20', action: 'Close project', shortcut: '⌘W' },
+    { id: '21', action: 'Compressor', shortcut: '' },
+    { id: '22', action: 'Copy', shortcut: '⌘C' },
+    { id: '23', action: 'Cut', shortcut: '⌘X' },
+    { id: '24', action: 'Delete', shortcut: '⌫' },
+    { id: '25', action: 'Distortion', shortcut: '' },
+    { id: '26', action: 'Duplicate', shortcut: '⌘D' },
+    { id: '27', action: 'Echo', shortcut: '' },
+    { id: '28', action: 'Edit labels', shortcut: '' },
+    { id: '29', action: 'Effect last used', shortcut: '⌘R' },
+    { id: '30', action: 'Equalization', shortcut: '' },
+    { id: '31', action: 'Export audio', shortcut: '⌘⇧E' },
+    { id: '32', action: 'Export multiple', shortcut: '' },
+    { id: '33', action: 'Export selection', shortcut: '' },
+    { id: '34', action: 'Fade in', shortcut: '' },
+    { id: '35', action: 'Fade out', shortcut: '' },
+    { id: '36', action: 'Find clipping', shortcut: '' },
+    { id: '37', action: 'Fit project', shortcut: '⌘F' },
+    { id: '38', action: 'Fit to height', shortcut: '⌘⇧F' },
+    { id: '39', action: 'Fit to width', shortcut: '' },
+    { id: '40', action: 'Generate', shortcut: '' },
+    { id: '41', action: 'Generate silence', shortcut: '⌘L' },
+    { id: '42', action: 'Generate tone', shortcut: '' },
+    { id: '43', action: 'Import audio', shortcut: '⌘⇧I' },
+    { id: '44', action: 'Invert', shortcut: '' },
+    { id: '45', action: 'Join', shortcut: '⌘J' },
+    { id: '46', action: 'Labels to selections', shortcut: '' },
+    { id: '47', action: 'Leveller', shortcut: '' },
+    { id: '48', action: 'Limiter', shortcut: '' },
+    { id: '49', action: 'Low pass filter', shortcut: '' },
+    { id: '50', action: 'Macro manager', shortcut: '' },
+    { id: '51', action: 'Mute all tracks', shortcut: '⌘U' },
+    { id: '52', action: 'New project', shortcut: '⌘N' },
+    { id: '53', action: 'Noise reduction', shortcut: '' },
+    { id: '54', action: 'Normalize', shortcut: '' },
+    { id: '55', action: 'Notch filter', shortcut: '' },
+    { id: '56', action: 'Open project', shortcut: '⌘O' },
+    { id: '57', action: 'Paste', shortcut: '⌘V' },
+    { id: '58', action: 'Pause', shortcut: 'P' },
+    { id: '59', action: 'Phaser', shortcut: '' },
+    { id: '60', action: 'Play', shortcut: 'Space' },
+    { id: '61', action: 'Play/Stop', shortcut: 'Space' },
+    { id: '62', action: 'Preferences', shortcut: '⌘,' },
+  ];
+
+  return (
+    <div className="preferences-page preferences-page--shortcuts">
+      <div className="preferences-page__section" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="preferences-page__field--medium">
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search"
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '12px',
+              fontWeight: 400,
+              color: '#14151a'
+            }}>
+              Search by:
+            </span>
+            <LabeledRadio
+              label="Name"
+              checked={searchBy === 'name'}
+              onChange={() => setSearchBy('name')}
+              name="search-by"
+              value="name"
+            />
+            <LabeledRadio
+              label="Shortcut"
+              checked={searchBy === 'shortcut'}
+              onChange={() => setSearchBy('shortcut')}
+              name="search-by"
+              value="shortcut"
+            />
+          </div>
+        </div>
+
+        <div className="shortcuts-table">
+          <ShortcutTableHeader />
+          <div className="shortcuts-table__body">
+            {shortcuts.map((shortcut) => (
+              <ShortcutTableRow
+                key={shortcut.id}
+                action={shortcut.action}
+                shortcut={shortcut.shortcut}
+                selected={selectedShortcut === shortcut.id}
+                onClick={() => setSelectedShortcut(shortcut.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button variant="secondary">Import</Button>
+            <Button variant="secondary">Export</Button>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button variant="secondary">Clear</Button>
+            <Button variant="secondary">Reset to default</Button>
+          </div>
         </div>
       </div>
     </div>

@@ -42,6 +42,15 @@ export interface DebugPanelProps {
 
   onGenerateTracks: () => void;
   onClearAllTracks: () => void;
+
+  // Focus tracking
+  showFocusDebug: boolean;
+  onShowFocusDebugChange: (value: boolean) => void;
+
+  // Accessibility profile
+  accessibilityProfileId: string;
+  accessibilityProfiles: Array<{ id: string; name: string; description: string }>;
+  onAccessibilityProfileChange: (profileId: string) => void;
 }
 
 export function DebugPanel({
@@ -63,6 +72,11 @@ export function DebugPanel({
   onTrackCountChange,
   onGenerateTracks,
   onClearAllTracks,
+  showFocusDebug,
+  onShowFocusDebugChange,
+  accessibilityProfileId,
+  accessibilityProfiles,
+  onAccessibilityProfileChange,
 }: DebugPanelProps) {
   return (
     <Dialog
@@ -205,6 +219,75 @@ export function DebugPanel({
                 macOS
               </span>
             </label>
+          </div>
+        </div>
+
+        {/* Accessibility Section */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Accessibility
+          </h3>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}>
+              <label style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '12px',
+                fontWeight: 400,
+                lineHeight: '16px',
+                color: '#14151a',
+              }}>
+                Keyboard Navigation Profile
+              </label>
+              <select
+                value={accessibilityProfileId}
+                onChange={(e) => onAccessibilityProfileChange(e.target.value)}
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  padding: '6px 8px',
+                  border: '1px solid #d4d5d9',
+                  borderRadius: '2px',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                }}
+              >
+                {accessibilityProfiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '11px',
+                fontStyle: 'italic',
+                lineHeight: '14px',
+                color: '#14151a',
+                opacity: 0.7,
+              }}>
+                {accessibilityProfiles.find(p => p.id === accessibilityProfileId)?.description}
+              </span>
+            </div>
+            <LabeledCheckbox
+              label="Show focused element in selection toolbar"
+              checked={showFocusDebug}
+              onChange={onShowFocusDebugChange}
+            />
           </div>
         </div>
 

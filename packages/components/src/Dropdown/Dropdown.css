@@ -1,8 +1,11 @@
 /* Dropdown Component */
 
+@import '../styles/focus.css';
+
 .dropdown {
   position: relative;
   display: inline-block;
+  width: 100%;
 }
 
 /* Dropdown Trigger Button */
@@ -28,11 +31,13 @@
 
 .dropdown__trigger:focus {
   outline: none;
+  border-color: var(--focus-border-color);
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
 }
 
 /* Hover state */
 .dropdown__trigger:hover:not(.dropdown--disabled) {
-  border-color: rgba(103, 124, 228, 0.7);
+  border-color: var(--input-hover-border-color);
 }
 
 /* Active state (when menu is open) */
@@ -84,6 +89,10 @@
   padding: 4px 0;
 }
 
+.dropdown__menu:focus {
+  outline: none;
+}
+
 /* Dropdown Option */
 .dropdown__option {
   padding: 6px 12px;
@@ -96,10 +105,12 @@
   transition: background-color 0.15s ease;
 }
 
-/* Hover state */
+/* Hover state - also shows keyboard navigation focus */
 .dropdown__option:hover,
 .dropdown__option--hover {
   background-color: rgba(103, 124, 228, 0.2);
+  outline: 2px solid #677ce4;
+  outline-offset: -2px;
 }
 
 /* Selected state */

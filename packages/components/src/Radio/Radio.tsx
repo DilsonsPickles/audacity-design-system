@@ -23,6 +23,10 @@ export interface RadioProps {
    */
   value?: string;
   /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -34,11 +38,20 @@ export const Radio: React.FC<RadioProps> = ({
   disabled = false,
   name,
   value,
+  tabIndex,
   className = '',
 }) => {
   const handleChange = () => {
-    if (!disabled) {
-      onChange?.(!checked);
+    if (!disabled && !checked) {
+      onChange?.(true);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Only change on Enter/Space, and only if not already checked
+    if ((e.key === 'Enter' || e.key === ' ') && !disabled && !checked) {
+      e.preventDefault();
+      onChange?.(true);
     }
   };
 
@@ -46,6 +59,10 @@ export const Radio: React.FC<RadioProps> = ({
     <div
       className={`radio ${checked ? 'radio--checked' : ''} ${disabled ? 'radio--disabled' : ''} ${className}`}
       onClick={handleChange}
+      role="radio"
+      aria-checked={checked}
+      tabIndex={tabIndex !== undefined ? tabIndex : (disabled ? -1 : 0)}
+      onKeyDown={handleKeyDown}
     >
       <input
         type="radio"
@@ -54,7 +71,9 @@ export const Radio: React.FC<RadioProps> = ({
         name={name}
         value={value}
         onChange={() => {}} // Controlled by outer div
+        tabIndex={-1}
         className="radio__input"
+        aria-hidden="true"
       />
       <div className="radio__indicator">
         {checked && <div className="radio__pip" />}

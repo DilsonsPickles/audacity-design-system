@@ -7,3 +7,5 @@ export * from './useTrackSelection';
 export * from './useClipSelection';
 export * from './useSpectralSelection';
 export * from './useAudioSelection';
+export * from './useFocusTrap';
+export * from './useTabGroup';

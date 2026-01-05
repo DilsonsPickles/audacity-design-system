@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 
@@ -116,6 +116,7 @@ type Workspace = 'classic' | 'spectral-editing';
 
 function CanvasDemoContent() {
   const { state, dispatch } = useTracks();
+  const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
   const [scrollX, setScrollX] = React.useState(0);
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('project');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
@@ -143,6 +144,8 @@ function CanvasDemoContent() {
   const [showProjectRate, setShowProjectRate] = React.useState(false);
   const [operatingSystem, setOperatingSystem] = React.useState<OperatingSystem>('windows');
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
+  const [showFocusDebug, setShowFocusDebug] = React.useState(false);
+  const [focusedElement, setFocusedElement] = React.useState<string>('None');
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
@@ -150,6 +153,51 @@ function CanvasDemoContent() {
 
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
+
+  // Track focused element for accessibility debugging
+  React.useEffect(() => {
+    if (!showFocusDebug) return;
+
+    const handleFocusChange = () => {
+      const activeEl = document.activeElement;
+      if (!activeEl || activeEl === document.body) {
+        setFocusedElement('None');
+        return;
+      }
+
+      // Build a descriptive label for the focused element
+      const tagName = activeEl.tagName.toLowerCase();
+      const ariaLabel = activeEl.getAttribute('aria-label');
+      const label = activeEl.getAttribute('label');
+      const id = activeEl.id;
+      const className = activeEl.className;
+      const textContent = activeEl.textContent?.trim().slice(0, 30);
+
+      let description = `<${tagName}>`;
+      if (ariaLabel) {
+        description = `${ariaLabel} (${tagName})`;
+      } else if (label) {
+        description = `${label} (${tagName})`;
+      } else if (id) {
+        description = `#${id} (${tagName})`;
+      } else if (textContent && textContent.length > 0 && textContent.length < 30) {
+        description = `"${textContent}" (${tagName})`;
+      } else if (className) {
+        const firstClass = className.split(' ')[0];
+        description = `.${firstClass} (${tagName})`;
+      }
+
+      setFocusedElement(description);
+    };
+
+    // Track focus changes
+    document.addEventListener('focusin', handleFocusChange);
+    handleFocusChange(); // Initial call
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusChange);
+    };
+  }, [showFocusDebug]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
@@ -537,6 +585,8 @@ function CanvasDemoContent() {
           showCloudIndicator={isCloudProject || isCloudUploading}
           isCloudUploading={isCloudUploading}
           showDuration={showDuration}
+          status={showFocusDebug ? 'Focused element' : undefined}
+          instructionText={showFocusDebug ? focusedElement : undefined}
           onFormatChange={setTimeCodeFormat}
           onSelectionStartChange={(newStart) => {
             if (state.timeSelection) {
@@ -905,6 +955,11 @@ function CanvasDemoContent() {
           dispatch({ type: 'SET_TRACKS', payload: [] });
           toast.info('Cleared all tracks');
         }}
+        showFocusDebug={showFocusDebug}
+        onShowFocusDebugChange={setShowFocusDebug}
+        accessibilityProfileId={activeProfile.id}
+        accessibilityProfiles={profiles.map(p => ({ id: p.id, name: p.name, description: p.description }))}
+        onAccessibilityProfileChange={setProfile}
       />
     </div>
   );
@@ -912,8 +967,12 @@ function CanvasDemoContent() {
 
 export default function App() {
   return (
-    <TracksProvider initialTracks={sampleTracks}>
-      <CanvasDemoContent />
-    </TracksProvider>
+    <AccessibilityProfileProvider initialProfileId="wcag-flat">
+      <PreferencesProvider>
+        <TracksProvider initialTracks={sampleTracks}>
+          <CanvasDemoContent />
+        </TracksProvider>
+      </PreferencesProvider>
+    </AccessibilityProfileProvider>
   );
 }

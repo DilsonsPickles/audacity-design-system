@@ -1,0 +1,148 @@
+/**
+ * PreferencesContext
+ *
+ * Manages all user preferences with localStorage persistence
+ */
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+export interface PreferencesState {
+  // Audio Settings
+  audioHost: string;
+  recordingDevice: string;
+  playbackDevice: string;
+  recordingChannels: string;
+  bufferLength: string;
+  latencyCompensation: string;
+  defaultSampleRate: string;
+  defaultSampleFormat: string;
+
+  // Playback/Recording
+  vblankMode: string;
+  soloMode: 'multiple' | 'single';
+  shortSkip: string;
+  longSkip: string;
+  showMicMetering: boolean;
+  enableInputMonitoring: boolean;
+
+  // Spectral Display
+  enableSpectralSelection: boolean;
+  spectralScale: string;
+  spectralGain: string;
+  spectralRange: string;
+  spectralHighBoost: string;
+  spectralScheme: string;
+  spectralAlgorithm: string;
+  spectralWindowSize: string;
+  spectralWindowType: string;
+  spectralZeroPadding: string;
+}
+
+const defaultPreferences: PreferencesState = {
+  // Audio Settings
+  audioHost: 'core-audio',
+  recordingDevice: 'default',
+  playbackDevice: 'default',
+  recordingChannels: '2-stereo',
+  bufferLength: '100',
+  latencyCompensation: '-130',
+  defaultSampleRate: '44100',
+  defaultSampleFormat: '32-bit-float',
+
+  // Playback/Recording
+  vblankMode: 'none',
+  soloMode: 'multiple',
+  shortSkip: '5 seconds',
+  longSkip: '15 seconds',
+  showMicMetering: true,
+  enableInputMonitoring: false,
+
+  // Spectral Display
+  enableSpectralSelection: true,
+  spectralScale: 'mel',
+  spectralGain: '20 dB',
+  spectralRange: '80 dB',
+  spectralHighBoost: '20 dB/dec',
+  spectralScheme: 'inverse-grayscale',
+  spectralAlgorithm: 'frequencies',
+  spectralWindowSize: '32768',
+  spectralWindowType: 'blackman-harris',
+  spectralZeroPadding: '2',
+};
+
+interface PreferencesContextValue {
+  preferences: PreferencesState;
+  updatePreference: <K extends keyof PreferencesState>(
+    key: K,
+    value: PreferencesState[K]
+  ) => void;
+  resetPreferences: () => void;
+}
+
+const PreferencesContext = createContext<PreferencesContextValue | undefined>(undefined);
+
+interface PreferencesProviderProps {
+  children: ReactNode;
+}
+
+const STORAGE_KEY = 'audacity-preferences';
+
+export function PreferencesProvider({ children }: PreferencesProviderProps) {
+  const [preferences, setPreferences] = useState<PreferencesState>(() => {
+    // Try to load from localStorage
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        return { ...defaultPreferences, ...JSON.parse(stored) };
+      }
+    } catch (e) {
+      console.error('Failed to load preferences from localStorage:', e);
+    }
+    return defaultPreferences;
+  });
+
+  // Persist to localStorage whenever preferences change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    } catch (e) {
+      console.error('Failed to save preferences to localStorage:', e);
+    }
+  }, [preferences]);
+
+  const updatePreference = <K extends keyof PreferencesState>(
+    key: K,
+    value: PreferencesState[K]
+  ) => {
+    setPreferences((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const resetPreferences = () => {
+    setPreferences(defaultPreferences);
+  };
+
+  return (
+    <PreferencesContext.Provider
+      value={{
+        preferences,
+        updatePreference,
+        resetPreferences,
+      }}
+    >
+      {children}
+    </PreferencesContext.Provider>
+  );
+}
+
+export function usePreferences(): PreferencesContextValue {
+  const context = useContext(PreferencesContext);
+
+  if (!context) {
+    throw new Error('usePreferences must be used within PreferencesProvider');
+  }
+
+  return context;
+}

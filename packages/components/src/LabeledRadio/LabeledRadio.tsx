@@ -28,6 +28,18 @@ export interface LabeledRadioProps {
    */
   value?: string;
   /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
+  /**
+   * Use bold font weight for label
+   */
+  bold?: boolean;
+  /**
+   * Description text shown below the label (only when bold is true)
+   */
+  description?: string;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -40,18 +52,31 @@ export const LabeledRadio: React.FC<LabeledRadioProps> = ({
   disabled = false,
   name,
   value,
+  tabIndex,
+  bold = false,
+  description,
   className = '',
 }) => {
+  const hasDescription = bold && description;
+
   return (
-    <div className={`labeled-radio ${className}`}>
+    <div className={`labeled-radio ${hasDescription ? 'labeled-radio--with-description' : ''} ${className}`}>
       <Radio
         checked={checked}
         onChange={onChange}
         disabled={disabled}
         name={name}
         value={value}
+        tabIndex={tabIndex}
       />
-      <label className="labeled-radio__label">{label}</label>
+      <div className="labeled-radio__content">
+        <label className={`labeled-radio__label ${bold ? 'labeled-radio__label--bold' : ''}`}>
+          {label}
+        </label>
+        {hasDescription && (
+          <div className="labeled-radio__description">{description}</div>
+        )}
+      </div>
     </div>
   );
 };

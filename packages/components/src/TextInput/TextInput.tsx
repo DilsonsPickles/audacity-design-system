@@ -51,6 +51,10 @@ export interface TextInputProps {
    * Input type
    */
   type?: 'text' | 'password' | 'email' | 'number';
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
 }
 
 /**
@@ -66,8 +70,9 @@ export function TextInput({
   onFocus,
   onBlur,
   className = '',
-  width = 162,
+  width,
   type = 'text',
+  tabIndex,
 }: TextInputProps) {
   const [internalValue, setInternalValue] = useState(defaultValue || '');
   const [isFocused, setIsFocused] = useState(false);
@@ -115,12 +120,12 @@ export function TextInput({
     ? 'text-input--completed'
     : 'text-input--empty';
 
-  const widthStyle = typeof width === 'number' ? `${width}px` : width;
+  const widthStyle = width ? (typeof width === 'number' ? `${width}px` : width) : undefined;
 
   return (
     <div
       className={`text-input ${stateClass} ${typeClass} ${className}`}
-      style={{ width: widthStyle }}
+      style={widthStyle ? { width: widthStyle } : undefined}
       onMouseEnter={() => !disabled && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -134,6 +139,7 @@ export function TextInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         className="text-input__field"
+        tabIndex={tabIndex}
       />
     </div>
   );

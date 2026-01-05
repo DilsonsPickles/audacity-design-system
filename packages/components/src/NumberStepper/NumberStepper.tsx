@@ -27,6 +27,10 @@ export interface NumberStepperProps {
    */
   onChange?: (value: string) => void;
   /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -57,14 +61,16 @@ export function NumberStepper({
   placeholder,
   disabled = false,
   onChange,
+  tabIndex,
   className = '',
-  width = 86,
+  width,
   step = 1,
   min,
   max,
 }: NumberStepperProps) {
   const [internalValue, setInternalValue] = useState(defaultValue);
   const [isFocused, setIsFocused] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const isControlled = value !== undefined;
   const currentValue = isControlled ? value : internalValue;
@@ -119,12 +125,49 @@ export function NumberStepper({
     onChange?.(newStringValue);
   };
 
-  const widthStyle = typeof width === 'number' ? `${width}px` : width;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter toggles edit mode
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setIsEditMode(!isEditMode);
+      return;
+    }
+
+    // In edit mode, arrow keys increment/decrement
+    if (isEditMode) {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleIncrement();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleDecrement();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsEditMode(false);
+      }
+    }
+    // When not in edit mode, arrow keys are handled by parent (TabGroupField)
+  };
+
+  const handleInputFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleInputBlur = () => {
+    setIsFocused(false);
+    setIsEditMode(false); // Exit edit mode when losing focus
+  };
+
+  const handleInputClick = () => {
+    setIsEditMode(true); // Click enters edit mode
+  };
+
+  const widthStyle = width ? (typeof width === 'number' ? `${width}px` : width) : undefined;
 
   return (
     <div
-      className={`number-stepper ${disabled ? 'number-stepper--disabled' : ''} ${className}`}
-      style={{ width: widthStyle }}
+      className={`number-stepper ${isFocused ? 'number-stepper--focused' : ''} ${isEditMode ? 'number-stepper--editing' : ''} ${disabled ? 'number-stepper--disabled' : ''} ${className}`}
+      style={widthStyle ? { width: widthStyle } : undefined}
     >
       <input
         type="text"
@@ -132,8 +175,11 @@ export function NumberStepper({
         placeholder={placeholder}
         disabled={disabled}
         onChange={handleChange}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={handleInputFocus}
+        onBlur={handleInputBlur}
+        onClick={handleInputClick}
+        onKeyDown={handleKeyDown}
+        tabIndex={tabIndex}
         className="number-stepper__input"
       />
       <div className="number-stepper__arrows">

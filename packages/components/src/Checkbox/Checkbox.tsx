@@ -21,6 +21,10 @@ export interface CheckboxProps {
    */
   onChange?: (checked: boolean) => void;
   /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -37,6 +41,7 @@ export function Checkbox({
   checked = false,
   disabled = false,
   onChange,
+  tabIndex,
   className = '',
   'aria-label': ariaLabel,
 }: CheckboxProps) {
@@ -68,7 +73,7 @@ export function Checkbox({
       role="checkbox"
       aria-checked={checked}
       aria-label={ariaLabel}
-      tabIndex={disabled ? -1 : 0}
+      tabIndex={tabIndex !== undefined ? tabIndex : (disabled ? -1 : 0)}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onMouseEnter={() => !disabled && setIsHovered(true)}

@@ -6,6 +6,139 @@
  */
 
 /**
+ * Color Scale - Complete color system from Figma
+ * Each color has a scale from 100 (lightest) to 900 (darkest)
+ */
+export const colors = {
+  shade: {
+    100: '#FFFFFF',
+    900: '#000000',
+  },
+  slate: {
+    50: '#F9F9FA',
+    100: '#F9F9FA',
+    200: '#EBEDF0',
+    300: '#DFE2E7',
+    400: '#D2D6DD',
+    500: '#C0C5CE',
+    600: '#A9B0BD',
+    700: '#949CAC',
+    800: '#838B9D',
+    900: '#6F788F',
+  },
+  midnight: {
+    100: '#191B22',
+    200: '#262932',
+    300: '#30323C',
+    400: '#41444F',
+    500: '#4D515C',
+    600: '#5A5E69',
+    700: '#676B77',
+    800: '#747884',
+    900: '#828591',
+  },
+  blue: {
+    100: '#F2F7FF',
+    200: '#DEEBFF',
+    300: '#C0D9FF',
+    400: '#A2C7FF',
+    500: '#84B5FF',
+    600: '#66A3FF',
+    700: '#4A7FE6',
+    800: '#305BCC',
+    900: '#1A3FB3',
+  },
+  violet: {
+    100: '#F7F6FF',
+    200: '#E9E8FF',
+    300: '#D5D3FE',
+    400: '#C1BFFE',
+    500: '#ADABFC',
+    600: '#9996FC',
+    700: '#7E7BE6',
+    800: '#6360D0',
+    900: '#4845BA',
+  },
+  magenta: {
+    100: '#FBF4FC',
+    200: '#F6E8F4',
+    300: '#EFD1EA',
+    400: '#E8BAE0',
+    500: '#E1A3D6',
+    600: '#DA8CCC',
+    700: '#C866B3',
+    800: '#B0449A',
+    900: '#982681',
+  },
+  red: {
+    100: '#FEF2F2',
+    200: '#FCE4E4',
+    300: '#F9CBCB',
+    400: '#F6B2B2',
+    500: '#F39999',
+    600: '#F08080',
+    700: '#E85B5B',
+    800: '#D63636',
+    900: '#B91818',
+  },
+  orange: {
+    100: '#FFF5EE',
+    200: '#FFEADD',
+    300: '#FFD7BF',
+    400: '#FFC4A1',
+    500: '#FFB183',
+    600: '#FF9E65',
+    700: '#E67A3D',
+    800: '#CC5619',
+    900: '#B33600',
+  },
+  yellow: {
+    100: '#FCF8EE',
+    200: '#F8F0DC',
+    300: '#F4E4B9',
+    400: '#F0D896',
+    500: '#ECCC73',
+    600: '#E8C050',
+    700: '#D4A830',
+    800: '#B8901A',
+    900: '#9C7808',
+  },
+  green: {
+    100: '#F0F9EE',
+    200: '#E0F2DD',
+    300: '#C5E5BC',
+    400: '#AAD89B',
+    500: '#8FCB7A',
+    600: '#74BE59',
+    700: '#5AA038',
+    800: '#40821C',
+    900: '#2A6408',
+  },
+  teal: {
+    100: '#EAF8F4',
+    200: '#D4F0E8',
+    300: '#ACE1D3',
+    400: '#84D2BE',
+    500: '#5CC3A9',
+    600: '#34B494',
+    700: '#1E9378',
+    800: '#0F725C',
+    900: '#055140',
+  },
+  cyan: {
+    100: '#ECF9FA',
+    200: '#D8F2F3',
+    300: '#B4E5EA',
+    400: '#90D8E1',
+    500: '#6CCBD8',
+    600: '#48BECF',
+    700: '#2A9BB8',
+    800: '#13789E',
+    900: '#055584',
+  },
+} as const;
+
+/**
  * Typography Tokens
  */
 export interface TypographyStyle {
@@ -58,48 +191,17 @@ export interface Theme {
   trackIdle: string;
   trackSelected: string;
 
-  // Clip colors per track
-  clipBackground: {
-    track1: string;
-    track2: string;
-    track3: string;
-    default: string;
-  };
-
-  clipHeader: {
-    track1: string;
-    track2: string;
-    track3: string;
-    default: string;
-  };
-
-  clipHeaderHover: {
-    track1: string;
-    track2: string;
-    track3: string;
-    default: string;
-  };
-
-  // Clip selected state
-  clipBackgroundSelected: {
-    track1: string;
-    track2: string;
-    track3: string;
-    default: string;
-  };
-
-  clipHeaderSelected: {
-    track1: string;
-    track2: string;
-    track3: string;
-    default: string;
-  };
-
-  clipHeaderSelectedHover: {
-    track1: string;
-    track2: string;
-    track3: string;
-    default: string;
+  // Clip colors - New 9-color palette from Figma
+  clipColors: {
+    cyan: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    blue: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    violet: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    magenta: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    red: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    orange: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    yellow: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    green: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
+    teal: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
   };
 
   clipBorder: {
@@ -163,48 +265,80 @@ export const lightTheme: Theme = {
   trackIdle: 'rgba(255, 255, 255, 0.05)',
   trackSelected: 'rgba(255, 255, 255, 0.1)',
 
-  // Clip colors per track
-  clipBackground: {
-    track1: '#6DB9FF', // Blue body
-    track2: '#C1BFFE',
-    track3: '#ECA0D9', // Magenta body non-selected
-    default: '#3a5a7a',
-  },
-
-  clipHeader: {
-    track1: '#3FA8FF', // Blue header
-    track2: '#ADABFC',
-    track3: '#E787D0', // Magenta header
-    default: '#2a3a4a',
-  },
-
-  clipHeaderHover: {
-    track1: '#66A3FF',
-    track2: '#9996FC',
-    track3: '#DA8CCC',
-    default: '#3a4a5a',
-  },
-
-  // Clip selected state
-  clipBackgroundSelected: {
-    track1: '#C0D9FF',
-    track2: '#D5D3FE',
-    track3: '#EFD1EA',
-    default: '#5a7a9a',
-  },
-
-  clipHeaderSelected: {
-    track1: '#DEEBFF',
-    track2: '#E9E8FF',
-    track3: '#F6E8F4',
-    default: '#4a5a6a',
-  },
-
-  clipHeaderSelectedHover: {
-    track1: '#F2F7FF',
-    track2: '#F7F6FF',
-    track3: '#FBF4FC',
-    default: '#5a6a7a',
+  // Clip colors - New 9-color palette from Figma
+  clipColors: {
+    cyan: {
+      header: '#6CCBD8',
+      headerHover: '#48BECF',
+      body: '#90D8E1',
+      headerSelected: '#D8F2F3',
+      headerSelectedHover: '#ECF9FA',
+      bodySelected: '#B4E5EA'
+    },
+    blue: {
+      header: '#84B5FF',
+      headerHover: '#66A3FF',
+      body: '#A2C7FF',
+      headerSelected: '#DEEBFF',
+      headerSelectedHover: '#F2F7FF',
+      bodySelected: '#C0D9FF'
+    },
+    violet: {
+      header: '#ADABFC',
+      headerHover: '#9996FC',
+      body: '#C1BFFE',
+      headerSelected: '#E9E8FF',
+      headerSelectedHover: '#F7F6FF',
+      bodySelected: '#D5D3FE'
+    },
+    magenta: {
+      header: '#E1A3D6',
+      headerHover: '#DA8CCC',
+      body: '#E8BAE0',
+      headerSelected: '#F6E8F4',
+      headerSelectedHover: '#FBF4FC',
+      bodySelected: '#EFD1EA'
+    },
+    red: {
+      header: '#F39999',
+      headerHover: '#F08080',
+      body: '#F6B2B2',
+      headerSelected: '#FCE4E4',
+      headerSelectedHover: '#FEF2F2',
+      bodySelected: '#F9CBCB'
+    },
+    orange: {
+      header: '#FFB183',
+      headerHover: '#FF9E65',
+      body: '#FFC4A1',
+      headerSelected: '#FFEADD',
+      headerSelectedHover: '#FFF5EE',
+      bodySelected: '#FFD7BF'
+    },
+    yellow: {
+      header: '#ECCC73',
+      headerHover: '#E8C050',
+      body: '#F0D896',
+      headerSelected: '#F8F0DC',
+      headerSelectedHover: '#FCF8EE',
+      bodySelected: '#F4E4B9'
+    },
+    green: {
+      header: '#8FCB7A',
+      headerHover: '#74BE59',
+      body: '#AAD89B',
+      headerSelected: '#E0F2DD',
+      headerSelectedHover: '#F0F9EE',
+      bodySelected: '#C5E5BC'
+    },
+    teal: {
+      header: '#5CC3A9',
+      headerHover: '#34B494',
+      body: '#84D2BE',
+      headerSelected: '#D4F0E8',
+      headerSelectedHover: '#EAF8F4',
+      bodySelected: '#ACE1D3'
+    },
   },
 
   clipBorder: {
@@ -268,48 +402,80 @@ export const darkTheme: Theme = {
   trackIdle: 'rgba(255, 255, 255, 0.03)',
   trackSelected: 'rgba(255, 255, 255, 0.08)',
 
-  // Clip colors per track
-  clipBackground: {
-    track1: '#4a7a9a',
-    track2: '#7a6a9a',
-    track3: '#9a6a7a',
-    default: '#3a5a7a',
-  },
-
-  clipHeader: {
-    track1: '#3a6a8a',
-    track2: '#6a5a8a',
-    track3: '#8a5a6a',
-    default: '#2a3a4a',
-  },
-
-  clipHeaderHover: {
-    track1: '#4a7a9a',
-    track2: '#7a6a9a',
-    track3: '#9a6a7a',
-    default: '#3a4a5a',
-  },
-
-  // Clip selected state (dark theme)
-  clipBackgroundSelected: {
-    track1: '#5a8aba',
-    track2: '#8a7aba',
-    track3: '#aa7a9a',
-    default: '#6a8aaa',
-  },
-
-  clipHeaderSelected: {
-    track1: '#4a7aaa',
-    track2: '#7a6aaa',
-    track3: '#9a6a8a',
-    default: '#5a7a9a',
-  },
-
-  clipHeaderSelectedHover: {
-    track1: '#5a8aba',
-    track2: '#8a7aba',
-    track3: '#aa7a9a',
-    default: '#6a8aaa',
+  // Clip colors - Same 9-color palette (dark theme uses same colors)
+  clipColors: {
+    cyan: {
+      header: '#6CCBD8',
+      headerHover: '#48BECF',
+      body: '#90D8E1',
+      headerSelected: '#D8F2F3',
+      headerSelectedHover: '#ECF9FA',
+      bodySelected: '#B4E5EA'
+    },
+    blue: {
+      header: '#84B5FF',
+      headerHover: '#66A3FF',
+      body: '#A2C7FF',
+      headerSelected: '#DEEBFF',
+      headerSelectedHover: '#F2F7FF',
+      bodySelected: '#C0D9FF'
+    },
+    violet: {
+      header: '#ADABFC',
+      headerHover: '#9996FC',
+      body: '#C1BFFE',
+      headerSelected: '#E9E8FF',
+      headerSelectedHover: '#F7F6FF',
+      bodySelected: '#D5D3FE'
+    },
+    magenta: {
+      header: '#E1A3D6',
+      headerHover: '#DA8CCC',
+      body: '#E8BAE0',
+      headerSelected: '#F6E8F4',
+      headerSelectedHover: '#FBF4FC',
+      bodySelected: '#EFD1EA'
+    },
+    red: {
+      header: '#F39999',
+      headerHover: '#F08080',
+      body: '#F6B2B2',
+      headerSelected: '#FCE4E4',
+      headerSelectedHover: '#FEF2F2',
+      bodySelected: '#F9CBCB'
+    },
+    orange: {
+      header: '#FFB183',
+      headerHover: '#FF9E65',
+      body: '#FFC4A1',
+      headerSelected: '#FFEADD',
+      headerSelectedHover: '#FFF5EE',
+      bodySelected: '#FFD7BF'
+    },
+    yellow: {
+      header: '#ECCC73',
+      headerHover: '#E8C050',
+      body: '#F0D896',
+      headerSelected: '#F8F0DC',
+      headerSelectedHover: '#FCF8EE',
+      bodySelected: '#F4E4B9'
+    },
+    green: {
+      header: '#8FCB7A',
+      headerHover: '#74BE59',
+      body: '#AAD89B',
+      headerSelected: '#E0F2DD',
+      headerSelectedHover: '#F0F9EE',
+      bodySelected: '#C5E5BC'
+    },
+    teal: {
+      header: '#5CC3A9',
+      headerHover: '#34B494',
+      body: '#84D2BE',
+      headerSelected: '#D4F0E8',
+      headerSelectedHover: '#EAF8F4',
+      bodySelected: '#ACE1D3'
+    },
   },
 
   clipBorder: {

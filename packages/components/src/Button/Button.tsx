@@ -39,6 +39,10 @@ export interface ButtonProps {
    * Button type
    */
   type?: 'button' | 'submit' | 'reset';
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -51,6 +55,7 @@ export const Button: React.FC<ButtonProps> = ({
   onClick,
   className = '',
   type = 'button',
+  tabIndex,
 }) => {
   return (
     <button
@@ -58,6 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
       className={`button button--${variant} button--${size} ${disabled ? 'button--disabled' : ''} ${className}`}
       onClick={onClick}
       disabled={disabled}
+      tabIndex={tabIndex}
     >
       {showIcon && icon && (
         <span className="button__icon musescore-icon">

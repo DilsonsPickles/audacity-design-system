@@ -3,8 +3,9 @@
  * Based on Figma design: node-id=6326-22726
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DialogHeader } from '../DialogHeader';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import './Dialog.css';
 
 export interface DialogProps {
@@ -59,6 +60,11 @@ export interface DialogProps {
    * Optional width for the dialog
    */
   width?: number | string;
+  /**
+   * Whether the dialog can be maximized
+   * @default false
+   */
+  maximizable?: boolean;
 }
 
 /**
@@ -77,11 +83,39 @@ export function Dialog({
   closeOnEscape = true,
   className = '',
   width = 400,
+  maximizable = false,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [dialogSize, setDialogSize] = useState({ width: 0, height: 0 });
+  const [dialogPosition, setDialogPosition] = useState({ x: 0, y: 0 });
+  const [isResizing, setIsResizing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [currentWidth, setCurrentWidth] = useState(0);
+  const resizeStateRef = useRef<{
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+    edge: string;
+  } | null>(null);
+  const dragStateRef = useRef<{
+    startX: number;
+    startY: number;
+    startPosX: number;
+    startPosY: number;
+  } | null>(null);
+
+  // Enable focus trap when dialog is open
+  useFocusTrap(dialogRef, isOpen);
 
   // Handle click outside
   const handleOverlayClick = (e: React.MouseEvent) => {
+    // Don't close if we just finished resizing
+    if (resizeStateRef.current) {
+      return;
+    }
+
     if (e.target === e.currentTarget && closeOnClickOutside) {
       if (onClickOutside) {
         onClickOutside();
@@ -118,25 +152,199 @@ export function Dialog({
     };
   }, [isOpen]);
 
+  // Initialize dialog size from width prop
+  useEffect(() => {
+    if (isOpen && dialogRef.current && !isMaximized) {
+      const widthValue = typeof width === 'number' ? width : parseInt(width as string) || 400;
+      const rect = dialogRef.current.getBoundingClientRect();
+      setDialogSize({
+        width: widthValue,
+        height: rect.height || 600,
+      });
+    }
+  }, [isOpen, width, isMaximized]);
+
+  // Track current dialog width
+  useEffect(() => {
+    if (!dialogRef.current) return;
+
+    const updateWidth = () => {
+      if (dialogRef.current) {
+        setCurrentWidth(Math.round(dialogRef.current.getBoundingClientRect().width));
+      }
+    };
+
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(dialogRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [isOpen]);
+
+  // Handle resize mouse down
+  const handleResizeMouseDown = (e: React.MouseEvent, edge: string) => {
+    if (isMaximized) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = dialogRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    resizeStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: rect.width,
+      startHeight: rect.height,
+      edge,
+    };
+
+    setIsResizing(true);
+  };
+
+  // Handle drag mouse down on header
+  const handleDragMouseDown = (e: React.MouseEvent) => {
+    if (isMaximized) return;
+
+    const rect = dialogRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    dragStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPosX: rect.left,
+      startPosY: rect.top,
+    };
+
+    setIsDragging(true);
+  };
+
+  // Handle resize mouse move
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeStateRef.current) return;
+
+      const { startX, startY, startWidth, startHeight, edge } = resizeStateRef.current;
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+
+      if (edge.includes('right')) {
+        newWidth = Math.max(400, startWidth + deltaX);
+      } else if (edge.includes('left')) {
+        newWidth = Math.max(400, startWidth - deltaX);
+      }
+
+      if (edge.includes('bottom')) {
+        newHeight = Math.max(300, startHeight + deltaY);
+      } else if (edge.includes('top')) {
+        newHeight = Math.max(300, startHeight - deltaY);
+      }
+
+      setDialogSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      // Clear resize state after a small delay to prevent overlay click from closing dialog
+      setTimeout(() => {
+        resizeStateRef.current = null;
+      }, 10);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Handle drag mouse move
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStateRef.current) return;
+
+      const { startX, startY, startPosX, startPosY } = dragStateRef.current;
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      setDialogPosition({
+        x: startPosX + deltaX,
+        y: startPosY + deltaY,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      dragStateRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   if (!isOpen) return null;
 
-  const widthStyle = typeof width === 'number' ? `${width}px` : width;
+  const dialogClasses = `dialog ${isMaximized ? 'dialog--maximized' : ''} ${isResizing ? 'dialog--resizing' : ''} ${isDragging ? 'dialog--dragging' : ''} ${className}`;
+
+  const dialogStyle: React.CSSProperties | undefined = isMaximized
+    ? undefined
+    : {
+        width: dialogSize.width > 0 ? `${dialogSize.width}px` : (typeof width === 'number' ? `${width}px` : width),
+        height: dialogSize.height > 0 ? `${dialogSize.height}px` : undefined,
+        position: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? 'fixed' : undefined,
+        left: dialogPosition.x !== 0 ? `${dialogPosition.x}px` : undefined,
+        top: dialogPosition.y !== 0 ? `${dialogPosition.y}px` : undefined,
+        margin: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? '0' : undefined,
+      };
 
   return (
     <div className="dialog-overlay" onClick={handleOverlayClick}>
       <div
         ref={dialogRef}
-        className={`dialog ${className}`}
-        style={{ width: widthStyle }}
+        className={dialogClasses}
+        style={dialogStyle}
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
       >
+        {/* Resize handles */}
+        {!isMaximized && (
+          <>
+            <div className="dialog__resize-handle dialog__resize-handle--top" onMouseDown={(e) => handleResizeMouseDown(e, 'top')} />
+            <div className="dialog__resize-handle dialog__resize-handle--right" onMouseDown={(e) => handleResizeMouseDown(e, 'right')} />
+            <div className="dialog__resize-handle dialog__resize-handle--bottom" onMouseDown={(e) => handleResizeMouseDown(e, 'bottom')} />
+            <div className="dialog__resize-handle dialog__resize-handle--left" onMouseDown={(e) => handleResizeMouseDown(e, 'left')} />
+            <div className="dialog__resize-handle dialog__resize-handle--top-left" onMouseDown={(e) => handleResizeMouseDown(e, 'top-left')} />
+            <div className="dialog__resize-handle dialog__resize-handle--top-right" onMouseDown={(e) => handleResizeMouseDown(e, 'top-right')} />
+            <div className="dialog__resize-handle dialog__resize-handle--bottom-left" onMouseDown={(e) => handleResizeMouseDown(e, 'bottom-left')} />
+            <div className="dialog__resize-handle dialog__resize-handle--bottom-right" onMouseDown={(e) => handleResizeMouseDown(e, 'bottom-right')} />
+          </>
+        )}
+
         {/* Header */}
         <DialogHeader
-          title={title}
+          title={`${title} (${currentWidth}px)`}
           logo={logo}
           onClose={onClose}
+          maximizable={maximizable}
+          isMaximized={isMaximized}
+          onMaximize={() => setIsMaximized(!isMaximized)}
+          onMouseDown={handleDragMouseDown}
         />
 
         {/* Optional header content */}

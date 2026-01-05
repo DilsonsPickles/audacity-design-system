@@ -8,10 +8,23 @@
   position: relative;
   box-sizing: border-box;
   overflow: hidden;
+  width: 100%;
 }
 
 .number-stepper:hover:not(.number-stepper--disabled) {
   border-color: #677ce4;
+}
+
+.number-stepper--focused:not(.number-stepper--disabled) {
+  outline: 2px solid #677ce4;
+  outline-offset: -1px;
+  border-color: #677ce4;
+}
+
+.number-stepper--editing:not(.number-stepper--disabled) {
+  outline: 2px solid #4CAF50;
+  outline-offset: -1px;
+  border-color: #4CAF50;
 }
 
 .number-stepper--disabled {

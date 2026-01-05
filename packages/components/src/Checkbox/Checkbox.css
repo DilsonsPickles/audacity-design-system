@@ -2,6 +2,8 @@
  * Checkbox Styles
  */
 
+@import '../styles/focus.css';
+
 .checkbox {
   width: 20px;
   height: 20px;
@@ -11,7 +13,7 @@
   justify-content: center;
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* Unchecked states */
@@ -62,4 +64,5 @@
 /* Focus state */
 .checkbox:focus {
   outline: none;
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
 }

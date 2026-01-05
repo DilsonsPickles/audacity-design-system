@@ -53,7 +53,7 @@ npm run lint
 - **`packages/`** - Published npm packages (use tsup for builds)
   - `@audacity-ui/core` - Core TypeScript types and interfaces
   - `@audacity-ui/tokens` - Design tokens (themes, colors)
-  - *(Planned)* `@audacity-ui/components` - Basic UI components
+  - `@audacity-ui/components` - UI components (ClipDisplay, TrackNew, EnvelopeInteractionLayer, etc.)
   - *(Planned)* `@audacity-ui/audio-components` - Complex audio editing components
 
 - **`apps/demo/clip-envelope/`** - Next.js 16 demo application
@@ -66,7 +66,38 @@ npm run lint
   - `automation-overlay-states.md` - Visual state documentation
   - `clip-styling-states.md` - Clip styling state matrix
 
-### Key Components in `apps/demo/clip-envelope/`
+### Key Components in `packages/components/`
+
+**Clip Rendering:**
+- `ClipDisplay.tsx` - Composite clip component (ClipHeader + ClipBody)
+  - Manages header hover states and truncation mode
+  - Passes props through to child components
+- `ClipHeader.tsx` - Clip header with name and context menu button
+- `ClipBody.tsx` - Clip body rendering (waveform, spectrogram, envelope)
+  - Canvas-based rendering using HTML5 Canvas API
+  - Filters hidden points during envelope eating behavior
+
+**Track Rendering:**
+- `TrackNew.tsx` - Component-based track renderer
+  - Renders clips using ClipDisplay components
+  - Positions EnvelopeInteractionLayers at track level as siblings to clips
+  - Tracks hidden points per clip during drag (eating behavior)
+  - ~200 lines (vs ~1000 in old canvas-based Track component)
+
+**Envelope Interaction:**
+- `EnvelopeInteractionLayer.tsx` - Transparent overlay for envelope editing
+  - Handles all envelope mouse interactions (add, drag, delete points)
+  - Implements eating behavior: calculates and reports hidden points during drag
+  - Positioned absolutely at track level over clips
+  - Uses non-linear dB scale for vertical positioning
+  - Constants: `CLICK_THRESHOLD = 10px`, `ENVELOPE_LINE_FAR_THRESHOLD = 4px`, `SNAP_THRESHOLD_TIME = 0.05s`
+
+**Selection:**
+- `useAudioSelection` - Composite hook for time, track, clip, and spectral selection
+- `TimeSelectionCanvasOverlay.tsx` - Renders time selection overlay
+- `SpectralSelectionOverlay.tsx` - Renders spectral selection overlay
+
+### Key Components in `apps/demo/clip-envelope/` (Legacy)
 
 **Main Controller:**
 - `ClipEnvelopeEditor.tsx` - Root component managing all state, mouse events, and interactions
@@ -75,7 +106,7 @@ npm run lint
   - Contains all mouse event handlers and state management logic
 
 **Rendering:**
-- `TrackCanvas.tsx` - Canvas-based rendering engine
+- `TrackCanvas.tsx` - Canvas-based rendering engine (LEGACY - being replaced by TrackNew)
   - Draws waveforms, envelope curves, overlays, time selections
   - Uses HTML5 Canvas API for performance
   - Receives props from ClipEnvelopeEditor (controlled component pattern)
@@ -126,32 +157,40 @@ Clips have 10 combined visual states based on:
 
 See `docs/clip-styling-states.md` for the complete state matrix.
 
-### Interaction Model
+### Envelope Interaction Model (New Architecture)
 
-**Dual Hit Zones for Envelope Editing:**
-- **0-4px from line**: Add new control point
-- **4-16px from line**: Drag entire segment (only if clip has ≥1 point)
-- **>16px from line**: No envelope interaction
+**Simplified Interaction Model:**
+- **Click near line (0-4px)**: Add new control point at click position
+- **Click on existing point**: Delete the point
+- **Drag existing point**: Move point, eating (hiding) any points passed over
+- **Movement threshold**: 3px to distinguish click from drag
 
-**Segment Dragging:**
-- When 4-16px from line and clip has points: drags both endpoints of segment vertically
-- Segment hover shows orange color (`#ffaa00`) and semi-transparent overlay
-- Disabled for clips with zero control points (empty state)
+**Point Eating Behavior:**
+- When dragging a point horizontally, any points between start and current position are hidden
+- Hidden points are visually removed from both the line and control points during drag
+- On mouse up, hidden points are permanently deleted
+- Special case: dragging to time=0 (clip origin) hides ALL other points
+
+**Horizontal Snapping:**
+- Points snap to existing points within 0.05s (50ms)
+- Helps align points across clips
 
 **Mouse Event Flow:**
-1. `ClipEnvelopeEditor` handles all mouse events (move, down, up)
-2. Maintains drag state refs: `dragStateRef`, `envelopeDragStateRef`, `envelopeSegmentDragStateRef`, `timeSelectionDragStateRef`, `trackResizeDragStateRef`
-3. Updates cursor style based on hover state
-4. Triggers re-renders by updating state
-5. `TrackCanvas` receives props and renders accordingly
+1. `EnvelopeInteractionLayer` handles all envelope mouse events (down, move, up)
+2. Maintains drag state in ref: `dragStateRef` (type: 'point' | 'segment')
+3. Calculates hidden points during drag and calls `onHiddenPointsChange` callback
+4. `TrackNew` tracks hidden points per clip in Map state
+5. Passes hidden indices to `ClipDisplay` → `ClipBody`
+6. `ClipBody` filters envelope rendering to exclude hidden points
 
 **Constants:**
 - `TRACK_HEIGHT = 114` (default)
 - `CLIP_HEADER_HEIGHT = 20`
-- `LEFT_PADDING = 12`
-- `INFINITY_ZONE_HEIGHT = 1` (bottom 1px = -∞ dB)
-- `SNAP_THRESHOLD_DB = 6` (snap within 6dB)
+- `CLICK_THRESHOLD = 10` (pixels for detecting clicks on points)
+- `ENVELOPE_LINE_FAR_THRESHOLD = 4` (max distance from line for interaction)
+- `ENVELOPE_MOVE_THRESHOLD = 3` (pixels to distinguish click from drag)
 - `SNAP_THRESHOLD_TIME = 0.05` (snap within 0.05 seconds)
+- `TIME_EPSILON = 0.001` (for detecting clip origin)
 
 ## Important Patterns
 
@@ -176,9 +215,13 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - ✅ Monorepo infrastructure setup (pnpm workspaces)
 - ✅ `@audacity-ui/core` package created with types
 - ✅ `@audacity-ui/tokens` package created with theme
+- ✅ `@audacity-ui/components` package created with UI components
 - ✅ Demo moved to `apps/demo/clip-envelope/`
-- ⏳ Demo still uses local types/theme (not importing from packages)
-- ⏳ No `@audacity-ui/components` or `@audacity-ui/audio-components` yet
+- ✅ Sandbox app (`apps/sandbox/`) uses new component architecture (TrackNew, ClipDisplay, EnvelopeInteractionLayer)
+- ✅ Storybook (`apps/docs/`) showcasing all components
+- ⏳ Legacy demo still uses local types/theme (not importing from packages)
+- ⏳ Old envelope interaction code in Canvas.tsx needs cleanup
+- ⏳ No `@audacity-ui/audio-components` yet
 
 **Next Steps (per roadmap):**
 1. Extract basic UI components to `@audacity-ui/components`

@@ -1,5 +1,7 @@
 /* Button Component */
 
+@import '../styles/focus.css';
+
 .button {
   display: flex;
   align-items: center;
@@ -13,7 +15,7 @@
   color: #14151a;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* Default size - 28px height */
@@ -34,6 +36,7 @@
 
 .button:focus {
   outline: none;
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
 }
 
 /* Primary variant */

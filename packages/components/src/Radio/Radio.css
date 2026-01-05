@@ -29,11 +29,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .radio:hover:not(.radio--disabled) .radio__indicator {
   border-color: #677ce4;
+}
+
+/* Focus state */
+.radio__input:focus + .radio__indicator {
+  outline: 2px solid #677ce4;
+  outline-offset: 2px;
 }
 
 .radio__pip {
