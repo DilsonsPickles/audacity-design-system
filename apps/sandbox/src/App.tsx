@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 
@@ -146,6 +146,16 @@ function CanvasDemoContent() {
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
+
+  // Clip context menu state
+  const [clipContextMenu, setClipContextMenu] = React.useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    clipId: number;
+    trackIndex: number;
+  } | null>(null);
+
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
@@ -562,7 +572,14 @@ function CanvasDemoContent() {
               style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433' }}
             >
               <div style={{ minWidth: '5000px', height: '100%', position: 'relative' }}>
-                <Canvas pixelsPerSecond={100} width={5000} leftPadding={12} />
+                <Canvas
+                  pixelsPerSecond={100}
+                  width={5000}
+                  leftPadding={12}
+                  onClipMenuClick={(clipId, trackIndex, x, y) => {
+                    setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex });
+                  }}
+                />
                 {/* Playhead stalk only (no icon) */}
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
                   <PlayheadCursor
@@ -963,6 +980,68 @@ function CanvasDemoContent() {
         accessibilityProfiles={profiles.map(p => ({ id: p.id, name: p.name, description: p.description }))}
         onAccessibilityProfileChange={setProfile}
       />
+
+      {/* Clip Context Menu */}
+      {clipContextMenu && (
+        <ClipContextMenu
+          isOpen={clipContextMenu.isOpen}
+          x={clipContextMenu.x}
+          y={clipContextMenu.y}
+          onClose={() => setClipContextMenu(null)}
+          onRename={() => {
+            toast.info('Rename clip - not yet implemented');
+            setClipContextMenu(null);
+          }}
+          onColorChange={(color) => {
+            toast.info(`Change clip color to ${color} - not yet implemented`);
+            setClipContextMenu(null);
+          }}
+          onCut={() => {
+            toast.info('Cut clip - not yet implemented');
+            setClipContextMenu(null);
+          }}
+          onCopy={() => {
+            toast.info('Copy clip - not yet implemented');
+            setClipContextMenu(null);
+          }}
+          onDuplicate={() => {
+            toast.info('Duplicate clip - not yet implemented');
+            setClipContextMenu(null);
+          }}
+          onDelete={() => {
+            if (clipContextMenu) {
+              dispatch({
+                type: 'DELETE_CLIP',
+                payload: {
+                  trackIndex: clipContextMenu.trackIndex,
+                  clipId: clipContextMenu.clipId,
+                },
+              });
+              setClipContextMenu(null);
+            }
+          }}
+          onSplit={() => {
+            toast.info('Split clip - not yet implemented');
+            setClipContextMenu(null);
+          }}
+          onExport={() => {
+            toast.info('Export clip - not yet implemented');
+            setClipContextMenu(null);
+          }}
+          stretchWithTempo={false}
+          onToggleStretchWithTempo={() => {
+            toast.info('Toggle stretch with tempo - not yet implemented');
+          }}
+          onOpenPitchSpeedDialog={() => {
+            toast.info('Open pitch and speed dialog - not yet implemented');
+            setClipContextMenu(null);
+          }}
+          onRenderPitchSpeed={() => {
+            toast.info('Render pitch and speed - not yet implemented');
+            setClipContextMenu(null);
+          }}
+        />
+      )}
     </div>
   );
 }

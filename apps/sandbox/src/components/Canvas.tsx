@@ -23,6 +23,10 @@ export interface CanvasProps {
    * @default 0
    */
   leftPadding?: number;
+  /**
+   * Callback when clip menu button is clicked
+   */
+  onClipMenuClick?: (clipId: number, trackIndex: number, x: number, y: number) => void;
 }
 
 /**
@@ -36,6 +40,7 @@ export function Canvas({
   pixelsPerSecond = 100,
   backgroundColor = '#212433',
   leftPadding = 0,
+  onClipMenuClick,
 }: CanvasProps) {
   const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode, envelopeMode } = useTracksState();
   const dispatch = useTracksDispatch();
@@ -377,6 +382,9 @@ export function Canvas({
                     type: 'UPDATE_CLIP_ENVELOPE_POINTS',
                     payload: { trackIndex, clipId: clipId as number, envelopePoints: points },
                   });
+                }}
+                onClipMenuClick={(clipId, x, y) => {
+                  onClipMenuClick?.(clipId as number, trackIndex, x, y);
                 }}
               />
             </div>

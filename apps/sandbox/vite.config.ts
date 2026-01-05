@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [react()],
   base: process.env.BASE_PATH || '/',
   server: {
-    port: 3001,
+    port: 3000,
   },
 });
