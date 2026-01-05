@@ -1,6 +1,30 @@
 {
   "version": 4,
   "routes": {
+    "/": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/",
+      "dataRoute": "/index.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/_not-found": {
       "initialStatus": 404,
       "experimentalBypassFor": [
@@ -25,37 +49,13 @@
         "x-next-revalidated-tags",
         "x-next-revalidate-tag-token"
       ]
-    },
-    "/": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/",
-      "dataRoute": "/index.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
     }
   },
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "6f9207836306d0d7ce61e940d3810d01",
-    "previewModeSigningKey": "59a58463f3647a49aacc2ff0e6a12d3f3612bd618e6c28f328c0b192a6dc00cb",
-    "previewModeEncryptionKey": "46a5050bf7ec98956c2233f218fb071d7fe19aca1a26477825a0ad01614403fb"
+    "previewModeId": "153ba17a2c007d99b01f89be5b959937",
+    "previewModeSigningKey": "353299cf63b920ddc0ff8348ffaad7fd90c1987d32c2478200767a4de800d7ea",
+    "previewModeEncryptionKey": "7bd8c9b163de9f3e54f663e0dd953489a8bd3a5d327fdcc906df3d8440b5a82b"
   }
 }

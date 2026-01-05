@@ -378,6 +378,9 @@ export function Canvas({
                     payload: { trackIndex, clipId: clipId as number, envelopePoints: points },
                   });
                 }}
+                onClipHeaderClick={(clipId, clipStartTime) => {
+                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: clipStartTime });
+                }}
               />
             </div>
           );

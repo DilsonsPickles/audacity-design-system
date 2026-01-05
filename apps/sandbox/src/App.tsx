@@ -4,6 +4,7 @@ import { Canvas } from './components/Canvas';
 import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
+import { getAudioPlaybackManager } from './utils/audioPlayback';
 
 // Generate realistic waveform data
 function generateWaveform(durationSeconds: number, samplesPerSecond: number = 100): number[] {
@@ -151,8 +152,52 @@ function CanvasDemoContent() {
   const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
   const isScrollingSyncRef = React.useRef(false);
 
+  // Audio playback state
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  const audioManagerRef = React.useRef(getAudioPlaybackManager());
+
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
+
+  // Initialize audio playback manager
+  React.useEffect(() => {
+    const audioManager = audioManagerRef.current;
+
+    // Initialize Tone.js
+    audioManager.initialize();
+
+    // Set up position update callback to sync playhead with audio
+    audioManager.setPositionUpdateCallback((position) => {
+      dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: position });
+    });
+
+    // Cleanup on unmount
+    return () => {
+      audioManager.cleanup();
+    };
+  }, [dispatch]);
+
+  // Handle play/pause transport controls
+  const handlePlay = async () => {
+    const audioManager = audioManagerRef.current;
+    if (isPlaying) {
+      audioManager.pause();
+      setIsPlaying(false);
+    } else {
+      // Load all clips before playing, passing the start time
+      audioManager.loadClips(state.tracks, state.playheadPosition);
+
+      // Start playback from current playhead position
+      await audioManager.play(state.playheadPosition);
+      setIsPlaying(true);
+    }
+  };
+
+  const handleStop = () => {
+    const audioManager = audioManagerRef.current;
+    audioManager.stop();
+    setIsPlaying(false);
+  };
 
   // Track focused element for accessibility debugging
   React.useEffect(() => {
@@ -324,9 +369,62 @@ function CanvasDemoContent() {
     },
   ];
 
+  // Define menu items for Generate menu
+  const generateMenuItems: MenuItem[] = [
+    {
+      label: 'Tone...',
+      onClick: async () => {
+        // Check if a track is selected
+        if (state.selectedTrackIndices.length === 0) {
+          toast.error('Please select a track first');
+          return;
+        }
+
+        // Generate a 4-second tone on the selected track(s)
+        const audioManager = audioManagerRef.current;
+
+        for (const trackIndex of state.selectedTrackIndices) {
+          const track = state.tracks[trackIndex];
+
+          // Generate a tone using Tone.js and create a clip
+          const newClipId = Date.now() + trackIndex;
+          const duration = 4.0; // 4 seconds
+          const startTime = state.playheadPosition;
+
+          // Generate actual audio using Tone.js
+          const { buffer, waveformData } = await audioManager.generateTone(duration, 440, 'sine');
+
+          // Store the audio buffer for playback
+          audioManager.addClipBuffer(newClipId, buffer);
+
+          const newClip = {
+            id: newClipId,
+            name: 'Tone',
+            start: startTime,
+            duration: duration,
+            waveform: waveformData,
+            envelopePoints: [],
+          };
+
+          // Add clip to track
+          dispatch({
+            type: 'ADD_CLIP',
+            payload: { trackIndex, clip: newClip },
+          });
+        }
+
+        // Reload clips for playback
+        audioManager.loadClips(state.tracks);
+
+        toast.success('Generated 4-second tone');
+      }
+    },
+  ];
+
   const menuDefinitions = {
     File: fileMenuItems,
     Edit: editMenuItems,
+    Generate: generateMenuItems,
   };
 
   return (
@@ -388,8 +486,8 @@ function CanvasDemoContent() {
         <Toolbar>
           {/* Transport controls - shown in all workspaces */}
           <ToolbarButtonGroup gap={2}>
-            <TransportButton icon="play" />
-            <TransportButton icon="stop" />
+            <TransportButton icon="play" onClick={handlePlay} />
+            <TransportButton icon="stop" onClick={handleStop} />
             <TransportButton icon="record" />
             <TransportButton icon="skip-back" />
             <TransportButton icon="skip-forward" />

@@ -130,7 +130,8 @@ export type TracksAction =
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'SELECT_TRACK'; payload: number }
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
-  | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } };
+  | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
+  | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } };
 
 // Initial state
 const initialState: TracksState = {
@@ -396,6 +397,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         };
       }
 
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'ADD_CLIP': {
+      const { trackIndex, clip } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        clips: [...newTracks[trackIndex].clips, clip],
+      };
       return { ...state, tracks: newTracks };
     }
 
