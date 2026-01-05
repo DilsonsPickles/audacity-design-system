@@ -114,7 +114,7 @@ export type TracksAction =
   | { type: 'SET_TRACKS'; payload: Track[] }
   | { type: 'ADD_TRACK'; payload: Track }
   | { type: 'UPDATE_TRACK'; payload: { index: number; track: Partial<Track> } }
-  | { type: 'DELETE_TRACK'; payload: number }
+  | { type: 'DELETE_TRACK'; payload: number }  // Keep as number for backward compatibility
   | { type: 'SET_SELECTED_TRACKS'; payload: number[] }
   | { type: 'SET_FOCUSED_TRACK'; payload: number | null }
   | { type: 'SET_ENVELOPE_MODE'; payload: boolean }
@@ -130,7 +130,9 @@ export type TracksAction =
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'SELECT_TRACK'; payload: number }
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
-  | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } };
+  | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
+  | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } }
+  | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } };
 
 // Initial state
 const initialState: TracksState = {
@@ -165,11 +167,15 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       return { ...state, tracks: newTracks };
     }
 
-    case 'DELETE_TRACK':
-      return {
-        ...state,
-        tracks: state.tracks.filter((_, index) => index !== action.payload),
-      };
+    case 'DELETE_TRACK': {
+      const trackIndex = action.payload;
+      const newTracks = state.tracks.filter((_, index) => index !== trackIndex);
+      // Clear selection if deleted track was selected
+      const newSelectedTrackIndices = state.selectedTrackIndices
+        .filter(i => i !== trackIndex)
+        .map(i => i > trackIndex ? i - 1 : i);
+      return { ...state, tracks: newTracks, selectedTrackIndices: newSelectedTrackIndices };
+    }
 
     case 'SET_SELECTED_TRACKS':
       return { ...state, selectedTrackIndices: action.payload };
@@ -396,6 +402,26 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         };
       }
 
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'ADD_CLIP': {
+      const { trackIndex, clip } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        clips: [...newTracks[trackIndex].clips, clip],
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'DELETE_CLIP': {
+      const { trackIndex, clipId } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        clips: newTracks[trackIndex].clips.filter(clip => clip.id !== clipId),
+      };
       return { ...state, tracks: newTracks };
     }
 

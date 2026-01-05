@@ -47,6 +47,10 @@ export interface ClipDisplayProps {
   hiddenPointIndices?: number[];
   /** Index of point being hovered (for hover visual feedback) */
   hoveredPointIndex?: number | null;
+  /** Callback when clip header is clicked */
+  onHeaderClick?: () => void;
+  /** Callback when clip menu button is clicked */
+  onMenuClick?: (x: number, y: number) => void;
 }
 
 /**
@@ -76,6 +80,8 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
   clipDuration,
   hiddenPointIndices = [],
   hoveredPointIndex = null,
+  onHeaderClick,
+  onMenuClick,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
@@ -119,6 +125,15 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
             name={name}
             width={width}
             showMenu={true}
+            onClick={(e) => {
+              e.stopPropagation();
+              onHeaderClick?.();
+            }}
+            onMenuClick={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              onMenuClick?.(rect.right, rect.bottom);
+            }}
           />
         </div>
       )}

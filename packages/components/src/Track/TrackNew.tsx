@@ -102,6 +102,16 @@ export interface TrackProps {
    * Callback when envelope points change
    */
   onEnvelopePointsChange?: (clipId: string | number, points: Array<{ time: number; db: number }>) => void;
+
+  /**
+   * Callback when a clip header is clicked
+   */
+  onClipHeaderClick?: (clipId: string | number, clipStartTime: number) => void;
+
+  /**
+   * Callback when a clip menu button is clicked
+   */
+  onClipMenuClick?: (clipId: string | number, x: number, y: number) => void;
 }
 
 // Map track index to color
@@ -129,6 +139,8 @@ export const TrackNew: React.FC<TrackProps> = ({
   onClipClick,
   onTrackClick,
   onEnvelopePointsChange,
+  onClipHeaderClick,
+  onClipMenuClick,
 }) => {
   const trackColor = getTrackColor(trackIndex);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -218,6 +230,8 @@ export const TrackNew: React.FC<TrackProps> = ({
             clipDuration={clip.duration}
             hiddenPointIndices={clipHiddenPoints.get(clip.id) || []}
             hoveredPointIndex={clipHoveredPoints.get(clip.id) ?? null}
+            onHeaderClick={() => onClipHeaderClick?.(clip.id, clip.start)}
+            onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
           />
         </div>
       );

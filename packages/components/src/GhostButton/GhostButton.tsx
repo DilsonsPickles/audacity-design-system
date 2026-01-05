@@ -42,11 +42,16 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
   className = '',
   ariaLabel,
 }) => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    onClick?.(e);
+  };
+
   return (
     <button
       type="button"
       className={`ghost-button ${label ? 'ghost-button--with-label' : ''} ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       aria-label={ariaLabel}
     >

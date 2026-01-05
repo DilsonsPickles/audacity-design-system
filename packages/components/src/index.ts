@@ -66,6 +66,8 @@ export * from './Clip';
 export * from './ClipDisplay';
 export * from './ClipHeader';
 export * from './ClipBody';
+export * from './ClipContextMenu';
+export * from './TrackContextMenu';
 export * from './AutomationCurvePoint';
 export * from './EnvelopePoint';
 export * from './EnvelopeCurve';

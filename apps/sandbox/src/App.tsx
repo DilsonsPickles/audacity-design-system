@@ -490,8 +490,10 @@ function CanvasDemoContent() {
               dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
             }}
             onDeleteTrack={(trackIndex) => {
-              console.log('Delete track:', trackIndex);
-              // TODO: Implement delete track
+              dispatch({
+                type: 'DELETE_TRACK',
+                payload: trackIndex,
+              });
             }}
             onMoveTrackUp={(trackIndex) => {
               console.log('Move track up:', trackIndex);
