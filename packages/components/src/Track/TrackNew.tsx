@@ -112,6 +112,11 @@ export interface TrackProps {
    * Callback when a clip menu button is clicked
    */
   onClipMenuClick?: (clipId: string | number, x: number, y: number) => void;
+
+  /**
+   * Callback when a clip edge is being trimmed
+   */
+  onClipTrimEdge?: (clipId: string | number, edge: 'left' | 'right', clientX: number) => void;
 }
 
 // Map track index to color
@@ -141,6 +146,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   onEnvelopePointsChange,
   onClipHeaderClick,
   onClipMenuClick,
+  onClipTrimEdge,
 }) => {
   const trackColor = getTrackColor(trackIndex);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -168,21 +174,26 @@ export const TrackNew: React.FC<TrackProps> = ({
       const clipWidth = clip.duration * pixelsPerSecond;
 
       // Generate waveform if not provided
+      // IMPORTANT: For trimmed clips, calculate full duration from trimStart + duration
       let waveformData = clip.waveform;
       let waveformLeft = clip.waveformLeft;
       let waveformRight = clip.waveformRight;
 
       const isStereo = Boolean(clip.waveformLeft || clip.waveformRight);
 
+      // Calculate full duration: trimStart + current duration gives us the full audio length
+      const trimStart = (clip as any).trimStart || 0;
+      const fullDuration = trimStart + clip.duration;
+
       if (!waveformData && !isStereo) {
-        // Generate mono waveform
-        waveformData = generateSpeechWaveform(clip.duration, 1800);
+        // Generate mono waveform using FULL duration
+        waveformData = generateSpeechWaveform(fullDuration, 1800);
       }
 
       if (isStereo && (!waveformLeft || !waveformRight)) {
-        // Generate stereo waveforms
-        waveformLeft = generateSpeechWaveform(clip.duration, 1800);
-        waveformRight = generateSpeechWaveform(clip.duration, 1800);
+        // Generate stereo waveforms using FULL duration
+        waveformLeft = generateSpeechWaveform(fullDuration, 1800);
+        waveformRight = generateSpeechWaveform(fullDuration, 1800);
       }
 
       // Determine variant and channel mode
@@ -228,10 +239,18 @@ export const TrackNew: React.FC<TrackProps> = ({
             envelope={clip.envelopePoints}
             showEnvelope={envelopeMode}
             clipDuration={clip.duration}
+            clipTrimStart={(clip as any).trimStart || 0}
+            clipFullDuration={(clip as any).fullDuration}
+            pixelsPerSecond={pixelsPerSecond}
             hiddenPointIndices={clipHiddenPoints.get(clip.id) || []}
             hoveredPointIndex={clipHoveredPoints.get(clip.id) ?? null}
             onHeaderClick={() => onClipHeaderClick?.(clip.id, clip.start)}
             onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
+            onTrimEdge={
+              onClipTrimEdge
+                ? ({ edge, clientX }) => onClipTrimEdge(clip.id, edge, clientX)
+                : undefined
+            }
           />
         </div>
       );

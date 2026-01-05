@@ -43,6 +43,12 @@ export interface ClipDisplayProps {
   showEnvelope?: boolean;
   /** Clip duration in seconds (needed for envelope rendering) */
   clipDuration?: number;
+  /** Trim start offset in seconds (for trimmed clips) */
+  clipTrimStart?: number;
+  /** Full duration of original audio before trimming */
+  clipFullDuration?: number;
+  /** Pixels per second (timeline zoom level) */
+  pixelsPerSecond?: number;
   /** Points to hide during drag (eating behavior) */
   hiddenPointIndices?: number[];
   /** Index of point being hovered (for hover visual feedback) */
@@ -51,6 +57,8 @@ export interface ClipDisplayProps {
   onHeaderClick?: () => void;
   /** Callback when clip menu button is clicked */
   onMenuClick?: (x: number, y: number) => void;
+  /** Callback when dragging left or right edge to trim clip */
+  onTrimEdge?: (params: { edge: 'left' | 'right'; clientX: number }) => void;
 }
 
 /**
@@ -78,13 +86,18 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
   envelope,
   showEnvelope = false,
   clipDuration,
+  clipTrimStart = 0,
+  clipFullDuration,
+  pixelsPerSecond = 100,
   hiddenPointIndices = [],
   hoveredPointIndex = null,
   onHeaderClick,
   onMenuClick,
+  onTrimEdge,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
+  const [trimEdge, setTrimEdge] = useState<'left' | 'right' | null>(null);
 
   const isTruncated = height <= MIN_CLIP_HEIGHT;
   const showHeader = !isTruncated || isHovering;
@@ -102,6 +115,55 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
   // Header overlays on top when visible
   const bodyHeight = isTruncated ? height : height - HEADER_HEIGHT;
 
+  // Trim handle width
+  const TRIM_HANDLE_WIDTH = 6;
+
+  // Handle trim edge mouse down
+  const handleTrimMouseDown = (edge: 'left' | 'right') => (e: React.MouseEvent) => {
+    if (onTrimEdge) {
+      e.stopPropagation();
+      setTrimEdge(edge);
+    }
+  };
+
+  // Handle mouse move for trim cursor
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!onTrimEdge || trimEdge) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+
+    // Check if near left or right edge
+    if (x < TRIM_HANDLE_WIDTH) {
+      (e.currentTarget as HTMLElement).style.cursor = 'ew-resize';
+    } else if (x > width - TRIM_HANDLE_WIDTH) {
+      (e.currentTarget as HTMLElement).style.cursor = 'ew-resize';
+    } else {
+      (e.currentTarget as HTMLElement).style.cursor = '';
+    }
+  };
+
+  // Handle global mouse move and up for trim
+  React.useEffect(() => {
+    if (!trimEdge) return;
+
+    const handleMouseMoveGlobal = (e: MouseEvent) => {
+      onTrimEdge?.({ edge: trimEdge, clientX: e.clientX });
+    };
+
+    const handleMouseUp = () => {
+      setTrimEdge(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMoveGlobal);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMoveGlobal);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [trimEdge, onTrimEdge]);
+
   return (
     <div
       className={className}
@@ -111,6 +173,7 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
       data-selected={selected}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      onMouseMove={handleMouseMove}
     >
       {showHeader && (
         <div
@@ -152,9 +215,44 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
         envelope={envelope}
         showEnvelope={showEnvelope}
         clipDuration={clipDuration}
+        clipTrimStart={clipTrimStart}
+        clipFullDuration={clipFullDuration}
+        pixelsPerSecond={pixelsPerSecond}
         hiddenPointIndices={hiddenPointIndices}
         hoveredPointIndex={hoveredPointIndex}
       />
+
+      {/* Trim handles */}
+      {onTrimEdge && (
+        <>
+          {/* Left edge trim handle */}
+          <div
+            onMouseDown={handleTrimMouseDown('left')}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: `${TRIM_HANDLE_WIDTH}px`,
+              height: '100%',
+              cursor: 'ew-resize',
+              zIndex: 20,
+            }}
+          />
+          {/* Right edge trim handle */}
+          <div
+            onMouseDown={handleTrimMouseDown('right')}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              width: `${TRIM_HANDLE_WIDTH}px`,
+              height: '100%',
+              cursor: 'ew-resize',
+              zIndex: 20,
+            }}
+          />
+        </>
+      )}
     </div>
   );
 };

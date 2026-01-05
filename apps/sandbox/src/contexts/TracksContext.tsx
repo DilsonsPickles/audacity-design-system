@@ -14,6 +14,14 @@ interface Clip {
   waveform?: number[];
   waveformLeft?: number[];
   waveformRight?: number[];
+  // Full original waveform data (for trimming support)
+  fullWaveform?: number[];
+  fullWaveformLeft?: number[];
+  fullWaveformRight?: number[];
+  // Offset in seconds from the start of the full audio
+  trimStart?: number;
+  // Original full duration before any trimming (for non-destructive trim)
+  fullDuration?: number;
   envelopePoints: EnvelopePoint[];
   selected?: boolean;
 }
@@ -141,6 +149,7 @@ export type TracksAction =
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } }
   | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
+  | { type: 'TRIM_CLIP'; payload: { trackIndex: number; clipId: number; newTrimStart: number; newDuration: number; newStart?: number } }
   | { type: 'ADD_LABEL'; payload: { trackIndex: number; label: Label } }
   | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> } };
 
@@ -431,6 +440,42 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
         clips: newTracks[trackIndex].clips.filter(clip => clip.id !== clipId),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'TRIM_CLIP': {
+      const { trackIndex, clipId, newTrimStart, newDuration, newStart } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        clips: newTracks[trackIndex].clips.map(clip => {
+          if (clip.id !== clipId) return clip;
+
+          // Store full waveform on first trim if not already stored
+          // DON'T slice the waveform - keep it full so rendering doesn't stretch
+          const fullWaveform = clip.fullWaveform || clip.waveform;
+          const fullWaveformLeft = clip.fullWaveformLeft || clip.waveformLeft;
+          const fullWaveformRight = clip.fullWaveformRight || clip.waveformRight;
+
+          // Store original full duration on first trim (for non-destructive trim)
+          const fullDuration = clip.fullDuration || ((clip.trimStart || 0) + clip.duration);
+
+          return {
+            ...clip,
+            duration: newDuration,
+            trimStart: newTrimStart,
+            start: newStart !== undefined ? newStart : clip.start,
+            // Keep the FULL waveform, don't slice it
+            waveform: fullWaveform,
+            waveformLeft: fullWaveformLeft,
+            waveformRight: fullWaveformRight,
+            fullWaveform,
+            fullWaveformLeft,
+            fullWaveformRight,
+            fullDuration,
+          };
+        }),
       };
       return { ...state, tracks: newTracks };
     }

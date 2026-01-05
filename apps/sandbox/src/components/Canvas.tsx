@@ -49,6 +49,16 @@ export function Canvas({
   // Clip dragging state
   const clipDragStateRef = useRef<ClipDragState | null>(null);
 
+  // Clip trim state
+  const clipTrimStateRef = useRef<{
+    trackIndex: number;
+    clipId: number;
+    edge: 'left' | 'right';
+    initialTrimStart: number;
+    initialDuration: number;
+    initialClipStart: number;
+  } | null>(null);
+
   // Label dragging state
   const labelDragStateRef = useRef<{ trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number } | null>(null);
 
@@ -309,6 +319,71 @@ export function Canvas({
           dispatch({ type: 'SET_SELECTED_TRACKS', payload: [newTrackIndex] });
         }
       }
+
+      // Handle clip trimming
+      if (clipTrimStateRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const trimState = clipTrimStateRef.current;
+
+        // Find the clip to get its current start position
+        const clip = tracks[trimState.trackIndex]?.clips.find(c => c.id === trimState.clipId);
+        if (!clip) return;
+
+        // Calculate mouse position in timeline
+        const mouseTime = Math.max(0, (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+        // Get the full clip duration (total audio available)
+        // Use stored fullDuration if available, otherwise calculate from current state
+        const currentTrimStart = (clip as any).trimStart || 0;
+        const fullDuration = (clip as any).fullDuration || (currentTrimStart + clip.duration);
+
+        if (trimState.edge === 'left') {
+          // Trimming left edge (non-destructive)
+          // Calculate new trim start based on absolute mouse position
+          const newTrimStart = Math.max(0, mouseTime - trimState.initialClipStart + trimState.initialTrimStart);
+
+          // Calculate the right edge position (end of visible audio)
+          const rightEdgeInFullAudio = trimState.initialTrimStart + trimState.initialDuration;
+
+          // Don't allow trimming past the right edge (minimum 0.01s visible)
+          const maxTrimStart = rightEdgeInFullAudio - 0.01;
+          const clampedTrimStart = Math.max(0, Math.min(newTrimStart, maxTrimStart));
+
+          // Calculate new duration: from new trim start to the right edge
+          const newDuration = rightEdgeInFullAudio - clampedTrimStart;
+          const newStart = trimState.initialClipStart + (clampedTrimStart - trimState.initialTrimStart);
+
+          dispatch({
+            type: 'TRIM_CLIP',
+            payload: {
+              trackIndex: trimState.trackIndex,
+              clipId: trimState.clipId,
+              newTrimStart: clampedTrimStart,
+              newDuration,
+              newStart,
+            },
+          });
+        } else {
+          // Trimming right edge (non-destructive)
+          // Calculate new duration based on absolute mouse position
+          const newDuration = Math.max(0.01, mouseTime - clip.start);
+
+          // Don't allow duration to exceed available audio from trim start
+          const maxDuration = fullDuration - currentTrimStart;
+          const clampedDuration = Math.min(newDuration, maxDuration);
+
+          dispatch({
+            type: 'TRIM_CLIP',
+            payload: {
+              trackIndex: trimState.trackIndex,
+              clipId: trimState.clipId,
+              newTrimStart: currentTrimStart,
+              newDuration: clampedDuration,
+            },
+          });
+        }
+      }
     };
 
     const handleMouseUp = () => {
@@ -319,6 +394,11 @@ export function Canvas({
           containerRef.current.style.cursor = 'default';
         }
         clipDragStateRef.current = null;
+      }
+
+      // Handle clip trim end
+      if (clipTrimStateRef.current) {
+        clipTrimStateRef.current = null;
       }
 
       // Handle label drag end
@@ -393,6 +473,25 @@ export function Canvas({
                 }}
                 onClipMenuClick={(clipId, x, y) => {
                   onClipMenuClick?.(clipId as number, trackIndex, x, y);
+                }}
+                onClipTrimEdge={(clipId, edge) => {
+                  // Find the clip being trimmed
+                  const clip = track.clips.find(c => c.id === clipId);
+                  if (!clip) return;
+
+                  // Initialize trim state on first call
+                  if (!clipTrimStateRef.current) {
+                    clipTrimStateRef.current = {
+                      trackIndex,
+                      clipId: clipId as number,
+                      edge,
+                      initialTrimStart: (clip as any).trimStart || 0,
+                      initialDuration: clip.duration,
+                      initialClipStart: clip.start,
+                    };
+                  }
+
+                  // The actual trimming happens in the mousemove handler
                 }}
               />
 

@@ -54,6 +54,12 @@ export interface ClipBodyProps {
   clipStartTime?: number;
   /** Clip duration in seconds (needed for time selection and envelope positioning) */
   clipDuration?: number;
+  /** Trim start offset in seconds (for rendering only visible portion of waveform) */
+  clipTrimStart?: number;
+  /** Full duration of original audio before trimming (for waveform sample rate detection) */
+  clipFullDuration?: number;
+  /** Pixels per second (timeline zoom level) - for maintaining constant waveform scale */
+  pixelsPerSecond?: number;
   /** Time selection overlay color (default: 'rgba(255, 255, 255, 0.3)') */
   timeSelectionColor?: string;
   /** Points to hide during drag (eating behavior) */
@@ -87,6 +93,9 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
   timeSelection = null,
   clipStartTime = 0,
   clipDuration = 1.0,
+  clipTrimStart = 0,
+  clipFullDuration,
+  pixelsPerSecond = 100,
   timeSelectionColor = 'rgba(255, 255, 255, 0.3)',
   hiddenPointIndices = [],
   hoveredPointIndex = null,
@@ -173,10 +182,20 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
         const maxAmplitude = (stereoHeight / 2) * 0.9;
 
         // Draw L channel waveform
-        const samplesPerPixelL = waveformLeft.length / canvasWidth;
+        // Calculate sample offset based on trim start
+        // Detect the actual sample rate from the waveform array length
+        const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
+        const detectedSampleRate = waveformLeft.length / fullDuration;
+
+        // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
+        // This prevents waveform stretching when trimming
+        const secondsPerPixel = 1 / pixelsPerSecond;
+        const samplesPerPixelL = secondsPerPixel * detectedSampleRate;
+        const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
+
         for (let px = 0; px < canvasWidth; px++) {
-          const sampleStart = Math.floor(px * samplesPerPixelL);
-          const sampleEnd = Math.floor((px + 1) * samplesPerPixelL);
+          const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
+          const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixelL);
 
           let min = waveformLeft[sampleStart] || 0;
           let max = waveformLeft[sampleStart] || 0;
@@ -202,10 +221,10 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
 
         // Draw R channel waveform
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        const samplesPerPixelR = waveformRight.length / canvasWidth;
+        // Use same samples per pixel as L channel for consistency
         for (let px = 0; px < canvasWidth; px++) {
-          const sampleStart = Math.floor(px * samplesPerPixelR);
-          const sampleEnd = Math.floor((px + 1) * samplesPerPixelR);
+          const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
+          const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixelL);
 
           let min = waveformRight[sampleStart] || 0;
           let max = waveformRight[sampleStart] || 0;
@@ -225,10 +244,20 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
         const waveformCenterY = splitY + halfHeight / 2;
         const maxAmplitude = (halfHeight / 2) * 0.9;
 
-        const samplesPerPixel = waveformData!.length / canvasWidth;
+        // Calculate sample offset based on trim start
+        // Detect the actual sample rate from the waveform array length
+        const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
+        const detectedSampleRate = waveformData!.length / fullDuration;
+
+        // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
+        // This prevents waveform stretching when trimming
+        const secondsPerPixel = 1 / pixelsPerSecond;
+        const samplesPerPixel = secondsPerPixel * detectedSampleRate;
+        const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
+
         for (let px = 0; px < canvasWidth; px++) {
-          const sampleStart = Math.floor(px * samplesPerPixel);
-          const sampleEnd = Math.floor((px + 1) * samplesPerPixel);
+          const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+          const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
           let min = waveformData![sampleStart] || 0;
           let max = waveformData![sampleStart] || 0;
@@ -291,11 +320,21 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
       const lMaxAmplitude = lChannelHeight / 2 - 2;
       const rMaxAmplitude = rChannelHeight / 2 - 2;
 
+      // Calculate sample offset based on trim start
+      // Detect the actual sample rate from the waveform array length
+      const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
+      const detectedSampleRate = waveformLeft.length / fullDuration;
+
+      // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
+      // This prevents waveform stretching when trimming
+      const secondsPerPixel = 1 / pixelsPerSecond;
+      const samplesPerPixel = secondsPerPixel * detectedSampleRate;
+      const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
+
       // Draw L channel
-      const samplesPerPixelL = waveformLeft.length / canvasWidth;
       for (let px = 0; px < canvasWidth; px++) {
-        const sampleStart = Math.floor(px * samplesPerPixelL);
-        const sampleEnd = Math.floor((px + 1) * samplesPerPixelL);
+        const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+        const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
         let min = waveformLeft[sampleStart] || 0;
         let max = waveformLeft[sampleStart] || 0;
@@ -322,10 +361,10 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
       // Draw R channel
       ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-      const samplesPerPixelR = waveformRight.length / canvasWidth;
+      // Use same samples per pixel as L channel for consistency
       for (let px = 0; px < canvasWidth; px++) {
-        const sampleStart = Math.floor(px * samplesPerPixelR);
-        const sampleEnd = Math.floor((px + 1) * samplesPerPixelR);
+        const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+        const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
         let min = waveformRight[sampleStart] || 0;
         let max = waveformRight[sampleStart] || 0;
@@ -345,10 +384,20 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
       const centerY = canvasHeight / 2;
       const maxAmplitude = canvasHeight / 2 - 2;
 
-      const samplesPerPixel = waveformData!.length / canvasWidth;
+      // Calculate sample offset based on trim start
+      // Detect the actual sample rate from the waveform array length
+      const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
+      const detectedSampleRate = waveformData!.length / fullDuration;
+
+      // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
+      // This prevents waveform stretching when trimming
+      const secondsPerPixel = 1 / pixelsPerSecond;
+      const samplesPerPixel = secondsPerPixel * detectedSampleRate;
+      const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
+
       for (let px = 0; px < canvasWidth; px++) {
-        const sampleStart = Math.floor(px * samplesPerPixel);
-        const sampleEnd = Math.floor((px + 1) * samplesPerPixel);
+        const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+        const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
         let min = waveformData![sampleStart] || 0;
         let max = waveformData![sampleStart] || 0;
@@ -430,7 +479,7 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
         ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
       }
     }
-  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, timeSelection, clipStartTime, timeSelectionColor, hiddenPointIndices, hoveredPointIndex]);
+  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, timeSelection, clipStartTime, timeSelectionColor, hiddenPointIndices, hoveredPointIndex]);
 
   const className = [
     'clip-body',
