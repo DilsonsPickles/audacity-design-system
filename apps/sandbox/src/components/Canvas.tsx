@@ -334,14 +334,14 @@ export function Canvas({
   };
 
   return (
-    <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible' }}>
+    <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible', cursor: 'text' }}>
       <div
         ref={containerRef}
         onMouseDown={handleClipMouseDown}
         onMouseMove={containerProps.onMouseMove}
         onClick={composedOnClick}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
-        style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none' } as React.CSSProperties}
+        style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none', cursor: 'text' } as React.CSSProperties}
       >
         {tracks.map((track, trackIndex) => {
           const trackHeight = track.height || 114;

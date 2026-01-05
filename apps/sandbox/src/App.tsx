@@ -209,6 +209,37 @@ function CanvasDemoContent() {
     };
   }, [showFocusDebug]);
 
+  // Keyboard handler for deleting selected clips
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle Delete/Backspace if not in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+
+        // Find all selected clips and delete them
+        state.tracks.forEach((track, trackIndex) => {
+          track.clips.forEach((clip) => {
+            if (clip.selected) {
+              dispatch({
+                type: 'DELETE_CLIP',
+                payload: { trackIndex, clipId: clip.id },
+              });
+            }
+          });
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [state.tracks, dispatch]);
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const scrollTop = e.currentTarget.scrollTop;
@@ -569,9 +600,9 @@ function CanvasDemoContent() {
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433' }}
+              style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433', cursor: 'text' }}
             >
-              <div style={{ minWidth: '5000px', height: '100%', position: 'relative' }}>
+              <div style={{ minWidth: '5000px', height: '100%', position: 'relative', cursor: 'text' }}>
                 <Canvas
                   pixelsPerSecond={100}
                   width={5000}
