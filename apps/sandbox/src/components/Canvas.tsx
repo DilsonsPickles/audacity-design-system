@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import './Canvas.css';
 
@@ -48,6 +48,9 @@ export function Canvas({
 
   // Clip dragging state
   const clipDragStateRef = useRef<ClipDragState | null>(null);
+
+  // Label dragging state
+  const labelDragStateRef = useRef<{ trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number } | null>(null);
 
   // Track if channel resize is active
   const isChannelResizing = false;
@@ -317,6 +320,11 @@ export function Canvas({
         }
         clipDragStateRef.current = null;
       }
+
+      // Handle label drag end
+      if (labelDragStateRef.current) {
+        labelDragStateRef.current = null;
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -387,6 +395,172 @@ export function Canvas({
                   onClipMenuClick?.(clipId as number, trackIndex, x, y);
                 }}
               />
+
+              {/* Render labels for label tracks */}
+              {track.labels && (() => {
+                const EAR_HEIGHT = 14;
+                const LABEL_BOX_GAP = 2; // Gap between label boxes
+                const LABEL_ROW_HEIGHT = EAR_HEIGHT + LABEL_BOX_GAP; // 14px ears + 2px gap = 16px total
+                const LABEL_ROW_GAP = 0; // No additional gap needed
+
+                // Pre-calculate row assignments for all labels
+                const labelRows: number[] = [];
+
+                track.labels.forEach((label, labelIndex) => {
+                  const x = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+                  // For overlap detection, use smaller width for point labels (just the label box)
+                  const width = label.endTime !== undefined
+                    ? (label.endTime - label.time) * pixelsPerSecond
+                    : 60; // Point labels: just account for small label box, not full 225px render width
+
+                  // Find the first row where this label fits without overlapping
+                  let row = 0;
+                  let foundRow = false;
+
+                  while (!foundRow) {
+                    let canFitInRow = true;
+
+                    // Check if any previous label in this row overlaps
+                    for (let i = 0; i < labelIndex; i++) {
+                      if (labelRows[i] === row) {
+                        const prevLabel = track.labels![i];
+                        const prevX = CLIP_CONTENT_OFFSET + prevLabel.time * pixelsPerSecond;
+                        const prevWidth = prevLabel.endTime !== undefined
+                          ? (prevLabel.endTime - prevLabel.time) * pixelsPerSecond
+                          : 60; // Point labels: use same small width for overlap detection
+
+                        const overlap = !(x >= prevX + prevWidth || x + width <= prevX);
+                        if (overlap) {
+                          canFitInRow = false;
+                          break;
+                        }
+                      }
+                    }
+
+                    if (canFitInRow) {
+                      foundRow = true;
+                    } else {
+                      row++;
+                    }
+                  }
+
+                  labelRows.push(row);
+                });
+
+                return track.labels.map((label, labelIndex) => {
+                  const x = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+                  const type = label.endTime !== undefined ? 'region' : 'point';
+                  const width = label.endTime !== undefined
+                    ? (label.endTime - label.time) * pixelsPerSecond
+                    : 225;
+
+                  const yOffset = labelRows[labelIndex] * (LABEL_ROW_HEIGHT + LABEL_ROW_GAP);
+                  // Stalk should only extend from this label's position to the bottom of the track
+                  const stalkHeight = trackHeight - yOffset;
+
+                return (
+                  <div
+                    key={label.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${x}px`,
+                      top: `${yOffset}px`, // Offset for overlapping labels
+                      pointerEvents: 'auto',
+                    }}
+                  >
+                    <LabelMarker
+                      text={label.text}
+                      type={type}
+                      state="idle"
+                      width={width}
+                      stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
+                      onLabelMove={(deltaX) => {
+                        // Initialize drag state on first call
+                        if (!labelDragStateRef.current) {
+                          labelDragStateRef.current = {
+                            trackIndex,
+                            labelId: label.id,
+                            initialTime: label.time,
+                            initialEndTime: label.endTime,
+                          };
+                        }
+
+                        // Calculate new time based on deltaX from initial position
+                        const deltaTime = deltaX / pixelsPerSecond;
+                        const newTime = Math.max(0, labelDragStateRef.current.initialTime + deltaTime);
+
+                        if (labelDragStateRef.current.initialEndTime !== undefined) {
+                          // Region label: maintain duration while moving
+                          const duration = labelDragStateRef.current.initialEndTime - labelDragStateRef.current.initialTime;
+                          dispatch({
+                            type: 'UPDATE_LABEL',
+                            payload: {
+                              trackIndex,
+                              labelId: label.id,
+                              label: { time: newTime, endTime: newTime + duration },
+                            },
+                          });
+                        } else {
+                          // Point label: just update time
+                          dispatch({
+                            type: 'UPDATE_LABEL',
+                            payload: {
+                              trackIndex,
+                              labelId: label.id,
+                              label: { time: newTime },
+                            },
+                          });
+                        }
+                      }}
+                      onRegionResize={(params) => {
+                        // Convert clientX to time position
+                        const containerRect = containerRef.current?.getBoundingClientRect();
+                        if (!containerRect) return;
+
+                        const localX = params.clientX - containerRect.left;
+                        const time = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+                        if (params.side === 'right') {
+                          // Right side resize: update endTime to cursor position
+                          dispatch({
+                            type: 'UPDATE_LABEL',
+                            payload: {
+                              trackIndex,
+                              labelId: label.id,
+                              label: { endTime: Math.max(label.time + 0.1, time) }, // Min 0.1s duration
+                            },
+                          });
+                        } else {
+                          // Left side resize
+                          if (label.endTime === undefined) {
+                            // Point label: converting to region by dragging left
+                            // Keep original time, set endTime to cursor (must be >= original time)
+                            dispatch({
+                              type: 'UPDATE_LABEL',
+                              payload: {
+                                trackIndex,
+                                labelId: label.id,
+                                label: { endTime: label.time, time: Math.min(time, label.time - 0.1) }, // Drag left from original position
+                              },
+                            });
+                          } else {
+                            // Region label: update time to cursor position, keep endTime
+                            dispatch({
+                              type: 'UPDATE_LABEL',
+                              payload: {
+                                trackIndex,
+                                labelId: label.id,
+                                label: { time: Math.min(time, label.endTime - 0.1) }, // Min 0.1s duration
+                              },
+                            });
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              });
+              })()}
             </div>
           );
         })}

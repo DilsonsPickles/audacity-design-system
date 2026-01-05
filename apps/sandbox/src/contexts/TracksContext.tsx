@@ -18,6 +18,13 @@ interface Clip {
   selected?: boolean;
 }
 
+export interface Label {
+  id: number;
+  text: string;
+  time: number; // For point labels
+  endTime?: number; // For region labels (if present, it's a region)
+}
+
 interface Track {
   id: number;
   name: string;
@@ -25,6 +32,7 @@ interface Track {
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
   clips: Clip[];
+  labels?: Label[]; // For label tracks
 }
 
 interface TimeSelection {
@@ -132,7 +140,9 @@ export type TracksAction =
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } }
-  | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } };
+  | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
+  | { type: 'ADD_LABEL'; payload: { trackIndex: number; label: Label } }
+  | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> } };
 
 // Initial state
 const initialState: TracksState = {
@@ -421,6 +431,30 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
         clips: newTracks[trackIndex].clips.filter(clip => clip.id !== clipId),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'ADD_LABEL': {
+      const { trackIndex, label } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = newTracks[trackIndex];
+      newTracks[trackIndex] = {
+        ...track,
+        labels: [...(track.labels || []), label],
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_LABEL': {
+      const { trackIndex, labelId, label } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = newTracks[trackIndex];
+      newTracks[trackIndex] = {
+        ...track,
+        labels: (track.labels || []).map(l =>
+          l.id === labelId ? { ...l, ...label } : l
+        ),
       };
       return { ...state, tracks: newTracks };
     }

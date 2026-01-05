@@ -75,6 +75,7 @@ export * from './EnvelopeCurve';
 export * from './EnvelopeInteractionLayer';
 export * from './Track';
 export { TrackNew } from './Track/TrackNew';
+export * from './LabelMarker';
 
 /**
  * Layout & Behavior Utilities

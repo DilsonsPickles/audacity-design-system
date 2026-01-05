@@ -110,6 +110,31 @@ const sampleTracks = [
       },
     ],
   },
+  {
+    id: 5,
+    name: 'Label Track',
+    height: 76, // Natural height for label track panel (header + button + padding)
+    clips: [],
+    labels: [
+      {
+        id: 1,
+        text: 'Intro',
+        time: 0.5,
+      },
+      {
+        id: 2,
+        text: 'Verse 1',
+        time: 2.0,
+        endTime: 4.5,
+      },
+      {
+        id: 3,
+        text: 'Chorus',
+        time: 5.5,
+        endTime: 7.0,
+      },
+    ],
+  },
 ];
 
 type Workspace = 'classic' | 'spectral-editing';
@@ -585,7 +610,25 @@ function CanvasDemoContent() {
                   isSolo={false}
                   onMuteToggle={() => {}}
                   onSoloToggle={() => {}}
-                  onAddLabelClick={() => toast.info('Add label clicked')}
+                  onAddLabelClick={() => {
+                    // Generate a unique label ID across all tracks
+                    const allLabels = state.tracks.flatMap(t => t.labels || []);
+                    const nextLabelId = allLabels.length > 0
+                      ? Math.max(...allLabels.map(l => l.id)) + 1
+                      : 1;
+
+                    const newLabel = {
+                      id: nextLabelId,
+                      text: '',
+                      time: state.playheadPosition,
+                    };
+
+                    dispatch({
+                      type: 'ADD_LABEL',
+                      payload: { trackIndex: index, label: newLabel }
+                    });
+                    toast.success('Label added at playhead');
+                  }}
                   state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
                   height="default"
                   onClick={() => dispatch({ type: 'SELECT_TRACK', payload: index })}
