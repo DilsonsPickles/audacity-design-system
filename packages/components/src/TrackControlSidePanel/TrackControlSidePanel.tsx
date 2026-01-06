@@ -7,6 +7,7 @@ import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { AddTrackFlyout, TrackType } from '../AddTrackFlyout';
 import type { TrackControlPanelProps } from '../TrackControlPanel';
+import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import './TrackControlSidePanel.css';
 
 export interface TrackControlSidePanelProps {
@@ -138,6 +139,10 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   const [addTrackFlyoutPosition, setAddTrackFlyoutPosition] = useState({ x: 0, y: 0 });
   const addButtonRef = React.useRef<HTMLDivElement>(null);
 
+  const { activeProfile } = useAccessibilityProfile();
+  const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
+  const addButtonTabIndex = isFlatNavigation ? 0 : 99;
+
   const handleMenuClick = (trackIndex: number, event?: React.MouseEvent) => {
     // If event is provided, use the button's position
     if (event) {
@@ -201,6 +206,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             }}
             showIcon={true}
             icon={<Icon name="plus" size={16} />}
+            tabIndex={addButtonTabIndex}
           >
             Add new
           </Button>
@@ -218,7 +224,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               initialHeight={height}
               minHeight={44}
               maxHeight={400}
-              className="track-control-side-panel__track"
+              className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
               isFirstPanel={index === 0}
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
             >

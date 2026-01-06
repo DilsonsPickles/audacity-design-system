@@ -98,6 +98,12 @@ export interface ClipDragState {
   offsetX: number;        // Offset from clip left edge to mouse
   initialX: number;       // Initial mouse X position
   initialTrackIndex: number;  // Track where drag started
+  initialStartTime: number;   // Initial start time of dragged clip
+  selectedClipsInitialPositions?: Array<{  // Initial positions of all selected clips (for multi-drag)
+    clipId: number;
+    trackIndex: number;
+    startTime: number;
+  }>;
 }
 
 export interface StereoChannelResizeDragState {
@@ -144,6 +150,7 @@ export type TracksAction =
   | { type: 'UPDATE_CHANNEL_SPLIT_RATIO'; payload: { index: number; ratio: number } }
   | { type: 'UPDATE_TRACK_VIEW'; payload: { index: number; viewMode: 'waveform' | 'spectrogram' | 'split' } }
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
+  | { type: 'TOGGLE_CLIP_SELECTION'; payload: { trackIndex: number; clipId: number } }
   | { type: 'SELECT_TRACK'; payload: number }
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
@@ -343,6 +350,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'SELECT_CLIP': {
       const { trackIndex, clipId } = action.payload;
+      console.log('[REDUCER] SELECT_CLIP:', { trackIndex, clipId });
+
       const newTracks = state.tracks.map((track, tIndex) => ({
         ...track,
         clips: track.clips.map(clip => ({
@@ -350,6 +359,9 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           selected: tIndex === trackIndex && clip.id === clipId
         }))
       }));
+
+      console.log('[REDUCER] After SELECT_CLIP, selected clips:',
+        newTracks.flatMap(t => t.clips.filter(c => c.selected).map(c => ({ id: c.id, selected: c.selected }))));
 
       // Find the selected clip to create a time selection
       const selectedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
@@ -360,11 +372,55 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           }
         : state.timeSelection;
 
+      console.log('[REDUCER] SELECT_CLIP time selection:', newTimeSelection);
+
       return {
         ...state,
         tracks: newTracks,
         selectedTrackIndices: [trackIndex],
         focusedTrackIndex: trackIndex,
+        timeSelection: newTimeSelection,
+      };
+    }
+
+    case 'TOGGLE_CLIP_SELECTION': {
+      const { trackIndex, clipId } = action.payload;
+      console.log('[REDUCER] TOGGLE_CLIP_SELECTION:', { trackIndex, clipId });
+
+      const newTracks = state.tracks.map((track, tIndex) => ({
+        ...track,
+        clips: track.clips.map(clip => {
+          if (tIndex === trackIndex && clip.id === clipId) {
+            // Toggle the selected state of this clip
+            console.log('[REDUCER] Toggling clip:', { clipId, wasSelected: clip.selected, willBe: !clip.selected });
+            return { ...clip, selected: !clip.selected };
+          }
+          return clip;
+        })
+      }));
+
+      // Calculate time selection - only for single clip selection
+      const allSelectedClips = newTracks.flatMap(track =>
+        track.clips.filter(clip => clip.selected)
+      );
+
+      console.log('[REDUCER] All selected clips after toggle:', allSelectedClips.map(c => ({ id: c.id, start: c.start, duration: c.duration })));
+
+      let newTimeSelection = state.timeSelection;
+      if (allSelectedClips.length === 1) {
+        // Only show time selection for single clip
+        const clip = allSelectedClips[0];
+        newTimeSelection = { startTime: clip.start, endTime: clip.start + clip.duration };
+        console.log('[REDUCER] Single clip selected, time selection:', newTimeSelection);
+      } else {
+        // Multiple clips or no clips - clear time selection
+        newTimeSelection = null;
+        console.log('[REDUCER] Multiple or no clips selected, clearing time selection');
+      }
+
+      return {
+        ...state,
+        tracks: newTracks,
         timeSelection: newTimeSelection,
       };
     }

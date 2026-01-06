@@ -30,6 +30,10 @@ export interface SliderProps {
    * Aria label
    */
   ariaLabel?: string;
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -40,6 +44,7 @@ export const Slider: React.FC<SliderProps> = ({
   className = '',
   disabled = false,
   ariaLabel = 'Slider',
+  tabIndex,
 }) => {
   // Clamp value to valid range
   const clampedValue = Math.max(min, Math.min(max, value));
@@ -66,6 +71,7 @@ export const Slider: React.FC<SliderProps> = ({
         disabled={disabled}
         className="slider__input"
         aria-label={ariaLabel}
+        tabIndex={tabIndex}
       />
       <div className="slider__track">
         <div

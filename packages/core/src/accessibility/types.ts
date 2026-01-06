@@ -47,6 +47,61 @@ export interface TabGroupConfig {
 }
 
 /**
+ * Keyboard shortcuts configuration
+ */
+export interface KeyboardShortcutsConfig {
+  /**
+   * Clip keyboard shortcuts
+   */
+  clips?: {
+    /**
+     * Enable Shift+Arrow for extending clip edges
+     */
+    shiftArrowExtend?: boolean;
+
+    /**
+     * Enable Cmd+Shift+Arrow for reducing clip edges
+     */
+    cmdShiftArrowReduce?: boolean;
+
+    /**
+     * Enable Cmd+Arrow for moving clips horizontally
+     */
+    cmdArrowMove?: boolean;
+
+    /**
+     * Enable Cmd+Up/Down for moving clips between tracks
+     */
+    cmdUpDownTrackMove?: boolean;
+  };
+
+  /**
+   * Label keyboard shortcuts
+   */
+  labels?: {
+    /**
+     * Enable Shift+Arrow for extending label edges
+     */
+    shiftArrowExtend?: boolean;
+
+    /**
+     * Enable Cmd+Shift+Arrow for reducing label edges
+     */
+    cmdShiftArrowReduce?: boolean;
+
+    /**
+     * Enable Cmd+Arrow for moving labels horizontally
+     */
+    cmdArrowMove?: boolean;
+
+    /**
+     * Enable Delete/Backspace for deleting labels
+     */
+    deleteKey?: boolean;
+  };
+}
+
+/**
  * Complete accessibility profile configuration
  */
 export interface AccessibilityProfileConfig {
@@ -71,6 +126,11 @@ export interface AccessibilityProfileConfig {
    * Order in which tab groups are visited (null for DOM order)
    */
   tabGroupOrder: string[] | null;
+
+  /**
+   * Keyboard shortcuts configuration
+   */
+  keyboardShortcuts?: KeyboardShortcutsConfig;
 }
 
 /**

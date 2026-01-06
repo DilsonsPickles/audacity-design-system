@@ -27,6 +27,10 @@ export interface TrackControlPanelProps {
   className?: string;
   state?: 'idle' | 'hover' | 'active';
   height?: 'default' | 'truncated' | 'collapsed';
+  tabIndex?: number;
+  onFocusChange?: (hasFocus: boolean) => void;
+  onNavigateVertical?: (direction: 'up' | 'down') => void;
+  onTabOut?: () => void;
 }
 
 export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
@@ -49,6 +53,10 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   className = '',
   state = 'idle',
   height = 'default',
+  tabIndex,
+  onFocusChange,
+  onNavigateVertical,
+  onTabOut,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -72,18 +80,121 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   const isLabelTrack = trackType === 'label';
 
+  const handleFocus = (e: React.FocusEvent) => {
+    // Focus entered somewhere within the panel (could be panel itself or a child)
+    onFocusChange?.(true);
+  };
+
+  const handleBlur = (e: React.FocusEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    const panelElement = e.currentTarget;
+
+    // Only notify blur if focus is moving completely outside the panel
+    if (!relatedTarget || !panelElement.contains(relatedTarget)) {
+      onFocusChange?.(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const panelElement = e.currentTarget as HTMLElement;
+    const currentElement = document.activeElement;
+    const isPanelFocused = currentElement === panelElement;
+
+    // Handle Escape key to return focus to panel itself
+    if (e.key === 'Escape' && !isPanelFocused) {
+      e.preventDefault();
+      panelElement.focus();
+      return;
+    }
+
+    // Handle Tab key to navigate out to clips
+    if (e.key === 'Tab' && !e.shiftKey && !isPanelFocused) {
+      // If Tab is pressed on any nested element (not the panel itself), navigate out to clips
+      e.preventDefault();
+      onTabOut?.();
+      return;
+    }
+
+    // Only handle arrow keys for navigation
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') {
+      return;
+    }
+
+    // Handle up/down navigation when panel itself is focused
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && isPanelFocused) {
+      e.preventDefault();
+      onNavigateVertical?.(e.key === 'ArrowUp' ? 'up' : 'down');
+      return;
+    }
+
+    // Only handle left/right for internal navigation
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+      return;
+    }
+
+    // Find all focusable elements within the panel
+    const focusableElements = panelElement.querySelectorAll(
+      'button, input, [tabindex]:not([tabindex="-1"])'
+    );
+
+    if (focusableElements.length === 0) return;
+
+    const currentIndex = Array.from(focusableElements).indexOf(currentElement as HTMLElement);
+
+    // If the panel itself is focused (currentIndex === -1)
+    if (currentIndex === -1) {
+      e.preventDefault();
+      if (e.key === 'ArrowRight') {
+        // Go to first element
+        (focusableElements[0] as HTMLElement).focus();
+      } else {
+        // Go to last element (cycle backwards)
+        (focusableElements[focusableElements.length - 1] as HTMLElement).focus();
+      }
+      return;
+    }
+
+    e.preventDefault();
+
+    if (e.key === 'ArrowRight') {
+      // Move to next element
+      const nextIndex = currentIndex + 1;
+      if (nextIndex >= focusableElements.length) {
+        // After last element, focus back to panel itself
+        panelElement.focus();
+      } else {
+        (focusableElements[nextIndex] as HTMLElement).focus();
+      }
+    } else {
+      // Move to previous element
+      const nextIndex = currentIndex - 1;
+      if (nextIndex < 0) {
+        // Before first element, focus back to panel itself
+        panelElement.focus();
+      } else {
+        (focusableElements[nextIndex] as HTMLElement).focus();
+      }
+    }
+  };
+
   return (
     <div
       className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
+      tabIndex={tabIndex}
+      role={tabIndex !== undefined ? "group" : undefined}
+      aria-label={tabIndex !== undefined ? `${trackName} track controls` : undefined}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
     >
       <div className="track-control-panel__main">
         {/* Header */}
         <div className="track-control-panel__header">
           <div className="track-control-panel__track-name">
-            <button className="track-control-panel__icon-button" aria-label="Track icon">
+            <button className="track-control-panel__icon-button" aria-label="Track icon" tabIndex={-1}>
               <Icon name={getTrackIcon()} size={16} />
             </button>
             <span className="track-control-panel__track-name-text">{trackName}</span>
@@ -92,6 +203,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
             onClick={onMenuClick}
             active={isMenuOpen}
             ariaLabel="Track menu"
+            tabIndex={-1}
           />
         </div>
 
@@ -102,6 +214,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
             <PanKnob
               value={pan}
               onChange={onPanChange}
+              tabIndex={-1}
             />
 
             {/* Volume Slider */}
@@ -109,6 +222,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
               value={volume}
               onChange={onVolumeChange}
               ariaLabel="Volume"
+              tabIndex={-1}
             />
 
             {/* Mute and Solo Buttons */}
@@ -117,6 +231,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
                 active={isMuted}
                 onClick={onMuteToggle}
                 ariaLabel="Mute"
+                tabIndex={-1}
               >
                 M
               </ToggleButton>
@@ -124,6 +239,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
                 active={isSolo}
                 onClick={onSoloToggle}
                 ariaLabel="Solo"
+                tabIndex={-1}
               >
                 S
               </ToggleButton>
@@ -138,6 +254,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
             size="small"
             onClick={isLabelTrack ? onAddLabelClick : onEffectsClick}
             showIcon={false}
+            tabIndex={-1}
           >
             {isLabelTrack ? 'Add label' : 'Effects'}
           </Button>

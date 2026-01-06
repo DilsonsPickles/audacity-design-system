@@ -35,6 +35,13 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
         wrap: true,
       },
 
+      // Project toolbar (Home, Project, Export tabs)
+      'project-toolbar': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
       // Preferences sidebar navigation
       'preferences-sidebar': {
         tabindex: 'roving',
@@ -128,6 +135,22 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       'preferences-content',
       'dialog-footer',
     ],
+
+    // Keyboard shortcuts configuration
+    keyboardShortcuts: {
+      clips: {
+        shiftArrowExtend: true,
+        cmdShiftArrowReduce: true,
+        cmdArrowMove: true,
+        cmdUpDownTrackMove: true,
+      },
+      labels: {
+        shiftArrowExtend: true,
+        cmdShiftArrowReduce: true,
+        cmdArrowMove: true,
+        deleteKey: true,
+      },
+    },
   },
 };
 
@@ -153,6 +176,12 @@ export const WCAG_FLAT_PROFILE: AccessibilityProfile = {
       },
 
       'tool-toolbar': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'project-toolbar': {
         tabindex: 'sequential',
         arrows: false,
         wrap: false,
@@ -233,6 +262,22 @@ export const WCAG_FLAT_PROFILE: AccessibilityProfile = {
 
     // No special tab group order - just DOM order
     tabGroupOrder: null,
+
+    // Keyboard shortcuts configuration - all disabled for exploration
+    keyboardShortcuts: {
+      clips: {
+        shiftArrowExtend: false,
+        cmdShiftArrowReduce: false,
+        cmdArrowMove: false,
+        cmdUpDownTrackMove: false,
+      },
+      labels: {
+        shiftArrowExtend: false,
+        cmdShiftArrowReduce: false,
+        cmdArrowMove: false,
+        deleteKey: false,
+      },
+    },
   },
 };
 

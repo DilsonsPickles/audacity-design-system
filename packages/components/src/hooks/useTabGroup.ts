@@ -4,7 +4,7 @@
  * Manages keyboard navigation within a tab group based on active accessibility profile
  */
 
-import React, { useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 
 export interface UseTabGroupOptions {
@@ -53,6 +53,11 @@ export interface UseTabGroupOptions {
    * Reset key - when this changes, active index resets to 0
    */
   resetKey?: string | number;
+
+  /**
+   * Base tabIndex for the active item in roving mode (default: 0)
+   */
+  baseTabIndex?: number;
 }
 
 export interface UseTabGroupReturn {
@@ -105,6 +110,7 @@ export function useTabGroup({
   activeIndexRef: providedActiveIndexRef,
   activeIndex: providedActiveIndex,
   resetKey,
+  baseTabIndex = 0,
 }: UseTabGroupOptions): UseTabGroupReturn {
   const { activeProfile } = useAccessibilityProfile();
   const groupConfig = activeProfile.config.tabGroups[groupId];
@@ -114,15 +120,19 @@ export function useTabGroup({
   const localActiveIndexRef = useRef(0);
   const activeIndexRef = providedActiveIndexRef || localActiveIndexRef;
 
+  // Local state to trigger re-renders when active index changes
+  const [localActiveIndex, setLocalActiveIndex] = useState(0);
+
   // Reset to first item when resetKey changes
   useEffect(() => {
     if (resetKey !== undefined) {
       activeIndexRef.current = 0;
+      setLocalActiveIndex(0);
     }
   }, [resetKey]);
 
-  // Use provided active index state if available, otherwise use ref
-  const currentActiveIndex = providedActiveIndex !== undefined ? providedActiveIndex : activeIndexRef.current;
+  // Use provided active index state if available, otherwise use local state
+  const currentActiveIndex = providedActiveIndex !== undefined ? providedActiveIndex : localActiveIndex;
 
   // Determine tabIndex for this item
   const tabIndex = useMemo(() => {
@@ -131,13 +141,13 @@ export function useTabGroup({
     }
 
     if (groupConfig.tabindex === 'roving') {
-      // Only the active item gets tabindex="0"
-      return itemIndex === currentActiveIndex ? 0 : -1;
+      // Only the active item gets the baseTabIndex
+      return itemIndex === currentActiveIndex ? baseTabIndex : -1;
     }
 
     // Sequential: all items get tabindex="0"
     return 0;
-  }, [groupConfig, itemIndex, currentActiveIndex]);
+  }, [groupConfig, itemIndex, currentActiveIndex, baseTabIndex]);
 
   // Focus an item by index
   const focusItem = useCallback(
@@ -200,6 +210,7 @@ export function useTabGroup({
       if (handled) {
         e.preventDefault();
         activeIndexRef.current = newIndex;
+        setLocalActiveIndex(newIndex);
         focusItem(newIndex);
 
         // Notify parent that item was activated (e.g., for changing pages)
@@ -215,6 +226,7 @@ export function useTabGroup({
   const setActiveIndex = useCallback(
     (index: number) => {
       activeIndexRef.current = index;
+      setLocalActiveIndex(index);
       focusItem(index);
     },
     [focusItem]
@@ -243,6 +255,7 @@ export function useTabGroup({
       lastFocusedElementRef.current = currentElement;
       // Just ensure activeIndex is correct
       activeIndexRef.current = itemIndex;
+      setLocalActiveIndex(itemIndex);
       return;
     }
 
@@ -251,6 +264,7 @@ export function useTabGroup({
     if (relatedTarget && currentElement.contains(relatedTarget)) {
       lastFocusedElementRef.current = currentElement;
       activeIndexRef.current = itemIndex;
+      setLocalActiveIndex(itemIndex);
       return;
     }
 
@@ -274,6 +288,7 @@ export function useTabGroup({
       if (cameFromOutside && itemIndex !== 0 && itemRefs?.current) {
         // Reset to first item
         activeIndexRef.current = 0;
+        setLocalActiveIndex(0);
         lastFocusedElementRef.current = currentElement;
 
         // Notify parent to update state
@@ -288,6 +303,7 @@ export function useTabGroup({
 
     // Update active index to the item that received focus
     activeIndexRef.current = itemIndex;
+    setLocalActiveIndex(itemIndex);
     lastFocusedElementRef.current = currentElement;
   }, [itemIndex, itemRefs, focusItem, onItemActivate]);
 
@@ -316,8 +332,8 @@ export function useTabGroup({
   return {
     tabIndex,
     onKeyDown: groupConfig?.arrows ? handleKeyDown : undefined,
-    onFocus: handleFocus,
-    onBlur: handleBlur,
+    onFocus: groupConfig?.tabindex === 'roving' ? handleFocus : undefined,
+    onBlur: groupConfig?.tabindex === 'roving' ? handleBlur : undefined,
     isActive: itemIndex === activeIndexRef.current,
     activeIndex: activeIndexRef.current,
     setActiveIndex,

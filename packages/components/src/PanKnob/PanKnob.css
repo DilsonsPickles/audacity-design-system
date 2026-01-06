@@ -4,11 +4,28 @@
   position: relative;
   width: 30px;
   height: 30px;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Focus state */
+.pan-knob:focus {
+  outline: 2px solid #70b5ff;
+  outline-offset: 2px;
+  border-radius: 50%;
 }
 
 /* Gauge - 30px circle, starts at 225deg (180 + 45) with 270deg arc */
 .pan-knob__gauge {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -23,6 +40,8 @@
 /* Value sweep - shows pan amount in accent color */
 .pan-knob__value-sweep {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 30px;
   height: 30px;
   border-radius: 50%;

@@ -107,6 +107,7 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
               onClick={handleMenuClick}
               aria-label="Clip menu"
               type="button"
+              tabIndex={-1}
             >
               <Icon name="menu" size={14} />
             </button>

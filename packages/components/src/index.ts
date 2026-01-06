@@ -89,6 +89,7 @@ export * from './SpectralSelectionOverlay';
 export * from './PlayheadCursor';
 export * from './ProjectToolbar';
 export * from './Toolbar';
+export * from './ToolbarGroup';
 export * from './TrackControlSidePanel';
 export * from './TimeCode';
 export * from './SelectionToolbar';

@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useLabelKeyboardHandling, useAccessibilityProfile } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import './Canvas.css';
 
@@ -27,6 +27,18 @@ export interface CanvasProps {
    * Callback when clip menu button is clicked
    */
   onClipMenuClick?: (clipId: number, trackIndex: number, x: number, y: number) => void;
+  /**
+   * Callback when track keyboard focus changes
+   */
+  onTrackFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
+  /**
+   * Index of track that currently has keyboard focus (for showing focus borders)
+   */
+  keyboardFocusedTrack?: number | null;
+  /**
+   * Callback when canvas height changes
+   */
+  onHeightChange?: (height: number) => void;
 }
 
 /**
@@ -40,11 +52,16 @@ export function Canvas({
   pixelsPerSecond = 100,
   backgroundColor = '#212433',
   leftPadding = 0,
+  onHeightChange,
   onClipMenuClick,
+  onTrackFocusChange,
+  keyboardFocusedTrack = null,
 }: CanvasProps) {
-  const { tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, spectralSelection, spectrogramMode, envelopeMode } = useTracksState();
+  const { tracks, selectedTrackIndices, timeSelection, spectralSelection, spectrogramMode, envelopeMode } = useTracksState();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { activeProfile } = useAccessibilityProfile();
+  const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
 
   // Clip dragging state
   const clipDragStateRef = useRef<ClipDragState | null>(null);
@@ -73,6 +90,11 @@ export function Canvas({
 
   // Calculate total height based on all tracks + 2px gaps (top + between tracks)
   const totalHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
+
+  // Notify parent when height changes
+  useEffect(() => {
+    onHeightChange?.(totalHeight);
+  }, [totalHeight, onHeightChange]);
 
   // Check if any track has spectrogram or split view enabled
   const hasSpectralView = spectrogramMode || tracks.some(track =>
@@ -161,10 +183,12 @@ export function Canvas({
       dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: null });
       dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+      onTrackFocusChange?.(0, false); // Clear keyboard focus
     } else if (clickedTrackIndex !== null) {
-      // Clicked on a track - select it
+      // Clicked on a track - select it and set focus
       dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
+      onTrackFocusChange?.(clickedTrackIndex, true);
     }
 
     // Always move playhead on click (allow it to go to 0 - stalk can touch the gap)
@@ -225,6 +249,7 @@ export function Canvas({
     }
 
     // Check for clip header dragging
+    // Note: Selection is handled by TrackNew's onClipClick, this only sets up drag state
     let currentY = TOP_GAP;
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
@@ -239,21 +264,38 @@ export function Canvas({
           // Check if click is on clip header
           if (x >= clipX && x <= clipX + clipWidth &&
               y >= clipHeaderY && y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
-            // Select the clip
-            dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clip.id } });
 
-            // Clear time selection and spectral selection when starting clip drag
-            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-            dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: null });
+            // Only clear selections and start drag if NOT shift-clicking
+            // (Shift-click is handled by onClipClick for multi-select)
+            if (!e.shiftKey) {
+              // Clear time selection and spectral selection when starting clip drag
+              dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+              dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: null });
 
-            // Start clip drag
-            clipDragStateRef.current = {
-              clip,
-              trackIndex,
-              offsetX: x - clipX,
-              initialX: x,
-              initialTrackIndex: trackIndex,
-            };
+              // Get all selected clips and store their initial positions
+              const selectedClips = tracks.flatMap((track, tIndex) =>
+                track.clips
+                  .filter(c => c.selected)
+                  .map(c => ({ clip: c, trackIndex: tIndex }))
+              );
+
+              const selectedClipsInitialPositions = selectedClips.map(({ clip: c, trackIndex: tIndex }) => ({
+                clipId: c.id,
+                trackIndex: tIndex,
+                startTime: c.start,
+              }));
+
+              // Start clip drag (selection happens via onClipClick)
+              clipDragStateRef.current = {
+                clip,
+                trackIndex,
+                offsetX: x - clipX,
+                initialX: x,
+                initialTrackIndex: trackIndex,
+                initialStartTime: clip.start,
+                selectedClipsInitialPositions,
+              };
+            }
 
             e.stopPropagation();
             return;
@@ -301,16 +343,63 @@ export function Canvas({
           containerRef.current.style.cursor = 'grabbing';
         }
 
-        // Move the clip
-        dispatch({
-          type: 'MOVE_CLIP',
-          payload: {
-            clipId: dragState.clip.id,
-            fromTrackIndex: dragState.trackIndex,
-            toTrackIndex: newTrackIndex,
-            newStartTime,
-          },
-        });
+        // Check if we're dragging multiple selected clips
+        const hasMultipleSelected = dragState.selectedClipsInitialPositions && dragState.selectedClipsInitialPositions.length > 1;
+        const isDraggedClipSelected = dragState.selectedClipsInitialPositions?.some(
+          pos => pos.clipId === dragState.clip.id
+        );
+
+        if (hasMultipleSelected && isDraggedClipSelected) {
+          // Calculate the delta from the dragged clip's INITIAL position
+          let deltaTime = newStartTime - dragState.initialStartTime;
+          const deltaTrack = newTrackIndex - dragState.initialTrackIndex;
+
+          // Find the leftmost clip in the selection
+          const leftmostClipStartTime = Math.min(
+            ...dragState.selectedClipsInitialPositions!.map(pos => pos.startTime)
+          );
+
+          // Clamp deltaTime so that the leftmost clip doesn't go below 0
+          if (leftmostClipStartTime + deltaTime < 0) {
+            deltaTime = -leftmostClipStartTime;
+          }
+
+          // Move all selected clips by the same delta from their INITIAL positions
+          dragState.selectedClipsInitialPositions!.forEach((initialPos) => {
+            const targetTrackIndex = Math.max(0, Math.min(tracks.length - 1, initialPos.trackIndex + deltaTrack));
+            const targetStartTime = initialPos.startTime + deltaTime;
+
+            // Find the current track index of this clip (it may have moved already)
+            let currentTrackIndex = initialPos.trackIndex;
+            for (let i = 0; i < tracks.length; i++) {
+              if (tracks[i].clips.some(c => c.id === initialPos.clipId)) {
+                currentTrackIndex = i;
+                break;
+              }
+            }
+
+            dispatch({
+              type: 'MOVE_CLIP',
+              payload: {
+                clipId: initialPos.clipId,
+                fromTrackIndex: currentTrackIndex,
+                toTrackIndex: targetTrackIndex,
+                newStartTime: targetStartTime,
+              },
+            });
+          });
+        } else {
+          // Move only the dragged clip
+          dispatch({
+            type: 'MOVE_CLIP',
+            payload: {
+              clipId: dragState.clip.id,
+              fromTrackIndex: dragState.trackIndex,
+              toTrackIndex: newTrackIndex,
+              newStartTime,
+            },
+          });
+        }
 
         // Update drag state if track changed
         if (newTrackIndex !== dragState.trackIndex) {
@@ -434,7 +523,7 @@ export function Canvas({
         {tracks.map((track, trackIndex) => {
           const trackHeight = track.height || 114;
           const isSelected = selectedTrackIndices.includes(trackIndex);
-          const isFocused = focusedTrackIndex === trackIndex;
+          const isFocused = keyboardFocusedTrack === trackIndex;
 
           // Calculate y position for this track
           let yOffset = TOP_GAP;
@@ -464,7 +553,95 @@ export function Canvas({
                 isFocused={isFocused}
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
+                tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}
                 backgroundColor={backgroundColor}
+                onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
+                onClipMove={(clipId, deltaSeconds) => {
+                  // Find the clip to get its current position
+                  const clip = track.clips.find(c => c.id === clipId);
+                  if (clip) {
+                    const newStartTime = Math.max(0, clip.start + deltaSeconds);
+                    dispatch({
+                      type: 'MOVE_CLIP',
+                      payload: {
+                        clipId: clipId as number,
+                        fromTrackIndex: trackIndex,
+                        toTrackIndex: trackIndex,
+                        newStartTime,
+                      },
+                    });
+                  }
+                }}
+                onClipMoveToTrack={(clipId, direction) => {
+                  // Find the clip to get its current position
+                  const clip = track.clips.find(c => c.id === clipId);
+                  if (!clip) return;
+
+                  // Calculate target track index
+                  const targetTrackIndex = trackIndex + direction;
+
+                  // Check if target track exists
+                  if (targetTrackIndex < 0 || targetTrackIndex >= tracks.length) return;
+
+                  // Move the clip to the target track
+                  dispatch({
+                    type: 'MOVE_CLIP',
+                    payload: {
+                      clipId: clipId as number,
+                      fromTrackIndex: trackIndex,
+                      toTrackIndex: targetTrackIndex,
+                      newStartTime: clip.start,
+                    },
+                  });
+
+                  // Focus the clip on the new track after a brief delay
+                  setTimeout(() => {
+                    const targetTrack = document.querySelector(`[data-track-index="${targetTrackIndex}"]`);
+                    if (targetTrack) {
+                      const movedClip = targetTrack.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
+                      if (movedClip) {
+                        movedClip.focus();
+                      }
+                    }
+                  }, 0);
+                }}
+                onClipTrim={(clipId, edge, deltaSeconds) => {
+                  // Find the clip to get its current state
+                  const clip = track.clips.find(c => c.id === clipId);
+                  if (!clip) return;
+
+                  const currentTrimStart = clip.trimStart || 0;
+                  const currentDuration = clip.duration;
+                  const currentStart = clip.start;
+
+                  let newTrimStart = currentTrimStart;
+                  let newDuration = currentDuration;
+                  let newStart = currentStart;
+
+                  if (edge === 'left') {
+                    // Left edge: positive delta = trim (increase trimStart), negative = expand (decrease trimStart)
+                    newTrimStart = currentTrimStart + deltaSeconds;
+                    newDuration = Math.max(0.1, currentDuration - deltaSeconds); // Minimum 0.1s duration
+                    newStart = currentStart + deltaSeconds;
+                  } else {
+                    // Right edge: positive delta = trim (decrease duration), negative = expand (increase duration)
+                    newDuration = Math.max(0.1, currentDuration - deltaSeconds); // Minimum 0.1s duration
+                  }
+
+                  // Ensure trimStart doesn't go negative
+                  newTrimStart = Math.max(0, newTrimStart);
+
+                  dispatch({
+                    type: 'TRIM_CLIP',
+                    payload: {
+                      trackIndex,
+                      clipId: clipId as number,
+                      newTrimStart,
+                      newDuration,
+                      newStart: edge === 'left' ? newStart : undefined,
+                    },
+                  });
+                }}
                 onEnvelopePointsChange={(clipId, points) => {
                   dispatch({
                     type: 'UPDATE_CLIP_ENVELOPE_POINTS',
@@ -473,6 +650,28 @@ export function Canvas({
                 }}
                 onClipMenuClick={(clipId, x, y) => {
                   onClipMenuClick?.(clipId as number, trackIndex, x, y);
+                }}
+                onClipClick={(clipId, shiftKey) => {
+                  console.log('[CANVAS] onClipClick called:', { clipId, shiftKey });
+                  if (shiftKey) {
+                    // Shift+click: toggle selection (multi-select)
+                    console.log('[CANVAS] Dispatching TOGGLE_CLIP_SELECTION');
+                    dispatch({
+                      type: 'TOGGLE_CLIP_SELECTION',
+                      payload: { trackIndex, clipId: clipId as number },
+                    });
+                  } else {
+                    // Regular click: exclusive selection
+                    console.log('[CANVAS] Dispatching SELECT_CLIP');
+                    dispatch({
+                      type: 'SELECT_CLIP',
+                      payload: { trackIndex, clipId: clipId as number },
+                    });
+                  }
+                  dispatch({
+                    type: 'SELECT_TRACK',
+                    payload: trackIndex,
+                  });
                 }}
                 onClipTrimEdge={(clipId, edge) => {
                   // Find the clip being trimmed
@@ -556,6 +755,26 @@ export function Canvas({
                   const yOffset = labelRows[labelIndex] * (LABEL_ROW_HEIGHT + LABEL_ROW_GAP);
                   // Stalk should only extend from this label's position to the bottom of the track
                   const stalkHeight = trackHeight - yOffset;
+                  const isFirstLabel = labelIndex === 0;
+                  const trackTabIndex = isFlatNavigation ? 0 : (101 + trackIndex * 2); // Match the tabIndex from TrackNew
+
+                  // Hook for keyboard shortcuts
+                  const handleKeyDown = useLabelKeyboardHandling({
+                    label,
+                    labelIndex,
+                    totalLabels: track.labels?.length || 0,
+                    trackTabIndex,
+                    onLabelUpdate: (updates) => {
+                      dispatch({
+                        type: 'UPDATE_LABEL',
+                        payload: {
+                          trackIndex,
+                          labelId: label.id,
+                          label: updates,
+                        },
+                      });
+                    },
+                  });
 
                 return (
                   <div
@@ -565,6 +784,62 @@ export function Canvas({
                       left: `${x}px`,
                       top: `${yOffset}px`, // Offset for overlapping labels
                       pointerEvents: 'auto',
+                    }}
+                    tabIndex={isFirstLabel ? trackTabIndex : -1}
+                    role="button"
+                    aria-label={`Label: ${label.text || 'empty'}`}
+                    onKeyDown={(e) => {
+                      // First, handle shortcuts from hook
+                      handleKeyDown(e);
+
+                      // Handle Tab key to wrap back to beginning of tab cycle
+                      if (e.key === 'Tab' && !e.shiftKey) {
+                        // Find the first tabbable element in the document (File menu)
+                        e.preventDefault();
+                        const firstTabbable = document.querySelector('[tabindex="1"]') as HTMLElement;
+                        if (firstTabbable) {
+                          firstTabbable.focus();
+                        }
+                        return;
+                      }
+
+                      // Then handle arrow navigation (requires DOM manipulation)
+                      // Right/Down = next label (wrapping), Left/Up = previous label (wrapping)
+                      if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                        e.preventDefault();
+                        // Cycle to next label, wrapping to first if at end
+                        const nextIndex = (labelIndex + 1) % (track.labels?.length || 1);
+                        const parent = e.currentTarget.parentElement;
+                        const labelElements = parent?.querySelectorAll('[role="button"]');
+                        if (labelElements) {
+                          // Reset ALL labels to -1, then set next to trackTabIndex
+                          labelElements.forEach((el) => {
+                            (el as HTMLElement).tabIndex = -1;
+                          });
+                          const nextLabel = labelElements[nextIndex] as HTMLElement;
+                          if (nextLabel) {
+                            nextLabel.tabIndex = trackTabIndex;
+                            nextLabel.focus();
+                          }
+                        }
+                      } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                        e.preventDefault();
+                        // Cycle to previous label, wrapping to last if at beginning
+                        const prevIndex = (labelIndex - 1 + (track.labels?.length || 1)) % (track.labels?.length || 1);
+                        const parent = e.currentTarget.parentElement;
+                        const labelElements = parent?.querySelectorAll('[role="button"]');
+                        if (labelElements) {
+                          // Reset ALL labels to -1, then set prev to trackTabIndex
+                          labelElements.forEach((el) => {
+                            (el as HTMLElement).tabIndex = -1;
+                          });
+                          const prevLabel = labelElements[prevIndex] as HTMLElement;
+                          if (prevLabel) {
+                            prevLabel.tabIndex = trackTabIndex;
+                            prevLabel.focus();
+                          }
+                        }
+                      }
                     }}
                   >
                     <LabelMarker

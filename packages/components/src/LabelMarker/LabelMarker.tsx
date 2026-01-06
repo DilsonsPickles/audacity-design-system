@@ -85,6 +85,10 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   const actualState = state !== 'idle' ? state : (isHovered ? 'hover' : 'idle');
   const isActive = selected || actualState === 'active';
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Keyboard events are handled in Canvas.tsx
+  };
+
   // Handle drag start for resizing (ears only)
   const handleDragStart = (side: 'left' | 'right') => (e: React.MouseEvent) => {
     if (onRegionResize) {
@@ -219,6 +223,7 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
         onMouseLeave={() => setIsHovered(false)}
         onClick={onClick}
         onDoubleClick={onDoubleClick}
+        onKeyDown={handleKeyDown}
       >
         {/* Left ear - draggable to create region by dragging left */}
         {renderEar(true, handleDragStart('left'))}
@@ -260,6 +265,7 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
+      onKeyDown={handleKeyDown}
     >
       {/* Left ear - draggable to resize left side */}
       {renderEar(true, handleDragStart('left'))}

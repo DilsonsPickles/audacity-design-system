@@ -31,6 +31,14 @@ export interface GhostButtonProps {
    * ARIA label for accessibility
    */
   ariaLabel?: string;
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
+  /**
+   * Keyboard event handler
+   */
+  onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 }
 
 export const GhostButton: React.FC<GhostButtonProps> = ({
@@ -41,6 +49,8 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
   active = false,
   className = '',
   ariaLabel,
+  tabIndex,
+  onKeyDown,
 }) => {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -54,6 +64,8 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
       onClick={handleClick}
       disabled={disabled}
       aria-label={ariaLabel}
+      tabIndex={tabIndex}
+      onKeyDown={onKeyDown}
     >
       <Icon name={icon} size={16} />
       {label && <span className="ghost-button__label">{label}</span>}

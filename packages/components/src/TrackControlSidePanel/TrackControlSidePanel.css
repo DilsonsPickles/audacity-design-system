@@ -56,6 +56,12 @@
   /* 2px gap between tracks handled by parent flex gap */
 }
 
+/* Whole track focus state - outline sits at container edge */
+.track-control-side-panel__track--focused .track-control-panel {
+  outline: 2px solid #84B5FF;
+  outline-offset: 0px;
+}
+
 /* Ensure TrackControlPanel fills the ResizablePanel container */
 .track-control-side-panel__track .resizable-panel__content {
   height: 100%;

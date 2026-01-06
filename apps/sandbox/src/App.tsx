@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackType } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackType } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 
@@ -142,6 +142,7 @@ type Workspace = 'classic' | 'spectral-editing';
 function CanvasDemoContent() {
   const { state, dispatch } = useTracks();
   const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
+  const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const [scrollX, setScrollX] = React.useState(0);
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('project');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
@@ -181,6 +182,15 @@ function CanvasDemoContent() {
     trackIndex: number;
   } | null>(null);
 
+  // Track keyboard focus state - only one track can have keyboard focus at a time
+  const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(null);
+
+  // Track whether the control panel specifically has focus (for the inset outline)
+  const [controlPanelHasFocus, setControlPanelHasFocus] = React.useState<number | null>(null);
+
+  // Track canvas height for playhead stalk
+  const [canvasHeight, setCanvasHeight] = React.useState(1000);
+
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
@@ -188,6 +198,15 @@ function CanvasDemoContent() {
 
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
+
+  // Focus and select first track on initial load if there are tracks
+  React.useEffect(() => {
+    if (state.tracks.length > 0 && keyboardFocusedTrack === null) {
+      setKeyboardFocusedTrack(0);
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
+      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [0] });
+    }
+  }, []); // Only run on mount
 
   // Track focused element for accessibility debugging
   React.useEffect(() => {
@@ -234,11 +253,120 @@ function CanvasDemoContent() {
     };
   }, [showFocusDebug]);
 
-  // Keyboard handler for deleting selected clips and focused tracks
+  // Keyboard handler for deleting selected clips and focused tracks, and moving playhead
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle Delete/Backspace if not in an input field
+      // Only handle these keys if not in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // F6 key navigation for flat navigation mode - skip through major blocks
+      if (e.key === 'F6' && isFlatNavigation) {
+        e.preventDefault();
+
+        // Define major blocks in order
+        const majorBlocks = [
+          () => document.querySelector('[aria-label="File"]') as HTMLElement,  // File menu
+          () => document.querySelector('[aria-label="Home"]') as HTMLElement,  // Home tab
+          () => document.querySelector('[aria-label="Play"]') as HTMLElement,  // Play button
+          () => document.querySelector('[aria-label="Add Track"]') as HTMLElement,  // Add new track
+          () => document.querySelector('[aria-label*="track controls"]') as HTMLElement,  // Track 1 header
+        ];
+
+        // Find current focused element
+        const currentElement = document.activeElement as HTMLElement;
+        let currentBlockIndex = -1;
+
+        // Determine which block we're currently in
+        for (let i = 0; i < majorBlocks.length; i++) {
+          const blockElement = majorBlocks[i]();
+          if (blockElement && (blockElement === currentElement || blockElement.contains(currentElement))) {
+            currentBlockIndex = i;
+            break;
+          }
+        }
+
+        // Move to next block (or first if we're not in any block)
+        const nextBlockIndex = e.shiftKey
+          ? (currentBlockIndex <= 0 ? majorBlocks.length - 1 : currentBlockIndex - 1)
+          : (currentBlockIndex + 1) % majorBlocks.length;
+
+        const nextBlock = majorBlocks[nextBlockIndex]();
+        if (nextBlock) {
+          nextBlock.focus();
+        }
+        return;
+      }
+
+      // Move track focus with up/down arrow keys
+      // Only if we're NOT in tab navigation mode (no button/input has focus)
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        const activeElement = document.activeElement as HTMLElement;
+
+        // Only handle if focus is on body or canvas - not on any interactive element
+        // This prevents arrow keys from moving track focus during tab navigation
+        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS') {
+          return; // Let the focused element handle arrow keys
+        }
+
+        e.preventDefault();
+
+        // If there's a focused track, move focus up or down
+        if (keyboardFocusedTrack !== null) {
+          const delta = e.key === 'ArrowDown' ? 1 : -1;
+          const newIndex = keyboardFocusedTrack + delta;
+
+          // Clamp to valid track indices
+          if (newIndex >= 0 && newIndex < state.tracks.length) {
+            setKeyboardFocusedTrack(newIndex);
+            dispatch({ type: 'SET_FOCUSED_TRACK', payload: newIndex });
+            // Don't change selection - focus moves independently
+          }
+        } else if (state.tracks.length > 0) {
+          // If no track is focused, focus the first track
+          setKeyboardFocusedTrack(0);
+          dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
+          // Don't change selection - focus moves independently
+        }
+        return;
+      }
+
+      // Toggle track selection with Enter key
+      if (e.key === 'Enter') {
+        const activeElement = document.activeElement as HTMLElement;
+
+        // Only handle if focus is on body or canvas - not on any interactive element
+        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS') {
+          return; // Let the focused element handle Enter
+        }
+
+        if (keyboardFocusedTrack !== null) {
+          e.preventDefault();
+
+          // Check if the focused track is already selected
+          const isSelected = state.selectedTrackIndices.includes(keyboardFocusedTrack);
+
+          if (isSelected) {
+            // Remove from selection
+            const newSelection = state.selectedTrackIndices.filter(idx => idx !== keyboardFocusedTrack);
+            dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+          } else {
+            // Add to selection
+            const newSelection = [...state.selectedTrackIndices, keyboardFocusedTrack];
+            dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+          }
+        }
+        return;
+      }
+
+      // Move playhead with comma and period keys
+      if (e.key === ',' || e.key === '.') {
+        e.preventDefault();
+        const moveAmount = 0.1; // Move by 0.1 seconds
+        const delta = e.key === '.' ? moveAmount : -moveAmount;
+        const newPosition = Math.max(0, state.playheadPosition + delta);
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
         return;
       }
 
@@ -273,7 +401,7 @@ function CanvasDemoContent() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [state.tracks, state.focusedTrackIndex, dispatch]);
+  }, [state.tracks, state.focusedTrackIndex, state.playheadPosition, state.selectedTrackIndices, keyboardFocusedTrack, controlPanelHasFocus, dispatch, isFlatNavigation]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
@@ -421,7 +549,7 @@ function CanvasDemoContent() {
         }}
         showDebugMenu={true}
         centerContent={
-          <>
+          <ToolbarGroup ariaLabel="Toolbar options" startTabIndex={3}>
             <GhostButton icon="mixer" label="Mixer" />
             <GhostButton icon="cog" label="Audio setup" />
             <GhostButton
@@ -429,39 +557,41 @@ function CanvasDemoContent() {
               label="Share audio"
               onClick={() => setIsShareDialogOpen(true)}
             />
-          </>
+          </ToolbarGroup>
         }
         rightContent={
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: '#3d3e42' }}>Workspace</span>
-            <select
-              style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
-              value={workspace}
-              onChange={(e) => {
-                const newWorkspace = e.target.value as Workspace;
-                setWorkspace(newWorkspace);
+          <>
+            <span style={{ fontSize: '13px', color: '#3d3e42', marginRight: '8px' }}>Workspace</span>
+            <ToolbarGroup ariaLabel="Workspace controls" startTabIndex={4}>
+              <select
+                style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
+                value={workspace}
+                onChange={(e) => {
+                  const newWorkspace = e.target.value as Workspace;
+                  setWorkspace(newWorkspace);
 
-                // When switching to spectral editing, enable spectrogram mode
-                if (newWorkspace === 'spectral-editing') {
-                  // SET_SPECTROGRAM_MODE will save current viewModes and set all tracks to spectrogram
-                  dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
-                } else if (newWorkspace === 'classic') {
-                  // When switching back to classic, disable spectrogram mode
-                  // This will restore tracks to their saved viewModes from before spectral mode
-                  dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
-                }
-              }}
-            >
-              <option value="classic">Classic</option>
-              <option value="spectral-editing">Spectral editing</option>
-            </select>
-            <GhostButton icon="undo" />
-            <GhostButton icon="redo" />
-          </div>
+                  // When switching to spectral editing, enable spectrogram mode
+                  if (newWorkspace === 'spectral-editing') {
+                    // SET_SPECTROGRAM_MODE will save current viewModes and set all tracks to spectrogram
+                    dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
+                  } else if (newWorkspace === 'classic') {
+                    // When switching back to classic, disable spectrogram mode
+                    // This will restore tracks to their saved viewModes from before spectral mode
+                    dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
+                  }
+                }}
+              >
+                <option value="classic">Classic</option>
+                <option value="spectral-editing">Spectral editing</option>
+              </select>
+              <GhostButton icon="undo" />
+              <GhostButton icon="redo" />
+            </ToolbarGroup>
+          </>
         }
       />
       {activeMenuItem !== 'home' && (
-        <Toolbar>
+        <Toolbar startTabIndex={5}>
           {/* Transport controls - shown in all workspaces */}
           <ToolbarButtonGroup gap={2}>
             <TransportButton icon="play" />
@@ -559,7 +689,7 @@ function CanvasDemoContent() {
           <TrackControlSidePanel
             trackHeights={state.tracks.map(t => t.height || 114)}
             trackViewModes={state.tracks.map(t => t.viewMode)}
-            focusedTrackIndex={state.focusedTrackIndex}
+            focusedTrackIndex={keyboardFocusedTrack}
             scrollRef={trackHeaderScrollRef}
             onScroll={handleTrackHeaderScroll}
             onTrackResize={(trackIndex, height) => {
@@ -608,8 +738,25 @@ function CanvasDemoContent() {
                   pan={0}
                   isMuted={false}
                   isSolo={false}
+                  isFocused={keyboardFocusedTrack === index}
                   onMuteToggle={() => {}}
                   onSoloToggle={() => {}}
+                  tabIndex={isFlatNavigation ? 0 : (100 + index * 2)}
+                  onFocusChange={(hasFocus) => {
+                    // When control panel gets focus, set both states
+                    setControlPanelHasFocus(hasFocus ? index : null);
+                    setKeyboardFocusedTrack(hasFocus ? index : null);
+                  }}
+                  onNavigateVertical={(direction) => {
+                    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+                    if (nextIndex >= 0 && nextIndex < state.tracks.length) {
+                      // Find the next/previous track control panel and focus it
+                      const panels = document.querySelectorAll('[aria-label*="track controls"]');
+                      if (panels[nextIndex]) {
+                        (panels[nextIndex] as HTMLElement).focus();
+                      }
+                    }
+                  }}
                   onAddLabelClick={() => {
                     // Generate a unique label ID across all tracks
                     const allLabels = state.tracks.flatMap(t => t.labels || []);
@@ -631,7 +778,20 @@ function CanvasDemoContent() {
                   }}
                   state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
                   height="default"
-                  onClick={() => dispatch({ type: 'SELECT_TRACK', payload: index })}
+                  onClick={() => {
+                    dispatch({ type: 'SELECT_TRACK', payload: index });
+                    setKeyboardFocusedTrack(index);
+                  }}
+                  onTabOut={() => {
+                    // Find the first clip in THIS track specifically
+                    const trackElement = document.querySelector(`[data-track-index="${index}"]`);
+                    if (trackElement) {
+                      const firstClip = trackElement.querySelector(`[data-first-clip="true"]`) as HTMLElement;
+                      if (firstClip) {
+                        firstClip.focus();
+                      }
+                    }
+                  }}
                 />
               );
             })}
@@ -673,24 +833,28 @@ function CanvasDemoContent() {
               onScroll={handleScroll}
               style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433', cursor: 'text' }}
             >
-              <div style={{ minWidth: '5000px', height: '100%', position: 'relative', cursor: 'text' }}>
+              <div style={{ minWidth: '5000px', minHeight: `${canvasHeight}px`, position: 'relative', cursor: 'text' }}>
                 <Canvas
                   pixelsPerSecond={100}
                   width={5000}
                   leftPadding={12}
+                  keyboardFocusedTrack={keyboardFocusedTrack}
                   onClipMenuClick={(clipId, trackIndex, x, y) => {
                     setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex });
                   }}
+                  onTrackFocusChange={(trackIndex, hasFocus) => {
+                    setKeyboardFocusedTrack(hasFocus ? trackIndex : null);
+                    setControlPanelHasFocus(null);
+                  }}
+                  onHeightChange={setCanvasHeight}
                 />
-                {/* Playhead stalk only (no icon) */}
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
-                  <PlayheadCursor
-                    position={state.playheadPosition}
-                    pixelsPerSecond={100}
-                    height={1000}
-                    showTopIcon={false}
-                  />
-                </div>
+                {/* Playhead stalk only (no icon) - extends to fill scrollable area */}
+                <PlayheadCursor
+                  position={state.playheadPosition}
+                  pixelsPerSecond={100}
+                  height={Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}
+                  showTopIcon={false}
+                />
               </div>
             </div>
           </div>

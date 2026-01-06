@@ -63,5 +63,10 @@
   border: 1px solid #808185;
   border-radius: 9px;
   pointer-events: none;
-  transition: left 0.05s ease;
+  transition: left 0.05s ease, box-shadow 0.15s ease;
+}
+
+/* Focus state - show outline around handle */
+.slider__input:focus + .slider__track + .slider__handle {
+  box-shadow: 0 0 0 2px #70b5ff;
 }

@@ -54,7 +54,7 @@ export interface ClipDisplayProps {
   /** Index of point being hovered (for hover visual feedback) */
   hoveredPointIndex?: number | null;
   /** Callback when clip header is clicked */
-  onHeaderClick?: () => void;
+  onHeaderClick?: (shiftKey: boolean) => void;
   /** Callback when clip menu button is clicked */
   onMenuClick?: (x: number, y: number) => void;
   /** Callback when dragging left or right edge to trim clip */
@@ -190,7 +190,7 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
             showMenu={true}
             onClick={(e) => {
               e.stopPropagation();
-              onHeaderClick?.();
+              onHeaderClick?.(e.shiftKey);
             }}
             onMenuClick={(e) => {
               e.stopPropagation();
