@@ -191,7 +191,11 @@ function CanvasDemoContent() {
   // Track canvas height for playhead stalk
   const [canvasHeight, setCanvasHeight] = React.useState(1000);
 
+  // Track mouse cursor position in timeline (in seconds)
+  const [mouseCursorPosition, setMouseCursorPosition] = React.useState<number | undefined>(undefined);
+
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
+  const timelineRulerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
   const isScrollingSyncRef = React.useRef(false);
@@ -800,8 +804,26 @@ function CanvasDemoContent() {
           {/* Timeline Ruler + Canvas Area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Timeline Ruler - Fixed at top */}
-            <div ref={canvasContainerRef} style={{ position: 'relative', backgroundColor: '#1a1b26', flexShrink: 0, overflow: 'hidden' }}>
-              <div style={{ transform: `translateX(-${scrollX}px)`, width: '5000px', position: 'relative' }}>
+            <div
+              ref={canvasContainerRef}
+              style={{ position: 'relative', backgroundColor: '#1a1b26', flexShrink: 0, overflow: 'hidden' }}
+            >
+              <div
+                ref={timelineRulerRef}
+                style={{ transform: `translateX(-${scrollX}px)`, width: '5000px', position: 'relative' }}
+                onMouseMove={(e) => {
+                  if (timelineRulerRef.current) {
+                    const rect = timelineRulerRef.current.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const CLIP_CONTENT_OFFSET = 12; // Match the constant from components
+                    const timePosition = (x - CLIP_CONTENT_OFFSET) / 100; // 100 = pixelsPerSecond
+                    setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
+                  }
+                }}
+                onMouseLeave={() => {
+                  setMouseCursorPosition(undefined);
+                }}
+              >
                 <TimelineRuler
                   pixelsPerSecond={100}
                   scrollX={0}
@@ -811,6 +833,7 @@ function CanvasDemoContent() {
                   timeSelection={rulerTimeSelection}
                   spectralSelection={state.spectralSelection}
                   selectionColor="rgba(112, 181, 255, 0.5)"
+                  cursorPosition={mouseCursorPosition}
                 />
                 {/* Playhead icon only in ruler */}
                 <PlayheadCursor
@@ -832,6 +855,18 @@ function CanvasDemoContent() {
               ref={scrollContainerRef}
               onScroll={handleScroll}
               style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433', cursor: 'text' }}
+              onMouseMove={(e) => {
+                if (scrollContainerRef.current) {
+                  const rect = scrollContainerRef.current.getBoundingClientRect();
+                  const x = e.clientX - rect.left + scrollX;
+                  const CLIP_CONTENT_OFFSET = 12;
+                  const timePosition = (x - CLIP_CONTENT_OFFSET) / 100;
+                  setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
+                }
+              }}
+              onMouseLeave={() => {
+                setMouseCursorPosition(undefined);
+              }}
             >
               <div style={{ minWidth: '5000px', minHeight: `${canvasHeight}px`, position: 'relative', cursor: 'text' }}>
                 <Canvas
