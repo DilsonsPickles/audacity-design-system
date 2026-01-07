@@ -7,6 +7,7 @@ import ResizableRuler from './ResizableRuler';
 import TrackCanvas from './TrackCanvas';
 import TimelineRuler from './TimelineRuler';
 import Tooltip from './Tooltip';
+import AddTrackFlyout, { TrackType } from './AddTrackFlyout';
 import { Track, Clip, EnvelopePoint, DragState, EnvelopeDragState, TimeSelection, TimeSelectionDragState, TrackResizeDragState, EnvelopeSegmentDragState } from './types';
 import { theme } from '../theme';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
@@ -137,6 +138,8 @@ export default function ClipEnvelopeEditor() {
   const [envelopeAltMode, setEnvelopeAltMode] = useState(false);
   const [timeSelection, setTimeSelection] = useState<TimeSelection | null>(null);
   const [hoveredClipHeader, setHoveredClipHeader] = useState<{ clipId: number; trackIndex: number } | null>(null);
+  const [addTrackFlyoutOpen, setAddTrackFlyoutOpen] = useState(false);
+  const [addTrackFlyoutPosition, setAddTrackFlyoutPosition] = useState({ x: 0, y: 0 });
   const [tooltip, setTooltip] = useState<{ x: number; y: number; db: number; visible: boolean }>({
     x: 0,
     y: 0,
@@ -1222,13 +1225,13 @@ export default function ClipEnvelopeEditor() {
                 color: theme.text,
                 borderColor: theme.trackHeaderBorder,
               }}
-              onClick={() => {
-                const newTrack: Track = {
-                  id: tracks.length + 1,
-                  name: `Track ${tracks.length + 1}`,
-                  clips: [],
-                };
-                setTracks([...tracks, newTrack]);
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setAddTrackFlyoutPosition({
+                  x: rect.left + rect.width / 2 - 96, // Center the flyout (192px / 2 = 96)
+                  y: rect.bottom + 8, // 8px gap below button
+                });
+                setAddTrackFlyoutOpen(!addTrackFlyoutOpen);
               }}
             >
               Add track
@@ -1323,6 +1326,24 @@ export default function ClipEnvelopeEditor() {
 
       {/* Tooltip */}
       <Tooltip x={tooltip.x} y={tooltip.y} db={tooltip.db} visible={tooltip.visible} />
+
+      {/* Add Track Flyout */}
+      <AddTrackFlyout
+        isOpen={addTrackFlyoutOpen}
+        x={addTrackFlyoutPosition.x}
+        y={addTrackFlyoutPosition.y}
+        showMidiOption={false}
+        onSelectTrackType={(type: TrackType) => {
+          const newTrack: Track = {
+            id: tracks.length + 1,
+            name: type === 'label' ? `Label ${tracks.length + 1}` : `Track ${tracks.length + 1}`,
+            clips: [],
+          };
+          setTracks([...tracks, newTrack]);
+          setAddTrackFlyoutOpen(false);
+        }}
+        onClose={() => setAddTrackFlyoutOpen(false)}
+      />
     </div>
   );
 }

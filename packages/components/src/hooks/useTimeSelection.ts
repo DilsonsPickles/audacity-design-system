@@ -305,10 +305,9 @@ export function useTimeSelection({
         setTimeout(() => {
           wasDraggingRef.current = false;
         }, 50);
-      }
 
-      if (mode === 'create') {
-        // Determine focused track (where mouse was released)
+        // Only set focused track if we actually dragged (creating or resizing selection)
+        // Determine focused track based on where mouse was released
         const releasedTrackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
 
         // If released beyond last track, focus the last track
@@ -318,8 +317,6 @@ export function useTimeSelection({
           onFocusedTrackChange(releasedTrackIndex);
         }
       }
-      // For resize modes, don't change selected tracks or focused track
-      // They are preserved from when the resize started
 
       // Call finalized callback with current selection before clearing drag state
       if (onTimeSelectionFinalized && currentTimeSelection) {
@@ -397,6 +394,12 @@ export function useTimeSelection({
     } else {
       // Start creating new selection
       const trackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
+
+      // Set focus and select the track where we start dragging
+      if (trackIndex >= 0 && trackIndex < tracks.length) {
+        onFocusedTrackChange(trackIndex);
+        onSelectedTracksChange([trackIndex]); // Also select the track on mousedown
+      }
 
       // Check if starting inside a spectral-enabled clip (or explicitly allowed via parameter)
       // Only allow conversion to spectral if we started in a spectral clip or if explicitly converting from spectral

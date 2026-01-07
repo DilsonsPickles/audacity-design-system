@@ -59,10 +59,16 @@
   position: relative;
 }
 
-/* Focus state - outline on all sides */
+/* Focus state - blue outline when whole track is focused (via click or keyboard) */
 .track-control-panel--focused {
-  outline: 2px solid var(--tcp-focus-color);
-  outline-offset: 0;
+  outline: 2px solid #84B5FF;
+  outline-offset: -2px;
+}
+
+/* Keyboard focus on panel itself - inset border when at panel level (keyboard only) */
+.track-control-panel:focus-visible {
+  border: 3px solid #FF6B35;
+  border-radius: 4px;
 }
 
 /* Height variants - only used when not inside a container that controls height */

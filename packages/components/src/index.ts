@@ -24,6 +24,7 @@ export * from './TrackControlPanel';
 export * from './TransportButton';
 export * from './ContextMenu';
 export * from './ContextMenuItem';
+export * from './AddTrackFlyout';
 export * from './Toast';
 export * from './Dialog';
 export * from './DialogHeader';
@@ -66,12 +67,15 @@ export * from './Clip';
 export * from './ClipDisplay';
 export * from './ClipHeader';
 export * from './ClipBody';
+export * from './ClipContextMenu';
+export * from './TrackContextMenu';
 export * from './AutomationCurvePoint';
 export * from './EnvelopePoint';
 export * from './EnvelopeCurve';
 export * from './EnvelopeInteractionLayer';
 export * from './Track';
 export { TrackNew } from './Track/TrackNew';
+export * from './LabelMarker';
 
 /**
  * Layout & Behavior Utilities
@@ -85,6 +89,7 @@ export * from './SpectralSelectionOverlay';
 export * from './PlayheadCursor';
 export * from './ProjectToolbar';
 export * from './Toolbar';
+export * from './ToolbarGroup';
 export * from './TrackControlSidePanel';
 export * from './TimeCode';
 export * from './SelectionToolbar';

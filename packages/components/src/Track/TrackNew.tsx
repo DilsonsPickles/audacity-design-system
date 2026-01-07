@@ -91,7 +91,7 @@ export interface TrackProps {
   /**
    * Callback when a clip is clicked
    */
-  onClipClick?: (clipId: string | number) => void;
+  onClipClick?: (clipId: string | number, shiftKey?: boolean) => void;
 
   /**
    * Callback when track background is clicked
@@ -107,6 +107,41 @@ export interface TrackProps {
    * Callback when a clip header is clicked
    */
   onClipHeaderClick?: (clipId: string | number, clipStartTime: number) => void;
+
+  /**
+   * Callback when a clip menu button is clicked
+   */
+  onClipMenuClick?: (clipId: string | number, x: number, y: number, openedViaKeyboard?: boolean) => void;
+
+  /**
+   * Callback when a clip edge is being trimmed
+   */
+  onClipTrimEdge?: (clipId: string | number, edge: 'left' | 'right', clientX: number) => void;
+
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
+
+  /**
+   * Callback when keyboard focus changes
+   */
+  onFocusChange?: (hasFocus: boolean) => void;
+
+  /**
+   * Callback when a clip should be moved (Cmd+Arrow keys)
+   */
+  onClipMove?: (clipId: string | number, deltaSeconds: number) => void;
+
+  /**
+   * Callback when a clip should be trimmed (Shift+Arrow keys)
+   */
+  onClipTrim?: (clipId: string | number, edge: 'left' | 'right', deltaSeconds: number) => void;
+
+  /**
+   * Callback when a clip should be moved to a different track (Cmd+Arrow Up/Down)
+   */
+  onClipMoveToTrack?: (clipId: string | number, direction: 1 | -1) => void;
 }
 
 // Map track index to color
@@ -135,10 +170,18 @@ export const TrackNew: React.FC<TrackProps> = ({
   onTrackClick,
   onEnvelopePointsChange,
   onClipHeaderClick,
+  onClipMenuClick,
+  onClipTrimEdge,
+  tabIndex,
+  onFocusChange,
+  onClipMove,
+  onClipTrim,
+  onClipMoveToTrack,
 }) => {
   const trackColor = getTrackColor(trackIndex);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipHoveredPoints, setClipHoveredPoints] = React.useState<Map<string | number, number | null>>(new Map());
+  const [hasKeyboardFocus, setHasKeyboardFocus] = React.useState(false);
 
   // Calculate background color with white overlay based on selection state
   // Idle (not selected, not focused): 8% white
@@ -157,26 +200,32 @@ export const TrackNew: React.FC<TrackProps> = ({
 
   // Calculate clip dimensions and positions
   const renderClips = () => {
-    return clips.map((clip) => {
+    return clips.map((clip, clipIndex) => {
       const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
+      const isFirstClip = clipIndex === 0;
 
       // Generate waveform if not provided
+      // IMPORTANT: For trimmed clips, calculate full duration from trimStart + duration
       let waveformData = clip.waveform;
       let waveformLeft = clip.waveformLeft;
       let waveformRight = clip.waveformRight;
 
       const isStereo = Boolean(clip.waveformLeft || clip.waveformRight);
 
+      // Calculate full duration: trimStart + current duration gives us the full audio length
+      const trimStart = (clip as any).trimStart || 0;
+      const fullDuration = trimStart + clip.duration;
+
       if (!waveformData && !isStereo) {
-        // Generate mono waveform
-        waveformData = generateSpeechWaveform(clip.duration, 1800);
+        // Generate mono waveform using FULL duration
+        waveformData = generateSpeechWaveform(fullDuration, 1800);
       }
 
       if (isStereo && (!waveformLeft || !waveformRight)) {
-        // Generate stereo waveforms
-        waveformLeft = generateSpeechWaveform(clip.duration, 1800);
-        waveformRight = generateSpeechWaveform(clip.duration, 1800);
+        // Generate stereo waveforms using FULL duration
+        waveformLeft = generateSpeechWaveform(fullDuration, 1800);
+        waveformRight = generateSpeechWaveform(fullDuration, 1800);
       }
 
       // Determine variant and channel mode
@@ -197,15 +246,100 @@ export const TrackNew: React.FC<TrackProps> = ({
       return (
         <div
           key={clip.id}
+          data-clip-id={clip.id}
+          data-first-clip={isFirstClip}
           style={{
             position: 'absolute',
             left: `${clipX}px`,
             top: 0,
-            cursor: 'pointer',
           }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClipClick?.(clip.id);
+          tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
+          role="button"
+          aria-label={`${clip.name} clip`}
+          onKeyDown={(e) => {
+            // Toggle selection with Enter key
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              onClipClick?.(clip.id, e.shiftKey);
+              return;
+            }
+
+            // Open context menu with Shift+F10 or ContextMenu key (standard keyboard shortcuts)
+            if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+              e.preventDefault();
+              e.stopPropagation();
+              // Calculate position of clip header for menu placement
+              const clipElement = e.currentTarget as HTMLElement;
+              const rect = clipElement.getBoundingClientRect();
+              // Open menu at top-right corner of clip (where menu button is)
+              onClipMenuClick?.(clip.id, rect.right - 20, rect.top + 10, true);
+              return;
+            }
+
+            // Move clip horizontally with Cmd+Arrow Left/Right
+            if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey) {
+              e.preventDefault();
+              const moveAmount = 0.1; // Move by 0.1 seconds
+              const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
+              onClipMove?.(clip.id, delta);
+              return;
+            }
+
+            // Move clip to different track with Cmd+Arrow Up/Down
+            if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey) {
+              e.preventDefault();
+              const direction = e.key === 'ArrowDown' ? 1 : -1;
+              onClipMoveToTrack?.(clip.id, direction);
+              return;
+            }
+
+            // Expand clip with Shift+Arrow keys (trim with Cmd+Shift+Arrow)
+            if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+              e.preventDefault();
+              const trimAmount = 0.1; // Trim by 0.1 seconds
+              const isTrimming = e.metaKey || e.ctrlKey;
+              // For expand (Shift only): ArrowLeft → left, ArrowRight → right
+              // For trim (Cmd+Shift): ArrowLeft → right, ArrowRight → left
+              const edge = isTrimming
+                ? (e.key === 'ArrowLeft' ? 'right' : 'left')
+                : (e.key === 'ArrowLeft' ? 'left' : 'right');
+              const delta = isTrimming ? trimAmount : -trimAmount; // Negative delta = expand
+              onClipTrim?.(clip.id, edge, delta);
+              return;
+            }
+
+            // Navigate between clips with arrow keys (without Cmd or Shift) - cycles through all clips
+            // Right/Down = next clip, Left/Up = previous clip
+            if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+              e.preventDefault();
+              // Cycle to next clip, wrapping to first if at end
+              const nextIndex = (clipIndex + 1) % clips.length;
+              const clipElements = e.currentTarget.parentElement?.querySelectorAll('[role="button"]');
+              if (clipElements) {
+                const nextClip = clipElements[nextIndex] as HTMLElement;
+                if (nextClip) {
+                  nextClip.tabIndex = tabIndex !== undefined ? tabIndex : 0;
+                  nextClip.focus({ preventScroll: true });
+                  // Reset current clip tabIndex
+                  (e.currentTarget as HTMLElement).tabIndex = -1;
+                }
+              }
+            } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+              e.preventDefault();
+              // Cycle to previous clip, wrapping to last if at beginning
+              const prevIndex = (clipIndex - 1 + clips.length) % clips.length;
+              const clipElements = e.currentTarget.parentElement?.querySelectorAll('[role="button"]');
+              if (clipElements) {
+                const prevClip = clipElements[prevIndex] as HTMLElement;
+                if (prevClip) {
+                  prevClip.tabIndex = tabIndex !== undefined ? tabIndex : 0;
+                  prevClip.focus({ preventScroll: true });
+                  // Reset current clip tabIndex
+                  (e.currentTarget as HTMLElement).tabIndex = -1;
+                }
+              }
+            }
           }}
         >
           <ClipDisplay
@@ -222,9 +356,18 @@ export const TrackNew: React.FC<TrackProps> = ({
             envelope={clip.envelopePoints}
             showEnvelope={envelopeMode}
             clipDuration={clip.duration}
+            clipTrimStart={(clip as any).trimStart || 0}
+            clipFullDuration={(clip as any).fullDuration}
+            pixelsPerSecond={pixelsPerSecond}
             hiddenPointIndices={clipHiddenPoints.get(clip.id) || []}
             hoveredPointIndex={clipHoveredPoints.get(clip.id) ?? null}
-            onHeaderClick={() => onClipHeaderClick?.(clip.id, clip.start)}
+            onHeaderClick={(shiftKey) => onClipClick?.(clip.id, shiftKey)}
+            onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
+            onTrimEdge={
+              onClipTrimEdge
+                ? ({ edge, clientX }) => onClipTrimEdge(clip.id, edge, clientX)
+                : undefined
+            }
           />
         </div>
       );
@@ -279,8 +422,35 @@ export const TrackNew: React.FC<TrackProps> = ({
     });
   };
 
+  // Handle focus entering the track
+  const handleTrackFocus = (e: React.FocusEvent) => {
+    // Focus entered somewhere within the track (could be a clip or label)
+    setHasKeyboardFocus(true);
+    onFocusChange?.(true);
+  };
+
+  // Reset tabIndex to first clip when focus leaves the track
+  const handleTrackBlur = (e: React.FocusEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    const trackElement = e.currentTarget;
+
+    // Only notify blur if focus is moving completely outside the track
+    if (!relatedTarget || !trackElement.contains(relatedTarget)) {
+      // Reset tabIndex: first clip gets tabIndex, all others get -1
+      const clipElements = trackElement.querySelectorAll('[role="button"]');
+      clipElements.forEach((clipEl, index) => {
+        (clipEl as HTMLElement).tabIndex = (index === 0 && tabIndex !== undefined) ? tabIndex : -1;
+      });
+      // Remove keyboard focus indicator
+      setHasKeyboardFocus(false);
+      onFocusChange?.(false);
+    }
+  };
+
+  const className = `track-wrapper ${isFocused ? 'track-wrapper--focused' : ''}`;
+
   return (
-    <div className={`track-wrapper ${isFocused ? 'track-wrapper--focused' : ''}`}>
+    <div className={className} data-track-index={trackIndex}>
       <div
         className={`track ${isSelected ? 'track--selected' : ''} ${isMuted ? 'track--muted' : ''}`}
         style={{
@@ -291,6 +461,8 @@ export const TrackNew: React.FC<TrackProps> = ({
           opacity: isMuted ? 0.5 : 1,
         }}
         onClick={onTrackClick}
+        onFocus={handleTrackFocus}
+        onBlur={handleTrackBlur}
       >
         {renderClips()}
         {renderEnvelopeInteractionLayers()}

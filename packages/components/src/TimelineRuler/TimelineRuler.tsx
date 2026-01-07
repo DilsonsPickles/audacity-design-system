@@ -56,6 +56,10 @@ export interface TimelineRulerProps {
    * Color for spectral selection highlight in ruler
    */
   spectralHighlightColor?: string;
+  /**
+   * Current cursor/playback position in seconds
+   */
+  cursorPosition?: number;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -74,6 +78,7 @@ export function TimelineRuler({
   tickColor = '#828387',
   selectionColor = 'rgba(255, 255, 255, 0.5)',
   spectralHighlightColor = 'rgba(130, 131, 135, 0.3)',
+  cursorPosition,
 }: TimelineRulerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -137,7 +142,22 @@ export function TimelineRuler({
       lineColor,
       tickColor
     );
-  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, backgroundColor, textColor, lineColor, tickColor, selectionColor, spectralHighlightColor]);
+
+    // Draw cursor position line (using text color)
+    if (cursorPosition !== undefined && cursorPosition >= 0) {
+      const cursorX = CLIP_CONTENT_OFFSET + cursorPosition * pixelsPerSecond - scrollX;
+
+      // Only draw if cursor is visible in viewport
+      if (cursorX >= CLIP_CONTENT_OFFSET && cursorX <= width) {
+        ctx.strokeStyle = textColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(Math.floor(cursorX) + 0.5, 0);
+        ctx.lineTo(Math.floor(cursorX) + 0.5, height);
+        ctx.stroke();
+      }
+    }
+  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, backgroundColor, textColor, lineColor, tickColor, selectionColor, spectralHighlightColor, cursorPosition]);
 
   return (
     <canvas

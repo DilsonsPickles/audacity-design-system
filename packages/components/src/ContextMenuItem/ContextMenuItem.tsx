@@ -67,6 +67,45 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+
+    // For items with submenus
+    if (hasSubmenu || children) {
+      if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!submenuOpen) {
+          setSubmenuOpen(true);
+          // Focus first submenu item after opening
+          setTimeout(() => {
+            const firstSubmenuItem = submenuRef.current?.querySelector('[role="menuitem"]') as HTMLElement;
+            if (firstSubmenuItem) {
+              firstSubmenuItem.focus();
+            }
+          }, 0);
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && submenuOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSubmenuOpen(false);
+        // Return focus to parent item
+        itemRef.current?.focus();
+        return;
+      }
+    } else {
+      // For regular menu items without submenus
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onClick?.();
+        onClose?.();
+      }
+    }
+  };
+
   const handleMouseEnter = () => {
     if (hasSubmenu || children) {
       setSubmenuOpen(true);
@@ -97,11 +136,79 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [submenuOpen]);
 
+  // Handle keyboard navigation within submenu
+  useEffect(() => {
+    if (!submenuOpen) return;
+
+    const handleSubmenuKeyboard = (e: KeyboardEvent) => {
+      // Only handle if focus is within the submenu
+      if (!submenuRef.current?.contains(document.activeElement)) return;
+
+      const items = Array.from(
+        submenuRef.current.querySelectorAll('[role="menuitem"]:not([aria-disabled="true"])')
+      ) as HTMLElement[];
+
+      if (items.length === 0) return;
+
+      const currentIndex = items.findIndex(item => item === document.activeElement);
+
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          e.stopPropagation();
+          setSubmenuOpen(false);
+          itemRef.current?.focus();
+          break;
+
+        case 'ArrowDown':
+          e.preventDefault();
+          e.stopPropagation();
+          if (currentIndex < items.length - 1) {
+            items[currentIndex + 1].focus();
+          } else {
+            // Wrap to first item
+            items[0].focus();
+          }
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          e.stopPropagation();
+          if (currentIndex > 0) {
+            items[currentIndex - 1].focus();
+          } else {
+            // Wrap to last item
+            items[items.length - 1].focus();
+          }
+          break;
+
+        case 'Home':
+          e.preventDefault();
+          e.stopPropagation();
+          items[0].focus();
+          break;
+
+        case 'End':
+          e.preventDefault();
+          e.stopPropagation();
+          items[items.length - 1].focus();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleSubmenuKeyboard, true);
+    return () => document.removeEventListener('keydown', handleSubmenuKeyboard, true);
+  }, [submenuOpen]);
+
   return (
     <div
       ref={itemRef}
       className={`context-menu-item ${disabled ? 'disabled' : ''} ${submenuOpen ? 'submenu-open' : ''}`}
+      role="menuitem"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -114,7 +221,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
       </div>
 
       {(hasSubmenu || children) && submenuOpen && (
-        <div ref={submenuRef} className="context-menu-submenu">
+        <div ref={submenuRef} className="context-menu-submenu" role="menu">
           {React.Children.map(children, child => {
             if (React.isValidElement(child)) {
               return React.cloneElement(child, { onClose } as any);

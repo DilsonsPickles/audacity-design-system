@@ -31,6 +31,11 @@ export interface ContextMenuProps {
    * Optional CSS class name
    */
   className?: string;
+
+  /**
+   * Whether to auto-focus first item (when opened via keyboard)
+   */
+  autoFocus?: boolean;
 }
 
 /**
@@ -44,8 +49,32 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   y,
   children,
   className = '',
+  autoFocus = false,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+
+  // Store the trigger element when menu opens
+  useEffect(() => {
+    if (isOpen) {
+      // Store the currently focused element to restore later
+      triggerElementRef.current = document.activeElement as HTMLElement;
+    }
+  }, [isOpen]);
+
+  // Auto-focus first menu item when opened via keyboard
+  useEffect(() => {
+    if (!isOpen || !autoFocus || !menuRef.current) return;
+
+    // Find first focusable menu item
+    const firstItem = menuRef.current.querySelector('[role="menuitem"]') as HTMLElement;
+    if (firstItem) {
+      // Use setTimeout to ensure menu is rendered and positioned
+      setTimeout(() => {
+        firstItem.focus();
+      }, 0);
+    }
+  }, [isOpen, autoFocus]);
 
   // Handle click outside to close
   useEffect(() => {
@@ -65,18 +94,86 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
 
-  // Handle escape key to close
+  // Handle keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!menuRef.current) return;
+
+      // Only select direct children menu items, not nested submenu items
+      // This ensures submenu navigation is isolated
+      const items = Array.from(
+        menuRef.current.querySelectorAll(':scope > [role="menuitem"]:not([aria-disabled="true"])')
+      ) as HTMLElement[];
+
+      if (items.length === 0) return;
+
+      const currentIndex = items.findIndex(item => item === document.activeElement);
+
+      // Only handle navigation if focus is within this menu level (not in a submenu)
+      const focusedElement = document.activeElement;
+      const isInSubmenu = focusedElement &&
+        !items.includes(focusedElement as HTMLElement) &&
+        menuRef.current.contains(focusedElement);
+
+      // If focus is in a submenu, let the submenu handle arrow keys
+      if (isInSubmenu && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        return;
+      }
+
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          // Restore focus to trigger element
+          if (triggerElementRef.current) {
+            setTimeout(() => {
+              triggerElementRef.current?.focus();
+            }, 0);
+          }
+          break;
+
+        case 'Tab':
+          // Tab (with or without Shift) closes menu and moves focus outside
+          e.preventDefault();
+          onClose();
+          break;
+
+        case 'ArrowDown':
+          e.preventDefault();
+          if (currentIndex < items.length - 1) {
+            items[currentIndex + 1].focus();
+          } else {
+            // Wrap to first item
+            items[0].focus();
+          }
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          if (currentIndex > 0) {
+            items[currentIndex - 1].focus();
+          } else {
+            // Wrap to last item
+            items[items.length - 1].focus();
+          }
+          break;
+
+        case 'Home':
+          e.preventDefault();
+          items[0].focus();
+          break;
+
+        case 'End':
+          e.preventDefault();
+          items[items.length - 1].focus();
+          break;
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   // Adjust position if menu would go off-screen
@@ -123,6 +220,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     <div
       ref={menuRef}
       className={`context-menu ${className}`}
+      role="menu"
       style={{
         position: 'fixed',
         left: `${x}px`,

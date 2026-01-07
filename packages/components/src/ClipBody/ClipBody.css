@@ -2,6 +2,7 @@
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
+  cursor: text; /* Text cursor for time selection within clips */
 }
 
 .clip-body__waveform {

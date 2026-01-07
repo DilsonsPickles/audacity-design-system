@@ -41,7 +41,9 @@ export type IconName =
   | 'metronome'
   | 'plug'
   | 'microphone'
-  | 'keyboard';
+  | 'keyboard'
+  | 'label'
+  | 'midi';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -84,6 +86,8 @@ const ICON_MAP: Record<IconName, string> = {
   plug: '\uF440',
   microphone: '\uF41B',
   keyboard: '\uF35D',
+  label: '\uF3C7',
+  midi: '\uF35E',
 };
 
 export interface IconProps {

@@ -6,6 +6,13 @@ interface EnvelopePoint {
   db: number;
 }
 
+interface Label {
+  id: number;
+  text: string;
+  time: number;
+  endTime?: number;
+}
+
 interface Clip {
   id: number;
   name: string;
@@ -16,6 +23,8 @@ interface Clip {
   waveformRight?: number[];
   envelopePoints: EnvelopePoint[];
   selected?: boolean;
+  trimStart?: number;
+  fullDuration?: number;
 }
 
 interface Track {
@@ -25,6 +34,7 @@ interface Track {
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
   clips: Clip[];
+  labels?: Label[];
 }
 
 interface TimeSelection {
@@ -82,6 +92,12 @@ export interface ClipDragState {
   offsetX: number;        // Offset from clip left edge to mouse
   initialX: number;       // Initial mouse X position
   initialTrackIndex: number;  // Track where drag started
+  initialStartTime: number; // Initial start time of the clip being dragged
+  selectedClipsInitialPositions?: Array<{
+    clipId: number;
+    trackIndex: number;
+    startTime: number;
+  }>;
 }
 
 export interface StereoChannelResizeDragState {
@@ -131,7 +147,12 @@ export type TracksAction =
   | { type: 'SELECT_TRACK'; payload: number }
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
-  | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } };
+  | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } }
+  | { type: 'TOGGLE_CLIP_SELECTION'; payload: { trackIndex: number; clipId: number } }
+  | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
+  | { type: 'TRIM_CLIP'; payload: { trackIndex: number; clipId: number; newTrimStart: number; newDuration: number; newStart?: number } }
+  | { type: 'ADD_LABEL'; payload: { trackIndex: number; label: Label } }
+  | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> }  };
 
 // Initial state
 const initialState: TracksState = {
@@ -406,6 +427,90 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
         clips: [...newTracks[trackIndex].clips, clip],
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'TOGGLE_CLIP_SELECTION': {
+      const { trackIndex, clipId } = action.payload;
+      const newTracks = state.tracks.map((track, tIndex) => ({
+        ...track,
+        clips: track.clips.map(clip => {
+          if (tIndex === trackIndex && clip.id === clipId) {
+            return { ...clip, selected: !clip.selected };
+          }
+          return clip;
+        })
+      }));
+
+      // Update selectedTrackIndices based on which tracks have selected clips
+      const tracksWithSelection = newTracks
+        .map((track, idx) => ({ idx, hasSelection: track.clips.some(c => c.selected) }))
+        .filter(t => t.hasSelection)
+        .map(t => t.idx);
+
+      return {
+        ...state,
+        tracks: newTracks,
+        selectedTrackIndices: tracksWithSelection,
+      };
+    }
+
+    case 'DELETE_CLIP': {
+      const { trackIndex, clipId } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        clips: newTracks[trackIndex].clips.filter(c => c.id !== clipId),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'TRIM_CLIP': {
+      const { trackIndex, clipId, newTrimStart, newDuration, newStart } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        clips: newTracks[trackIndex].clips.map(clip => {
+          if (clip.id === clipId) {
+            const updatedClip: Clip = {
+              ...clip,
+              trimStart: newTrimStart,
+              duration: newDuration,
+            };
+            if (newStart !== undefined) {
+              updatedClip.start = newStart;
+            }
+            // Store full duration if not already stored
+            if (!clip.fullDuration) {
+              updatedClip.fullDuration = newTrimStart + newDuration;
+            }
+            return updatedClip;
+          }
+          return clip;
+        }),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'ADD_LABEL': {
+      const { trackIndex, label } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        labels: [...(newTracks[trackIndex].labels || []), label],
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_LABEL': {
+      const { trackIndex, labelId, label } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        labels: (newTracks[trackIndex].labels || []).map(l =>
+          l.id === labelId ? { ...l, ...label } : l
+        ),
       };
       return { ...state, tracks: newTracks };
     }

@@ -3,4 +3,5 @@
   width: 100%;
   height: 100%;
   padding-bottom: 2px; /* Add small bottom padding to prevent scroll sync issues */
+  cursor: text; /* Text cursor for time selection in canvas */
 }

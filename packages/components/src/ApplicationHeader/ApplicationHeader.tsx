@@ -9,6 +9,7 @@
 import React from 'react';
 import './ApplicationHeader.css';
 import { Menu, MenuItem } from '../Menu';
+import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 
 const AudacityLogo = () => (
   <svg
@@ -105,6 +106,12 @@ export function ApplicationHeader({
 }: ApplicationHeaderProps) {
   const [openMenu, setOpenMenu] = React.useState<string | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = React.useState<HTMLElement | null>(null);
+  const menubarRef = React.useRef<HTMLDivElement>(null);
+  const { activeProfile } = useAccessibilityProfile();
+
+  // Check if we're in flat navigation mode
+  const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
+  const menuTabIndex = isFlatNavigation ? 0 : 1;
 
   const handleMenuClick = (item: string, event: React.MouseEvent<HTMLButtonElement>) => {
     // If menu has definitions, open dropdown
@@ -121,6 +128,47 @@ export function ApplicationHeader({
     setOpenMenu(null);
     setMenuAnchorEl(null);
   };
+
+  // Reset tabIndex to first element when focus leaves the menubar (only in grouped mode)
+  const handleMenubarBlur = (e: React.FocusEvent) => {
+    if (isFlatNavigation) return; // Don't manage tabIndex in flat mode
+
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    if (!menubarRef.current?.contains(relatedTarget)) {
+      const buttons = menubarRef.current?.querySelectorAll('button');
+      if (buttons) {
+        buttons.forEach((btn, index) => {
+          (btn as HTMLElement).tabIndex = index === 0 ? menuTabIndex : -1;
+        });
+      }
+    }
+  };
+
+  // Handle keyboard navigation within the menu bar (only in grouped mode)
+  const handleMenubarKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
+    if (isFlatNavigation) return; // No arrow navigation in flat mode
+
+    // Only handle arrow keys - let Tab/Shift+Tab work naturally
+    if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(e.key)) {
+      return;
+    }
+
+    e.preventDefault();
+    const buttons = menubarRef.current?.querySelectorAll('button');
+    if (!buttons) return;
+
+    let nextIndex: number;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      nextIndex = (currentIndex + 1) % menuItems.length;
+    } else {
+      nextIndex = (currentIndex - 1 + menuItems.length) % menuItems.length;
+    }
+
+    // Update tabIndex: current button gets -1, next button gets menuTabIndex
+    (buttons[currentIndex] as HTMLElement).tabIndex = -1;
+    (buttons[nextIndex] as HTMLElement).tabIndex = menuTabIndex;
+    (buttons[nextIndex] as HTMLElement).focus();
+  };
   if (os === 'macos') {
     return (
       <div className={`application-header application-header--macos ${className}`}>
@@ -129,16 +177,19 @@ export function ApplicationHeader({
             className="application-header__macos-button application-header__macos-button--close"
             onClick={() => onWindowControl?.('close')}
             aria-label="Close"
+            tabIndex={-1}
           />
           <button
             className="application-header__macos-button application-header__macos-button--minimize"
             onClick={() => onWindowControl?.('minimize')}
             aria-label="Minimize"
+            tabIndex={-1}
           />
           <button
             className="application-header__macos-button application-header__macos-button--maximize"
             onClick={() => onWindowControl?.('maximize')}
             aria-label="Maximize"
+            tabIndex={-1}
           />
         </div>
         <div className="application-header__macos-title">
@@ -162,6 +213,7 @@ export function ApplicationHeader({
             className="application-header__windows-control application-header__windows-control--minimize"
             onClick={() => onWindowControl?.('minimize')}
             aria-label="Minimize"
+            tabIndex={-1}
           >
             {'\uE921'}
           </button>
@@ -169,6 +221,7 @@ export function ApplicationHeader({
             className="application-header__windows-control application-header__windows-control--maximize"
             onClick={() => onWindowControl?.('maximize')}
             aria-label="Maximize"
+            tabIndex={-1}
           >
             {'\uE922'}
           </button>
@@ -176,17 +229,26 @@ export function ApplicationHeader({
             className="application-header__windows-control application-header__windows-control--close"
             onClick={() => onWindowControl?.('close')}
             aria-label="Close"
+            tabIndex={-1}
           >
             {'\uE8BB'}
           </button>
         </div>
       </div>
-      <div className="application-header__windows-menubar">
-        {menuItems.map((item) => (
+      <div
+        ref={menubarRef}
+        className="application-header__windows-menubar"
+        role="menubar"
+        aria-label="Application menu"
+        onBlur={handleMenubarBlur}
+      >
+        {menuItems.map((item, index) => (
           <button
             key={item}
             className="application-header__menu-item"
             onClick={(e) => handleMenuClick(item, e)}
+            onKeyDown={(e) => handleMenubarKeyDown(e, index)}
+            tabIndex={isFlatNavigation ? menuTabIndex : (index === 0 ? menuTabIndex : -1)}
           >
             {item}
           </button>

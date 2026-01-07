@@ -55,7 +55,17 @@ export const PanKnob: React.FC<PanKnobProps> = ({
   const sweepColor = isLeftPan ? '#84b5ff' : '#677ce4';
 
   return (
-    <div className={`pan-knob ${className}`}>
+    <button
+      className={`pan-knob ${className}`}
+      tabIndex={tabIndex}
+      disabled={disabled}
+      id={id}
+      aria-label={`Pan: ${clampedValue < 0 ? 'L' : clampedValue > 0 ? 'R' : 'C'}${Math.abs(clampedValue)}`}
+      role="slider"
+      aria-valuemin={-100}
+      aria-valuemax={100}
+      aria-valuenow={clampedValue}
+    >
       {/* Background gauge */}
       <div className="pan-knob__gauge" />
 
@@ -84,7 +94,7 @@ export const PanKnob: React.FC<PanKnobProps> = ({
           <div className="pan-knob__indicator" />
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 

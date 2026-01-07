@@ -26,6 +26,10 @@ export interface ToggleButtonProps {
    * ARIA label for accessibility
    */
   ariaLabel?: string;
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
 }
 
 export const ToggleButton: React.FC<ToggleButtonProps> = ({
@@ -35,6 +39,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
   disabled = false,
   className = '',
   ariaLabel,
+  tabIndex,
 }) => {
   return (
     <button
@@ -43,6 +48,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
+      tabIndex={tabIndex}
       aria-pressed={active}
     >
       {children}

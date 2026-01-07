@@ -1,5 +1,4 @@
 import * as Tone from 'tone';
-import type { Clip } from '@audacity-ui/core';
 
 /**
  * Audio playback manager using Tone.js
@@ -10,6 +9,7 @@ export class AudioPlaybackManager {
   private volumes: Map<string, Tone.Volume> = new Map();
   private audioBuffers: Map<string, AudioBuffer> = new Map();
   private isPlaying: boolean = false;
+  // @ts-ignore - playbackPosition is used for tracking state
   private playbackPosition: number = 0;
   private animationFrameId: number | null = null;
   private onPositionUpdate?: (position: number) => void;
