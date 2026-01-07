@@ -15,6 +15,8 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 **Location:** `packages/components/src/Track/TrackNew.tsx` (lines ~264-340)
 
 **Handlers:**
+- **Enter** - Toggle clip selection
+- **Shift+F10** - Open clip context menu (standard keyboard shortcut)
 - **Cmd+Left/Right** - Move clip horizontally by 0.1s
 - **Cmd+Up/Down** - Move clip to adjacent track
 - **Shift+Left/Right** - Extend clip edges (move left edge left / right edge right)
@@ -22,6 +24,8 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **Arrow keys only** - Navigate between clips
 
 **Callbacks required:**
+- `onClipClick` - Selecting/deselecting clips
+- `onClipMenuClick` - Opening context menu
 - `onClipMove` - Moving clips horizontally
 - `onClipMoveToTrack` - Moving clips between tracks
 - `onClipTrim` - Trimming/extending clip edges

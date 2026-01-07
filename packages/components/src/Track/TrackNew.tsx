@@ -265,6 +265,18 @@ export const TrackNew: React.FC<TrackProps> = ({
               return;
             }
 
+            // Open context menu with Shift+F10 (standard keyboard shortcut)
+            if (e.shiftKey && e.key === 'F10') {
+              e.preventDefault();
+              e.stopPropagation();
+              // Calculate position of clip header for menu placement
+              const clipElement = e.currentTarget as HTMLElement;
+              const rect = clipElement.getBoundingClientRect();
+              // Open menu at top-right corner of clip (where menu button is)
+              onClipMenuClick?.(clip.id, rect.right - 20, rect.top + 10);
+              return;
+            }
+
             // Move clip horizontally with Cmd+Arrow Left/Right
             if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey) {
               e.preventDefault();
