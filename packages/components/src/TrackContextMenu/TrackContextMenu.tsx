@@ -25,6 +25,11 @@ export interface TrackContextMenuProps {
   y: number;
 
   /**
+   * Whether to auto-focus first item (when opened via keyboard)
+   */
+  autoFocus?: boolean;
+
+  /**
    * Callback for deleting the track
    */
   onDelete?: () => void;
@@ -39,10 +44,11 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   onClose,
   x,
   y,
+  autoFocus = false,
   onDelete,
 }) => {
   return (
-    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="track-context-menu">
+    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} autoFocus={autoFocus} className="track-context-menu">
       {/* Delete track */}
       <ContextMenuItem
         label="Delete track"

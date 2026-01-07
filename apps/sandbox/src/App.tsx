@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackType } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackContextMenu, TrackType } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
@@ -184,6 +184,15 @@ function CanvasDemoContent() {
     openedViaKeyboard?: boolean;
   } | null>(null);
 
+  // Track context menu state
+  const [trackContextMenu, setTrackContextMenu] = React.useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    trackIndex: number;
+    openedViaKeyboard?: boolean;
+  } | null>(null);
+
   // Track keyboard focus state - only one track can have keyboard focus at a time
   const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(null);
 
@@ -205,6 +214,12 @@ function CanvasDemoContent() {
   // Audio playback state
   const [isPlaying, setIsPlaying] = React.useState(false);
   const audioManagerRef = React.useRef(getAudioPlaybackManager());
+
+  // Track the anchor point for time selection (the fixed end while extending)
+  const selectionAnchorRef = React.useRef<number | null>(null);
+
+  // Track the current selection edges for rapid arrow key updates
+  const selectionEdgesRef = React.useRef<{ startTime: number; endTime: number } | null>(null);
 
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
@@ -317,6 +332,18 @@ function CanvasDemoContent() {
         return;
       }
 
+      // Escape to clear time selection
+      if (e.key === 'Escape') {
+        if (state.timeSelection) {
+          e.preventDefault();
+          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+          // Clear the selection anchor and edges refs
+          selectionAnchorRef.current = null;
+          selectionEdgesRef.current = null;
+          return;
+        }
+      }
+
       // Spacebar for play/pause (unless on an interactive element that uses spacebar)
       if (e.key === ' ') {
         const target = e.target as HTMLElement;
@@ -397,6 +424,7 @@ function CanvasDemoContent() {
             setKeyboardFocusedTrack(newIndex);
             dispatch({ type: 'SET_FOCUSED_TRACK', payload: newIndex });
             // Don't change selection - focus moves independently
+            // User must press Enter to select the focused track
           }
         } else if (state.tracks.length > 0) {
           // If no track is focused, focus the first track
@@ -405,6 +433,131 @@ function CanvasDemoContent() {
           // Don't change selection - focus moves independently
         }
         return;
+      }
+
+      // Left/Right arrow keys for playhead movement and time selection manipulation
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const activeElement = document.activeElement as HTMLElement;
+
+        // Only handle if focus is on body or canvas - not on any interactive element
+        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS') {
+          return; // Let the focused element handle arrow keys
+        }
+
+        const moveAmount = 0.1; // Move by 0.1 seconds
+
+        // Create new time selection with Shift+arrow if none exists
+        if (e.shiftKey && !state.timeSelection) {
+          e.preventDefault();
+
+          // Auto-select all tracks when creating a new time selection
+          if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
+            const allTrackIndices = state.tracks.map((_, idx) => idx);
+            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+          }
+
+          // Create initial selection from current playhead position
+          const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
+          const newPlayheadPosition = Math.max(0, state.playheadPosition + delta);
+
+          const newSelection = {
+            startTime: Math.min(state.playheadPosition, newPlayheadPosition),
+            endTime: Math.max(state.playheadPosition, newPlayheadPosition),
+          };
+
+          dispatch({
+            type: 'SET_TIME_SELECTION',
+            payload: newSelection,
+          });
+
+          // Move playhead to new position
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+          return;
+        }
+
+        // Handle time selection manipulation with Shift or Cmd+Shift
+        if (state.timeSelection && (e.shiftKey || e.metaKey)) {
+          e.preventDefault();
+
+          // Initialize ref with current selection if not set
+          if (!selectionEdgesRef.current) {
+            selectionEdgesRef.current = {
+              startTime: state.timeSelection.startTime,
+              endTime: state.timeSelection.endTime,
+            };
+          }
+
+          if (e.shiftKey && e.metaKey) {
+          // REDUCE mode (Cmd+Shift): Trim inward
+          if (e.key === 'ArrowLeft') {
+            // Cmd+Shift+Left: Move RIGHT edge LEFT (trim from right)
+            const newEndTime = Math.max(
+              selectionEdgesRef.current.startTime + 0.1, // Min selection size
+              selectionEdgesRef.current.endTime - moveAmount
+            );
+            selectionEdgesRef.current.endTime = newEndTime;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: selectionEdgesRef.current.startTime,
+                endTime: newEndTime,
+              },
+            });
+          } else {
+            // Cmd+Shift+Right: Move LEFT edge RIGHT (trim from left)
+            const newStartTime = Math.min(
+              selectionEdgesRef.current.endTime - 0.1, // Min selection size
+              selectionEdgesRef.current.startTime + moveAmount
+            );
+            selectionEdgesRef.current.startTime = newStartTime;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: newStartTime,
+                endTime: selectionEdgesRef.current.endTime,
+              },
+            });
+          }
+        } else if (e.shiftKey) {
+          // EXTEND mode (Shift): Expand outward
+          if (e.key === 'ArrowLeft') {
+            // Shift+Left: Move LEFT edge LEFT (expand leftward)
+            const newStartTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
+            selectionEdgesRef.current.startTime = newStartTime;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: newStartTime,
+                endTime: selectionEdgesRef.current.endTime,
+              },
+            });
+          } else {
+            // Shift+Right: Move RIGHT edge RIGHT (expand rightward)
+            const newEndTime = selectionEdgesRef.current.endTime + moveAmount;
+            selectionEdgesRef.current.endTime = newEndTime;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: selectionEdgesRef.current.startTime,
+                endTime: newEndTime,
+              },
+            });
+          }
+        }
+      } else {
+          // Plain arrow keys - move playhead
+          e.preventDefault();
+          const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
+          const newPosition = Math.max(0, state.playheadPosition + delta);
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+        }
+        return;
+      }
+
+      // Clear the selection edges ref when not actively resizing
+      // This ensures fresh state for next time
+      if (selectionEdgesRef.current) {
+        selectionEdgesRef.current = null;
       }
 
       // Toggle track selection with Enter key
@@ -435,13 +588,47 @@ function CanvasDemoContent() {
         return;
       }
 
-      // Move playhead with comma and period keys
-      if (e.key === ',' || e.key === '.') {
+      // Move playhead with comma and period keys for larger jumps (or create time selection with Shift)
+      // Note: When shift is held, browser sends '<' for shift+comma and '>' for shift+period
+      if (e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>') {
         e.preventDefault();
-        const moveAmount = 0.1; // Move by 0.1 seconds
-        const delta = e.key === '.' ? moveAmount : -moveAmount;
-        const newPosition = Math.max(0, state.playheadPosition + delta);
-        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+        const moveAmount = 1.0; // Move by 1 second (larger jumps than arrow keys)
+        // Handle both , and < (shift+comma), . and > (shift+period)
+        const delta = (e.key === '.' || e.key === '>') ? moveAmount : -moveAmount;
+
+        if (e.shiftKey || e.key === '<' || e.key === '>') {
+          // Create or extend time selection
+          const newPlayheadPosition = Math.max(0, state.playheadPosition + delta);
+
+          if (selectionAnchorRef.current === null) {
+            // Start a new selection - set anchor to current playhead position
+            selectionAnchorRef.current = state.playheadPosition;
+
+            // Auto-select all tracks when creating a new time selection
+            if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
+              const allTrackIndices = state.tracks.map((_, idx) => idx);
+              dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+            }
+          }
+
+          // Create selection between anchor and new playhead position
+          const newSelection = {
+            startTime: Math.min(selectionAnchorRef.current, newPlayheadPosition),
+            endTime: Math.max(selectionAnchorRef.current, newPlayheadPosition),
+          };
+          dispatch({
+            type: 'SET_TIME_SELECTION',
+            payload: newSelection,
+          });
+
+          // Always update playhead position
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+        } else {
+          // Normal playhead movement (no shift) - clear the selection anchor
+          selectionAnchorRef.current = null;
+          const newPosition = Math.max(0, state.playheadPosition + delta);
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+        }
         return;
       }
 
@@ -492,7 +679,17 @@ function CanvasDemoContent() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [state.tracks, state.focusedTrackIndex, state.playheadPosition, state.selectedTrackIndices, keyboardFocusedTrack, controlPanelHasFocus, dispatch, isFlatNavigation]);
+  }, [
+    state.tracks,
+    state.focusedTrackIndex,
+    state.playheadPosition,
+    state.selectedTrackIndices,
+    state.timeSelection,
+    keyboardFocusedTrack,
+    controlPanelHasFocus,
+    dispatch,
+    isFlatNavigation
+  ]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
@@ -931,6 +1128,17 @@ function CanvasDemoContent() {
                       payload: { trackIndex: index, label: newLabel }
                     });
                     toast.success('Label added at playhead');
+                  }}
+                  onMenuClick={(e) => {
+                    const button = e.currentTarget;
+                    const rect = button.getBoundingClientRect();
+                    setTrackContextMenu({
+                      isOpen: true,
+                      x: rect.right - 20,
+                      y: rect.top + 10,
+                      trackIndex: index,
+                      openedViaKeyboard: true, // Always true since this is triggered by Shift+F10
+                    });
                   }}
                   state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
                   height="default"
@@ -1493,6 +1701,27 @@ function CanvasDemoContent() {
           onRenderPitchSpeed={() => {
             toast.info('Render pitch and speed - not yet implemented');
             setClipContextMenu(null);
+          }}
+        />
+      )}
+
+      {/* Track Context Menu */}
+      {trackContextMenu && (
+        <TrackContextMenu
+          isOpen={trackContextMenu.isOpen}
+          x={trackContextMenu.x}
+          y={trackContextMenu.y}
+          autoFocus={trackContextMenu.openedViaKeyboard}
+          onClose={() => setTrackContextMenu(null)}
+          onDelete={() => {
+            if (trackContextMenu) {
+              dispatch({
+                type: 'DELETE_TRACK',
+                payload: trackContextMenu.trackIndex,
+              });
+              setTrackContextMenu(null);
+              toast.success('Track deleted');
+            }
           }}
         />
       )}

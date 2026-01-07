@@ -100,6 +100,22 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     const currentElement = document.activeElement;
     const isPanelFocused = currentElement === panelElement;
 
+    // Handle Shift+F10 or ContextMenu key to open track menu
+    if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+      e.preventDefault();
+      e.stopPropagation();
+      // Trigger menu click with a synthetic event
+      if (onMenuClick) {
+        const syntheticEvent = {
+          currentTarget: panelElement.querySelector('[aria-label="Track menu"]') || panelElement,
+          preventDefault: () => {},
+          stopPropagation: () => {},
+        } as unknown as React.MouseEvent<HTMLButtonElement>;
+        onMenuClick(syntheticEvent);
+      }
+      return;
+    }
+
     // Handle Escape key to return focus to panel itself
     if (e.key === 'Escape' && !isPanelFocused) {
       e.preventDefault();

@@ -204,36 +204,28 @@ export function Canvas({
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, time) });
   };
 
-  // Calculate time selection overlay position and height
-  const getTimeSelectionOverlayBounds = () => {
+  // Calculate time selection overlay bounds for each selected track
+  const getTimeSelectionOverlayBoundsPerTrack = () => {
     if (!timeSelection || selectedTrackIndices.length === 0) {
-      return { top: 0, height: 0 };
+      return [];
     }
 
-    const minTrackIndex = Math.min(...selectedTrackIndices);
-    const maxTrackIndex = Math.max(...selectedTrackIndices);
-
-    // Calculate top position (Y of first selected track)
-    let top = TOP_GAP;
-    for (let i = 0; i < minTrackIndex; i++) {
-      top += (tracks[i].height || DEFAULT_TRACK_HEIGHT) + TRACK_GAP;
-    }
-
-    // Calculate height (sum of selected tracks + gaps between them)
-    let height = 0;
-    for (let i = minTrackIndex; i <= maxTrackIndex; i++) {
-      if (i < tracks.length) {
-        height += (tracks[i].height || DEFAULT_TRACK_HEIGHT);
-        if (i < maxTrackIndex) {
-          height += TRACK_GAP;
-        }
+    // Create an overlay for each selected track
+    return selectedTrackIndices.map(trackIndex => {
+      // Calculate top position (Y of this track)
+      let top = TOP_GAP;
+      for (let i = 0; i < trackIndex; i++) {
+        top += (tracks[i].height || DEFAULT_TRACK_HEIGHT) + TRACK_GAP;
       }
-    }
 
-    return { top, height };
+      // Calculate height of this track
+      const height = tracks[trackIndex].height || DEFAULT_TRACK_HEIGHT;
+
+      return { top, height, trackIndex };
+    });
   };
 
-  const overlayBounds = getTimeSelectionOverlayBounds();
+  const overlayBoundsPerTrack = getTimeSelectionOverlayBoundsPerTrack();
 
   const containerProps = selection.containerProps as any;
 
@@ -987,16 +979,19 @@ export function Canvas({
           );
         })}
 
-        {/* Time Selection Overlay */}
-        <TimeSelectionCanvasOverlay
-          timeSelection={timeSelection}
-          pixelsPerSecond={pixelsPerSecond}
-          leftPadding={leftPadding}
-          top={overlayBounds.top}
-          height={overlayBounds.height}
-          backgroundColor="rgba(112, 181, 255, 0.3)"
-          borderColor="transparent"
-        />
+        {/* Time Selection Overlays - one per selected track */}
+        {overlayBoundsPerTrack.map(({ top, height, trackIndex }) => (
+          <TimeSelectionCanvasOverlay
+            key={`time-selection-${trackIndex}`}
+            timeSelection={timeSelection}
+            pixelsPerSecond={pixelsPerSecond}
+            leftPadding={leftPadding}
+            top={top}
+            height={height}
+            backgroundColor="rgba(112, 181, 255, 0.15)"
+            borderColor="transparent"
+          />
+        ))}
 
         {/* Spectral Selection Overlay */}
         <SpectralSelectionOverlay
