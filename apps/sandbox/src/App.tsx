@@ -394,7 +394,6 @@ function CanvasDemoContent() {
               }
             });
           });
-          toast.info('Clip(s) deleted');
           return;
         }
 
