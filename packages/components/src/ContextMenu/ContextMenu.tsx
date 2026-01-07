@@ -52,6 +52,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   autoFocus = false,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+
+  // Store the trigger element when menu opens
+  useEffect(() => {
+    if (isOpen) {
+      // Store the currently focused element to restore later
+      triggerElementRef.current = document.activeElement as HTMLElement;
+    }
+  }, [isOpen]);
 
   // Auto-focus first menu item when opened via keyboard
   useEffect(() => {
@@ -104,6 +113,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         case 'Escape':
           e.preventDefault();
           onClose();
+          // Restore focus to trigger element
+          if (triggerElementRef.current) {
+            setTimeout(() => {
+              triggerElementRef.current?.focus();
+            }, 0);
+          }
           break;
 
         case 'Tab':
