@@ -305,16 +305,17 @@ export function useTimeSelection({
         setTimeout(() => {
           wasDraggingRef.current = false;
         }, 50);
-      }
 
-      // Always determine focused track based on where mouse was released
-      const releasedTrackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
+        // Only set focused track if we actually dragged (creating or resizing selection)
+        // Determine focused track based on where mouse was released
+        const releasedTrackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
 
-      // If released beyond last track, focus the last track
-      if (releasedTrackIndex >= tracks.length) {
-        onFocusedTrackChange(tracks.length - 1);
-      } else if (releasedTrackIndex >= 0 && releasedTrackIndex < tracks.length) {
-        onFocusedTrackChange(releasedTrackIndex);
+        // If released beyond last track, focus the last track
+        if (releasedTrackIndex >= tracks.length) {
+          onFocusedTrackChange(tracks.length - 1);
+        } else if (releasedTrackIndex >= 0 && releasedTrackIndex < tracks.length) {
+          onFocusedTrackChange(releasedTrackIndex);
+        }
       }
 
       // Call finalized callback with current selection before clearing drag state
