@@ -601,6 +601,20 @@ function CanvasDemoContent() {
                     dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
                   }
                 }}
+                onKeyDown={(e) => {
+                  // On Enter, trigger the select to show options (workaround for browsers where Enter doesn't open dropdown)
+                  if (e.key === 'Enter') {
+                    const target = e.target as HTMLSelectElement;
+                    // Show picker is a modern API to programmatically open the dropdown
+                    if ('showPicker' in target) {
+                      try {
+                        (target as any).showPicker();
+                      } catch (err) {
+                        // showPicker() might fail in some contexts, fallback to native behavior
+                      }
+                    }
+                  }
+                }}
               >
                 <option value="classic">Classic</option>
                 <option value="spectral-editing">Spectral editing</option>
