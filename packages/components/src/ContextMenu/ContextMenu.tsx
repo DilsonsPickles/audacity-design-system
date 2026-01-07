@@ -85,18 +85,67 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
 
-  // Handle escape key to close
+  // Handle keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!menuRef.current) return;
+
+      const items = Array.from(
+        menuRef.current.querySelectorAll('[role="menuitem"]:not([aria-disabled="true"])')
+      ) as HTMLElement[];
+
+      if (items.length === 0) return;
+
+      const currentIndex = items.findIndex(item => item === document.activeElement);
+
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          break;
+
+        case 'Tab':
+          // Tab (with or without Shift) closes menu and moves focus outside
+          e.preventDefault();
+          onClose();
+          break;
+
+        case 'ArrowDown':
+          e.preventDefault();
+          if (currentIndex < items.length - 1) {
+            items[currentIndex + 1].focus();
+          } else {
+            // Wrap to first item
+            items[0].focus();
+          }
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          if (currentIndex > 0) {
+            items[currentIndex - 1].focus();
+          } else {
+            // Wrap to last item
+            items[items.length - 1].focus();
+          }
+          break;
+
+        case 'Home':
+          e.preventDefault();
+          items[0].focus();
+          break;
+
+        case 'End':
+          e.preventDefault();
+          items[items.length - 1].focus();
+          break;
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   // Adjust position if menu would go off-screen
