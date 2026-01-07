@@ -307,19 +307,15 @@ export function useTimeSelection({
         }, 50);
       }
 
-      if (mode === 'create') {
-        // Determine focused track (where mouse was released)
-        const releasedTrackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
+      // Always determine focused track based on where mouse was released
+      const releasedTrackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
 
-        // If released beyond last track, focus the last track
-        if (releasedTrackIndex >= tracks.length) {
-          onFocusedTrackChange(tracks.length - 1);
-        } else if (releasedTrackIndex >= 0 && releasedTrackIndex < tracks.length) {
-          onFocusedTrackChange(releasedTrackIndex);
-        }
+      // If released beyond last track, focus the last track
+      if (releasedTrackIndex >= tracks.length) {
+        onFocusedTrackChange(tracks.length - 1);
+      } else if (releasedTrackIndex >= 0 && releasedTrackIndex < tracks.length) {
+        onFocusedTrackChange(releasedTrackIndex);
       }
-      // For resize modes, don't change selected tracks or focused track
-      // They are preserved from when the resize started
 
       // Call finalized callback with current selection before clearing drag state
       if (onTimeSelectionFinalized && currentTimeSelection) {
