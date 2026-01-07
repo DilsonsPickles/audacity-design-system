@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useLabelKeyboardHandling, useAccessibilityProfile } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import './Canvas.css';
@@ -76,6 +76,9 @@ export function Canvas({
     initialDuration: number;
     initialClipStart: number;
   } | null>(null);
+
+  // Track focused label for selection state
+  const [focusedLabelId, setFocusedLabelId] = useState<number | null>(null);
 
   // Label dragging state
   const labelDragStateRef = useRef<{ trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number } | null>(null);
@@ -825,6 +828,8 @@ export function Canvas({
                     tabIndex={isFirstLabel ? trackTabIndex : -1}
                     role="button"
                     aria-label={`Label: ${label.text || 'empty'}`}
+                    onFocus={() => setFocusedLabelId(label.id)}
+                    onBlur={() => setFocusedLabelId(null)}
                     onKeyDown={(e) => {
                       // First, handle shortcuts from hook
                       handleKeyDown(e);
@@ -883,6 +888,7 @@ export function Canvas({
                       text={label.text}
                       type={type}
                       state="idle"
+                      selected={focusedLabelId === label.id}
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
                       onLabelMove={(deltaX) => {
