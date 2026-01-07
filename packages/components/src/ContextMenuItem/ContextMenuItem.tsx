@@ -67,6 +67,21 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+
+    // Enter or Space activates the menu item
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (hasSubmenu || children) {
+        setSubmenuOpen(!submenuOpen);
+      } else {
+        onClick?.();
+        onClose?.();
+      }
+    }
+  };
+
   const handleMouseEnter = () => {
     if (hasSubmenu || children) {
       setSubmenuOpen(true);
@@ -101,7 +116,11 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     <div
       ref={itemRef}
       className={`context-menu-item ${disabled ? 'disabled' : ''} ${submenuOpen ? 'submenu-open' : ''}`}
+      role="menuitem"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

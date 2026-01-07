@@ -26,7 +26,7 @@ export interface CanvasProps {
   /**
    * Callback when clip menu button is clicked
    */
-  onClipMenuClick?: (clipId: number, trackIndex: number, x: number, y: number) => void;
+  onClipMenuClick?: (clipId: number, trackIndex: number, x: number, y: number, openedViaKeyboard?: boolean) => void;
   /**
    * Callback when track keyboard focus changes
    */
@@ -682,8 +682,8 @@ export function Canvas({
                     payload: { trackIndex, clipId: clipId as number, envelopePoints: points },
                   });
                 }}
-                onClipMenuClick={(clipId, x, y) => {
-                  onClipMenuClick?.(clipId as number, trackIndex, x, y);
+                onClipMenuClick={(clipId, x, y, openedViaKeyboard) => {
+                  onClipMenuClick?.(clipId as number, trackIndex, x, y, openedViaKeyboard);
                 }}
                 onClipClick={(clipId, shiftKey) => {
                   // Don't change selection if we just finished dragging

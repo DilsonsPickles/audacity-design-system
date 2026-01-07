@@ -111,7 +111,7 @@ export interface TrackProps {
   /**
    * Callback when a clip menu button is clicked
    */
-  onClipMenuClick?: (clipId: string | number, x: number, y: number) => void;
+  onClipMenuClick?: (clipId: string | number, x: number, y: number, openedViaKeyboard?: boolean) => void;
 
   /**
    * Callback when a clip edge is being trimmed
@@ -265,15 +265,15 @@ export const TrackNew: React.FC<TrackProps> = ({
               return;
             }
 
-            // Open context menu with Shift+F10 (standard keyboard shortcut)
-            if (e.shiftKey && e.key === 'F10') {
+            // Open context menu with Shift+F10 or ContextMenu key (standard keyboard shortcuts)
+            if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
               e.preventDefault();
               e.stopPropagation();
               // Calculate position of clip header for menu placement
               const clipElement = e.currentTarget as HTMLElement;
               const rect = clipElement.getBoundingClientRect();
               // Open menu at top-right corner of clip (where menu button is)
-              onClipMenuClick?.(clip.id, rect.right - 20, rect.top + 10);
+              onClipMenuClick?.(clip.id, rect.right - 20, rect.top + 10, true);
               return;
             }
 

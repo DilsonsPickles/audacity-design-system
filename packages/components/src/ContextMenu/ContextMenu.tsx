@@ -31,6 +31,11 @@ export interface ContextMenuProps {
    * Optional CSS class name
    */
   className?: string;
+
+  /**
+   * Whether to auto-focus first item (when opened via keyboard)
+   */
+  autoFocus?: boolean;
 }
 
 /**
@@ -44,8 +49,23 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   y,
   children,
   className = '',
+  autoFocus = false,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Auto-focus first menu item when opened via keyboard
+  useEffect(() => {
+    if (!isOpen || !autoFocus || !menuRef.current) return;
+
+    // Find first focusable menu item
+    const firstItem = menuRef.current.querySelector('[role="menuitem"]') as HTMLElement;
+    if (firstItem) {
+      // Use setTimeout to ensure menu is rendered and positioned
+      setTimeout(() => {
+        firstItem.focus();
+      }, 0);
+    }
+  }, [isOpen, autoFocus]);
 
   // Handle click outside to close
   useEffect(() => {
@@ -123,6 +143,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     <div
       ref={menuRef}
       className={`context-menu ${className}`}
+      role="menu"
       style={{
         position: 'fixed',
         left: `${x}px`,

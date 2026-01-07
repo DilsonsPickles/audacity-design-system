@@ -16,7 +16,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 
 **Handlers:**
 - **Enter** - Toggle clip selection
-- **Shift+F10** - Open clip context menu (standard keyboard shortcut)
+- **Shift+F10** or **ContextMenu key** - Open clip context menu (standard keyboard shortcuts)
 - **Cmd+Left/Right** - Move clip horizontally by 0.1s
 - **Cmd+Up/Down** - Move clip to adjacent track
 - **Shift+Left/Right** - Extend clip edges (move left edge left / right edge right)

@@ -83,6 +83,11 @@ export interface ClipContextMenuProps {
    * Callback for rendering pitch and speed
    */
   onRenderPitchSpeed?: () => void;
+
+  /**
+   * Whether to auto-focus first menu item (when opened via keyboard)
+   */
+  autoFocus?: boolean;
 }
 
 /**
@@ -106,9 +111,10 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   onToggleStretchWithTempo,
   onOpenPitchSpeedDialog,
   onRenderPitchSpeed,
+  autoFocus = false,
 }) => {
   return (
-    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="clip-context-menu">
+    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="clip-context-menu" autoFocus={autoFocus}>
       {/* Clip properties header */}
       <div className="clip-context-menu-header">Clip properties</div>
 

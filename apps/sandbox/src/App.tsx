@@ -180,6 +180,7 @@ function CanvasDemoContent() {
     y: number;
     clipId: number;
     trackIndex: number;
+    openedViaKeyboard?: boolean;
   } | null>(null);
 
   // Track keyboard focus state - only one track can have keyboard focus at a time
@@ -890,8 +891,8 @@ function CanvasDemoContent() {
                   width={5000}
                   leftPadding={12}
                   keyboardFocusedTrack={keyboardFocusedTrack}
-                  onClipMenuClick={(clipId, trackIndex, x, y) => {
-                    setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex });
+                  onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
+                    setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                   }}
                   onTrackFocusChange={(trackIndex, hasFocus) => {
                     setKeyboardFocusedTrack(hasFocus ? trackIndex : null);
@@ -1304,6 +1305,7 @@ function CanvasDemoContent() {
           isOpen={clipContextMenu.isOpen}
           x={clipContextMenu.x}
           y={clipContextMenu.y}
+          autoFocus={clipContextMenu.openedViaKeyboard}
           onClose={() => setClipContextMenu(null)}
           onRename={() => {
             toast.info('Rename clip - not yet implemented');
