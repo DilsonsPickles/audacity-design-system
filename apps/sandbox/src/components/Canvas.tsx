@@ -815,6 +815,7 @@ export function Canvas({
                 return (
                   <div
                     key={label.id}
+                    className="label-wrapper"
                     style={{
                       position: 'absolute',
                       left: `${x}px`,

@@ -151,8 +151,8 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
     // Determine opacity based on state (matching Figma)
     let fillOpacity = 1; // Default
 
-    if (selected) {
-      // Selected states
+    if (selected || isActive) {
+      // Selected/Active states
       if (earHovered) {
         fillOpacity = 0.5; // Selected + Ear Hover
       } else if (isHovered) {
@@ -165,13 +165,13 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
       if (earHovered) {
         fillOpacity = 0.8; // Ear Hover only
       } else if (isHovered) {
-        fillOpacity = 1; // Parent Hover (white shows through at full opacity blue)
+        fillOpacity = 0.7; // Parent Hover (changed to match Figma)
       } else {
         fillOpacity = 1; // Default
       }
     }
 
-    const showWhiteLayer = isHovered || selected || earHovered;
+    const showWhiteLayer = isHovered || selected || isActive || earHovered;
 
     return (
       <div
