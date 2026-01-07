@@ -152,20 +152,18 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
     let fillOpacity = 1; // Default
 
     if (selected || isActive) {
-      // Selected/Active states
+      // Selected/Active states - parent hover doesn't change the selected appearance
       if (earHovered) {
-        fillOpacity = 0.5; // Selected + Ear Hover
-      } else if (isHovered) {
-        fillOpacity = 0.6; // Selected + Parent Hover
+        fillOpacity = 0.5; // Selected + Ear Hover (slight increase from selected)
       } else {
-        fillOpacity = 0.4; // Selected only
+        fillOpacity = 0.4; // Selected (stays at 0.4 even when parent is hovered)
       }
     } else {
       // Not selected states
       if (earHovered) {
         fillOpacity = 0.8; // Ear Hover only
       } else if (isHovered) {
-        fillOpacity = 0.7; // Parent Hover (changed to match Figma)
+        fillOpacity = 0.7; // Parent Hover
       } else {
         fillOpacity = 1; // Default
       }
