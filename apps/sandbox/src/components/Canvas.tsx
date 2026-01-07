@@ -132,7 +132,12 @@ export function Canvas({
         }
       },
       onSelectedTracksChange: (trackIndices) => dispatch({ type: 'SET_SELECTED_TRACKS', payload: trackIndices }),
-      onFocusedTrackChange: (trackIndex) => dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex }),
+      onFocusedTrackChange: (trackIndex) => {
+        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+        if (trackIndex !== null) {
+          onTrackFocusChange?.(trackIndex, true); // Update keyboard focus state in App.tsx
+        }
+      },
       onSpectralSelectionChange: (sel) => {
         dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: sel });
       },
