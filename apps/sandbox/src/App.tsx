@@ -377,7 +377,28 @@ function CanvasDemoContent() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
 
-        // Check if there's a focused track to delete
+        // First check if there are any selected clips to delete
+        const hasSelectedClips = state.tracks.some(track =>
+          track.clips.some(clip => clip.selected)
+        );
+
+        if (hasSelectedClips) {
+          // Delete all selected clips
+          state.tracks.forEach((track, trackIndex) => {
+            track.clips.forEach((clip) => {
+              if (clip.selected) {
+                dispatch({
+                  type: 'DELETE_CLIP',
+                  payload: { trackIndex, clipId: clip.id },
+                });
+              }
+            });
+          });
+          toast.info('Clip(s) deleted');
+          return;
+        }
+
+        // If no clips are selected, check if there's a focused track to delete
         if (state.focusedTrackIndex !== null && state.focusedTrackIndex >= 0) {
           dispatch({
             type: 'DELETE_TRACK',
@@ -386,18 +407,6 @@ function CanvasDemoContent() {
           toast.info('Track deleted');
           return;
         }
-
-        // Otherwise, find all selected clips and delete them
-        state.tracks.forEach((track, trackIndex) => {
-          track.clips.forEach((clip) => {
-            if (clip.selected) {
-              dispatch({
-                type: 'DELETE_CLIP',
-                payload: { trackIndex, clipId: clip.id },
-              });
-            }
-          });
-        });
       }
     };
 

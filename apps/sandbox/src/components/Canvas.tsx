@@ -65,6 +65,7 @@ export function Canvas({
 
   // Clip dragging state
   const clipDragStateRef = useRef<ClipDragState | null>(null);
+  const didDragRef = useRef(false); // Track if mouse moved during drag
 
   // Clip trim state
   const clipTrimStateRef = useRef<{
@@ -268,24 +269,46 @@ export function Canvas({
             // Only clear selections and start drag if NOT shift-clicking
             // (Shift-click is handled by onClipClick for multi-select)
             if (!e.shiftKey) {
-              // Clear time selection and spectral selection when starting clip drag
-              dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-              dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: null });
+              // If clicking on an unselected clip, select it exclusively first
+              // and only include this clip in the drag
+              let selectedClipsInitialPositions;
+              if (!clip.selected) {
+                // Clear time selection when starting drag on unselected clip
+                dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+                dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: null });
 
-              // Get all selected clips and store their initial positions
-              const selectedClips = tracks.flatMap((track, tIndex) =>
-                track.clips
-                  .filter(c => c.selected)
-                  .map(c => ({ clip: c, trackIndex: tIndex }))
-              );
+                dispatch({
+                  type: 'SELECT_CLIP',
+                  payload: { trackIndex, clipId: clip.id },
+                });
+                dispatch({
+                  type: 'SELECT_TRACK',
+                  payload: trackIndex,
+                });
 
-              const selectedClipsInitialPositions = selectedClips.map(({ clip: c, trackIndex: tIndex }) => ({
-                clipId: c.id,
-                trackIndex: tIndex,
-                startTime: c.start,
-              }));
+                // Only drag this one clip (state hasn't updated yet)
+                selectedClipsInitialPositions = [{
+                  clipId: clip.id,
+                  trackIndex: trackIndex,
+                  startTime: clip.start,
+                }];
+              } else {
+                // Clip is already selected - get all selected clips for multi-drag
+                // Don't clear time selection - it will move with the clips
+                const selectedClips = tracks.flatMap((track, tIndex) =>
+                  track.clips
+                    .filter(c => c.selected)
+                    .map(c => ({ clip: c, trackIndex: tIndex }))
+                );
 
-              // Start clip drag (selection happens via onClipClick)
+                selectedClipsInitialPositions = selectedClips.map(({ clip: c, trackIndex: tIndex }) => ({
+                  clipId: c.id,
+                  trackIndex: tIndex,
+                  startTime: c.start,
+                }));
+              }
+
+              // Start clip drag
               clipDragStateRef.current = {
                 clip,
                 trackIndex,
@@ -295,6 +318,7 @@ export function Canvas({
                 initialStartTime: clip.start,
                 selectedClipsInitialPositions,
               };
+              didDragRef.current = false; // Reset drag flag
             }
 
             e.stopPropagation();
@@ -322,6 +346,7 @@ export function Canvas({
         const y = e.clientY - rect.top;
 
         const dragState = clipDragStateRef.current;
+        didDragRef.current = true; // Mark that dragging has occurred
 
         // Calculate new start time
         const newStartTime = Math.max(0, (x - dragState.offsetX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
@@ -483,6 +508,7 @@ export function Canvas({
           containerRef.current.style.cursor = 'default';
         }
         clipDragStateRef.current = null;
+        // Note: didDragRef is reset in the click handler after it blocks the first click
       }
 
       // Handle clip trim end
@@ -652,9 +678,18 @@ export function Canvas({
                   onClipMenuClick?.(clipId as number, trackIndex, x, y);
                 }}
                 onClipClick={(clipId, shiftKey) => {
+                  // Don't change selection if we just finished dragging
+                  if (didDragRef.current) {
+                    console.log('[CANVAS] Ignoring click after drag');
+                    didDragRef.current = false; // Reset immediately after blocking one click
+                    return;
+                  }
+
                   console.log('[CANVAS] onClipClick called:', { clipId, shiftKey });
+
                   if (shiftKey) {
                     // Shift+click: toggle selection (multi-select)
+                    // Note: TOGGLE_CLIP_SELECTION reducer handles updating selectedTrackIndices
                     console.log('[CANVAS] Dispatching TOGGLE_CLIP_SELECTION');
                     dispatch({
                       type: 'TOGGLE_CLIP_SELECTION',
@@ -667,11 +702,12 @@ export function Canvas({
                       type: 'SELECT_CLIP',
                       payload: { trackIndex, clipId: clipId as number },
                     });
+                    // Select this track exclusively
+                    dispatch({
+                      type: 'SELECT_TRACK',
+                      payload: trackIndex,
+                    });
                   }
-                  dispatch({
-                    type: 'SELECT_TRACK',
-                    payload: trackIndex,
-                  });
                 }}
                 onClipTrimEdge={(clipId, edge) => {
                   // Find the clip being trimmed

@@ -418,10 +418,19 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         console.log('[REDUCER] Multiple or no clips selected, clearing time selection');
       }
 
+      // Update selected tracks - each track that has a selected clip should be selected
+      const newSelectedTrackIndices: number[] = [];
+      newTracks.forEach((track, index) => {
+        if (track.clips.some(clip => clip.selected)) {
+          newSelectedTrackIndices.push(index);
+        }
+      });
+
       return {
         ...state,
         tracks: newTracks,
         timeSelection: newTimeSelection,
+        selectedTrackIndices: newSelectedTrackIndices.length > 0 ? newSelectedTrackIndices : state.selectedTrackIndices,
       };
     }
 
@@ -477,7 +486,39 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         };
       }
 
-      return { ...state, tracks: newTracks };
+      // Recalculate time selection if there are selected clips
+      const allSelectedClips = newTracks.flatMap(track =>
+        track.clips.filter(clip => clip.selected)
+      );
+
+      let newTimeSelection = state.timeSelection;
+      if (allSelectedClips.length === 1) {
+        // Single selected clip - update time selection to match new position
+        const selectedClip = allSelectedClips[0];
+        newTimeSelection = {
+          startTime: selectedClip.start,
+          endTime: selectedClip.start + selectedClip.duration,
+        };
+      } else if (allSelectedClips.length === 0) {
+        // No selected clips - clear time selection
+        newTimeSelection = null;
+      }
+      // For multiple selected clips, we don't show time selection (as per earlier logic)
+
+      // Update selected tracks - each track that has a selected clip should be selected
+      const newSelectedTrackIndices: number[] = [];
+      newTracks.forEach((track, index) => {
+        if (track.clips.some(clip => clip.selected)) {
+          newSelectedTrackIndices.push(index);
+        }
+      });
+
+      return {
+        ...state,
+        tracks: newTracks,
+        timeSelection: newTimeSelection,
+        selectedTrackIndices: newSelectedTrackIndices.length > 0 ? newSelectedTrackIndices : state.selectedTrackIndices,
+      };
     }
 
     case 'ADD_CLIP': {
