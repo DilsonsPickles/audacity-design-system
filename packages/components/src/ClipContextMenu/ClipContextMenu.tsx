@@ -182,6 +182,17 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
         onClose={onClose}
       />
 
+      {/* Spectral editing submenu */}
+      <ContextMenuItem
+        label="Spectral editing"
+        hasSubmenu
+        onClose={onClose}
+      >
+        <ContextMenuItem label="Toggle Spectral View" onClick={() => { console.log('Toggle Spectral View'); onClose(); }} />
+        <ContextMenuItem label="Spectral Delete" onClick={() => { console.log('Spectral Delete'); onClose(); }} />
+        <ContextMenuItem label="Spectral Smoothing" onClick={() => { console.log('Spectral Smoothing'); onClose(); }} />
+      </ContextMenuItem>
+
       {/* Export clip (disabled) */}
       <ContextMenuItem
         label="Export clip"
