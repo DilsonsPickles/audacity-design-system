@@ -70,12 +70,36 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
 
-    // Enter or Space activates the menu item
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      if (hasSubmenu || children) {
-        setSubmenuOpen(!submenuOpen);
-      } else {
+    // For items with submenus
+    if (hasSubmenu || children) {
+      if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!submenuOpen) {
+          setSubmenuOpen(true);
+          // Focus first submenu item after opening
+          setTimeout(() => {
+            const firstSubmenuItem = submenuRef.current?.querySelector('[role="menuitem"]') as HTMLElement;
+            if (firstSubmenuItem) {
+              firstSubmenuItem.focus();
+            }
+          }, 0);
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && submenuOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSubmenuOpen(false);
+        // Return focus to parent item
+        itemRef.current?.focus();
+        return;
+      }
+    } else {
+      // For regular menu items without submenus
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
         onClick?.();
         onClose?.();
       }
@@ -112,6 +136,27 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [submenuOpen]);
 
+  // Handle Escape key in submenu to close it and return focus
+  useEffect(() => {
+    if (!submenuOpen) return;
+
+    const handleEscapeInSubmenu = (e: KeyboardEvent) => {
+      // Check if focus is within the submenu
+      if (submenuRef.current?.contains(document.activeElement)) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setSubmenuOpen(false);
+          // Return focus to parent menu item
+          itemRef.current?.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeInSubmenu, true);
+    return () => document.removeEventListener('keydown', handleEscapeInSubmenu, true);
+  }, [submenuOpen]);
+
   return (
     <div
       ref={itemRef}
@@ -133,7 +178,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
       </div>
 
       {(hasSubmenu || children) && submenuOpen && (
-        <div ref={submenuRef} className="context-menu-submenu">
+        <div ref={submenuRef} className="context-menu-submenu" role="menu">
           {React.Children.map(children, child => {
             if (React.isValidElement(child)) {
               return React.cloneElement(child, { onClose } as any);
