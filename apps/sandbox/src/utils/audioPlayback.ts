@@ -12,6 +12,8 @@ export class AudioPlaybackManager {
   private isPaused: boolean = false;
   // @ts-ignore - playbackPosition is used for tracking state
   private playbackPosition: number = 0;
+  // Track position for reloading clips (kept for future use)
+  // @ts-expect-error - Unused but kept for future implementation
   private lastLoadedPosition: number = -1;
   private animationFrameId: number | null = null;
   private onPositionUpdate?: (position: number) => void;
