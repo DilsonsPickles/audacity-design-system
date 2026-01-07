@@ -4,7 +4,7 @@ import { Canvas } from './components/Canvas';
 import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackType } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
-import { getAudioPlaybackManager } from './utils/audioPlayback';
+import { getAudioPlaybackManager } from '@audacity-ui/audio';
 
 // Generate realistic waveform data
 function generateWaveform(durationSeconds: number, samplesPerSecond: number = 100): number[] {

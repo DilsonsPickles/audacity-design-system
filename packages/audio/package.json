@@ -1,0 +1,40 @@
+{
+  "name": "@audacity-ui/audio",
+  "version": "0.1.0",
+  "description": "Audio playback and processing for Audacity Design System",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm",
+    "dev": "tsup src/index.ts --format cjs,esm --watch",
+    "lint": "echo 'No linting configured yet'"
+  },
+  "keywords": [
+    "audacity",
+    "design-system",
+    "audio",
+    "playback",
+    "tone.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DilsonsPickles/audacity-design-system.git",
+    "directory": "packages/audio"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "tone": "^15.1.22"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5"
+  }
+}
