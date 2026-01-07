@@ -101,13 +101,26 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!menuRef.current) return;
 
+      // Only select direct children menu items, not nested submenu items
+      // This ensures submenu navigation is isolated
       const items = Array.from(
-        menuRef.current.querySelectorAll('[role="menuitem"]:not([aria-disabled="true"])')
+        menuRef.current.querySelectorAll(':scope > [role="menuitem"]:not([aria-disabled="true"])')
       ) as HTMLElement[];
 
       if (items.length === 0) return;
 
       const currentIndex = items.findIndex(item => item === document.activeElement);
+
+      // Only handle navigation if focus is within this menu level (not in a submenu)
+      const focusedElement = document.activeElement;
+      const isInSubmenu = focusedElement &&
+        !items.includes(focusedElement as HTMLElement) &&
+        menuRef.current.contains(focusedElement);
+
+      // If focus is in a submenu, let the submenu handle arrow keys
+      if (isInSubmenu && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        return;
+      }
 
       switch (e.key) {
         case 'Escape':

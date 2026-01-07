@@ -136,25 +136,68 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [submenuOpen]);
 
-  // Handle Escape key in submenu to close it and return focus
+  // Handle keyboard navigation within submenu
   useEffect(() => {
     if (!submenuOpen) return;
 
-    const handleEscapeInSubmenu = (e: KeyboardEvent) => {
-      // Check if focus is within the submenu
-      if (submenuRef.current?.contains(document.activeElement)) {
-        if (e.key === 'Escape') {
+    const handleSubmenuKeyboard = (e: KeyboardEvent) => {
+      // Only handle if focus is within the submenu
+      if (!submenuRef.current?.contains(document.activeElement)) return;
+
+      const items = Array.from(
+        submenuRef.current.querySelectorAll('[role="menuitem"]:not([aria-disabled="true"])')
+      ) as HTMLElement[];
+
+      if (items.length === 0) return;
+
+      const currentIndex = items.findIndex(item => item === document.activeElement);
+
+      switch (e.key) {
+        case 'Escape':
           e.preventDefault();
           e.stopPropagation();
           setSubmenuOpen(false);
-          // Return focus to parent menu item
           itemRef.current?.focus();
-        }
+          break;
+
+        case 'ArrowDown':
+          e.preventDefault();
+          e.stopPropagation();
+          if (currentIndex < items.length - 1) {
+            items[currentIndex + 1].focus();
+          } else {
+            // Wrap to first item
+            items[0].focus();
+          }
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          e.stopPropagation();
+          if (currentIndex > 0) {
+            items[currentIndex - 1].focus();
+          } else {
+            // Wrap to last item
+            items[items.length - 1].focus();
+          }
+          break;
+
+        case 'Home':
+          e.preventDefault();
+          e.stopPropagation();
+          items[0].focus();
+          break;
+
+        case 'End':
+          e.preventDefault();
+          e.stopPropagation();
+          items[items.length - 1].focus();
+          break;
       }
     };
 
-    document.addEventListener('keydown', handleEscapeInSubmenu, true);
-    return () => document.removeEventListener('keydown', handleEscapeInSubmenu, true);
+    document.addEventListener('keydown', handleSubmenuKeyboard, true);
+    return () => document.removeEventListener('keydown', handleSubmenuKeyboard, true);
   }, [submenuOpen]);
 
   return (
