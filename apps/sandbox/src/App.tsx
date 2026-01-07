@@ -398,12 +398,20 @@ function CanvasDemoContent() {
         }
 
         // If no clips are selected, check if there's a focused track to delete
+        // Only delete the track if it was selected via the track header (not via clip selection)
         if (state.focusedTrackIndex !== null && state.focusedTrackIndex >= 0) {
-          dispatch({
-            type: 'DELETE_TRACK',
-            payload: state.focusedTrackIndex,
-          });
-          toast.info('Track deleted');
+          // Double-check no clips are selected in any track
+          const anyClipsSelected = state.tracks.some(track =>
+            track.clips.some(clip => clip.selected)
+          );
+
+          if (!anyClipsSelected) {
+            dispatch({
+              type: 'DELETE_TRACK',
+              payload: state.focusedTrackIndex,
+            });
+            toast.info('Track deleted');
+          }
           return;
         }
       }
