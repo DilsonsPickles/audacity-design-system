@@ -9,8 +9,10 @@ export class AudioPlaybackManager {
   private volumes: Map<string, Tone.Volume> = new Map();
   private audioBuffers: Map<string, AudioBuffer> = new Map();
   private isPlaying: boolean = false;
+  private isPaused: boolean = false;
   // @ts-ignore - playbackPosition is used for tracking state
   private playbackPosition: number = 0;
+  private lastLoadedPosition: number = -1;
   private animationFrameId: number | null = null;
   private onPositionUpdate?: (position: number) => void;
 
@@ -113,6 +115,9 @@ export class AudioPlaybackManager {
         }
       });
     });
+
+    // Track the position we loaded clips for
+    this.lastLoadedPosition = startTime;
   }
 
   /**
@@ -124,15 +129,33 @@ export class AudioPlaybackManager {
     await Tone.start(); // Ensure audio context is started
     this.isPlaying = true;
 
-    // If start time is provided, seek to that position first
-    if (startTime !== undefined) {
-      Tone.getTransport().seconds = startTime;
-      this.playbackPosition = startTime;
-    }
+    // Check if we're resuming from pause
+    if (this.isPaused) {
+      // Resume from paused state
+      this.isPaused = false;
 
-    // Start Tone.js transport from the current position
-    // Using start('+0', startTime) tells Transport to start immediately at the specified time
-    Tone.getTransport().start('+0', startTime);
+      // If a new start time is provided and it's different from current Transport position,
+      // update the Transport position before starting
+      if (startTime !== undefined) {
+        const currentPos = Tone.getTransport().seconds;
+        if (Math.abs(currentPos - startTime) > 0.01) {
+          Tone.getTransport().seconds = startTime;
+          this.playbackPosition = startTime;
+        }
+      }
+
+      Tone.getTransport().start();
+    } else {
+      // If start time is provided, seek to that position first
+      if (startTime !== undefined) {
+        Tone.getTransport().seconds = startTime;
+        this.playbackPosition = startTime;
+      }
+
+      // Start Tone.js transport from the current position
+      // Using start('+0', startTime) tells Transport to start immediately at the specified time
+      Tone.getTransport().start('+0', startTime);
+    }
 
     // Start animation loop for position updates
     this.startPositionTracking();
@@ -145,6 +168,7 @@ export class AudioPlaybackManager {
     if (!this.isPlaying) return;
 
     this.isPlaying = false;
+    this.isPaused = true;
     Tone.getTransport().pause();
     this.stopPositionTracking();
   }
@@ -154,6 +178,7 @@ export class AudioPlaybackManager {
    */
   stop(): void {
     this.pause();
+    this.isPaused = false;
     this.playbackPosition = 0;
     Tone.getTransport().stop();
     Tone.getTransport().position = 0;
@@ -194,6 +219,13 @@ export class AudioPlaybackManager {
    */
   getIsPlaying(): boolean {
     return this.isPlaying;
+  }
+
+  /**
+   * Check if currently paused
+   */
+  getIsPaused(): boolean {
+    return this.isPaused;
   }
 
   /**

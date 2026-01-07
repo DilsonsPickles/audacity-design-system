@@ -230,11 +230,17 @@ function CanvasDemoContent() {
   // Handle play/pause transport controls
   const handlePlay = async () => {
     const audioManager = audioManagerRef.current;
-    if (isPlaying) {
+
+    // Use audio manager's state as source of truth, not React state
+    if (audioManager.getIsPlaying()) {
       audioManager.pause();
       setIsPlaying(false);
     } else {
-      // Load all clips before playing, passing the start time
+      // Always load clips to ensure we're playing from the correct position
+      // This handles:
+      // - First play
+      // - Resume after stop
+      // - Resume after pause with position change (via , or .)
       audioManager.loadClips(state.tracks, state.playheadPosition);
 
       // Start playback from current playhead position
@@ -309,6 +315,25 @@ function CanvasDemoContent() {
       // Only handle these keys if not in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
+      }
+
+      // Spacebar for play/pause (unless on an interactive element that uses spacebar)
+      if (e.key === ' ') {
+        const target = e.target as HTMLElement;
+        const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
+        const hasRole = target.getAttribute('role');
+        const isInteractive = interactiveElements.includes(target.tagName) ||
+                              hasRole === 'button' ||
+                              hasRole === 'checkbox' ||
+                              hasRole === 'menuitem' ||
+                              hasRole === 'menuitemcheckbox' ||
+                              hasRole === 'menuitemradio';
+
+        if (!isInteractive) {
+          e.preventDefault(); // Prevent page scroll
+          handlePlay();
+          return;
+        }
       }
 
       // F6 key navigation for flat navigation mode - skip through major blocks
@@ -725,11 +750,11 @@ function CanvasDemoContent() {
         <Toolbar startTabIndex={5}>
           {/* Transport controls - shown in all workspaces */}
           <ToolbarButtonGroup gap={2}>
-            <TransportButton icon="play" onClick={handlePlay} />
+            <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
             <TransportButton icon="stop" onClick={handleStop} />
-            <TransportButton icon="record" />
-            <TransportButton icon="skip-back" />
-            <TransportButton icon="skip-forward" />
+            <TransportButton icon="record" disabled={isPlaying} />
+            <TransportButton icon="skip-back" disabled={isPlaying} />
+            <TransportButton icon="skip-forward" disabled={isPlaying} />
             <TransportButton icon="loop" />
           </ToolbarButtonGroup>
 
