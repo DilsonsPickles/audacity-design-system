@@ -153,10 +153,10 @@ export function Canvas({
       containerProps.onClick(e);
     }
 
-    // Only update playhead if we're not dragging
+    // Only update playhead and track focus if we're not dragging
     const wasJustDragging = selection.selection.wasJustDragging();
     if (wasJustDragging) {
-      return;
+      return; // Skip everything - focus was already set during the drag
     }
 
     if (!containerRef.current) return;
