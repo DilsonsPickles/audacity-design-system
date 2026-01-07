@@ -538,7 +538,13 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ...newTracks[trackIndex],
         clips: newTracks[trackIndex].clips.filter(clip => clip.id !== clipId),
       };
-      return { ...state, tracks: newTracks };
+
+      // Clear time selection when deleting a clip
+      return {
+        ...state,
+        tracks: newTracks,
+        timeSelection: null,
+      };
     }
 
     case 'TRIM_CLIP': {
