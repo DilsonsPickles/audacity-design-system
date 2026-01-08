@@ -32,12 +32,12 @@ export interface TimeSelectionCanvasOverlayProps {
   height: number;
   /**
    * Background color of the selection overlay
-   * @default 'rgba(255, 255, 255, 0.2)'
+   * @default 'rgba(128, 204, 192, 0.4)'
    */
   backgroundColor?: string;
   /**
    * Border color of the selection
-   * @default '#ffffff'
+   * @default '#80ccc0'
    */
   borderColor?: string;
   /**
@@ -52,8 +52,8 @@ export const TimeSelectionCanvasOverlay: React.FC<TimeSelectionCanvasOverlayProp
   leftPadding,
   top,
   height,
-  backgroundColor = 'rgba(255, 255, 255, 0.2)',
-  borderColor = '#ffffff',
+  backgroundColor = 'rgba(128, 204, 192, 0.4)',
+  borderColor = '#80ccc0',
   className = '',
 }) => {
   if (!timeSelection) {
@@ -81,7 +81,7 @@ export const TimeSelectionCanvasOverlay: React.FC<TimeSelectionCanvasOverlayProp
         borderRight: `1px solid ${borderColor}`,
         pointerEvents: 'none', // Allow clicks to pass through
         zIndex: 5, // Above tracks but below UI controls
-        mixBlendMode: 'screen', // Blend mode to make clip colors stand out
+        mixBlendMode: 'normal', // Use normal blend mode for teal overlay
       }}
     />
   );

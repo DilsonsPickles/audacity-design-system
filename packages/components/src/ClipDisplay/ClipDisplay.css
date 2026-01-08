@@ -6,7 +6,7 @@
   box-sizing: border-box;
 }
 
-/* Selected state: add inset white border 1px inside the black border */
+/* Selected state: add inset white border inside the black border */
 .clip-display--selected::after {
   content: '';
   position: absolute;
@@ -14,10 +14,10 @@
   left: 0;
   width: 100%;
   height: 100%;
-  border: 1px solid #FFF;
+  border: 2px solid #FFF;
   border-radius: 3px;
   pointer-events: none;
   z-index: 20;
   box-sizing: border-box;
-  padding: 1px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
