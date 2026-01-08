@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useLabelKeyboardHandling, useAccessibilityProfile } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import './Canvas.css';
 
@@ -976,24 +976,6 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                   const isFirstLabel = labelIndex === 0;
                   const trackTabIndex = isFlatNavigation ? 0 : (101 + trackIndex * 2); // Match the tabIndex from TrackNew
 
-                  // Hook for keyboard shortcuts
-                  const handleKeyDown = useLabelKeyboardHandling({
-                    label,
-                    labelIndex,
-                    totalLabels: track.labels?.length || 0,
-                    trackTabIndex,
-                    onLabelUpdate: (updates) => {
-                      dispatch({
-                        type: 'UPDATE_LABEL',
-                        payload: {
-                          trackIndex,
-                          labelId: label.id,
-                          label: updates,
-                        },
-                      });
-                    },
-                  });
-
                 const labelKeyId = `${trackIndex}-${label.id}`;
 
                 return (
@@ -1037,9 +1019,6 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         }
                         return;
                       }
-
-                      // First, handle shortcuts from hook
-                      handleKeyDown(e);
 
                       // Handle Tab key to wrap back to beginning of tab cycle
                       if (e.key === 'Tab' && !e.shiftKey) {
