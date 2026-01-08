@@ -743,6 +743,8 @@ function CanvasDemoContent() {
               payload: { startTime, endTime },
             });
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            // Move playhead to the start of the deleted range
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: startTime });
             toast.success(`Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
           } else {
             // Clear time selection even when not deleting time
@@ -790,6 +792,9 @@ function CanvasDemoContent() {
 
           // Clear time selection after deletion
           dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+          // Move playhead to the start of the deleted range
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: startTime });
 
           toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
           return;
