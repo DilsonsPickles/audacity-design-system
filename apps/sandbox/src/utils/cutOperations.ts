@@ -113,7 +113,7 @@ export function applySplitCut(
 
       // Case 4: Deletion overlaps start of clip - trim the overlapping portion
       // In split cut, we don't shift the clip - we just trim from the beginning
-      if (startTime < clipStart && endTime > clipStart) {
+      if (startTime <= clipStart && endTime > clipStart) {
         const overlapDuration = endTime - clipStart;
         const newDuration = clip.duration - overlapDuration;
         const newTrimStart = (clip.trimStart || 0) + overlapDuration;
@@ -212,7 +212,7 @@ export function applyRippleCut(
       }
 
       // Case 4: Deletion overlaps start of clip
-      if (startTime < clipStart && endTime > clipStart) {
+      if (startTime <= clipStart && endTime > clipStart) {
         const overlapDuration = endTime - clipStart;
         const newDuration = clip.duration - overlapDuration;
         const newTrimStart = (clip.trimStart || 0) + overlapDuration;
