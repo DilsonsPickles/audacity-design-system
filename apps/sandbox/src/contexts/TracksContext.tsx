@@ -556,17 +556,24 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ),
       };
 
-      // Update time selection if this label is selected and its time changed
+      // Update time selection if this label is selected and its time/endTime changed
       let newTimeSelection = state.timeSelection;
       const labelKeyId = `${trackIndex}-${labelId}`;
-      if (originalLabel && state.selectedLabelIds.includes(labelKeyId) && state.timeSelection) {
-        // Calculate time delta if time changed
-        if (label.time !== undefined && label.time !== originalLabel.time) {
-          const timeDelta = label.time - originalLabel.time;
-          newTimeSelection = {
-            startTime: state.timeSelection.startTime + timeDelta,
-            endTime: state.timeSelection.endTime + timeDelta,
-          };
+      if (originalLabel && state.selectedLabelIds.includes(labelKeyId)) {
+        // Check if time or endTime changed
+        const timeChanged = label.time !== undefined && label.time !== originalLabel.time;
+        const endTimeChanged = label.endTime !== undefined && label.endTime !== (originalLabel.endTime ?? originalLabel.time);
+
+        if (timeChanged || endTimeChanged) {
+          // Get the updated label from newTracks
+          const updatedLabel = newTracks[trackIndex].labels?.find(l => l.id === labelId);
+          if (updatedLabel) {
+            // Recalculate time selection from the updated label
+            newTimeSelection = {
+              startTime: updatedLabel.time,
+              endTime: updatedLabel.endTime ?? updatedLabel.time,
+            };
+          }
         }
       }
 
