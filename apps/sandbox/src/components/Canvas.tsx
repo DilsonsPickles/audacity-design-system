@@ -127,6 +127,10 @@ export function Canvas({
     {
       onTimeSelectionChange: (sel) => {
         dispatch({ type: 'SET_TIME_SELECTION', payload: sel });
+        // Deselect all clips when making a time selection
+        if (sel) {
+          dispatch({ type: 'DESELECT_ALL_CLIPS' });
+        }
       },
       onTimeSelectionFinalized: (sel) => {
         if (sel) {
@@ -690,8 +694,10 @@ export function Canvas({
                 if (isTrackBackground) {
                   // Deselect all clips
                   dispatch({ type: 'DESELECT_ALL_CLIPS' });
-                  // Select this track
-                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                  // Select this track (only if not shift-clicking - shift-click is handled by useAudioSelection)
+                  if (!e.shiftKey) {
+                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                  }
                   // Clear label selections
                   dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
                 }

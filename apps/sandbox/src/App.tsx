@@ -450,6 +450,9 @@ function CanvasDemoContent() {
         if (e.shiftKey && !state.timeSelection) {
           e.preventDefault();
 
+          // Deselect all clips when making a time selection
+          dispatch({ type: 'DESELECT_ALL_CLIPS' });
+
           // Auto-select all tracks when creating a new time selection
           if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
             const allTrackIndices = state.tracks.map((_, idx) => idx);
@@ -597,6 +600,9 @@ function CanvasDemoContent() {
           if (selectionAnchorRef.current === null) {
             // Start a new selection - set anchor to current playhead position
             selectionAnchorRef.current = state.playheadPosition;
+
+            // Deselect all clips when making a time selection
+            dispatch({ type: 'DESELECT_ALL_CLIPS' });
 
             // Auto-select all tracks when creating a new time selection
             if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
@@ -1139,6 +1145,19 @@ function CanvasDemoContent() {
                   onClick={() => {
                     dispatch({ type: 'SELECT_TRACK', payload: index });
                     setKeyboardFocusedTrack(index);
+                  }}
+                  onToggleSelection={() => {
+                    // Toggle track selection: add if not selected, remove if already selected
+                    const isSelected = state.selectedTrackIndices.includes(index);
+                    if (isSelected) {
+                      // Remove from selection
+                      const newSelection = state.selectedTrackIndices.filter(i => i !== index);
+                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                    } else {
+                      // Add to selection
+                      const newSelection = [...state.selectedTrackIndices, index];
+                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                    }
                   }}
                   onTabOut={() => {
                     // Find the first clip in THIS track specifically

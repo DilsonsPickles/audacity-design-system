@@ -24,6 +24,7 @@ export interface TrackControlPanelProps {
   onAddLabelClick?: () => void;
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
+  onToggleSelection?: () => void;
   className?: string;
   state?: 'idle' | 'hover' | 'active';
   height?: 'default' | 'truncated' | 'collapsed';
@@ -50,6 +51,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onAddLabelClick,
   onMenuClick,
   onClick,
+  onToggleSelection,
   className = '',
   state = 'idle',
   height = 'default',
@@ -100,10 +102,10 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     const currentElement = document.activeElement;
     const isPanelFocused = currentElement === panelElement;
 
-    // Handle Enter key to select track when panel is focused
+    // Handle Enter key to toggle track selection when panel is focused
     if (e.key === 'Enter' && isPanelFocused) {
       e.preventDefault();
-      onClick?.();
+      onToggleSelection?.();
       return;
     }
 
@@ -200,12 +202,20 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     }
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't handle shift-clicks - let them bubble up for multi-track selection
+    if (e.shiftKey) {
+      return;
+    }
+    onClick?.();
+  };
+
   return (
     <div
       className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={onClick}
+      onClick={handleClick}
       tabIndex={tabIndex}
       role={tabIndex !== undefined ? "group" : undefined}
       aria-label={tabIndex !== undefined ? `${trackName} track controls` : undefined}
