@@ -1129,9 +1129,17 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         // If clicking an already-selected region label
                         if (wasAlreadySelected && label.endTime !== undefined) {
                           if (allTracksSelected) {
-                            // Already expanded: keep all tracks selected (even during drag)
-                            const allTrackIndices = tracks.map((_, idx) => idx);
-                            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                            // Already expanded: use timeout to detect clean click vs drag
+                            setTimeout(() => {
+                              if (labelDragStateRef.current) {
+                                // Dragging: keep all tracks selected
+                                const allTrackIndices = tracks.map((_, idx) => idx);
+                                dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                              } else {
+                                // Clean click: collapse back to just this track
+                                dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                              }
+                            }, 100);
                           } else {
                             // Not expanded yet: delay to allow drag detection to cancel expansion
                             setTimeout(() => {
