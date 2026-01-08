@@ -653,6 +653,9 @@ function CanvasDemoContent() {
 
           // Clear time selection after deletion
           dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+          // Clear selection anchor so next Shift+. starts fresh
+          selectionAnchorRef.current = null;
+          selectionEdgesRef.current = null;
 
           toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
         } else {
@@ -745,6 +748,9 @@ function CanvasDemoContent() {
               payload: { startTime, endTime },
             });
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            // Clear selection anchor so next Shift+. starts fresh
+            selectionAnchorRef.current = null;
+            selectionEdgesRef.current = null;
 
             // Adjust playhead position based on cut mode
             if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
@@ -757,6 +763,9 @@ function CanvasDemoContent() {
           } else {
             // Clear time selection even when not deleting time
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            // Clear selection anchor so next Shift+. starts fresh
+            selectionAnchorRef.current = null;
+            selectionEdgesRef.current = null;
             toast.info(`Deleted ${state.selectedLabelIds.length} label(s)`);
           }
           return;
@@ -801,6 +810,9 @@ function CanvasDemoContent() {
 
           // Clear time selection after deletion
           dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+          // Clear selection anchor so next Shift+. starts fresh
+          selectionAnchorRef.current = null;
+          selectionEdgesRef.current = null;
 
           // Adjust playhead position based on cut mode
           if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
