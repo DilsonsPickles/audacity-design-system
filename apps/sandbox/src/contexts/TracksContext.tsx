@@ -636,8 +636,10 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         clips: track.clips.map(clip => ({ ...clip, selected: false }))
       }));
 
-      // Calculate time selection from selected labels
+      // Calculate time selection and track selection from selected labels
       let newTimeSelection: TimeSelection | null = null;
+      const selectedTrackIndices: number[] = [];
+
       if (action.payload.length > 0) {
         const selectedLabels: Label[] = [];
         state.tracks.forEach((track, trackIndex) => {
@@ -645,6 +647,10 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
             const labelKeyId = `${trackIndex}-${label.id}`;
             if (action.payload.includes(labelKeyId)) {
               selectedLabels.push(label);
+              // Add this track to selected tracks if not already included
+              if (!selectedTrackIndices.includes(trackIndex)) {
+                selectedTrackIndices.push(trackIndex);
+              }
             }
           });
         });
@@ -664,6 +670,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         selectedLabelIds: action.payload,
         tracks: newTracks,
         timeSelection: newTimeSelection,
+        selectedTrackIndices,
       };
     }
 
