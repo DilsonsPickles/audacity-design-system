@@ -665,12 +665,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }
       }
 
+      // Set focused track to the first selected track (if any)
+      const newFocusedTrack = selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : null;
+
       return {
         ...state,
         selectedLabelIds: action.payload,
         tracks: newTracks,
         timeSelection: newTimeSelection,
         selectedTrackIndices,
+        focusedTrackIndex: newFocusedTrack,
       };
     }
 
