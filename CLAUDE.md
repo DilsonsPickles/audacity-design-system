@@ -65,6 +65,7 @@ npm run lint
   - `design-system-architecture.md` - Complete design system roadmap
   - `automation-overlay-states.md` - Visual state documentation
   - `clip-styling-states.md` - Clip styling state matrix
+  - `label-interactions.md` - Label selection, deletion, and track expansion behavior
 
 ### Key Components in `packages/components/`
 
