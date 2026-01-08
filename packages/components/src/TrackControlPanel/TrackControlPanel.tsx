@@ -100,6 +100,13 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     const currentElement = document.activeElement;
     const isPanelFocused = currentElement === panelElement;
 
+    // Handle Enter key to select track when panel is focused
+    if (e.key === 'Enter' && isPanelFocused) {
+      e.preventDefault();
+      onClick?.();
+      return;
+    }
+
     // Handle Shift+F10 or ContextMenu key to open track menu
     if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
       e.preventDefault();
