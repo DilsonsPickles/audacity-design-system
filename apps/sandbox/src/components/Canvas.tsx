@@ -75,6 +75,8 @@ export function Canvas({
     initialTrimStart: number;
     initialDuration: number;
     initialClipStart: number;
+    // Store initial state for all selected clips
+    allClipsInitialState: Map<string, { trimStart: number; duration: number; start: number; fullDuration: number }>;
   } | null>(null);
 
   // Track focused label for accessibility
@@ -516,61 +518,101 @@ export function Canvas({
         const x = e.clientX - rect.left;
         const trimState = clipTrimStateRef.current;
 
-        // Find the clip to get its current start position
-        const clip = tracks[trimState.trackIndex]?.clips.find(c => c.id === trimState.clipId);
-        if (!clip) return;
+        // Find the clip being dragged
+        const draggedClip = tracks[trimState.trackIndex]?.clips.find(c => c.id === trimState.clipId);
+        if (!draggedClip) return;
 
         // Calculate mouse position in timeline
         const mouseTime = Math.max(0, (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
 
         // Get the full clip duration (total audio available)
-        // Use stored fullDuration if available, otherwise calculate from current state
-        const currentTrimStart = (clip as any).trimStart || 0;
-        const fullDuration = (clip as any).fullDuration || (currentTrimStart + clip.duration);
+        const currentTrimStart = (draggedClip as any).trimStart || 0;
+        const fullDuration = (draggedClip as any).fullDuration || (currentTrimStart + draggedClip.duration);
+
+        // Get initial state for all selected clips from stored Map
+        const allClipsInitialState = trimState.allClipsInitialState;
+        const selectedClips: Array<{
+          trackIndex: number;
+          clip: Clip;
+          initialState: { trimStart: number; duration: number; start: number; fullDuration: number };
+        }> = [];
+
+        tracks.forEach((track, trackIndex) => {
+          track.clips.forEach(clip => {
+            if (clip.selected) {
+              const key = `${trackIndex}-${clip.id}`;
+              const initialState = allClipsInitialState.get(key);
+              if (initialState) {
+                selectedClips.push({ trackIndex, clip, initialState });
+              }
+            }
+          });
+        });
 
         if (trimState.edge === 'left') {
           // Trimming left edge (non-destructive)
-          // Calculate new trim start based on absolute mouse position
+          // Calculate desired trim delta for the dragged clip
           const newTrimStart = Math.max(0, mouseTime - trimState.initialClipStart + trimState.initialTrimStart);
+          const trimDelta = newTrimStart - trimState.initialTrimStart;
 
-          // Calculate the right edge position (end of visible audio)
-          const rightEdgeInFullAudio = trimState.initialTrimStart + trimState.initialDuration;
+          // Calculate limits for all selected clips using their INITIAL state
+          let clampedTrimDelta = trimDelta;
+          selectedClips.forEach(({ initialState }) => {
+            const rightEdge = initialState.trimStart + initialState.duration;
+            // Don't allow trimming past 0
+            const minDelta = -initialState.trimStart;
+            // Don't allow trimming past right edge (min 0.01s visible)
+            const maxDelta = rightEdge - initialState.trimStart - 0.01;
+            clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+          });
 
-          // Don't allow trimming past the right edge (minimum 0.01s visible)
-          const maxTrimStart = rightEdgeInFullAudio - 0.01;
-          const clampedTrimStart = Math.max(0, Math.min(newTrimStart, maxTrimStart));
+          // Apply clamped delta to all selected clips using their INITIAL state
+          selectedClips.forEach(({ trackIndex, clip, initialState }) => {
+            const newTrimStartForClip = initialState.trimStart + clampedTrimDelta;
+            const rightEdge = initialState.trimStart + initialState.duration;
+            const newDuration = rightEdge - newTrimStartForClip;
+            const newStart = initialState.start + clampedTrimDelta;
 
-          // Calculate new duration: from new trim start to the right edge
-          const newDuration = rightEdgeInFullAudio - clampedTrimStart;
-          const newStart = trimState.initialClipStart + (clampedTrimStart - trimState.initialTrimStart);
-
-          dispatch({
-            type: 'TRIM_CLIP',
-            payload: {
-              trackIndex: trimState.trackIndex,
-              clipId: trimState.clipId,
-              newTrimStart: clampedTrimStart,
-              newDuration,
-              newStart,
-            },
+            dispatch({
+              type: 'TRIM_CLIP',
+              payload: {
+                trackIndex,
+                clipId: clip.id as number,
+                newTrimStart: newTrimStartForClip,
+                newDuration,
+                newStart,
+              },
+            });
           });
         } else {
           // Trimming right edge (non-destructive)
-          // Calculate new duration based on absolute mouse position
-          const newDuration = Math.max(0.01, mouseTime - clip.start);
+          // Calculate desired duration change for the dragged clip
+          const newDuration = Math.max(0.01, mouseTime - draggedClip.start);
+          const durationDelta = newDuration - trimState.initialDuration;
 
-          // Don't allow duration to exceed available audio from trim start
-          const maxDuration = fullDuration - currentTrimStart;
-          const clampedDuration = Math.min(newDuration, maxDuration);
+          // Calculate limits for all selected clips using their INITIAL state
+          let clampedDurationDelta = durationDelta;
+          selectedClips.forEach(({ initialState }) => {
+            // Don't allow duration to go below 0.01s
+            const minDelta = 0.01 - initialState.duration;
+            // Don't allow duration to exceed available audio
+            const maxDelta = (initialState.fullDuration - initialState.trimStart) - initialState.duration;
+            clampedDurationDelta = Math.max(minDelta, Math.min(clampedDurationDelta, maxDelta));
+          });
 
-          dispatch({
-            type: 'TRIM_CLIP',
-            payload: {
-              trackIndex: trimState.trackIndex,
-              clipId: trimState.clipId,
-              newTrimStart: currentTrimStart,
-              newDuration: clampedDuration,
-            },
+          // Apply clamped delta to all selected clips using their INITIAL state
+          selectedClips.forEach(({ trackIndex, clip, initialState }) => {
+            const newDurationForClip = initialState.duration + clampedDurationDelta;
+
+            dispatch({
+              type: 'TRIM_CLIP',
+              payload: {
+                trackIndex,
+                clipId: clip.id as number,
+                newTrimStart: initialState.trimStart,
+                newDuration: newDurationForClip,
+              },
+            });
           });
         }
       }
@@ -642,6 +684,21 @@ export function Canvas({
                 left: 0,
                 width: `${width}px`,
                 height: `${trackHeight}px`,
+              }}
+              onClick={(e) => {
+                // Only handle clicks on empty space (not on clips or labels)
+                // Check if click was on TrackNew background or wrapper
+                const target = e.target as HTMLElement;
+                const isTrackBackground = target.classList?.contains('track') || e.target === e.currentTarget;
+
+                if (isTrackBackground) {
+                  // Deselect all clips
+                  dispatch({ type: 'DESELECT_ALL_CLIPS' });
+                  // Select this track
+                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                  // Clear label selections
+                  dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
+                }
               }}
             >
               <TrackNew
@@ -792,6 +849,24 @@ export function Canvas({
 
                   // Initialize trim state on first call
                   if (!clipTrimStateRef.current) {
+                    // Store initial state for all selected clips
+                    const allClipsInitialState = new Map<string, { trimStart: number; duration: number; start: number; fullDuration: number }>();
+                    tracks.forEach((t, tIndex) => {
+                      t.clips.forEach(c => {
+                        if (c.selected) {
+                          const trimStart = (c as any).trimStart || 0;
+                          const fullDuration = (c as any).fullDuration || (trimStart + c.duration);
+                          const key = `${tIndex}-${c.id}`;
+                          allClipsInitialState.set(key, {
+                            trimStart,
+                            duration: c.duration,
+                            start: c.start,
+                            fullDuration,
+                          });
+                        }
+                      });
+                    });
+
                     clipTrimStateRef.current = {
                       trackIndex,
                       clipId: clipId as number,
@@ -799,6 +874,7 @@ export function Canvas({
                       initialTrimStart: (clip as any).trimStart || 0,
                       initialDuration: clip.duration,
                       initialClipStart: clip.start,
+                      allClipsInitialState,
                     };
                   }
 
