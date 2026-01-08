@@ -1084,6 +1084,9 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         // Select this label
                         dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
 
+                        // Update keyboard focus to this track
+                        onTrackFocusChange?.(trackIndex, true);
+
                         // If clicking an already-selected region label, select all tracks
                         if (wasAlreadySelected && label.endTime !== undefined) {
                           const allTrackIndices = tracks.map((_, idx) => idx);
