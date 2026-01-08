@@ -745,6 +745,8 @@ function CanvasDemoContent() {
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
             toast.success(`Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
           } else {
+            // Clear time selection even when not deleting time
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
             toast.info(`Deleted ${state.selectedLabelIds.length} label(s)`);
           }
           return;
