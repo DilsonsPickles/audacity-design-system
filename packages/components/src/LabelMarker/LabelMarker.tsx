@@ -55,6 +55,12 @@ export interface LabelMarkerProps {
   onLabelMove?: (deltaX: number) => void;
 
   /**
+   * Called on mouse down (before drag) to handle selection
+   * Receives the mouse event to check for shift key
+   */
+  onSelect?: (e?: React.MouseEvent) => void;
+
+  /**
    * Additional CSS class
    */
   className?: string;
@@ -75,8 +81,10 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   onDoubleClick,
   onRegionResize,
   onLabelMove,
+  onSelect,
   className = '',
 }) => {
+  console.log('[LABELMARKER] Rendering with props - onLabelMove:', !!onLabelMove, 'onSelect:', !!onSelect, 'text:', text);
   const [isHovered, setIsHovered] = useState(false);
   const [leftEarHovered, setLeftEarHovered] = useState(false);
   const [rightEarHovered, setRightEarHovered] = useState(false);
@@ -92,6 +100,8 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   // Handle drag start for resizing (ears only)
   const handleDragStart = (side: 'left' | 'right') => (e: React.MouseEvent) => {
     if (onRegionResize) {
+      // Prevent focus on mouse down (only allow tab-based focus)
+      e.preventDefault();
       e.stopPropagation();
       setDragState({ type: 'resize', side, startX: e.clientX, initialWidth: width });
     }
@@ -99,7 +109,21 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
 
   // Handle drag start for moving (label box for all types, stalk for point labels)
   const handleMoveStart = (e: React.MouseEvent) => {
+    console.log('[LABELMARKER] handleMoveStart called, onLabelMove exists:', !!onLabelMove, 'onSelect exists:', !!onSelect, 'shiftKey:', e.shiftKey);
     if (onLabelMove) {
+      // Prevent focus on mouse down (only allow tab-based focus)
+      e.preventDefault();
+
+      // Call onSelect BEFORE stopPropagation to allow selection on mouse down
+      // But only if NOT shift-clicking (preserve multi-selection)
+      if (!e.shiftKey) {
+        console.log('[LABELMARKER] Calling onSelect()');
+        onSelect?.(e);
+        console.log('[LABELMARKER] After onSelect(), calling stopPropagation');
+      } else {
+        console.log('[LABELMARKER] Shift-click detected, skipping onSelect to preserve multi-selection');
+      }
+
       e.stopPropagation();
       setDragState({ type: 'move', startX: e.clientX, initialWidth: width });
     }

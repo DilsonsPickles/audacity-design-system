@@ -325,6 +325,82 @@ export function Canvas({
             return;
           }
         }
+
+        // Check for label clicks (for immediate selection on mouse down, like clips)
+        if (track.labels && track.labels.length > 0 && !e.shiftKey) {
+          const EAR_HEIGHT = 14;
+          const LABEL_BOX_GAP = 2;
+          const LABEL_ROW_HEIGHT = EAR_HEIGHT + LABEL_BOX_GAP;
+          const LABEL_ROW_GAP = 0;
+
+          // Calculate label rows (same logic as in render)
+          const labelRows: number[] = [];
+          track.labels.forEach((label, labelIndex) => {
+            const labelX = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+            const labelWidth = label.endTime !== undefined
+              ? (label.endTime - label.time) * pixelsPerSecond
+              : 60;
+
+            let row = 0;
+            let foundRow = false;
+
+            while (!foundRow) {
+              let canFitInRow = true;
+
+              for (let i = 0; i < labelIndex; i++) {
+                if (labelRows[i] === row) {
+                  const prevLabel = track.labels![i];
+                  const prevX = CLIP_CONTENT_OFFSET + prevLabel.time * pixelsPerSecond;
+                  const prevWidth = prevLabel.endTime !== undefined
+                    ? (prevLabel.endTime - prevLabel.time) * pixelsPerSecond
+                    : 60;
+
+                  const overlap = !(labelX >= prevX + prevWidth || labelX + labelWidth <= prevX);
+                  if (overlap) {
+                    canFitInRow = false;
+                    break;
+                  }
+                }
+              }
+
+              if (canFitInRow) {
+                foundRow = true;
+              } else {
+                row++;
+              }
+            }
+
+            labelRows.push(row);
+          });
+
+          // Check if click is on any label
+          for (let labelIndex = 0; labelIndex < track.labels.length; labelIndex++) {
+            const label = track.labels[labelIndex];
+            const labelX = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+            const labelWidth = label.endTime !== undefined
+              ? (label.endTime - label.time) * pixelsPerSecond
+              : 225;
+            const labelY = currentY + labelRows[labelIndex] * (LABEL_ROW_HEIGHT + LABEL_ROW_GAP);
+            const labelHeight = EAR_HEIGHT;
+
+            // Check if click is within label bounds
+            if (x >= labelX && x <= labelX + labelWidth &&
+                y >= labelY && y <= labelY + labelHeight) {
+
+              const labelKeyId = `${trackIndex}-${label.id}`;
+              const isLabelSelected = selectedLabelIds.includes(labelKeyId);
+
+              // If clicking on an unselected label, select it exclusively
+              if (!isLabelSelected) {
+                dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+              }
+
+              // Stop propagation to prevent onClick handler from firing
+              e.stopPropagation();
+              return;
+            }
+          }
+        }
       }
 
       currentY += trackHeight + TRACK_GAP;
@@ -829,13 +905,22 @@ export function Canvas({
                     aria-label={`Label: ${label.text || 'empty'}`}
                     onFocus={() => setFocusedLabelId(label.id)}
                     onBlur={() => setFocusedLabelId(null)}
+                    onMouseDown={(e) => {
+                      // Prevent focus on mouse down (only allow tab-based focus)
+                      e.preventDefault();
+                    }}
                     onClick={(e) => {
-                      // Shift+Click = toggle selection, regular click = select only this label
+                      console.log('[CANVAS] onClick fired for label:', labelKeyId, 'shiftKey:', e.shiftKey);
+
+                      // Only handle shift-click here (regular clicks are handled by onSelect)
                       if (e.shiftKey) {
+                        // Prevent focus on click (only allow tab-based focus)
+                        e.preventDefault();
+                        console.log('[CANVAS] Shift-click: toggling selection');
                         dispatch({ type: 'TOGGLE_LABEL_SELECTION', payload: labelKeyId });
-                      } else {
-                        dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
                       }
+                      // For regular clicks, let the event propagate normally
+                      // (onSelect already handles selection on mouse-down)
                     }}
                     onKeyDown={(e) => {
                       // Handle Shift+Enter to toggle, Enter to select only
@@ -909,6 +994,14 @@ export function Canvas({
                       selected={selectedLabelIds.includes(labelKeyId)}
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
+                      onSelect={(e) => {
+                        console.log('[CANVAS] onSelect called for label:', labelKeyId, 'already selected?', selectedLabelIds.includes(labelKeyId), 'shiftKey:', e.shiftKey);
+
+                        // Always dispatch SET_SELECTED_LABELS on mouse down to update time selection
+                        // This ensures the time selection updates immediately, even if label is already selected
+                        console.log('[CANVAS] Dispatching SET_SELECTED_LABELS with:', [labelKeyId]);
+                        dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                      }}
                       onLabelMove={(deltaX) => {
                         // Initialize drag state on first call
                         if (!labelDragStateRef.current) {
