@@ -1078,10 +1078,12 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
                       onSelect={() => {
-
-                        // Always dispatch SET_SELECTED_LABELS on mouse down to update time selection
-                        // This ensures the time selection updates immediately, even if label is already selected
-                        dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                        // Only dispatch if this label isn't already the only selected label
+                        // This prevents expanding selection when clicking an already-selected label
+                        const isOnlySelection = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
+                        if (!isOnlySelection) {
+                          dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                        }
                       }}
                       onLabelMove={(deltaX) => {
                         // Initialize drag state on first call
