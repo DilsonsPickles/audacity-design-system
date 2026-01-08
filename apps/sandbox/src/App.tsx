@@ -671,18 +671,31 @@ function CanvasDemoContent() {
           const hasTimeSelection = state.timeSelection !== null;
           const shouldDeleteTime = allTracksSelected && hasTimeSelection;
 
-          // Delete all selected labels
-          state.selectedLabelIds.forEach(labelId => {
-            const [trackIndexStr, labelIdStr] = labelId.split('-');
-            const trackIndex = parseInt(trackIndexStr, 10);
-            const labelIdNum = parseInt(labelIdStr, 10);
+          // If deleting with time selection, also delete point labels within the region's time range
+          if (shouldDeleteTime && state.timeSelection) {
+            const { startTime, endTime } = state.timeSelection;
 
-            const track = state.tracks[trackIndex];
-            if (track && track.labels) {
-              const labelIndex = track.labels.findIndex(l => l.id === labelIdNum);
-              if (labelIndex !== -1) {
-                const updatedLabels = [...track.labels];
-                updatedLabels.splice(labelIndex, 1);
+            // For each track that has a selected label
+            state.selectedLabelIds.forEach(labelId => {
+              const [trackIndexStr, labelIdStr] = labelId.split('-');
+              const trackIndex = parseInt(trackIndexStr, 10);
+              const track = state.tracks[trackIndex];
+
+              if (track && track.labels) {
+                // Filter out:
+                // 1. The selected label itself
+                // 2. Any point labels that fall within the time range
+                const updatedLabels = track.labels.filter(l => {
+                  // Keep if it's not the selected label
+                  if (l.id === parseInt(labelIdStr, 10)) return false;
+
+                  // If it's a point label and falls within the time range, remove it
+                  if (l.endTime === undefined && l.time >= startTime && l.time <= endTime) {
+                    return false;
+                  }
+
+                  return true;
+                });
 
                 dispatch({
                   type: 'UPDATE_TRACK',
@@ -692,8 +705,32 @@ function CanvasDemoContent() {
                   }
                 });
               }
-            }
-          });
+            });
+          } else {
+            // Normal label deletion (no time range deletion)
+            state.selectedLabelIds.forEach(labelId => {
+              const [trackIndexStr, labelIdStr] = labelId.split('-');
+              const trackIndex = parseInt(trackIndexStr, 10);
+              const labelIdNum = parseInt(labelIdStr, 10);
+
+              const track = state.tracks[trackIndex];
+              if (track && track.labels) {
+                const labelIndex = track.labels.findIndex(l => l.id === labelIdNum);
+                if (labelIndex !== -1) {
+                  const updatedLabels = [...track.labels];
+                  updatedLabels.splice(labelIndex, 1);
+
+                  dispatch({
+                    type: 'UPDATE_TRACK',
+                    payload: {
+                      index: trackIndex,
+                      track: { labels: updatedLabels }
+                    }
+                  });
+                }
+              }
+            });
+          }
 
           // Clear label selection after deletion
           dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
