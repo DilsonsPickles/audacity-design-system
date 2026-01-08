@@ -1252,8 +1252,8 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
             leftPadding={leftPadding}
             top={top}
             height={height}
-            backgroundColor="rgba(112, 181, 255, 0.15)"
-            borderColor="transparent"
+            backgroundColor="rgba(255, 255, 255, 0.6)"
+            borderColor="rgba(255, 255, 255, 0.8)"
           />
         ))}
 

@@ -81,7 +81,7 @@ export const TimeSelectionCanvasOverlay: React.FC<TimeSelectionCanvasOverlayProp
         borderRight: `1px solid ${borderColor}`,
         pointerEvents: 'none', // Allow clicks to pass through
         zIndex: 5, // Above tracks but below UI controls
-        mixBlendMode: 'normal', // Use normal blend mode for teal overlay
+        mixBlendMode: 'soft-light', // Soft-light blend mode for subtle contrast
       }}
     />
   );
