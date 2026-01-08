@@ -1082,6 +1082,38 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         const wasAlreadySelected = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
                         const allTracksSelected = selectedTrackIndices.length === tracks.length;
 
+                        // Check if this point label falls within a selected region label
+                        if (!wasAlreadySelected && label.endTime === undefined && allTracksSelected && selectedLabelIds.length > 0) {
+                          // Find the selected region label(s)
+                          let shouldDelete = false;
+                          for (const selectedLabelId of selectedLabelIds) {
+                            const [selectedTrackStr, selectedIdStr] = selectedLabelId.split('-');
+                            const selectedTrack = tracks[parseInt(selectedTrackStr, 10)];
+                            const selectedLabel = selectedTrack?.labels?.find(l => l.id === parseInt(selectedIdStr, 10));
+
+                            // If selected label is a region and this point label falls within it, delete the point label
+                            if (selectedLabel?.endTime !== undefined &&
+                                label.time >= selectedLabel.time &&
+                                label.time <= selectedLabel.endTime) {
+                              shouldDelete = true;
+                              break;
+                            }
+                          }
+
+                          if (shouldDelete) {
+                            // Delete this point label
+                            const updatedLabels = track.labels?.filter(l => l.id !== label.id) || [];
+                            dispatch({
+                              type: 'UPDATE_TRACK',
+                              payload: {
+                                index: trackIndex,
+                                track: { labels: updatedLabels }
+                              }
+                            });
+                            return; // Don't proceed with selection
+                          }
+                        }
+
                         // If all tracks are selected and clicking a different label, add to selection
                         if (allTracksSelected && !wasAlreadySelected && selectedLabelIds.length > 0) {
                           // Add this label to existing selection
