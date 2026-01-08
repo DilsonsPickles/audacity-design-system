@@ -77,8 +77,8 @@ export function Canvas({
     initialClipStart: number;
   } | null>(null);
 
-  // Track focused label for selection state
-  const [focusedLabelId, setFocusedLabelId] = useState<number | null>(null);
+  // Track focused label for accessibility
+  const [, setFocusedLabelId] = useState<number | null>(null);
 
   // Label dragging state
   const labelDragStateRef = useRef<{ trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number } | null>(null);
