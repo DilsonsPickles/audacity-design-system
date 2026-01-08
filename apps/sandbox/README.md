@@ -60,14 +60,20 @@ The sandbox will start on [http://localhost:3003/](http://localhost:3003/) (or n
 ## Test Scenarios
 
 ### 1. Clip Selection
-Click on any clip to select it. The selected clip will show a white border.
+- **Single selection**: Click on any clip to select it. The selected clip will show a white border.
+- **Multi-selection**: Shift+click to add/remove clips from selection.
+- **Deselect all**: Click on empty track space to deselect all clips and select the track.
 
-### 2. Envelope Mode
+### 2. Clip Trimming
+- **Single clip trimming**: Drag the left or right edge of a clip to trim it non-destructively.
+- **Multi-clip trimming**: When multiple clips are selected, trimming one clip trims all selected clips by the same amount. Trimming stops when any clip hits its maximum or minimum boundary.
+
+### 3. Envelope Mode
 Toggle "Envelope Mode" in the toolbar to see automation overlays:
 - **OFF**: Shows subtle white overlay on clips with envelope points
 - **ON**: Shows enhanced white overlay, making automation more visible
 
-### 3. Pre-configured Clips
+### 4. Pre-configured Clips
 
 - **Clip 1 (Track 1 - Vocals)**: Fade in/out envelope (5 seconds)
 - **Clip 2 (Track 1 - Vocals)**: Complex automation curve (4 seconds)
@@ -106,6 +112,14 @@ The sandbox demonstrates the recommended component composition pattern:
 - Each track control panel height matches its corresponding timeline track (default: 114px)
 - All state management is handled at the app level, with components remaining pure and controlled
 
+## Implemented Features
+
+- [x] Clip selection (single and multi-selection with shift-click)
+- [x] Clip trimming (single and multi-clip synchronized trimming)
+- [x] Empty space click to deselect clips
+- [x] Label creation and selection
+- [x] Label keyboard navigation
+
 ## Future Enhancements
 
 - [ ] Drag and drop clip positioning
@@ -114,7 +128,6 @@ The sandbox demonstrates the recommended component composition pattern:
 - [ ] Zoom controls
 - [ ] Track height resizing
 - [ ] Real audio playback
-- [ ] Keyboard shortcuts
 
 ## Development
 
