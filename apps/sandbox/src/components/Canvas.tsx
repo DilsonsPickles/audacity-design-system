@@ -1126,16 +1126,22 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         // Update keyboard focus to this track
                         onTrackFocusChange?.(trackIndex, true);
 
-                        // If clicking an already-selected region label, select all tracks
-                        // But delay slightly to allow drag detection to cancel this
+                        // If clicking an already-selected region label
                         if (wasAlreadySelected && label.endTime !== undefined) {
-                          setTimeout(() => {
-                            // Only expand if no drag is in progress
-                            if (!labelDragStateRef.current) {
-                              const allTrackIndices = tracks.map((_, idx) => idx);
-                              dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-                            }
-                          }, 100);
+                          if (allTracksSelected) {
+                            // Already expanded: keep all tracks selected (even during drag)
+                            const allTrackIndices = tracks.map((_, idx) => idx);
+                            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                          } else {
+                            // Not expanded yet: delay to allow drag detection to cancel expansion
+                            setTimeout(() => {
+                              // Only expand if no drag is in progress
+                              if (!labelDragStateRef.current) {
+                                const allTrackIndices = tracks.map((_, idx) => idx);
+                                dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                              }
+                            }, 100);
+                          }
                         }
                       }}
                       onLabelMove={(deltaX) => {
