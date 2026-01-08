@@ -1083,7 +1083,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
 
                         // If clicking an already-selected region label, select all tracks
                         if (selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId && label.endTime !== undefined) {
-                          const allTrackIndices = state.tracks.map((_, idx) => idx);
+                          const allTrackIndices = tracks.map((_, idx) => idx);
                           dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
                         }
                       }}
