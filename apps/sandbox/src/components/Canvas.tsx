@@ -1098,7 +1098,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       selected={selectedLabelIds.includes(labelKeyId)}
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
-                      onSelect={(e) => {
+                      onSelect={() => {
 
                         // Always dispatch SET_SELECTED_LABELS on mouse down to update time selection
                         // This ensures the time selection updates immediately, even if label is already selected

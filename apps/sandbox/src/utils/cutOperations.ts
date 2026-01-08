@@ -55,7 +55,6 @@ export function applySplitCut(
   endTime: number,
   selectedTrackIndices: number[]
 ): Track[] {
-  const deletionDuration = endTime - startTime;
   let nextClipId = Math.max(...tracks.flatMap(t => t.clips.map(c => c.id))) + 1;
 
   return tracks.map((track, trackIndex) => {
