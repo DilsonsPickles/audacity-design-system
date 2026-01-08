@@ -1127,9 +1127,15 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         onTrackFocusChange?.(trackIndex, true);
 
                         // If clicking an already-selected region label, select all tracks
+                        // But delay slightly to allow drag detection to cancel this
                         if (wasAlreadySelected && label.endTime !== undefined) {
-                          const allTrackIndices = tracks.map((_, idx) => idx);
-                          dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                          setTimeout(() => {
+                            // Only expand if no drag is in progress
+                            if (!labelDragStateRef.current) {
+                              const allTrackIndices = tracks.map((_, idx) => idx);
+                              dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                            }
+                          }, 100);
                         }
                       }}
                       onLabelMove={(deltaX) => {
