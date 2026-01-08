@@ -1341,7 +1341,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         const deltaTime = deltaX / pixelsPerSecond;
 
                         // Move all labels in the drag state
-                        labelDragStateRef.current.forEach((dragState, labelKeyId) => {
+                        labelDragStateRef.current.forEach((dragState) => {
                           const newTime = Math.max(0, dragState.initialTime + deltaTime);
 
                           if (dragState.initialEndTime !== undefined) {
