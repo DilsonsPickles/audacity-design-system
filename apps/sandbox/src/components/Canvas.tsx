@@ -1080,9 +1080,16 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       onSelect={() => {
                         // Check if this label was already selected BEFORE we dispatch
                         const wasAlreadySelected = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
+                        const allTracksSelected = selectedTrackIndices.length === tracks.length;
 
-                        // Select this label
-                        dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                        // If all tracks are selected and clicking a different label, add to selection
+                        if (allTracksSelected && !wasAlreadySelected && selectedLabelIds.length > 0) {
+                          // Add this label to existing selection
+                          dispatch({ type: 'SET_SELECTED_LABELS', payload: [...selectedLabelIds, labelKeyId] });
+                        } else {
+                          // Normal behavior: replace selection with this label
+                          dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                        }
 
                         // Update keyboard focus to this track
                         onTrackFocusChange?.(trackIndex, true);
