@@ -475,8 +475,6 @@ function CanvasDemoContent() {
             payload: newSelection,
           });
 
-          // Move playhead to new position
-          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
           return;
         }
 
