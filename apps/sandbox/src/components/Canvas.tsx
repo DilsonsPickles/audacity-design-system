@@ -57,7 +57,7 @@ export function Canvas({
   onTrackFocusChange,
   keyboardFocusedTrack = null,
 }: CanvasProps) {
-  const { tracks, selectedTrackIndices, timeSelection, spectralSelection, spectrogramMode, envelopeMode } = useTracksState();
+  const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectralSelection, spectrogramMode, envelopeMode } = useTracksState();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
   const { activeProfile } = useAccessibilityProfile();
@@ -812,6 +812,8 @@ export function Canvas({
                     },
                   });
 
+                const labelKeyId = `${trackIndex}-${label.id}`;
+
                 return (
                   <div
                     key={label.id}
@@ -827,7 +829,26 @@ export function Canvas({
                     aria-label={`Label: ${label.text || 'empty'}`}
                     onFocus={() => setFocusedLabelId(label.id)}
                     onBlur={() => setFocusedLabelId(null)}
+                    onClick={(e) => {
+                      // Shift+Click = toggle selection, regular click = select only this label
+                      if (e.shiftKey) {
+                        dispatch({ type: 'TOGGLE_LABEL_SELECTION', payload: labelKeyId });
+                      } else {
+                        dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                      }
+                    }}
                     onKeyDown={(e) => {
+                      // Handle Shift+Enter to toggle, Enter to select only
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                          dispatch({ type: 'TOGGLE_LABEL_SELECTION', payload: labelKeyId });
+                        } else {
+                          dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                        }
+                        return;
+                      }
+
                       // First, handle shortcuts from hook
                       handleKeyDown(e);
 
@@ -885,7 +906,7 @@ export function Canvas({
                       text={label.text}
                       type={type}
                       state="idle"
-                      selected={focusedLabelId === label.id}
+                      selected={selectedLabelIds.includes(labelKeyId)}
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
                       onLabelMove={(deltaX) => {

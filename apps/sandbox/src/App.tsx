@@ -544,15 +544,9 @@ function CanvasDemoContent() {
             });
           }
         }
-      } else {
-          // Plain arrow keys - move playhead
-          e.preventDefault();
-          const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
-          const newPosition = Math.max(0, state.playheadPosition + delta);
-          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
-        }
-        return;
       }
+      return;
+    }
 
       // Clear the selection edges ref when not actively resizing
       // This ensures fresh state for next time

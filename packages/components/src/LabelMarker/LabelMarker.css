@@ -78,13 +78,11 @@
 }
 
 /* Active/selected state for label box */
-.label-marker--active .label-marker__label-box,
-.label-wrapper:focus .label-marker__label-box {
+.label-marker--active .label-marker__label-box {
   background: white;
 }
 
-.label-marker--active .label-marker__label-box::before,
-.label-wrapper:focus .label-marker__label-box::before {
+.label-marker--active .label-marker__label-box::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -155,18 +153,22 @@
 }
 
 /* Active/selected state for stalks */
-.label-marker--active .label-marker__stalk-line,
-.label-wrapper:focus .label-marker__stalk-line {
+.label-marker--active .label-marker__stalk-line {
   background: white;
   position: relative;
 }
 
-.label-marker--active .label-marker__stalk-line::before,
-.label-wrapper:focus .label-marker__stalk-line::before {
+.label-marker--active .label-marker__stalk-line::before {
   content: '';
   position: absolute;
   inset: 0;
   background: #7eb1ff;
   opacity: 0.4;
+}
+
+/* Keyboard focus ring - shows browser's default focus ring */
+.label-wrapper:focus {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
 }
 

@@ -114,6 +114,7 @@ export interface TracksState {
   tracks: Track[];
   selectedTrackIndices: number[];
   focusedTrackIndex: number | null;
+  selectedLabelIds: string[]; // Array of selected label IDs (format: "trackIndex-labelId")
   envelopeMode: boolean;
   envelopeAltMode: boolean;
   spectrogramMode: boolean;
@@ -152,13 +153,16 @@ export type TracksAction =
   | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'TRIM_CLIP'; payload: { trackIndex: number; clipId: number; newTrimStart: number; newDuration: number; newStart?: number } }
   | { type: 'ADD_LABEL'; payload: { trackIndex: number; label: Label } }
-  | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> }  };
+  | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> }  }
+  | { type: 'SET_SELECTED_LABELS'; payload: string[] }
+  | { type: 'TOGGLE_LABEL_SELECTION'; payload: string };
 
 // Initial state
 const initialState: TracksState = {
   tracks: [],
   selectedTrackIndices: [],
   focusedTrackIndex: null,
+  selectedLabelIds: [],
   envelopeMode: false,
   envelopeAltMode: false,
   spectrogramMode: false,
@@ -363,6 +367,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: [trackIndex],
         focusedTrackIndex: trackIndex,
         timeSelection: newTimeSelection,
+        selectedLabelIds: [], // Clear label selection when selecting clip
       };
     }
 
@@ -396,6 +401,9 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       const clip = newTracks[fromTrackIndex].clips.find(c => c.id === clipId);
       if (!clip) return state;
 
+      // Calculate the delta for time selection update
+      const timeDelta = newStartTime - clip.start;
+
       if (fromTrackIndex === toTrackIndex) {
         // Moving within the same track - just update start time
         newTracks[fromTrackIndex] = {
@@ -418,7 +426,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         };
       }
 
-      return { ...state, tracks: newTracks };
+      // Update time selection if the moved clip is selected
+      let newTimeSelection = state.timeSelection;
+      if (clip.selected && state.timeSelection) {
+        newTimeSelection = {
+          startTime: state.timeSelection.startTime + timeDelta,
+          endTime: state.timeSelection.endTime + timeDelta,
+        };
+      }
+
+      return { ...state, tracks: newTracks, timeSelection: newTimeSelection };
     }
 
     case 'ADD_CLIP': {
@@ -449,10 +466,32 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         .filter(t => t.hasSelection)
         .map(t => t.idx);
 
+      // Count total selected clips
+      const selectedClipsCount = newTracks.reduce(
+        (count, track) => count + track.clips.filter(c => c.selected).length,
+        0
+      );
+
+      // Only set time selection if exactly 1 clip is selected
+      let newTimeSelection: TimeSelection | null = null;
+      if (selectedClipsCount === 1) {
+        const selectedClip = newTracks
+          .flatMap(track => track.clips)
+          .find(clip => clip.selected);
+        if (selectedClip) {
+          newTimeSelection = {
+            startTime: selectedClip.start,
+            endTime: selectedClip.start + selectedClip.duration,
+          };
+        }
+      }
+
       return {
         ...state,
         tracks: newTracks,
         selectedTrackIndices: tracksWithSelection,
+        selectedLabelIds: [], // Clear label selection when toggling clip
+        timeSelection: newTimeSelection,
       };
     }
 
@@ -505,6 +544,10 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'UPDATE_LABEL': {
       const { trackIndex, labelId, label } = action.payload;
+
+      // Find the original label before update
+      const originalLabel = state.tracks[trackIndex]?.labels?.find(l => l.id === labelId);
+
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
@@ -512,7 +555,104 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           l.id === labelId ? { ...l, ...label } : l
         ),
       };
-      return { ...state, tracks: newTracks };
+
+      // Update time selection if this label is selected and its time changed
+      let newTimeSelection = state.timeSelection;
+      const labelKeyId = `${trackIndex}-${labelId}`;
+      if (originalLabel && state.selectedLabelIds.includes(labelKeyId) && state.timeSelection) {
+        // Calculate time delta if time changed
+        if (label.time !== undefined && label.time !== originalLabel.time) {
+          const timeDelta = label.time - originalLabel.time;
+          newTimeSelection = {
+            startTime: state.timeSelection.startTime + timeDelta,
+            endTime: state.timeSelection.endTime + timeDelta,
+          };
+        }
+      }
+
+      return { ...state, tracks: newTracks, timeSelection: newTimeSelection };
+    }
+
+    case 'SET_SELECTED_LABELS': {
+      // Clear all clip selections when selecting labels
+      const newTracks = state.tracks.map(track => ({
+        ...track,
+        clips: track.clips.map(clip => ({ ...clip, selected: false }))
+      }));
+
+      // Calculate time selection from selected labels
+      let newTimeSelection: TimeSelection | null = null;
+      if (action.payload.length > 0) {
+        const selectedLabels: Label[] = [];
+        state.tracks.forEach((track, trackIndex) => {
+          track.labels?.forEach(label => {
+            const labelKeyId = `${trackIndex}-${label.id}`;
+            if (action.payload.includes(labelKeyId)) {
+              selectedLabels.push(label);
+            }
+          });
+        });
+
+        if (selectedLabels.length > 0) {
+          const startTimes = selectedLabels.map(l => l.time);
+          const endTimes = selectedLabels.map(l => l.endTime ?? l.time);
+          newTimeSelection = {
+            startTime: Math.min(...startTimes),
+            endTime: Math.max(...endTimes),
+          };
+        }
+      }
+
+      return {
+        ...state,
+        selectedLabelIds: action.payload,
+        tracks: newTracks,
+        timeSelection: newTimeSelection,
+      };
+    }
+
+    case 'TOGGLE_LABEL_SELECTION': {
+      const labelId = action.payload;
+      const isSelected = state.selectedLabelIds.includes(labelId);
+      const newSelectedLabelIds = isSelected
+        ? state.selectedLabelIds.filter(id => id !== labelId)
+        : [...state.selectedLabelIds, labelId];
+
+      // Check if there are any selected clips
+      const selectedClipsCount = state.tracks.reduce(
+        (count, track) => count + track.clips.filter(c => c.selected).length,
+        0
+      );
+
+      // Calculate time selection from selected labels
+      // Only set time selection if there are NO selected clips and at least 1 label selected
+      let newTimeSelection: TimeSelection | null = null;
+      if (selectedClipsCount === 0 && newSelectedLabelIds.length > 0) {
+        const selectedLabels: Label[] = [];
+        state.tracks.forEach((track, trackIndex) => {
+          track.labels?.forEach(label => {
+            const labelKeyId = `${trackIndex}-${label.id}`;
+            if (newSelectedLabelIds.includes(labelKeyId)) {
+              selectedLabels.push(label);
+            }
+          });
+        });
+
+        if (selectedLabels.length > 0) {
+          const startTimes = selectedLabels.map(l => l.time);
+          const endTimes = selectedLabels.map(l => l.endTime ?? l.time);
+          newTimeSelection = {
+            startTime: Math.min(...startTimes),
+            endTime: Math.max(...endTimes),
+          };
+        }
+      }
+
+      return {
+        ...state,
+        selectedLabelIds: newSelectedLabelIds,
+        timeSelection: newTimeSelection,
+      };
     }
 
     default:
