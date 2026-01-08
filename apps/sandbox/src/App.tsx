@@ -448,37 +448,7 @@ function CanvasDemoContent() {
 
         const moveAmount = 0.1; // Move by 0.1 seconds
 
-        // Create new time selection with Shift+arrow if none exists
-        if (e.shiftKey && !state.timeSelection) {
-          e.preventDefault();
-
-          // Deselect all clips when making a time selection
-          dispatch({ type: 'DESELECT_ALL_CLIPS' });
-
-          // Auto-select all tracks when creating a new time selection
-          if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
-            const allTrackIndices = state.tracks.map((_, idx) => idx);
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-          }
-
-          // Create initial selection from current playhead position
-          const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
-          const newPlayheadPosition = Math.max(0, state.playheadPosition + delta);
-
-          const newSelection = {
-            startTime: Math.min(state.playheadPosition, newPlayheadPosition),
-            endTime: Math.max(state.playheadPosition, newPlayheadPosition),
-          };
-
-          dispatch({
-            type: 'SET_TIME_SELECTION',
-            payload: newSelection,
-          });
-
-          return;
-        }
-
-        // Handle time selection manipulation with Shift or Cmd+Shift
+        // Handle time selection manipulation with Shift or Cmd+Shift (only if selection exists)
         if (state.timeSelection && (e.shiftKey || e.metaKey)) {
           e.preventDefault();
 
