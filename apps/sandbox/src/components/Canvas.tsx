@@ -760,7 +760,7 @@ export function Canvas({
                     }
                   }, 0);
                 }}
-                onClipTrim={(clipId, edge, deltaSeconds) => {
+onClipTrim={(clipId, edge, deltaSeconds) => {
                   // Find the clip to get its current state
                   const clip = track.clips.find(c => c.id === clipId);
                   if (!clip) return;
@@ -768,6 +768,9 @@ export function Canvas({
                   const currentTrimStart = clip.trimStart || 0;
                   const currentDuration = clip.duration;
                   const currentStart = clip.start;
+                  const fullDuration = (clip as any).fullDuration || (currentTrimStart + currentDuration);
+                  const currentMaxDuration = fullDuration - currentTrimStart;
+                  const isAtMaxDuration = Math.abs(currentDuration - currentMaxDuration) < 0.001;
 
                   let newTrimStart = currentTrimStart;
                   let newDuration = currentDuration;
@@ -775,12 +778,36 @@ export function Canvas({
 
                   if (edge === 'left') {
                     // Left edge: positive delta = trim (increase trimStart), negative = expand (decrease trimStart)
+                    // When expanding left (negative delta), check if we're already at max duration
+                    if (deltaSeconds < 0 && isAtMaxDuration) {
+                      // Already at max duration, don't allow any expansion left
+                      return;
+                    }
+
                     newTrimStart = currentTrimStart + deltaSeconds;
                     newDuration = Math.max(0.1, currentDuration - deltaSeconds); // Minimum 0.1s duration
                     newStart = currentStart + deltaSeconds;
+
+                    // Don't allow expanding beyond the full duration
+                    const maxDuration = fullDuration - newTrimStart;
+                    if (newDuration > maxDuration) {
+                      // Clamp to max duration and adjust trimStart/start accordingly
+                      newDuration = maxDuration;
+                      newTrimStart = fullDuration - newDuration;
+                      newStart = currentStart + (newTrimStart - currentTrimStart);
+                    }
                   } else {
                     // Right edge: positive delta = trim (decrease duration), negative = expand (increase duration)
+                    // When expanding right (negative delta), check if we're already at max duration
+                    if (deltaSeconds < 0 && isAtMaxDuration) {
+                      // Already at max duration, don't allow any expansion right
+                      return;
+                    }
+
                     newDuration = Math.max(0.1, currentDuration - deltaSeconds); // Minimum 0.1s duration
+                    // Don't allow expanding beyond the full duration
+                    const maxDuration = fullDuration - currentTrimStart;
+                    newDuration = Math.min(newDuration, maxDuration);
                   }
 
                   // Ensure trimStart doesn't go negative
