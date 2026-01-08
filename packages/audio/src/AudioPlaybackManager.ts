@@ -82,6 +82,7 @@ export class AudioPlaybackManager {
 
   /**
    * Load and schedule all clips for playback
+   * Handles clips with deleted regions by creating multiple player instances per clip
    */
   loadClips(tracks: any[], startTime: number = 0): void {
     // Clear existing players
@@ -98,19 +99,48 @@ export class AudioPlaybackManager {
         if (buffer) {
           // Only create players for clips that should play from the current start time
           if (clip.start + clip.duration > startTime) {
-            // Create a Tone.js buffer from the AudioBuffer
-            const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
+            const trimStart = clip.trimStart || 0;
+            const deletedRegions = clip.deletedRegions || [];
 
-            // Create a player
-            const player = new Tone.Player(toneBuffer).toDestination();
+            if (deletedRegions.length === 0) {
+              // No deleted regions - create a single player for the entire clip
+              const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
+              const player = new Tone.Player(toneBuffer).toDestination();
 
-            // Calculate offset if playhead is in the middle of the clip
-            const offsetIntoClip = Math.max(0, startTime - clip.start);
+              // Calculate offset if playhead is in the middle of the clip
+              const offsetIntoClip = Math.max(0, startTime - clip.start);
 
-            // Sync player to transport and schedule it
-            player.sync().start(clip.start, offsetIntoClip);
+              // Sync player to transport and schedule it
+              // Start at clip.start in timeline, offset by trimStart + offsetIntoClip in the buffer
+              player.sync().start(clip.start, trimStart + offsetIntoClip);
 
-            this.players.set(String(clip.id), player);
+              this.players.set(String(clip.id), player);
+            } else {
+              // Clip has deleted regions - create multiple players for each segment
+              const segments = this.calculateSegments(clip.duration, deletedRegions);
+
+              segments.forEach((segment, segmentIndex) => {
+                // Create a Tone.js buffer from the AudioBuffer
+                const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
+                const player = new Tone.Player(toneBuffer).toDestination();
+
+                // Calculate timeline position for this segment
+                const timelineStart = clip.start + segment.timelineOffset;
+
+                // Calculate buffer offset (accounting for trimStart)
+                const bufferOffset = trimStart + segment.sourceOffset;
+
+                // Only schedule if segment should play from current start time
+                if (timelineStart + segment.duration > startTime) {
+                  const offsetIntoSegment = Math.max(0, startTime - timelineStart);
+
+                  // Sync player to transport
+                  player.sync().start(timelineStart, bufferOffset + offsetIntoSegment, segment.duration - offsetIntoSegment);
+
+                  this.players.set(`${clip.id}_segment_${segmentIndex}`, player);
+                }
+              });
+            }
           }
         }
       });
@@ -118,6 +148,56 @@ export class AudioPlaybackManager {
 
     // Track the position we loaded clips for
     this.lastLoadedPosition = startTime;
+  }
+
+  /**
+   * Calculate playback segments for a clip with deleted regions
+   * Returns segments with timeline offsets (where they appear in the clip)
+   * and source offsets (where to read from in the original audio buffer)
+   */
+  private calculateSegments(
+    clipDuration: number,
+    deletedRegions: Array<{ startTime: number; duration: number }>
+  ): Array<{ timelineOffset: number; sourceOffset: number; duration: number }> {
+    const segments: Array<{ timelineOffset: number; sourceOffset: number; duration: number }> = [];
+
+    let currentTimelinePos = 0; // Position in the visible timeline
+    let currentSourcePos = 0;   // Position in the original audio source
+
+    // Sort deleted regions by start time
+    const sortedDeleted = [...deletedRegions].sort((a, b) => a.startTime - b.startTime);
+
+    sortedDeleted.forEach(deleted => {
+      // Add segment before this deletion (if any)
+      const segmentDuration = deleted.startTime - currentSourcePos;
+      if (segmentDuration > 0) {
+        segments.push({
+          timelineOffset: currentTimelinePos,
+          sourceOffset: currentSourcePos,
+          duration: segmentDuration
+        });
+        currentTimelinePos += segmentDuration;
+      }
+
+      // Skip over the deleted region in the source
+      currentSourcePos = deleted.startTime + deleted.duration;
+    });
+
+    // Add final segment after last deletion (if any)
+    // Calculate full source duration by adding back all deleted time
+    const totalDeletedDuration = sortedDeleted.reduce((sum, d) => sum + d.duration, 0);
+    const fullSourceDuration = clipDuration + totalDeletedDuration;
+    const finalSegmentDuration = fullSourceDuration - currentSourcePos;
+
+    if (finalSegmentDuration > 0) {
+      segments.push({
+        timelineOffset: currentTimelinePos,
+        sourceOffset: currentSourcePos,
+        duration: finalSegmentDuration
+      });
+    }
+
+    return segments;
   }
 
   /**

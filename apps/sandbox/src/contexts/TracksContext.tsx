@@ -1,4 +1,5 @@
 import { createContext, useContext, useReducer, ReactNode } from 'react';
+import { applyCut, CutMode } from '../utils/cutOperations';
 
 // TODO: Import proper Track and Clip types from @audacity-ui/core once they're defined
 interface EnvelopePoint {
@@ -13,6 +14,11 @@ interface Label {
   endTime?: number;
 }
 
+interface DeletedRegion {
+  startTime: number; // Relative to clip start (after trimStart)
+  duration: number;   // Duration of the deleted region
+}
+
 interface Clip {
   id: number;
   name: string;
@@ -25,6 +31,7 @@ interface Clip {
   selected?: boolean;
   trimStart?: number;
   fullDuration?: number;
+  deletedRegions?: DeletedRegion[]; // Sorted, non-overlapping deleted regions
 }
 
 interface Track {
@@ -124,6 +131,7 @@ export interface TracksState {
   hoveredPoint: { trackIndex: number; clipId: number; pointIndex: number } | null;
   // Stores track view modes before spectrogram overlay was applied
   viewModesBeforeOverlay: (('waveform' | 'spectrogram' | 'split') | undefined)[] | null;
+  cutMode: CutMode; // 'split' or 'ripple'
 }
 
 // Action types
@@ -153,10 +161,12 @@ export type TracksAction =
   | { type: 'DESELECT_ALL_CLIPS' }
   | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'TRIM_CLIP'; payload: { trackIndex: number; clipId: number; newTrimStart: number; newDuration: number; newStart?: number } }
+  | { type: 'DELETE_TIME_RANGE'; payload: { startTime: number; endTime: number } }
   | { type: 'ADD_LABEL'; payload: { trackIndex: number; label: Label } }
   | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> }  }
   | { type: 'SET_SELECTED_LABELS'; payload: string[] }
-  | { type: 'TOGGLE_LABEL_SELECTION'; payload: string };
+  | { type: 'TOGGLE_LABEL_SELECTION'; payload: string }
+  | { type: 'SET_CUT_MODE'; payload: CutMode };
 
 // Initial state
 const initialState: TracksState = {
@@ -172,6 +182,7 @@ const initialState: TracksState = {
   playheadPosition: 1,
   hoveredPoint: null,
   viewModesBeforeOverlay: null,
+  cutMode: 'split', // Default to split cut mode
 };
 
 // Reducer
@@ -507,6 +518,31 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         tracks: newTracks,
       };
     }
+
+    case 'DELETE_TIME_RANGE': {
+      const { startTime, endTime } = action.payload;
+
+      // If no tracks are selected, apply cut to all tracks
+      const trackIndicesToCut = state.selectedTrackIndices.length > 0
+        ? state.selectedTrackIndices
+        : state.tracks.map((_, idx) => idx);
+
+      const newTracks = applyCut(
+        state.tracks,
+        startTime,
+        endTime,
+        state.cutMode,
+        trackIndicesToCut
+      );
+
+      return {
+        ...state,
+        tracks: newTracks,
+      };
+    }
+
+    case 'SET_CUT_MODE':
+      return { ...state, cutMode: action.payload };
 
     case 'DELETE_CLIP': {
       const { trackIndex, clipId } = action.payload;

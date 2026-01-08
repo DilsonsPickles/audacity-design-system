@@ -51,6 +51,10 @@ export interface DebugPanelProps {
   accessibilityProfileId: string;
   accessibilityProfiles: Array<{ id: string; name: string; description: string }>;
   onAccessibilityProfileChange: (profileId: string) => void;
+
+  // Cut mode
+  cutMode: 'split' | 'ripple';
+  onCutModeChange: (value: 'split' | 'ripple') => void;
 }
 
 export function DebugPanel({
@@ -77,6 +81,8 @@ export function DebugPanel({
   accessibilityProfileId,
   accessibilityProfiles,
   onAccessibilityProfileChange,
+  cutMode,
+  onCutModeChange,
 }: DebugPanelProps) {
   return (
     <Dialog
@@ -217,6 +223,71 @@ export function DebugPanel({
                 color: '#14151a',
               }}>
                 macOS
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Cut Mode Section */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Cut Mode
+          </h3>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+            }}>
+              <input
+                type="radio"
+                value="split"
+                checked={cutMode === 'split'}
+                onChange={(e) => onCutModeChange(e.target.value as 'split' | 'ripple')}
+                style={{ cursor: 'pointer' }}
+              />
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '12px',
+                fontWeight: 400,
+                lineHeight: '16px',
+                color: '#14151a',
+              }}>
+                Split (leaves gaps)
+              </span>
+            </label>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+            }}>
+              <input
+                type="radio"
+                value="ripple"
+                checked={cutMode === 'ripple'}
+                onChange={(e) => onCutModeChange(e.target.value as 'split' | 'ripple')}
+                style={{ cursor: 'pointer' }}
+              />
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '12px',
+                fontWeight: 400,
+                lineHeight: '16px',
+                color: '#14151a',
+              }}>
+                Ripple (shifts timeline)
               </span>
             </label>
           </div>

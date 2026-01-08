@@ -7,6 +7,11 @@ export interface EnvelopePoint {
   db: number;
 }
 
+export interface DeletedRegion {
+  startTime: number; // Relative to clip start (after trimStart)
+  duration: number;   // Duration of the deleted region
+}
+
 export interface Clip {
   id: number;
   name: string;
@@ -15,6 +20,7 @@ export interface Clip {
   waveform: number[];
   envelopePoints: EnvelopePoint[];
   selected?: boolean;
+  deletedRegions?: DeletedRegion[]; // Sorted, non-overlapping deleted regions
 }
 
 export interface Track {

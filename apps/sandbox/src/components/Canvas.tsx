@@ -686,6 +686,11 @@ export function Canvas({
                 height: `${trackHeight}px`,
               }}
               onClick={(e) => {
+                // Don't handle clicks if we just finished dragging (creating time selection)
+                if (selection.wasJustDragging()) {
+                  return;
+                }
+
                 // Only handle clicks on empty space (not on clips or labels)
                 // Check if click was on TrackNew background or wrapper
                 const target = e.target as HTMLElement;
