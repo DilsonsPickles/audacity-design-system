@@ -1016,12 +1016,13 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                           // Shift+Enter: Toggle selection
                           dispatch({ type: 'TOGGLE_LABEL_SELECTION', payload: labelKeyId });
                         } else {
-                          // Enter: If already selected, expand to all tracks; otherwise select this label
+                          // Enter: If single label already selected, expand to all tracks; otherwise select this label
                           const isAlreadySelected = selectedLabelIds.includes(labelKeyId);
+                          const isSingleSelection = selectedLabelIds.length === 1;
                           const allTracksSelected = selectedTrackIndices.length === tracks.length;
 
-                          if (isAlreadySelected) {
-                            // Already selected: toggle track selection between all tracks and just this track
+                          if (isAlreadySelected && isSingleSelection) {
+                            // Single label already selected: toggle track selection between all tracks and just this track
                             if (allTracksSelected) {
                               // Collapse to just this track
                               dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
@@ -1030,10 +1031,11 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                               const allTrackIndices = tracks.map((_, idx) => idx);
                               dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
                             }
-                          } else {
+                          } else if (!isAlreadySelected) {
                             // Not selected: select this label
                             dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
                           }
+                          // If multi-selection: do nothing (don't expand to all tracks)
                         }
                         return;
                       }
