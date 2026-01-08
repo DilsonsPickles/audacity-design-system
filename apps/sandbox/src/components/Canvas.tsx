@@ -998,6 +998,8 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       e.preventDefault();
                     }}
                     onClick={(e) => {
+                      // Stop propagation to prevent handleContainerClick from resetting track selection
+                      e.stopPropagation();
 
                       // Only handle shift-click here (regular clicks are handled by onSelect)
                       if (e.shiftKey) {
@@ -1005,8 +1007,6 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         e.preventDefault();
                         dispatch({ type: 'TOGGLE_LABEL_SELECTION', payload: labelKeyId });
                       }
-                      // For regular clicks, let the event propagate normally
-                      // (onSelect already handles selection on mouse-down)
                     }}
                     onKeyDown={(e) => {
                       // Handle Shift+Enter to toggle, Enter to select only
@@ -1078,11 +1078,14 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
                       onSelect={() => {
+                        // Check if this label was already selected BEFORE we dispatch
+                        const wasAlreadySelected = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
+
                         // Select this label
                         dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
 
                         // If clicking an already-selected region label, select all tracks
-                        if (selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId && label.endTime !== undefined) {
+                        if (wasAlreadySelected && label.endTime !== undefined) {
                           const allTrackIndices = tracks.map((_, idx) => idx);
                           dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
                         }
