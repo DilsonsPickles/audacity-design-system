@@ -687,7 +687,7 @@ export function Canvas({
               }}
               onClick={(e) => {
                 // Don't handle clicks if we just finished dragging (creating time selection)
-                if (selection.wasJustDragging()) {
+                if (selection.selection.wasJustDragging()) {
                   return;
                 }
 
@@ -847,24 +847,20 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                 onClipClick={(clipId, shiftKey) => {
                   // Don't change selection if we just finished dragging
                   if (didDragRef.current) {
-                    console.log('[CANVAS] Ignoring click after drag');
                     didDragRef.current = false; // Reset immediately after blocking one click
                     return;
                   }
 
-                  console.log('[CANVAS] onClipClick called:', { clipId, shiftKey });
 
                   if (shiftKey) {
                     // Shift+click: toggle selection (multi-select)
                     // Note: TOGGLE_CLIP_SELECTION reducer handles updating selectedTrackIndices
-                    console.log('[CANVAS] Dispatching TOGGLE_CLIP_SELECTION');
                     dispatch({
                       type: 'TOGGLE_CLIP_SELECTION',
                       payload: { trackIndex, clipId: clipId as number },
                     });
                   } else {
                     // Regular click: exclusive selection
-                    console.log('[CANVAS] Dispatching SELECT_CLIP');
                     dispatch({
                       type: 'SELECT_CLIP',
                       payload: { trackIndex, clipId: clipId as number },
@@ -1020,13 +1016,11 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       e.preventDefault();
                     }}
                     onClick={(e) => {
-                      console.log('[CANVAS] onClick fired for label:', labelKeyId, 'shiftKey:', e.shiftKey);
 
                       // Only handle shift-click here (regular clicks are handled by onSelect)
                       if (e.shiftKey) {
                         // Prevent focus on click (only allow tab-based focus)
                         e.preventDefault();
-                        console.log('[CANVAS] Shift-click: toggling selection');
                         dispatch({ type: 'TOGGLE_LABEL_SELECTION', payload: labelKeyId });
                       }
                       // For regular clicks, let the event propagate normally
@@ -1105,11 +1099,9 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
                       onSelect={(e) => {
-                        console.log('[CANVAS] onSelect called for label:', labelKeyId, 'already selected?', selectedLabelIds.includes(labelKeyId), 'shiftKey:', e.shiftKey);
 
                         // Always dispatch SET_SELECTED_LABELS on mouse down to update time selection
                         // This ensures the time selection updates immediately, even if label is already selected
-                        console.log('[CANVAS] Dispatching SET_SELECTED_LABELS with:', [labelKeyId]);
                         dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
                       }}
                       onLabelMove={(deltaX) => {

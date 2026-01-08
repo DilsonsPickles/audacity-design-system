@@ -84,7 +84,6 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   onSelect,
   className = '',
 }) => {
-  console.log('[LABELMARKER] Rendering with props - onLabelMove:', !!onLabelMove, 'onSelect:', !!onSelect, 'text:', text);
   const [isHovered, setIsHovered] = useState(false);
   const [leftEarHovered, setLeftEarHovered] = useState(false);
   const [rightEarHovered, setRightEarHovered] = useState(false);
@@ -109,7 +108,6 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
 
   // Handle drag start for moving (label box for all types, stalk for point labels)
   const handleMoveStart = (e: React.MouseEvent) => {
-    console.log('[LABELMARKER] handleMoveStart called, onLabelMove exists:', !!onLabelMove, 'onSelect exists:', !!onSelect, 'shiftKey:', e.shiftKey);
     if (onLabelMove) {
       // Prevent focus on mouse down (only allow tab-based focus)
       e.preventDefault();
@@ -117,11 +115,8 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
       // Call onSelect BEFORE stopPropagation to allow selection on mouse down
       // But only if NOT shift-clicking (preserve multi-selection)
       if (!e.shiftKey) {
-        console.log('[LABELMARKER] Calling onSelect()');
         onSelect?.(e);
-        console.log('[LABELMARKER] After onSelect(), calling stopPropagation');
       } else {
-        console.log('[LABELMARKER] Shift-click detected, skipping onSelect to preserve multi-selection');
       }
 
       e.stopPropagation();

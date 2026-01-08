@@ -664,26 +664,35 @@ function CanvasDemoContent() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
 
-        // Priority 1: If there's a time selection, perform cut operation
-        if (state.timeSelection) {
-          const { startTime, endTime } = state.timeSelection;
+        // Priority 1: If there are selected labels, delete them
+        if (state.selectedLabelIds.length > 0) {
+          // Delete all selected labels
+          state.selectedLabelIds.forEach(labelId => {
+            const [trackIndexStr, labelIdStr] = labelId.split('-');
+            const trackIndex = parseInt(trackIndexStr, 10);
+            const labelIdNum = parseInt(labelIdStr, 10);
 
-          // Ensure we have tracks selected - if not, select all tracks
-          if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
-            const allTrackIndices = state.tracks.map((_, idx) => idx);
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-          }
+            const track = state.tracks[trackIndex];
+            if (track && track.labels) {
+              const labelIndex = track.labels.findIndex(l => l.id === labelIdNum);
+              if (labelIndex !== -1) {
+                const updatedLabels = [...track.labels];
+                updatedLabels.splice(labelIndex, 1);
 
-          // Dispatch DELETE_TIME_RANGE action
-          dispatch({
-            type: 'DELETE_TIME_RANGE',
-            payload: { startTime, endTime },
+                dispatch({
+                  type: 'UPDATE_TRACK',
+                  payload: {
+                    index: trackIndex,
+                    track: { labels: updatedLabels }
+                  }
+                });
+              }
+            }
           });
 
-          // Clear time selection after deletion
-          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-
-          toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
+          // Clear label selection after deletion
+          dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
+          toast.info(`Deleted ${state.selectedLabelIds.length} label(s)`);
           return;
         }
 
@@ -707,7 +716,30 @@ function CanvasDemoContent() {
           return;
         }
 
-        // Priority 3: If there's a focused track (and no clips/time selected), delete the track
+        // Priority 3: If there's a time selection, perform cut operation
+        if (state.timeSelection) {
+          const { startTime, endTime } = state.timeSelection;
+
+          // Ensure we have tracks selected - if not, select all tracks
+          if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
+            const allTrackIndices = state.tracks.map((_, idx) => idx);
+            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+          }
+
+          // Dispatch DELETE_TIME_RANGE action
+          dispatch({
+            type: 'DELETE_TIME_RANGE',
+            payload: { startTime, endTime },
+          });
+
+          // Clear time selection after deletion
+          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+          toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
+          return;
+        }
+
+        // Priority 4: If there's a focused track (and no labels/clips/time selected), delete the track
         // Only delete the track if it was selected via the track header (not via clip selection)
         if (state.focusedTrackIndex !== null && state.focusedTrackIndex >= 0) {
           // Double-check no clips are selected in any track
