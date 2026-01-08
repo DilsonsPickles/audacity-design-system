@@ -605,10 +605,11 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ),
       };
 
-      // Update time selection if this label is selected and its time/endTime changed
+      // Update time selection if ONLY this label is selected and its time/endTime changed
+      // (Don't update time selection for multi-selection, matching clip behavior)
       let newTimeSelection = state.timeSelection;
       const labelKeyId = `${trackIndex}-${labelId}`;
-      if (originalLabel && state.selectedLabelIds.includes(labelKeyId)) {
+      if (originalLabel && state.selectedLabelIds.includes(labelKeyId) && state.selectedLabelIds.length === 1) {
         // Check if time or endTime changed
         const timeChanged = label.time !== undefined && label.time !== originalLabel.time;
         const endTimeChanged = label.endTime !== undefined && label.endTime !== (originalLabel.endTime ?? originalLabel.time);
@@ -655,12 +656,12 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           });
         });
 
-        if (selectedLabels.length > 0) {
-          const startTimes = selectedLabels.map(l => l.time);
-          const endTimes = selectedLabels.map(l => l.endTime ?? l.time);
+        // Only create time selection if exactly ONE label is selected (like clips)
+        if (selectedLabels.length === 1) {
+          const label = selectedLabels[0];
           newTimeSelection = {
-            startTime: Math.min(...startTimes),
-            endTime: Math.max(...endTimes),
+            startTime: label.time,
+            endTime: label.endTime ?? label.time,
           };
         }
       }
@@ -705,12 +706,12 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           });
         });
 
-        if (selectedLabels.length > 0) {
-          const startTimes = selectedLabels.map(l => l.time);
-          const endTimes = selectedLabels.map(l => l.endTime ?? l.time);
+        // Only create time selection if exactly ONE label is selected (like clips)
+        if (selectedLabels.length === 1) {
+          const label = selectedLabels[0];
           newTimeSelection = {
-            startTime: Math.min(...startTimes),
-            endTime: Math.max(...endTimes),
+            startTime: label.time,
+            endTime: label.endTime ?? label.time,
           };
         }
       }

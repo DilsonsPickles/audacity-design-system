@@ -82,8 +82,8 @@ export function Canvas({
   // Track focused label for accessibility
   const [, setFocusedLabelId] = useState<number | null>(null);
 
-  // Label dragging state
-  const labelDragStateRef = useRef<{ trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number } | null>(null);
+  // Label dragging state - stores initial positions for all labels being dragged
+  const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number }> | null>(null);
 
   // Track if channel resize is active
   const isChannelResizing = false;
@@ -1009,13 +1009,31 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       }
                     }}
                     onKeyDown={(e) => {
-                      // Handle Shift+Enter to toggle, Enter to select only
+                      // Handle Enter key
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         if (e.shiftKey) {
+                          // Shift+Enter: Toggle selection
                           dispatch({ type: 'TOGGLE_LABEL_SELECTION', payload: labelKeyId });
                         } else {
-                          dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                          // Enter: If already selected, expand to all tracks; otherwise select this label
+                          const isAlreadySelected = selectedLabelIds.includes(labelKeyId);
+                          const allTracksSelected = selectedTrackIndices.length === tracks.length;
+
+                          if (isAlreadySelected) {
+                            // Already selected: toggle track selection between all tracks and just this track
+                            if (allTracksSelected) {
+                              // Collapse to just this track
+                              dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                            } else {
+                              // Expand to all tracks
+                              const allTrackIndices = tracks.map((_, idx) => idx);
+                              dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                            }
+                          } else {
+                            // Not selected: select this label
+                            dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                          }
                         }
                         return;
                       }
@@ -1031,41 +1049,171 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         return;
                       }
 
-                      // Then handle arrow navigation (requires DOM manipulation)
-                      // Right/Down = next label (wrapping), Left/Up = previous label (wrapping)
-                      if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-                        e.preventDefault();
-                        // Cycle to next label, wrapping to first if at end
-                        const nextIndex = (labelIndex + 1) % (track.labels?.length || 1);
-                        const parent = e.currentTarget.parentElement;
-                        const labelElements = parent?.querySelectorAll('[role="button"]');
-                        if (labelElements) {
-                          // Reset ALL labels to -1, then set next to trackTabIndex
-                          labelElements.forEach((el) => {
-                            (el as HTMLElement).tabIndex = -1;
-                          });
-                          const nextLabel = labelElements[nextIndex] as HTMLElement;
-                          if (nextLabel) {
-                            nextLabel.tabIndex = trackTabIndex;
-                            nextLabel.focus();
+                      // Handle arrow key shortcuts for labels
+                      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        // Plain arrows (no modifiers): navigate between labels
+                        if (!e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+                          e.preventDefault();
+
+                          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                            // Cycle to next label, wrapping to first if at end
+                            const nextIndex = (labelIndex + 1) % (track.labels?.length || 1);
+                            const parent = e.currentTarget.parentElement;
+                            const labelElements = parent?.querySelectorAll('[role="button"]');
+                            if (labelElements) {
+                              labelElements.forEach((el) => {
+                                (el as HTMLElement).tabIndex = -1;
+                              });
+                              const nextLabel = labelElements[nextIndex] as HTMLElement;
+                              if (nextLabel) {
+                                nextLabel.tabIndex = trackTabIndex;
+                                nextLabel.focus();
+                              }
+                            }
+                          } else {
+                            // Cycle to previous label, wrapping to last if at beginning
+                            const prevIndex = (labelIndex - 1 + (track.labels?.length || 1)) % (track.labels?.length || 1);
+                            const parent = e.currentTarget.parentElement;
+                            const labelElements = parent?.querySelectorAll('[role="button"]');
+                            if (labelElements) {
+                              labelElements.forEach((el) => {
+                                (el as HTMLElement).tabIndex = -1;
+                              });
+                              const prevLabel = labelElements[prevIndex] as HTMLElement;
+                              if (prevLabel) {
+                                prevLabel.tabIndex = trackTabIndex;
+                                prevLabel.focus();
+                              }
+                            }
                           }
-                        }
-                      } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-                        e.preventDefault();
-                        // Cycle to previous label, wrapping to last if at beginning
-                        const prevIndex = (labelIndex - 1 + (track.labels?.length || 1)) % (track.labels?.length || 1);
-                        const parent = e.currentTarget.parentElement;
-                        const labelElements = parent?.querySelectorAll('[role="button"]');
-                        if (labelElements) {
-                          // Reset ALL labels to -1, then set prev to trackTabIndex
-                          labelElements.forEach((el) => {
-                            (el as HTMLElement).tabIndex = -1;
-                          });
-                          const prevLabel = labelElements[prevIndex] as HTMLElement;
-                          if (prevLabel) {
-                            prevLabel.tabIndex = trackTabIndex;
-                            prevLabel.focus();
+                        } else if (e.metaKey && !e.shiftKey) {
+                          // Cmd+Arrow: Move label(s) left/right
+                          // If multiple labels selected, apply to all selected labels
+                          e.preventDefault();
+
+                          const moveAmount = 0.1;
+                          const delta = e.key === 'ArrowLeft' ? -moveAmount : (e.key === 'ArrowRight' ? moveAmount : 0);
+
+                          if (delta !== 0) {
+                            // If this label is part of a multi-selection, update all selected labels
+                            const labelsToUpdate = selectedLabelIds.includes(labelKeyId) && selectedLabelIds.length > 1
+                              ? selectedLabelIds
+                              : [labelKeyId];
+
+                            labelsToUpdate.forEach(selectedLabelId => {
+                              const [trackIdxStr, labelIdStr] = selectedLabelId.split('-');
+                              const tIdx = parseInt(trackIdxStr, 10);
+                              const lId = parseInt(labelIdStr, 10);
+                              const targetTrack = tracks[tIdx];
+                              const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
+
+                              if (targetLabel) {
+                                const newTime = Math.max(0, targetLabel.time + delta);
+                                const duration = targetLabel.endTime !== undefined ? targetLabel.endTime - targetLabel.time : undefined;
+
+                                dispatch({
+                                  type: 'UPDATE_LABEL',
+                                  payload: {
+                                    trackIndex: tIdx,
+                                    labelId: lId,
+                                    label: duration !== undefined
+                                      ? { time: newTime, endTime: newTime + duration }
+                                      : { time: newTime },
+                                  },
+                                });
+                              }
+                            });
                           }
+                        } else if (e.shiftKey && !e.metaKey) {
+                          // Shift+Arrow: EXTEND the label region(s)
+                          e.preventDefault();
+
+                          const moveAmount = 0.1;
+
+                          // If this label is part of a multi-selection, update all selected labels
+                          const labelsToUpdate = selectedLabelIds.includes(labelKeyId) && selectedLabelIds.length > 1
+                            ? selectedLabelIds
+                            : [labelKeyId];
+
+                          labelsToUpdate.forEach(selectedLabelId => {
+                            const [trackIdxStr, labelIdStr] = selectedLabelId.split('-');
+                            const tIdx = parseInt(trackIdxStr, 10);
+                            const lId = parseInt(labelIdStr, 10);
+                            const targetTrack = tracks[tIdx];
+                            const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
+
+                            if (targetLabel) {
+                              if (e.key === 'ArrowLeft') {
+                                // Extend left edge leftward
+                                const newTime = Math.max(0, targetLabel.time - moveAmount);
+                                dispatch({
+                                  type: 'UPDATE_LABEL',
+                                  payload: {
+                                    trackIndex: tIdx,
+                                    labelId: lId,
+                                    label: { time: newTime },
+                                  },
+                                });
+                              } else if (e.key === 'ArrowRight') {
+                                // Extend right edge rightward
+                                const currentEndTime = targetLabel.endTime ?? targetLabel.time;
+                                dispatch({
+                                  type: 'UPDATE_LABEL',
+                                  payload: {
+                                    trackIndex: tIdx,
+                                    labelId: lId,
+                                    label: { endTime: currentEndTime + moveAmount },
+                                  },
+                                });
+                              }
+                            }
+                          });
+                        } else if (e.shiftKey && e.metaKey) {
+                          // Cmd+Shift+Arrow: REDUCE the label region(s)
+                          e.preventDefault();
+
+                          const moveAmount = 0.1;
+
+                          // If this label is part of a multi-selection, update all selected labels
+                          const labelsToUpdate = selectedLabelIds.includes(labelKeyId) && selectedLabelIds.length > 1
+                            ? selectedLabelIds
+                            : [labelKeyId];
+
+                          labelsToUpdate.forEach(selectedLabelId => {
+                            const [trackIdxStr, labelIdStr] = selectedLabelId.split('-');
+                            const tIdx = parseInt(trackIdxStr, 10);
+                            const lId = parseInt(labelIdStr, 10);
+                            const targetTrack = tracks[tIdx];
+                            const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
+
+                            if (targetLabel) {
+                              if (e.key === 'ArrowLeft') {
+                                // Move right edge leftward (reduce from right)
+                                const currentEndTime = targetLabel.endTime ?? targetLabel.time;
+                                const newEndTime = Math.max(targetLabel.time + 0.1, currentEndTime - moveAmount);
+                                dispatch({
+                                  type: 'UPDATE_LABEL',
+                                  payload: {
+                                    trackIndex: tIdx,
+                                    labelId: lId,
+                                    label: { endTime: newEndTime },
+                                  },
+                                });
+                              } else if (e.key === 'ArrowRight') {
+                                // Move left edge rightward (reduce from left)
+                                const currentEndTime = targetLabel.endTime ?? targetLabel.time;
+                                const newTime = Math.min(currentEndTime - 0.1, targetLabel.time + moveAmount);
+                                dispatch({
+                                  type: 'UPDATE_LABEL',
+                                  payload: {
+                                    trackIndex: tIdx,
+                                    labelId: lId,
+                                    label: { time: newTime },
+                                  },
+                                });
+                              }
+                            }
+                          });
                         }
                       }
                     }}
@@ -1078,9 +1226,17 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
                       onSelect={() => {
-                        // Check if this label was already selected BEFORE we dispatch
+                        // Check if this label is already part of the selection
+                        const isPartOfSelection = selectedLabelIds.includes(labelKeyId);
                         const wasAlreadySelected = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
                         const allTracksSelected = selectedTrackIndices.length === tracks.length;
+
+                        // If clicking on a label that's part of a multi-selection, preserve the selection
+                        // This allows dragging all selected labels together
+                        if (isPartOfSelection && selectedLabelIds.length > 1) {
+                          // Don't change selection - preserve multi-selection for dragging
+                          return;
+                        }
 
                         // Check if this point label falls within a selected region label
                         if (!wasAlreadySelected && label.endTime === undefined && allTracksSelected && selectedLabelIds.length > 0) {
@@ -1153,42 +1309,64 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                         }
                       }}
                       onLabelMove={(deltaX) => {
-                        // Initialize drag state on first call
+                        // Initialize drag state on first call for all selected labels
                         if (!labelDragStateRef.current) {
-                          labelDragStateRef.current = {
-                            trackIndex,
-                            labelId: label.id,
-                            initialTime: label.time,
-                            initialEndTime: label.endTime,
-                          };
+                          labelDragStateRef.current = new Map();
+
+                          // Determine which labels to move
+                          const labelsToMove = selectedLabelIds.includes(labelKeyId) && selectedLabelIds.length > 1
+                            ? selectedLabelIds
+                            : [labelKeyId];
+
+                          // Store initial state for all labels being moved
+                          labelsToMove.forEach(selectedLabelId => {
+                            const [trackIdxStr, labelIdStr] = selectedLabelId.split('-');
+                            const tIdx = parseInt(trackIdxStr, 10);
+                            const lId = parseInt(labelIdStr, 10);
+                            const targetTrack = tracks[tIdx];
+                            const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
+
+                            if (targetLabel) {
+                              labelDragStateRef.current!.set(selectedLabelId, {
+                                trackIndex: tIdx,
+                                labelId: lId,
+                                initialTime: targetLabel.time,
+                                initialEndTime: targetLabel.endTime,
+                              });
+                            }
+                          });
                         }
 
                         // Calculate new time based on deltaX from initial position
                         const deltaTime = deltaX / pixelsPerSecond;
-                        const newTime = Math.max(0, labelDragStateRef.current.initialTime + deltaTime);
 
-                        if (labelDragStateRef.current.initialEndTime !== undefined) {
-                          // Region label: maintain duration while moving
-                          const duration = labelDragStateRef.current.initialEndTime - labelDragStateRef.current.initialTime;
-                          dispatch({
-                            type: 'UPDATE_LABEL',
-                            payload: {
-                              trackIndex,
-                              labelId: label.id,
-                              label: { time: newTime, endTime: newTime + duration },
-                            },
-                          });
-                        } else {
-                          // Point label: just update time
-                          dispatch({
-                            type: 'UPDATE_LABEL',
-                            payload: {
-                              trackIndex,
-                              labelId: label.id,
-                              label: { time: newTime },
-                            },
-                          });
-                        }
+                        // Move all labels in the drag state
+                        labelDragStateRef.current.forEach((dragState, labelKeyId) => {
+                          const newTime = Math.max(0, dragState.initialTime + deltaTime);
+
+                          if (dragState.initialEndTime !== undefined) {
+                            // Region label: maintain duration while moving
+                            const duration = dragState.initialEndTime - dragState.initialTime;
+                            dispatch({
+                              type: 'UPDATE_LABEL',
+                              payload: {
+                                trackIndex: dragState.trackIndex,
+                                labelId: dragState.labelId,
+                                label: { time: newTime, endTime: newTime + duration },
+                              },
+                            });
+                          } else {
+                            // Point label: just update time
+                            dispatch({
+                              type: 'UPDATE_LABEL',
+                              payload: {
+                                trackIndex: dragState.trackIndex,
+                                labelId: dragState.labelId,
+                                label: { time: newTime },
+                              },
+                            });
+                          }
+                        });
                       }}
                       onRegionResize={(params) => {
                         // Convert clientX to time position

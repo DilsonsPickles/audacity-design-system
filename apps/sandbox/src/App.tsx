@@ -439,8 +439,10 @@ function CanvasDemoContent() {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         const activeElement = document.activeElement as HTMLElement;
 
-        // Only handle if focus is on body or canvas - not on any interactive element
-        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS') {
+        // Only handle if focus is on body, canvas, or label (for time selection shortcuts)
+        // Labels need Shift+Arrow and Cmd+Shift+Arrow to work for time selection extend/reduce
+        const isLabelFocused = activeElement?.classList.contains('label-wrapper');
+        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS' && !isLabelFocused) {
           return; // Let the focused element handle arrow keys
         }
 
