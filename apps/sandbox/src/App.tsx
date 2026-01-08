@@ -738,11 +738,21 @@ function CanvasDemoContent() {
           // If conditions met, also delete time range across all tracks
           if (shouldDeleteTime && state.timeSelection) {
             const { startTime, endTime } = state.timeSelection;
+            const deletionDuration = endTime - startTime;
+
             dispatch({
               type: 'DELETE_TIME_RANGE',
               payload: { startTime, endTime },
             });
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+            // Adjust playhead position based on cut mode
+            if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
+              // In ripple mode, if playhead is after the deletion, shift it left
+              const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
+              dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+            }
+
             toast.success(`Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
           } else {
             // Clear time selection even when not deleting time
@@ -775,6 +785,7 @@ function CanvasDemoContent() {
         // Priority 3: If there's a time selection, perform cut operation
         if (state.timeSelection) {
           const { startTime, endTime } = state.timeSelection;
+          const deletionDuration = endTime - startTime;
 
           // Ensure we have tracks selected - if not, select all tracks
           if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
@@ -790,6 +801,13 @@ function CanvasDemoContent() {
 
           // Clear time selection after deletion
           dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+          // Adjust playhead position based on cut mode
+          if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
+            // In ripple mode, if playhead is after the deletion, shift it left
+            const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+          }
 
           toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
           return;
