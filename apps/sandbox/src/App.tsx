@@ -666,6 +666,11 @@ function CanvasDemoContent() {
 
         // Priority 1: If there are selected labels, delete them
         if (state.selectedLabelIds.length > 0) {
+          // Check if we should also delete time (all tracks selected + time selection exists)
+          const allTracksSelected = state.selectedTrackIndices.length === state.tracks.length;
+          const hasTimeSelection = state.timeSelection !== null;
+          const shouldDeleteTime = allTracksSelected && hasTimeSelection;
+
           // Delete all selected labels
           state.selectedLabelIds.forEach(labelId => {
             const [trackIndexStr, labelIdStr] = labelId.split('-');
@@ -692,7 +697,19 @@ function CanvasDemoContent() {
 
           // Clear label selection after deletion
           dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
-          toast.info(`Deleted ${state.selectedLabelIds.length} label(s)`);
+
+          // If conditions met, also delete time range across all tracks
+          if (shouldDeleteTime && state.timeSelection) {
+            const { startTime, endTime } = state.timeSelection;
+            dispatch({
+              type: 'DELETE_TIME_RANGE',
+              payload: { startTime, endTime },
+            });
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            toast.success(`Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
+          } else {
+            toast.info(`Deleted ${state.selectedLabelIds.length} label(s)`);
+          }
           return;
         }
 
