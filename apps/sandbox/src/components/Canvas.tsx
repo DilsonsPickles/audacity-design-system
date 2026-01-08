@@ -525,15 +525,11 @@ export function Canvas({
         // Calculate mouse position in timeline
         const mouseTime = Math.max(0, (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
 
-        // Get the full clip duration (total audio available)
-        const currentTrimStart = (draggedClip as any).trimStart || 0;
-        const fullDuration = (draggedClip as any).fullDuration || (currentTrimStart + draggedClip.duration);
-
         // Get initial state for all selected clips from stored Map
         const allClipsInitialState = trimState.allClipsInitialState;
         const selectedClips: Array<{
           trackIndex: number;
-          clip: Clip;
+          clip: typeof tracks[number]['clips'][number];
           initialState: { trimStart: number; duration: number; start: number; fullDuration: number };
         }> = [];
 

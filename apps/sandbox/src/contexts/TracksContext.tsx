@@ -150,6 +150,7 @@ export type TracksAction =
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } }
   | { type: 'TOGGLE_CLIP_SELECTION'; payload: { trackIndex: number; clipId: number } }
+  | { type: 'DESELECT_ALL_CLIPS' }
   | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'TRIM_CLIP'; payload: { trackIndex: number; clipId: number; newTrimStart: number; newDuration: number; newStart?: number } }
   | { type: 'ADD_LABEL'; payload: { trackIndex: number; label: Label } }
@@ -492,6 +493,18 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: tracksWithSelection,
         selectedLabelIds: [], // Clear label selection when toggling clip
         timeSelection: newTimeSelection,
+      };
+    }
+
+    case 'DESELECT_ALL_CLIPS': {
+      const newTracks = state.tracks.map(track => ({
+        ...track,
+        clips: track.clips.map(clip => ({ ...clip, selected: false }))
+      }));
+
+      return {
+        ...state,
+        tracks: newTracks,
       };
     }
 
