@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
@@ -167,6 +167,7 @@ function CanvasDemoContent() {
   const [isSaveProjectModalOpen, setIsSaveProjectModalOpen] = React.useState(false);
   const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = React.useState(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = React.useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
 
   // Debug panel state
   const [isDebugPanelOpen, setIsDebugPanelOpen] = React.useState(false);
@@ -1122,7 +1123,7 @@ function CanvasDemoContent() {
                   variant="secondary"
                   size="default"
                   icon={'\uEF24'}
-                  onClick={() => toast.info('Export audio clicked')}
+                  onClick={() => setIsExportModalOpen(true)}
                 >
                   Export audio
                 </Button>
@@ -1801,12 +1802,28 @@ function CanvasDemoContent() {
         onDontShowAgainChange={setDontShowSaveModalAgain}
         cloudImageUrl="/saveToCloud.png"
         computerImageUrl="/saveToComputer.png"
+        os={preferences.operatingSystem}
       />
 
       {/* Preferences Modal */}
       <PreferencesModal
         isOpen={isPreferencesModalOpen}
         onClose={() => setIsPreferencesModalOpen(false)}
+        os={preferences.operatingSystem}
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={(settings: ExportSettings) => {
+          console.log('Export settings:', settings);
+          toast.success('Export started!');
+        }}
+        onEditMetadata={() => {
+          toast.info('Edit metadata clicked');
+        }}
+        os={preferences.operatingSystem}
       />
 
       {/* Debug Panel */}
