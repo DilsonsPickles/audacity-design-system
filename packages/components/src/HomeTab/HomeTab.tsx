@@ -2,6 +2,7 @@ import React from 'react';
 import { SearchField } from '../SearchField';
 import { Icon } from '../Icon';
 import { ProjectThumbnail } from '../ProjectThumbnail';
+import { useTheme } from '../ThemeProvider';
 import './HomeTab.css';
 
 export interface HomeTabProps {
@@ -23,12 +24,38 @@ export function HomeTab({
   onSearch,
   className = '',
 }: HomeTabProps) {
+  const { theme } = useTheme();
   const [activeSidebarItem, setActiveSidebarItem] = React.useState<'my-accounts' | 'project' | 'learn'>('project');
   const [activeSection, setActiveSection] = React.useState<'cloud-projects' | 'new-recent' | 'cloud-audio'>('new-recent');
   const [searchQuery, setSearchQuery] = React.useState('');
 
+  const style = {
+    '--home-tab-bg': theme.background.surface.default,
+    '--home-tab-sidebar-bg': theme.background.surface.elevated,
+    '--home-tab-sidebar-border': theme.border.default,
+    '--home-tab-sidebar-item-text': theme.foreground.text.primary,
+    '--home-tab-sidebar-item-hover-bg': theme.background.surface.hover,
+    '--home-tab-sidebar-item-active-bg': theme.background.surface.subtle,
+    '--home-tab-content-bg': theme.background.surface.elevated,
+    '--home-tab-header-text': theme.foreground.text.primary,
+    '--home-tab-section-btn-bg': theme.border.focus,
+    '--home-tab-card-bg': theme.background.surface.elevated,
+    '--home-tab-card-border': theme.border.default,
+    '--home-tab-card-hover-bg': theme.background.surface.hover,
+    '--home-tab-card-text': theme.foreground.text.primary,
+    '--home-tab-card-meta': theme.foreground.text.secondary,
+    '--home-tab-card-link': theme.border.focus,
+    '--home-tab-footer-bg': theme.background.surface.hover,
+    '--home-tab-footer-border': theme.border.default,
+    '--home-tab-footer-card-bg': theme.background.surface.elevated,
+    '--home-tab-footer-card-border': theme.border.default,
+    '--home-tab-footer-text': theme.foreground.text.primary,
+    '--home-tab-footer-btn-bg': theme.background.surface.subtle,
+    '--home-tab-placeholder-bg': theme.background.surface.subtle,
+  } as React.CSSProperties;
+
   return (
-    <div className={`home-tab ${className}`}>
+    <div className={`home-tab ${className}`} style={style}>
       {/* Left Sidebar */}
       <div className="home-tab__sidebar">
         <button

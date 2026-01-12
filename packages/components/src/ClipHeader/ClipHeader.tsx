@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ClipColor } from '../types/clip';
 import { Icon } from '../Icon';
+import { useTheme } from '../ThemeProvider';
 import './ClipHeader.css';
 
 export type ClipHeaderState = 'default' | 'hover';
@@ -58,6 +59,12 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--clip-header-text': theme.foreground.text.primary,
+  } as React.CSSProperties;
+
   const className = [
     'clip-header',
     `clip-header--${color}`,
@@ -75,7 +82,7 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
   return (
     <div
       className={className}
-      style={{ width: `${width}px` }}
+      style={{ width: `${width}px`, ...style }}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

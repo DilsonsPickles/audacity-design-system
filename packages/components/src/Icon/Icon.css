@@ -8,4 +8,5 @@
   height: 1em;
   line-height: 0;
   flex-shrink: 0;
+  color: inherit; /* Inherit color from parent by default */
 }

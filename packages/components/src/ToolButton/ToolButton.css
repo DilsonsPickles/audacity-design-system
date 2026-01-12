@@ -1,25 +1,11 @@
 /* ToolButton - Figma Design System Spec */
 
-/* CSS Variables matching Figma tokens */
-:root {
-  /* Tool button colors */
-  --tool-btn-idle: rgba(194, 196, 207, 0.7);
-  --tool-btn-hover: rgba(194, 196, 207, 0.5);
-  --tool-btn-pressed: #c2c4cf;
-
-  /* Icon color */
-  --tool-icon-color: #14151a;
-
-  /* Border radius */
-  --tool-border-radius: 2px;
-}
-
 /* Button base styles */
 .tool-button {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: var(--tool-border-radius);
+  border-radius: 2px;
   background-color: var(--tool-btn-idle);
   cursor: pointer;
   padding: 0;
@@ -68,7 +54,7 @@
 
 /* Focus visible state */
 .tool-button:focus-visible {
-  outline: 2px solid #677ce4;
+  outline: 2px solid var(--tool-focus-color);
   outline-offset: 2px;
 }
 

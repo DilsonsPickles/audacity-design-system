@@ -1,5 +1,5 @@
 import React from 'react';
-import './TabItem.css';
+import { useTheme } from '../ThemeProvider';import './TabItem.css';
 
 export interface TabItemProps {
   /**
@@ -41,6 +41,17 @@ export const TabItem: React.FC<TabItemProps> = ({
   className = '',
   ariaLabel,
 }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--tab-bg-idle': theme.background.tab.idle,
+    '--tab-bg-hover': theme.background.tab.hover,
+    '--tab-bg-selected': theme.background.tab.selected,
+    '--tab-border-selected': theme.background.tab.selectedBorder,
+    '--tab-text': theme.foreground.text.primary,
+    '--tab-focus': theme.border.focus,
+  } as React.CSSProperties;
+
   return (
     <button
       type="button"
@@ -50,6 +61,7 @@ export const TabItem: React.FC<TabItemProps> = ({
       disabled={disabled}
       aria-label={ariaLabel || label}
       aria-selected={selected}
+      style={style}
     >
       {icon && <span className="tab-item__icon">{icon}</span>}
       <span className="tab-item__label">{label}</span>

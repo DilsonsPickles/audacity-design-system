@@ -12,7 +12,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
-  color: #14151a;
+  color: var(--button-text-color);
   cursor: pointer;
   white-space: nowrap;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
@@ -47,38 +47,38 @@
 
 .button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--button-focus-color);
 }
 
 /* Primary variant */
 .button--primary {
-  background-color: rgba(103, 124, 228, 0.5);
+  background-color: var(--button-bg-idle);
 }
 
 .button--primary:hover:not(.button--disabled) {
-  background-color: rgba(103, 124, 228, 0.6);
+  background-color: var(--button-bg-hover);
 }
 
 .button--primary:active:not(.button--disabled) {
-  background-color: rgba(103, 124, 228, 0.7);
+  background-color: var(--button-bg-active);
 }
 
 /* Secondary variant */
 .button--secondary {
-  background-color: rgba(194, 196, 207, 0.7);
+  background-color: var(--button-bg-idle);
 }
 
 .button--secondary:hover:not(.button--disabled) {
-  background-color: rgba(194, 196, 207, 0.5);
+  background-color: var(--button-bg-hover);
 }
 
 .button--secondary:active:not(.button--disabled) {
-  background-color: #c2c4cf;
+  background-color: var(--button-bg-active);
 }
 
 /* Disabled state */
 .button--disabled {
-  opacity: 0.3;
+  background-color: var(--button-bg-disabled) !important;
   cursor: not-allowed;
 }
 

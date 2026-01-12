@@ -38,6 +38,11 @@ export interface SidePanelProps {
   className?: string;
 
   /**
+   * Inline styles (for CSS custom properties)
+   */
+  style?: React.CSSProperties;
+
+  /**
    * Called when panel is resized
    */
   onResize?: (width: number) => void;
@@ -51,6 +56,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   maxWidth = 400,
   children,
   className = '',
+  style,
   onResize,
 }) => {
   const [currentWidth, setCurrentWidth] = React.useState(width);
@@ -102,7 +108,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
     <div
       ref={panelRef}
       className={`side-panel side-panel--${position} ${isResizing ? 'side-panel--resizing' : ''} ${className}`}
-      style={{ width: currentWidth }}
+      style={{ width: currentWidth, ...style }}
     >
       <div className="side-panel__content">
         {children}

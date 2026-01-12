@@ -8,8 +8,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
-  border-top: 1px solid var(--stroke-main-stroke-secondary, #d4d5d9);
+  background-color: var(--selection-toolbar-bg);
+  border-top: 1px solid var(--selection-toolbar-border);
   height: 40px;
   box-sizing: border-box;
 }
@@ -34,7 +34,7 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--selection-toolbar-text);
   white-space: nowrap;
 }
 
@@ -52,7 +52,7 @@
   transform: translate(-50%, -50%);
   width: 1px;
   height: 28px;
-  background-color: var(--stroke-main-stroke-primary, #d4d5d9);
+  background-color: var(--selection-toolbar-divider);
 }
 
 .selection-toolbar__instruction {
@@ -68,7 +68,7 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--selection-toolbar-text);
   white-space: nowrap;
 }
 
@@ -84,7 +84,7 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--selection-toolbar-text);
   white-space: nowrap;
   user-select: none;
 }

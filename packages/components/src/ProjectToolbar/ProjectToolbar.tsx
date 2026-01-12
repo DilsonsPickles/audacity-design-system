@@ -1,6 +1,7 @@
 import React, { useRef, useMemo, useState } from 'react';
 import { Tab } from '../Tab';
 import { useTabGroup } from '../hooks/useTabGroup';
+import { useTheme } from '../ThemeProvider';
 import './ProjectToolbar.css';
 
 export interface ProjectToolbarProps {
@@ -52,10 +53,20 @@ export function ProjectToolbar({
   showDebugMenu = false,
   className = '',
 }: ProjectToolbarProps) {
+  const { theme } = useTheme();
   const leftGroupRef = useRef<(HTMLElement | null)[]>([]);
 
   // Shared state for roving tabindex
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+
+  const style = {
+    '--toolbar-bg': theme.background.surface.default,
+    '--toolbar-border': theme.border.onSurface,
+    '--toolbar-text': theme.foreground.text.tertiary,
+    '--toolbar-hover': theme.background.surface.hover,
+    '--toolbar-active-text': theme.foreground.text.primary,
+    '--toolbar-active-indicator': theme.border.focus,
+  } as React.CSSProperties;
 
   const totalMenuItems = useMemo(() => {
     return showDebugMenu ? 4 : 3;
@@ -105,7 +116,7 @@ export function ProjectToolbar({
   return (
     <div
       className={`project-toolbar ${className}`}
-      style={{ height: `${height}px` }}
+      style={{ height: `${height}px`, ...style }}
       role="toolbar"
       aria-label="Project toolbar"
     >

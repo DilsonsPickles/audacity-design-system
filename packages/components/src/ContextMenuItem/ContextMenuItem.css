@@ -7,12 +7,12 @@
   align-items: center;
   min-width: 180px;
   font-size: 13px;
-  color: #e0e0e0;
+  color: var(--context-menu-item-text);
   transition: background-color 0.1s ease;
 }
 
 .context-menu-item:hover:not(.disabled) {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--context-menu-item-hover-bg);
 }
 
 .context-menu-item.disabled {
@@ -49,10 +49,10 @@
   position: absolute;
   left: 100%;
   top: 0;
-  background: #2a2d3a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--context-menu-submenu-bg);
+  border: 1px solid var(--context-menu-submenu-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--context-menu-submenu-shadow);
   overflow: hidden;
   z-index: 1000;
   min-width: 180px;

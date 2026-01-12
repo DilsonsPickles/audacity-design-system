@@ -1,5 +1,6 @@
 import React from 'react';
 import { Radio } from '../Radio';
+import { useTheme } from '../ThemeProvider';
 import './LabeledRadio.css';
 
 export interface LabeledRadioProps {
@@ -57,10 +58,15 @@ export const LabeledRadio: React.FC<LabeledRadioProps> = ({
   description,
   className = '',
 }) => {
+  const { theme } = useTheme();
   const hasDescription = bold && description;
 
+  const style = {
+    '--labeled-radio-text': theme.foreground.text.primary,
+  } as React.CSSProperties;
+
   return (
-    <div className={`labeled-radio ${hasDescription ? 'labeled-radio--with-description' : ''} ${className}`}>
+    <div className={`labeled-radio ${hasDescription ? 'labeled-radio--with-description' : ''} ${className}`} style={style}>
       <Radio
         checked={checked}
         onChange={onChange}

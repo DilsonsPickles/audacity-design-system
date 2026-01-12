@@ -1,6 +1,7 @@
 import React from 'react';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem/ContextMenuItem';
+import { useTheme } from '../ThemeProvider';
 import './ClipContextMenu.css';
 
 export interface ClipContextMenuProps {
@@ -113,8 +114,16 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   onRenderPitchSpeed,
   autoFocus = false,
 }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--clip-context-menu-header-text': theme.foreground.text.secondary,
+    '--clip-context-menu-header-border': theme.border.divider,
+    '--clip-context-menu-divider-bg': theme.border.divider,
+  } as React.CSSProperties;
+
   return (
-    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="clip-context-menu" autoFocus={autoFocus}>
+    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="clip-context-menu" autoFocus={autoFocus} style={style}>
       {/* Clip properties header */}
       <div className="clip-context-menu-header">Clip properties</div>
 

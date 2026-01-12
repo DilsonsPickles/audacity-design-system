@@ -4,9 +4,9 @@
 
 .toast {
   width: 360px;
-  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
+  background-color: var(--toast-bg);
   border-radius: 8px;
-  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+  box-shadow: var(--toast-shadow);
   padding: 12px;
   padding-right: 24px;
   padding-bottom: 0;
@@ -55,7 +55,7 @@
   font-family: 'MusescoreIcon', sans-serif;
   font-size: 16px;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--toast-icon-color);
   flex-shrink: 0;
 }
 
@@ -81,7 +81,7 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--toast-title-color);
 }
 
 /* Description */
@@ -90,7 +90,7 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-secondary, rgba(20, 21, 26, 0.75));
+  color: var(--toast-description-color);
 }
 
 /* Actions Container */
@@ -102,7 +102,7 @@
 
 /* Action Button */
 .toast__action-button {
-  background-color: var(--button-solid-on-primary-btn-solid-on-primary-idle, rgba(194, 196, 207, 0.7));
+  background-color: var(--toast-button-bg);
   border: none;
   border-radius: 2px;
   padding: 6px 12px;
@@ -110,18 +110,18 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--toast-button-text);
   cursor: pointer;
   transition: background-color 0.15s ease;
   white-space: nowrap;
 }
 
 .toast__action-button:hover {
-  background-color: rgba(194, 196, 207, 0.85);
+  background-color: var(--toast-button-bg-hover);
 }
 
 .toast__action-button:active {
-  background-color: rgba(194, 196, 207, 0.6);
+  background-color: var(--toast-button-bg-active);
 }
 
 /* Type-specific styling (if needed for icons or colors) */
@@ -154,6 +154,6 @@
 
 .toast__progress-fill {
   height: 100%;
-  background-color: var(--stroke-input-stroke-input-field-active, #677ce4);
+  background-color: var(--toast-progress-fill);
   transition: width 16ms linear;
 }

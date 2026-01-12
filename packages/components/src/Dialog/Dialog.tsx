@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DialogHeader } from '../DialogHeader';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useTheme } from '../ThemeProvider';
 import './Dialog.css';
 
 export interface DialogProps {
@@ -76,6 +77,10 @@ export interface DialogProps {
    * @default 'macos'
    */
   os?: 'macos' | 'windows';
+  /**
+   * Inline styles (for CSS custom properties)
+   */
+  style?: React.CSSProperties;
 }
 
 /**
@@ -97,7 +102,9 @@ export function Dialog({
   maximizable = false,
   noPadding = false,
   os = 'macos',
+  style: externalStyle,
 }: DialogProps) {
+  const { theme } = useTheme();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [dialogSize, setDialogSize] = useState({ width: 0, height: 0 });
@@ -314,8 +321,12 @@ export function Dialog({
 
   const dialogClasses = `dialog ${isMaximized ? 'dialog--maximized' : ''} ${isResizing ? 'dialog--resizing' : ''} ${isDragging ? 'dialog--dragging' : ''} ${className}`;
 
-  const dialogStyle: React.CSSProperties | undefined = isMaximized
-    ? undefined
+  const baseStyle = isMaximized
+    ? {
+        '--dialog-bg': theme.background.surface.elevated,
+        '--dialog-border': theme.border.default,
+        '--dialog-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
+      } as React.CSSProperties
     : {
         width: dialogSize.width > 0 ? `${dialogSize.width}px` : (typeof width === 'number' ? `${width}px` : width),
         height: dialogSize.height > 0 ? `${dialogSize.height}px` : undefined,
@@ -323,7 +334,12 @@ export function Dialog({
         left: dialogPosition.x !== 0 ? `${dialogPosition.x}px` : undefined,
         top: dialogPosition.y !== 0 ? `${dialogPosition.y}px` : undefined,
         margin: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? '0' : undefined,
-      };
+        '--dialog-bg': theme.background.surface.elevated,
+        '--dialog-border': theme.border.default,
+        '--dialog-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
+      } as React.CSSProperties;
+
+  const dialogStyle = { ...baseStyle, ...externalStyle };
 
   return (
     <div className="dialog-overlay" onClick={handleOverlayClick}>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './PreferenceThumbnail.css';
 
 export interface PreferenceThumbnailProps {
@@ -46,8 +47,16 @@ export const PreferenceThumbnail: React.FC<PreferenceThumbnailProps> = ({
   value,
   className = '',
 }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--preference-thumbnail-bg': theme.background.surface.subtle,
+    '--preference-thumbnail-selected-outline': theme.border.focus,
+    '--preference-thumbnail-label-text': theme.foreground.text.primary,
+  } as React.CSSProperties;
+
   return (
-    <div className={`preference-thumbnail ${className}`}>
+    <div className={`preference-thumbnail ${className}`} style={style}>
       <button
         type="button"
         className={`preference-thumbnail__image-button ${checked ? 'preference-thumbnail__image-button--selected' : ''}`}

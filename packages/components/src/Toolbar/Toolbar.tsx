@@ -1,5 +1,6 @@
 import React, { useRef, Children, cloneElement, isValidElement } from 'react';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { useTheme } from '../ThemeProvider';
 import './Toolbar.css';
 
 export interface ToolbarProps {
@@ -47,8 +48,15 @@ export function Toolbar({
   enableTabGroup = true,
   startTabIndex = 0,
 }: ToolbarProps) {
+  const { theme } = useTheme();
   const toolbarRef = useRef<HTMLDivElement>(null);
   const { activeProfile } = useAccessibilityProfile();
+
+  const style = {
+    '--toolbar-bg': theme.background.surface.default,
+    '--toolbar-border': theme.border.default,
+    '--toolbar-divider': theme.border.divider,
+  } as React.CSSProperties;
 
   // Check if this toolbar should use tab groups based on profile
   const groupConfig = activeProfile.config.tabGroups['transport-toolbar']; // Using transport-toolbar as the group ID
@@ -121,7 +129,7 @@ export function Toolbar({
     <div
       ref={toolbarRef}
       className={`toolbar ${className}`}
-      style={{ height: `${height}px` }}
+      style={{ height: `${height}px`, ...style }}
       role={useTabGroups ? "toolbar" : undefined}
       aria-label={useTabGroups ? "Tool toolbar" : undefined}
       onKeyDown={handleKeyDown}

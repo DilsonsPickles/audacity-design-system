@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { TimeSelection, SpectralSelection } from '@audacity-ui/core';
+import { useTheme } from '../ThemeProvider';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import './TimelineRuler.css';
 
@@ -72,15 +73,24 @@ export function TimelineRuler({
   height = DEFAULT_HEIGHT,
   timeSelection = null,
   spectralSelection = null,
-  backgroundColor = '#E3E3E8',
-  textColor = '#14151A',
-  lineColor = '#D4D5D9',
-  tickColor = '#828387',
-  selectionColor = 'rgba(255, 255, 255, 0.5)',
-  spectralHighlightColor = 'rgba(130, 131, 135, 0.3)',
+  backgroundColor,
+  textColor,
+  lineColor,
+  tickColor,
+  selectionColor,
+  spectralHighlightColor,
   cursorPosition,
 }: TimelineRulerProps) {
+  const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Use theme tokens as defaults if not provided
+  const bgColor = backgroundColor ?? theme.background.surface.elevated;
+  const txtColor = textColor ?? theme.foreground.text.primary;
+  const lnColor = lineColor ?? theme.border.onElevated;
+  const tckColor = tickColor ?? theme.audio.timeline.tickMajor;
+  const selColor = selectionColor ?? 'rgba(255, 255, 255, 0.5)';
+  const specColor = spectralHighlightColor ?? 'rgba(130, 131, 135, 0.3)';
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -98,7 +108,7 @@ export function TimelineRuler({
     ctx.clearRect(0, 0, width, height);
 
     // Draw background
-    ctx.fillStyle = backgroundColor;
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
 
     // Draw time selection in bottom half (if present)
@@ -107,7 +117,7 @@ export function TimelineRuler({
       const startX = CLIP_CONTENT_OFFSET + timeSelection.startTime * pixelsPerSecond - scrollX;
       const endX = CLIP_CONTENT_OFFSET + timeSelection.endTime * pixelsPerSecond - scrollX;
 
-      ctx.fillStyle = selectionColor;
+      ctx.fillStyle = selColor;
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
 
       // Borders removed for cleaner look with blend mode
@@ -118,12 +128,12 @@ export function TimelineRuler({
       const startX = CLIP_CONTENT_OFFSET + spectralSelection.startTime * pixelsPerSecond - scrollX;
       const endX = CLIP_CONTENT_OFFSET + spectralSelection.endTime * pixelsPerSecond - scrollX;
 
-      ctx.fillStyle = spectralHighlightColor;
+      ctx.fillStyle = specColor;
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
     }
 
     // Draw horizontal divider line at middle (skip the CLIP_CONTENT_OFFSET area)
-    ctx.strokeStyle = lineColor;
+    ctx.strokeStyle = lnColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(CLIP_CONTENT_OFFSET, midHeight + 0.5); // Start after the left padding box
@@ -138,9 +148,9 @@ export function TimelineRuler({
       totalDuration,
       width,
       height,
-      textColor,
-      lineColor,
-      tickColor
+      txtColor,
+      lnColor,
+      tckColor
     );
 
     // Draw cursor position line (using text color)
@@ -149,7 +159,7 @@ export function TimelineRuler({
 
       // Only draw if cursor is visible in viewport
       if (cursorX >= CLIP_CONTENT_OFFSET && cursorX <= width) {
-        ctx.strokeStyle = textColor;
+        ctx.strokeStyle = txtColor;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(Math.floor(cursorX) + 0.5, 0);
@@ -157,7 +167,7 @@ export function TimelineRuler({
         ctx.stroke();
       }
     }
-  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, backgroundColor, textColor, lineColor, tickColor, selectionColor, spectralHighlightColor, cursorPosition]);
+  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition]);
 
   return (
     <canvas

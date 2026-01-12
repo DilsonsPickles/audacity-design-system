@@ -9,24 +9,24 @@
   gap: 8px;
   padding: 8px;
   width: 190px;
-  background-color: var(--shade-shade-100, #ffffff);
-  border: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  background-color: var(--social-btn-bg);
+  border: 1px solid var(--social-btn-border);
   border-radius: 4px;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--social-btn-text);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .social-sign-in-button:hover:not(:disabled) {
-  background-color: var(--background-surface-bg-surface-primary-hover, #f0f0f1);
+  background-color: var(--social-btn-hover-bg);
 }
 
 .social-sign-in-button:active:not(:disabled) {
-  background-color: var(--background-surface-bg-surface-primary-active, #e8e8e9);
+  background-color: var(--social-btn-hover-bg);
 }
 
 .social-sign-in-button:disabled {

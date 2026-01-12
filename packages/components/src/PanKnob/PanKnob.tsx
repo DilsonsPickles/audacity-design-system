@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './PanKnob.css';
 
 export interface PanKnobProps {
@@ -36,6 +37,8 @@ export const PanKnob: React.FC<PanKnobProps> = ({
   tabIndex = 0,
   id,
 }) => {
+  const { theme } = useTheme();
+
   // Clamp value to -100 to 100
   const clampedValue = Math.max(-100, Math.min(100, value));
 
@@ -54,6 +57,14 @@ export const PanKnob: React.FC<PanKnobProps> = ({
   const sweepStartDeg = isLeftPan ? 0 - valueSweepDegrees : 0;
   const sweepColor = isLeftPan ? '#84b5ff' : '#677ce4';
 
+  const style = {
+    '--pan-knob-gauge': theme.background.control.panKnob.gauge,
+    '--pan-knob-dial-border': theme.background.control.panKnob.border,
+    '--pan-knob-dial-bg': theme.background.control.panKnob.face,
+    '--pan-knob-indicator': theme.foreground.text.primary,
+    '--pan-knob-focus': theme.border.focus,
+  } as React.CSSProperties;
+
   return (
     <button
       className={`pan-knob ${className}`}
@@ -65,6 +76,7 @@ export const PanKnob: React.FC<PanKnobProps> = ({
       aria-valuemin={-100}
       aria-valuemax={100}
       aria-valuenow={clampedValue}
+      style={style}
     >
       {/* Background gauge */}
       <div className="pan-knob__gauge" />

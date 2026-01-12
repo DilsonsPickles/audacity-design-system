@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './Radio.css';
 
 export interface RadioProps {
@@ -41,6 +42,17 @@ export const Radio: React.FC<RadioProps> = ({
   tabIndex,
   className = '',
 }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--radio-border': theme.border.default,
+    '--radio-border-hover': theme.border.focus,
+    '--radio-bg': theme.background.surface.elevated,
+    '--radio-pip': theme.background.control.button.primary.idle,
+    '--radio-pip-disabled': theme.foreground.icon.disabled,
+    '--radio-focus': theme.border.focus,
+  } as React.CSSProperties;
+
   const handleChange = () => {
     if (!disabled && !checked) {
       onChange?.(true);
@@ -63,6 +75,7 @@ export const Radio: React.FC<RadioProps> = ({
       aria-checked={checked}
       tabIndex={tabIndex !== undefined ? tabIndex : (disabled ? -1 : 0)}
       onKeyDown={handleKeyDown}
+      style={style}
     >
       <input
         type="radio"

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon, IconName } from '../Icon';
+import { useTheme } from '../ThemeProvider';
 import './ToolButton.css';
 
 export interface ToolButtonProps {
@@ -39,9 +40,18 @@ export function ToolButton({
   disabled = false,
   className = '',
 }: ToolButtonProps) {
+  const { theme } = useTheme();
   const [internalState, setInternalState] = React.useState<'idle' | 'hover' | 'pressed'>('idle');
 
   const currentState = disabled ? 'disabled' : state !== 'idle' ? state : internalState;
+
+  const style = {
+    '--tool-btn-idle': theme.background.control.button.secondary.idle,
+    '--tool-btn-hover': theme.background.control.button.secondary.hover,
+    '--tool-btn-pressed': theme.background.control.button.secondary.active,
+    '--tool-icon-color': theme.foreground.icon.primary,
+    '--tool-focus-color': theme.border.focus,
+  } as React.CSSProperties;
 
   const handleMouseEnter = () => {
     if (!disabled && state === 'idle') {
@@ -83,6 +93,7 @@ export function ToolButton({
       onMouseUp={handleMouseUp}
       disabled={disabled}
       type="button"
+      style={style}
     >
       <Icon name={icon} size={16} className="tool-button__icon" />
     </button>

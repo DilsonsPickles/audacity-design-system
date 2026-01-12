@@ -1,6 +1,7 @@
 import React from 'react';
 import '../assets/fonts/musescore-icon.css';
 import './Button.css';
+import { useTheme } from '../ThemeProvider';
 
 export interface ButtonProps {
   /**
@@ -60,6 +61,22 @@ export const Button: React.FC<ButtonProps> = ({
   type = 'button',
   tabIndex,
 }) => {
+  const { theme } = useTheme();
+
+  // Get colors from theme based on variant
+  const buttonColors = variant === 'primary'
+    ? theme.background.control.button.primary
+    : theme.background.control.button.secondary;
+
+  const style = {
+    '--button-bg-idle': buttonColors.idle,
+    '--button-bg-hover': buttonColors.hover,
+    '--button-bg-active': buttonColors.active,
+    '--button-bg-disabled': buttonColors.disabled,
+    '--button-text-color': theme.foreground.text.primary,
+    '--button-focus-color': theme.border.focus,
+  } as React.CSSProperties;
+
   return (
     <button
       type={type}
@@ -67,6 +84,7 @@ export const Button: React.FC<ButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       tabIndex={tabIndex}
+      style={style}
     >
       {showIcon && icon && (
         <span className="button__icon musescore-icon">

@@ -5,6 +5,14 @@
  * Contains colors, spacing, and theme definitions
  */
 
+// Export v2 token system
+export * from './tokens.v2';
+export * from './themes/light.v2';
+export * from './themes/dark.v2';
+export * from './utils/theme-helpers';
+
+// Legacy exports (v1)
+
 /**
  * Color Scale - Complete color system from Figma
  * Each color has a scale from 100 (lightest) to 900 (darkest)
@@ -175,7 +183,8 @@ export const typography = {
   },
 } as const;
 
-export interface Theme {
+/** @deprecated Use ThemeTokens from v2 instead */
+export interface ThemeV1 {
   // Main backgrounds
   canvas: string;
   toolbar: string;
@@ -249,7 +258,8 @@ export interface Theme {
   focusBorder: string;
 }
 
-export const lightTheme: Theme = {
+/** @deprecated Use lightTheme from v2 instead */
+export const lightThemeV1: ThemeV1 = {
   // Main backgrounds
   canvas: '#212433',
   toolbar: '#F9F9FA',
@@ -386,7 +396,8 @@ export const lightTheme: Theme = {
   focusBorder: '#84B5FF',
 };
 
-export const darkTheme: Theme = {
+/** @deprecated Use darkTheme from v2 instead */
+export const darkThemeV1: ThemeV1 = {
   // Main backgrounds
   canvas: '#1a1a1a',
   toolbar: '#2a2a2a',
@@ -523,5 +534,6 @@ export const darkTheme: Theme = {
   focusBorder: '#84B5FF',
 };
 
-// Default theme
-export const theme = lightTheme;
+// Default theme (v1 - deprecated, use lightTheme from v2)
+/** @deprecated Use lightTheme from v2 instead */
+export const theme = lightThemeV1;

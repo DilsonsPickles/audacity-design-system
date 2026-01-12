@@ -19,32 +19,28 @@
 
 /* Off state (default) */
 .toggle-tool-button--off {
-  background-color: #d3d4dc;
-  color: #14151a;
+  background-color: var(--toggle-off-bg);
 }
 
 /* Off hover state */
 .toggle-tool-button--off-hover {
-  background-color: #c2c4cf;
-  color: #14151a;
+  background-color: var(--toggle-off-hover-bg);
 }
 
 /* On state (active/toggled) */
 .toggle-tool-button--on {
-  background-color: rgba(103, 124, 228, 0.5);
-  color: #ffffff;
+  background-color: var(--toggle-on-bg);
 }
 
 /* On hover state */
 .toggle-tool-button--on-hover {
-  background-color: rgba(103, 124, 228, 0.6);
-  color: #ffffff;
+  background-color: var(--toggle-on-hover-bg);
 }
 
 /* Disabled state */
 .toggle-tool-button--disabled {
-  background-color: transparent;
-  color: #a7a8ab;
+  background-color: var(--toggle-disabled-bg);
+  color: var(--toggle-disabled-color);
   cursor: not-allowed;
 }
 
@@ -60,6 +56,6 @@
 }
 
 .toggle-tool-button:focus-visible {
-  outline: 2px solid #0f62fe;
+  outline: 2px solid var(--toggle-focus-color);
   outline-offset: 2px;
 }

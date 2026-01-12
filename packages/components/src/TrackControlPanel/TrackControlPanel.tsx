@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../ThemeProvider';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
 import { Icon } from '../Icon';
@@ -202,6 +203,17 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     }
   };
 
+  const { theme } = useTheme();
+
+  const style = {
+    '--tcp-bg-idle': theme.background.surface.subtle,
+    '--tcp-bg-hover': theme.background.surface.hover,
+    '--tcp-bg-active': theme.background.surface.default,
+    '--tcp-text-primary': theme.foreground.text.primary,
+    '--tcp-icon-default': theme.foreground.icon.primary,
+    '--tcp-focus-color': theme.border.focus,
+  } as React.CSSProperties;
+
   const handleClick = (e: React.MouseEvent) => {
     // Don't handle shift-clicks - let them bubble up for multi-track selection
     if (e.shiftKey) {
@@ -222,13 +234,14 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
+      style={style}
     >
       <div className="track-control-panel__main">
         {/* Header */}
         <div className="track-control-panel__header">
           <div className="track-control-panel__track-name">
             <button className="track-control-panel__icon-button" aria-label="Track icon" tabIndex={-1}>
-              <Icon name={getTrackIcon()} size={16} />
+              <Icon name={getTrackIcon()} size={16} className="track-control-panel__icon" />
             </button>
             <span className="track-control-panel__track-name-text">{trackName}</span>
           </div>

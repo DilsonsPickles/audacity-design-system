@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTheme } from '../ThemeProvider';
 import './ContextMenuItem.css';
 
 export interface ContextMenuItemProps {
@@ -51,9 +52,18 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   icon,
   onClose,
 }) => {
+  const { theme } = useTheme();
   const [submenuOpen, setSubmenuOpen] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
+
+  const style = {
+    '--context-menu-item-text': theme.foreground.text.primary,
+    '--context-menu-item-hover-bg': theme.background.surface.hover,
+    '--context-menu-submenu-bg': theme.background.surface.elevated,
+    '--context-menu-submenu-border': theme.border.default,
+    '--context-menu-submenu-shadow': '0 2px 8px rgba(0, 0, 0, 0.3)',
+  } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent) => {
     if (disabled) return;
@@ -211,6 +221,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
       onKeyDown={handleKeyDown}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      style={style}
     >
       <div className="context-menu-item-content">
         {icon && <span className="context-menu-item-icon">{icon}</span>}

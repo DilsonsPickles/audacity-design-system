@@ -18,28 +18,28 @@
 
 /* Unchecked states */
 .checkbox--unchecked.checkbox--default {
-  background-color: var(--background-control-bg-checkbox-idle, rgba(194, 196, 207, 0.7));
+  background-color: var(--checkbox-bg-idle);
 }
 
 .checkbox--unchecked.checkbox--hover {
-  background-color: var(--background-control-bg-checkbox-hover, rgba(194, 196, 207, 0.5));
+  background-color: var(--checkbox-bg-hover);
 }
 
 .checkbox--unchecked.checkbox--pressed {
-  background-color: var(--background-control-bg-checkbox-pressed, #c2c4cf);
+  background-color: var(--checkbox-bg-pressed);
 }
 
 /* Checked states */
 .checkbox--checked.checkbox--default {
-  background-color: var(--background-control-bg-checkbox-idle, rgba(194, 196, 207, 0.7));
+  background-color: var(--checkbox-bg-idle);
 }
 
 .checkbox--checked.checkbox--hover {
-  background-color: var(--background-control-bg-checkbox-hover, rgba(194, 196, 207, 0.5));
+  background-color: var(--checkbox-bg-hover);
 }
 
 .checkbox--checked.checkbox--pressed {
-  background-color: var(--background-control-bg-checkbox-pressed, #c2c4cf);
+  background-color: var(--checkbox-bg-pressed);
 }
 
 /* Disabled state */
@@ -53,7 +53,7 @@
   font-family: 'MusescoreIcon', sans-serif;
   font-size: 16px;
   line-height: 16px;
-  color: var(--icon-icon-default, #14151a);
+  color: var(--checkbox-icon-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,5 +64,5 @@
 /* Focus state */
 .checkbox:focus {
   outline: none;
-  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--checkbox-focus-color);
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon, IconName } from '../Icon';
+import { useTheme } from '../ThemeProvider';
 import './ToggleToolButton.css';
 
 export interface ToggleToolButtonProps {
@@ -40,6 +41,7 @@ export function ToggleToolButton({
   disabled = false,
   className = '',
 }: ToggleToolButtonProps) {
+  const { theme } = useTheme();
   const [isHovered, setIsHovered] = React.useState(false);
 
   const handleMouseEnter = () => {
@@ -68,7 +70,17 @@ export function ToggleToolButton({
     stateClass = isHovered ? 'toggle-tool-button--off-hover' : 'toggle-tool-button--off';
   }
 
-  const iconColor = isActive ? '#ffffff' : '#14151a';
+  const iconColor = isActive ? theme.foreground.icon.inverse : theme.foreground.icon.primary;
+
+  const style = {
+    '--toggle-off-bg': theme.background.control.button.secondary.idle,
+    '--toggle-off-hover-bg': theme.background.control.button.secondary.hover,
+    '--toggle-on-bg': theme.background.control.button.primary.idle,
+    '--toggle-on-hover-bg': theme.background.control.button.primary.hover,
+    '--toggle-disabled-bg': 'transparent',
+    '--toggle-disabled-color': theme.foreground.icon.disabled,
+    '--toggle-focus-color': theme.border.focus,
+  } as React.CSSProperties;
 
   return (
     <button
@@ -79,6 +91,7 @@ export function ToggleToolButton({
       disabled={disabled}
       type="button"
       aria-pressed={isActive}
+      style={style}
     >
       <Icon name={icon} size={16} color={iconColor} />
     </button>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { DialogHeader } from '../DialogHeader';
+import { useTheme } from '../ThemeProvider';
 import './SaveProjectModal.css';
 
 export interface SaveProjectModalProps {
@@ -25,12 +26,33 @@ export function SaveProjectModal({
   computerImageUrl = '/saveToComputer.png',
   className = '',
 }: SaveProjectModalProps) {
+  const { theme } = useTheme();
+
+  const style = {
+    '--save-modal-bg': theme.background.surface.elevated,
+    '--save-modal-border': theme.border.default,
+    '--save-modal-shadow': '0px 10px 30px 0px rgba(0, 0, 0, 0.3)',
+    '--save-modal-heading-text': theme.foreground.text.primary,
+    '--save-modal-image-bg': theme.background.surface.subtle,
+    '--save-modal-title-text': theme.foreground.text.primary,
+    '--save-modal-desc-text': theme.foreground.text.primary,
+    '--save-modal-button-bg': theme.background.surface.subtle,
+    '--save-modal-button-hover-bg': theme.background.surface.hover,
+    '--save-modal-button-text': theme.foreground.text.primary,
+    '--save-modal-footer-bg': theme.background.surface.elevated,
+    '--save-modal-footer-border': theme.border.default,
+    '--save-modal-checkbox-bg': theme.background.surface.subtle,
+    '--save-modal-checkbox-checked-bg': theme.border.focus,
+    '--save-modal-checkbox-icon': theme.foreground.icon.inverse,
+    '--save-modal-checkbox-label': theme.foreground.text.primary,
+  } as React.CSSProperties;
+
   if (!isOpen) return null;
 
   return (
     <>
       <div className="save-project-modal-backdrop" onClick={onClose} />
-      <div className={`save-project-modal ${className}`}>
+      <div className={`save-project-modal ${className}`} style={style}>
         <DialogHeader title="Save project" onClose={onClose} />
 
         {/* Body */}

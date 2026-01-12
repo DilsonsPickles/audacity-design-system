@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './Checkbox.css';
 
 export interface CheckboxProps {
@@ -45,8 +46,17 @@ export function Checkbox({
   className = '',
   'aria-label': ariaLabel,
 }: CheckboxProps) {
+  const { theme } = useTheme();
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPressed, setIsPressed] = React.useState(false);
+
+  const style = {
+    '--checkbox-bg-idle': theme.background.control.checkbox.idle,
+    '--checkbox-bg-hover': theme.background.control.checkbox.hover,
+    '--checkbox-bg-pressed': theme.background.control.checkbox.pressed,
+    '--checkbox-icon-color': theme.foreground.icon.primary,
+    '--checkbox-focus-color': theme.border.focus,
+  } as React.CSSProperties;
 
   const handleClick = () => {
     if (!disabled && onChange) {
@@ -83,6 +93,7 @@ export function Checkbox({
       }}
       onMouseDown={() => !disabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
+      style={style}
     >
       {checked && (
         <div className="checkbox__icon">{'\uEF31'}</div>

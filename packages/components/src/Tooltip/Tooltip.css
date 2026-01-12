@@ -1,7 +1,7 @@
 .tooltip {
   position: absolute;
-  background-color: #1a1d2e;
-  color: #ffffff;
+  background-color: var(--tooltip-bg);
+  color: var(--tooltip-text);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
@@ -10,6 +10,6 @@
   white-space: nowrap;
   pointer-events: none;
   z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--tooltip-shadow);
   user-select: none;
 }

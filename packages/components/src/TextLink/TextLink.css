@@ -7,7 +7,7 @@
   font-size: 12px;
   font-weight: 400;
   line-height: normal;
-  color: #4060ff;
+  color: var(--text-link-color);
   text-decoration: underline;
   text-underline-position: from-font;
   cursor: pointer;
@@ -15,11 +15,11 @@
 }
 
 .text-link:hover {
-  color: #2040e0;
+  color: var(--text-link-color-hover);
 }
 
 .text-link:active {
-  color: #1030c0;
+  color: var(--text-link-color-active);
 }
 
 /* When rendered as a button (no href) */

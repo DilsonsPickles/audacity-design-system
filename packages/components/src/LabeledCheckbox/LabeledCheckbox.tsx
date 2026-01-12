@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { Checkbox } from '../Checkbox';
+import { useTheme } from '../ThemeProvider';
 import './LabeledCheckbox.css';
 
 export interface LabeledCheckboxProps {
@@ -46,17 +47,24 @@ export function LabeledCheckbox({
   tabIndex,
   className = '',
 }: LabeledCheckboxProps) {
+  const { theme } = useTheme();
+
   const handleClick = () => {
     if (!disabled && onChange) {
       onChange(!checked);
     }
   };
 
+  const style = {
+    '--labeled-checkbox-text': theme.foreground.text.primary,
+    cursor: disabled ? 'default' : 'pointer',
+  } as React.CSSProperties;
+
   return (
     <div
       className={`labeled-checkbox ${className}`}
       onClick={handleClick}
-      style={{ cursor: disabled ? 'default' : 'pointer' }}
+      style={style}
     >
       <Checkbox
         checked={checked}

@@ -5,8 +5,8 @@
 .application-header {
   display: flex;
   flex-direction: column;
-  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
-  border-bottom: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
   font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -21,7 +21,7 @@
 .application-header__app-name {
   font-size: 12px;
   line-height: 12px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--header-text);
   white-space: nowrap;
 }
 
@@ -114,7 +114,7 @@
   font-family: 'Segoe MDL2 Assets', sans-serif;
   font-size: 10px;
   line-height: normal;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--header-text);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -123,7 +123,7 @@
 }
 
 .application-header__windows-control:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--header-menu-hover);
 }
 
 .application-header__windows-control--close:hover {
@@ -135,7 +135,7 @@
   height: 28px;
   display: flex;
   align-items: stretch;
-  border-top: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  border-top: 1px solid var(--header-border);
 }
 
 .application-header__menu-item {
@@ -145,7 +145,7 @@
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-size: 12px;
   line-height: 14px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--header-text);
   cursor: pointer;
   white-space: nowrap;
   display: flex;
@@ -155,9 +155,9 @@
 }
 
 .application-header__menu-item:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--header-menu-hover);
 }
 
 .application-header__menu-item:active {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--header-menu-hover);
 }

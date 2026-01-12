@@ -37,7 +37,7 @@
   right: 0;
   transform: translateY(-50%);
   height: 4px;
-  background: #cfcfd9;
+  background: var(--slider-track-bg);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -48,7 +48,7 @@
   top: 0;
   left: 0;
   bottom: 0;
-  background: #677ce4;
+  background: var(--slider-fill-bg);
   transition: width 0.05s ease;
 }
 
@@ -59,8 +59,8 @@
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
-  background: #f8f8f9;
-  border: 1px solid #808185;
+  background: var(--slider-handle-bg);
+  border: 1px solid var(--slider-handle-border);
   border-radius: 9px;
   pointer-events: none;
   transition: left 0.05s ease, box-shadow 0.15s ease;
@@ -68,5 +68,5 @@
 
 /* Focus state - show outline around handle */
 .slider__input:focus + .slider__track + .slider__handle {
-  box-shadow: 0 0 0 2px #70b5ff;
+  box-shadow: 0 0 0 2px var(--slider-focus-color);
 }

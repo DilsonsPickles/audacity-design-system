@@ -12,6 +12,9 @@ export interface PreferencesState {
   checkForUpdates: boolean;
   operatingSystem: 'windows' | 'macos';
 
+  // Appearance
+  theme: 'light' | 'dark';
+
   // Audio Settings
   audioHost: string;
   recordingDevice: string;
@@ -48,6 +51,9 @@ const defaultPreferences: PreferencesState = {
   showWelcomeDialog: true,
   checkForUpdates: true,
   operatingSystem: 'windows',
+
+  // Appearance
+  theme: 'light',
 
   // Audio Settings
   audioHost: 'core-audio',

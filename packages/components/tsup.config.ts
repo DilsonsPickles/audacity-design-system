@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ['src/index.ts'],
   format: ['cjs', 'esm'],
   dts: true,
-  external: ['react', 'react-dom'],
+  external: ['react', 'react-dom', '@audacity-ui/tokens'],
   loader: {
     '.png': 'dataurl',
     '.jpg': 'dataurl',

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './SearchField.css';
 
 export interface SearchFieldProps {
@@ -56,8 +57,21 @@ export function SearchField({
   width = 162,
   className = '',
 }: SearchFieldProps) {
+  const { theme } = useTheme();
   const [isFocused, setIsFocused] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const style = {
+    '--search-field-bg': theme.background.surface.elevated,
+    '--search-field-border': theme.border.default,
+    '--search-field-border-hover': theme.border.focus,
+    '--search-field-border-focus': theme.border.focus,
+    '--search-field-icon': theme.foreground.icon.primary,
+    '--search-field-text': theme.foreground.text.primary,
+    '--search-field-placeholder': theme.foreground.text.secondary,
+    '--search-field-clear-hover': theme.background.surface.hover,
+    '--search-field-clear-active': theme.background.surface.subtle,
+  } as React.CSSProperties;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange?.(e.target.value);
@@ -80,7 +94,7 @@ export function SearchField({
   return (
     <div
       className={`search-field ${isFocused ? 'search-field--focused' : ''} ${disabled ? 'search-field--disabled' : ''} ${className}`}
-      style={{ width: `${width}px` }}
+      style={{ width: `${width}px`, ...style }}
     >
       <span className="search-field__icon">
         {/* Zoom/Search icon */}

@@ -1,8 +1,8 @@
 .context-menu {
-  background: #2a2d3a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--context-menu-bg);
+  border: 1px solid var(--context-menu-border);
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--context-menu-shadow);
   overflow: visible;
   min-width: 180px;
   padding: 4px 0;
@@ -22,6 +22,6 @@
 
 .context-menu-separator {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--context-menu-divider-bg);
   margin: 4px 0;
 }

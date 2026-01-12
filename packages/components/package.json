@@ -41,7 +41,8 @@
     "react-dom": ">=18.0.0"
   },
   "dependencies": {
-    "@audacity-ui/core": "workspace:*"
+    "@audacity-ui/core": "workspace:*",
+    "@audacity-ui/tokens": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^18.0.0",

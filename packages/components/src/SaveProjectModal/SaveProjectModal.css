@@ -18,10 +18,10 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: 720px;
-  background-color: var(--background-primary-color, #f8f8f9);
-  border: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  background-color: var(--save-modal-bg);
+  border: 1px solid var(--save-modal-border);
   border-radius: 8px;
-  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+  box-shadow: var(--save-modal-shadow);
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -41,7 +41,7 @@
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--save-modal-heading-text);
   text-align: center;
   margin: 0;
 }
@@ -60,7 +60,7 @@
 
 .save-project-modal__option-image {
   aspect-ratio: 16 / 9;
-  background-color: #d9d9d9;
+  background-color: var(--save-modal-image-bg);
   border-radius: 4px;
   overflow: hidden;
   display: flex;
@@ -92,24 +92,24 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--save-modal-title-text);
 }
 
 .save-project-modal__option-description {
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--save-modal-desc-text);
 }
 
 .save-project-modal__button {
   padding: 6px 12px;
-  background-color: var(--button-solid-on-primary-btn-solid-on-primary-idle, rgba(194, 196, 207, 0.7));
+  background-color: var(--save-modal-button-bg);
   border: none;
   border-radius: 2px;
   font-size: 12px;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--save-modal-button-text);
   cursor: default;
   font-family: 'Inter', sans-serif;
   font-weight: 400;
@@ -117,14 +117,14 @@
 }
 
 .save-project-modal__button:hover {
-  background-color: var(--button-solid-on-primary-btn-solid-on-primary-hover, rgba(194, 196, 207, 0.85));
+  background-color: var(--save-modal-button-hover-bg);
 }
 
 /* Footer */
 .save-project-modal__footer {
   height: 48px;
-  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
-  border-top: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  background-color: var(--save-modal-footer-bg);
+  border-top: 1px solid var(--save-modal-footer-border);
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -142,7 +142,7 @@
   width: 20px;
   height: 20px;
   border-radius: 2px;
-  background-color: var(--background-control-bg-checkbox-idle, rgba(194, 196, 207, 0.7));
+  background-color: var(--save-modal-checkbox-bg);
   border: none;
   cursor: default;
   appearance: none;
@@ -152,14 +152,14 @@
 }
 
 .save-project-modal__checkbox:checked {
-  background-color: var(--background-control-bg-checkbox-checked, #677ce4);
+  background-color: var(--save-modal-checkbox-checked-bg);
 }
 
 .save-project-modal__checkbox:checked::after {
   content: '\uEF31';
   font-family: 'Segoe MDL2 Assets', sans-serif;
   font-size: 12px;
-  color: #ffffff;
+  color: var(--save-modal-checkbox-icon);
   position: absolute;
   top: 50%;
   left: 50%;
@@ -169,6 +169,6 @@
 .save-project-modal__checkbox-text {
   font-size: 12px;
   line-height: 16px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--save-modal-checkbox-label);
   font-weight: 400;
 }

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './TextLink.css';
 
 export interface TextLinkProps {
@@ -39,6 +40,14 @@ export function TextLink({
   target,
   className = '',
 }: TextLinkProps) {
+  const { theme } = useTheme();
+
+  const style = {
+    '--text-link-color': theme.foreground.text.link,
+    '--text-link-color-hover': theme.foreground.text.link,
+    '--text-link-color-active': theme.foreground.text.link,
+  } as React.CSSProperties;
+
   const handleClick = (e: React.MouseEvent) => {
     if (onClick && !href) {
       e.preventDefault();
@@ -56,6 +65,7 @@ export function TextLink({
         onClick={handleClick}
         className={`text-link ${className}`}
         rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+        style={style}
       >
         {children}
       </a>
@@ -67,6 +77,7 @@ export function TextLink({
       type="button"
       onClick={handleClick}
       className={`text-link text-link--button ${className}`}
+      style={style}
     >
       {children}
     </button>

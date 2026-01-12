@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../ThemeProvider';
 import './LabelMarker.css';
 
 export interface LabelMarkerProps {
@@ -84,10 +85,17 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   onSelect,
   className = '',
 }) => {
+  const { theme } = useTheme();
   const [isHovered, setIsHovered] = useState(false);
   const [leftEarHovered, setLeftEarHovered] = useState(false);
   const [rightEarHovered, setRightEarHovered] = useState(false);
   const [dragState, setDragState] = useState<{ type: 'resize' | 'move'; side?: 'left' | 'right'; startX: number; initialWidth: number } | null>(null);
+
+  const style = {
+    '--label-marker-bg': theme.border.focus,
+    '--label-marker-text': theme.foreground.text.primary,
+    '--label-marker-focus-outline': theme.border.focus,
+  } as React.CSSProperties;
 
   const actualState = state !== 'idle' ? state : (isHovered ? 'hover' : 'idle');
   const isActive = selected || actualState === 'active';
@@ -233,6 +241,7 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
         className={`label-marker label-marker--point label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${className}`}
         style={{
           position: 'relative',
+          ...style,
           width: '1px',
           height: `${stalkHeight}px`, // Total height is just the stalk height (ears overlay on top)
         }}
@@ -275,6 +284,7 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
       className={`label-marker label-marker--region label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${className}`}
       style={{
         position: 'relative',
+        ...style,
         width: `${width}px`,
         height: `${stalkHeight}px`, // Total height is just the stalk height (ears overlay on top)
       }}

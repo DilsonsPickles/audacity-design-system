@@ -118,7 +118,7 @@ export interface IconProps {
 export const Icon: React.FC<IconProps> = ({
   name,
   size = 16,
-  color = '#14151a',
+  color,
   className = '',
 }) => {
   const iconChar = ICON_MAP[name] || '';
@@ -128,7 +128,7 @@ export const Icon: React.FC<IconProps> = ({
       className={`icon musescore-icon ${className}`}
       style={{
         fontSize: `${size}px`,
-        color: color,
+        ...(color && { color }),
       }}
       aria-hidden="true"
     >

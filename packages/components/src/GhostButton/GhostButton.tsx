@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon, IconName } from '../Icon';
+import { useTheme } from '../ThemeProvider';
 import './GhostButton.css';
 
 export interface GhostButtonProps {
@@ -59,12 +60,24 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
   tabIndex,
   onKeyDown,
 }) => {
+  const { theme } = useTheme();
+
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onClick?.(e);
   };
 
   const iconSize = size === 'large' ? 32 : 16;
+
+  const style = {
+    '--ghost-bg-idle': theme.background.control.button.ghost.idle,
+    '--ghost-bg-hover': theme.background.control.button.ghost.hover,
+    '--ghost-bg-active': theme.background.control.button.ghost.active,
+    '--ghost-bg-disabled': theme.background.control.button.ghost.disabled,
+    '--ghost-icon-color': theme.foreground.icon.primary,
+    '--ghost-label-color': theme.foreground.text.primary,
+    '--ghost-focus-color': theme.border.focus,
+  } as React.CSSProperties;
 
   return (
     <button
@@ -75,6 +88,7 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
       aria-label={ariaLabel}
       tabIndex={tabIndex}
       onKeyDown={onKeyDown}
+      style={style}
     >
       <Icon name={icon} size={iconSize} />
       {label && <span className="ghost-button__label">{label}</span>}
