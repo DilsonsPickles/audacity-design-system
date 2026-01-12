@@ -118,6 +118,8 @@ export function useSpectralSelection(
   const [cursorStyle, setCursorStyle] = useState('default');
   const wasDraggingRef = useRef(false);
   const justConvertedRef = useRef(false);
+  const rafIdRef = useRef<number | null>(null);
+  const pendingSelectionRef = useRef<SpectralSelection | null>(null);
 
   /**
    * Check if a position is within a clip that supports spectral selection
@@ -513,6 +515,37 @@ export function useSpectralSelection(
   }, []);
 
   /**
+   * Schedule a selection update using requestAnimationFrame
+   * This batches multiple updates into a single render cycle
+   */
+  const scheduleSelectionUpdate = useCallback((selection: SpectralSelection) => {
+    // Store the pending selection
+    pendingSelectionRef.current = selection;
+
+    // If there's already a scheduled update, don't schedule another one
+    if (rafIdRef.current !== null) return;
+
+    // Schedule the update for the next animation frame
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      if (pendingSelectionRef.current) {
+        onSpectralSelectionChange(pendingSelectionRef.current);
+      }
+    });
+  }, [onSpectralSelectionChange]);
+
+  /**
+   * Cancel any pending selection updates
+   */
+  const cancelScheduledUpdate = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    pendingSelectionRef.current = null;
+  }, []);
+
+  /**
    * Start spectral selection drag
    * @returns true if drag started, false otherwise
    */
@@ -724,7 +757,7 @@ export function useSpectralSelection(
         originChannel = 'mono';
       }
 
-      onSpectralSelectionChange({
+      scheduleSelectionUpdate({
         trackIndex,
         clipId,
         startTime,
@@ -909,7 +942,7 @@ export function useSpectralSelection(
         [minFrequency, maxFrequency] = [maxFrequency, minFrequency];
       }
 
-      onSpectralSelectionChange({
+      scheduleSelectionUpdate({
         trackIndex,
         clipId,
         startTime,
@@ -919,7 +952,7 @@ export function useSpectralSelection(
         originChannel: initialSelection?.originChannel, // Preserve original channel when resizing/moving
       });
     }
-  }, [xToTime, yToFrequency, isYOutsideClipBounds, isXOutsideClipBounds, onSpectralSelectionChange, onConvertToTimeSelection]);
+  }, [xToTime, yToFrequency, isYOutsideClipBounds, isXOutsideClipBounds, scheduleSelectionUpdate, onConvertToTimeSelection, tracks, clampTimeToClip]);
 
   /**
    * Update cursor based on hover position (for when not dragging)
@@ -938,6 +971,13 @@ export function useSpectralSelection(
   const endDrag = useCallback(() => {
     if (dragStateRef.current?.isDragging) {
       const { startX, startY, currentX, currentY, mode } = dragStateRef.current;
+
+      // Cancel any pending RAF update and flush the final state immediately
+      cancelScheduledUpdate();
+      if (pendingSelectionRef.current) {
+        onSpectralSelectionChange(pendingSelectionRef.current);
+        pendingSelectionRef.current = null;
+      }
 
       // Only set wasDragging flag if we actually moved the mouse (not just a click)
       const deltaX = Math.abs(currentX - startX);
@@ -969,7 +1009,7 @@ export function useSpectralSelection(
       dragStateRef.current = null;
       setIsDragging(false);
     }
-  }, [currentSpectralSelection, onSpectralSelectionFinalized, onSpectralSelectionChange]);
+  }, [currentSpectralSelection, onSpectralSelectionFinalized, onSpectralSelectionChange, cancelScheduledUpdate]);
 
   // Add global mouse up listener to end drag
   useEffect(() => {
@@ -982,6 +1022,13 @@ export function useSpectralSelection(
       return () => window.removeEventListener('mouseup', handleMouseUp);
     }
   }, [isDragging, endDrag]);
+
+  // Cleanup: cancel any pending RAF updates on unmount
+  useEffect(() => {
+    return () => {
+      cancelScheduledUpdate();
+    };
+  }, [cancelScheduledUpdate]);
 
   return {
     startDrag,
