@@ -76,7 +76,7 @@ export interface ClipBodyProps {
  * - Spectrogram (mono/stereo)
  * - Envelope overlay for automation
  */
-export const ClipBody: React.FC<ClipBodyProps> = ({
+const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   color = 'blue',
   selected = false,
   variant = 'waveform',
@@ -275,6 +275,14 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
       }
     } else if (variant === 'spectrogram') {
       // Pure spectrogram rendering (no split view)
+      // PERFORMANCE: Use reduced settings for real-time interaction
+      const spectrogramOptions = {
+        frequencyBands: 16, // Reduced from 64 for performance
+        fftWindowSize: 64, // Reduced from 256 for performance
+        intensityMultiplier: 1.5,
+        pixelSkip: 4, // Render every 4th pixel column
+      };
+
       if (isStereo) {
         renderStereoSpectrogram(
           ctx,
@@ -284,7 +292,8 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
           0,
           canvasWidth,
           canvasHeight,
-          channelSplitRatio
+          channelSplitRatio,
+          spectrogramOptions
         );
 
         // Draw channel divider line using color shade 700
@@ -302,7 +311,8 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
           0,
           0,
           canvasWidth,
-          canvasHeight
+          canvasHeight,
+          spectrogramOptions
         );
       }
     } else {
@@ -531,5 +541,8 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
     </div>
   );
 };
+
+// Memoize ClipBody to prevent expensive spectrogram re-renders during mouse interactions
+export const ClipBody = React.memo(ClipBodyComponent);
 
 export default ClipBody;

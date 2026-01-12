@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
+import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import './Canvas.css';
 
 export interface CanvasProps {
@@ -58,7 +59,8 @@ export function Canvas({
   keyboardFocusedTrack = null,
 }: CanvasProps) {
   const { theme } = useTheme();
-  const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectralSelection, spectrogramMode, envelopeMode } = useTracksState();
+  const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode } = useTracksState();
+  const { spectralSelection, setSpectralSelection } = useSpectralSelection();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
   const { activeProfile } = useAccessibilityProfile();
@@ -91,6 +93,10 @@ export function Canvas({
 
   // Track if channel resize is active
   const isChannelResizing = false;
+
+  // RAF batching for spectral selection updates (performance optimization)
+  const spectralSelectionRAFRef = useRef<number | null>(null);
+  const pendingSpectralSelectionRef = useRef<typeof spectralSelection>(null);
 
   // Configuration constants
   const TOP_GAP = 2;
@@ -149,9 +155,25 @@ export function Canvas({
         }
       },
       onSpectralSelectionChange: (sel) => {
-        dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: sel });
+        // Batch updates using requestAnimationFrame to reduce re-renders during drag
+        pendingSpectralSelectionRef.current = sel;
+
+        if (spectralSelectionRAFRef.current === null) {
+          spectralSelectionRAFRef.current = requestAnimationFrame(() => {
+            setSpectralSelection(pendingSpectralSelectionRef.current);
+            spectralSelectionRAFRef.current = null;
+          });
+        }
       },
       onSpectralSelectionFinalized: (sel) => {
+        // Cancel any pending RAF and immediately flush the final state
+        if (spectralSelectionRAFRef.current !== null) {
+          cancelAnimationFrame(spectralSelectionRAFRef.current);
+          spectralSelectionRAFRef.current = null;
+        }
+        setSpectralSelection(pendingSpectralSelectionRef.current ?? sel);
+        pendingSpectralSelectionRef.current = null;
+
         if (sel) {
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
         }
@@ -285,7 +307,7 @@ export function Canvas({
               if (!clip.selected) {
                 // Clear time selection when starting drag on unselected clip
                 dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-                dispatch({ type: 'SET_SPECTRAL_SELECTION', payload: null });
+                setSpectralSelection(null);
 
                 dispatch({
                   type: 'SELECT_CLIP',

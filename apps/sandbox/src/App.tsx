@@ -1,8 +1,10 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
+import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
+import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
 import { TokenReview } from './pages/TokenReview';
@@ -216,6 +218,7 @@ type Workspace = 'classic' | 'spectral-editing';
 function CanvasDemoContent() {
   const { theme } = useTheme();
   const { state, dispatch } = useTracks();
+  const { spectralSelection } = useSpectralSelection();
   const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
   const { preferences, updatePreference } = usePreferences();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
@@ -955,12 +958,12 @@ function CanvasDemoContent() {
   // Calculate the effective time selection for the ruler
   // If spectral selection is full-height, show it as a time selection in the ruler
   const rulerTimeSelection = React.useMemo(() => {
-    if (state.spectralSelection) {
-      const { minFrequency, maxFrequency, startTime, endTime, trackIndex } = state.spectralSelection;
+    if (spectralSelection) {
+      const { minFrequency, maxFrequency, startTime, endTime, trackIndex } = spectralSelection;
 
       // Check if it's a stereo track
       const track = state.tracks[trackIndex];
-      const clip = track?.clips.find(c => c.id === state.spectralSelection?.clipId);
+      const clip = track?.clips.find(c => c.id === spectralSelection?.clipId);
       const isStereo = clip && (clip as any).waveformLeft && (clip as any).waveformRight;
       const isSpectrogramMode = track?.viewMode === 'spectrogram';
 
@@ -977,7 +980,7 @@ function CanvasDemoContent() {
     }
     // Otherwise show regular time selection
     return state.timeSelection;
-  }, [state.spectralSelection, state.timeSelection, state.tracks]);
+  }, [spectralSelection, state.timeSelection, state.tracks]);
 
   // Define menu items for File menu
   const fileMenuItems: MenuItem[] = [
@@ -1485,7 +1488,7 @@ function CanvasDemoContent() {
                   width={5000}
                   height={40}
                   timeSelection={rulerTimeSelection}
-                  spectralSelection={state.spectralSelection}
+                  spectralSelection={spectralSelection}
                   selectionColor="rgba(112, 181, 255, 0.5)"
                   cursorPosition={mouseCursorPosition}
                 />
@@ -2059,7 +2062,9 @@ function ThemedApp() {
     <ThemeProvider theme={currentTheme}>
       <AccessibilityProfileProvider initialProfileId="wcag-flat">
         <TracksProvider initialTracks={sampleTracks}>
-          <CanvasDemoContent />
+          <SpectralSelectionProvider>
+            <CanvasDemoContent />
+          </SpectralSelectionProvider>
         </TracksProvider>
       </AccessibilityProfileProvider>
     </ThemeProvider>

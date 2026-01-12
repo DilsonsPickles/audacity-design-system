@@ -196,7 +196,6 @@ export function SpectralSelectionCanvas({
         rMinFreq = Math.max(0, Math.min(1, (minFrequency - 0.5) * 2));
         rMaxFreq = Math.max(0, Math.min(1, (maxFrequency - 0.5) * 2));
       }
-      console.log('[SpectralSelectionCanvas R] rMinFreq:', rMinFreq, 'rMaxFreq:', rMaxFreq);
 
       const boundsR = getSelectionBounds(
         startTime,

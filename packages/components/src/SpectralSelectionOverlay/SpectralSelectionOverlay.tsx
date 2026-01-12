@@ -80,7 +80,10 @@ export function SpectralSelectionOverlay({
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Handle mouse move to track position for hover effect
+  // PERFORMANCE: Skip hover tracking during drag to prevent expensive re-renders
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging || isCreating) return; // Skip during drag for performance
+
     const container = containerRef.current;
     if (!container) return;
 

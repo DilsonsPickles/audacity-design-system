@@ -15,6 +15,8 @@ export interface SpectrogramOptions {
   fftWindowSize?: number;
   /** Color intensity multiplier */
   intensityMultiplier?: number;
+  /** Skip every N pixel columns for performance (1 = render all, 2 = render every other, etc) */
+  pixelSkip?: number;
 }
 
 /**
@@ -65,11 +67,12 @@ export function renderMonoSpectrogram(
     frequencyBands = 64,
     fftWindowSize = 256,
     intensityMultiplier = 1.5,
+    pixelSkip = 1,
   } = options;
 
   const samplesPerPixel = waveformData.length / width;
 
-  for (let px = 0; px < width; px++) {
+  for (let px = 0; px < width; px += pixelSkip) {
     const sampleIndex = Math.floor(px * samplesPerPixel);
     if (sampleIndex >= waveformData.length) break;
 
@@ -90,7 +93,7 @@ export function renderMonoSpectrogram(
       ctx.fillStyle = getSpectrogramColor(intensity);
       const yPos = y + (1 - (band / frequencyBands)) * height;
       const bandHeight = Math.max(1, height / frequencyBands);
-      ctx.fillRect(x + px, yPos, 1, bandHeight);
+      ctx.fillRect(x + px, yPos, pixelSkip, bandHeight);
     }
   }
 }
@@ -122,6 +125,7 @@ export function renderStereoSpectrogram(
     frequencyBands = 64,
     fftWindowSize = 256,
     intensityMultiplier = 1.5,
+    pixelSkip = 1,
   } = options;
 
   const lChannelHeight = height * channelSplitRatio;
@@ -129,7 +133,7 @@ export function renderStereoSpectrogram(
 
   // Render L channel (top)
   const samplesPerPixelL = waveformLeft.length / width;
-  for (let px = 0; px < width; px++) {
+  for (let px = 0; px < width; px += pixelSkip) {
     const sampleIndex = Math.floor(px * samplesPerPixelL);
     if (sampleIndex >= waveformLeft.length) break;
 
@@ -148,14 +152,14 @@ export function renderStereoSpectrogram(
       ctx.fillStyle = getSpectrogramColor(intensity);
       const yPos = y + (1 - (band / frequencyBands)) * lChannelHeight;
       const bandHeight = Math.max(1, lChannelHeight / frequencyBands);
-      ctx.fillRect(x + px, yPos, 1, bandHeight);
+      ctx.fillRect(x + px, yPos, pixelSkip, bandHeight);
     }
   }
 
   // Render R channel (bottom)
   const dividerY = y + lChannelHeight;
   const samplesPerPixelR = waveformRight.length / width;
-  for (let px = 0; px < width; px++) {
+  for (let px = 0; px < width; px += pixelSkip) {
     const sampleIndex = Math.floor(px * samplesPerPixelR);
     if (sampleIndex >= waveformRight.length) break;
 
@@ -174,7 +178,7 @@ export function renderStereoSpectrogram(
       ctx.fillStyle = getSpectrogramColor(intensity);
       const yPos = dividerY + (1 - (band / frequencyBands)) * rChannelHeight;
       const bandHeight = Math.max(1, rChannelHeight / frequencyBands);
-      ctx.fillRect(x + px, yPos, 1, bandHeight);
+      ctx.fillRect(x + px, yPos, pixelSkip, bandHeight);
     }
   }
 }

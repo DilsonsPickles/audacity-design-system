@@ -50,14 +50,7 @@ interface TimeSelection {
   endTime: number;
 }
 
-interface SpectralSelection {
-  trackIndex: number;
-  clipId: number;
-  startTime: number;
-  endTime: number;
-  minFrequency: number; // 0-1 (normalized)
-  maxFrequency: number; // 0-1 (normalized)
-}
+// SpectralSelection moved to SpectralSelectionContext for performance
 
 export interface EnvelopeDragState {
   clip: Clip;
@@ -127,7 +120,6 @@ export interface TracksState {
   envelopeAltMode: boolean;
   spectrogramMode: boolean;
   timeSelection: TimeSelection | null;
-  spectralSelection: SpectralSelection | null;
   playheadPosition: number; // in seconds
   hoveredPoint: { trackIndex: number; clipId: number; pointIndex: number } | null;
   // Stores track view modes before spectrogram overlay was applied
@@ -147,7 +139,6 @@ export type TracksAction =
   | { type: 'SET_ENVELOPE_ALT_MODE'; payload: boolean }
   | { type: 'SET_SPECTROGRAM_MODE'; payload: boolean }
   | { type: 'SET_TIME_SELECTION'; payload: TimeSelection | null }
-  | { type: 'SET_SPECTRAL_SELECTION'; payload: SpectralSelection | null }
   | { type: 'SET_PLAYHEAD_POSITION'; payload: number }
   | { type: 'SET_HOVERED_POINT'; payload: { trackIndex: number; clipId: number; pointIndex: number } | null }
   | { type: 'UPDATE_TRACK_HEIGHT'; payload: { index: number; height: number } }
@@ -179,7 +170,6 @@ const initialState: TracksState = {
   envelopeAltMode: false,
   spectrogramMode: false,
   timeSelection: null,
-  spectralSelection: null,
   playheadPosition: 1,
   hoveredPoint: null,
   viewModesBeforeOverlay: null,
@@ -256,45 +246,17 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           viewMode: state.viewModesBeforeOverlay?.[index],
         }));
 
-        // If there's a spectral selection and the track is being restored to waveform view,
-        // convert it to a time selection
-        let newSpectralSelection = state.spectralSelection;
-        let newTimeSelection = state.timeSelection;
-
-        if (state.spectralSelection) {
-          const trackIndex = state.spectralSelection.trackIndex;
-          const restoredViewMode = state.viewModesBeforeOverlay?.[trackIndex];
-
-          if (restoredViewMode === 'waveform' || restoredViewMode === undefined) {
-            // Convert spectral selection to time selection
-            newTimeSelection = {
-              startTime: state.spectralSelection.startTime,
-              endTime: state.spectralSelection.endTime,
-            };
-            newSpectralSelection = null;
-          }
-        }
-
         return {
           ...state,
           spectrogramMode: false,
           viewModesBeforeOverlay: null,
           tracks: newTracks,
-          spectralSelection: newSpectralSelection,
-          timeSelection: newTimeSelection,
         };
       }
     }
 
     case 'SET_TIME_SELECTION':
       return { ...state, timeSelection: action.payload };
-
-    case 'SET_SPECTRAL_SELECTION':
-      // Don't move playhead while dragging - only update on finalize
-      return {
-        ...state,
-        spectralSelection: action.payload,
-      };
 
     case 'SET_PLAYHEAD_POSITION':
       return { ...state, playheadPosition: action.payload };
@@ -329,29 +291,9 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       };
       console.log('[Reducer] Track', action.payload.index, 'viewMode now:', newTracks[action.payload.index].viewMode);
 
-      // If changing to waveform view and there's a spectral selection on this track,
-      // convert it to a time selection
-      let newSpectralSelection = state.spectralSelection;
-      let newTimeSelection = state.timeSelection;
-
-      if (
-        action.payload.viewMode === 'waveform' &&
-        state.spectralSelection &&
-        state.spectralSelection.trackIndex === action.payload.index
-      ) {
-        // Convert spectral selection to time selection
-        newTimeSelection = {
-          startTime: state.spectralSelection.startTime,
-          endTime: state.spectralSelection.endTime,
-        };
-        newSpectralSelection = null;
-      }
-
       return {
         ...state,
         tracks: newTracks,
-        spectralSelection: newSpectralSelection,
-        timeSelection: newTimeSelection,
       };
     }
 

@@ -724,6 +724,7 @@ export function useSpectralSelection(
         originChannel = 'mono';
       }
 
+      // Call callback to update selection during drag
       onSpectralSelectionChange({
         trackIndex,
         clipId,
@@ -909,6 +910,7 @@ export function useSpectralSelection(
         [minFrequency, maxFrequency] = [maxFrequency, minFrequency];
       }
 
+      // Call callback to update selection during drag
       onSpectralSelectionChange({
         trackIndex,
         clipId,
@@ -954,7 +956,7 @@ export function useSpectralSelection(
         }, 10);
 
         // Notify that selection is finalized (only if we actually dragged)
-        if (onSpectralSelectionFinalized) {
+        if (onSpectralSelectionFinalized && currentSpectralSelection) {
           onSpectralSelectionFinalized(currentSpectralSelection);
         }
       } else {
