@@ -245,16 +245,41 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
             </button>
             <span className="track-control-panel__track-name-text">{trackName}</span>
           </div>
-          <GhostButton
-            onClick={onMenuClick}
-            active={isMenuOpen}
-            ariaLabel="Track menu"
-            tabIndex={-1}
-          />
+
+          <div className="track-control-panel__header-right">
+            {/* Mono/Stereo buttons - shown when collapsed/truncated */}
+            {!isLabelTrack && height !== 'default' && (
+              <div className="track-control-panel__channel-buttons">
+                <ToggleButton
+                  active={false}
+                  onClick={() => {}}
+                  ariaLabel="Mono"
+                  tabIndex={-1}
+                >
+                  M
+                </ToggleButton>
+                <ToggleButton
+                  active={false}
+                  onClick={() => {}}
+                  ariaLabel="Stereo"
+                  tabIndex={-1}
+                >
+                  S
+                </ToggleButton>
+              </div>
+            )}
+
+            <GhostButton
+              onClick={onMenuClick}
+              active={isMenuOpen}
+              ariaLabel="Track menu"
+              tabIndex={-1}
+            />
+          </div>
         </div>
 
-        {/* Controls Row - Hidden for label tracks */}
-        {!isLabelTrack && height !== 'collapsed' && (
+        {/* Controls Row - Hidden for label tracks and when truncated/collapsed */}
+        {!isLabelTrack && height === 'default' && (
           <div className="track-control-panel__controls-row">
             {/* Pan Knob */}
             <PanKnob
@@ -307,15 +332,13 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         )}
       </div>
 
-      {/* Volume Meter */}
-      {height !== 'collapsed' && (
-        <div className="track-control-panel__meter">
-          <div className="track-control-panel__meter-bar">
-            <div className="track-control-panel__meter-clip"></div>
-            <div className="track-control-panel__meter-main"></div>
-          </div>
+      {/* Volume Meter - Always visible */}
+      <div className="track-control-panel__meter">
+        <div className="track-control-panel__meter-bar">
+          <div className="track-control-panel__meter-clip"></div>
+          <div className="track-control-panel__meter-main"></div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

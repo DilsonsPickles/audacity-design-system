@@ -39,19 +39,12 @@ const sampleTracks = [
     clips: [
       {
         id: 1,
-        name: 'Vocal Take 1',
+        name: 'Cyan Clip',
         start: 0.5,
         duration: 4.0,
         waveform: generateWaveform(4.0),
         envelopePoints: [],
-      },
-      {
-        id: 2,
-        name: 'Vocal Take 2',
-        start: 5.0,
-        duration: 3.5,
-        waveform: generateWaveform(3.5),
-        envelopePoints: [],
+        color: 'cyan' as const,
       },
     ],
   },
@@ -62,12 +55,13 @@ const sampleTracks = [
     channelSplitRatio: 0.5,
     clips: [
       {
-        id: 3,
-        name: 'Guitar',
-        start: 2.0,
-        duration: 6.0,
-        waveform: generateWaveform(6.0),
+        id: 2,
+        name: 'Blue Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
         envelopePoints: [],
+        color: 'blue' as const,
       },
     ],
   },
@@ -78,42 +72,120 @@ const sampleTracks = [
     channelSplitRatio: 0.5,
     clips: [
       {
-        id: 4,
-        name: 'Drums',
-        start: 1.0,
-        duration: 3.0,
-        waveform: generateWaveform(3.0),
+        id: 3,
+        name: 'Violet Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
         envelopePoints: [],
-      },
-      {
-        id: 5,
-        name: 'Percussion',
-        start: 5.5,
-        duration: 1.5,
-        waveform: generateWaveform(1.5),
-        envelopePoints: [],
+        color: 'violet' as const,
       },
     ],
   },
   {
     id: 4,
-    name: 'Track 4 (Stereo)',
+    name: 'Track 4',
     height: 114,
     channelSplitRatio: 0.5,
     clips: [
       {
-        id: 6,
-        name: 'Synth Pad',
-        start: 1.5,
-        duration: 5.0,
-        waveformLeft: generateWaveform(5.0),
-        waveformRight: generateWaveform(5.0),
+        id: 4,
+        name: 'Magenta Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
         envelopePoints: [],
+        color: 'magenta' as const,
       },
     ],
   },
   {
     id: 5,
+    name: 'Track 5',
+    height: 114,
+    channelSplitRatio: 0.5,
+    clips: [
+      {
+        id: 5,
+        name: 'Red Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
+        envelopePoints: [],
+        color: 'red' as const,
+      },
+    ],
+  },
+  {
+    id: 6,
+    name: 'Track 6',
+    height: 114,
+    channelSplitRatio: 0.5,
+    clips: [
+      {
+        id: 6,
+        name: 'Orange Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
+        envelopePoints: [],
+        color: 'orange' as const,
+      },
+    ],
+  },
+  {
+    id: 7,
+    name: 'Track 7',
+    height: 114,
+    channelSplitRatio: 0.5,
+    clips: [
+      {
+        id: 7,
+        name: 'Yellow Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
+        envelopePoints: [],
+        color: 'yellow' as const,
+      },
+    ],
+  },
+  {
+    id: 8,
+    name: 'Track 8',
+    height: 114,
+    channelSplitRatio: 0.5,
+    clips: [
+      {
+        id: 8,
+        name: 'Green Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
+        envelopePoints: [],
+        color: 'green' as const,
+      },
+    ],
+  },
+  {
+    id: 9,
+    name: 'Track 9',
+    height: 114,
+    channelSplitRatio: 0.5,
+    clips: [
+      {
+        id: 9,
+        name: 'Teal Clip',
+        start: 0.5,
+        duration: 4.0,
+        waveform: generateWaveform(4.0),
+        envelopePoints: [],
+        color: 'teal' as const,
+      },
+    ],
+  },
+  {
+    id: 10,
     name: 'Label Track',
     height: 76, // Natural height for label track panel (header + button + padding)
     clips: [],
@@ -1279,6 +1351,17 @@ function CanvasDemoContent() {
               // Determine track type from track name (temporary until we add trackType to state)
               const trackType = track.name.toLowerCase().includes('label') ? 'label' : 'mono';
 
+              // Determine height state based on track height
+              const trackHeight = track.height || 114;
+              let heightState: 'default' | 'truncated' | 'collapsed';
+              if (trackHeight <= 44) {
+                heightState = 'collapsed';
+              } else if (trackHeight <= 82) {
+                heightState = 'truncated';
+              } else {
+                heightState = 'default';
+              }
+
               return (
                 <TrackControlPanel
                   key={track.id}
@@ -1338,7 +1421,7 @@ function CanvasDemoContent() {
                     });
                   }}
                   state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
-                  height="default"
+                  height={heightState}
                   onClick={() => {
                     dispatch({ type: 'SELECT_TRACK', payload: index });
                     setKeyboardFocusedTrack(index);

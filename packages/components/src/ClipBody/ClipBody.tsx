@@ -524,6 +524,10 @@ export const ClipBody: React.FC<ClipBodyProps> = ({
         />
       )}
 
+      {/* Selection overlay */}
+      {selected && (
+        <div className="clip-body__selection-overlay" />
+      )}
     </div>
   );
 };

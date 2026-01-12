@@ -32,6 +32,7 @@ interface Clip {
   trimStart?: number;
   fullDuration?: number;
   deletedRegions?: DeletedRegion[]; // Sorted, non-overlapping deleted regions
+  color?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
 }
 
 interface Track {

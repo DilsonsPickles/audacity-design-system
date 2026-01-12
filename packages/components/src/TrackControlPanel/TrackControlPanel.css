@@ -93,6 +93,7 @@
   padding: var(--tcp-padding);
   min-width: 0;
   align-self: stretch;
+  border-radius: var(--tcp-radius-md) 0 0 var(--tcp-radius-md);
 }
 
 /* Header */
@@ -117,6 +118,18 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.track-control-panel__header-right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.track-control-panel__channel-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
 .track-control-panel__icon-button {
