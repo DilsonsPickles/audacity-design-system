@@ -1,6 +1,6 @@
 .preference-panel {
-  background-color: #e3e3e8;
-  border: 1px solid #d4d5d9;
+  background-color: var(--preference-panel-bg);
+  border: 1px solid var(--preference-panel-border);
   border-radius: 4px;
   padding: 16px;
 }
@@ -10,7 +10,7 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
-  color: #14151a;
+  color: var(--preference-panel-title-text);
   margin: 0 0 12px 0;
 }
 

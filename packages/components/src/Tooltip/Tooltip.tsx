@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './Tooltip.css';
 
 export interface TooltipProps {
@@ -27,6 +28,14 @@ export const Tooltip: React.FC<TooltipProps> = ({
   visible = true,
   offset = 8,
 }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--tooltip-bg': theme.foreground.text.primary,
+    '--tooltip-text': theme.background.surface.elevated,
+    '--tooltip-shadow': '0 2px 8px rgba(0, 0, 0, 0.3)',
+  } as React.CSSProperties;
+
   if (!visible) return null;
 
   return (
@@ -35,6 +44,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
       style={{
         left: `${x}px`,
         top: `${y + offset}px`,
+        ...style,
       }}
     >
       {content}

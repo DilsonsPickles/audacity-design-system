@@ -1,25 +1,11 @@
 /* TransportButton - Figma Design System Spec */
 
-/* CSS Variables matching Figma tokens */
-:root {
-  /* Transport button colors */
-  --transport-btn-idle: #d3d4dc;
-  --transport-btn-hover: #c2c4cf;
-  --transport-btn-pressed: #b0b2bd;
-
-  /* Icon color */
-  --transport-icon-color: #14151a;
-
-  /* Border radius */
-  --transport-border-radius: 3px;
-}
-
 /* Button base styles */
 .transport-button {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: var(--transport-border-radius);
+  border-radius: 3px;
   background-color: var(--transport-btn-idle);
   cursor: pointer;
   padding: 0;
@@ -37,6 +23,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--transport-icon-color);
 }
 
 /* State: Idle */
@@ -64,7 +51,7 @@
 
 /* Focus visible state */
 .transport-button:focus-visible {
-  outline: 2px solid #677ce4;
+  outline: 2px solid var(--transport-focus-color);
   outline-offset: 2px;
 }
 

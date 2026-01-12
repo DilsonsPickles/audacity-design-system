@@ -98,6 +98,10 @@ export const darkTheme: ThemeTokens = {
           drag: '#3a7bc8',       // Darker when dragging
           disabled: '#4b5563',   // Gray when disabled
         },
+        handle: {
+          background: '#2a2d32', // Elevated surface color
+          border: '#6b6f76',     // Handle stroke (contrast-matched to light theme)
+        },
       },
 
       fader: {
@@ -108,6 +112,12 @@ export const darkTheme: ThemeTokens = {
           drag: '#3a7bc8',       // Darker when dragging
           disabled: '#4b5563',   // Gray when disabled
         },
+      },
+
+      panKnob: {
+        face: '#2a2d32',         // Elevated surface color (chrome UI)
+        border: '#6b6f76',       // Border stroke
+        gauge: '#373a40',        // Background gauge track
       },
 
       scrollbar: {
@@ -153,11 +163,20 @@ export const darkTheme: ThemeTokens = {
       },
     },
 
+    tab: {
+      idle: '#25262b',           // Default surface color
+      hover: '#2c2e33',          // Slightly lighter hover
+      selected: '#2a3447',       // Subtle blue tint
+      selectedBorder: '#677CE4', // Accent blue
+    },
+
     trackHeader: {
       idle: '#2c2e33',           // Dark gray idle state
       hover: '#373a40',          // Slightly lighter on hover
       selected: '#4c5058',       // Even lighter when selected
     },
+
+    toast: '#e4e5e7',            // Light background for toast notifications
   },
 
   foreground: {
@@ -196,6 +215,8 @@ export const darkTheme: ThemeTokens = {
     success: '#22c55e',          // Green success border
     warning: '#f59e0b',          // Amber warning border
     divider: '#2d2f34',          // Divider/separator color
+    onElevated: '#373a40',       // Border on elevated surfaces (ruler, dialogs)
+    onSurface: '#4c5058',        // Border on default surfaces (toolbars, panels)
     input: {
       idle: '#4c5058',           // Input border default
       hover: '#5f6369',          // Lighter on hover

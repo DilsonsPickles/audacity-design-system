@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import './Canvas.css';
 
@@ -15,7 +15,7 @@ export interface CanvasProps {
   pixelsPerSecond?: number;
   /**
    * Background color of the canvas
-   * @default '#212433'
+   * @default theme.background.surface.default
    */
   backgroundColor?: string;
   /**
@@ -50,18 +50,22 @@ export interface CanvasProps {
 export function Canvas({
   width = 5000,
   pixelsPerSecond = 100,
-  backgroundColor = '#212433',
+  backgroundColor,
   leftPadding = 0,
   onHeightChange,
   onClipMenuClick,
   onTrackFocusChange,
   keyboardFocusedTrack = null,
 }: CanvasProps) {
+  const { theme } = useTheme();
   const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectralSelection, spectrogramMode, envelopeMode } = useTracksState();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
   const { activeProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
+
+  // Use theme token as default if not provided
+  const bgColor = backgroundColor ?? theme.background.canvas.default;
 
   // Clip dragging state
   const clipDragStateRef = useRef<ClipDragState | null>(null);
@@ -655,7 +659,7 @@ export function Canvas({
   };
 
   return (
-    <div className="canvas-container" style={{ backgroundColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible', cursor: 'text' }}>
+    <div className="canvas-container" style={{ backgroundColor: bgColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible', cursor: 'text' }}>
       <div
         ref={containerRef}
         onMouseDown={handleClipMouseDown}
@@ -720,7 +724,7 @@ export function Canvas({
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}
-                backgroundColor={backgroundColor}
+                backgroundColor={bgColor}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onClipMove={(clipId, deltaSeconds) => {
                   // Find the clip to get its current position

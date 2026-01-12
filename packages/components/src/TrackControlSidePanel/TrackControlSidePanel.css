@@ -1,6 +1,5 @@
 .track-control-side-panel {
-  /* Secondary color for light mode */
-  background: #E3E3E8;
+  background: var(--tcsp-bg);
 }
 
 .track-control-side-panel .side-panel__content {
@@ -17,7 +16,7 @@
   justify-content: space-between;
   padding: 12px 8px 12px 12px;
   height: 40px;
-  background: #E3E3E8;
+  background: var(--tcsp-header-bg);
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -25,7 +24,7 @@
 .track-control-side-panel__title {
   font-size: 14px;
   font-weight: 600;
-  color: #14151A;
+  color: var(--tcsp-title-color);
   margin: 0;
   line-height: 20px;
 }
@@ -35,7 +34,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #E3E3E8;
+  background: var(--tcsp-list-bg);
   padding: 2px 0 0 12px;
   display: flex;
   flex-direction: column;
@@ -58,7 +57,7 @@
 
 /* Whole track focus state - outline sits at container edge */
 .track-control-side-panel__track--focused .track-control-panel {
-  outline: 2px solid #84B5FF;
+  outline: 2px solid var(--tcsp-focus-outline);
   outline-offset: 0px;
 }
 

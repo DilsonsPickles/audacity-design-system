@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './Tab.css';
 
 export interface TabProps {
@@ -35,6 +36,14 @@ export const Tab = React.forwardRef<HTMLButtonElement, TabProps>(({
   onFocus,
   onBlur,
 }, ref) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--tab-text': theme.foreground.text.primary,
+    '--tab-bg-active': theme.background.tab.selected,
+    '--tab-border-active': theme.background.tab.selectedBorder,
+  } as React.CSSProperties;
+
   return (
     <button
       ref={ref}
@@ -45,6 +54,7 @@ export const Tab = React.forwardRef<HTMLButtonElement, TabProps>(({
       onBlur={onBlur}
       tabIndex={tabIndex}
       type="button"
+      style={style}
     >
       <span className="tab__label">{label}</span>
     </button>

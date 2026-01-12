@@ -135,6 +135,10 @@ export interface ThemeTokens {
           drag: string;
           disabled: string;
         };
+        handle: {
+          background: string;
+          border: string;
+        };
       };
 
       /** Fader backgrounds */
@@ -146,6 +150,13 @@ export interface ThemeTokens {
           drag: string;
           disabled: string;
         };
+      };
+
+      /** Pan knob */
+      panKnob: {
+        face: string;
+        border: string;
+        gauge: string;
       };
 
       /** Scrollbar backgrounds */
@@ -196,12 +207,23 @@ export interface ThemeTokens {
       };
     };
 
+    /** Tab backgrounds */
+    tab: {
+      idle: string;
+      hover: string;
+      selected: string;
+      selectedBorder: string;
+    };
+
     /** Track header backgrounds */
     trackHeader: {
       idle: string;
       hover: string;
       selected: string;
     };
+
+    /** Toast notification background */
+    toast: string;
   };
 
   /** Foreground colors (text, icons) */
@@ -271,6 +293,10 @@ export interface ThemeTokens {
     warning: string;
     /** Divider/separator color */
     divider: string;
+    /** Border/divider on elevated surfaces (timeline ruler, dialogs, menus) */
+    onElevated: string;
+    /** Border/divider on default surfaces (toolbars, panels) */
+    onSurface: string;
     /** Input border states */
     input: {
       idle: string;

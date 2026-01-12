@@ -16,7 +16,7 @@
 
 /* Focus state */
 .pan-knob:focus {
-  outline: 2px solid #70b5ff;
+  outline: 2px solid var(--pan-knob-focus);
   outline-offset: 2px;
   border-radius: 50%;
 }
@@ -31,8 +31,8 @@
   border-radius: 50%;
   background: conic-gradient(
     from 225deg,
-    #cfcfd9 0deg,
-    #cfcfd9 270deg,
+    var(--pan-knob-gauge) 0deg,
+    var(--pan-knob-gauge) 270deg,
     transparent 270deg
   );
 }
@@ -67,7 +67,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: #808185;
+  background-color: var(--pan-knob-dial-border);
 }
 
 /* Dial - 20px circle centered filled with #F8F8F9 */
@@ -79,7 +79,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background-color: #f8f8f9;
+  background-color: var(--pan-knob-dial-bg);
 }
 
 /* Indicator - 2px x 6px bar, centered horizontally, 2px from top */
@@ -90,6 +90,6 @@
   transform: translateX(-50%);
   width: 2px;
   height: 6px;
-  background-color: #14151a;
+  background-color: var(--pan-knob-indicator);
   border-radius: 1px;
 }

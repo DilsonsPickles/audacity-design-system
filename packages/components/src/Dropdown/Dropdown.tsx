@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTheme } from '../ThemeProvider';
 import '../assets/fonts/musescore-icon.css';
 import './Dropdown.css';
 
@@ -142,6 +143,21 @@ export const Dropdown: React.FC<DropdownProps> = ({
     }
   }, [isOpen]);
 
+  const { theme } = useTheme();
+
+  const style = {
+    '--dropdown-bg': theme.background.surface.elevated,
+    '--dropdown-border': theme.border.default,
+    '--dropdown-border-hover': theme.border.input.hover,
+    '--dropdown-border-active': theme.border.focus,
+    '--dropdown-text': theme.foreground.text.primary,
+    '--dropdown-menu-bg': theme.background.surface.elevated,
+    '--dropdown-menu-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
+    '--dropdown-option-hover-bg': theme.background.surface.hover,
+    '--dropdown-option-hover-outline': theme.border.focus,
+    ...(width ? { width } : {}),
+  } as React.CSSProperties;
+
   const getStateClass = () => {
     if (disabled) return 'dropdown--disabled';
     if (isOpen) return 'dropdown--active';
@@ -152,7 +168,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     <div
       ref={dropdownRef}
       className={`dropdown ${className}`}
-      style={width ? { width } : undefined}
+      style={style}
       onKeyDown={handleKeyDown}
     >
       <button

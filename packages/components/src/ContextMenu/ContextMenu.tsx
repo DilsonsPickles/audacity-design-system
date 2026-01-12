@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { useTheme } from '../ThemeProvider';
 import './ContextMenu.css';
 
 export interface ContextMenuProps {
@@ -36,6 +37,11 @@ export interface ContextMenuProps {
    * Whether to auto-focus first item (when opened via keyboard)
    */
   autoFocus?: boolean;
+
+  /**
+   * Inline styles (for CSS custom properties)
+   */
+  style?: React.CSSProperties;
 }
 
 /**
@@ -50,9 +56,20 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   children,
   className = '',
   autoFocus = false,
+  style: externalStyle,
 }) => {
+  const { theme } = useTheme();
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
+
+  const internalStyle = {
+    '--context-menu-bg': theme.background.surface.elevated,
+    '--context-menu-border': theme.border.default,
+    '--context-menu-shadow': '0 4px 16px rgba(0, 0, 0, 0.4)',
+    '--context-menu-divider-bg': theme.border.divider,
+  } as React.CSSProperties;
+
+  const style = { ...internalStyle, ...externalStyle };
 
   // Store the trigger element when menu opens
   useEffect(() => {
@@ -226,6 +243,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         left: `${x}px`,
         top: `${y}px`,
         zIndex: 10000,
+        ...style,
       }}
     >
       {children}

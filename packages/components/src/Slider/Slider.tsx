@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './Slider.css';
 
 export interface SliderProps {
@@ -46,6 +47,8 @@ export const Slider: React.FC<SliderProps> = ({
   ariaLabel = 'Slider',
   tabIndex,
 }) => {
+  const { theme } = useTheme();
+
   // Clamp value to valid range
   const clampedValue = Math.max(min, Math.min(max, value));
 
@@ -60,8 +63,16 @@ export const Slider: React.FC<SliderProps> = ({
     onChange?.(newValue);
   };
 
+  const style = {
+    '--slider-track-bg': theme.background.control.slider.track,
+    '--slider-fill-bg': theme.border.focus,
+    '--slider-handle-bg': theme.background.control.slider.handle.background,
+    '--slider-handle-border': theme.background.control.slider.handle.border,
+    '--slider-focus-color': theme.border.focus,
+  } as React.CSSProperties;
+
   return (
-    <div className={`slider ${disabled ? 'slider--disabled' : ''} ${className}`}>
+    <div className={`slider ${disabled ? 'slider--disabled' : ''} ${className}`} style={style}>
       <input
         type="range"
         min={min}

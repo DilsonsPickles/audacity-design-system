@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import { TimeCode, TimeCodeFormat } from '../TimeCode/TimeCode';
 import { CloudProjectIndicator } from '../CloudProjectIndicator';
 import './SelectionToolbar.css';
@@ -95,6 +96,15 @@ export function SelectionToolbar({
   showDuration = true,
   className = '',
 }: SelectionToolbarProps) {
+  const { theme } = useTheme();
+
+  const style = {
+    '--selection-toolbar-bg': theme.background.surface.default,
+    '--selection-toolbar-border': theme.border.default,
+    '--selection-toolbar-text': theme.foreground.text.primary,
+    '--selection-toolbar-divider': theme.border.divider,
+  } as React.CSSProperties;
+
   // Calculate duration
   const duration = selectionStart !== null && selectionEnd !== null
     ? Math.abs(selectionEnd - selectionStart)
@@ -106,7 +116,7 @@ export function SelectionToolbar({
   const durationValue = duration ?? 0;
 
   return (
-    <div className={`selection-toolbar ${className}`}>
+    <div className={`selection-toolbar ${className}`} style={style}>
       {/* Left side - Status and instruction */}
       <div className="selection-toolbar__left">
         <div className="selection-toolbar__status">

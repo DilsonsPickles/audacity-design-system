@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import { Icon } from '../Icon';
 import './DialogHeader.css';
 
@@ -60,10 +61,19 @@ export function DialogHeader({
   os = 'macos',
   className = '',
 }: DialogHeaderProps) {
+  const { theme } = useTheme();
+
+  const style = {
+    '--dialog-header-bg': theme.background.surface.default,
+    '--dialog-header-border': theme.border.default,
+    '--dialog-header-text': theme.foreground.text.primary,
+    '--dialog-header-focus': theme.border.focus,
+  } as React.CSSProperties;
+
   // macOS variant - traffic lights on left
   if (os === 'macos') {
     return (
-      <div className={`dialog-header dialog-header--macos ${className}`} onMouseDown={onMouseDown}>
+      <div className={`dialog-header dialog-header--macos ${className}`} onMouseDown={onMouseDown} style={style}>
         <div className="dialog-header__macos-controls">
           {onClose && (
             <button
@@ -104,7 +114,7 @@ export function DialogHeader({
 
   // Windows variant - controls on right
   return (
-    <div className={`dialog-header dialog-header--windows ${className}`} onMouseDown={onMouseDown}>
+    <div className={`dialog-header dialog-header--windows ${className}`} onMouseDown={onMouseDown} style={style}>
       <div className="dialog-header__windows-title">
         {logo && (
           <img

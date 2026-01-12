@@ -8,6 +8,7 @@ import { ContextMenuItem } from '../ContextMenuItem';
 import { AddTrackFlyout, TrackType } from '../AddTrackFlyout';
 import type { TrackControlPanelProps } from '../TrackControlPanel';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { useTheme } from '../ThemeProvider';
 import './TrackControlSidePanel.css';
 
 export interface TrackControlSidePanelProps {
@@ -128,6 +129,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   scrollRef,
   onScroll,
 }) => {
+  const { theme } = useTheme();
   const childArray = React.Children.toArray(children) as ReactElement<TrackControlPanelProps>[];
   const [menuState, setMenuState] = useState<{ isOpen: boolean; trackIndex: number; x: number; y: number }>({
     isOpen: false,
@@ -142,6 +144,14 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   const { activeProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const addButtonTabIndex = isFlatNavigation ? 0 : 99;
+
+  const style = {
+    '--tcsp-bg': theme.background.surface.elevated,
+    '--tcsp-header-bg': theme.background.surface.elevated,
+    '--tcsp-title-color': theme.foreground.text.primary,
+    '--tcsp-list-bg': theme.background.surface.elevated,
+    '--tcsp-focus-outline': theme.border.focus,
+  } as React.CSSProperties;
 
   const handleMenuClick = (trackIndex: number, event?: React.MouseEvent) => {
     // If event is provided, use the button's position
@@ -182,6 +192,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       maxWidth={maxWidth}
       onResize={onResize}
       className={`track-control-side-panel ${className}`}
+      style={style}
     >
       {/* Header */}
       <div className="track-control-side-panel__header">

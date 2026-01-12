@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
@@ -142,6 +142,7 @@ const sampleTracks = [
 type Workspace = 'classic' | 'spectral-editing';
 
 function CanvasDemoContent() {
+  const { theme } = useTheme();
   const { state, dispatch } = useTracks();
   const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
   const { preferences, updatePreference } = usePreferences();
@@ -1375,7 +1376,7 @@ function CanvasDemoContent() {
             {/* Timeline Ruler - Fixed at top */}
             <div
               ref={canvasContainerRef}
-              style={{ position: 'relative', backgroundColor: '#1a1b26', flexShrink: 0, overflow: 'hidden' }}
+              style={{ position: 'relative', flexShrink: 0, overflow: 'hidden' }}
             >
               <div
                 ref={timelineRulerRef}
@@ -1423,7 +1424,7 @@ function CanvasDemoContent() {
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: '#212433', cursor: 'text' }}
+              style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: theme.background.canvas.default, cursor: 'text' }}
               onMouseMove={(e) => {
                 if (scrollContainerRef.current) {
                   const rect = scrollContainerRef.current.getBoundingClientRect();
@@ -1949,6 +1950,22 @@ function CanvasDemoContent() {
   );
 }
 
+// Wrapper component that applies the theme based on preferences
+function ThemedApp() {
+  const { preferences } = usePreferences();
+  const currentTheme = preferences.theme === 'dark' ? darkTheme : lightTheme;
+
+  return (
+    <ThemeProvider theme={currentTheme}>
+      <AccessibilityProfileProvider initialProfileId="wcag-flat">
+        <TracksProvider initialTracks={sampleTracks}>
+          <CanvasDemoContent />
+        </TracksProvider>
+      </AccessibilityProfileProvider>
+    </ThemeProvider>
+  );
+}
+
 export default function App() {
   // Simple routing: check URL query params
   const params = new URLSearchParams(window.location.search);
@@ -1959,14 +1976,10 @@ export default function App() {
     return <TokenReview />;
   }
 
-  // Default: show main app
+  // Default: show main app with preferences provider outside theme provider
   return (
-    <AccessibilityProfileProvider initialProfileId="wcag-flat">
-      <PreferencesProvider>
-        <TracksProvider initialTracks={sampleTracks}>
-          <CanvasDemoContent />
-        </TracksProvider>
-      </PreferencesProvider>
-    </AccessibilityProfileProvider>
+    <PreferencesProvider>
+      <ThemedApp />
+    </PreferencesProvider>
   );
 }

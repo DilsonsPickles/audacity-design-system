@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './Separator.css';
 
 export interface SeparatorProps {
@@ -9,8 +10,14 @@ export interface SeparatorProps {
 }
 
 export const Separator: React.FC<SeparatorProps> = ({ className = '' }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--separator-color': theme.border.divider,
+  } as React.CSSProperties;
+
   return (
-    <div className={`separator ${className}`} role="separator" />
+    <div className={`separator ${className}`} role="separator" style={style} />
   );
 };
 

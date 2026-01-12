@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './SocialSignInButton.css';
 
 export interface SocialSignInButtonProps {
@@ -34,6 +35,15 @@ export function SocialSignInButton({
   disabled = false,
   className = '',
 }: SocialSignInButtonProps) {
+  const { theme } = useTheme();
+
+  const style = {
+    '--social-btn-bg': theme.background.surface.elevated,
+    '--social-btn-border': theme.border.default,
+    '--social-btn-text': theme.foreground.text.primary,
+    '--social-btn-hover-bg': theme.background.surface.hover,
+  } as React.CSSProperties;
+
   const providerConfig = {
     google: {
       text: 'Continue with Google',
@@ -64,6 +74,7 @@ export function SocialSignInButton({
       onClick={onClick}
       disabled={disabled}
       type="button"
+      style={style}
     >
       <span className="social-sign-in-button__icon">{config.icon}</span>
       <span className="social-sign-in-button__text">{config.text}</span>

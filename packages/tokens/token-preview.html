@@ -179,10 +179,39 @@
     const lightTheme = {
       background: {
         surface: {
-          default: '#F9F9FA',
-          elevated: '#FFFFFF',
-          subtle: '#EBEDF0',
-          hover: '#F2F3F5',
+          default: '#F8F8F9',        // Updated from #F9F9FA
+          elevated: '#E3E3E8',       // Updated from #FFFFFF
+          subtle: '#EEEEF1',         // Updated from #EBEDF0
+          hover: '#F2F2F7',          // Updated from #F2F3F5
+        },
+        canvas: {
+          default: '#252837',        // Updated from #212433
+        },
+        control: {
+          button: {
+            secondary: {
+              idle: '#D3D4DC',       // Updated from #EBEDF0
+              hover: '#DFE2E7',
+              active: '#C8CAD3',
+            },
+            ghost: {
+              idle: 'transparent',
+              hover: '#E3E3E8',      // Updated from #F2F3F5
+              active: '#D3D4DC',     // Updated from #EBEDF0
+            },
+          },
+          slider: {
+            track: '#CFCFD9',        // Updated from #EBEDF0
+            handle: {
+              background: '#F8F8F9', // Updated from #E3E3E8
+              border: '#5B5B5F',
+            },
+          },
+          panKnob: {
+            face: '#F8F8F9',
+            border: '#818185',
+            gauge: '#CFCFD9',
+          },
         },
       },
       foreground: {
@@ -192,7 +221,16 @@
           tertiary: '#949CAC',
         },
       },
+      border: {
+        default: '#DFE2E7',
+        onElevated: '#D4D5D9',     // New token
+        onSurface: '#E9E9E9',      // New token
+      },
       audio: {
+        timeline: {
+          tickMajor: '#828387',    // Updated from #4D515C
+          tickMinor: '#828387',
+        },
         clip: {
           blue: {
             header: '#84B5FF',
@@ -210,7 +248,6 @@
             headerSelectedHover: '#F7F6FF',
             bodySelected: '#D5D3FE',
           },
-          // Add more clip colors...
         },
       },
     };
@@ -278,6 +315,7 @@
             ${renderSwatch('surface.elevated', theme.background.surface.elevated)}
             ${renderSwatch('surface.subtle', theme.background.surface.subtle)}
             ${renderSwatch('surface.hover', theme.background.surface.hover)}
+            ${renderSwatch('canvas.default', theme.background.canvas.default)}
           </div>
         </div>
 
@@ -287,6 +325,55 @@
             ${renderSwatch('text.primary', theme.foreground.text.primary)}
             ${renderSwatch('text.secondary', theme.foreground.text.secondary)}
             ${renderSwatch('text.tertiary', theme.foreground.text.tertiary)}
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Border Colors</h2>
+          <div class="swatches">
+            ${renderSwatch('border.default', theme.border.default)}
+            ${renderSwatch('border.onElevated', theme.border.onElevated)}
+            ${renderSwatch('border.onSurface', theme.border.onSurface)}
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Button Colors</h2>
+          <h3>Secondary Button</h3>
+          <div class="swatches">
+            ${renderSwatch('secondary.idle', theme.background.control.button.secondary.idle)}
+            ${renderSwatch('secondary.hover', theme.background.control.button.secondary.hover)}
+            ${renderSwatch('secondary.active', theme.background.control.button.secondary.active)}
+          </div>
+          <h3>Ghost Button</h3>
+          <div class="swatches">
+            ${renderSwatch('ghost.idle', theme.background.control.button.ghost.idle)}
+            ${renderSwatch('ghost.hover', theme.background.control.button.ghost.hover)}
+            ${renderSwatch('ghost.active', theme.background.control.button.ghost.active)}
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Control Colors</h2>
+          <h3>Slider</h3>
+          <div class="swatches">
+            ${renderSwatch('slider.track', theme.background.control.slider.track)}
+            ${renderSwatch('slider.handle.bg', theme.background.control.slider.handle.background)}
+            ${renderSwatch('slider.handle.border', theme.background.control.slider.handle.border)}
+          </div>
+          <h3>Pan Knob</h3>
+          <div class="swatches">
+            ${renderSwatch('panKnob.face', theme.background.control.panKnob.face)}
+            ${renderSwatch('panKnob.border', theme.background.control.panKnob.border)}
+            ${renderSwatch('panKnob.gauge', theme.background.control.panKnob.gauge)}
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Timeline Colors</h2>
+          <div class="swatches">
+            ${renderSwatch('timeline.tickMajor', theme.audio.timeline.tickMajor)}
+            ${renderSwatch('timeline.tickMinor', theme.audio.timeline.tickMinor)}
           </div>
         </div>
 

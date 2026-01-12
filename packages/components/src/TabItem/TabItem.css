@@ -5,12 +5,12 @@
   padding: 8px 20px;
   height: 36px;
   border: none;
-  background-color: #f8f8f9;
+  background-color: var(--tab-bg-idle);
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   font-size: var(--font-size-body, 12px);
   font-weight: 400;
-  color: #000000;
+  color: var(--tab-text);
   transition: background-color 0.15s ease, font-weight 0.15s ease;
   border-left: 3px solid transparent;
   text-align: left;
@@ -20,14 +20,14 @@
 }
 
 .tab-item:hover:not(.tab-item--disabled):not(.tab-item--selected) {
-  background-color: #e9e9ed;
+  background-color: var(--tab-bg-hover);
 }
 
 .tab-item--selected {
-  background-color: #e1e5fa;
+  background-color: var(--tab-bg-selected);
   font-size: var(--font-size-body-bold, 12px);
   font-weight: 700;
-  border-left-color: var(--stroke-main-stroke-accent, #677ce4);
+  border-left-color: var(--tab-border-selected);
 }
 
 .tab-item--disabled {
@@ -50,6 +50,6 @@
 
 /* Focus styles for accessibility */
 .tab-item:focus-visible {
-  outline: 2px solid #0000ff;
+  outline: 2px solid var(--tab-focus);
   outline-offset: -2px;
 }

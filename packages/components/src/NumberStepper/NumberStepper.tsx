@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTheme } from '../ThemeProvider';
 import './NumberStepper.css';
 
 export interface NumberStepperProps {
@@ -68,9 +69,23 @@ export function NumberStepper({
   min,
   max,
 }: NumberStepperProps) {
+  const { theme } = useTheme();
   const [internalValue, setInternalValue] = useState(defaultValue);
   const [isFocused, setIsFocused] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  const style = {
+    '--number-stepper-border': theme.border.default,
+    '--number-stepper-border-focus': theme.border.focus,
+    '--number-stepper-focus-outline': theme.border.focus,
+    '--number-stepper-success-outline': theme.foreground.icon.success,
+    '--number-stepper-success-border': theme.foreground.icon.success,
+    '--number-stepper-text': theme.foreground.text.primary,
+    '--number-stepper-placeholder': theme.foreground.text.secondary,
+    '--number-stepper-btn-text': theme.foreground.text.primary,
+    '--number-stepper-btn-hover': theme.background.surface.subtle,
+    '--number-stepper-btn-active': theme.background.surface.hover,
+  } as React.CSSProperties;
 
   const isControlled = value !== undefined;
   const currentValue = isControlled ? value : internalValue;
@@ -167,7 +182,7 @@ export function NumberStepper({
   return (
     <div
       className={`number-stepper ${isFocused ? 'number-stepper--focused' : ''} ${isEditMode ? 'number-stepper--editing' : ''} ${disabled ? 'number-stepper--disabled' : ''} ${className}`}
-      style={widthStyle ? { width: widthStyle } : undefined}
+      style={widthStyle ? { width: widthStyle, ...style } : style}
     >
       <input
         type="text"

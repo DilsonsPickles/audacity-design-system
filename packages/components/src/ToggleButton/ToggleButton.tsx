@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import './ToggleButton.css';
 
 export interface ToggleButtonProps {
@@ -41,6 +42,16 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
   ariaLabel,
   tabIndex,
 }) => {
+  const { theme } = useTheme();
+
+  const style = {
+    '--toggle-btn-bg': theme.background.control.button.secondary.idle,
+    '--toggle-btn-bg-hover': theme.background.control.button.secondary.hover,
+    '--toggle-btn-bg-active': theme.background.control.button.secondary.active,
+    '--toggle-btn-text': theme.foreground.text.primary,
+    '--toggle-btn-focus': theme.border.focus,
+  } as React.CSSProperties;
+
   return (
     <button
       type="button"
@@ -50,6 +61,7 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
       aria-label={ariaLabel}
       tabIndex={tabIndex}
       aria-pressed={active}
+      style={style}
     >
       {children}
     </button>

@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import { ProgressBar } from '../ProgressBar';
 import './Toast.css';
 
@@ -61,7 +62,21 @@ export function Toast({
   showProgress = false,
   timeRemaining,
 }: ToastProps) {
+  const { theme } = useTheme();
   const [timerProgress, setTimerProgress] = React.useState(100);
+
+  const style = {
+    '--toast-bg': theme.background.surface.elevated,
+    '--toast-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
+    '--toast-icon-color': theme.foreground.text.primary,
+    '--toast-title-color': theme.foreground.text.primary,
+    '--toast-description-color': theme.foreground.text.secondary,
+    '--toast-button-bg': theme.background.control.button.secondary.idle,
+    '--toast-button-bg-hover': theme.background.control.button.secondary.hover,
+    '--toast-button-bg-active': theme.background.control.button.secondary.active,
+    '--toast-button-text': theme.foreground.text.primary,
+    '--toast-progress-fill': theme.border.focus,
+  } as React.CSSProperties;
 
   React.useEffect(() => {
     if (duration === 0 || showProgress) return;
@@ -81,7 +96,7 @@ export function Toast({
   }, [duration, showProgress]);
 
   return (
-    <div className={`toast toast--${type}`} role="alert" aria-live="polite">
+    <div className={`toast toast--${type}`} role="alert" aria-live="polite" style={style}>
       <div className="toast__body">
         {/* Icon */}
         <div className="toast__icon">

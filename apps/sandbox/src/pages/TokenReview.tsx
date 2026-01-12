@@ -135,6 +135,43 @@ export function TokenReview() {
             <BorderSwatch label="border.error" color={theme.border.error} />
             <BorderSwatch label="border.success" color={theme.border.success} />
           </TokenSubsection>
+          <TokenSubsection title="Surface-Specific Borders">
+            <BorderSwatch label="border.onElevated" color={theme.border.onElevated} />
+            <BorderSwatch label="border.onSurface" color={theme.border.onSurface} />
+          </TokenSubsection>
+        </TokenSection>
+
+        {/* Control Tokens */}
+        <TokenSection title="Control Tokens">
+          <TokenSubsection title="Ghost Button States">
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <StateButton label="Ghost Idle" color={theme.background.control.button.ghost.idle} />
+              <StateButton label="Ghost Hover" color={theme.background.control.button.ghost.hover} />
+              <StateButton label="Ghost Active" color={theme.background.control.button.ghost.active} />
+            </div>
+          </TokenSubsection>
+
+          <TokenSubsection title="Slider">
+            <ColorSwatch label="slider.track" color={theme.background.control.slider.track} />
+            <ColorSwatch label="slider.handle.background" color={theme.background.control.slider.handle.background} />
+            <ColorSwatch label="slider.handle.border" color={theme.background.control.slider.handle.border} />
+          </TokenSubsection>
+
+          <TokenSubsection title="Pan Knob">
+            <ColorSwatch label="panKnob.face" color={theme.background.control.panKnob.face} />
+            <ColorSwatch label="panKnob.border" color={theme.background.control.panKnob.border} />
+            <ColorSwatch label="panKnob.gauge" color={theme.background.control.panKnob.gauge} />
+          </TokenSubsection>
+        </TokenSection>
+
+        {/* Tab Tokens */}
+        <TokenSection title="Tab Tokens">
+          <TokenSubsection title="Tab States">
+            <ColorSwatch label="tab.idle" color={theme.background.tab.idle} />
+            <ColorSwatch label="tab.hover" color={theme.background.tab.hover} />
+            <ColorSwatch label="tab.selected" color={theme.background.tab.selected} />
+            <ColorSwatch label="tab.selectedBorder" color={theme.background.tab.selectedBorder} />
+          </TokenSubsection>
         </TokenSection>
 
         {/* Semantic Tokens */}
@@ -219,6 +256,8 @@ export function TokenReview() {
           <TokenSubsection title="Timeline">
             <ColorSwatch label="timeline.background" color={theme.audio.timeline.background} />
             <ColorSwatch label="timeline.text" color={theme.audio.timeline.text} />
+            <ColorSwatch label="timeline.tickMajor" color={theme.audio.timeline.tickMajor} />
+            <ColorSwatch label="timeline.tickMinor" color={theme.audio.timeline.tickMinor} />
             <ColorSwatch label="timeline.playhead" color={theme.audio.timeline.playhead} />
           </TokenSubsection>
         </TokenSection>

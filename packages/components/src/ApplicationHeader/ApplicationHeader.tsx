@@ -10,6 +10,7 @@ import React from 'react';
 import './ApplicationHeader.css';
 import { Menu, MenuItem } from '../Menu';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { useTheme } from '../ThemeProvider';
 
 const AudacityLogo = () => (
   <svg
@@ -104,10 +105,18 @@ export function ApplicationHeader({
   onWindowControl,
   className = '',
 }: ApplicationHeaderProps) {
+  const { theme } = useTheme();
   const [openMenu, setOpenMenu] = React.useState<string | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = React.useState<HTMLElement | null>(null);
   const menubarRef = React.useRef<HTMLDivElement>(null);
   const { activeProfile } = useAccessibilityProfile();
+
+  const style = {
+    '--header-bg': theme.background.surface.default,
+    '--header-border': theme.border.onSurface,
+    '--header-text': theme.foreground.text.primary,
+    '--header-menu-hover': theme.background.surface.hover,
+  } as React.CSSProperties;
 
   // Check if we're in flat navigation mode
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
@@ -171,7 +180,7 @@ export function ApplicationHeader({
   };
   if (os === 'macos') {
     return (
-      <div className={`application-header application-header--macos ${className}`}>
+      <div className={`application-header application-header--macos ${className}`} style={style}>
         <div className="application-header__macos-controls">
           <button
             className="application-header__macos-button application-header__macos-button--close"
@@ -202,7 +211,7 @@ export function ApplicationHeader({
 
   // Windows variant
   return (
-    <div className={`application-header application-header--windows ${className}`}>
+    <div className={`application-header application-header--windows ${className}`} style={style}>
       <div className="application-header__windows-titlebar">
         <div className="application-header__windows-title">
           <AudacityLogo />

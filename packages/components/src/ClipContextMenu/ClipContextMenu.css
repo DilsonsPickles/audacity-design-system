@@ -8,12 +8,12 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--text-txt-tertiary, #70727a);
-  border-bottom: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  color: var(--clip-context-menu-header-text);
+  border-bottom: 1px solid var(--clip-context-menu-header-border);
 }
 
 .clip-context-menu-divider {
   height: 1px;
-  background-color: var(--stroke-main-stroke-primary, #d4d5d9);
+  background-color: var(--clip-context-menu-divider-bg);
   margin: 4px 0;
 }

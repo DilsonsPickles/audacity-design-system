@@ -13,6 +13,6 @@
   right: 0;
   top: 50%;
   height: 1px;
-  background-color: #d4d5d9;
+  background-color: var(--separator-color);
   transform: translateY(-50%);
 }

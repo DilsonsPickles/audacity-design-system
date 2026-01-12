@@ -10,22 +10,22 @@ import { ThemeTokens } from '../tokens.v2';
 export const lightTheme: ThemeTokens = {
   background: {
     surface: {
-      default: '#F9F9FA',        // Main toolbar/panel background
-      elevated: '#FFFFFF',       // Dialogs, menus, dropdowns
-      subtle: '#EBEDF0',         // Track headers, subtle containers
-      hover: '#F2F3F5',          // Interactive surface hover
+      default: '#F8F8F9',        // Main toolbar/panel background (track panel active)
+      elevated: '#E3E3E8',       // Dialogs, menus, dropdowns, ruler, side panel
+      subtle: '#EEEEF1',         // Track headers, subtle containers (track panel idle)
+      hover: '#F2F2F7',          // Interactive surface hover (track panel hover)
     },
 
     canvas: {
-      default: '#212433',        // Main audio canvas (dark even in light theme)
+      default: '#252837',        // Main audio canvas (dark even in light theme)
       track: {
-        idle: '#242637',         // Track idle (computed: #212433 + 5% white)
-        selected: '#2a2d42',     // Track selected (computed: #212433 + 10% white)
-        hover: '#272a3d',        // Track hover (computed: #212433 + 7.5% white)
+        idle: '#292d40',         // Track idle (computed: #252837 + 5% white)
+        selected: '#2f3346',     // Track selected (computed: #252837 + 10% white)
+        hover: '#2b2f43',        // Track hover (computed: #252837 + 7.5% white)
       },
       grid: {
-        major: '#2d3045',        // Major grid lines
-        minor: '#252839',        // Minor grid lines
+        major: '#31354a',        // Major grid lines
+        minor: '#292c40',        // Minor grid lines
       },
     },
 
@@ -33,20 +33,20 @@ export const lightTheme: ThemeTokens = {
       button: {
         primary: {
           idle: '#84B5FF',       // Primary button (blue)
-          hover: '#A2C7FF',      // Lighter on hover
-          active: '#66A3FF',     // Darker when pressed
+          hover: '#66A3FF',      // Darker on hover (depressed)
+          active: '#5A91E6',     // Even darker when pressed
           disabled: '#C0C5CE',   // Desaturated gray
         },
         secondary: {
-          idle: '#EBEDF0',       // Secondary button (subtle gray)
-          hover: '#DFE2E7',      // Slightly darker on hover
-          active: '#D2D6DD',     // More contrast when pressed
+          idle: '#D3D4DC',       // Secondary button (subtle gray)
+          hover: '#C8CAD3',      // Darker on hover (depressed)
+          active: '#BDC1CC',     // Even darker when pressed
           disabled: '#F2F3F5',   // Very light gray
         },
         ghost: {
           idle: 'transparent',   // No background
-          hover: '#F2F3F5',      // Subtle gray on hover
-          active: '#EBEDF0',     // Slightly darker when pressed
+          hover: '#E3E3E8',      // More prominent gray on hover
+          active: '#D3D4DC',     // Darker when pressed
           disabled: 'transparent', // No background when disabled
         },
       },
@@ -91,7 +91,21 @@ export const lightTheme: ThemeTokens = {
       },
 
       slider: {
-        track: '#EBEDF0',        // Light gray track
+        track: '#CFCFD9',        // Light gray track
+        thumb: {
+          idle: '#84B5FF',       // Blue thumb
+          hover: '#A2C7FF',      // Lighter on hover
+          drag: '#66A3FF',       // Darker when dragging
+          disabled: '#C0C5CE',   // Gray when disabled
+        },
+        handle: {
+          background: '#F8F8F9', // Default surface color
+          border: '#5B5B5F',     // Handle stroke
+        },
+      },
+
+      fader: {
+        track: '#CFCFD9',        // Light gray track
         thumb: {
           idle: '#84B5FF',       // Blue thumb
           hover: '#A2C7FF',      // Lighter on hover
@@ -100,14 +114,10 @@ export const lightTheme: ThemeTokens = {
         },
       },
 
-      fader: {
-        track: '#EBEDF0',        // Light gray track
-        thumb: {
-          idle: '#84B5FF',       // Blue thumb
-          hover: '#A2C7FF',      // Lighter on hover
-          drag: '#66A3FF',       // Darker when dragging
-          disabled: '#C0C5CE',   // Gray when disabled
-        },
+      panKnob: {
+        face: '#F8F8F9',         // Default surface color (chrome UI)
+        border: '#818185',       // 2px border stroke
+        gauge: '#CFCFD9',        // Background gauge track
       },
 
       scrollbar: {
@@ -153,11 +163,20 @@ export const lightTheme: ThemeTokens = {
       },
     },
 
+    tab: {
+      idle: '#F8F8F9',           // Default surface color
+      hover: '#EEEEF1',          // Subtle hover
+      selected: '#EBF0FA',       // More visible blue tint
+      selectedBorder: '#677CE4', // Accent blue
+    },
+
     trackHeader: {
       idle: '#E3E3E8',           // Light gray idle state
       hover: '#D9D9DE',          // Slightly darker on hover
       selected: '#D0D0D5',       // Even darker when selected
     },
+
+    toast: '#14151A',            // Dark background for toast notifications
   },
 
   foreground: {
@@ -196,6 +215,8 @@ export const lightTheme: ThemeTokens = {
     success: '#74BE59',          // Green success border
     warning: '#FF9E65',          // Orange warning border
     divider: '#EBEDF0',          // Divider/separator color
+    onElevated: '#D4D5D9',       // Border on elevated surfaces (ruler, dialogs) - matches Figma
+    onSurface: '#E9E9E9',        // Border on default surfaces (toolbars, panels) - same contrast as onElevated
     input: {
       idle: '#D2D6DD',           // Input border default
       hover: '#C0C5CE',          // Darker on hover
@@ -346,8 +367,8 @@ export const lightTheme: ThemeTokens = {
     timeline: {
       background: '#262932',     // Dark ruler background
       text: '#949CAC',           // Medium gray text
-      tickMajor: '#4D515C',      // Medium gray major ticks
-      tickMinor: '#41444F',      // Darker gray minor ticks
+      tickMajor: '#828387',      // Medium gray major ticks
+      tickMinor: '#828387',      // Medium gray minor ticks (same as major for now)
       playhead: '#ef4444',       // Red playhead cursor
       playheadShadow: '#dc2626', // Darker red shadow
     },

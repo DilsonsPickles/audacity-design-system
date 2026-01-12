@@ -4,6 +4,7 @@
  * Displays a dropdown menu with items and optional keyboard shortcuts
  */
 
+import { useTheme } from '../ThemeProvider';
 import './Menu.css';
 
 export interface MenuItem {
@@ -29,16 +30,25 @@ export function Menu({
   onClose,
   className = '',
 }: MenuProps) {
+  const { theme } = useTheme();
+
   if (!isOpen || !anchorEl) return null;
 
   // Get position from anchor element
   const rect = anchorEl.getBoundingClientRect();
   const style = {
+    '--menu-bg': theme.background.surface.elevated,
+    '--menu-border': theme.border.default,
+    '--menu-shadow': '0px 4px 8px rgba(0, 0, 0, 0.15)',
+    '--menu-item-text': theme.foreground.text.primary,
+    '--menu-item-text-disabled': theme.foreground.text.disabled,
+    '--menu-item-hover-bg': theme.background.surface.hover,
+    '--menu-divider': theme.border.divider,
     position: 'absolute' as const,
     top: `${rect.bottom}px`,
     left: `${rect.left}px`,
     zIndex: 1000,
-  };
+  } as React.CSSProperties;
 
   return (
     <>

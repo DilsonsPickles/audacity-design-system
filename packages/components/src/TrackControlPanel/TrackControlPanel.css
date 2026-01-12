@@ -1,30 +1,8 @@
 /* TrackControlPanel - Figma Design System Spec */
 
-/* CSS Variables matching Figma tokens */
+/* CSS Variables - will be set by component via inline styles */
+/* Keeping hardcoded fallbacks for non-themed values */
 :root {
-  /* Background colors */
-  --tcp-bg-idle: #eeeef1;
-  --tcp-bg-hover: #f2f2f7;
-  --tcp-bg-active: #f8f8f9;
-
-  /* Control colors */
-  --tcp-control-slider-bg: #cfcfd9;
-  --tcp-control-value-active: #677ce4;
-  --tcp-control-handle-bg: #f8f8f9;
-  --tcp-control-handle-border: #5b5b5f;
-  --tcp-control-gauge: #cfcfd9;
-  --tcp-control-knob-bg: #f8f8f9;
-  --tcp-control-knob-border: #14151a80;
-  --tcp-control-meter-bg: #cfcfd9;
-
-  /* Button colors */
-  --tcp-button-ghost-idle: rgba(0, 0, 0, 0);
-  --tcp-button-solid-idle: rgba(194, 196, 207, 0.7);
-
-  /* Text and icons */
-  --tcp-text-primary: #14151a;
-  --tcp-icon-default: #14151a;
-
   /* Spacing */
   --tcp-padding: 12px;
   --tcp-padding-sm: 8px;
@@ -39,9 +17,6 @@
   --tcp-height-default: 114px;
   --tcp-height-truncated: 82px;
   --tcp-height-collapsed: 44px;
-
-  /* Focus */
-  --tcp-focus-color: #84B5FF;
 }
 
 /* Main container */
@@ -61,7 +36,7 @@
 
 /* Focus state - blue outline when whole track is focused (via click or keyboard) */
 .track-control-panel--focused {
-  outline: 2px solid #84B5FF;
+  outline: 2px solid var(--tcp-focus-color);
   outline-offset: -2px;
 }
 
@@ -150,7 +125,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  background: var(--tcp-button-ghost-idle);
+  background: transparent;
   border: none;
   border-radius: var(--tcp-radius-sm);
   cursor: pointer;

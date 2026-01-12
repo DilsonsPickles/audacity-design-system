@@ -5,8 +5,8 @@
 .dialog-header {
   display: flex;
   align-items: center;
-  background: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
-  border-bottom: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
+  background: var(--dialog-header-bg);
+  border-bottom: 1px solid var(--dialog-header-border);
   cursor: move;
   user-select: none;
   flex-shrink: 0;
@@ -24,7 +24,7 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--dialog-header-text);
   white-space: nowrap;
 }
 
@@ -67,7 +67,7 @@
 }
 
 .dialog-header__macos-button:focus-visible {
-  outline: 2px solid #677ce4;
+  outline: 2px solid var(--dialog-header-focus);
   outline-offset: 2px;
 }
 
@@ -129,7 +129,7 @@
   font-family: 'Segoe MDL2 Assets', sans-serif;
   font-size: 10px;
   line-height: normal;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--dialog-header-text);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -151,7 +151,7 @@
 }
 
 .dialog-header__windows-control:focus-visible {
-  outline: 2px solid #677ce4;
+  outline: 2px solid var(--dialog-header-focus);
   outline-offset: -2px;
 }
 

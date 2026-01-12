@@ -437,7 +437,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
         >
           <div className="preferences-modal__scroll-container" tabIndex={-1}>
             {selectedPage === 'general' && <GeneralPage />}
-            {selectedPage === 'appearance' && <PlaceholderPage title="Appearance" />}
+            {selectedPage === 'appearance' && <AppearancePage />}
             {selectedPage === 'audio-settings' && <AudioSettingsPage />}
             {selectedPage === 'playback-recording' && <PlaybackRecordingPage />}
             {selectedPage === 'spectral-display' && <SpectralDisplayPage />}
@@ -576,6 +576,37 @@ function GeneralPage() {
           Update checking requires network access. In order to protect your privacy,
           Audacity does not store any personal information. See our{' '}
           <a href="#" className="preferences-page__link">Privacy Policy</a> for more info.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Appearance Page Content
+function AppearancePage() {
+  const { preferences, updatePreference } = usePreferences();
+
+  return (
+    <div className="preferences-page">
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Theme</h3>
+
+        <div className="preferences-page__radio-group">
+          <LabeledRadio
+            label="Light"
+            checked={preferences.theme === 'light'}
+            onChange={() => updatePreference('theme', 'light')}
+            name="theme"
+            value="light"
+          />
+
+          <LabeledRadio
+            label="Dark"
+            checked={preferences.theme === 'dark'}
+            onChange={() => updatePreference('theme', 'dark')}
+            name="theme"
+            value="dark"
+          />
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTheme } from '../ThemeProvider';
 import './TextInput.css';
 
 export interface TextInputProps {
@@ -74,6 +75,7 @@ export function TextInput({
   type = 'text',
   tabIndex,
 }: TextInputProps) {
+  const { theme } = useTheme();
   const [internalValue, setInternalValue] = useState(defaultValue || '');
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -122,10 +124,23 @@ export function TextInput({
 
   const widthStyle = width ? (typeof width === 'number' ? `${width}px` : width) : undefined;
 
+  const style = {
+    ...(widthStyle ? { width: widthStyle } : {}),
+    '--input-bg': theme.background.control.input.idle,
+    '--input-border-idle': theme.border.default,
+    '--input-hover-border-color': theme.border.input.hover,
+    '--input-text-color': theme.foreground.text.primary,
+    '--input-placeholder-color': theme.foreground.text.secondary,
+    '--input-error-border': theme.border.error,
+    '--input-caret-color': theme.foreground.text.primary,
+    '--focus-border-color': theme.border.focus,
+    '--focus-ring-color': theme.border.focus,
+  } as React.CSSProperties;
+
   return (
     <div
       className={`text-input ${stateClass} ${typeClass} ${className}`}
-      style={widthStyle ? { width: widthStyle } : undefined}
+      style={style}
       onMouseEnter={() => !disabled && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

@@ -8,6 +8,7 @@ import { Button } from '../Button';
 import { Carousel } from '../Carousel';
 import { LabeledCheckbox } from '../LabeledCheckbox';
 import { usePreferences } from '../contexts/PreferencesContext';
+import { useTheme } from '../ThemeProvider';
 import './WelcomeDialog.css';
 
 // Import carousel images
@@ -80,7 +81,15 @@ export function WelcomeDialog({
   storageKey = 'audacity-welcome-dialog-dismissed',
 }: WelcomeDialogProps) {
   const { preferences, updatePreference } = usePreferences();
+  const { theme } = useTheme();
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  const style = {
+    '--welcome-dialog-title-text': theme.foreground.text.primary,
+    '--welcome-dialog-desc-text': theme.foreground.text.secondary,
+    '--welcome-dialog-footer-bg': theme.background.surface.elevated,
+    '--welcome-dialog-footer-border': theme.border.default,
+  } as React.CSSProperties;
 
   const handleClose = () => {
     onClose();
@@ -98,6 +107,7 @@ export function WelcomeDialog({
       noPadding={true}
       closeOnClickOutside={false}
       closeOnEscape={true}
+      style={style}
       footer={
         <div
           style={{
@@ -107,9 +117,10 @@ export function WelcomeDialog({
             padding: '8px',
             width: '100%',
             boxSizing: 'border-box',
-            backgroundColor: 'var(--background-surface-bg-surface-primary-idle, #f8f8f9)',
-            borderTop: '1px solid var(--stroke-main-stroke-primary, #d4d5d9)',
+            backgroundColor: 'var(--welcome-dialog-footer-bg)',
+            borderTop: '1px solid var(--welcome-dialog-footer-border)',
             flexShrink: 0,
+            ...style,
           }}
         >
           <LabeledCheckbox

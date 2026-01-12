@@ -10,7 +10,7 @@
   height: 106px;
   padding: 0;
   border: none;
-  background: #d4d5d9;
+  background: var(--preference-thumbnail-bg);
   cursor: pointer;
   border-radius: 4px;
   position: relative;
@@ -20,7 +20,7 @@
 }
 
 .preference-thumbnail__image-button--selected {
-  outline-color: #677ce4;
+  outline-color: var(--preference-thumbnail-selected-outline);
 }
 
 .preference-thumbnail__image {
@@ -50,6 +50,6 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: #14151a;
+  color: var(--preference-thumbnail-label-text);
   user-select: none;
 }

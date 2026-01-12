@@ -10,8 +10,8 @@
   align-items: center;
   height: 28px;
   padding: 0 8px;
-  background-color: var(--background-input-bg-input-field, #ffffff);
-  border: 1px solid var(--stroke-input-stroke-input-field-idle, #d4d5d9);
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border-idle);
   border-radius: 3px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   width: 100%;
@@ -27,12 +27,12 @@
   font-size: 12px;
   font-weight: 400;
   line-height: normal;
-  color: var(--text-txt-primary, #14151a);
+  color: var(--input-text-color);
   padding: 0;
 }
 
 .text-input__field::placeholder {
-  color: var(--text-txt-secondary, #6c6d75);
+  color: var(--input-placeholder-color);
   opacity: 1;
 }
 
@@ -59,27 +59,27 @@
 
 /* Type: Error states */
 .text-input--empty-error {
-  border-color: var(--red-red-600, #f08080);
+  border-color: var(--input-error-border);
 }
 
 .text-input--empty-error.text-input--hover {
-  border-color: var(--red-red-700, #e85b5b);
+  border-color: var(--input-error-border);
 }
 
 .text-input--empty-error.text-input--active {
-  border-color: var(--red-red-800, #d63636);
+  border-color: var(--input-error-border);
 }
 
 .text-input--completed-error {
-  border-color: var(--red-red-600, #f08080);
+  border-color: var(--input-error-border);
 }
 
 .text-input--completed-error.text-input--hover {
-  border-color: var(--red-red-700, #e85b5b);
+  border-color: var(--input-error-border);
 }
 
 .text-input--completed-error.text-input--active {
-  border-color: var(--red-red-800, #d63636);
+  border-color: var(--input-error-border);
 }
 
 /* Selection highlight */
@@ -89,5 +89,5 @@
 
 /* Cursor animation */
 .text-input--active .text-input__field {
-  caret-color: var(--text-txt-primary, #14151a);
+  caret-color: var(--input-caret-color);
 }

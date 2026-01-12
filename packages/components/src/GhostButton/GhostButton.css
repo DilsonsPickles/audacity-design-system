@@ -1,6 +1,6 @@
 .ghost-button {
   border: none;
-  background-color: transparent;
+  background-color: var(--ghost-bg-idle);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -8,7 +8,7 @@
   justify-content: center;
   gap: 8px;
   transition: background-color 0.1s ease;
-  color: var(--tcp-icon-default, #14151A);
+  color: var(--ghost-icon-color);
 }
 
 /* Small size (default) - 20px × 20px */
@@ -39,36 +39,27 @@
   font-weight: 400;
   line-height: 1;
   user-select: none;
-  color: #3d3e42;
+  color: var(--ghost-label-color);
 }
 
 .ghost-button:hover:not(.ghost-button--disabled):not(.ghost-button--active) {
-  background-color: rgba(194, 196, 207, 0.5);
-}
-
-/* With label variant uses lighter hover state */
-.ghost-button--with-label:hover:not(.ghost-button--disabled):not(.ghost-button--active) {
-  background-color: #ececed;
+  background-color: var(--ghost-bg-hover);
 }
 
 .ghost-button:active:not(.ghost-button--disabled):not(.ghost-button--active) {
-  background-color: #c2c4cf;
-}
-
-.ghost-button--with-label:active:not(.ghost-button--disabled):not(.ghost-button--active) {
-  background-color: #e0e0e1;
+  background-color: var(--ghost-bg-active);
 }
 
 .ghost-button--active {
-  background-color: #c2c4cf;
+  background-color: var(--ghost-bg-active);
 }
 
 .ghost-button--disabled {
-  opacity: 0.3;
+  background-color: var(--ghost-bg-disabled) !important;
   cursor: not-allowed;
 }
 
 .ghost-button:focus-visible {
-  outline: 2px solid #677ce4;
+  outline: 2px solid var(--ghost-focus-color);
   outline-offset: 2px;
 }
