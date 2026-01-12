@@ -5,6 +5,7 @@ import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, 
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
+import { TokenReview } from './pages/TokenReview';
 
 // Generate realistic waveform data
 function generateWaveform(durationSeconds: number, samplesPerSecond: number = 100): number[] {
@@ -1949,6 +1950,16 @@ function CanvasDemoContent() {
 }
 
 export default function App() {
+  // Simple routing: check URL query params
+  const params = new URLSearchParams(window.location.search);
+  const page = params.get('page');
+
+  // Show token review page if ?page=tokens
+  if (page === 'tokens') {
+    return <TokenReview />;
+  }
+
+  // Default: show main app
   return (
     <AccessibilityProfileProvider initialProfileId="wcag-flat">
       <PreferencesProvider>
