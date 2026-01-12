@@ -45,7 +45,7 @@ export const Radio: React.FC<RadioProps> = ({
   const { theme } = useTheme();
 
   const style = {
-    '--radio-border': theme.border.default,
+    '--radio-border': theme.border.control.radio,
     '--radio-border-hover': theme.border.focus,
     '--radio-bg': theme.background.surface.elevated,
     '--radio-pip': theme.background.control.button.primary.idle,
