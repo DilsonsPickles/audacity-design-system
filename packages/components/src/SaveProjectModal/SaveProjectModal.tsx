@@ -12,6 +12,7 @@ export interface SaveProjectModalProps {
   onDontShowAgainChange?: (checked: boolean) => void;
   cloudImageUrl?: string;
   computerImageUrl?: string;
+  os?: 'macos' | 'windows';
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export function SaveProjectModal({
   onDontShowAgainChange,
   cloudImageUrl = '/saveToCloud.png',
   computerImageUrl = '/saveToComputer.png',
+  os = 'macos',
   className = '',
 }: SaveProjectModalProps) {
   const { theme } = useTheme();
@@ -53,7 +55,7 @@ export function SaveProjectModal({
     <>
       <div className="save-project-modal-backdrop" onClick={onClose} />
       <div className={`save-project-modal ${className}`} style={style}>
-        <DialogHeader title="Save project" onClose={onClose} />
+        <DialogHeader title="Save project" onClose={onClose} os={os} />
 
         {/* Body */}
         <div className="save-project-modal__body">

@@ -55,6 +55,11 @@ export interface PreferencesModalProps {
    */
   onPageChange?: (page: PreferencesPage) => void;
   /**
+   * Operating system for platform-specific header controls
+   * @default 'macos'
+   */
+  os?: 'macos' | 'windows';
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -296,6 +301,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   onClose,
   currentPage = 'general',
   onPageChange,
+  os = 'macos',
   className = '',
 }) => {
   const [selectedPage, setSelectedPage] = useState<PreferencesPage>(currentPage);
@@ -393,6 +399,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Preferences"
+      os={os}
       className={`preferences-modal ${className}`}
       width="880px"
       maximizable={true}
