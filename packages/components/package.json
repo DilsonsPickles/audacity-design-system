@@ -12,14 +12,15 @@
       "types": "./dist/index.d.ts"
     },
     "./style.css": "./dist/index.css",
-    "./dist/index.css": "./dist/index.css"
+    "./dist/index.css": "./dist/index.css",
+    "./dist/*.png": "./dist/*.png"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --external react --external react-dom",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch --external react --external react-dom",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "lint": "echo 'No linting configured yet'"
   },
   "keywords": [

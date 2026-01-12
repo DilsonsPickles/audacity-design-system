@@ -77,6 +77,11 @@
   flex: 1;
 }
 
+/* Body without padding - for dialogs that need custom padding */
+.dialog__body--no-padding {
+  padding: 0;
+}
+
 /* Footer */
 .dialog__footer {
   display: flex;

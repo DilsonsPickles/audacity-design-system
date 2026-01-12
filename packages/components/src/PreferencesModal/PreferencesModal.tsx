@@ -501,6 +501,8 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
 
 // General Page Content
 function GeneralPage() {
+  const { preferences, updatePreference } = usePreferences();
+
   const languageOptions: DropdownOption[] = [
     { value: 'en', label: 'System (English)' },
     { value: 'es', label: 'Español' },
@@ -560,11 +562,13 @@ function GeneralPage() {
         <div className="preferences-page__checkboxes">
           <LabeledCheckbox
             label="Show what's new on launch"
-            checked={true}
+            checked={preferences.showWelcomeDialog}
+            onChange={(checked) => updatePreference('showWelcomeDialog', checked)}
           />
           <LabeledCheckbox
             label="Check to see if a new version of Audacity is available"
-            checked={true}
+            checked={preferences.checkForUpdates}
+            onChange={(checked) => updatePreference('checkForUpdates', checked)}
           />
         </div>
 

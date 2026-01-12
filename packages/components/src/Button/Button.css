@@ -18,23 +18,34 @@
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Default size - 28px height */
-.button--default {
-  padding: 6px 12px;
-  line-height: 16px;
-  height: 28px;
-  min-width: 80px;
-}
-
 /* Small size - 24px height */
 .button--small {
   padding: 4px 12px;
+  font-size: 12px;
   line-height: 16px;
   height: 24px;
   min-width: 80px;
 }
 
-.button:focus {
+/* Default size - 28px height */
+.button--default {
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  height: 28px;
+  min-width: 80px;
+}
+
+/* Large size - 40px height (promotional/CTA buttons) */
+.button--large {
+  padding: 6px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  height: 40px;
+  min-width: 160px;
+}
+
+.button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
 }

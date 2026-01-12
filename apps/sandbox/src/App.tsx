@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackContextMenu, TrackType } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, SwipeyDots } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
@@ -145,6 +145,7 @@ function CanvasDemoContent() {
   const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const [scrollX, setScrollX] = React.useState(0);
+  const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('project');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
@@ -1442,6 +1443,12 @@ function CanvasDemoContent() {
 
       {/* Toast Container */}
       <ToastContainer />
+
+      {/* Welcome Dialog */}
+      <WelcomeDialog
+        isOpen={welcomeDialog.isOpen}
+        onClose={welcomeDialog.onClose}
+      />
 
       {/* Share Audio Dialog */}
       <Dialog

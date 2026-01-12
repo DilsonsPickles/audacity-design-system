@@ -8,6 +8,12 @@ export interface GhostButtonProps {
    */
   icon?: IconName;
   /**
+   * Button size
+   * - small: 20px × 20px, 16px icon (default, icon-only)
+   * - large: 48px × 48px, 32px icon (carousel buttons)
+   */
+  size?: 'small' | 'large';
+  /**
    * Optional label text to display next to the icon
    */
   label?: string;
@@ -43,6 +49,7 @@ export interface GhostButtonProps {
 
 export const GhostButton: React.FC<GhostButtonProps> = ({
   icon = 'menu',
+  size = 'small',
   label,
   onClick,
   disabled = false,
@@ -57,17 +64,19 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
     onClick?.(e);
   };
 
+  const iconSize = size === 'large' ? 32 : 16;
+
   return (
     <button
       type="button"
-      className={`ghost-button ${label ? 'ghost-button--with-label' : ''} ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
+      className={`ghost-button ghost-button--${size} ${label ? 'ghost-button--with-label' : ''} ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
       onClick={handleClick}
       disabled={disabled}
       aria-label={ariaLabel}
       tabIndex={tabIndex}
       onKeyDown={onKeyDown}
     >
-      <Icon name={icon} size={16} />
+      <Icon name={icon} size={iconSize} />
       {label && <span className="ghost-button__label">{label}</span>}
     </button>
   );

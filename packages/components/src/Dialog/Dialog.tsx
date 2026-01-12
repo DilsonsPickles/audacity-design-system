@@ -65,6 +65,12 @@ export interface DialogProps {
    * @default false
    */
   maximizable?: boolean;
+  /**
+   * Remove default body padding (16px 16px 24px)
+   * Use when dialog content needs custom padding
+   * @default false
+   */
+  noPadding?: boolean;
 }
 
 /**
@@ -84,6 +90,7 @@ export function Dialog({
   className = '',
   width = 400,
   maximizable = false,
+  noPadding = false,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -355,7 +362,7 @@ export function Dialog({
         )}
 
         {/* Body */}
-        <div className="dialog__body">
+        <div className={`dialog__body ${noPadding ? 'dialog__body--no-padding' : ''}`}>
           {children}
         </div>
 

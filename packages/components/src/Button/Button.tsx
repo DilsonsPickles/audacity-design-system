@@ -9,8 +9,11 @@ export interface ButtonProps {
   variant?: 'primary' | 'secondary';
   /**
    * Button size
+   * - small: 24px height, 12px font
+   * - default: 28px height, 12px font
+   * - large: 40px height, 14px font (promotional/CTA buttons)
    */
-  size?: 'default' | 'small';
+  size?: 'small' | 'default' | 'large';
   /**
    * Button text
    */

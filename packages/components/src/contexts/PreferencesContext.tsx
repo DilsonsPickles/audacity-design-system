@@ -7,6 +7,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface PreferencesState {
+  // General
+  showWelcomeDialog: boolean;
+  checkForUpdates: boolean;
+
   // Audio Settings
   audioHost: string;
   recordingDevice: string;
@@ -39,6 +43,10 @@ export interface PreferencesState {
 }
 
 const defaultPreferences: PreferencesState = {
+  // General
+  showWelcomeDialog: true,
+  checkForUpdates: true,
+
   // Audio Settings
   audioHost: 'core-audio',
   recordingDevice: 'default',

@@ -1,8 +1,5 @@
 .ghost-button {
-  width: 20px;
-  height: 20px;
   border: none;
-  border-radius: 2px;
   background-color: transparent;
   cursor: pointer;
   padding: 0;
@@ -12,6 +9,20 @@
   gap: 8px;
   transition: background-color 0.1s ease;
   color: var(--tcp-icon-default, #14151A);
+}
+
+/* Small size (default) - 20px × 20px */
+.ghost-button--small {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+}
+
+/* Large size - 48px × 48px (carousel buttons) */
+.ghost-button--large {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
 }
 
 /* Ghost button with label (for project toolbar) */
