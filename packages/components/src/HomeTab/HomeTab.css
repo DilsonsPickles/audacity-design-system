@@ -261,18 +261,3 @@
   gap: 8px;
 }
 
-.home-tab__btn {
-  padding: 8px 16px;
-  border: 1px solid var(--home-tab-footer-card-border);
-  border-radius: 4px;
-  background-color: var(--home-tab-footer-card-bg);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 16px;
-  color: var(--home-tab-footer-text);
-  cursor: default;
-}
-
-.home-tab__btn:hover {
-  background-color: var(--home-tab-footer-btn-bg);
-}

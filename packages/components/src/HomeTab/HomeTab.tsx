@@ -2,6 +2,7 @@ import React from 'react';
 import { SearchField } from '../SearchField';
 import { Icon } from '../Icon';
 import { ProjectThumbnail } from '../ProjectThumbnail';
+import { Button } from '../Button';
 import { useTheme } from '../ThemeProvider';
 import './HomeTab.css';
 
@@ -48,10 +49,6 @@ export function HomeTab({
     '--home-tab-card-link': theme.border.focus,
     '--home-tab-footer-bg': theme.background.surface.inset,
     '--home-tab-footer-border': theme.border.default,
-    '--home-tab-footer-card-bg': theme.background.surface.elevated,
-    '--home-tab-footer-card-border': theme.border.default,
-    '--home-tab-footer-text': theme.foreground.text.primary,
-    '--home-tab-footer-btn-bg': theme.background.surface.subtle,
     '--home-tab-placeholder-bg': theme.background.surface.subtle,
   } as React.CSSProperties;
 
@@ -193,12 +190,12 @@ export function HomeTab({
                     </div>
                   </div>
                   <div className="home-tab__empty-actions">
-                    <button className="home-tab__btn" onClick={onCreateAccount}>
+                    <Button variant="secondary" size="default" onClick={onCreateAccount}>
                       Create account
-                    </button>
-                    <button className="home-tab__btn" onClick={onSignIn}>
+                    </Button>
+                    <Button variant="secondary" size="default" onClick={onSignIn}>
                       Sign in
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -213,12 +210,12 @@ export function HomeTab({
                     </div>
                   </div>
                   <div className="home-tab__empty-actions">
-                    <button className="home-tab__btn" onClick={onCreateAccount}>
+                    <Button variant="secondary" size="default" onClick={onCreateAccount}>
                       Create account
-                    </button>
-                    <button className="home-tab__btn" onClick={onSignIn}>
+                    </Button>
+                    <Button variant="secondary" size="default" onClick={onSignIn}>
                       Sign in
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -252,10 +249,16 @@ export function HomeTab({
 
         {/* Bottom Actions */}
         <div className="home-tab__footer">
-          <button className="home-tab__btn">Project manager (online)</button>
+          <Button variant="secondary" size="default">
+            Project manager (online)
+          </Button>
           <div className="home-tab__footer-right">
-            <button className="home-tab__btn" onClick={onNewProject}>New</button>
-            <button className="home-tab__btn" onClick={onOpenOther}>Open other...</button>
+            <Button variant="secondary" size="default" onClick={onNewProject}>
+              New
+            </Button>
+            <Button variant="secondary" size="default" onClick={onOpenOther}>
+              Open other...
+            </Button>
           </div>
         </div>
       </div>
