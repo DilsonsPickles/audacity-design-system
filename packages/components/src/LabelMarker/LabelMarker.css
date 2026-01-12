@@ -172,3 +172,10 @@
   outline-offset: 2px;
 }
 
+/* Keyboard focus state for label marker */
+.label-marker--focused {
+  outline: 2px solid var(--label-marker-focus-outline);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+

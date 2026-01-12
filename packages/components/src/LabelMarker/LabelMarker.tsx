@@ -34,6 +34,11 @@ export interface LabelMarkerProps {
   selected?: boolean;
 
   /**
+   * Whether the label has keyboard focus
+   */
+  focused?: boolean;
+
+  /**
    * Click handler
    */
   onClick?: () => void;
@@ -78,6 +83,7 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   width = 225,
   stalkHeight = 60,
   selected = false,
+  focused = false,
   onClick,
   onDoubleClick,
   onRegionResize,
@@ -238,7 +244,7 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
     // Point marker: center stalk with ears and label box to the right
     return (
       <div
-        className={`label-marker label-marker--point label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${className}`}
+        className={`label-marker label-marker--point label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${focused ? 'label-marker--focused' : ''} ${className}`}
         style={{
           position: 'relative',
           ...style,
@@ -281,7 +287,7 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   // Region marker: left and right stalks with ears and full-width label box
   return (
     <div
-      className={`label-marker label-marker--region label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${className}`}
+      className={`label-marker label-marker--region label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${focused ? 'label-marker--focused' : ''} ${className}`}
       style={{
         position: 'relative',
         ...style,

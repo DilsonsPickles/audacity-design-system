@@ -84,7 +84,7 @@ export function Canvas({
   } | null>(null);
 
   // Track focused label for accessibility
-  const [, setFocusedLabelId] = useState<number | null>(null);
+  const [focusedLabelId, setFocusedLabelId] = useState<number | null>(null);
 
   // Label dragging state - stores initial positions for all labels being dragged
   const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number }> | null>(null);
@@ -1229,6 +1229,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       type={type}
                       state="idle"
                       selected={selectedLabelIds.includes(labelKeyId)}
+                      focused={focusedLabelId === label.id}
                       width={width}
                       stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
                       onSelect={() => {
