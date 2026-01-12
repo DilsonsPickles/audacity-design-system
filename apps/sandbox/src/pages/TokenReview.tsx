@@ -20,7 +20,10 @@ export function TokenReview() {
       backgroundColor: theme.background.surface.default,
       color: theme.foreground.text.primary,
       minHeight: '100vh',
-      fontFamily: 'Inter, sans-serif'
+      fontFamily: 'Inter, sans-serif',
+      overflowY: 'auto',
+      height: '100vh',
+      boxSizing: 'border-box'
     }}>
       {/* Header */}
       <div style={{ marginBottom: '40px' }}>

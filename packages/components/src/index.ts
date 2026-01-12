@@ -5,6 +5,12 @@
  */
 
 /**
+ * Theme System
+ */
+export * from './ThemeProvider';
+export { lightTheme, darkTheme, type ThemeTokens } from '@audacity-ui/tokens';
+
+/**
  * Constants
  */
 export * from './constants';
