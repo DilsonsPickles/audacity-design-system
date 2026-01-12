@@ -1029,143 +1029,195 @@ function CanvasDemoContent() {
         }}
         showDebugMenu={true}
         centerContent={
-          <ToolbarGroup ariaLabel="Toolbar options" startTabIndex={3}>
-            <GhostButton icon="mixer" label="Mixer" />
-            <GhostButton icon="cog" label="Audio setup" />
-            <GhostButton
-              icon="cloud"
-              label="Share audio"
-              onClick={() => setIsShareDialogOpen(true)}
-            />
-          </ToolbarGroup>
+          activeMenuItem !== 'export' ? (
+            <ToolbarGroup ariaLabel="Toolbar options" startTabIndex={3}>
+              <GhostButton icon="mixer" label="Mixer" />
+              <GhostButton icon="cog" label="Audio setup" />
+              <GhostButton
+                icon="cloud"
+                label="Share audio"
+                onClick={() => setIsShareDialogOpen(true)}
+              />
+            </ToolbarGroup>
+          ) : null
         }
         rightContent={
-          <>
-            <span style={{ fontSize: '13px', color: '#3d3e42', marginRight: '8px' }}>Workspace</span>
-            <ToolbarGroup ariaLabel="Workspace controls" startTabIndex={4}>
-              <select
-                style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
-                value={workspace}
-                onChange={(e) => {
-                  const newWorkspace = e.target.value as Workspace;
-                  setWorkspace(newWorkspace);
+          activeMenuItem !== 'export' ? (
+            <>
+              <span style={{ fontSize: '13px', color: '#3d3e42', marginRight: '8px' }}>Workspace</span>
+              <ToolbarGroup ariaLabel="Workspace controls" startTabIndex={4}>
+                <select
+                  style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
+                  value={workspace}
+                  onChange={(e) => {
+                    const newWorkspace = e.target.value as Workspace;
+                    setWorkspace(newWorkspace);
 
-                  // When switching to spectral editing, enable spectrogram mode
-                  if (newWorkspace === 'spectral-editing') {
-                    // SET_SPECTROGRAM_MODE will save current viewModes and set all tracks to spectrogram
-                    dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
-                  } else if (newWorkspace === 'classic') {
-                    // When switching back to classic, disable spectrogram mode
-                    // This will restore tracks to their saved viewModes from before spectral mode
-                    dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // On Enter, trigger the select to show options (workaround for browsers where Enter doesn't open dropdown)
-                  if (e.key === 'Enter') {
-                    const target = e.target as HTMLSelectElement;
-                    // Show picker is a modern API to programmatically open the dropdown
-                    if ('showPicker' in target) {
-                      try {
-                        (target as any).showPicker();
-                      } catch (err) {
-                        // showPicker() might fail in some contexts, fallback to native behavior
+                    // When switching to spectral editing, enable spectrogram mode
+                    if (newWorkspace === 'spectral-editing') {
+                      // SET_SPECTROGRAM_MODE will save current viewModes and set all tracks to spectrogram
+                      dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
+                    } else if (newWorkspace === 'classic') {
+                      // When switching back to classic, disable spectrogram mode
+                      // This will restore tracks to their saved viewModes from before spectral mode
+                      dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // On Enter, trigger the select to show options (workaround for browsers where Enter doesn't open dropdown)
+                    if (e.key === 'Enter') {
+                      const target = e.target as HTMLSelectElement;
+                      // Show picker is a modern API to programmatically open the dropdown
+                      if ('showPicker' in target) {
+                        try {
+                          (target as any).showPicker();
+                        } catch (err) {
+                          // showPicker() might fail in some contexts, fallback to native behavior
+                        }
                       }
                     }
-                  }
-                }}
-              >
-                <option value="classic">Classic</option>
-                <option value="spectral-editing">Spectral editing</option>
-              </select>
-              <GhostButton icon="undo" />
-              <GhostButton icon="redo" />
-            </ToolbarGroup>
-          </>
+                  }}
+                >
+                  <option value="classic">Classic</option>
+                  <option value="spectral-editing">Spectral editing</option>
+                </select>
+                <GhostButton icon="undo" />
+                <GhostButton icon="redo" />
+              </ToolbarGroup>
+            </>
+          ) : null
         }
       />
       {activeMenuItem !== 'home' && (
         <Toolbar startTabIndex={5}>
-          {/* Transport controls - shown in all workspaces */}
-          <ToolbarButtonGroup gap={2}>
-            <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
-            <TransportButton icon="stop" onClick={handleStop} />
-            <TransportButton icon="record" disabled={isPlaying} />
-            <TransportButton icon="skip-back" disabled={isPlaying} />
-            <TransportButton icon="skip-forward" disabled={isPlaying} />
-            <TransportButton icon="loop" />
-          </ToolbarButtonGroup>
-
-          {workspace === 'classic' && (
+          {/* Transport controls */}
+          {activeMenuItem === 'export' ? (
+            // Export tab: Play, stop, loop + export buttons
             <>
+              <ToolbarButtonGroup gap={2}>
+                <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
+                <TransportButton icon="stop" onClick={handleStop} />
+                <TransportButton icon="loop" />
+              </ToolbarButtonGroup>
+
               <ToolbarDivider />
 
-              <ToolbarButtonGroup gap={2}>
-                <ToggleToolButton
-                  icon="automation"
-                  isActive={state.envelopeMode}
-                  onClick={handleToggleEnvelope}
-                />
+              <ToolbarButtonGroup gap={8}>
+                <Button
+                  variant="secondary"
+                  size="default"
+                  icon={'\uEF25'}
+                  onClick={() => setIsShareDialogOpen(true)}
+                >
+                  Share on audio.com
+                </Button>
               </ToolbarButtonGroup>
 
-              <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" />
-                <ToolButton icon="zoom-out" />
-              </ToolbarButtonGroup>
+              <ToolbarDivider />
 
-              <ToolbarButtonGroup gap={2}>
-                <ToolButton
-                  icon="cut"
-                  onClick={() => toast.info('Cut', 'Selected audio has been cut to clipboard', undefined, 6000)}
-                />
-                <ToolButton
-                  icon="copy"
-                  onClick={() => toast.info('Copy', 'Selected audio has been copied to clipboard', undefined, 6000)}
-                />
-                <ToolButton
-                  icon="paste"
-                  onClick={() => toast.info('Paste', 'Audio has been pasted from clipboard', undefined, 6000)}
-                />
-              </ToolbarButtonGroup>
-
-              <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="trim" />
-                <ToolButton icon="silence" />
+              <ToolbarButtonGroup gap={8}>
+                <Button
+                  variant="secondary"
+                  size="default"
+                  icon={'\uEF24'}
+                  onClick={() => toast.info('Export audio clicked')}
+                >
+                  Export audio
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="default"
+                  icon={'\uEF1F'}
+                  onClick={() => toast.info('Export loop region clicked')}
+                >
+                  Export loop region
+                </Button>
               </ToolbarButtonGroup>
             </>
-          )}
-
-          {workspace === 'spectral-editing' && (
+          ) : (
+            // Project tab: Show all transport controls
             <>
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" />
-                <ToolButton icon="zoom-out" />
+                <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
+                <TransportButton icon="stop" onClick={handleStop} />
+                <TransportButton icon="record" disabled={isPlaying} />
+                <TransportButton icon="skip-back" disabled={isPlaying} />
+                <TransportButton icon="skip-forward" disabled={isPlaying} />
+                <TransportButton icon="loop" />
               </ToolbarButtonGroup>
 
+              {workspace === 'classic' && (
+                <>
+                  <ToolbarDivider />
+
+                  <ToolbarButtonGroup gap={2}>
+                    <ToggleToolButton
+                      icon="automation"
+                      isActive={state.envelopeMode}
+                      onClick={handleToggleEnvelope}
+                    />
+                  </ToolbarButtonGroup>
+
+                  <ToolbarButtonGroup gap={2}>
+                    <ToolButton icon="zoom-in" />
+                    <ToolButton icon="zoom-out" />
+                  </ToolbarButtonGroup>
+
+                  <ToolbarButtonGroup gap={2}>
+                    <ToolButton
+                      icon="cut"
+                      onClick={() => toast.info('Cut', 'Selected audio has been cut to clipboard', undefined, 6000)}
+                    />
+                    <ToolButton
+                      icon="copy"
+                      onClick={() => toast.info('Copy', 'Selected audio has been copied to clipboard', undefined, 6000)}
+                    />
+                    <ToolButton
+                      icon="paste"
+                      onClick={() => toast.info('Paste', 'Audio has been pasted from clipboard', undefined, 6000)}
+                    />
+                  </ToolbarButtonGroup>
+
+                  <ToolbarButtonGroup gap={2}>
+                    <ToolButton icon="trim" />
+                    <ToolButton icon="silence" />
+                  </ToolbarButtonGroup>
+                </>
+              )}
+
+              {workspace === 'spectral-editing' && (
+                <>
+                  <ToolbarButtonGroup gap={2}>
+                    <ToolButton icon="zoom-in" />
+                    <ToolButton icon="zoom-out" />
+                  </ToolbarButtonGroup>
+
+                  <ToolbarButtonGroup gap={2}>
+                    <ToggleToolButton
+                      icon="waveform"
+                      isActive={state.spectrogramMode}
+                      onClick={handleToggleSpectrogram}
+                    />
+                  </ToolbarButtonGroup>
+                </>
+              )}
+
+              <ToolbarDivider />
+
+              {/* TimeCode display */}
               <ToolbarButtonGroup gap={2}>
-                <ToggleToolButton
-                  icon="waveform"
-                  isActive={state.spectrogramMode}
-                  onClick={handleToggleSpectrogram}
+                <TimeCode
+                  value={currentTime}
+                  format={timeCodeFormat}
+                  onChange={(newTime) => {
+                    // When user edits TimeCode, update the playhead position
+                    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime });
+                  }}
+                  onFormatChange={setTimeCodeFormat}
                 />
               </ToolbarButtonGroup>
             </>
           )}
-
-          <ToolbarDivider />
-
-          {/* TimeCode display */}
-          <ToolbarButtonGroup gap={2}>
-            <TimeCode
-              value={currentTime}
-              format={timeCodeFormat}
-              onChange={(newTime) => {
-                // When user edits TimeCode, update the playhead position
-                dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime });
-              }}
-              onFormatChange={setTimeCodeFormat}
-            />
-          </ToolbarButtonGroup>
         </Toolbar>
       )}
 
@@ -1179,46 +1231,47 @@ function CanvasDemoContent() {
         />
       ) : (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* Track Control Side Panel */}
-          <TrackControlSidePanel
-            trackHeights={state.tracks.map(t => t.height || 114)}
-            trackViewModes={state.tracks.map(t => t.viewMode)}
-            focusedTrackIndex={keyboardFocusedTrack}
-            scrollRef={trackHeaderScrollRef}
-            onScroll={handleTrackHeaderScroll}
-            onTrackResize={(trackIndex, height) => {
-              dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
-            }}
-            onAddTrackType={(type: TrackType) => {
-              const newTrack = {
-                id: state.tracks.length + 1,
-                name: type === 'label' ? `Label ${state.tracks.length + 1}` : `Track ${state.tracks.length + 1}`,
-                height: type === 'label' ? 82 : 114,
-                channelSplitRatio: 0.5,
-                clips: [],
-              };
-              dispatch({ type: 'ADD_TRACK', payload: newTrack });
-              toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} track added`);
-            }}
-            showMidiOption={false}
-            onDeleteTrack={(trackIndex) => {
-              dispatch({
-                type: 'DELETE_TRACK',
-                payload: trackIndex,
-              });
-            }}
-            onMoveTrackUp={(trackIndex) => {
-              console.log('Move track up:', trackIndex);
-              // TODO: Implement move track up
-            }}
-            onMoveTrackDown={(trackIndex) => {
-              console.log('Move track down:', trackIndex);
-              // TODO: Implement move track down
-            }}
-            onTrackViewChange={(trackIndex, viewMode) => {
-              dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
-            }}
-          >
+          {/* Track Control Side Panel - Hidden on export tab */}
+          {activeMenuItem !== 'export' && (
+            <TrackControlSidePanel
+              trackHeights={state.tracks.map(t => t.height || 114)}
+              trackViewModes={state.tracks.map(t => t.viewMode)}
+              focusedTrackIndex={keyboardFocusedTrack}
+              scrollRef={trackHeaderScrollRef}
+              onScroll={handleTrackHeaderScroll}
+              onTrackResize={(trackIndex, height) => {
+                dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
+              }}
+              onAddTrackType={(type: TrackType) => {
+                const newTrack = {
+                  id: state.tracks.length + 1,
+                  name: type === 'label' ? `Label ${state.tracks.length + 1}` : `Track ${state.tracks.length + 1}`,
+                  height: type === 'label' ? 82 : 114,
+                  channelSplitRatio: 0.5,
+                  clips: [],
+                };
+                dispatch({ type: 'ADD_TRACK', payload: newTrack });
+                toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} track added`);
+              }}
+              showMidiOption={false}
+              onDeleteTrack={(trackIndex) => {
+                dispatch({
+                  type: 'DELETE_TRACK',
+                  payload: trackIndex,
+                });
+              }}
+              onMoveTrackUp={(trackIndex) => {
+                console.log('Move track up:', trackIndex);
+                // TODO: Implement move track up
+              }}
+              onMoveTrackDown={(trackIndex) => {
+                console.log('Move track down:', trackIndex);
+                // TODO: Implement move track down
+              }}
+              onTrackViewChange={(trackIndex, viewMode) => {
+                dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
+              }}
+            >
             {state.tracks.map((track, index) => {
               // Determine track type from track name (temporary until we add trackType to state)
               const trackType = track.name.toLowerCase().includes('label') ? 'label' : 'mono';
@@ -1314,6 +1367,7 @@ function CanvasDemoContent() {
               );
             })}
           </TrackControlSidePanel>
+          )}
 
           {/* Timeline Ruler + Canvas Area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

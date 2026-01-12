@@ -141,17 +141,17 @@ export function Toolbar({
 
 export interface ToolbarDividerProps {
   /**
-   * Width of the divider (includes padding on both sides)
-   * @default 17
+   * Width of the divider
+   * @default 1
    */
   width?: number;
 }
 
 /**
  * Vertical divider for separating toolbar button groups
- * - Width: 17px (default) with centered 1px line
+ * - Width: 1px (default)
  */
-export function ToolbarDivider({ width = 17 }: ToolbarDividerProps) {
+export function ToolbarDivider({ width = 1 }: ToolbarDividerProps) {
   return (
     <div
       className="toolbar__divider"

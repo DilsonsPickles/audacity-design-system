@@ -22,6 +22,7 @@ export type IconName =
   | 'automation'
   | 'cloud'
   | 'cloud-sync'
+  | 'export'
   | 'copy'
   | 'paste'
   | 'cut'
@@ -66,8 +67,9 @@ const ICON_MAP: Record<IconName, string> = {
   'zoom-in': '\uEF18',
   'zoom-out': '\uEF16',
   automation: '\uF45C',
-  cloud: '\uF435',
-  'cloud-sync': '\uF450',
+  cloud: '\uEF25',
+  'cloud-sync': '\uEF25',
+  export: '\uEF24',
   copy: '\uF398',
   paste: '\uF399',
   cut: '\uF39A',
