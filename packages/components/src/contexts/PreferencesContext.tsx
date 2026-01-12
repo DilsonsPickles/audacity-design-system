@@ -10,6 +10,7 @@ export interface PreferencesState {
   // General
   showWelcomeDialog: boolean;
   checkForUpdates: boolean;
+  operatingSystem: 'windows' | 'macos';
 
   // Audio Settings
   audioHost: string;
@@ -46,6 +47,7 @@ const defaultPreferences: PreferencesState = {
   // General
   showWelcomeDialog: true,
   checkForUpdates: true,
+  operatingSystem: 'windows',
 
   // Audio Settings
   audioHost: 'core-audio',

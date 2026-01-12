@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '@audacity-ui/components';
 import '@audacity-ui/components/style.css';
@@ -12,13 +13,13 @@ const meta = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['secondary'],
+      options: ['primary', 'secondary'],
       description: 'Button variant',
     },
     size: {
       control: 'select',
-      options: ['default', 'small'],
-      description: 'Button size (default=28px, small=24px)',
+      options: ['small', 'default', 'large'],
+      description: 'Button size (small=24px, default=28px, large=40px)',
     },
     showIcon: {
       control: 'boolean',
@@ -85,10 +86,56 @@ export const DisabledWithIcon: Story = {
   },
 };
 
+// Primary variant
+export const Primary: Story = {
+  args: {
+    variant: 'primary',
+    size: 'default',
+    children: 'Primary',
+    showIcon: false,
+  },
+};
+
+// Large size (40px) - for CTAs
+export const Large: Story = {
+  args: {
+    variant: 'primary',
+    size: 'large',
+    children: 'Watch video',
+    showIcon: false,
+  },
+};
+
+// Variant comparison
+export const VariantComparison: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+      <div>
+        <Button variant="primary" size="default" showIcon={false}>Primary</Button>
+        <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+          Primary
+        </div>
+      </div>
+      <div>
+        <Button variant="secondary" size="default" showIcon={false}>Secondary</Button>
+        <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+          Secondary
+        </div>
+      </div>
+    </div>
+  ),
+};
+
 // Size comparison
 export const SizeComparison: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+      <div>
+        <Button variant="secondary" size="small" showIcon={false}>Small</Button>
+        <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+          Small (24px)
+        </div>
+      </div>
       <div>
         <Button variant="secondary" size="default" showIcon={false}>Default</Button>
         <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
@@ -96,9 +143,9 @@ export const SizeComparison: Story = {
         </div>
       </div>
       <div>
-        <Button variant="secondary" size="small" showIcon={false}>Small</Button>
+        <Button variant="primary" size="large" showIcon={false}>Large</Button>
         <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-          Small (24px)
+          Large (40px)
         </div>
       </div>
     </div>

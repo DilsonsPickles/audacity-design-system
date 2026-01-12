@@ -1,88 +1,162 @@
 /**
- * DialogHeader - Dialog header component styles
+ * DialogHeader Styles
  */
 
 .dialog-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 28px;
-  padding: 0 8px;
-  background-color: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
+  background: var(--background-surface-bg-surface-primary-idle, #f8f8f9);
   border-bottom: 1px solid var(--stroke-main-stroke-primary, #d4d5d9);
-  flex-shrink: 0;
   cursor: move;
   user-select: none;
-}
-
-.dialog-header__content {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .dialog-header__logo {
   width: 16px;
-  height: 13.333px;
+  height: 16px;
+  object-fit: contain;
   flex-shrink: 0;
-  object-fit: cover;
 }
 
 .dialog-header__title {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
-  font-size: var(--font-size-body, 12px);
-  font-weight: 400;
-  line-height: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
   color: var(--text-txt-primary, #14151a);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dialog-header__buttons {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-shrink: 0;
+/* ==================== macOS Variant ==================== */
+
+.dialog-header--macos {
+  height: 28px;
+  padding: 8px 12px;
+  gap: 10px;
+  position: relative;
 }
 
-.dialog-header__maximize-button,
-.dialog-header__close-button {
+.dialog-header__macos-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dialog-header__macos-button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s ease;
+}
+
+.dialog-header__macos-button:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.dialog-header__macos-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dialog-header__macos-button:focus {
+  outline: none;
+}
+
+.dialog-header__macos-button:focus-visible {
+  outline: 2px solid #677ce4;
+  outline-offset: 2px;
+}
+
+/* Hide focus outline when auto-focused (programmatically focused on dialog open) */
+.dialog-header__macos-button[data-focus-method="auto"]:focus,
+.dialog-header__macos-button[data-focus-method="auto"]:focus-visible {
+  outline: none;
+}
+
+.dialog-header__macos-button--close {
+  background-color: #ec695e;
+}
+
+.dialog-header__macos-button--minimize {
+  background-color: #f3bf4f;
+}
+
+.dialog-header__macos-button--maximize {
+  background-color: #61c554;
+}
+
+.dialog-header__macos-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  pointer-events: none;
+}
+
+/* ==================== Windows Variant ==================== */
+
+.dialog-header--windows {
+  height: 28px;
+  justify-content: space-between;
+  padding: 0;
+}
+
+.dialog-header__windows-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 100%;
+}
+
+.dialog-header__windows-controls {
+  display: flex;
+  height: 100%;
+}
+
+.dialog-header__windows-control {
+  width: 40px;
+  height: 28px;
+  border: none;
+  background-color: transparent;
+  font-family: 'Segoe MDL2 Assets', sans-serif;
+  font-size: 10px;
+  line-height: normal;
+  color: var(--text-txt-primary, #14151a);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 28px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--icon-icon-default, #14151a);
-  flex-shrink: 0;
+  transition: background-color 0.15s ease;
 }
 
-.dialog-header__maximize-button {
-  margin: 0;
+.dialog-header__windows-control:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-.dialog-header__close-button {
-  margin: 0 -8px 0 0;
+.dialog-header__windows-control--close:hover {
+  background-color: #e81123;
+  color: #ffffff;
 }
 
-.dialog-header__maximize-button:hover,
-.dialog-header__close-button:hover {
-  background-color: rgba(194, 196, 207, 0.3);
+.dialog-header__windows-control:focus {
+  outline: none;
 }
 
-.dialog-header__maximize-button:active,
-.dialog-header__close-button:active {
-  background-color: rgba(194, 196, 207, 0.5);
+.dialog-header__windows-control:focus-visible {
+  outline: 2px solid #677ce4;
+  outline-offset: -2px;
 }
 
-.dialog-header__maximize-icon {
-  font-size: 14px;
-  line-height: 1;
-  user-select: none;
+/* Hide focus outline when auto-focused (programmatically focused on dialog open) */
+.dialog-header__windows-control[data-focus-method="auto"]:focus,
+.dialog-header__windows-control[data-focus-method="auto"]:focus-visible {
+  outline: none;
 }

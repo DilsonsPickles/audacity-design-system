@@ -12,8 +12,13 @@ const meta = {
   argTypes: {
     icon: {
       control: 'select',
-      options: ['menu', 'mixer', 'undo', 'redo', 'play', 'pause', 'stop', 'record', 'rewind', 'forward'],
+      options: ['menu', 'mixer', 'undo', 'redo', 'play', 'pause', 'stop', 'record', 'rewind', 'forward', 'chevron-left', 'chevron-right'],
       description: 'Icon to display',
+    },
+    size: {
+      control: 'select',
+      options: ['small', 'large'],
+      description: 'Button size (small=20px, large=48px)',
     },
     disabled: {
       control: 'boolean',
@@ -52,19 +57,58 @@ export const WithMixerIcon: Story = {
   },
 };
 
+// Large size (48px) - for carousel navigation
+export const Large: Story = {
+  args: {
+    icon: 'chevron-left',
+    ariaLabel: 'Previous',
+    size: 'large',
+  },
+};
+
+// Size comparison
+export const SizeComparison: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+      <div>
+        <GhostButton icon="menu" ariaLabel="Menu" size="small" />
+        <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+          Small (20px)
+        </div>
+      </div>
+      <div>
+        <GhostButton icon="chevron-left" ariaLabel="Previous" size="large" />
+        <div style={{ marginTop: '8px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+          Large (48px)
+        </div>
+      </div>
+    </div>
+  ),
+};
+
+// Chevron icons (for carousel)
+export const ChevronIcons: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+      <GhostButton icon="chevron-left" ariaLabel="Previous" size="large" />
+      <GhostButton icon="chevron-right" ariaLabel="Next" size="large" />
+    </div>
+  ),
+};
+
 export const AllStates: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <GhostButton icon="menu" ariaLabel="Menu" />
+        <GhostButton icon="menu" ariaLabel="Menu" size="small" />
         <span style={{ fontSize: '12px', color: '#666' }}>Default (hover to see background)</span>
       </div>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <GhostButton icon="menu" ariaLabel="Menu" disabled />
+        <GhostButton icon="menu" ariaLabel="Menu" size="small" disabled />
         <span style={{ fontSize: '12px', color: '#666' }}>Disabled</span>
       </div>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <GhostButton icon="mixer" ariaLabel="Mixer" />
+        <GhostButton icon="mixer" ariaLabel="Mixer" size="small" />
         <span style={{ fontSize: '12px', color: '#666' }}>With mixer icon</span>
       </div>
     </div>

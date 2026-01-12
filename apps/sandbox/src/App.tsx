@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, SwipeyDots } from '@audacity-ui/components';
+import { ApplicationHeader, OperatingSystem, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, SwipeyDots } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
@@ -143,6 +143,7 @@ type Workspace = 'classic' | 'spectral-editing';
 function CanvasDemoContent() {
   const { state, dispatch } = useTracks();
   const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
+  const { preferences, updatePreference } = usePreferences();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const [scrollX, setScrollX] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
@@ -170,7 +171,6 @@ function CanvasDemoContent() {
   const [isCloudUploading, setIsCloudUploading] = React.useState(false);
   const [showDuration, setShowDuration] = React.useState(false);
   const [showProjectRate, setShowProjectRate] = React.useState(false);
-  const [operatingSystem, setOperatingSystem] = React.useState<OperatingSystem>('windows');
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
@@ -1016,7 +1016,7 @@ function CanvasDemoContent() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       <ApplicationHeader
-        os={operatingSystem}
+        os={preferences.operatingSystem}
         menuDefinitions={menuDefinitions}
       />
       <ProjectToolbar
@@ -1454,6 +1454,7 @@ function CanvasDemoContent() {
       <Dialog
         isOpen={isShareDialogOpen}
         title="Save to audio.com"
+        os={preferences.operatingSystem}
         onClose={() => setIsShareDialogOpen(false)}
         width={400}
         headerContent={
@@ -1540,6 +1541,7 @@ function CanvasDemoContent() {
       <Dialog
         isOpen={isCreateAccountOpen}
         title="Save to audio.com"
+        os={preferences.operatingSystem}
         onClose={() => setIsCreateAccountOpen(false)}
         width={420}
         footer={
@@ -1664,6 +1666,7 @@ function CanvasDemoContent() {
       {/* Syncing Your Project Dialog */}
       <Dialog
         isOpen={isSyncingDialogOpen}
+        os={preferences.operatingSystem}
         onClose={() => {
           setIsSyncingDialogOpen(false);
           setIsShareDialogOpen(false);
@@ -1767,8 +1770,8 @@ function CanvasDemoContent() {
         onShowDurationChange={setShowDuration}
         showProjectRate={showProjectRate}
         onShowProjectRateChange={setShowProjectRate}
-        operatingSystem={operatingSystem}
-        onOperatingSystemChange={setOperatingSystem}
+        operatingSystem={preferences.operatingSystem}
+        onOperatingSystemChange={(os) => updatePreference('operatingSystem', os)}
         trackCount={debugTrackCount}
         onTrackCountChange={setDebugTrackCount}
         onGenerateTracks={() => {

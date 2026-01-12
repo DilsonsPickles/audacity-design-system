@@ -71,6 +71,11 @@ export interface DialogProps {
    * @default false
    */
   noPadding?: boolean;
+  /**
+   * Operating system for platform-specific header controls
+   * @default 'macos'
+   */
+  os?: 'macos' | 'windows';
 }
 
 /**
@@ -91,6 +96,7 @@ export function Dialog({
   width = 400,
   maximizable = false,
   noPadding = false,
+  os = 'macos',
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -352,6 +358,7 @@ export function Dialog({
           isMaximized={isMaximized}
           onMaximize={() => setIsMaximized(!isMaximized)}
           onMouseDown={handleDragMouseDown}
+          os={os}
         />
 
         {/* Optional header content */}

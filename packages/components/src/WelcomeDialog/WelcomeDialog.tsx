@@ -92,6 +92,7 @@ export function WelcomeDialog({
     <Dialog
       isOpen={isOpen}
       title="Welcome"
+      os={preferences.operatingSystem}
       onClose={handleClose}
       width={800}
       noPadding={true}

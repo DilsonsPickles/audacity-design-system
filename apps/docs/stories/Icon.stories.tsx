@@ -12,7 +12,7 @@ const meta = {
   argTypes: {
     name: {
       control: 'select',
-      options: ['mixer', 'menu', 'undo', 'redo', 'play', 'pause', 'stop', 'record', 'rewind', 'forward'],
+      options: ['mixer', 'menu', 'undo', 'redo', 'play', 'pause', 'stop', 'record', 'rewind', 'forward', 'chevron-left', 'chevron-right'],
       description: 'Icon name from MusescoreIcon font',
     },
     size: {
@@ -103,6 +103,14 @@ export const AllIcons: Story = {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
         <Icon name="forward" size={24} />
         <span style={{ fontSize: '12px', color: '#666' }}>forward</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+        <Icon name="chevron-left" size={24} />
+        <span style={{ fontSize: '12px', color: '#666' }}>chevron-left</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+        <Icon name="chevron-right" size={24} />
+        <span style={{ fontSize: '12px', color: '#666' }}>chevron-right</span>
       </div>
     </div>
   ),

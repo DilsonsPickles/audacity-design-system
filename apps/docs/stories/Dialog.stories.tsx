@@ -52,6 +52,35 @@ export const Basic: Story = {
 };
 
 /**
+ * Dialog with no padding - useful for custom layouts
+ */
+export const NoPadding: Story = {
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <>
+        <Button variant="primary" onClick={() => setIsOpen(true)}>
+          Open Dialog (No Padding)
+        </Button>
+        <Dialog
+          isOpen={isOpen}
+          title="No Padding"
+          onClose={() => setIsOpen(false)}
+          width={500}
+          noPadding={true}
+        >
+          <div style={{ padding: '32px', backgroundColor: '#f0f0f0' }}>
+            <p style={{ margin: 0 }}>This dialog has noPadding=true.</p>
+            <p style={{ margin: '8px 0 0 0' }}>The content manages its own padding (32px in this case).</p>
+          </div>
+        </Dialog>
+      </>
+    );
+  },
+};
+
+/**
  * Dialog with footer buttons
  */
 export const WithFooter: Story = {

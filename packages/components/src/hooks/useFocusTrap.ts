@@ -67,12 +67,23 @@ export function useFocusTrap(
       }
     };
 
-    // Focus first element when dialog opens
+    // Focus first element when dialog opens (without showing focus indicator)
     const tabbableElements = getTabbableElements();
     if (tabbableElements.length > 0) {
       // Small delay to ensure the dialog is fully rendered
       setTimeout(() => {
-        tabbableElements[0].focus();
+        const firstElement = tabbableElements[0];
+        // Mark as programmatically focused to hide focus outline
+        firstElement.setAttribute('data-focus-method', 'auto');
+        firstElement.focus();
+        // Remove the attribute on any user interaction
+        const removeAutoFocus = () => {
+          firstElement.removeAttribute('data-focus-method');
+          firstElement.removeEventListener('keydown', removeAutoFocus);
+          firstElement.removeEventListener('mousedown', removeAutoFocus);
+        };
+        firstElement.addEventListener('keydown', removeAutoFocus);
+        firstElement.addEventListener('mousedown', removeAutoFocus);
       }, 10);
     }
 

@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { LabelMarker } from '@audacity-ui/components';
 import '@audacity-ui/components/style.css';

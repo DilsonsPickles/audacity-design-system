@@ -36,6 +36,11 @@ export interface DialogHeaderProps {
    */
   onMouseDown?: (e: React.MouseEvent) => void;
   /**
+   * Operating system for platform-specific header controls
+   * @default 'macos'
+   */
+  os?: 'macos' | 'windows';
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -52,11 +57,55 @@ export function DialogHeader({
   isMaximized = false,
   onMaximize,
   onMouseDown,
+  os = 'macos',
   className = '',
 }: DialogHeaderProps) {
+  // macOS variant - traffic lights on left
+  if (os === 'macos') {
+    return (
+      <div className={`dialog-header dialog-header--macos ${className}`} onMouseDown={onMouseDown}>
+        <div className="dialog-header__macos-controls">
+          {onClose && (
+            <button
+              className="dialog-header__macos-button dialog-header__macos-button--close"
+              onClick={onClose}
+              aria-label="Close"
+              type="button"
+            />
+          )}
+          <button
+            className="dialog-header__macos-button dialog-header__macos-button--minimize"
+            aria-label="Minimize"
+            type="button"
+            disabled
+          />
+          {maximizable && onMaximize && (
+            <button
+              className="dialog-header__macos-button dialog-header__macos-button--maximize"
+              onClick={onMaximize}
+              aria-label={isMaximized ? "Restore" : "Maximize"}
+              type="button"
+            />
+          )}
+        </div>
+        <div className="dialog-header__macos-title">
+          {logo && (
+            <img
+              src={logo}
+              alt=""
+              className="dialog-header__logo"
+            />
+          )}
+          <span className="dialog-header__title">{title}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Windows variant - controls on right
   return (
-    <div className={`dialog-header ${className}`} onMouseDown={onMouseDown}>
-      <div className="dialog-header__content">
+    <div className={`dialog-header dialog-header--windows ${className}`} onMouseDown={onMouseDown}>
+      <div className="dialog-header__windows-title">
         {logo && (
           <img
             src={logo}
@@ -64,31 +113,27 @@ export function DialogHeader({
             className="dialog-header__logo"
           />
         )}
-        <div className="dialog-header__title">
-          {title}
-        </div>
+        <span className="dialog-header__title">{title}</span>
       </div>
-      <div className="dialog-header__buttons">
+      <div className="dialog-header__windows-controls">
         {maximizable && onMaximize && (
           <button
-            className="dialog-header__maximize-button"
+            className="dialog-header__windows-control dialog-header__windows-control--maximize"
             onClick={onMaximize}
             aria-label={isMaximized ? "Restore" : "Maximize"}
             type="button"
           >
-            <span className="dialog-header__maximize-icon">
-              {isMaximized ? '❐' : '□'}
-            </span>
+            {isMaximized ? '\uE923' : '\uE922'}
           </button>
         )}
         {onClose && (
           <button
-            className="dialog-header__close-button"
+            className="dialog-header__windows-control dialog-header__windows-control--close"
             onClick={onClose}
-            aria-label="Close dialog"
+            aria-label="Close"
             type="button"
           >
-            <Icon name="close" size={12} />
+            {'\uE8BB'}
           </button>
         )}
       </div>
