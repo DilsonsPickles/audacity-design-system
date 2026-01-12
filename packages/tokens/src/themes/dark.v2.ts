@@ -13,7 +13,14 @@ export const darkTheme: ThemeTokens = {
       default: '#25262b',        // Main toolbar/panel background (dark gray)
       elevated: '#2c2e33',       // Dialogs, menus, dropdowns (slightly lighter)
       subtle: '#1a1b1e',         // Track headers, subtle containers (darker)
+      inset: '#1f2024',          // Recessed content areas (project grids, list containers)
       hover: '#2e3035',          // Interactive surface hover
+    },
+
+    dialog: {
+      header: '#25262b',         // Dialog header background
+      body: '#25262b',           // Dialog body/content background
+      footer: '#25262b',         // Dialog footer background
     },
 
     canvas: {
@@ -223,6 +230,10 @@ export const darkTheme: ThemeTokens = {
       focus: '#60a5fa',          // Light blue when focused
       error: '#ef4444',          // Red for errors
       disabled: '#2d2f34',       // Dark gray when disabled
+    },
+    control: {
+      radio: '#9ca3af',          // Radio button border (lighter in dark theme)
+      checkbox: '#9ca3af',       // Checkbox border (lighter in dark theme)
     },
   },
 

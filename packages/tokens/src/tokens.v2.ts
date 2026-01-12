@@ -53,8 +53,20 @@ export interface ThemeTokens {
       elevated: string;
       /** Subtle/recessed surfaces (track headers, subtle containers) */
       subtle: string;
+      /** Inset/recessed content areas (project grids, list containers) */
+      inset: string;
       /** Hover state for interactive surfaces */
       hover: string;
+    };
+
+    /** Dialog-specific backgrounds */
+    dialog: {
+      /** Dialog header background */
+      header: string;
+      /** Dialog body/content background */
+      body: string;
+      /** Dialog footer background */
+      footer: string;
     };
 
     /** Canvas backgrounds (audio workspace) */
@@ -304,6 +316,11 @@ export interface ThemeTokens {
       focus: string;
       error: string;
       disabled: string;
+    };
+    /** Control borders (checkboxes, radios) */
+    control: {
+      radio: string;
+      checkbox: string;
     };
   };
 

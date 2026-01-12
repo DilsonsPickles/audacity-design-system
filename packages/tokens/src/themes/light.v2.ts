@@ -13,7 +13,14 @@ export const lightTheme: ThemeTokens = {
       default: '#F8F8F9',        // Main toolbar/panel background (track panel active)
       elevated: '#E3E3E8',       // Dialogs, menus, dropdowns, ruler, side panel
       subtle: '#EEEEF1',         // Track headers, subtle containers (track panel idle)
+      inset: '#EBEDF0',          // Recessed content areas (project grids, list containers)
       hover: '#F2F2F7',          // Interactive surface hover (track panel hover)
+    },
+
+    dialog: {
+      header: '#F8F8F9',         // Dialog header background
+      body: '#F8F8F9',           // Dialog body/content background
+      footer: '#F8F8F9',         // Dialog footer background
     },
 
     canvas: {
@@ -60,12 +67,12 @@ export const lightTheme: ThemeTokens = {
       },
 
       checkbox: {
-        idle: '#FFFFFF',         // White background
-        hover: '#F9F9FA',        // Slight gray on hover
-        pressed: '#EBEDF0',      // Darker when pressed
+        idle: '#D2D4DC',         // Light gray background
+        hover: '#C8CAD3',        // Darker gray on hover
+        pressed: '#BEC1CC',      // Even darker when pressed
         checked: '#84B5FF',      // Blue when checked
         checkedHover: '#A2C7FF', // Lighter blue on hover
-        disabled: '#F2F3F5',     // Light gray when disabled
+        disabled: '#F2F3F5',     // Very light gray when disabled
       },
 
       radio: {
@@ -214,7 +221,7 @@ export const lightTheme: ThemeTokens = {
     error: '#F08080',            // Red error border
     success: '#74BE59',          // Green success border
     warning: '#FF9E65',          // Orange warning border
-    divider: '#EBEDF0',          // Divider/separator color
+    divider: '#D4D5D9',          // Divider/separator color - matches main border
     onElevated: '#D4D5D9',       // Border on elevated surfaces (ruler, dialogs) - matches Figma
     onSurface: '#E9E9E9',        // Border on default surfaces (toolbars, panels) - same contrast as onElevated
     input: {
@@ -223,6 +230,10 @@ export const lightTheme: ThemeTokens = {
       focus: '#84B5FF',          // Blue when focused
       error: '#F08080',          // Red for errors
       disabled: '#EBEDF0',       // Light gray when disabled
+    },
+    control: {
+      radio: '#5B5B5F',          // Radio button border
+      checkbox: '#5B5B5F',       // Checkbox border
     },
   },
 

@@ -31,7 +31,7 @@ export function HomeTab({
 
   const style = {
     '--home-tab-bg': theme.background.surface.default,
-    '--home-tab-sidebar-bg': theme.background.surface.elevated,
+    '--home-tab-sidebar-bg': theme.background.surface.default,
     '--home-tab-sidebar-border': theme.border.default,
     '--home-tab-sidebar-item-text': theme.foreground.text.primary,
     '--home-tab-sidebar-item-hover-bg': theme.background.surface.hover,
@@ -39,6 +39,7 @@ export function HomeTab({
     '--home-tab-content-bg': theme.background.surface.elevated,
     '--home-tab-header-text': theme.foreground.text.primary,
     '--home-tab-section-btn-bg': theme.border.focus,
+    '--home-tab-projects-grid-bg': theme.background.surface.inset,
     '--home-tab-card-bg': theme.background.surface.elevated,
     '--home-tab-card-border': theme.border.default,
     '--home-tab-card-hover-bg': theme.background.surface.hover,

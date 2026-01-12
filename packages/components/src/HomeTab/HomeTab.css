@@ -242,6 +242,7 @@
   padding: 40px 32px;
   overflow-y: auto;
   align-content: start;
+  background-color: var(--home-tab-projects-grid-bg);
 }
 
 /* Footer */
