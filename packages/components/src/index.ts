@@ -59,6 +59,7 @@ export * from './Menu';
 export * from './SaveProjectModal';
 export * from './PreferencesModal';
 export * from './PreferencePanel';
+export * from './ExportModal';
 export * from './Tab';
 export * from './TabItem';
 export * from './TabList';
