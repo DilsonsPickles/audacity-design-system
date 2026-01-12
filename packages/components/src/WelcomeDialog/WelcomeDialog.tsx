@@ -86,7 +86,7 @@ export function WelcomeDialog({
 
   const style = {
     '--welcome-dialog-title-text': theme.foreground.text.primary,
-    '--welcome-dialog-desc-text': theme.foreground.text.secondary,
+    '--welcome-dialog-desc-text': theme.foreground.text.primary,
     '--welcome-dialog-footer-bg': theme.background.surface.elevated,
     '--welcome-dialog-footer-border': theme.border.default,
   } as React.CSSProperties;
