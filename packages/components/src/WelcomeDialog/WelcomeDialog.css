@@ -9,6 +9,7 @@
   gap: 24px;
   font-family: Inter, sans-serif;
   padding: 32px;
+  background-color: var(--welcome-dialog-bg);
 }
 
 .welcome-dialog__heading {
