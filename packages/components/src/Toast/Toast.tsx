@@ -63,7 +63,7 @@ export function Toast({
   timeRemaining,
 }: ToastProps) {
   const { theme } = useTheme();
-  const [timerProgress, setTimerProgress] = React.useState(100);
+  const [timerProgress, setTimerProgress] = React.useState(0);
 
   const style = {
     '--toast-bg': theme.background.surface.elevated,
@@ -84,10 +84,10 @@ export function Toast({
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
-      setTimerProgress(remaining);
+      const progress = Math.min(100, (elapsed / duration) * 100);
+      setTimerProgress(progress);
 
-      if (remaining === 0) {
+      if (progress === 100) {
         clearInterval(interval);
       }
     }, 16); // ~60fps
