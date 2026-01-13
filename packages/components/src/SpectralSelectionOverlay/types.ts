@@ -4,7 +4,7 @@
 
 export interface SpectralSelection {
   trackIndex: number;
-  clipId: number | string;
+  clipId?: number | string; // Optional - if undefined, selection can span multiple clips on the track
   startTime: number;
   endTime: number;
   minFrequency: number; // 0-1 (normalized, 0 = bottom, 1 = top)

@@ -68,11 +68,13 @@ export function SpectralSelectionCanvas({
 
     const { trackIndex, clipId, startTime, endTime, minFrequency, maxFrequency } = selection;
 
-    // Find the clip
+    // Get track
     if (trackIndex >= tracks.length) return;
     const track = tracks[trackIndex];
-    const clip = track.clips.find(c => c.id === clipId);
-    if (!clip) return;
+
+    // If clipId is specified, find that specific clip
+    // Otherwise, render across all clips in the time range
+    const clip = clipId !== undefined ? track.clips.find(c => c.id === clipId) : null;
 
     // Calculate track Y position
     let trackY = coordinateConfig.initialGap;
@@ -82,17 +84,27 @@ export function SpectralSelectionCanvas({
 
     const trackHeight = coordinateConfig.trackHeights[trackIndex];
 
-    // Calculate clip boundaries in pixels
-    // Clips are positioned WITH CLIP_CONTENT_OFFSET for visual alignment
-    const clipStartX = CLIP_CONTENT_OFFSET + clip.start * coordinateConfig.pixelsPerSecond;
-    const clipEndX = clipStartX + clip.duration * coordinateConfig.pixelsPerSecond;
+    // Find all clips that overlap with the selection time range
+    const overlappingClips = track.clips.filter(c => {
+      const clipEnd = c.start + c.duration;
+      return clipEnd > startTime && c.start < endTime;
+    });
+
+    // If no clips overlap, don't render anything
+    if (overlappingClips.length === 0) return;
+
+    // Calculate selection boundaries in pixels based on time range
+    const selectionStartX = CLIP_CONTENT_OFFSET + startTime * coordinateConfig.pixelsPerSecond;
+    const selectionEndX = CLIP_CONTENT_OFFSET + endTime * coordinateConfig.pixelsPerSecond;
     const clipBodyY = trackY + coordinateConfig.clipHeaderHeight;
     const clipBodyHeight = trackHeight - coordinateConfig.clipHeaderHeight;
 
     // For split view, spectral selection is only in top half
     const isSplitView = (track as any).viewMode === 'split';
     const isSpectrogramMode = (track as any).viewMode === 'spectrogram';
-    const isStereo = (clip as any).waveformLeft && (clip as any).waveformRight;
+    // Determine stereo from the first clip in the track (or the specific clip if specified)
+    const firstClip = clip || track.clips[0];
+    const isStereo = firstClip && (firstClip as any).waveformLeft && (firstClip as any).waveformRight;
     const channelSplitRatio = (track as any).channelSplitRatio ?? 0.5;
 
     const spectralAreaHeight = isSplitView ? clipBodyHeight / 2 : clipBodyHeight;
@@ -161,8 +173,17 @@ export function SpectralSelectionCanvas({
 
       ctx.save();
       ctx.beginPath();
-      // Clip L channel - subtract 0.5px to prevent overlapping divider line
-      ctx.rect(clipStartX, clipBodyY, clipEndX - clipStartX, lChannelHeight - 0.5);
+      // Clip to only the overlapping clips (not the gaps between clips)
+      overlappingClips.forEach(c => {
+        const clipStartX = CLIP_CONTENT_OFFSET + c.start * coordinateConfig.pixelsPerSecond;
+        const clipEndX = clipStartX + c.duration * coordinateConfig.pixelsPerSecond;
+        // Intersect clip boundaries with selection boundaries
+        const left = Math.max(selectionStartX, clipStartX);
+        const right = Math.min(selectionEndX, clipEndX);
+        if (right > left) {
+          ctx.rect(left, clipBodyY, right - left, lChannelHeight - 0.5);
+        }
+      });
       ctx.clip();
 
       drawDarkenedOverlays(
@@ -209,10 +230,18 @@ export function SpectralSelectionCanvas({
 
       ctx.save();
       ctx.beginPath();
-      // Clip R channel - start 0.5px below divider, subtract 0.5px from height if in split view
+      // Clip R channel to only the overlapping clips
       const rChannelTop = clipBodyY + lChannelHeight + 0.5;
       const rChannelClipHeight = isSplitView ? rChannelHeight - 0.5 : rChannelHeight;
-      ctx.rect(clipStartX, rChannelTop, clipEndX - clipStartX, rChannelClipHeight);
+      overlappingClips.forEach(c => {
+        const clipStartX = CLIP_CONTENT_OFFSET + c.start * coordinateConfig.pixelsPerSecond;
+        const clipEndX = clipStartX + c.duration * coordinateConfig.pixelsPerSecond;
+        const left = Math.max(selectionStartX, clipStartX);
+        const right = Math.min(selectionEndX, clipEndX);
+        if (right > left) {
+          ctx.rect(left, rChannelTop, right - left, rChannelClipHeight);
+        }
+      });
       ctx.clip();
 
       drawDarkenedOverlays(
@@ -253,8 +282,16 @@ export function SpectralSelectionCanvas({
 
       ctx.save();
       ctx.beginPath();
-      // Clip to spectral area - in split view this is the top half only
-      ctx.rect(clipStartX, clipBodyY, clipEndX - clipStartX, spectralAreaHeight - 0.5);
+      // Clip to only the overlapping clips (not the gaps between clips)
+      overlappingClips.forEach(c => {
+        const clipStartX = CLIP_CONTENT_OFFSET + c.start * coordinateConfig.pixelsPerSecond;
+        const clipEndX = clipStartX + c.duration * coordinateConfig.pixelsPerSecond;
+        const left = Math.max(selectionStartX, clipStartX);
+        const right = Math.min(selectionEndX, clipEndX);
+        if (right > left) {
+          ctx.rect(left, clipBodyY, right - left, spectralAreaHeight - 0.5);
+        }
+      });
       ctx.clip();
 
       drawDarkenedOverlays(

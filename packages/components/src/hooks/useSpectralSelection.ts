@@ -15,7 +15,7 @@ import { CLIP_CONTENT_OFFSET } from '../constants';
 
 export interface SpectralSelection {
   trackIndex: number;
-  clipId: number;
+  clipId?: number; // Optional - if undefined, selection can span multiple clips on the track
   startTime: number;
   endTime: number;
   minFrequency: number; // 0-1 (normalized)
@@ -84,7 +84,7 @@ interface DragState {
   isDragging: boolean;
   mode: ResizeMode;
   trackIndex: number;
-  clipId: number;
+  clipId: number; // The clip where the drag started (for initial clip reference)
   startX: number;
   startY: number;
   currentX: number;
@@ -528,11 +528,15 @@ export function useSpectralSelection(
     // First check if we're resizing an existing selection
     const resizeMode = detectResizeMode(x, y);
     if (resizeMode && currentSpectralSelection) {
+      // Find which clip we're resizing from (if selection spans multiple clips, use the one under cursor)
+      const clipAtCursor = findClipAtPosition(x, y);
+      if (!clipAtCursor) return false;
+
       dragStateRef.current = {
         isDragging: true,
         mode: resizeMode,
         trackIndex: currentSpectralSelection.trackIndex,
-        clipId: currentSpectralSelection.clipId,
+        clipId: clipAtCursor.clip.id,
         startX: x,
         startY: y,
         currentX: x,
@@ -584,13 +588,11 @@ export function useSpectralSelection(
 
     if (mode === 'create') {
       // Check if cursor is outside bounds - convert to time selection if:
-      // - X is outside the clip horizontally, OR
-      // - Y is in a different track
+      // - Y is in a different track (allow horizontal spanning of multiple clips on same track)
       const yOutsideBounds = isYOutsideClipBounds(y, trackIndex);
-      const xOutsideBounds = isXOutsideClipBounds(x, trackIndex, clipId);
 
-      // Convert if we're in another track or outside clip horizontally
-      if ((yOutsideBounds || xOutsideBounds) && onConvertToTimeSelection) {
+      // Convert if we're in another track (allow horizontal spanning across clips)
+      if (yOutsideBounds && onConvertToTimeSelection) {
         // First, save the current spectral selection state before converting
         // Calculate the current selection bounds
         const rawStartTime = xToTime(startX);
@@ -636,10 +638,9 @@ export function useSpectralSelection(
           originChannel = 'mono';
         }
 
-        // Create the spectral selection object
+        // Create the spectral selection object (no clipId - can span multiple clips)
         const spectralSelectionToKeep: SpectralSelection = {
           trackIndex,
-          clipId,
           startTime: clampedSelStartTime,
           endTime: clampedSelEndTime,
           minFrequency,
@@ -679,16 +680,13 @@ export function useSpectralSelection(
         return;
       }
 
-      // Creating new selection - clamp to clip boundaries
+      // Creating new selection - allow spanning across multiple clips on the same track
       const rawStartTime = xToTime(startX);
       const rawEndTime = xToTime(x);
 
-      // Clamp times to clip boundaries
-      const clampedStartTime = clampTimeToClip(rawStartTime, trackIndex, clipId);
-      const clampedEndTime = clampTimeToClip(rawEndTime, trackIndex, clipId);
-
-      const startTime = Math.min(clampedStartTime, clampedEndTime);
-      const endTime = Math.max(clampedStartTime, clampedEndTime);
+      // Don't clamp to clip boundaries - allow spanning multiple clips
+      const startTime = Math.min(rawStartTime, rawEndTime);
+      const endTime = Math.max(rawStartTime, rawEndTime);
 
       // Convert Y positions to frequencies (automatically clamped to clip bounds)
       let freq1 = yToFrequency(startY, trackIndex);
@@ -730,9 +728,9 @@ export function useSpectralSelection(
       }
 
       // Call callback to update selection during drag
+      // Don't include clipId - allow selection to span multiple clips
       onSpectralSelectionChange({
         trackIndex,
-        clipId,
         startTime,
         endTime,
         minFrequency,
