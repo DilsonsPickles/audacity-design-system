@@ -13,6 +13,8 @@
   padding: 0 4px;
   height: 100%;
   gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .clip-header__name {
@@ -87,10 +89,7 @@
   background-color: #305BCC; /* blue-800 */
 }
 .clip-header--blue.clip-header--selected {
-  background-color: #DEEBFF; /* blue-200 */
-}
-.clip-header--blue.clip-header--selected.clip-header--hover {
-  background-color: #F2F7FF; /* blue-100 */
+  background-color: #F2F7FF; /* blue-100 - no hover state when selected */
 }
 .clip-header--blue.clip-header--selected.clip-header--hover .clip-header__menu-button:hover {
   background-color: #C0D9FF; /* blue-300 */
@@ -113,10 +112,7 @@
   background-color: #5E58DA; /* violet-800 */
 }
 .clip-header--violet.clip-header--selected {
-  background-color: #E9E8FF; /* violet-200 */
-}
-.clip-header--violet.clip-header--selected.clip-header--hover {
-  background-color: #F7F6FF; /* violet-100 */
+  background-color: #F7F6FF; /* violet-100 - no hover state when selected */
 }
 .clip-header--violet.clip-header--selected.clip-header--hover .clip-header__menu-button:hover {
   background-color: #D5D4FE; /* violet-300 */
@@ -139,10 +135,9 @@
   background-color: #C251B3; /* magenta-800 */
 }
 .clip-header--magenta.clip-header--selected {
-  background-color: #F6E8F4; /* magenta-200 */
+  background-color: #FBF4FC; /* magenta-100 - no hover state when selected */
 }
 .clip-header--magenta.clip-header--selected.clip-header--hover {
-  background-color: #FBF4FC; /* magenta-100 */
 }
 .clip-header--magenta.clip-header--selected.clip-header--hover .clip-header__menu-button:hover {
   background-color: #F0D1EB; /* magenta-300 */

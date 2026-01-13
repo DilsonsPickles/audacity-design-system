@@ -63,14 +63,10 @@ export class AudioPlaybackManager {
     // Render
     const buffer = await offlineContext.startRendering();
 
-    // Generate waveform data for visualization
+    // Generate waveform data for visualization - use full resolution
+    // Pass all samples so ClipBody can do proper min/max sampling per pixel
     const channelData = buffer.getChannelData(0);
-    const waveformData: number[] = [];
-    const samplesPerPixel = Math.floor(channelData.length / (duration * 100)); // ~100 samples per second
-
-    for (let i = 0; i < channelData.length; i += samplesPerPixel) {
-      waveformData.push(channelData[i]);
-    }
+    const waveformData: number[] = Array.from(channelData);
 
     return { buffer, waveformData };
   }

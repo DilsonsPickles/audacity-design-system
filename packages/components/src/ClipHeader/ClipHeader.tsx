@@ -11,6 +11,8 @@ export interface ClipHeaderProps {
   color?: ClipColor;
   /** Whether the parent clip is selected */
   selected?: boolean;
+  /** Whether the clip is within a time selection */
+  inTimeSelection?: boolean;
   /** Interaction state */
   state?: ClipHeaderState;
   /** Clip name to display */
@@ -35,6 +37,14 @@ export interface ClipHeaderProps {
   onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
   /** Mouse leave handler */
   onMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** Clip start time in seconds (for calculating time selection overlay position) */
+  clipStartTime?: number;
+  /** Clip duration in seconds (for calculating time selection overlay position) */
+  clipDuration?: number;
+  /** Time selection range (for calculating overlay position) */
+  timeSelectionRange?: { startTime: number; endTime: number } | null;
+  /** Pixels per second (timeline zoom level) */
+  pixelsPerSecond?: number;
 }
 
 /**
@@ -46,6 +56,7 @@ export interface ClipHeaderProps {
 export const ClipHeader: React.FC<ClipHeaderProps> = ({
   color = 'blue',
   selected = false,
+  inTimeSelection = false,
   state = 'default',
   name = 'Clip',
   width = 272,
@@ -58,6 +69,10 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
   onMenuClick,
   onMouseEnter,
   onMouseLeave,
+  clipStartTime = 0,
+  clipDuration = 0,
+  timeSelectionRange = null,
+  pixelsPerSecond = 100,
 }) => {
   const { theme } = useTheme();
 
@@ -79,10 +94,37 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
     onMenuClick?.(e);
   };
 
+  // Calculate time selection overlay position and width
+  let timeSelectionOverlay: { left: number; width: number } | null = null;
+  if (inTimeSelection && timeSelectionRange) {
+    const clipEndTime = clipStartTime + clipDuration;
+    const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
+    const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
+
+    if (overlapStart < overlapEnd) {
+      const selStartX = (overlapStart - clipStartTime) * pixelsPerSecond;
+      const selWidth = (overlapEnd - overlapStart) * pixelsPerSecond;
+      timeSelectionOverlay = { left: selStartX, width: selWidth };
+    }
+  }
+
+  // Color map for time selection overlay - header-specific colors
+  const timeSelectionColorMap: Record<string, string> = {
+    red: '#FFC5CD',
+    cyan: '#7BFFFF',
+    blue: '#99E8FF',
+    violet: '#CCDBFF',
+    magenta: '#FFD1FF',
+    orange: '#FFE3B2',
+    yellow: '#FFFFC0',
+    green: '#A7FFA6',
+    teal: '#67F9E1',
+  };
+
   return (
     <div
       className={className}
-      style={{ width: `${width}px`, ...style }}
+      style={{ width: `${width}px`, position: 'relative', ...style }}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -90,6 +132,22 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
       data-state={state}
       data-selected={selected}
     >
+      {/* Time selection overlay */}
+      {timeSelectionOverlay && (
+        <div
+          className="clip-header__time-selection-overlay"
+          style={{
+            position: 'absolute',
+            left: `${timeSelectionOverlay.left}px`,
+            width: `${timeSelectionOverlay.width}px`,
+            top: 0,
+            bottom: 0,
+            backgroundColor: timeSelectionColorMap[color] || '#FFFFFF',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+      )}
       <div className="clip-header__content">
         <span className="clip-header__name">{name}</span>
 

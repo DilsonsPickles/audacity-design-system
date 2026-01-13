@@ -59,6 +59,12 @@ export interface ClipDisplayProps {
   onMenuClick?: (x: number, y: number) => void;
   /** Callback when dragging left or right edge to trim clip */
   onTrimEdge?: (params: { edge: 'left' | 'right'; clientX: number }) => void;
+  /** Whether clip is within a time selection (for vibrant color rendering) */
+  inTimeSelection?: boolean;
+  /** Clip start time in seconds (for calculating time selection overlay position) */
+  clipStartTime?: number;
+  /** Time selection range (for calculating overlay position) */
+  timeSelectionRange?: { startTime: number; endTime: number } | null;
 }
 
 /**
@@ -94,6 +100,9 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
   onHeaderClick,
   onMenuClick,
   onTrimEdge,
+  inTimeSelection = false,
+  clipStartTime = 0,
+  timeSelectionRange = null,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
@@ -184,10 +193,15 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
           <ClipHeader
             color={color}
             selected={selected}
+            inTimeSelection={inTimeSelection}
             state={isHeaderHovering ? 'hover' : 'default'}
             name={name}
             width={width}
             showMenu={true}
+            clipStartTime={clipStartTime}
+            clipDuration={clipDuration}
+            timeSelectionRange={timeSelectionRange}
+            pixelsPerSecond={pixelsPerSecond}
             onClick={(e) => {
               e.stopPropagation();
               onHeaderClick?.(e.shiftKey);
@@ -220,6 +234,9 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
         pixelsPerSecond={pixelsPerSecond}
         hiddenPointIndices={hiddenPointIndices}
         hoveredPointIndex={hoveredPointIndex}
+        inTimeSelection={inTimeSelection}
+        clipStartTime={clipStartTime}
+        timeSelectionRange={timeSelectionRange}
       />
 
       {/* Trim handles */}

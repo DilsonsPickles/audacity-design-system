@@ -9,23 +9,22 @@ import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
 import { TokenReview } from './pages/TokenReview';
 
-// Generate realistic waveform data
-function generateWaveform(durationSeconds: number, samplesPerSecond: number = 100): number[] {
-  const totalSamples = Math.floor(durationSeconds * samplesPerSecond);
+// Generate realistic waveform data - full resolution for dense waveforms
+function generateWaveform(durationSeconds: number, sampleRate: number = 48000): number[] {
+  const totalSamples = Math.floor(durationSeconds * sampleRate);
   const waveform: number[] = [];
 
   for (let i = 0; i < totalSamples; i++) {
-    const t = i / samplesPerSecond;
-    // Combine multiple frequencies for a more realistic waveform
-    const wave1 = Math.sin(2 * Math.PI * 2 * t) * 0.3;  // Low frequency
-    const wave2 = Math.sin(2 * Math.PI * 5 * t) * 0.2;  // Mid frequency
-    const wave3 = Math.sin(2 * Math.PI * 10 * t) * 0.1; // Higher frequency
-    // Add some randomness for noise
-    const noise = (Math.random() - 0.5) * 0.1;
-    // Envelope for more natural fade in/out
-    const envelope = Math.sin((i / totalSamples) * Math.PI) * 0.8 + 0.2;
+    const t = i / sampleRate;
+    // High frequency sawtooth wave for dense solid waveforms
+    const freq = 8000;
+    const phase = (t * freq) % 1.0;
+    const sawtooth = (phase * 2) - 1; // Sawtooth wave from -1 to 1
 
-    waveform.push((wave1 + wave2 + wave3 + noise) * envelope);
+    // Add envelope for fade in/out
+    const envelope = Math.sin((i / totalSamples) * Math.PI) * 0.3;
+
+    waveform.push(sawtooth * envelope);
   }
 
   return waveform;
@@ -1056,7 +1055,7 @@ function CanvasDemoContent() {
           const startTime = state.playheadPosition;
 
           // Generate actual audio using Tone.js
-          const { buffer, waveformData } = await audioManager.generateTone(duration, 440, 'sine');
+          const { buffer, waveformData } = await audioManager.generateTone(duration, 8000, 'sawtooth');
 
           // Store the audio buffer for playback
           audioManager.addClipBuffer(newClipId, buffer);

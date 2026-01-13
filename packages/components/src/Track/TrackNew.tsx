@@ -142,6 +142,11 @@ export interface TrackProps {
    * Callback when a clip should be moved to a different track (Cmd+Arrow Up/Down)
    */
   onClipMoveToTrack?: (clipId: string | number, direction: 1 | -1) => void;
+
+  /**
+   * Time selection range (for rendering vibrant clip colors within selection)
+   */
+  timeSelection?: { startTime: number; endTime: number } | null;
 }
 
 // Map track index to color
@@ -177,6 +182,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   onClipMove,
   onClipTrim,
   onClipMoveToTrack,
+  timeSelection,
 }) => {
   const trackColor = getTrackColor(trackIndex);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -348,6 +354,11 @@ export const TrackNew: React.FC<TrackProps> = ({
             width={clipWidth}
             height={height}
             selected={clip.selected || false}
+            inTimeSelection={timeSelection && isSelected ? (
+              clip.start < timeSelection.endTime && (clip.start + clip.duration) > timeSelection.startTime
+            ) : false}
+            clipStartTime={clip.start}
+            timeSelectionRange={timeSelection}
             variant={variant}
             channelMode={channelMode}
             waveformData={waveformData}

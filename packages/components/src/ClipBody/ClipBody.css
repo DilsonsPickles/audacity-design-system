@@ -100,3 +100,32 @@
 .clip-body--teal.clip-body--selected {
   background-color: #ACE1D3; /* teal-300 */
 }
+
+/* Time-selected (within time selection) - vibrant colors */
+.clip-body--cyan.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}
+.clip-body--blue.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}
+.clip-body--violet.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}
+.clip-body--magenta.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}
+.clip-body--red.clip-body--time-selected {
+  background-color: #FFDEE6; /* Vibrant red */
+}
+.clip-body--orange.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}
+.clip-body--yellow.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}
+.clip-body--green.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}
+.clip-body--teal.clip-body--time-selected {
+  background-color: #FFFFFF; /* White for now */
+}

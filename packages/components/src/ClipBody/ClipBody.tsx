@@ -66,6 +66,10 @@ export interface ClipBodyProps {
   hiddenPointIndices?: number[];
   /** Index of point being hovered (for hover visual feedback) */
   hoveredPointIndex?: number | null;
+  /** Whether clip is within a time selection (for vibrant color rendering) */
+  inTimeSelection?: boolean;
+  /** Time selection range (for calculating overlay position) */
+  timeSelectionRange?: { startTime: number; endTime: number } | null;
 }
 
 /**
@@ -99,6 +103,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   timeSelectionColor = 'rgba(255, 255, 255, 0.3)',
   hiddenPointIndices = [],
   hoveredPointIndex = null,
+  inTimeSelection = false,
+  timeSelectionRange = null,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -128,6 +134,35 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
     // Clear canvas
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    // Render time selection background overlay FIRST (vibrant background colors - drawn underneath waveform)
+    if (inTimeSelection && timeSelectionRange) {
+      const clipEndTime = clipStartTime + clipDuration;
+      const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
+      const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
+
+      if (overlapStart < overlapEnd) {
+        // Calculate selection bounds in pixels
+        const selStartX = (overlapStart - clipStartTime) * pixelsPerSecond;
+        const selWidth = (overlapEnd - overlapStart) * pixelsPerSecond;
+
+        // Background color map for selected regions
+        const bgColorMap: Record<string, string> = {
+          red: '#FFDEE6',     // Vibrant pink background for red clips
+          cyan: '#9FFFFF',    // Light cyan background for cyan clips
+          blue: '#B7FAFF',    // Light blue background for blue clips
+          violet: '#E0F0FF',  // Light violet background for violet clips
+          magenta: '#FFE8FF', // Light magenta background for magenta clips
+          orange: '#FFF6D0',  // Light orange background for orange clips
+          yellow: '#FFFFC0',  // Light yellow background for yellow clips
+          green: '#C2FFC7',   // Light green background for green clips
+          teal: '#8FFFF6',    // Light teal background for teal clips
+        };
+
+        ctx.fillStyle = bgColorMap[color] || '#FFFFFF';
+        ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
+      }
+    }
 
     // Render based on channel mode and variant
     if (channelMode === 'split-mono' || channelMode === 'split-stereo') {
@@ -362,6 +397,32 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       const samplesPerPixel = secondsPerPixel * detectedSampleRate;
       const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
 
+      // Calculate time selection bounds in pixels (if applicable)
+      let selStartPx = -1;
+      let selEndPx = -1;
+      if (inTimeSelection && timeSelectionRange) {
+        const clipEndTime = clipStartTime + clipDuration;
+        const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
+        const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
+        if (overlapStart < overlapEnd) {
+          selStartPx = (overlapStart - clipStartTime) * pixelsPerSecond;
+          selEndPx = (overlapEnd - clipStartTime) * pixelsPerSecond;
+        }
+      }
+
+      // Waveform colors for selected regions
+      const waveformColorMap: Record<string, string> = {
+        red: '#3C2323',
+        cyan: '#163134',
+        blue: '#1D2B3F',
+        violet: '#28283F',
+        magenta: '#372534',
+        orange: '#3F291D',
+        yellow: '#3A3118',
+        green: '#20311A',
+        teal: '#122E27',
+      };
+
       // Draw L channel
       for (let px = 0; px < canvasWidth; px++) {
         const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -375,6 +436,10 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           min = Math.min(min, sample);
           max = Math.max(max, sample);
         }
+
+        // Check if this pixel is within time selection
+        const isInSelection = px >= selStartPx && px < selEndPx;
+        ctx.fillStyle = isInSelection ? waveformColorMap[color] : 'rgba(0, 0, 0, 0.8)';
 
         const y1 = lChannelCenterY - max * lMaxAmplitude;
         const y2 = lChannelCenterY - min * lMaxAmplitude;
@@ -390,8 +455,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       ctx.stroke();
 
       // Draw R channel
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
       // Use same samples per pixel as L channel for consistency
       for (let px = 0; px < canvasWidth; px++) {
         const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -405,6 +468,10 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           min = Math.min(min, sample);
           max = Math.max(max, sample);
         }
+
+        // Check if this pixel is within time selection
+        const isInSelection = px >= selStartPx && px < selEndPx;
+        ctx.fillStyle = isInSelection ? waveformColorMap[color] : 'rgba(0, 0, 0, 0.8)';
 
         const y1 = rChannelCenterY - max * rMaxAmplitude;
         const y2 = rChannelCenterY - min * rMaxAmplitude;
@@ -426,6 +493,32 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       const samplesPerPixel = secondsPerPixel * detectedSampleRate;
       const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
 
+      // Calculate time selection bounds in pixels (if applicable)
+      let selStartPx = -1;
+      let selEndPx = -1;
+      if (inTimeSelection && timeSelectionRange) {
+        const clipEndTime = clipStartTime + clipDuration;
+        const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
+        const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
+        if (overlapStart < overlapEnd) {
+          selStartPx = (overlapStart - clipStartTime) * pixelsPerSecond;
+          selEndPx = (overlapEnd - clipStartTime) * pixelsPerSecond;
+        }
+      }
+
+      // Waveform colors for selected regions
+      const waveformColorMap: Record<string, string> = {
+        red: '#3C2323',
+        cyan: '#163134',
+        blue: '#1D2B3F',
+        violet: '#28283F',
+        magenta: '#372534',
+        orange: '#3F291D',
+        yellow: '#3A3118',
+        green: '#20311A',
+        teal: '#122E27',
+      };
+
       for (let px = 0; px < canvasWidth; px++) {
         const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
         const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
@@ -438,6 +531,10 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           min = Math.min(min, sample);
           max = Math.max(max, sample);
         }
+
+        // Check if this pixel is within time selection
+        const isInSelection = px >= selStartPx && px < selEndPx;
+        ctx.fillStyle = isInSelection ? waveformColorMap[color] : 'rgba(0, 0, 0, 0.8)';
 
         const y1 = centerY - max * maxAmplitude;
         const y2 = centerY - min * maxAmplitude;
@@ -494,23 +591,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         });
       }
     }
-
-    // Render time selection overlay
-    if (timeSelection) {
-      const selStart = Math.max(timeSelection.startTime, clipStartTime);
-      const selEnd = Math.min(timeSelection.endTime, clipStartTime + clipDuration);
-
-      if (selStart < selEnd) {
-        // Calculate selection bounds in pixels
-        const selStartX = ((selStart - clipStartTime) / clipDuration) * canvasWidth;
-        const selEndX = ((selEnd - clipStartTime) / clipDuration) * canvasWidth;
-        const selWidth = selEndX - selStartX;
-
-        ctx.fillStyle = timeSelectionColor;
-        ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
-      }
-    }
-  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, timeSelection, clipStartTime, timeSelectionColor, hiddenPointIndices, hoveredPointIndex]);
+  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, hiddenPointIndices, hoveredPointIndex]);
 
   const className = [
     'clip-body',
@@ -553,11 +634,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           alt=""
           className="clip-body__waveform"
         />
-      )}
-
-      {/* Selection overlay */}
-      {selected && (
-        <div className="clip-body__selection-overlay" />
       )}
     </div>
   );

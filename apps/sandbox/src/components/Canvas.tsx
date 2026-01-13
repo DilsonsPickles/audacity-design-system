@@ -747,6 +747,7 @@ export function Canvas({
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}
                 backgroundColor={bgColor}
+                timeSelection={timeSelection}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onClipMove={(clipId, deltaSeconds) => {
                   // Find the clip to get its current position
@@ -1450,19 +1451,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
           );
         })}
 
-        {/* Time Selection Overlays - one per selected track */}
-        {overlayBoundsPerTrack.map(({ top, height, trackIndex }) => (
-          <TimeSelectionCanvasOverlay
-            key={`time-selection-${trackIndex}`}
-            timeSelection={timeSelection}
-            pixelsPerSecond={pixelsPerSecond}
-            leftPadding={leftPadding}
-            top={top}
-            height={height}
-            backgroundColor="rgba(255, 255, 255, 0.6)"
-            borderColor="rgba(255, 255, 255, 0.8)"
-          />
-        ))}
+        {/* Time Selection Overlays - removed, using clip background colors instead */}
 
         {/* Spectral Selection Overlay */}
         <SpectralSelectionOverlay
