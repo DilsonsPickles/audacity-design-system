@@ -139,12 +139,26 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       ctx.fillStyle = '#1a1d2e'; // Dark background for spectrogram
       ctx.fillRect(0, 0, canvasWidth, halfHeight);
 
+      // Clip spectrogram rendering to top half only (prevents pixel blocks from extending below split line)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, canvasWidth, halfHeight);
+      ctx.clip();
+
       if (channelMode === 'split-stereo' && isStereo) {
         // Stereo split: L and R spectrograms in top half (quarters)
         const quarterHeight = halfHeight / 2;
 
+        // PERFORMANCE: Use reduced settings for real-time interaction
+        const spectrogramOptions = {
+          frequencyBands: 16,
+          fftWindowSize: 64,
+          intensityMultiplier: 1.5,
+          pixelSkip: 4,
+        };
+
         // Render L channel spectrogram (top quarter)
-        renderMonoSpectrogram(ctx, waveformLeft, 0, 0, canvasWidth, quarterHeight, { frequencyBands: 32 });
+        renderMonoSpectrogram(ctx, waveformLeft, 0, 0, canvasWidth, quarterHeight, spectrogramOptions);
 
         // Separator between L and R spectral (using color-specific 700 shade)
         ctx.strokeStyle = DIVIDER_COLORS[color];
@@ -155,14 +169,21 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         ctx.stroke();
 
         // Render R channel spectrogram (second quarter)
-        renderMonoSpectrogram(ctx, waveformRight, 0, quarterHeight, canvasWidth, quarterHeight, { frequencyBands: 32 });
+        renderMonoSpectrogram(ctx, waveformRight, 0, quarterHeight, canvasWidth, quarterHeight, spectrogramOptions);
       } else if (hasMono) {
         // Mono split: single spectrogram in top half
-        renderMonoSpectrogram(ctx, waveformData!, 0, 0, canvasWidth, halfHeight, { frequencyBands: 32 });
+        renderMonoSpectrogram(ctx, waveformData!, 0, 0, canvasWidth, halfHeight, {
+          frequencyBands: 16,
+          fftWindowSize: 64,
+          intensityMultiplier: 1.5,
+          pixelSkip: 4,
+        });
       }
 
-      // Separator line between spectrogram and waveform
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.restore(); // Remove clipping region
+
+      // Separator line between spectrogram and waveform - solid black for clarity
+      ctx.strokeStyle = '#000000';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, splitY);

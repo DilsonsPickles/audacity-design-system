@@ -90,6 +90,7 @@ interface DragState {
   currentX: number;
   currentY: number;
   initialSelection: SpectralSelection | null;
+  converted?: boolean; // Track if we've temporarily converted to time selection (can revert)
 }
 
 /**
@@ -232,7 +233,8 @@ export function useSpectralSelection(
    * No resistance when dragging UP (clip header provides natural buffer)
    */
   const isYOutsideClipBounds = useCallback((y: number, trackIndex: number): boolean => {
-    const HYSTERESIS_THRESHOLD_DOWN = 15; // pixels of resistance when dragging down
+    const HYSTERESIS_THRESHOLD_DOWN = 15; // pixels of resistance when dragging down to next track
+    const SPLIT_LINE_HYSTERESIS = 20; // resistance for split line - matches clip header height
 
     let trackY = initialGap;
     for (let i = 0; i < trackIndex; i++) {
@@ -250,12 +252,12 @@ export function useSpectralSelection(
     }
 
     // In split view, spectral selection is only valid in top half (spectrogram area)
-    // If cursor is below the split line with hysteresis, it's outside spectral bounds
+    // Use smaller hysteresis for split line since it's a clear visual boundary
     if (track.viewMode === 'split') {
       const clipBodyY = trackY + clipHeaderHeight;
       const clipBodyHeight = trackHeight - clipHeaderHeight;
       const splitY = clipBodyY + clipBodyHeight / 2;
-      return y > splitY + HYSTERESIS_THRESHOLD_DOWN; // Below the split line (+ resistance) = outside spectral area
+      return y > splitY + SPLIT_LINE_HYSTERESIS; // Below the split line (+ small resistance)
     }
 
     return false;
@@ -590,9 +592,21 @@ export function useSpectralSelection(
       // Check if cursor is outside bounds - convert to time selection if:
       // - Y is in a different track (allow horizontal spanning of multiple clips on same track)
       const yOutsideBounds = isYOutsideClipBounds(y, trackIndex);
+      const wasConverted = dragStateRef.current.converted === true;
+
+      // If we previously converted but are now back in bounds, revert to spectral selection
+      if (wasConverted && !yOutsideBounds) {
+        // Back in spectral area - clear conversion flag and continue with spectral selection
+        dragStateRef.current.converted = false;
+        // Clear the time selection by passing null spectral selection to the conversion callback
+        // This will clear the time selection overlay
+        if (onClearTimeSelection) {
+          onClearTimeSelection();
+        }
+      }
 
       // Convert if we're in another track (allow horizontal spanning across clips)
-      if (yOutsideBounds && onConvertToTimeSelection) {
+      if (yOutsideBounds && !wasConverted && onConvertToTimeSelection) {
         // First, save the current spectral selection state before converting
         // Calculate the current selection bounds
         const rawStartTime = xToTime(startX);
@@ -669,20 +683,16 @@ export function useSpectralSelection(
           spectralSelectionToKeep
         );
 
-        // Clear the drag state - conversion callback will handle starting time selection drag
-        dragStateRef.current = null;
-        setIsDragging(false);
-        justConvertedRef.current = true;
-        // Clear the flag after a short delay to allow time selection to take over
-        setTimeout(() => {
-          justConvertedRef.current = false;
-        }, 100);
+        // Mark as converted but keep drag state alive so we can revert if user drags back
+        dragStateRef.current.converted = true;
         return;
       }
 
-      // Creating new selection - allow spanning across multiple clips on the same track
-      const rawStartTime = xToTime(startX);
-      const rawEndTime = xToTime(x);
+      // Only render spectral selection if not currently converted to time selection
+      if (!wasConverted) {
+        // Creating new selection - allow spanning across multiple clips on the same track
+        const rawStartTime = xToTime(startX);
+        const rawEndTime = xToTime(x);
 
       // Don't clamp to clip boundaries - allow spanning multiple clips
       const startTime = Math.min(rawStartTime, rawEndTime);
@@ -727,16 +737,17 @@ export function useSpectralSelection(
         originChannel = 'mono';
       }
 
-      // Call callback to update selection during drag
-      // Don't include clipId - allow selection to span multiple clips
-      onSpectralSelectionChange({
-        trackIndex,
-        startTime,
-        endTime,
-        minFrequency,
-        maxFrequency,
-        originChannel,
-      });
+        // Call callback to update selection during drag
+        // Don't include clipId - allow selection to span multiple clips
+        onSpectralSelectionChange({
+          trackIndex,
+          startTime,
+          endTime,
+          minFrequency,
+          maxFrequency,
+          originChannel,
+        });
+      }
     } else if (initialSelection) {
       // Resizing existing selection
       let startTime = initialSelection.startTime;
