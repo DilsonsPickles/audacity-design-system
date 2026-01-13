@@ -14,6 +14,7 @@ export interface PreferencesState {
 
   // Appearance
   theme: 'light' | 'dark';
+  clipStyle: 'classic' | 'colourful';
 
   // Audio Settings
   audioHost: string;
@@ -54,6 +55,7 @@ const defaultPreferences: PreferencesState = {
 
   // Appearance
   theme: 'light',
+  clipStyle: 'colourful',
 
   // Audio Settings
   audioHost: 'core-audio',

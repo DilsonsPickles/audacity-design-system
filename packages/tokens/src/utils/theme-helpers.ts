@@ -152,6 +152,10 @@ export function generateClipColorStates(baseColor: string): ClipColorStates {
     headerSelected: adjustLightness(baseColor, 40),
     headerSelectedHover: adjustLightness(baseColor, 50),
     bodySelected: adjustLightness(baseColor, 30),
+    // Time selection colors - placeholder values (should be overridden in themes)
+    timeSelectionBody: adjustLightness(baseColor, 60),
+    timeSelectionHeader: adjustLightness(baseColor, 55),
+    timeSelectionWaveform: adjustLightness(baseColor, -70),
   };
 }
 

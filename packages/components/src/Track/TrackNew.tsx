@@ -152,11 +152,19 @@ export interface TrackProps {
    * Whether time selection is currently being dragged
    */
   isTimeSelectionDragging?: boolean;
+
+  /**
+   * Clip style preference ('classic' or 'colourful')
+   */
+  clipStyle?: 'classic' | 'colourful';
 }
 
 // Map track index to color
 const TRACK_COLORS = ['blue', 'violet', 'magenta'] as const;
-function getTrackColor(trackIndex: number) {
+function getTrackColor(trackIndex: number, clipStyle: 'classic' | 'colourful' = 'colourful') {
+  if (clipStyle === 'classic') {
+    return 'classic' as const;
+  }
   return TRACK_COLORS[trackIndex % TRACK_COLORS.length];
 }
 
@@ -189,8 +197,9 @@ export const TrackNew: React.FC<TrackProps> = ({
   onClipMoveToTrack,
   timeSelection,
   isTimeSelectionDragging = false,
+  clipStyle = 'colourful',
 }) => {
-  const trackColor = getTrackColor(trackIndex);
+  const trackColor = getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipHoveredPoints, setClipHoveredPoints] = React.useState<Map<string | number, number | null>>(new Map());
   const [hasKeyboardFocus, setHasKeyboardFocus] = React.useState(false);

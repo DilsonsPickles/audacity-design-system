@@ -160,10 +160,7 @@
   background-color: #E33434; /* red-800 */
 }
 .clip-header--red.clip-header--selected {
-  background-color: #FCE4E4; /* red-200 */
-}
-.clip-header--red.clip-header--selected.clip-header--hover {
-  background-color: #FEF2F2; /* red-100 */
+  background-color: #FEF2F2; /* red-100 - no hover state when selected */
 }
 .clip-header--red.clip-header--selected.clip-header--hover .clip-header__menu-button:hover {
   background-color: #F9CCCC; /* red-300 */

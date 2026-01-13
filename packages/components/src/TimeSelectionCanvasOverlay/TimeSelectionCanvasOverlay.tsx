@@ -41,6 +41,11 @@ export interface TimeSelectionCanvasOverlayProps {
    */
   borderColor?: string;
   /**
+   * CSS mix-blend-mode for the overlay
+   * @default 'soft-light'
+   */
+  mixBlendMode?: string;
+  /**
    * Additional CSS class names
    */
   className?: string;
@@ -54,6 +59,7 @@ export const TimeSelectionCanvasOverlay: React.FC<TimeSelectionCanvasOverlayProp
   height,
   backgroundColor = 'rgba(255, 255, 255, 0.15)',
   borderColor = '#80ccc0',
+  mixBlendMode = 'soft-light',
   className = '',
 }) => {
   if (!timeSelection) {
@@ -79,7 +85,7 @@ export const TimeSelectionCanvasOverlay: React.FC<TimeSelectionCanvasOverlayProp
         backgroundColor,
         pointerEvents: 'none', // Allow clicks to pass through
         zIndex: 5, // Above tracks but below UI controls
-        mixBlendMode: 'soft-light', // Soft-light to brighten underlying colors
+        mixBlendMode: mixBlendMode as any, // Blend mode for overlay (use 'normal' for no blending)
       }}
     />
   );

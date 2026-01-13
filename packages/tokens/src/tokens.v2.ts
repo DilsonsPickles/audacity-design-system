@@ -26,6 +26,12 @@ export interface ClipColorStates {
   body: string;
   /** Body selected state */
   bodySelected: string;
+  /** Time selection overlay - clip body background */
+  timeSelectionBody: string;
+  /** Time selection overlay - clip header background */
+  timeSelectionHeader: string;
+  /** Time selection overlay - waveform color */
+  timeSelectionWaveform: string;
 }
 
 /**
@@ -388,7 +394,7 @@ export interface ThemeTokens {
       hitZone: string;
     };
 
-    /** Clip colors - 9 color palette with 6 states each (54 pre-computed colors) */
+    /** Clip colors - 9 color palette + classic style with 6 states each */
     clip: {
       cyan: ClipColorStates;
       blue: ClipColorStates;
@@ -399,6 +405,7 @@ export interface ThemeTokens {
       yellow: ClipColorStates;
       green: ClipColorStates;
       teal: ClipColorStates;
+      classic: ClipColorStates;
       /** Clip border colors */
       border: {
         normal: string;
@@ -425,8 +432,10 @@ export interface ThemeTokens {
 
     /** Selection colors */
     selection: {
-      /** Time selection background */
+      /** Time selection background (selected tracks) */
       time: string;
+      /** Time selection background (unselected tracks) */
+      timeUnselected: string;
       /** Time selection border */
       timeBorder: string;
       /** Spectral selection background */

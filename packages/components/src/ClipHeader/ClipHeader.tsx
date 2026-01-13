@@ -116,7 +116,7 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
     violet: '#CCDBFF',
     magenta: '#FFD1FF',
     orange: '#FFE3B2',
-    yellow: '#FFFFC0',
+    yellow: '#FFFF9D',
     green: '#A7FFA6',
     teal: '#67F9E1',
   };

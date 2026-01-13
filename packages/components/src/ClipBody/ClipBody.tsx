@@ -19,6 +19,7 @@ const DIVIDER_COLORS: Record<ClipColor, string> = {
   yellow: '#ECCC73',
   green: '#8FCB7A',
   teal: '#5CC3A9',
+  classic: '#CDD2F5',
 };
 
 export interface ClipBodyProps {

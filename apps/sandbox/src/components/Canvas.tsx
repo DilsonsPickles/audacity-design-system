@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
+import { usePreferences } from '@audacity-ui/components';
 import './Canvas.css';
 
 export interface CanvasProps {
@@ -59,6 +60,7 @@ export function Canvas({
   keyboardFocusedTrack = null,
 }: CanvasProps) {
   const { theme } = useTheme();
+  const { preferences } = usePreferences();
   const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode } = useTracksState();
   const { spectralSelection, setSpectralSelection } = useSpectralSelection();
   const dispatch = useTracksDispatch();
@@ -726,6 +728,7 @@ export function Canvas({
                 backgroundColor={bgColor}
                 timeSelection={timeSelection}
                 isTimeSelectionDragging={selection.selection.isDragging}
+                clipStyle={preferences.clipStyle}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onClipMove={(clipId, deltaSeconds) => {
                   // Find the clip to get its current position
