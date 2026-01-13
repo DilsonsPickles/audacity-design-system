@@ -228,8 +228,12 @@ export function useSpectralSelection(
    * Check if Y position is outside the track bounds
    * We allow the cursor to be in the header area (to select full frequency range)
    * but return true if cursor goes outside the track entirely (into another track or empty space)
+   * Includes hysteresis (resistance) when dragging DOWN to prevent accidental conversion
+   * No resistance when dragging UP (clip header provides natural buffer)
    */
   const isYOutsideClipBounds = useCallback((y: number, trackIndex: number): boolean => {
+    const HYSTERESIS_THRESHOLD_DOWN = 15; // pixels of resistance when dragging down
+
     let trackY = initialGap;
     for (let i = 0; i < trackIndex; i++) {
       trackY += (tracks[i].height || defaultTrackHeight) + trackGap;
@@ -238,19 +242,20 @@ export function useSpectralSelection(
     const track = tracks[trackIndex];
     const trackHeight = track.height || defaultTrackHeight;
 
-    // If Y is outside this track (above or below), trigger conversion
-    // This allows header area but not outside the track bounds
-    if (y < trackY || y > trackY + trackHeight) {
+    // Check boundaries with hysteresis only for downward direction
+    // Up: immediate conversion (no resistance - header provides natural buffer)
+    // Down: requires HYSTERESIS_THRESHOLD_DOWN pixels beyond boundary
+    if (y < trackY || y > trackY + trackHeight + HYSTERESIS_THRESHOLD_DOWN) {
       return true;
     }
 
     // In split view, spectral selection is only valid in top half (spectrogram area)
-    // If cursor is below the split line, it's outside spectral bounds
+    // If cursor is below the split line with hysteresis, it's outside spectral bounds
     if (track.viewMode === 'split') {
       const clipBodyY = trackY + clipHeaderHeight;
       const clipBodyHeight = trackHeight - clipHeaderHeight;
       const splitY = clipBodyY + clipBodyHeight / 2;
-      return y > splitY; // Below the split line = outside spectral area
+      return y > splitY + HYSTERESIS_THRESHOLD_DOWN; // Below the split line (+ resistance) = outside spectral area
     }
 
     return false;
