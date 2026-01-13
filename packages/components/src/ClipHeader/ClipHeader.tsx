@@ -108,17 +108,17 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
     }
   }
 
-  // Color map for time selection overlay - header-specific colors
+  // Color map for time selection overlay - header-specific colors (from theme timeSelectionHeader)
   const timeSelectionColorMap: Record<string, string> = {
-    red: '#FFC5CD',
-    cyan: '#7BFFFF',
-    blue: '#99E8FF',
-    violet: '#CCDBFF',
-    magenta: '#FFD1FF',
-    orange: '#FFE3B2',
-    yellow: '#FFFF9D',
-    green: '#A7FFA6',
-    teal: '#67F9E1',
+    cyan: '#80F0FF',
+    blue: '#9DC4FF',
+    violet: '#C3C2FF',
+    magenta: '#FF9FEE',
+    red: '#FFA6A6',
+    orange: '#FFC19D',
+    yellow: '#FFDD80',
+    green: '#A1FF80',
+    teal: '#80FFDF',
     classic: '#89A7EE',
   };
 

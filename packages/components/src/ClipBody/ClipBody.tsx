@@ -147,18 +147,18 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         const selStartX = (overlapStart - clipStartTime) * pixelsPerSecond;
         const selWidth = (overlapEnd - overlapStart) * pixelsPerSecond;
 
-        // Background color map for selected regions
+        // Background color map for selected regions (from theme timeSelectionBody colors)
         const bgColorMap: Record<string, string> = {
-          red: '#FFDEE6',     // Vibrant pink background for red clips
-          cyan: '#9FFFFF',    // Light cyan background for cyan clips
-          blue: '#B7FAFF',    // Light blue background for blue clips
-          violet: '#E0F0FF',  // Light violet background for violet clips
-          magenta: '#FFE8FF', // Light magenta background for magenta clips
-          orange: '#FFF6D0',  // Light orange background for orange clips
-          yellow: '#FFFFC0',  // Light yellow background for yellow clips
-          green: '#C2FFC7',   // Light green background for green clips
-          teal: '#8FFFF6',    // Light teal background for teal clips
-          classic: '#A4C4F6', // Classic light blue background
+          cyan: '#B3F6FF',
+          blue: '#D0E3FF',
+          violet: '#E6E5FF',
+          magenta: '#FFD2F7',
+          red: '#FFDADA',
+          orange: '#FFE1D0',
+          yellow: '#FFEBB3',
+          green: '#C6FFB3',
+          teal: '#B3FFEC',
+          classic: '#A4C4F6',
         };
 
         ctx.fillStyle = bgColorMap[color] || '#FFFFFF';
