@@ -422,7 +422,11 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         yellow: '#3A3118',
         green: '#20311A',
         teal: '#122E27',
+        classic: '#5F73DC',
       };
+
+      // Waveform color when NOT in selection
+      const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
 
       // Draw L channel
       for (let px = 0; px < canvasWidth; px++) {
@@ -440,7 +444,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Check if this pixel is within time selection
         const isInSelection = px >= selStartPx && px < selEndPx;
-        ctx.fillStyle = isInSelection ? waveformColorMap[color] : 'rgba(0, 0, 0, 0.8)';
+        ctx.fillStyle = isInSelection ? waveformColorMap[color] : defaultWaveformColor;
 
         const y1 = lChannelCenterY - max * lMaxAmplitude;
         const y2 = lChannelCenterY - min * lMaxAmplitude;
@@ -472,7 +476,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Check if this pixel is within time selection
         const isInSelection = px >= selStartPx && px < selEndPx;
-        ctx.fillStyle = isInSelection ? waveformColorMap[color] : 'rgba(0, 0, 0, 0.8)';
+        ctx.fillStyle = isInSelection ? waveformColorMap[color] : defaultWaveformColor;
 
         const y1 = rChannelCenterY - max * rMaxAmplitude;
         const y2 = rChannelCenterY - min * rMaxAmplitude;
@@ -518,7 +522,11 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         yellow: '#3A3118',
         green: '#20311A',
         teal: '#122E27',
+        classic: '#5F73DC',
       };
+
+      // Waveform color when NOT in selection
+      const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
 
       for (let px = 0; px < canvasWidth; px++) {
         const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -535,7 +543,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Check if this pixel is within time selection
         const isInSelection = px >= selStartPx && px < selEndPx;
-        ctx.fillStyle = isInSelection ? waveformColorMap[color] : 'rgba(0, 0, 0, 0.8)';
+        ctx.fillStyle = isInSelection ? waveformColorMap[color] : defaultWaveformColor;
 
         const y1 = centerY - max * maxAmplitude;
         const y2 = centerY - min * maxAmplitude;

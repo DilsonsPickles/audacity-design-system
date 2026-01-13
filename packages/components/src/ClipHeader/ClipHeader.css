@@ -273,6 +273,32 @@
   background-color: #84D3BF; /* teal-400 */
 }
 
+/* Classic - uses light lavender colors */
+.clip-header--classic {
+  background-color: #CDD2F5; /* Classic header default */
+}
+.clip-header--classic.clip-header--hover {
+  background-color: #B8BEE8; /* Classic header hover */
+}
+.clip-header--classic.clip-header--hover .clip-header__menu-button:hover {
+  background-color: #A3AAD9; /* Slightly darker on button hover */
+}
+.clip-header--classic.clip-header--hover .clip-header__menu-button:active {
+  background-color: #8D96C9; /* Even darker on button active */
+}
+.clip-header--classic.clip-header--selected {
+  background-color: #CDD2F5; /* Same when selected */
+}
+.clip-header--classic.clip-header--selected.clip-header--hover {
+  background-color: #CDD2F5; /* Same when selected + hover */
+}
+.clip-header--classic.clip-header--selected.clip-header--hover .clip-header__menu-button:hover {
+  background-color: #B8BEE8; /* Slightly darker on button hover when selected */
+}
+.clip-header--classic.clip-header--selected.clip-header--hover .clip-header__menu-button:active {
+  background-color: #A3AAD9; /* Even darker on button active when selected */
+}
+
 /* Cyan - uses cyan-500, cyan-600, cyan-700, cyan-800, cyan-200, cyan-100, cyan-300, cyan-400 */
 .clip-header--cyan {
   background-color: #6CCBD8; /* cyan-500 */

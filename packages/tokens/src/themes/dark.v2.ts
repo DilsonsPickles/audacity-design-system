@@ -395,7 +395,7 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#CDD2F5',
         headerSelectedHover: '#B8BEE8',
         bodySelected: '#E4E8FA',
-        timeSelectionBody: '#E4E8FA',
+        timeSelectionBody: '#A4C4F6',
         timeSelectionHeader: '#CDD2F5',
         timeSelectionWaveform: '#5F73DC',
       },

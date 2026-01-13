@@ -364,7 +364,7 @@ export const TrackNew: React.FC<TrackProps> = ({
           }}
         >
           <ClipDisplay
-            color={(clip as any).color || trackColor}
+            color={clipStyle === 'classic' ? 'classic' : ((clip as any).color || trackColor)}
             name={clip.name}
             width={clipWidth}
             height={height}

@@ -101,6 +101,14 @@
   background-color: #ACE1D3; /* teal-300 */
 }
 
+/* Classic */
+.clip-body--classic {
+  background-color: #E4E8FA; /* Classic light lavender */
+}
+.clip-body--classic.clip-body--selected {
+  background-color: #E4E8FA; /* Same for selected */
+}
+
 /* Time-selected (within time selection) - vibrant colors */
 .clip-body--cyan.clip-body--time-selected {
   background-color: #FFFFFF; /* White for now */
@@ -128,4 +136,7 @@
 }
 .clip-body--teal.clip-body--time-selected {
   background-color: #FFFFFF; /* White for now */
+}
+.clip-body--classic.clip-body--time-selected {
+  background-color: #A4C4F6; /* Classic time selection - light blue */
 }
