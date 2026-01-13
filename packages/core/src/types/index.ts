@@ -66,7 +66,8 @@ export interface SpectralSelection {
   minFrequency: number;
   maxFrequency: number;
   trackIndex: number;
-  clipId?: number; // Optional - if undefined, selection can span multiple clips on the track
+  clipId?: number | string; // Optional - if undefined, selection can span multiple clips on the track
+  originChannel?: 'L' | 'R' | 'mono'; // Which channel the selection was started in
 }
 
 export interface TimeSelectionDragState {

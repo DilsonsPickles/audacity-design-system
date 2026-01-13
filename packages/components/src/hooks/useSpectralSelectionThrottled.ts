@@ -6,16 +6,9 @@
  */
 
 import { useRef, useCallback } from 'react';
+import { SpectralSelection } from '@audacity-ui/core';
 
-export interface SpectralSelection {
-  trackIndex: number;
-  clipId: number;
-  startTime: number;
-  endTime: number;
-  minFrequency: number;
-  maxFrequency: number;
-  originChannel?: 'L' | 'R' | 'mono';
-}
+export type { SpectralSelection };
 
 export interface UseSpectralSelectionThrottledConfig {
   /** The actual callback to update spectral selection state */

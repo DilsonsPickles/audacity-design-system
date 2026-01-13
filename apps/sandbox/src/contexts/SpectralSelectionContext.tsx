@@ -2,7 +2,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface SpectralSelection {
   trackIndex: number;
-  clipId: number;
+  clipId?: number | string; // Optional - if undefined, selection can span multiple clips on the track
   startTime: number;
   endTime: number;
   minFrequency: number; // 0-1 (normalized)

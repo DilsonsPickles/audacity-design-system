@@ -12,16 +12,9 @@
 
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { CLIP_CONTENT_OFFSET } from '../constants';
+import { SpectralSelection } from '@audacity-ui/core';
 
-export interface SpectralSelection {
-  trackIndex: number;
-  clipId?: number; // Optional - if undefined, selection can span multiple clips on the track
-  startTime: number;
-  endTime: number;
-  minFrequency: number; // 0-1 (normalized)
-  maxFrequency: number; // 0-1 (normalized)
-  originChannel?: 'L' | 'R' | 'mono'; // Which channel the selection was started in
-}
+export type { SpectralSelection };
 
 interface SpectralTrack {
   id: number;

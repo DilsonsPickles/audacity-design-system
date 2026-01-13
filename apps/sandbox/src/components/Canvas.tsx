@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, TimeSelectionCanvasOverlay, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import './Canvas.css';
@@ -235,29 +235,6 @@ export function Canvas({
     // Always move playhead on click (allow it to go to 0 - stalk can touch the gap)
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, time) });
   };
-
-  // Calculate time selection overlay bounds for each selected track
-  const getTimeSelectionOverlayBoundsPerTrack = () => {
-    if (!timeSelection || selectedTrackIndices.length === 0) {
-      return [];
-    }
-
-    // Create an overlay for each selected track
-    return selectedTrackIndices.map(trackIndex => {
-      // Calculate top position (Y of this track)
-      let top = TOP_GAP;
-      for (let i = 0; i < trackIndex; i++) {
-        top += (tracks[i].height || DEFAULT_TRACK_HEIGHT) + TRACK_GAP;
-      }
-
-      // Calculate height of this track
-      const height = tracks[trackIndex].height || DEFAULT_TRACK_HEIGHT;
-
-      return { top, height, trackIndex };
-    });
-  };
-
-  const overlayBoundsPerTrack = getTimeSelectionOverlayBoundsPerTrack();
 
   const containerProps = selection.containerProps as any;
 
@@ -1451,7 +1428,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
           );
         })}
 
-        {/* Time Selection Overlays - removed, using clip background colors instead */}
+        {/* Time Selection: track backgrounds change to #647684, clips use their own time selection colors */}
 
         {/* Spectral Selection Overlay */}
         <SpectralSelectionOverlay
