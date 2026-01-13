@@ -119,6 +119,7 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
     yellow: '#FFFF9D',
     green: '#A7FFA6',
     teal: '#67F9E1',
+    classic: '#89A7EE',
   };
 
   return (

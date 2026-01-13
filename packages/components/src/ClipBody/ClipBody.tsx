@@ -158,6 +158,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           yellow: '#FFFFC0',  // Light yellow background for yellow clips
           green: '#C2FFC7',   // Light green background for green clips
           teal: '#8FFFF6',    // Light teal background for teal clips
+          classic: '#A4C4F6', // Classic light blue background
         };
 
         ctx.fillStyle = bgColorMap[color] || '#FFFFFF';
@@ -609,6 +610,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     `clip-body--${channelMode}`,
     selected && 'clip-body--selected',
     showEnvelope && envelope && 'clip-body--has-envelope',
+    inTimeSelection && 'clip-body--time-selected',
   ]
     .filter(Boolean)
     .join(' ');

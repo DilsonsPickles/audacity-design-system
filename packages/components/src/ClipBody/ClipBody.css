@@ -138,5 +138,5 @@
   background-color: #FFFFFF; /* White for now */
 }
 .clip-body--classic.clip-body--time-selected {
-  background-color: #A4C4F6; /* Classic time selection - light blue */
+  /* No background color change - time selection is rendered on canvas */
 }
