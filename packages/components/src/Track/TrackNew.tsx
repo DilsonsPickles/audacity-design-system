@@ -147,6 +147,11 @@ export interface TrackProps {
    * Time selection range (for rendering vibrant clip colors within selection)
    */
   timeSelection?: { startTime: number; endTime: number } | null;
+
+  /**
+   * Whether time selection is currently being dragged
+   */
+  isTimeSelectionDragging?: boolean;
 }
 
 // Map track index to color
@@ -183,6 +188,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   onClipTrim,
   onClipMoveToTrack,
   timeSelection,
+  isTimeSelectionDragging = false,
 }) => {
   const trackColor = getTrackColor(trackIndex);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -460,6 +466,36 @@ export const TrackNew: React.FC<TrackProps> = ({
 
   const className = `track-wrapper ${isFocused ? 'track-wrapper--focused' : ''}`;
 
+  // Render time selection overlay (only for the selected time range on track background)
+  const renderTimeSelectionOverlay = () => {
+    if (!timeSelection) return null;
+
+    const startX = CLIP_CONTENT_OFFSET + timeSelection.startTime * pixelsPerSecond;
+    const endX = CLIP_CONTENT_OFFSET + timeSelection.endTime * pixelsPerSecond;
+    const selectionWidth = endX - startX;
+
+    // Selected tracks: #647F8F when dragging, #627788 when finalized
+    // Unselected tracks: #313846
+    const overlayColor = isSelected
+      ? (isTimeSelectionDragging ? '#647F8F' : '#627788')
+      : '#313846';
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: `${startX}px`,
+          top: 0,
+          width: `${selectionWidth}px`,
+          height: `${height}px`,
+          backgroundColor: overlayColor,
+          pointerEvents: 'none',
+          zIndex: 0, // Behind clips (clips have higher z-index)
+        }}
+      />
+    );
+  };
+
   return (
     <div className={className} data-track-index={trackIndex}>
       <div
@@ -475,6 +511,7 @@ export const TrackNew: React.FC<TrackProps> = ({
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
+        {renderTimeSelectionOverlay()}
         {renderClips()}
         {renderEnvelopeInteractionLayers()}
       </div>

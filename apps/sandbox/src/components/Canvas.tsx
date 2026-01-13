@@ -725,6 +725,7 @@ export function Canvas({
                 tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}
                 backgroundColor={bgColor}
                 timeSelection={timeSelection}
+                isTimeSelectionDragging={selection.selection.isDragging}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onClipMove={(clipId, deltaSeconds) => {
                   // Find the clip to get its current position
