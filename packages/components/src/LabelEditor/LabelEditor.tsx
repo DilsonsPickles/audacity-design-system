@@ -167,6 +167,9 @@ export function LabelEditor({
     '--label-editor-row-selected': theme.border.focus,
     '--label-editor-text': theme.foreground.text.primary,
     '--label-editor-text-secondary': theme.foreground.text.secondary,
+    '--table-header-bg': '#EBEBEF',
+    '--table-header-border': '#D4D5D9',
+    '--table-header-text': theme.foreground.text.primary,
   } as React.CSSProperties;
 
   return (

@@ -5,8 +5,6 @@
 
 import React from 'react';
 import { GhostButton } from '../GhostButton';
-import { Icon } from '../Icon';
-import { useTheme } from '../ThemeProvider';
 import './LabelEditorTableHeader.css';
 
 export interface LabelEditorTableHeaderColumn {
@@ -42,16 +40,8 @@ export interface LabelEditorTableHeaderProps {
 export function LabelEditorTableHeader({
   columns,
 }: LabelEditorTableHeaderProps) {
-  const { theme } = useTheme();
-
-  const style = {
-    '--table-header-bg': '#EBEBEF',
-    '--table-header-border': '#D4D5D9',
-    '--table-header-text': theme.foreground.text.primary,
-  } as React.CSSProperties;
-
   return (
-    <thead className="label-editor-table-header" style={style}>
+    <thead className="label-editor-table-header">
       <tr className="label-editor-table-header__row">
         {columns.map((column, index) => (
           <th key={index} className="label-editor-table-header__cell">
