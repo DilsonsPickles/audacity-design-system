@@ -197,6 +197,7 @@ export function LabelEditor({
               '--table-header-bg': '#EBEBEF',
               '--table-header-border': '#D4D5D9',
               '--table-header-text': theme.foreground.text.primary,
+              '--label-editor-row-border': theme.border.default,
             } as React.CSSProperties}
           >
             <colgroup>
