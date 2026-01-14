@@ -73,6 +73,11 @@ export interface DialogProps {
    */
   noPadding?: boolean;
   /**
+   * Show border on top of footer
+   * @default true
+   */
+  footerBorder?: boolean;
+  /**
    * Operating system for platform-specific header controls
    * @default 'macos'
    */
@@ -97,6 +102,7 @@ export function Dialog({
   onClickOutside,
   closeOnClickOutside = true,
   closeOnEscape = true,
+  footerBorder = true,
   className = '',
   width = 400,
   maximizable = false,
@@ -326,6 +332,7 @@ export function Dialog({
         '--dialog-bg': theme.background.surface.elevated,
         '--dialog-footer-bg': theme.background.surface.default,
         '--dialog-border': theme.border.default,
+        '--dialog-footer-border': footerBorder ? theme.border.default : 'transparent',
         '--dialog-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
       } as React.CSSProperties
     : {
@@ -338,6 +345,7 @@ export function Dialog({
         '--dialog-bg': theme.background.surface.elevated,
         '--dialog-footer-bg': theme.background.surface.default,
         '--dialog-border': theme.border.default,
+        '--dialog-footer-border': footerBorder ? theme.border.default : 'transparent',
         '--dialog-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
       } as React.CSSProperties;
 
