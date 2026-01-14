@@ -2025,13 +2025,17 @@ function CanvasDemoContent() {
         labels={state.tracks.flatMap((track, index) =>
           (track.labels || []).map(label => ({ ...label, id: String(label.id), trackIndex: index }))
         )}
-        tracks={state.tracks
-          .map((track, index) => ({ track, index }))
-          .filter(({ track }) => track.clips.length === 0) // Only label tracks (no clips)
-          .map(({ track, index }) => ({
-            value: index.toString(),
-            label: track.name,
-          }))}
+        tracks={[
+          ...state.tracks
+            .map((track, index) => ({ track, index }))
+            .filter(({ track }) => track.clips.length === 0) // Only label tracks (no clips)
+            .map(({ track, index }) => ({
+              value: index.toString(),
+              label: track.name,
+            })),
+          // Add "New Label Track..." option
+          { value: '__NEW__', label: 'New Label Track...' },
+        ]}
         playheadPosition={state.playheadPosition}
         onChange={(updatedLabels) => {
           // Group labels by track, converting string IDs back to numbers
