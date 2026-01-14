@@ -941,20 +941,21 @@ function CanvasDemoContent() {
           return;
         }
 
-        // Priority 4: If there's a focused track (and no labels/clips/time selected), delete the track
-        // Only delete the track if it was selected via the track header (not via clip selection)
-        if (state.focusedTrackIndex !== null && state.focusedTrackIndex >= 0) {
+        // Priority 4: If there are selected tracks (and no labels/clips/time selected), delete the tracks
+        // Only delete the tracks if they were selected via the track header (not via clip selection)
+        if (state.selectedTrackIndices.length > 0) {
           // Double-check no clips are selected in any track
           const anyClipsSelected = state.tracks.some(track =>
             track.clips.some(clip => clip.selected)
           );
 
           if (!anyClipsSelected) {
+            const count = state.selectedTrackIndices.length;
             dispatch({
-              type: 'DELETE_TRACK',
-              payload: state.focusedTrackIndex,
+              type: 'DELETE_TRACKS',
+              payload: state.selectedTrackIndices,
             });
-            toast.info('Track deleted');
+            toast.info(`${count} track${count > 1 ? 's' : ''} deleted`);
           }
           return;
         }

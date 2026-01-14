@@ -134,6 +134,7 @@ export type TracksAction =
   | { type: 'ADD_TRACK'; payload: Track }
   | { type: 'UPDATE_TRACK'; payload: { index: number; track: Partial<Track> } }
   | { type: 'DELETE_TRACK'; payload: number }
+  | { type: 'DELETE_TRACKS'; payload: number[] }
   | { type: 'SET_SELECTED_TRACKS'; payload: number[] }
   | { type: 'SET_FOCUSED_TRACK'; payload: number | null }
   | { type: 'SET_ENVELOPE_MODE'; payload: boolean }
@@ -201,6 +202,17 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ...state,
         tracks: state.tracks.filter((_, index) => index !== action.payload),
       };
+
+    case 'DELETE_TRACKS': {
+      // Delete multiple tracks by filtering out the specified indices
+      const indicesToDelete = new Set(action.payload);
+      return {
+        ...state,
+        tracks: state.tracks.filter((_, index) => !indicesToDelete.has(index)),
+        selectedTrackIndices: [],
+        focusedTrackIndex: null,
+      };
+    }
 
     case 'SET_SELECTED_TRACKS':
       return { ...state, selectedTrackIndices: action.payload };
