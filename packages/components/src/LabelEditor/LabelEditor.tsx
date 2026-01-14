@@ -105,7 +105,8 @@ export function LabelEditor({
       startTime: playheadPosition,
       endTime: playheadPosition,
     };
-    onChange([...labels, newLabel]);
+    // Add new label at the beginning so newest labels appear at top
+    onChange([newLabel, ...labels]);
   };
 
   const handleDeleteSelected = () => {

@@ -71,6 +71,7 @@
   background: transparent;
   padding: 4px 6px;
   width: 100%;
+  min-width: 50px;
 }
 
 .label-editor__table-cell .text-input:focus {
