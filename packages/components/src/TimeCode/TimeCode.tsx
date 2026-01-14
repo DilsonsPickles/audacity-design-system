@@ -124,9 +124,51 @@ export function TimeCode({
     setEditingDigitIndex(digitGlobalIndex);
   };
 
-  const handleDigitChange = (digitGlobalIndex: number, newValue: string) => {
+  const handleDigitChange = (digitGlobalIndex: number, newDigitValue: string) => {
     if (!onChange) return;
-    // TODO: Convert segments back to seconds and call onChange
+
+    // Find which segment and digit position this corresponds to
+    let currentGlobalIndex = 0;
+    let targetSegmentIndex = -1;
+    let targetDigitPosition = -1;
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      if (segment.type !== 'unit') continue;
+
+      const segmentLength = segment.value.length;
+      for (let j = 0; j < segmentLength; j++) {
+        const thisGlobalIndex = i * 100 + j;
+        if (thisGlobalIndex === digitGlobalIndex) {
+          targetSegmentIndex = i;
+          targetDigitPosition = j;
+          break;
+        }
+      }
+      if (targetSegmentIndex !== -1) break;
+    }
+
+    if (targetSegmentIndex === -1) return;
+
+    // Create new segments with the updated digit
+    const newSegments = [...segments];
+    const targetSegment = newSegments[targetSegmentIndex];
+    const newValue =
+      targetSegment.value.substring(0, targetDigitPosition) +
+      newDigitValue +
+      targetSegment.value.substring(targetDigitPosition + 1);
+
+    newSegments[targetSegmentIndex] = { ...targetSegment, value: newValue };
+
+    // Convert segments back to seconds
+    const newSeconds = segmentsToSeconds(newSegments, format, sampleRate, frameRate);
+    onChange(newSeconds);
+
+    // Move to next digit
+    const nextDigitIndex = findNextEditableDigit(digitGlobalIndex, segments);
+    if (nextDigitIndex !== null) {
+      setEditingDigitIndex(nextDigitIndex);
+    }
   };
 
   const handleFormatSelect = (newFormat: TimeCodeFormat) => {
@@ -144,6 +186,61 @@ export function TimeCode({
     });
     setShowMenu(!showMenu);
   };
+
+  // Handle keyboard input for editing digits
+  useEffect(() => {
+    if (!isEditing || editingDigitIndex === null || disabled) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Number keys (0-9)
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        handleDigitChange(editingDigitIndex, e.key);
+      }
+      // Arrow keys for navigation
+      else if (e.key === 'ArrowRight' || e.key === 'Tab') {
+        e.preventDefault();
+        const nextIndex = findNextEditableDigit(editingDigitIndex, segments);
+        if (nextIndex !== null) {
+          setEditingDigitIndex(nextIndex);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const prevIndex = findPreviousEditableDigit(editingDigitIndex, segments);
+        if (prevIndex !== null) {
+          setEditingDigitIndex(prevIndex);
+        }
+      }
+      // Escape to exit editing
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsEditing(false);
+        setEditingDigitIndex(null);
+      }
+      // Enter to confirm and exit
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        setIsEditing(false);
+        setEditingDigitIndex(null);
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      // Click outside to exit editing
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsEditing(false);
+        setEditingDigitIndex(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', handleClick);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleClick);
+    };
+  }, [isEditing, editingDigitIndex, disabled, segments]);
 
   const style = {
     '--timecode-bg': variant === 'light' ? '#FFFFFF' : '#212433',
@@ -553,4 +650,126 @@ function formatHz(seconds: number): TimeCodeSegment[] {
     { value: decPart, type: 'unit', editable: true },
     { value: ' Hz', type: 'separator' },
   ];
+}
+
+// Helper function to find the next editable digit
+function findNextEditableDigit(currentIndex: number, segments: TimeCodeSegment[]): number | null {
+  let foundCurrent = false;
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment.type !== 'unit' || !segment.editable) continue;
+
+    for (let j = 0; j < segment.value.length; j++) {
+      const globalIndex = i * 100 + j;
+
+      if (foundCurrent) {
+        return globalIndex;
+      }
+
+      if (globalIndex === currentIndex) {
+        foundCurrent = true;
+      }
+    }
+  }
+
+  return null;
+}
+
+// Helper function to find the previous editable digit
+function findPreviousEditableDigit(currentIndex: number, segments: TimeCodeSegment[]): number | null {
+  let previousIndex: number | null = null;
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment.type !== 'unit' || !segment.editable) continue;
+
+    for (let j = 0; j < segment.value.length; j++) {
+      const globalIndex = i * 100 + j;
+
+      if (globalIndex === currentIndex) {
+        return previousIndex;
+      }
+
+      previousIndex = globalIndex;
+    }
+  }
+
+  return null;
+}
+
+// Helper function to convert segments back to seconds
+function segmentsToSeconds(
+  segments: TimeCodeSegment[],
+  format: TimeCodeFormat,
+  sampleRate: number,
+  frameRate: number
+): number {
+  // Extract unit values from segments
+  const unitValues: number[] = [];
+  for (const segment of segments) {
+    if (segment.type === 'unit') {
+      unitValues.push(parseInt(segment.value, 10) || 0);
+    }
+  }
+
+  switch (format) {
+    case 'dd:hh:mm:ss': {
+      const [days, hours, minutes, seconds] = unitValues;
+      return (days || 0) * 86400 + (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0);
+    }
+    case 'hh:mm:ss': {
+      const [hours, minutes, seconds] = unitValues;
+      return (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0);
+    }
+    case 'hh:mm:ss+hundredths': {
+      const [hours, minutes, seconds, hundredths] = unitValues;
+      return (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0) + (hundredths || 0) / 100;
+    }
+    case 'hh:mm:ss+milliseconds': {
+      const [hours, minutes, seconds, milliseconds] = unitValues;
+      return (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0) + (milliseconds || 0) / 1000;
+    }
+    case 'hh:mm:ss+samples': {
+      const [hours, minutes, seconds, samples] = unitValues;
+      return (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0) + (samples || 0) / sampleRate;
+    }
+    case 'hh:mm:ss+frames': {
+      const [hours, minutes, seconds, frames] = unitValues;
+      return (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0) + (frames || 0) / frameRate;
+    }
+    case 'samples': {
+      // Sum all unit values (handling comma-separated groups)
+      const totalSamples = unitValues.reduce((sum, val) => sum * 1000 + val, 0);
+      return totalSamples / sampleRate;
+    }
+    case 'seconds': {
+      // Sum all unit values (handling comma-separated groups)
+      return unitValues.reduce((sum, val) => sum * 1000 + val, 0);
+    }
+    case 'seconds+milliseconds': {
+      // All but last value are seconds groups, last is milliseconds
+      const milliseconds = unitValues.pop() || 0;
+      const seconds = unitValues.reduce((sum, val) => sum * 1000 + val, 0);
+      return seconds + milliseconds / 1000;
+    }
+    case 'film-frames': {
+      const totalFrames = unitValues.reduce((sum, val) => sum * 1000 + val, 0);
+      return totalFrames / frameRate;
+    }
+    case 'beats:bars': {
+      const [bars, beats] = unitValues;
+      const bpm = 120;
+      const beatsPerBar = 4;
+      const secondsPerBeat = 60 / bpm;
+      return ((bars || 0) * beatsPerBar + (beats || 1) - 1) * secondsPerBeat;
+    }
+    case 'Hz': {
+      const [intPart, decPart] = unitValues;
+      const frequency = parseFloat(`${intPart || 0}.${decPart || 0}`);
+      return frequency > 0 ? 1 / frequency : 0;
+    }
+    default:
+      return 0;
+  }
 }
