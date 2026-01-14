@@ -51,28 +51,35 @@ export function LabelEditorTableHeader({
   } as React.CSSProperties;
 
   return (
-    <div className="label-editor-table-header" style={style}>
-      {columns.map((column, index) => (
-        <div
-          key={index}
-          className="label-editor-table-header__cell"
-          style={{ width: column.width }}
-        >
-          <span className="label-editor-table-header__label">
-            {column.label}
-          </span>
-          {column.showMenu && (
-            <button
-              className="label-editor-table-header__menu-button"
-              onClick={column.onMenuClick}
-              aria-label={`${column.label} menu`}
-            >
-              <span className="label-editor-table-header__ellipsis">…</span>
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
+    <table className="label-editor-table-header" style={style}>
+      <colgroup>
+        {columns.map((column, index) => (
+          <col key={index} style={{ width: column.width }} />
+        ))}
+      </colgroup>
+      <tbody>
+        <tr className="label-editor-table-header__row">
+          {columns.map((column, index) => (
+            <td key={index} className="label-editor-table-header__cell">
+              <div className="label-editor-table-header__cell-content">
+                <span className="label-editor-table-header__label">
+                  {column.label}
+                </span>
+                {column.showMenu && (
+                  <button
+                    className="label-editor-table-header__menu-button"
+                    onClick={column.onMenuClick}
+                    aria-label={`${column.label} menu`}
+                  >
+                    <span className="label-editor-table-header__ellipsis">…</span>
+                  </button>
+                )}
+              </div>
+            </td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
   );
 }
 

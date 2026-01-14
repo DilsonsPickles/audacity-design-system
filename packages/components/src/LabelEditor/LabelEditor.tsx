@@ -195,6 +195,14 @@ export function LabelEditor({
         />
         <div className="label-editor__table-container">
           <table className="label-editor__table">
+            <colgroup>
+              <col style={{ width: '120px' }} />
+              <col style={{ width: 'auto' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+            </colgroup>
             <tbody className="label-editor__table-body">
               {labels.map((label) => (
                 <LabelEditorTableRow
