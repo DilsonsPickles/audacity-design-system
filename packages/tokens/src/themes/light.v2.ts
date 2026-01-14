@@ -41,13 +41,13 @@ export const lightTheme: ThemeTokens = {
         primary: {
           idle: '#84B5FF',       // Primary button (blue)
           hover: '#66A3FF',      // Darker on hover (depressed)
-          active: '#5A91E6',     // Even darker when pressed
+          active: '#5A91E6',     
           disabled: '#C0C5CE',   // Desaturated gray
         },
         secondary: {
           idle: '#D3D4DC',       // Secondary button (subtle gray)
           hover: '#C8CAD3',      // Darker on hover (depressed)
-          active: '#BDC1CC',     // Even darker when pressed
+          active: '#BDC1CC',     
           disabled: '#F2F3F5',   // Very light gray
         },
         ghost: {
@@ -69,7 +69,7 @@ export const lightTheme: ThemeTokens = {
       checkbox: {
         idle: '#D2D4DC',         // Light gray background
         hover: '#C8CAD3',        // Darker gray on hover
-        pressed: '#BEC1CC',      // Even darker when pressed
+        pressed: '#BEC1CC',      
         checked: '#84B5FF',      // Blue when checked
         checkedHover: '#A2C7FF', // Lighter blue on hover
         disabled: '#F2F3F5',     // Very light gray when disabled
@@ -132,7 +132,7 @@ export const lightTheme: ThemeTokens = {
         thumb: {
           idle: '#C0C5CE',       // Medium gray thumb
           hover: '#A9B0BD',      // Darker on hover
-          pressed: '#949CAC',    // Even darker when pressed
+          pressed: '#949CAC',    
         },
       },
 
@@ -180,7 +180,7 @@ export const lightTheme: ThemeTokens = {
     trackHeader: {
       idle: '#E3E3E8',           // Light gray idle state
       hover: '#D9D9DE',          // Slightly darker on hover
-      selected: '#D0D0D5',       // Even darker when selected
+      selected: '#D0D0D5',       
     },
 
     toast: '#14151A',            // Dark background for toast notifications
@@ -283,7 +283,7 @@ export const lightTheme: ThemeTokens = {
       // Cyan clip colors
       cyan: {
         header: '#00C1D2',
-        headerHover: '#00A8B8', // Darker cyan for hover
+        headerHover: '#00A8B8', 
         body: '#3FCEDA',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#ECF9FA',
@@ -293,15 +293,15 @@ export const lightTheme: ThemeTokens = {
         waveformRms: '#407378',
         waveformRmsSelected: '#407378',
         // Time selection colors (consistent rule: body L=header+15%, header L=header+5%, S=100%)
-        timeSelectionBody: '#7BFFFF',        // Was: #9FFFFF
-        timeSelectionHeader: '#24FFFF',      // Was: #7BFFFF
+        timeSelectionBody: '#7BFFFF',        
+        timeSelectionHeader: '#24FFFF',      
         timeSelectionWaveform: '#26424A',    // 10% white added to #0D292C
-        timeSelectionWaveformRms: '#5A8C95', // 10% white added to #407378
+        timeSelectionWaveformRms: '#5A8C95', // 10% white added to #407378 
       },
       // Blue clip colors
       blue: {
         header: '#50A5FF',
-        headerHover: '#3D8FE6', // Darker blue for hover
+        headerHover: '#3D8FE6', 
         body: '#75B7FF',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F2F7FF',
@@ -310,15 +310,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#172533',
         waveformRms: '#536B85',
         waveformRmsSelected: '#536B85',
-        timeSelectionBody: '#A3FCFF',        // Was: #B7FAFF
-        timeSelectionHeader: '#7EEBFF',      // Was: #99E8FF
+        timeSelectionBody: '#A3FCFF',        
+        timeSelectionHeader: '#7EEBFF',      
         timeSelectionWaveform: '#303E4C',    // 10% white added to #172533
-        timeSelectionWaveformRms: '#6C849D', // 10% white added to #536B85
+        timeSelectionWaveformRms: '#6C849D', // 10% white added to #536B85 
       },
       // Violet clip colors
       violet: {
         header: '#9A96FF',
-        headerHover: '#8681E6', // Darker violet for hover
+        headerHover: '#8681E6', 
         body: '#ADABFF',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F7F6FF',
@@ -327,15 +327,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#232233',
         waveformRms: '#676685',
         waveformRmsSelected: '#676685',
-        timeSelectionBody: '#DCF1FF',        // Was: #E0F0FF
-        timeSelectionHeader: '#C8DCFF',      // Was: #CCDBFF
+        timeSelectionBody: '#DCF1FF',        
+        timeSelectionHeader: '#C8DCFF',      
         timeSelectionWaveform: '#3C3B4C',    // 10% white added to #232233
-        timeSelectionWaveformRms: '#807F9D', // 10% white added to #676685
+        timeSelectionWaveformRms: '#807F9D', // 10% white added to #676685 
       },
       // Magenta clip colors
       magenta: {
         header: '#E787D0',
-        headerHover: '#D372B8', // Darker magenta for hover
+        headerHover: '#D372B8', 
         body: '#ECA0D9',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FBF4FC',
@@ -344,15 +344,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#2F202B',
         waveformRms: '#7E6277',
         waveformRmsSelected: '#7E6277',
-        timeSelectionBody: '#FFE7FF',        // Was: #FFE8FF
-        timeSelectionHeader: '#FFCFFF',      // Was: #FFD1FF
+        timeSelectionBody: '#FFE7FF',        
+        timeSelectionHeader: '#FFCFFF',      
         timeSelectionWaveform: '#483944',    // 10% white added to #2F202B
-        timeSelectionWaveformRms: '#977B8F', // 10% white added to #7E6277
+        timeSelectionWaveformRms: '#977B8F', // 10% white added to #7E6277 
       },
       // Red clip colors
       red: {
         header: '#FF787C',
-        headerHover: '#E66467', // Darker red for hover
+        headerHover: '#E66467', 
         body: '#FF9496',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FEF2F2',
@@ -361,15 +361,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#331E1E',
         waveformRms: '#855E5F',
         waveformRmsSelected: '#855E5F',
-        timeSelectionBody: '#FFDCE6',        // Was: #FFDEE6
-        timeSelectionHeader: '#FFC2CC',      // Was: #FFC5CD
+        timeSelectionBody: '#FFDCE6',        
+        timeSelectionHeader: '#FFC2CC',      
         timeSelectionWaveform: '#4C3737',    // 10% white added to #331E1E
-        timeSelectionWaveformRms: '#9E7777', // 10% white added to #855E5F
+        timeSelectionWaveformRms: '#9E7777', // 10% white added to #855E5F 
       },
       // Orange clip colors
       orange: {
         header: '#FF9857',
-        headerHover: '#E68442', // Darker orange for hover
+        headerHover: '#E68442', 
         body: '#FFAD7A',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FFF5EE',
@@ -378,15 +378,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#332318',
         waveformRms: '#856754',
         waveformRmsSelected: '#856754',
-        timeSelectionBody: '#FFF6CC',        // Was: #FFF6D0
-        timeSelectionHeader: '#FFE2AB',      // Was: #FFE3B2
+        timeSelectionBody: '#FFF6CC',        
+        timeSelectionHeader: '#FFE2AB',      
         timeSelectionWaveform: '#4C3C31',    // 10% white added to #332318
-        timeSelectionWaveformRms: '#9E806C', // 10% white added to #856754
+        timeSelectionWaveformRms: '#9E806C', // 10% white added to #856754 
       },
       // Yellow clip colors
       yellow: {
         header: '#F0BE31',
-        headerHover: '#D4A828', // Darker yellow for hover
+        headerHover: '#D4A828', 
         body: '#F2CB63',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FCF8EE',
@@ -395,15 +395,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#302914',
         waveformRms: '#80724C',
         waveformRmsSelected: '#80724C',
-        timeSelectionBody: '#FFFFB8',        // Was: #FFFFC0
-        timeSelectionHeader: '#FFFF8E',      // Was: #FFFF9D
+        timeSelectionBody: '#FFFFB8',        
+        timeSelectionHeader: '#FFFF8E',      
         timeSelectionWaveform: '#49422D',    // 10% white added to #302914
-        timeSelectionWaveformRms: '#998B64', // 10% white added to #80724C
+        timeSelectionWaveformRms: '#998B64', // 10% white added to #80724C 
       },
       // Green clip colors
       green: {
         header: '#58C049',
-        headerHover: '#47A43A', // Darker green for hover
+        headerHover: '#47A43A', 
         body: '#7CCD70',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F0F9EE',
@@ -412,15 +412,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#192916',
         waveformRms: '#557351',
         waveformRmsSelected: '#557351',
-        timeSelectionBody: '#B0FFC2',        // Was: #C2FFC7
-        timeSelectionHeader: '#89FF9C',      // Was: #A7FFA6
+        timeSelectionBody: '#B0FFC2',        
+        timeSelectionHeader: '#89FF9C',      
         timeSelectionWaveform: '#32422F',    // 10% white added to #192916
-        timeSelectionWaveformRms: '#6E8C69', // 10% white added to #557351
+        timeSelectionWaveformRms: '#6E8C69', // 10% white added to #557351 
       },
       // Teal clip colors
       teal: {
         header: '#00B792',
-        headerHover: '#009B7A', // Darker teal for hover
+        headerHover: '#009B7A', 
         body: '#17C6A8',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#EAF8F4',
@@ -429,15 +429,15 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#052822',
         waveformRms: '#317066',
         waveformRmsSelected: '#317066',
-        timeSelectionBody: '#5EFFF7',        // Was: #8FFFF6
-        timeSelectionHeader: '#00FDE1',      // Was: #67F9E1
+        timeSelectionBody: '#5EFFF7',        
+        timeSelectionHeader: '#00FDE1',      
         timeSelectionWaveform: '#1E413B',    // 10% white added to #052822
-        timeSelectionWaveformRms: '#4A897E', // 10% white added to #317066
+        timeSelectionWaveformRms: '#4A897E', // 10% white added to #317066 
       },
       // Classic clip colors (for "Classic" clip style preference)
       classic: {
         header: '#CDD2F5',
-        headerHover: '#A5ACDB', // Darker classic for hover
+        headerHover: '#A5ACDB', 
         body: '#E4E8FA',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#B8BEE8',
@@ -448,8 +448,8 @@ export const lightTheme: ThemeTokens = {
         waveformRmsSelected: '#7981C3', // Same when selected
         timeSelectionBody: '#A4C4F6',
         timeSelectionHeader: '#89A7EE',
-        timeSelectionWaveform: '#6C72C6', // 10% white added to #5359AD
-        timeSelectionWaveformRms: '#929ADB', // 10% white added to #7981C3
+        timeSelectionWaveform: '#6C72C6', 
+        timeSelectionWaveformRms: '#929ADB', 
       },
       border: {
         normal: '#000000',       // Black border (normal mode)

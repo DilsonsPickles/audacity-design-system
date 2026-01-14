@@ -235,15 +235,8 @@ export function TokenReview() {
           </div>
         </TokenSection>
 
-        {/* Audio Tokens - Other */}
-        <TokenSection title="Audio Tokens - Waveform & Envelope">
-          <TokenSubsection title="Waveform">
-            <ColorSwatch label="waveform.default" color={theme.audio.waveform.default} />
-            <ColorSwatch label="waveform.muted" color={theme.audio.waveform.muted} />
-            <ColorSwatch label="waveform.rms" color={theme.audio.waveform.rms} />
-            <ColorSwatch label="waveform.centerLine" color={theme.audio.waveform.centerLine} />
-          </TokenSubsection>
-
+        {/* Audio Tokens - Envelope */}
+        <TokenSection title="Audio Tokens - Envelope">
           <TokenSubsection title="Envelope">
             <ColorSwatch label="envelope.line" color={theme.audio.envelope.line} />
             <ColorSwatch label="envelope.lineHover" color={theme.audio.envelope.lineHover} />
