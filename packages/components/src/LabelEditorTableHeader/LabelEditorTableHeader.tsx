@@ -66,13 +66,12 @@ export function LabelEditorTableHeader({
                   {column.label}
                 </span>
                 {column.showMenu && (
-                  <button
-                    className="label-editor-table-header__menu-button"
+                  <GhostButton
+                    icon="menu"
+                    size="tiny"
                     onClick={column.onMenuClick}
-                    aria-label={`${column.label} menu`}
-                  >
-                    <span className="label-editor-table-header__ellipsis">…</span>
-                  </button>
+                    ariaLabel={`${column.label} menu`}
+                  />
                 )}
               </div>
             </td>
