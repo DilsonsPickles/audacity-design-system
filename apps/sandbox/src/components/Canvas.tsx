@@ -97,7 +97,7 @@ export function Canvas({
   const [focusedLabelId, setFocusedLabelId] = useState<number | null>(null);
 
   // Label dragging state - stores initial positions for all labels being dragged
-  const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialTime: number; initialEndTime?: number }> | null>(null);
+  const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialStartTime: number; initialEndTime?: number }> | null>(null);
 
   // Track if channel resize is active
   const isChannelResizing = false;
@@ -354,9 +354,9 @@ export function Canvas({
           // Calculate label rows (same logic as in render)
           const labelRows: number[] = [];
           track.labels.forEach((label, labelIndex) => {
-            const labelX = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+            const labelX = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
             const labelWidth = label.endTime !== undefined
-              ? (label.endTime - label.time) * pixelsPerSecond
+              ? (label.endTime - label.startTime) * pixelsPerSecond
               : 60;
 
             let row = 0;
@@ -394,9 +394,9 @@ export function Canvas({
           // Check if click is on any label
           for (let labelIndex = 0; labelIndex < track.labels.length; labelIndex++) {
             const label = track.labels[labelIndex];
-            const labelX = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+            const labelX = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
             const labelWidth = label.endTime !== undefined
-              ? (label.endTime - label.time) * pixelsPerSecond
+              ? (label.endTime - label.startTime) * pixelsPerSecond
               : 225;
             const labelY = currentY + labelRows[labelIndex] * (LABEL_ROW_HEIGHT + LABEL_ROW_GAP);
             const labelHeight = EAR_HEIGHT;
@@ -943,10 +943,10 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                 const labelRows: number[] = [];
 
                 track.labels.forEach((label, labelIndex) => {
-                  const x = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+                  const x = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
                   // For overlap detection, use smaller width for point labels (just the label box)
                   const width = label.endTime !== undefined
-                    ? (label.endTime - label.time) * pixelsPerSecond
+                    ? (label.endTime - label.startTime) * pixelsPerSecond
                     : 60; // Point labels: just account for small label box, not full 225px render width
 
                   // Find the first row where this label fits without overlapping
@@ -984,10 +984,10 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                 });
 
                 return track.labels.map((label, labelIndex) => {
-                  const x = CLIP_CONTENT_OFFSET + label.time * pixelsPerSecond;
+                  const x = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
                   const type = label.endTime !== undefined ? 'region' : 'point';
                   const width = label.endTime !== undefined
-                    ? (label.endTime - label.time) * pixelsPerSecond
+                    ? (label.endTime - label.startTime) * pixelsPerSecond
                     : 225;
 
                   const yOffset = labelRows[labelIndex] * (LABEL_ROW_HEIGHT + LABEL_ROW_GAP);
@@ -1130,8 +1130,8 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                               const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
 
                               if (targetLabel) {
-                                const newTime = Math.max(0, targetLabel.time + delta);
-                                const duration = targetLabel.endTime !== undefined ? targetLabel.endTime - targetLabel.time : undefined;
+                                const newTime = Math.max(0, targetLabel.startTime + delta);
+                                const duration = targetLabel.endTime !== undefined ? targetLabel.endTime - targetLabel.startTime : undefined;
 
                                 dispatch({
                                   type: 'UPDATE_LABEL',
@@ -1139,8 +1139,8 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                                     trackIndex: tIdx,
                                     labelId: lId,
                                     label: duration !== undefined
-                                      ? { time: newTime, endTime: newTime + duration }
-                                      : { time: newTime },
+                                      ? { startTime: newTime, endTime: newTime + duration }
+                                      : { startTime: newTime },
                                   },
                                 });
                               }
@@ -1167,18 +1167,18 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                             if (targetLabel) {
                               if (e.key === 'ArrowLeft') {
                                 // Extend left edge leftward
-                                const newTime = Math.max(0, targetLabel.time - moveAmount);
+                                const newTime = Math.max(0, targetLabel.startTime - moveAmount);
                                 dispatch({
                                   type: 'UPDATE_LABEL',
                                   payload: {
                                     trackIndex: tIdx,
                                     labelId: lId,
-                                    label: { time: newTime },
+                                    label: { startTime: newTime },
                                   },
                                 });
                               } else if (e.key === 'ArrowRight') {
                                 // Extend right edge rightward
-                                const currentEndTime = targetLabel.endTime ?? targetLabel.time;
+                                const currentEndTime = targetLabel.endTime ?? targetLabel.startTime;
                                 dispatch({
                                   type: 'UPDATE_LABEL',
                                   payload: {
@@ -1211,8 +1211,8 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                             if (targetLabel) {
                               if (e.key === 'ArrowLeft') {
                                 // Move right edge leftward (reduce from right)
-                                const currentEndTime = targetLabel.endTime ?? targetLabel.time;
-                                const newEndTime = Math.max(targetLabel.time + 0.1, currentEndTime - moveAmount);
+                                const currentEndTime = targetLabel.endTime ?? targetLabel.startTime;
+                                const newEndTime = Math.max(targetLabel.startTime + 0.1, currentEndTime - moveAmount);
                                 dispatch({
                                   type: 'UPDATE_LABEL',
                                   payload: {
@@ -1223,14 +1223,14 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                                 });
                               } else if (e.key === 'ArrowRight') {
                                 // Move left edge rightward (reduce from left)
-                                const currentEndTime = targetLabel.endTime ?? targetLabel.time;
-                                const newTime = Math.min(currentEndTime - 0.1, targetLabel.time + moveAmount);
+                                const currentEndTime = targetLabel.endTime ?? targetLabel.startTime;
+                                const newTime = Math.min(currentEndTime - 0.1, targetLabel.startTime + moveAmount);
                                 dispatch({
                                   type: 'UPDATE_LABEL',
                                   payload: {
                                     trackIndex: tIdx,
                                     labelId: lId,
-                                    label: { time: newTime },
+                                    label: { startTime: newTime },
                                   },
                                 });
                               }
@@ -1272,8 +1272,8 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
 
                             // If selected label is a region and this point label falls within it, delete the point label
                             if (selectedLabel?.endTime !== undefined &&
-                                label.time >= selectedLabel.time &&
-                                label.time <= selectedLabel.endTime) {
+                                label.startTime >= selectedLabel.time &&
+                                label.startTime <= selectedLabel.endTime) {
                               shouldDelete = true;
                               break;
                             }
@@ -1353,7 +1353,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                               labelDragStateRef.current!.set(selectedLabelId, {
                                 trackIndex: tIdx,
                                 labelId: lId,
-                                initialTime: targetLabel.time,
+                                initialStartTime: targetLabel.startTime,
                                 initialEndTime: targetLabel.endTime,
                               });
                             }
@@ -1365,17 +1365,17 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
 
                         // Move all labels in the drag state
                         labelDragStateRef.current.forEach((dragState) => {
-                          const newTime = Math.max(0, dragState.initialTime + deltaTime);
+                          const newTime = Math.max(0, dragState.initialStartTime + deltaTime);
 
                           if (dragState.initialEndTime !== undefined) {
                             // Region label: maintain duration while moving
-                            const duration = dragState.initialEndTime - dragState.initialTime;
+                            const duration = dragState.initialEndTime - dragState.initialStartTime;
                             dispatch({
                               type: 'UPDATE_LABEL',
                               payload: {
                                 trackIndex: dragState.trackIndex,
                                 labelId: dragState.labelId,
-                                label: { time: newTime, endTime: newTime + duration },
+                                label: { startTime: newTime, endTime: newTime + duration },
                               },
                             });
                           } else {
@@ -1385,7 +1385,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                               payload: {
                                 trackIndex: dragState.trackIndex,
                                 labelId: dragState.labelId,
-                                label: { time: newTime },
+                                label: { startTime: newTime },
                               },
                             });
                           }
@@ -1406,7 +1406,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                             payload: {
                               trackIndex,
                               labelId: label.id,
-                              label: { endTime: Math.max(label.time + 0.1, time) }, // Min 0.1s duration
+                              label: { endTime: Math.max(label.startTime + 0.1, time) }, // Min 0.1s duration
                             },
                           });
                         } else {
@@ -1419,7 +1419,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                               payload: {
                                 trackIndex,
                                 labelId: label.id,
-                                label: { endTime: label.time, time: Math.min(time, label.time - 0.1) }, // Drag left from original position
+                                label: { endTime: label.startTime, startTime: Math.min(time, label.startTime - 0.1) }, // Drag left from original position
                               },
                             });
                           } else {
@@ -1429,7 +1429,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                               payload: {
                                 trackIndex,
                                 labelId: label.id,
-                                label: { time: Math.min(time, label.endTime - 0.1) }, // Min 0.1s duration
+                                label: { startTime: Math.min(time, label.endTime - 0.1) }, // Min 0.1s duration
                               },
                             });
                           }
