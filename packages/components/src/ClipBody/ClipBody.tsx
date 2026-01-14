@@ -119,7 +119,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     const hasMono = waveformData && waveformData.length > 0;
     if (!isStereo && !hasMono) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     const canvasWidth = width || canvas.offsetWidth;
@@ -147,22 +147,40 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         const selStartX = (overlapStart - clipStartTime) * pixelsPerSecond;
         const selWidth = (overlapEnd - overlapStart) * pixelsPerSecond;
 
-        // Background color map for selected regions (from theme timeSelectionBody colors)
-        const bgColorMap: Record<string, string> = {
-          cyan: '#B3F6FF',
-          blue: '#D0E3FF',
-          violet: '#E6E5FF',
-          magenta: '#FFD2F7',
-          red: '#FFDADA',
-          orange: '#FFE1D0',
-          yellow: '#FFEBB3',
-          green: '#C6FFB3',
-          teal: '#B3FFEC',
-          classic: '#A4C4F6',
-        };
-
-        ctx.fillStyle = bgColorMap[color] || '#FFFFFF';
-        ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
+        // Draw background overlay ONLY for the overlapped portion
+        if (selected) {
+          // Selected clips: use bodySelected color
+          const selectedBgColorMap: Record<string, string> = {
+            cyan: '#B4E5EA',
+            blue: '#C0D9FF',
+            violet: '#D5D3FE',
+            magenta: '#EFD1EA',
+            red: '#F9CBCB',
+            orange: '#FFD7BF',
+            yellow: '#F4E4B9',
+            green: '#C5E5BC',
+            teal: '#ACE1D3',
+            classic: '#E4E8FA',
+          };
+          ctx.fillStyle = selectedBgColorMap[color] || '#FFFFFF';
+          ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
+        } else {
+          // Unselected clips: use timeSelectionBody color
+          const unselectedBgColorMap: Record<string, string> = {
+            cyan: '#B3F6FF',
+            blue: '#D0E3FF',
+            violet: '#E6E5FF',
+            magenta: '#FFD2F7',
+            red: '#FFDADA',
+            orange: '#FFE1D0',
+            yellow: '#FFEBB3',
+            green: '#C6FFB3',
+            teal: '#B3FFEC',
+            classic: '#A4C4F6',
+          };
+          ctx.fillStyle = unselectedBgColorMap[color] || '#FFFFFF';
+          ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
+        }
       }
     }
 
@@ -412,8 +430,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         }
       }
 
-      // Waveform colors for selected regions
-      const waveformColorMap: Record<string, string> = {
+      // Waveform colors for time selection (only used when clip is NOT selected)
+      const timeSelectionWaveformColorMap: Record<string, string> = {
         red: '#3C2323',
         cyan: '#163134',
         blue: '#1D2B3F',
@@ -426,7 +444,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         classic: '#5F73DC',
       };
 
-      // Waveform color when NOT in selection
+      // Normal waveform color
       const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
 
       // Draw L channel
@@ -443,9 +461,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Check if this pixel is within time selection
-        const isInSelection = px >= selStartPx && px < selEndPx;
-        ctx.fillStyle = isInSelection ? waveformColorMap[color] : defaultWaveformColor;
+        // Waveform color stays constant - background overlay handles time selection indication
+        ctx.fillStyle = defaultWaveformColor;
 
         const y1 = lChannelCenterY - max * lMaxAmplitude;
         const y2 = lChannelCenterY - min * lMaxAmplitude;
@@ -475,9 +492,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Check if this pixel is within time selection
-        const isInSelection = px >= selStartPx && px < selEndPx;
-        ctx.fillStyle = isInSelection ? waveformColorMap[color] : defaultWaveformColor;
+        // Waveform color stays constant - background overlay handles time selection indication
+        ctx.fillStyle = defaultWaveformColor;
 
         const y1 = rChannelCenterY - max * rMaxAmplitude;
         const y2 = rChannelCenterY - min * rMaxAmplitude;
@@ -512,8 +528,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         }
       }
 
-      // Waveform colors for selected regions
-      const waveformColorMap: Record<string, string> = {
+      // Waveform colors for time selection (only used when clip is NOT selected)
+      const timeSelectionWaveformColorMap: Record<string, string> = {
         red: '#3C2323',
         cyan: '#163134',
         blue: '#1D2B3F',
@@ -526,7 +542,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         classic: '#5F73DC',
       };
 
-      // Waveform color when NOT in selection
+      // Normal waveform color
       const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
 
       for (let px = 0; px < canvasWidth; px++) {
@@ -542,9 +558,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Check if this pixel is within time selection
-        const isInSelection = px >= selStartPx && px < selEndPx;
-        ctx.fillStyle = isInSelection ? waveformColorMap[color] : defaultWaveformColor;
+        // Waveform color stays constant - background overlay handles time selection indication
+        ctx.fillStyle = defaultWaveformColor;
 
         const y1 = centerY - max * maxAmplitude;
         const y2 = centerY - min * maxAmplitude;
@@ -634,7 +649,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         <canvas
           ref={canvasRef}
           className="clip-body__waveform"
-          style={{ display: 'block' }}
+          style={{ display: 'block', background: 'transparent' }}
         />
       )}
 
