@@ -10,7 +10,7 @@
 6. Tooltip, ProgressBar
 7. TimeCode
 
-## Remaining: 14 Components
+## Remaining: 15 Components
 
 ### Migration Pattern
 
@@ -167,6 +167,14 @@ Now supports `variant` prop with light/dark modes.
 
 **Note:** Background color `#F8F8F9` is hardcoded per design spec. Selected state uses blue tint.
 
+### 16. Dropdown (3 colors)
+**Hardcoded colors:**
+- `#FFFFFF` (background - light theme specific)
+- `#D4D5D9` (border - light theme specific)
+- Uses theme tokens for hover/active states and text
+
+**Note:** Background and border are hardcoded per design spec. Will need dark theme equivalents.
+
 ---
 
 ## Quick Reference: Common Theme Tokens
@@ -214,8 +222,8 @@ After migrating all components:
 
 ## Current Status
 
-**Migrated:** 15/29 components (52%)
-**Remaining:** 14 components
+**Migrated:** 15/30 components (50%)
+**Remaining:** 15 components
 **Build:** ✅ Passing
 **Sandbox:** ✅ Running
 **Theme Toggle:** ✅ Functional
