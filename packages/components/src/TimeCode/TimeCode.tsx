@@ -242,6 +242,8 @@ export function TimeCode({
     };
   }, [isEditing, editingDigitIndex, disabled, segments]);
 
+  const caretColor = variant === 'light' ? theme.foreground.text.primary : '#f4f5f9';
+
   const style = {
     '--timecode-bg': variant === 'light' ? '#FFFFFF' : '#212433',
     '--timecode-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
@@ -300,7 +302,7 @@ export function TimeCode({
             onClick={handleMenuButtonClick}
             disabled={disabled}
           >
-            <Icon name="caret-down" size={16} color="#f4f5f9" />
+            <Icon name="caret-down" size={16} color={caretColor} />
           </button>
 
           <ContextMenu
