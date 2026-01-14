@@ -324,6 +324,7 @@ export function Dialog({
   const baseStyle = isMaximized
     ? {
         '--dialog-bg': theme.background.surface.elevated,
+        '--dialog-footer-bg': theme.background.surface.default,
         '--dialog-border': theme.border.default,
         '--dialog-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
       } as React.CSSProperties
@@ -335,6 +336,7 @@ export function Dialog({
         top: dialogPosition.y !== 0 ? `${dialogPosition.y}px` : undefined,
         margin: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? '0' : undefined,
         '--dialog-bg': theme.background.surface.elevated,
+        '--dialog-footer-bg': theme.background.surface.default,
         '--dialog-border': theme.border.default,
         '--dialog-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
       } as React.CSSProperties;
