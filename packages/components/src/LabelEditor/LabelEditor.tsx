@@ -186,7 +186,7 @@ export function LabelEditor({
         <LabelEditorTableHeader
           columns={[
             { label: 'Track', width: '120px' },
-            { label: 'Label text', width: 'auto' },
+            { label: 'Label text', width: '320px' },
             { label: 'Start time', width: '180px', showMenu: true },
             { label: 'End time', width: '180px', showMenu: true },
             { label: 'Low frequency', width: '120px', showMenu: true },
@@ -197,7 +197,7 @@ export function LabelEditor({
           <table className="label-editor__table">
             <colgroup>
               <col style={{ width: '120px' }} />
-              <col style={{ width: 'auto' }} />
+              <col style={{ width: '320px' }} />
               <col style={{ width: '180px' }} />
               <col style={{ width: '180px' }} />
               <col style={{ width: '120px' }} />
