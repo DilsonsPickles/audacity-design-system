@@ -9,17 +9,25 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  background-color: #F8F8F9;
 }
 
-/* Table container - scrollable */
-.label-editor__table-container {
+/* Scroll container - wraps both header and table */
+.label-editor__scroll-container {
   flex: 1;
   overflow: auto;
+  min-width: 0;
+}
+
+/* Table container */
+.label-editor__table-container {
+  overflow: visible;
 }
 
 /* Table */
 .label-editor__table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -73,20 +81,20 @@
 }
 
 /* Scrollbar styling */
-.label-editor__table-container::-webkit-scrollbar {
+.label-editor__scroll-container::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-.label-editor__table-container::-webkit-scrollbar-track {
+.label-editor__scroll-container::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.label-editor__table-container::-webkit-scrollbar-thumb {
+.label-editor__scroll-container::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 5px;
 }
 
-.label-editor__table-container::-webkit-scrollbar-thumb:hover {
+.label-editor__scroll-container::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
