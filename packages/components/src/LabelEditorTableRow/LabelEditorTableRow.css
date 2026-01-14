@@ -1,0 +1,26 @@
+/**
+ * Label Editor Table Row Styles
+ * Based on Figma design: node-id=8827-43120
+ */
+
+.label-editor-table-row {
+  background-color: var(--label-editor-row-bg);
+  cursor: pointer;
+}
+
+.label-editor-table-row:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.label-editor-table-row--selected {
+  background-color: rgba(103, 124, 228, 0.1);
+}
+
+.label-editor-table-row--selected:hover {
+  background-color: rgba(103, 124, 228, 0.15);
+}
+
+.label-editor-table-row__cell {
+  padding: 8px;
+  border-bottom: 1px solid var(--label-editor-row-border);
+}

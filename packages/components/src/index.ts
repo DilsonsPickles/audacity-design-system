@@ -72,6 +72,7 @@ export * from './ShortcutTableHeader';
 export * from './LabelEditor';
 export * from './LabelEditorHeader';
 export * from './LabelEditorTableHeader';
+export * from './LabelEditorTableRow';
 
 /**
  * Audio Components

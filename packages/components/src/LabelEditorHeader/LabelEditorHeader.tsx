@@ -54,17 +54,17 @@ export function LabelEditorHeader({
     <div className="label-editor-header" style={style}>
       <h2 className="label-editor-header__title">Labels</h2>
       <div className="label-editor-header__actions">
-        <Button size="small" onClick={onImport}>
+        <Button size="default" onClick={onImport}>
           Import
         </Button>
-        <Button size="small" onClick={onExport}>
+        <Button size="default" onClick={onExport}>
           Export
         </Button>
         <div className="label-editor-header__separator" />
-        <Button size="small" onClick={onDelete} disabled={disableDelete}>
+        <Button size="default" onClick={onDelete} disabled={disableDelete}>
           Delete
         </Button>
-        <Button size="small" onClick={onAddLabel}>
+        <Button size="default" onClick={onAddLabel}>
           Add label
         </Button>
       </div>
