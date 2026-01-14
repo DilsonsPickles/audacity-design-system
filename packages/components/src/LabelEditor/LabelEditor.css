@@ -83,7 +83,7 @@
 }
 
 .label-editor__table-cell .timecode {
-  width: 100%;
+  /* Remove width: 100% to let TimeCode use fit-content */
 }
 
 /* Scrollbar styling */
