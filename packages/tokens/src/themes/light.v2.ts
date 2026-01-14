@@ -269,13 +269,6 @@ export const lightTheme: ThemeTokens = {
   },
 
   audio: {
-    waveform: {
-      default: 'rgba(0, 0, 0, 0.7)', // Dark waveform (70% opacity rendered)
-      muted: 'rgba(0, 0, 0, 0.4)',   // Muted waveform (40% opacity rendered)
-      rms: 'rgba(0, 0, 0, 0.5)',     // RMS waveform (50% opacity rendered)
-      centerLine: '#4a4a4a',         // Medium gray center line
-    },
-
     envelope: {
       line: '#ff6600',           // Orange envelope line
       lineHover: '#ffaa00',      // Yellow-orange on hover
@@ -289,124 +282,144 @@ export const lightTheme: ThemeTokens = {
     clip: {
       // Cyan clip colors
       cyan: {
-        header: '#6CCBD8',
-        headerHover: '#48BECF',
-        body: '#90D8E1',
-        headerSelected: '#D8F2F3',
+        header: '#00C1D2',
+        headerHover: '#00A8B8', // Darker cyan for hover
+        body: '#3FCEDA',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#ECF9FA',
         bodySelected: '#B4E5EA',
+        waveform: '#133E41', // 70% black overlay on body color
+        waveformSelected: '#133E41', // Same when selected
         // Time selection colors (consistent rule: body L=header+15%, header L=header+5%, S=100%)
-        timeSelectionBody: '#B3F6FF',        // Was: #9FFFFF
-        timeSelectionHeader: '#80F0FF',      // Was: #7BFFFF
+        timeSelectionBody: '#7BFFFF',        // Was: #9FFFFF
+        timeSelectionHeader: '#24FFFF',      // Was: #7BFFFF
         timeSelectionWaveform: '#1C373B',    // Was: #163134
       },
       // Blue clip colors
       blue: {
-        header: '#84B5FF',
-        headerHover: '#66A3FF',
-        body: '#A2C7FF',
-        headerSelected: '#DEEBFF',
+        header: '#50A5FF',
+        headerHover: '#3D8FE6', // Darker blue for hover
+        body: '#75B7FF',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#F2F7FF',
         bodySelected: '#C0D9FF',
-        timeSelectionBody: '#D0E3FF',        // Was: #B7FAFF
-        timeSelectionHeader: '#9DC4FF',      // Was: #99E8FF
+        waveform: '#23374D', // 70% black overlay on body color
+        waveformSelected: '#23374D', // Same when selected
+        timeSelectionBody: '#A3FCFF',        // Was: #B7FAFF
+        timeSelectionHeader: '#7EEBFF',      // Was: #99E8FF
         timeSelectionWaveform: '#1C283B',    // Was: #1D2B3F
       },
       // Violet clip colors
       violet: {
-        header: '#ADABFC',
-        headerHover: '#9996FC',
-        body: '#C1BFFE',
-        headerSelected: '#E9E8FF',
+        header: '#9A96FF',
+        headerHover: '#8681E6', // Darker violet for hover
+        body: '#ADABFF',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#F7F6FF',
         bodySelected: '#D5D3FE',
-        timeSelectionBody: '#E6E5FF',        // Was: #E0F0FF
-        timeSelectionHeader: '#C3C2FF',      // Was: #CCDBFF
+        waveform: '#34334D', // 70% black overlay on body color
+        waveformSelected: '#34334D', // Same when selected
+        timeSelectionBody: '#DCF1FF',        // Was: #E0F0FF
+        timeSelectionHeader: '#C8DCFF',      // Was: #CCDBFF
         timeSelectionWaveform: '#1D1C3B',    // Was: #28283F
       },
       // Magenta clip colors
       magenta: {
-        header: '#E1A3D6',
-        headerHover: '#DA8CCC',
-        body: '#E8BAE0',
-        headerSelected: '#F6E8F4',
+        header: '#E787D0',
+        headerHover: '#D372B8', // Darker magenta for hover
+        body: '#ECA0D9',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#FBF4FC',
         bodySelected: '#EFD1EA',
-        timeSelectionBody: '#FFD2F7',        // Was: #FFE8FF
-        timeSelectionHeader: '#FF9FEE',      // Was: #FFD1FF
+        waveform: '#473041', // 70% black overlay on body color
+        waveformSelected: '#473041', // Same when selected
+        timeSelectionBody: '#FFE7FF',        // Was: #FFE8FF
+        timeSelectionHeader: '#FFCFFF',      // Was: #FFD1FF
         timeSelectionWaveform: '#3B1C35',    // Was: #372534
       },
       // Red clip colors
       red: {
-        header: '#F39999',
-        headerHover: '#F08080',
-        body: '#F6B2B2',
-        headerSelected: '#FCE4E4',
+        header: '#FF787C',
+        headerHover: '#E66467', // Darker red for hover
+        body: '#FF9496',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#FEF2F2',
         bodySelected: '#F9CBCB',
-        timeSelectionBody: '#FFDADA',        // Was: #FFDEE6
-        timeSelectionHeader: '#FFA6A6',      // Was: #FFC5CD
+        waveform: '#4D2C2D', // 70% black overlay on body color
+        waveformSelected: '#4D2C2D', // Same when selected
+        timeSelectionBody: '#FFDCE6',        // Was: #FFDEE6
+        timeSelectionHeader: '#FFC2CC',      // Was: #FFC5CD
         timeSelectionWaveform: '#3B1C1C',    // Was: #3C2323
       },
       // Orange clip colors
       orange: {
-        header: '#FFB183',
-        headerHover: '#FF9E65',
-        body: '#FFC4A1',
-        headerSelected: '#FFEADD',
+        header: '#FF9857',
+        headerHover: '#E68442', // Darker orange for hover
+        body: '#FFAD7A',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#FFF5EE',
         bodySelected: '#FFD7BF',
-        timeSelectionBody: '#FFE1D0',        // Was: #FFF6D0
-        timeSelectionHeader: '#FFC19D',      // Was: #FFE3B2
+        waveform: '#4D3425', // 70% black overlay on body color
+        waveformSelected: '#4D3425', // Same when selected
+        timeSelectionBody: '#FFF6CC',        // Was: #FFF6D0
+        timeSelectionHeader: '#FFE2AB',      // Was: #FFE3B2
         timeSelectionWaveform: '#3B271C',    // Was: #3F291D
       },
       // Yellow clip colors
       yellow: {
-        header: '#ECCC73',
-        headerHover: '#E8C050',
-        body: '#F0D896',
-        headerSelected: '#F8F0DC',
+        header: '#F0BE31',
+        headerHover: '#D4A828', // Darker yellow for hover
+        body: '#F2CB63',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#FCF8EE',
         bodySelected: '#F4E4B9',
-        timeSelectionBody: '#FFEBB3',        // Was: #FFFFC0
-        timeSelectionHeader: '#FFDD80',      // Was: #FFFF9D
+        waveform: '#493D1E', // 70% black overlay on body color
+        waveformSelected: '#493D1E', // Same when selected
+        timeSelectionBody: '#FFFFB8',        // Was: #FFFFC0
+        timeSelectionHeader: '#FFFF8E',      // Was: #FFFF9D
         timeSelectionWaveform: '#3B321C',    // Was: #3A3118
       },
       // Green clip colors
       green: {
-        header: '#8FCB7A',
-        headerHover: '#74BE59',
-        body: '#AAD89B',
-        headerSelected: '#E0F2DD',
+        header: '#58C049',
+        headerHover: '#47A43A', // Darker green for hover
+        body: '#7CCD70',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#F0F9EE',
         bodySelected: '#C5E5BC',
-        timeSelectionBody: '#C6FFB3',        // Was: #C2FFC7
-        timeSelectionHeader: '#A1FF80',      // Was: #A7FFA6
+        waveform: '#253D22', // 70% black overlay on body color
+        waveformSelected: '#253D22', // Same when selected
+        timeSelectionBody: '#B0FFC2',        // Was: #C2FFC7
+        timeSelectionHeader: '#89FF9C',      // Was: #A7FFA6
         timeSelectionWaveform: '#243B1C',    // Was: #20311A
       },
       // Teal clip colors
       teal: {
-        header: '#5CC3A9',
-        headerHover: '#34B494',
-        body: '#84D2BE',
-        headerSelected: '#D4F0E8',
+        header: '#00B792',
+        headerHover: '#009B7A', // Darker teal for hover
+        body: '#17C6A8',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#EAF8F4',
         bodySelected: '#ACE1D3',
-        timeSelectionBody: '#B3FFEC',        // Was: #8FFFF6
-        timeSelectionHeader: '#80FFDF',      // Was: #67F9E1
+        waveform: '#073B32', // 70% black overlay on body color
+        waveformSelected: '#073B32', // Same when selected
+        timeSelectionBody: '#5EFFF7',        // Was: #8FFFF6
+        timeSelectionHeader: '#00FDE1',      // Was: #67F9E1
         timeSelectionWaveform: '#1C3B33',    // Was: #122E27
       },
       // Classic clip colors (for "Classic" clip style preference)
       classic: {
         header: '#CDD2F5',
-        headerHover: '#B8BEE8',
+        headerHover: '#A5ACDB', // Darker classic for hover
         body: '#E4E8FA',
-        headerSelected: '#CDD2F5',
+        headerSelected: '#FFFFFF',
         headerSelectedHover: '#B8BEE8',
         bodySelected: '#E4E8FA',
+        waveform: '#5359AD', // Classic uses colored waveform
+        waveformSelected: '#5359AD', // Same color when selected
         timeSelectionBody: '#A4C4F6',
-        timeSelectionHeader: '#CDD2F5',
-        timeSelectionWaveform: '#5F73DC',
+        timeSelectionHeader: '#89A7EE',
+        timeSelectionWaveform: '#5359AD',
       },
       border: {
         normal: '#000000',       // Black border (normal mode)

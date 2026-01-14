@@ -26,6 +26,10 @@ export interface ClipColorStates {
   body: string;
   /** Body selected state */
   bodySelected: string;
+  /** Default waveform color */
+  waveform: string;
+  /** Waveform color when clip is selected */
+  waveformSelected: string;
   /** Time selection overlay - clip body background */
   timeSelectionBody: string;
   /** Time selection overlay - clip header background */
@@ -364,18 +368,6 @@ export interface ThemeTokens {
 
   /** Audio-specific colors */
   audio: {
-    /** Waveform colors */
-    waveform: {
-      /** Default waveform color */
-      default: string;
-      /** Muted/inactive waveform */
-      muted: string;
-      /** RMS waveform */
-      rms: string;
-      /** Center line */
-      centerLine: string;
-    };
-
     /** Envelope colors */
     envelope: {
       /** Envelope line */

@@ -83,7 +83,7 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
   const className = [
     'clip-header',
     `clip-header--${color}`,
-    `clip-header--${state}`,
+    state === 'hover' && 'clip-header--hover',
     selected && 'clip-header--selected',
   ]
     .filter(Boolean)
@@ -95,8 +95,9 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
   };
 
   // Calculate time selection overlay position and width
+  // Don't show time selection overlay when clip is selected (selected state takes priority)
   let timeSelectionOverlay: { left: number; width: number } | null = null;
-  if (inTimeSelection && timeSelectionRange) {
+  if (inTimeSelection && timeSelectionRange && !selected) {
     const clipEndTime = clipStartTime + clipDuration;
     const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
     const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
@@ -107,20 +108,6 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
       timeSelectionOverlay = { left: selStartX, width: selWidth };
     }
   }
-
-  // Color map for time selection overlay - header-specific colors (from theme timeSelectionHeader)
-  const timeSelectionColorMap: Record<string, string> = {
-    cyan: '#80F0FF',
-    blue: '#9DC4FF',
-    violet: '#C3C2FF',
-    magenta: '#FF9FEE',
-    red: '#FFA6A6',
-    orange: '#FFC19D',
-    yellow: '#FFDD80',
-    green: '#A1FF80',
-    teal: '#80FFDF',
-    classic: '#89A7EE',
-  };
 
   return (
     <div
@@ -143,7 +130,7 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
             width: `${timeSelectionOverlay.width}px`,
             top: 0,
             bottom: 0,
-            backgroundColor: timeSelectionColorMap[color] || '#FFFFFF',
+            backgroundColor: `var(--clip-${color}-time-selection-header)`,
             pointerEvents: 'none',
             zIndex: 0,
           }}

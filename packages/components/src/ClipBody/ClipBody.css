@@ -31,74 +31,74 @@
 
 /* Cyan */
 .clip-body--cyan {
-  background-color: #90D8E1; /* cyan-400 */
+  background-color: var(--clip-cyan-body);
 }
 .clip-body--cyan.clip-body--selected {
-  background-color: #B4E5EA; /* cyan-300 */
+  background-color: var(--clip-cyan-body-selected);
 }
 
 /* Blue */
 .clip-body--blue {
-  background-color: #A2C7FF; /* blue-400 */
+  background-color: var(--clip-blue-body);
 }
 .clip-body--blue.clip-body--selected {
-  background-color: #C0D9FF; /* blue-300 */
+  background-color: var(--clip-blue-body-selected);
 }
 
 /* Violet */
 .clip-body--violet {
-  background-color: #C1BFFE; /* violet-400 */
+  background-color: var(--clip-violet-body);
 }
 .clip-body--violet.clip-body--selected {
-  background-color: #D5D3FE; /* violet-300 */
+  background-color: var(--clip-violet-body-selected);
 }
 
 /* Magenta */
 .clip-body--magenta {
-  background-color: #E8BAE0; /* magenta-400 */
+  background-color: var(--clip-magenta-body);
 }
 .clip-body--magenta.clip-body--selected {
-  background-color: #EFD1EA; /* magenta-300 */
+  background-color: var(--clip-magenta-body-selected);
 }
 
 /* Red */
 .clip-body--red {
-  background-color: #F6B2B2; /* red-400 */
+  background-color: var(--clip-red-body);
 }
 .clip-body--red.clip-body--selected {
-  background-color: #F9CBCB; /* red-300 */
+  background-color: var(--clip-red-body-selected);
 }
 
 /* Orange */
 .clip-body--orange {
-  background-color: #FFC4A1; /* orange-400 */
+  background-color: var(--clip-orange-body);
 }
 .clip-body--orange.clip-body--selected {
-  background-color: #FFD7BF; /* orange-300 */
+  background-color: var(--clip-orange-body-selected);
 }
 
 /* Yellow */
 .clip-body--yellow {
-  background-color: #F0D896; /* yellow-400 */
+  background-color: var(--clip-yellow-body);
 }
 .clip-body--yellow.clip-body--selected {
-  background-color: #F4E4B9; /* yellow-300 */
+  background-color: var(--clip-yellow-body-selected);
 }
 
 /* Green */
 .clip-body--green {
-  background-color: #AAD89B; /* green-400 */
+  background-color: var(--clip-green-body);
 }
 .clip-body--green.clip-body--selected {
-  background-color: #C5E5BC; /* green-300 */
+  background-color: var(--clip-green-body-selected);
 }
 
 /* Teal */
 .clip-body--teal {
-  background-color: #84D2BE; /* teal-400 */
+  background-color: var(--clip-teal-body);
 }
 .clip-body--teal.clip-body--selected {
-  background-color: #ACE1D3; /* teal-300 */
+  background-color: var(--clip-teal-body-selected);
 }
 
 /* Classic */

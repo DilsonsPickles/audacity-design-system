@@ -269,13 +269,6 @@ export const darkTheme: ThemeTokens = {
   },
 
   audio: {
-    waveform: {
-      default: 'rgba(255, 255, 255, 0.7)', // Light waveform (70% opacity rendered)
-      muted: 'rgba(255, 255, 255, 0.4)',   // Muted waveform (40% opacity rendered)
-      rms: 'rgba(255, 255, 255, 0.5)',     // RMS waveform (50% opacity rendered)
-      centerLine: '#4a4a4a',               // Medium gray center line
-    },
-
     envelope: {
       line: '#ff6600',           // Orange envelope line
       lineHover: '#ffaa00',      // Yellow-orange on hover
@@ -298,6 +291,8 @@ export const darkTheme: ThemeTokens = {
         timeSelectionBody: '#B3F6FF',        // Was: #9FFFFF
         timeSelectionHeader: '#80F0FF',      // Was: #7BFFFF
         timeSelectionWaveform: '#1C373B',    // Was: #163134
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#1C373B', // Waveform when clip is selected
       },
       blue: {
         header: '#84B5FF',
@@ -306,6 +301,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#DEEBFF',
         headerSelectedHover: '#F2F7FF',
         bodySelected: '#C0D9FF',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#D0E3FF',        // Was: #B7FAFF
         timeSelectionHeader: '#9DC4FF',      // Was: #99E8FF
         timeSelectionWaveform: '#1C283B',    // Was: #1D2B3F
@@ -317,6 +314,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#E9E8FF',
         headerSelectedHover: '#F7F6FF',
         bodySelected: '#D5D3FE',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#E6E5FF',        // Was: #E0F0FF
         timeSelectionHeader: '#C3C2FF',      // Was: #CCDBFF
         timeSelectionWaveform: '#1D1C3B',    // Was: #28283F
@@ -328,6 +327,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#F6E8F4',
         headerSelectedHover: '#FBF4FC',
         bodySelected: '#EFD1EA',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#FFD2F7',        // Was: #FFE8FF
         timeSelectionHeader: '#FF9FEE',      // Was: #FFD1FF
         timeSelectionWaveform: '#3B1C35',    // Was: #372534
@@ -339,6 +340,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#FCE4E4',
         headerSelectedHover: '#FEF2F2',
         bodySelected: '#F9CBCB',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#FFDADA',        // Was: #FFDEE6
         timeSelectionHeader: '#FFA6A6',      // Was: #FFC5CD
         timeSelectionWaveform: '#3B1C1C',    // Was: #3C2323
@@ -350,6 +353,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#FFEADD',
         headerSelectedHover: '#FFF5EE',
         bodySelected: '#FFD7BF',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#FFE1D0',        // Was: #FFF6D0
         timeSelectionHeader: '#FFC19D',      // Was: #FFE3B2
         timeSelectionWaveform: '#3B271C',    // Was: #3F291D
@@ -361,6 +366,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#F8F0DC',
         headerSelectedHover: '#FCF8EE',
         bodySelected: '#F4E4B9',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#FFEBB3',        // Was: #FFFFC0
         timeSelectionHeader: '#FFDD80',      // Was: #FFFF9D
         timeSelectionWaveform: '#3B321C',    // Was: #3A3118
@@ -372,6 +379,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#E0F2DD',
         headerSelectedHover: '#F0F9EE',
         bodySelected: '#C5E5BC',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#C6FFB3',        // Was: #C2FFC7
         timeSelectionHeader: '#A1FF80',      // Was: #A7FFA6
         timeSelectionWaveform: '#243B1C',    // Was: #20311A
@@ -383,6 +392,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#D4F0E8',
         headerSelectedHover: '#EAF8F4',
         bodySelected: '#ACE1D3',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#B3FFEC',        // Was: #8FFFF6
         timeSelectionHeader: '#80FFDF',      // Was: #67F9E1
         timeSelectionWaveform: '#1C3B33',    // Was: #122E27
@@ -395,6 +406,8 @@ export const darkTheme: ThemeTokens = {
         headerSelected: '#CDD2F5',
         headerSelectedHover: '#B8BEE8',
         bodySelected: '#E4E8FA',
+        waveform: 'rgba(0, 0, 0, 0.7)', // Default waveform
+        waveformSelected: '#000000', // Waveform when clip is selected (placeholder)
         timeSelectionBody: '#A4C4F6',
         timeSelectionHeader: '#CDD2F5',
         timeSelectionWaveform: '#5F73DC',

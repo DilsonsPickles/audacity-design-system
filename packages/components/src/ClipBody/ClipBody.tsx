@@ -148,39 +148,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         const selWidth = (overlapEnd - overlapStart) * pixelsPerSecond;
 
         // Draw background overlay ONLY for the overlapped portion
-        if (selected) {
-          // Selected clips: use bodySelected color
-          const selectedBgColorMap: Record<string, string> = {
-            cyan: '#B4E5EA',
-            blue: '#C0D9FF',
-            violet: '#D5D3FE',
-            magenta: '#EFD1EA',
-            red: '#F9CBCB',
-            orange: '#FFD7BF',
-            yellow: '#F4E4B9',
-            green: '#C5E5BC',
-            teal: '#ACE1D3',
-            classic: '#E4E8FA',
-          };
-          ctx.fillStyle = selectedBgColorMap[color] || '#FFFFFF';
-          ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
-        } else {
-          // Unselected clips: use timeSelectionBody color
-          const unselectedBgColorMap: Record<string, string> = {
-            cyan: '#B3F6FF',
-            blue: '#D0E3FF',
-            violet: '#E6E5FF',
-            magenta: '#FFD2F7',
-            red: '#FFDADA',
-            orange: '#FFE1D0',
-            yellow: '#FFEBB3',
-            green: '#C6FFB3',
-            teal: '#B3FFEC',
-            classic: '#A4C4F6',
-          };
-          ctx.fillStyle = unselectedBgColorMap[color] || '#FFFFFF';
-          ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
-        }
+        // Get color from CSS variables (read from theme tokens)
+        const computedStyle = getComputedStyle(canvasRef.current);
+        const timeSelectionColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-body`).trim() || '#FFFFFF';
+
+        ctx.fillStyle = timeSelectionColor;
+        ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
       }
     }
 
@@ -430,28 +403,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         }
       }
 
-      // Waveform colors when selected
-      const selectedWaveformColorMap: Record<string, string> = {
-        red: '#3C2323',
-        cyan: '#163134',
-        blue: '#1D2B3F',
-        violet: '#28283F',
-        magenta: '#372534',
-        orange: '#3F291D',
-        yellow: '#3A3118',
-        green: '#20311A',
-        teal: '#122E27',
-        classic: '#5F73DC',
-      };
-
-      // Waveform color for classic clips within time selection
-      const classicTimeSelectionWaveformColor = '#3B4FB8'; // Darker shade of #5F73DC
-
-      // Normal waveform color (unselected)
-      const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
+      // Get waveform colors from CSS variables (theme tokens)
+      const computedStyle = getComputedStyle(canvasRef.current);
+      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim() || 'rgba(0, 0, 0, 0.7)';
+      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim() || defaultWaveformColor;
 
       // Choose waveform color based on selection state
-      const waveformColor = selected ? selectedWaveformColorMap[color] : defaultWaveformColor;
+      const waveformColor = selected ? selectedWaveformColor : defaultWaveformColor;
 
       // Draw L channel
       for (let px = 0; px < canvasWidth; px++) {
@@ -467,13 +425,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // For classic mode: check if pixel is within time selection and use different color
-        const isInTimeSelection = px >= selStartPx && px < selEndPx;
-        if (color === 'classic' && isInTimeSelection) {
-          ctx.fillStyle = classicTimeSelectionWaveformColor;
-        } else {
-          ctx.fillStyle = waveformColor;
-        }
+        // Use waveform color (handles both time selection and regular states via CSS variables)
+        ctx.fillStyle = waveformColor;
 
         const y1 = lChannelCenterY - max * lMaxAmplitude;
         const y2 = lChannelCenterY - min * lMaxAmplitude;
@@ -503,13 +456,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // For classic mode: check if pixel is within time selection and use different color
-        const isInTimeSelection = px >= selStartPx && px < selEndPx;
-        if (color === 'classic' && isInTimeSelection) {
-          ctx.fillStyle = classicTimeSelectionWaveformColor;
-        } else {
-          ctx.fillStyle = waveformColor;
-        }
+        // Use waveform color (handles both time selection and regular states via CSS variables)
+        ctx.fillStyle = waveformColor;
 
         const y1 = rChannelCenterY - max * rMaxAmplitude;
         const y2 = rChannelCenterY - min * rMaxAmplitude;
@@ -544,28 +492,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         }
       }
 
-      // Waveform colors when selected
-      const selectedWaveformColorMap: Record<string, string> = {
-        red: '#3C2323',
-        cyan: '#163134',
-        blue: '#1D2B3F',
-        violet: '#28283F',
-        magenta: '#372534',
-        orange: '#3F291D',
-        yellow: '#3A3118',
-        green: '#20311A',
-        teal: '#122E27',
-        classic: '#5F73DC',
-      };
-
-      // Waveform color for classic clips within time selection
-      const classicTimeSelectionWaveformColor = '#3B4FB8'; // Darker shade of #5F73DC
-
-      // Normal waveform color (unselected)
-      const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
+      // Get waveform colors from CSS variables (theme tokens)
+      const computedStyle = getComputedStyle(canvasRef.current);
+      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim() || 'rgba(0, 0, 0, 0.7)';
+      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim() || defaultWaveformColor;
 
       // Choose waveform color based on selection state
-      const waveformColor = selected ? selectedWaveformColorMap[color] : defaultWaveformColor;
+      const waveformColor = selected ? selectedWaveformColor : defaultWaveformColor;
 
       for (let px = 0; px < canvasWidth; px++) {
         const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -580,13 +513,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // For classic mode: check if pixel is within time selection and use different color
-        const isInTimeSelection = px >= selStartPx && px < selEndPx;
-        if (color === 'classic' && isInTimeSelection) {
-          ctx.fillStyle = classicTimeSelectionWaveformColor;
-        } else {
-          ctx.fillStyle = waveformColor;
-        }
+        // Use waveform color (handles both time selection and regular states via CSS variables)
+        ctx.fillStyle = waveformColor;
 
         const y1 = centerY - max * maxAmplitude;
         const y2 = centerY - min * maxAmplitude;
