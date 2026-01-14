@@ -8,8 +8,8 @@
   font-size: 16px;
   font-weight: 400;
   line-height: 28px;
-  color: #c5c6cd;
-  background-color: #212433;
+  color: var(--timecode-unit-text);
+  background-color: var(--timecode-unit-bg);
   user-select: none;
   transition: background-color 0.15s ease, color 0.15s ease;
   cursor: default;
@@ -17,8 +17,8 @@
 }
 
 .timecode-unit:hover {
-  background-color: #4a5068;
-  color: #f4f5f9;
+  background-color: var(--timecode-unit-hover-bg);
+  color: var(--timecode-unit-hover-text);
 }
 
 /* Specific widths for each unit type from Figma */
