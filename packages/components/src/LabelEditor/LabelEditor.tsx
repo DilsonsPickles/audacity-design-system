@@ -6,12 +6,11 @@
 import React, { useState } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
-import { Dropdown } from '../Dropdown';
-import { TextInput } from '../TextInput';
-import { TimeCode, type TimeCodeFormat } from '../TimeCode';
 import { LabelEditorHeader } from '../LabelEditorHeader';
 import { LabelEditorTableHeader } from '../LabelEditorTableHeader';
+import { LabelEditorTableRow } from '../LabelEditorTableRow';
 import type { Label } from '@audacity-ui/core';
+import type { TimeCodeFormat } from '../TimeCode';
 import { useTheme } from '../ThemeProvider';
 import './LabelEditor.css';
 
@@ -197,78 +196,32 @@ export function LabelEditor({
           <table className="label-editor__table">
             <tbody className="label-editor__table-body">
               {labels.map((label) => (
-                <tr
+                <LabelEditorTableRow
                   key={label.id}
-                  className={`label-editor__table-row ${
-                    selectedLabelIds.has(label.id) ? 'label-editor__table-row--selected' : ''
-                  }`}
+                  trackOptions={tracks}
+                  trackValue={label.trackIndex.toString()}
+                  labelText={label.text}
+                  startTime={label.startTime}
+                  endTime={label.endTime}
+                  lowFrequency={label.lowFrequency}
+                  highFrequency={label.highFrequency}
+                  selected={selectedLabelIds.has(label.id)}
+                  sampleRate={sampleRate}
+                  timeCodeFormat={timeCodeFormat}
+                  onTrackChange={(value) =>
+                    handleLabelChange(label.id, 'trackIndex', parseInt(value))
+                  }
+                  onLabelTextChange={(value) => handleLabelChange(label.id, 'text', value)}
+                  onStartTimeChange={(value) => handleLabelChange(label.id, 'startTime', value)}
+                  onEndTimeChange={(value) => handleLabelChange(label.id, 'endTime', value)}
+                  onLowFrequencyChange={(value) =>
+                    handleLabelChange(label.id, 'lowFrequency', value || undefined)
+                  }
+                  onHighFrequencyChange={(value) =>
+                    handleLabelChange(label.id, 'highFrequency', value || undefined)
+                  }
                   onClick={(e) => handleRowClick(label.id, e)}
-                >
-                  <td className="label-editor__table-cell label-editor__table-cell--track">
-                    <Dropdown
-                      options={tracks}
-                      value={label.trackIndex.toString()}
-                      onChange={(value) =>
-                        handleLabelChange(label.id, 'trackIndex', parseInt(value))
-                      }
-                      width="100%"
-                    />
-                  </td>
-                  <td className="label-editor__table-cell label-editor__table-cell--text">
-                    <TextInput
-                      value={label.text}
-                      onChange={(value) => handleLabelChange(label.id, 'text', value)}
-                      placeholder="Enter label text"
-                    />
-                  </td>
-                  <td className="label-editor__table-cell label-editor__table-cell--time">
-                    <TimeCode
-                      value={label.startTime}
-                      format={timeCodeFormat}
-                      sampleRate={sampleRate}
-                      onChange={(value) => handleLabelChange(label.id, 'startTime', value)}
-                      onFormatChange={setTimeCodeFormat}
-                      showFormatSelector
-                    />
-                  </td>
-                  <td className="label-editor__table-cell label-editor__table-cell--time">
-                    <TimeCode
-                      value={label.endTime}
-                      format={timeCodeFormat}
-                      sampleRate={sampleRate}
-                      onChange={(value) => handleLabelChange(label.id, 'endTime', value)}
-                      showFormatSelector={false}
-                    />
-                  </td>
-                  <td className="label-editor__table-cell label-editor__table-cell--frequency">
-                    <TextInput
-                      value={label.lowFrequency?.toString() || ''}
-                      onChange={(value) =>
-                        handleLabelChange(
-                          label.id,
-                          'lowFrequency',
-                          value ? parseFloat(value) : undefined
-                        )
-                      }
-                      placeholder="Hz"
-                      type="number"
-                    />
-                  </td>
-                  <td className="label-editor__table-cell label-editor__table-cell--frequency">
-                    <TextInput
-                      value={label.highFrequency?.toString() || ''}
-                      onChange={(value) =>
-                        handleLabelChange(
-                          label.id,
-                          'highFrequency',
-                          value ? parseFloat(value) : undefined
-                        )
-                      }
-                      placeholder="Hz"
-                      type="number"
-                    />
-                  </td>
-                </tr>
+                />
               ))}
             </tbody>
           </table>

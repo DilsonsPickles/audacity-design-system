@@ -6,7 +6,7 @@
 import React from 'react';
 import { Dropdown } from '../Dropdown';
 import { TextInput } from '../TextInput';
-import { TimeCode } from '../TimeCode';
+import { TimeCode, type TimeCodeFormat } from '../TimeCode';
 import { useTheme } from '../ThemeProvider';
 import './LabelEditorTableRow.css';
 
@@ -50,7 +50,7 @@ export interface LabelEditorTableRowProps {
   /**
    * TimeCode format
    */
-  timeCodeFormat?: 'hh:mm:ss' | 'samples';
+  timeCodeFormat?: TimeCodeFormat;
   /**
    * Callback when track changes
    */
