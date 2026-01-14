@@ -2021,6 +2021,7 @@ function CanvasDemoContent() {
           value: index.toString(),
           label: track.name,
         }))}
+        playheadPosition={state.playheadPosition}
         onChange={(updatedLabels) => {
           // Group labels by track
           const labelsByTrack = new Map<number, typeof updatedLabels>();

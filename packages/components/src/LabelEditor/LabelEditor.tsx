@@ -53,6 +53,12 @@ export interface LabelEditorProps {
    * @default 'macos'
    */
   os?: 'macos' | 'windows';
+  /**
+   * Current playhead position in seconds
+   * Used as default position for new labels
+   * @default 0
+   */
+  playheadPosition?: number;
 }
 
 /**
@@ -68,6 +74,7 @@ export function LabelEditor({
   onExport,
   sampleRate = 44100,
   os = 'macos',
+  playheadPosition = 0,
 }: LabelEditorProps) {
   const { theme } = useTheme();
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
@@ -89,8 +96,8 @@ export function LabelEditor({
       id: `label-${Date.now()}`,
       trackIndex: 0,
       text: '',
-      startTime: 0,
-      endTime: 0,
+      startTime: playheadPosition,
+      endTime: playheadPosition,
     };
     onChange([...labels, newLabel]);
   };
