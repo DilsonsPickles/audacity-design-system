@@ -1089,6 +1089,13 @@ function CanvasDemoContent() {
   // Define menu items for Edit menu
   const editMenuItems: MenuItem[] = [
     {
+      label: 'Edit Labels...',
+      shortcut: 'Ctrl+B',
+      onClick: () => {
+        setIsLabelEditorOpen(true);
+      }
+    },
+    {
       label: 'Preferences',
       shortcut: 'Ctrl+,',
       onClick: () => {
@@ -1275,13 +1282,6 @@ function CanvasDemoContent() {
                   onClick={() => setIsExportModalOpen(true)}
                 >
                   Export audio
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="default"
-                  onClick={() => setIsLabelEditorOpen(true)}
-                >
-                  Labels
                 </Button>
                 <Button
                   variant="secondary"
