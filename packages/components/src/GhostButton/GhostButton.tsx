@@ -10,7 +10,7 @@ export interface GhostButtonProps {
   icon?: IconName;
   /**
    * Button size
-   * - tiny: 16px × 16px, 12px icon (table headers)
+   * - tiny: 16px × 16px, 14px icon (table headers)
    * - small: 20px × 20px, 16px icon (default, icon-only)
    * - large: 48px × 48px, 32px icon (carousel buttons)
    */
@@ -68,7 +68,7 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
     onClick?.(e);
   };
 
-  const iconSize = size === 'large' ? 32 : size === 'tiny' ? 12 : 16;
+  const iconSize = size === 'large' ? 32 : size === 'tiny' ? 14 : 16;
 
   const style = {
     '--ghost-bg-idle': theme.background.control.button.ghost.idle,
