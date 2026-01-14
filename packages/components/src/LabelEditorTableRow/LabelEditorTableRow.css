@@ -23,4 +23,9 @@
 .label-editor-table-row__cell {
   padding: 8px;
   border-bottom: 1px solid var(--label-editor-row-border);
+  border-right: 1px solid var(--label-editor-row-border);
+}
+
+.label-editor-table-row__cell:last-child {
+  border-right: none;
 }

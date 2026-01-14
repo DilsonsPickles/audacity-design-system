@@ -177,6 +177,7 @@ export function LabelEditor({
       width={800}
       headerContent={headerContent}
       footer={footer}
+      footerBorder={true}
       noPadding
       os={os}
       style={style}
