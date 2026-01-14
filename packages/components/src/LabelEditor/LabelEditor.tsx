@@ -9,6 +9,7 @@ import { Button } from '../Button';
 import { Dropdown } from '../Dropdown';
 import { TextInput } from '../TextInput';
 import { TimeCode, type TimeCodeFormat } from '../TimeCode';
+import { LabelEditorHeader } from '../LabelEditorHeader';
 import type { Label } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
 import './LabelEditor.css';
@@ -139,27 +140,13 @@ export function LabelEditor({
   };
 
   const headerContent = (
-    <div className="label-editor__section-header">
-      <h2 className="label-editor__section-title">Labels</h2>
-      <div className="label-editor__actions">
-        <Button size="small" onClick={onImport}>
-          Import
-        </Button>
-        <Button size="small" onClick={onExport}>
-          Export
-        </Button>
-        <Button
-          size="small"
-          onClick={handleDeleteSelected}
-          disabled={selectedLabelIds.size === 0}
-        >
-          Delete
-        </Button>
-        <Button size="small" onClick={handleAddLabel}>
-          Add label
-        </Button>
-      </div>
-    </div>
+    <LabelEditorHeader
+      onImport={onImport}
+      onExport={onExport}
+      onDelete={handleDeleteSelected}
+      onAddLabel={handleAddLabel}
+      disableDelete={selectedLabelIds.size === 0}
+    />
   );
 
   const footer = (
