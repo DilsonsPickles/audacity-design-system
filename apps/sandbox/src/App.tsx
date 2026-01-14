@@ -2065,6 +2065,36 @@ function CanvasDemoContent() {
         onClose={() => setIsLabelEditorOpen(false)}
         onImport={() => toast.info('Import labels')}
         onExport={() => toast.info('Export labels')}
+        onNewTrackRequest={async (labelId) => {
+          // Prompt user for track name
+          const trackName = window.prompt('Enter label track name:', 'Label Track');
+
+          if (!trackName) {
+            return null; // User cancelled
+          }
+
+          // Find next available track ID
+          const maxId = Math.max(...state.tracks.map(t => t.id), 0);
+          const newTrackId = maxId + 1;
+
+          // Create new label track
+          const newTrack = {
+            id: newTrackId,
+            name: trackName,
+            height: 76,
+            clips: [],
+            labels: [],
+          };
+
+          // Add track to state
+          dispatch({
+            type: 'ADD_TRACK',
+            payload: newTrack,
+          });
+
+          // Return the new track's index
+          return state.tracks.length;
+        }}
         os={preferences.operatingSystem}
       />
 

@@ -59,6 +59,11 @@ export interface LabelEditorProps {
    * @default 0
    */
   playheadPosition?: number;
+  /**
+   * Callback when user requests to create a new label track
+   * Should return the new track index after creation
+   */
+  onNewTrackRequest?: (labelId: string) => Promise<number | null>;
 }
 
 /**
@@ -75,6 +80,7 @@ export function LabelEditor({
   sampleRate = 44100,
   os = 'macos',
   playheadPosition = 0,
+  onNewTrackRequest,
 }: LabelEditorProps) {
   const { theme } = useTheme();
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
@@ -108,6 +114,21 @@ export function LabelEditor({
     const newLabels = labels.filter((label) => !selectedLabelIds.has(label.id));
     onChange(newLabels);
     setSelectedLabelIds(new Set());
+  };
+
+  const handleTrackChange = async (labelId: string, value: string) => {
+    // Check if user selected "New Label Track..."
+    if (value === '__NEW__' && onNewTrackRequest) {
+      const newTrackIndex = await onNewTrackRequest(labelId);
+      if (newTrackIndex !== null) {
+        // Update label with the new track index
+        handleLabelChange(labelId, 'trackIndex', newTrackIndex);
+      }
+      // If null, user cancelled - do nothing
+    } else {
+      // Normal track change
+      handleLabelChange(labelId, 'trackIndex', parseInt(value));
+    }
   };
 
   const handleRowClick = (labelId: string, e: React.MouseEvent) => {
@@ -232,9 +253,7 @@ export function LabelEditor({
                   selected={selectedLabelIds.has(label.id)}
                   sampleRate={sampleRate}
                   timeCodeFormat={timeCodeFormat}
-                  onTrackChange={(value) =>
-                    handleLabelChange(label.id, 'trackIndex', parseInt(value))
-                  }
+                  onTrackChange={(value) => handleTrackChange(label.id, value)}
                   onLabelTextChange={(value) => handleLabelChange(label.id, 'text', value)}
                   onStartTimeChange={(value) => handleLabelChange(label.id, 'startTime', value)}
                   onEndTimeChange={(value) => handleLabelChange(label.id, 'endTime', value)}
