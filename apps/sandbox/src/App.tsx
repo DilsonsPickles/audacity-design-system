@@ -252,19 +252,23 @@ const sampleTracks = [
     labels: [
       {
         id: 1,
+        trackIndex: 9,
         text: 'Intro',
-        time: 0.5,
+        startTime: 0.5,
+        endTime: 0.5,
       },
       {
         id: 2,
+        trackIndex: 9,
         text: 'Verse 1',
-        time: 2.0,
+        startTime: 2.0,
         endTime: 4.5,
       },
       {
         id: 3,
+        trackIndex: 9,
         text: 'Chorus',
-        time: 5.5,
+        startTime: 5.5,
         endTime: 7.0,
       },
     ],
@@ -793,6 +797,7 @@ function CanvasDemoContent() {
             state.selectedLabelIds.forEach(labelId => {
               const [trackIndexStr, labelIdStr] = labelId.split('-');
               const trackIndex = parseInt(trackIndexStr, 10);
+              const labelIdNum = parseInt(labelIdStr, 10);
               const track = state.tracks[trackIndex];
 
               if (track && track.labels) {
@@ -801,10 +806,10 @@ function CanvasDemoContent() {
                 // 2. Any point labels that fall within the time range
                 const updatedLabels = track.labels.filter(l => {
                   // Keep if it's not the selected label
-                  if (l.id === parseInt(labelIdStr, 10)) return false;
+                  if (l.id === labelIdNum) return false;
 
                   // If it's a point label and falls within the time range, remove it
-                  if (l.endTime === undefined && l.time >= startTime && l.time <= endTime) {
+                  if (l.startTime === l.endTime && l.startTime >= startTime && l.startTime <= endTime) {
                     return false;
                   }
 
@@ -1483,8 +1488,10 @@ function CanvasDemoContent() {
 
                     const newLabel = {
                       id: nextLabelId,
+                      trackIndex: index,
                       text: '',
-                      time: state.playheadPosition,
+                      startTime: state.playheadPosition,
+                      endTime: state.playheadPosition,
                     };
 
                     dispatch({
@@ -2015,7 +2022,7 @@ function CanvasDemoContent() {
       <LabelEditor
         isOpen={isLabelEditorOpen}
         labels={state.tracks.flatMap((track, index) =>
-          (track.labels || []).map(label => ({ ...label, trackIndex: index }))
+          (track.labels || []).map(label => ({ ...label, id: String(label.id), trackIndex: index }))
         )}
         tracks={state.tracks.map((track, index) => ({
           value: index.toString(),
@@ -2023,7 +2030,7 @@ function CanvasDemoContent() {
         }))}
         playheadPosition={state.playheadPosition}
         onChange={(updatedLabels) => {
-          // Group labels by track
+          // Group labels by track, converting string IDs back to numbers
           const labelsByTrack = new Map<number, typeof updatedLabels>();
           updatedLabels.forEach(label => {
             if (!labelsByTrack.has(label.trackIndex)) {
@@ -2034,7 +2041,10 @@ function CanvasDemoContent() {
 
           // Update each track with its labels
           state.tracks.forEach((_track, trackIndex) => {
-            const newLabels = labelsByTrack.get(trackIndex) || [];
+            const newLabels = (labelsByTrack.get(trackIndex) || []).map(label => ({
+              ...label,
+              id: parseInt(label.id, 10),
+            }));
             dispatch({
               type: 'UPDATE_TRACK',
               payload: {

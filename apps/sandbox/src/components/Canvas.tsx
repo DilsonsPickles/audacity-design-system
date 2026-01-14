@@ -368,9 +368,9 @@ export function Canvas({
               for (let i = 0; i < labelIndex; i++) {
                 if (labelRows[i] === row) {
                   const prevLabel = track.labels![i];
-                  const prevX = CLIP_CONTENT_OFFSET + prevLabel.time * pixelsPerSecond;
+                  const prevX = CLIP_CONTENT_OFFSET + prevLabel.startTime * pixelsPerSecond;
                   const prevWidth = prevLabel.endTime !== undefined
-                    ? (prevLabel.endTime - prevLabel.time) * pixelsPerSecond
+                    ? (prevLabel.endTime - prevLabel.startTime) * pixelsPerSecond
                     : 60;
 
                   const overlap = !(labelX >= prevX + prevWidth || labelX + labelWidth <= prevX);
@@ -960,9 +960,9 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                     for (let i = 0; i < labelIndex; i++) {
                       if (labelRows[i] === row) {
                         const prevLabel = track.labels![i];
-                        const prevX = CLIP_CONTENT_OFFSET + prevLabel.time * pixelsPerSecond;
+                        const prevX = CLIP_CONTENT_OFFSET + prevLabel.startTime * pixelsPerSecond;
                         const prevWidth = prevLabel.endTime !== undefined
-                          ? (prevLabel.endTime - prevLabel.time) * pixelsPerSecond
+                          ? (prevLabel.endTime - prevLabel.startTime) * pixelsPerSecond
                           : 60; // Point labels: use same small width for overlap detection
 
                         const overlap = !(x >= prevX + prevWidth || x + width <= prevX);
@@ -1272,7 +1272,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
 
                             // If selected label is a region and this point label falls within it, delete the point label
                             if (selectedLabel?.endTime !== undefined &&
-                                label.startTime >= selectedLabel.time &&
+                                label.startTime >= selectedLabel.startTime &&
                                 label.startTime <= selectedLabel.endTime) {
                               shouldDelete = true;
                               break;
