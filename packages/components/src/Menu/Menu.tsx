@@ -13,6 +13,7 @@ export interface MenuItem {
   onClick?: () => void;
   disabled?: boolean;
   divider?: boolean;
+  checked?: boolean;
 }
 
 export interface MenuProps {
@@ -85,6 +86,9 @@ export function Menu({
               }}
               disabled={item.disabled}
             >
+              <span className="menu__checkmark">
+                {item.checked && '✓'}
+              </span>
               <span className="menu__label">{item.label}</span>
               {item.shortcut && (
                 <span className="menu__shortcut">{item.shortcut}</span>

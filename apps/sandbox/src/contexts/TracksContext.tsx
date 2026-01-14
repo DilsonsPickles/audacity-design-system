@@ -307,21 +307,12 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }))
       }));
 
-      // Find the selected clip to create a time selection
-      const selectedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
-      const newTimeSelection = selectedClip
-        ? {
-            startTime: selectedClip.start,
-            endTime: selectedClip.start + selectedClip.duration
-          }
-        : state.timeSelection;
-
+      // Don't create time selection when selecting clip - only show time selection in ruler
       return {
         ...state,
         tracks: newTracks,
         selectedTrackIndices: [trackIndex],
         focusedTrackIndex: trackIndex,
-        timeSelection: newTimeSelection,
         selectedLabelIds: [], // Clear label selection when selecting clip
       };
     }

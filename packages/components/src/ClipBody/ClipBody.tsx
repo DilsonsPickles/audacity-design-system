@@ -228,8 +228,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       ctx.stroke();
 
       // Bottom half: waveform
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+      // Get waveform colors from CSS variables (theme tokens)
+      const computedStyle = getComputedStyle(canvasRef.current);
+      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
+      // Always use default waveform color - selection only affects body background
+      const waveformColor = defaultWaveformColor;
+      ctx.fillStyle = waveformColor;
+      ctx.strokeStyle = waveformColor;
       ctx.lineWidth = 1;
 
       if (channelMode === 'split-stereo' && isStereo) {
@@ -278,7 +283,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         ctx.stroke();
 
         // Draw R channel waveform
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillStyle = waveformColor;
         // Use same samples per pixel as L channel for consistency
         for (let px = 0; px < canvasWidth; px++) {
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
@@ -375,8 +380,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       }
     } else {
       // Pure waveform rendering (no split view)
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
       ctx.lineWidth = 1;
 
       if (isStereo) {
@@ -414,12 +417,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       // Get waveform colors from CSS variables (theme tokens)
       const computedStyle = getComputedStyle(canvasRef.current);
-      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim() || 'rgba(0, 0, 0, 0.7)';
-      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim() || defaultWaveformColor;
-      const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim() || defaultWaveformColor;
-      const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim() || 'rgba(0, 0, 0, 0.4)';
-      const selectedRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms-selected`).trim() || defaultRmsColor;
-      const timeSelectionRmsColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform-rms`).trim() || defaultRmsColor;
+      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
+      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim();
+      const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim();
+      const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
+      const selectedRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms-selected`).trim();
+      const timeSelectionRmsColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform-rms`).trim();
 
       // Draw L channel
       for (let px = 0; px < canvasWidth; px++) {
@@ -437,7 +440,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Choose color based on whether THIS pixel is within time selection
         const isPixelInSelection = px >= selStartPx && px < selEndPx;
-        const waveformColor = isPixelInSelection ? timeSelectionWaveformColor : (selected ? selectedWaveformColor : defaultWaveformColor);
+        const waveformColor = isPixelInSelection ? timeSelectionWaveformColor : defaultWaveformColor;
         ctx.fillStyle = waveformColor;
 
         const y1 = lChannelCenterY - max * lMaxAmplitude;
@@ -470,7 +473,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Choose color based on whether THIS pixel is within time selection
         const isPixelInSelection = px >= selStartPx && px < selEndPx;
-        const waveformColor = isPixelInSelection ? timeSelectionWaveformColor : (selected ? selectedWaveformColor : defaultWaveformColor);
+        const waveformColor = isPixelInSelection ? timeSelectionWaveformColor : defaultWaveformColor;
         ctx.fillStyle = waveformColor;
 
         const y1 = rChannelCenterY - max * rMaxAmplitude;
@@ -508,12 +511,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       // Get waveform colors from CSS variables (theme tokens)
       const computedStyle = getComputedStyle(canvasRef.current);
-      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim() || 'rgba(0, 0, 0, 0.7)';
-      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim() || defaultWaveformColor;
-      const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim() || defaultWaveformColor;
-      const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim() || 'rgba(0, 0, 0, 0.4)';
-      const selectedRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms-selected`).trim() || defaultRmsColor;
-      const timeSelectionRmsColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform-rms`).trim() || defaultRmsColor;
+      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
+      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim();
+      const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim();
+      const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
+      const selectedRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms-selected`).trim();
+      const timeSelectionRmsColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform-rms`).trim();
 
       for (let px = 0; px < canvasWidth; px++) {
         const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -530,7 +533,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Choose color based on whether THIS pixel is within time selection
         const isPixelInSelection = px >= selStartPx && px < selEndPx;
-        const waveformColor = isPixelInSelection ? timeSelectionWaveformColor : (selected ? selectedWaveformColor : defaultWaveformColor);
+        const waveformColor = isPixelInSelection ? timeSelectionWaveformColor : defaultWaveformColor;
         ctx.fillStyle = waveformColor;
 
         const y1 = centerY - max * maxAmplitude;
@@ -555,7 +558,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
           // Choose color based on whether THIS pixel is within time selection
           const isPixelInSelection = px >= selStartPx && px < selEndPx;
-          const rmsColor = isPixelInSelection ? timeSelectionRmsColor : (selected ? selectedRmsColor : defaultRmsColor);
+          const rmsColor = isPixelInSelection ? timeSelectionRmsColor : defaultRmsColor;
           ctx.fillStyle = rmsColor;
 
           const y1 = centerY - max * maxAmplitude;

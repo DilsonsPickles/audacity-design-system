@@ -44,6 +44,13 @@
   cursor: not-allowed;
 }
 
+.menu__checkmark {
+  width: 20px;
+  margin-right: 8px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 .menu__label {
   flex: 1;
   white-space: nowrap;

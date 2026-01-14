@@ -267,6 +267,8 @@ export const TrackNew: React.FC<TrackProps> = ({
         variant = 'waveform';
       }
 
+      const clipSelected = (clip as any).selected || false;
+
       return (
         <div
           key={clip.id}
@@ -371,7 +373,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             name={clip.name}
             width={clipWidth}
             height={height}
-            selected={clip.selected || false}
+            selected={clipSelected}
             inTimeSelection={timeSelection && isSelected ? (
               clip.start < timeSelection.endTime && (clip.start + clip.duration) > timeSelection.startTime
             ) : false}

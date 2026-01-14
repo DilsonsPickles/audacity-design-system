@@ -41,6 +41,11 @@ export interface CanvasProps {
    * Callback when canvas height changes
    */
   onHeightChange?: (height: number) => void;
+  /**
+   * Whether to show RMS waveform overlay
+   * @default true
+   */
+  showRmsInWaveform?: boolean;
 }
 
 /**
@@ -58,6 +63,7 @@ export function Canvas({
   onClipMenuClick,
   onTrackFocusChange,
   keyboardFocusedTrack = null,
+  showRmsInWaveform = true,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -292,10 +298,11 @@ export function Canvas({
                   type: 'SELECT_CLIP',
                   payload: { trackIndex, clipId: clip.id },
                 });
-                dispatch({
-                  type: 'SELECT_TRACK',
-                  payload: trackIndex,
-                });
+                // Don't select track - waveform colors should only change with explicit track selection
+                // dispatch({
+                //   type: 'SELECT_TRACK',
+                //   payload: trackIndex,
+                // });
 
                 // Only drag this one clip (state hasn't updated yet)
                 selectedClipsInitialPositions = [{
@@ -714,7 +721,12 @@ export function Canvas({
               }}
             >
               <TrackNew
-                clips={track.clips as any}
+                clips={showRmsInWaveform ? track.clips as any : (track.clips as any).map((clip: any) => ({
+                  ...clip,
+                  waveformRms: undefined,
+                  waveformLeftRms: undefined,
+                  waveformRightRms: undefined,
+                }))}
                 height={trackHeight}
                 trackIndex={trackIndex}
                 spectrogramMode={track.viewMode === 'spectrogram'}
@@ -873,11 +885,11 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       type: 'SELECT_CLIP',
                       payload: { trackIndex, clipId: clipId as number },
                     });
-                    // Select this track exclusively
-                    dispatch({
-                      type: 'SELECT_TRACK',
-                      payload: trackIndex,
-                    });
+                    // Don't select track - waveform colors should only change with explicit track selection
+                    // dispatch({
+                    //   type: 'SELECT_TRACK',
+                    //   payload: trackIndex,
+                    // });
                   }
                 }}
                 onClipTrimEdge={(clipId, edge) => {

@@ -311,6 +311,9 @@ function CanvasDemoContent() {
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
 
+  // View options
+  const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(true);
+
   // Clip context menu state
   const [clipContextMenu, setClipContextMenu] = React.useState<{
     isOpen: boolean;
@@ -1093,6 +1096,17 @@ function CanvasDemoContent() {
     },
   ];
 
+  // Define menu items for View menu
+  const viewMenuItems: MenuItem[] = [
+    {
+      label: 'Show RMS in waveform',
+      checked: showRmsInWaveform,
+      onClick: () => {
+        setShowRmsInWaveform(!showRmsInWaveform);
+      }
+    },
+  ];
+
   // Define menu items for Generate menu
   const generateMenuItems: MenuItem[] = [
     {
@@ -1146,6 +1160,7 @@ function CanvasDemoContent() {
   const menuDefinitions = {
     File: fileMenuItems,
     Edit: editMenuItems,
+    View: viewMenuItems,
     Generate: generateMenuItems,
   };
 
@@ -1589,6 +1604,7 @@ function CanvasDemoContent() {
                   width={5000}
                   leftPadding={12}
                   keyboardFocusedTrack={keyboardFocusedTrack}
+                  showRmsInWaveform={showRmsInWaveform}
                   onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
                     setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                   }}
