@@ -1503,7 +1503,7 @@ function CanvasDemoContent() {
                     setKeyboardFocusedTrack(index);
                   }}
                   onToggleSelection={() => {
-                    // Toggle track selection: add if not selected, remove if already selected
+                    // Cmd/Ctrl+Click: Toggle track selection
                     const isSelected = state.selectedTrackIndices.includes(index);
                     if (isSelected) {
                       // Remove from selection
@@ -1514,6 +1514,23 @@ function CanvasDemoContent() {
                       const newSelection = [...state.selectedTrackIndices, index];
                       dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
                     }
+                  }}
+                  onRangeSelection={() => {
+                    // Shift+Click: Select range from last selected track to this track
+                    if (state.selectedTrackIndices.length === 0) {
+                      // No existing selection, just select this track
+                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [index] });
+                      return;
+                    }
+
+                    // Find the last selected track (highest index in current selection)
+                    const lastSelected = Math.max(...state.selectedTrackIndices);
+                    const start = Math.min(lastSelected, index);
+                    const end = Math.max(lastSelected, index);
+
+                    // Create array of all indices between start and end (inclusive)
+                    const rangeSelection = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: rangeSelection });
                   }}
                   onTabOut={() => {
                     // Find the first clip in THIS track specifically

@@ -25,7 +25,8 @@ export interface TrackControlPanelProps {
   onAddLabelClick?: () => void;
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
-  onToggleSelection?: () => void;
+  onToggleSelection?: () => void; // Cmd/Ctrl+Click to toggle
+  onRangeSelection?: () => void; // Shift+Click for range selection
   className?: string;
   state?: 'idle' | 'hover' | 'active';
   height?: 'default' | 'truncated' | 'collapsed';
@@ -53,6 +54,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onMenuClick,
   onClick,
   onToggleSelection,
+  onRangeSelection,
   className = '',
   state = 'idle',
   height = 'default',
@@ -215,11 +217,17 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent) => {
-    // Handle shift-clicks for multi-track selection
-    if (e.shiftKey) {
+    // Shift+Click: Range selection (select all tracks between last selected and clicked)
+    if (e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      onRangeSelection?.();
+      return;
+    }
+    // Cmd/Ctrl+Click: Toggle individual track in/out of selection
+    if (e.metaKey || e.ctrlKey) {
       onToggleSelection?.();
       return;
     }
+    // Regular click: Select only this track
     onClick?.();
   };
 
