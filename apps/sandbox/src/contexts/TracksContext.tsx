@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, ReactNode } from 'react';
 import { applyCut, CutMode } from '../utils/cutOperations';
+import type { Label as CoreLabel } from '@audacity-ui/core';
 
 // TODO: Import proper Track and Clip types from @audacity-ui/core once they're defined
 interface EnvelopePoint {
@@ -7,11 +8,9 @@ interface EnvelopePoint {
   db: number;
 }
 
-interface Label {
+// Local Label interface for TracksContext (extends core Label with numeric id)
+interface Label extends Omit<CoreLabel, 'id'> {
   id: number;
-  text: string;
-  time: number;
-  endTime?: number;
 }
 
 interface DeletedRegion {
@@ -550,14 +549,14 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ),
       };
 
-      // Update time selection if ONLY this label is selected and its time/endTime changed
+      // Update time selection if ONLY this label is selected and its startTime/endTime changed
       // (Don't update time selection for multi-selection, matching clip behavior)
       let newTimeSelection = state.timeSelection;
       const labelKeyId = `${trackIndex}-${labelId}`;
       if (originalLabel && state.selectedLabelIds.includes(labelKeyId) && state.selectedLabelIds.length === 1) {
-        // Check if time or endTime changed
-        const timeChanged = label.time !== undefined && label.time !== originalLabel.time;
-        const endTimeChanged = label.endTime !== undefined && label.endTime !== (originalLabel.endTime ?? originalLabel.time);
+        // Check if startTime or endTime changed
+        const timeChanged = label.startTime !== undefined && label.startTime !== originalLabel.startTime;
+        const endTimeChanged = label.endTime !== undefined && label.endTime !== originalLabel.endTime;
 
         if (timeChanged || endTimeChanged) {
           // Get the updated label from newTracks
@@ -565,8 +564,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           if (updatedLabel) {
             // Recalculate time selection from the updated label
             newTimeSelection = {
-              startTime: updatedLabel.time,
-              endTime: updatedLabel.endTime ?? updatedLabel.time,
+              startTime: updatedLabel.startTime,
+              endTime: updatedLabel.endTime,
             };
           }
         }
@@ -605,8 +604,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         if (selectedLabels.length === 1) {
           const label = selectedLabels[0];
           newTimeSelection = {
-            startTime: label.time,
-            endTime: label.endTime ?? label.time,
+            startTime: label.startTime,
+            endTime: label.endTime,
           };
         }
       }
@@ -655,8 +654,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         if (selectedLabels.length === 1) {
           const label = selectedLabels[0];
           newTimeSelection = {
-            startTime: label.time,
-            endTime: label.endTime ?? label.time,
+            startTime: label.startTime,
+            endTime: label.endTime,
           };
         }
       }

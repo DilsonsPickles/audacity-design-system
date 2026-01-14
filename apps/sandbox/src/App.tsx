@@ -2033,7 +2033,7 @@ function CanvasDemoContent() {
           });
 
           // Update each track with its labels
-          state.tracks.forEach((track, trackIndex) => {
+          state.tracks.forEach((_track, trackIndex) => {
             const newLabels = labelsByTrack.get(trackIndex) || [];
             dispatch({
               type: 'UPDATE_TRACK',
