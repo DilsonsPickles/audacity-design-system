@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { Button } from '../Button';
-import { Separator } from '../Separator';
 import { useTheme } from '../ThemeProvider';
 import './LabelEditorHeader.css';
 
@@ -46,7 +45,7 @@ export function LabelEditorHeader({
   const { theme } = useTheme();
 
   const style = {
-    '--label-editor-header-bg': theme.background.surface.elevated,
+    '--label-editor-header-bg': '#F8F8F9',
     '--label-editor-header-border': theme.border.default,
     '--label-editor-header-text': theme.foreground.text.primary,
   } as React.CSSProperties;
@@ -61,7 +60,7 @@ export function LabelEditorHeader({
         <Button size="small" onClick={onExport}>
           Export
         </Button>
-        <Separator />
+        <div className="label-editor-header__separator" />
         <Button size="small" onClick={onDelete} disabled={disableDelete}>
           Delete
         </Button>

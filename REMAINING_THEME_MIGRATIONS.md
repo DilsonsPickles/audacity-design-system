@@ -9,7 +9,7 @@
 5. SearchField, NumberStepper
 6. Tooltip, ProgressBar
 
-## Remaining: 13 Components
+## Remaining: 14 Components
 
 ### Migration Pattern
 
@@ -147,6 +147,20 @@ Replace hardcoded colors with `var(--component-name-variable)`
 ### 13. Track (legacy)
 (Legacy component - lowest priority)
 
+### 14. LabelEditorHeader (3 colors)
+**Hardcoded colors:**
+- `#F8F8F9` (background - light theme specific)
+- Uses theme tokens for border and text
+
+**Suggested tokens:**
+```typescript
+'--label-editor-header-bg': theme.background.surface.elevated,
+'--label-editor-header-border': theme.border.default,
+'--label-editor-header-text': theme.foreground.text.primary,
+```
+
+**Note:** Background color `#F8F8F9` is hardcoded per design spec. Will need dark theme equivalent.
+
 ---
 
 ## Quick Reference: Common Theme Tokens
@@ -194,8 +208,8 @@ After migrating all components:
 
 ## Current Status
 
-**Migrated:** 14/27 components (52%)
-**Remaining:** 13 components
+**Migrated:** 14/28 components (50%)
+**Remaining:** 14 components
 **Build:** ✅ Passing
 **Sandbox:** ✅ Running
 **Theme Toggle:** ✅ Functional
