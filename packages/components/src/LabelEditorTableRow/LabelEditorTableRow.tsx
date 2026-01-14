@@ -137,6 +137,7 @@ export function LabelEditorTableRow({
           onChange={onStartTimeChange}
           sampleRate={sampleRate}
           format={timeCodeFormat}
+          variant="light"
         />
       </td>
       <td className="label-editor-table-row__cell">
@@ -145,6 +146,7 @@ export function LabelEditorTableRow({
           onChange={onEndTimeChange}
           sampleRate={sampleRate}
           format={timeCodeFormat}
+          variant="light"
         />
       </td>
       <td className="label-editor-table-row__cell">

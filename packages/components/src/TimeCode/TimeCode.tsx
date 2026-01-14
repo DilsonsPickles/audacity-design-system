@@ -5,6 +5,7 @@ import type { TimeCodeUnitType } from './TimeCodeUnit';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
+import { useTheme } from '../ThemeProvider';
 import './TimeCode.css';
 import './TimeCodeDigit.css';
 import './TimeCodeUnit.css';
@@ -69,6 +70,13 @@ export interface TimeCodeProps {
    */
   disabled?: boolean;
   /**
+   * Visual variant
+   * - dark: Dark background with light text (transport controls)
+   * - light: Light background with dark text (label editor)
+   * @default 'dark'
+   */
+  variant?: 'dark' | 'light';
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -96,8 +104,10 @@ export function TimeCode({
   onFormatChange,
   showFormatSelector = true,
   disabled = false,
+  variant = 'dark',
   className = '',
 }: TimeCodeProps) {
+  const { theme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [editingDigitIndex, setEditingDigitIndex] = useState<number | null>(null);
   const [hoverDigitIndex, setHoverDigitIndex] = useState<number | null>(null);
@@ -135,10 +145,18 @@ export function TimeCode({
     setShowMenu(!showMenu);
   };
 
+  const style = {
+    '--timecode-bg': variant === 'light' ? '#FFFFFF' : '#212433',
+    '--timecode-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
+    '--timecode-hover': variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
+    '--timecode-border': variant === 'light' ? '#D4D5D9' : 'transparent',
+  } as React.CSSProperties;
+
   return (
     <div
       ref={containerRef}
-      className={`timecode ${disabled ? 'timecode--disabled' : ''} ${className}`}
+      className={`timecode timecode--${variant} ${disabled ? 'timecode--disabled' : ''} ${className}`}
+      style={style}
     >
       <div className="timecode__display">
         {segments.map((segment, index) => (

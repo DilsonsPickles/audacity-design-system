@@ -8,12 +8,13 @@
   position: relative;
   border-radius: 2px;
   overflow: hidden;
+  border: 1px solid var(--timecode-border);
 }
 
 .timecode__display {
   display: inline-flex;
   align-items: center;
-  background: #212433;
+  background: var(--timecode-bg);
   padding: 0 4px;
   min-height: 28px;
   user-select: none;
@@ -26,8 +27,8 @@
   justify-content: center;
   height: 28px;
   padding: 0 1px;
-  color: #f4f5f9;
-  background-color: #212433;
+  color: var(--timecode-text);
+  background-color: var(--timecode-bg);
   font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 16px;
   font-weight: 700;
@@ -42,16 +43,16 @@
   justify-content: center;
   width: 16px;
   height: 28px;
-  background: #212433;
+  background: var(--timecode-bg);
   border: none;
   cursor: pointer;
-  color: #f4f5f9;
+  color: var(--timecode-text);
   padding: 0;
   transition: background-color 0.15s ease;
 }
 
 .timecode__format-button:hover:not(:disabled) {
-  background-color: #4a5068;
+  background-color: var(--timecode-hover);
 }
 
 .timecode__format-button:disabled {

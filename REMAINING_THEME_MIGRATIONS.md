@@ -1,6 +1,6 @@
 # Remaining Theme Migrations
 
-## Completed So Far: 14 Components ✅
+## Completed So Far: 15 Components ✅
 
 1. ContextMenu, ContextMenuItem, ClipContextMenu
 2. PreferencePanel, PreferenceThumbnail
@@ -8,8 +8,9 @@
 4. HomeTab, LabelMarker
 5. SearchField, NumberStepper
 6. Tooltip, ProgressBar
+7. TimeCode
 
-## Remaining: 15 Components
+## Remaining: 14 Components
 
 ### Migration Pattern
 
@@ -79,18 +80,8 @@ Replace hardcoded colors with `var(--component-name-variable)`
 '--swipey-dot-active': theme.border.focus,
 ```
 
-### 4. TimeCode (6 colors)
-**Hardcoded colors:**
-- `#14151a` (text)
-- `#d4d5d9` (border)
-- `#677ce4` (focus)
-
-**Suggested tokens:**
-```typescript
-'--timecode-text': theme.foreground.text.primary,
-'--timecode-border': theme.border.default,
-'--timecode-focus': theme.border.focus,
-```
+### 4. ~~TimeCode~~ ✅ MIGRATED
+Now supports `variant` prop with light/dark modes.
 
 ### 5. Footer (4 colors)
 **Hardcoded colors:**
@@ -223,8 +214,8 @@ After migrating all components:
 
 ## Current Status
 
-**Migrated:** 14/29 components (48%)
-**Remaining:** 15 components
+**Migrated:** 15/29 components (52%)
+**Remaining:** 14 components
 **Build:** ✅ Passing
 **Sandbox:** ✅ Running
 **Theme Toggle:** ✅ Functional

@@ -9,8 +9,8 @@
   font-size: 16px;
   font-weight: 700;
   line-height: 28px;
-  color: #f4f5f9;
-  background-color: #212433;
+  color: var(--timecode-text);
+  background-color: var(--timecode-bg);
   cursor: default;
   user-select: none;
   transition: background-color 0.15s ease;
@@ -18,13 +18,13 @@
 
 /* Default/Idle state */
 .timecode-digit--default {
-  background-color: #212433;
+  background-color: var(--timecode-bg);
 }
 
 /* Hover state */
 .timecode-digit--hover {
-  background-color: #4a5068;
-  color: #f4f5f9;
+  background-color: var(--timecode-hover);
+  color: var(--timecode-text);
   cursor: pointer;
 }
 
@@ -41,5 +41,5 @@
 }
 
 .timecode-digit--readonly:hover {
-  background-color: #212433;
+  background-color: var(--timecode-bg);
 }
