@@ -10,6 +10,7 @@ import { Dropdown } from '../Dropdown';
 import { TextInput } from '../TextInput';
 import { TimeCode, type TimeCodeFormat } from '../TimeCode';
 import { LabelEditorHeader } from '../LabelEditorHeader';
+import { LabelEditorTableHeader } from '../LabelEditorTableHeader';
 import type { Label } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
 import './LabelEditor.css';
@@ -182,30 +183,18 @@ export function LabelEditor({
       style={style}
     >
       <div className="label-editor">
+        <LabelEditorTableHeader
+          columns={[
+            { label: 'Track', width: '120px' },
+            { label: 'Label text', width: 'auto' },
+            { label: 'Start time', width: '180px', showMenu: true },
+            { label: 'End time', width: '180px', showMenu: true },
+            { label: 'Low frequency', width: '120px', showMenu: true },
+            { label: 'High frequency', width: '120px', showMenu: true },
+          ]}
+        />
         <div className="label-editor__table-container">
           <table className="label-editor__table">
-            <thead className="label-editor__table-header">
-              <tr>
-                <th className="label-editor__table-header-cell label-editor__table-header-cell--track">
-                  Track
-                </th>
-                <th className="label-editor__table-header-cell label-editor__table-header-cell--text">
-                  Label text
-                </th>
-                <th className="label-editor__table-header-cell label-editor__table-header-cell--time">
-                  Start time
-                </th>
-                <th className="label-editor__table-header-cell label-editor__table-header-cell--time">
-                  End time
-                </th>
-                <th className="label-editor__table-header-cell label-editor__table-header-cell--frequency">
-                  Low frequency
-                </th>
-                <th className="label-editor__table-header-cell label-editor__table-header-cell--frequency">
-                  High frequency
-                </th>
-              </tr>
-            </thead>
             <tbody className="label-editor__table-body">
               {labels.map((label) => (
                 <tr

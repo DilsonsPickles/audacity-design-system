@@ -1,0 +1,32 @@
+/**
+ * Label Editor Table Header Styles
+ * Based on Figma design: node-id=8827-43088
+ */
+
+.label-editor-table-header {
+  display: flex;
+  height: 32px;
+  background-color: var(--table-header-bg);
+  border-bottom: 1px solid var(--table-header-border);
+}
+
+.label-editor-table-header__cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 8px;
+  border-right: 1px solid var(--table-header-border);
+  flex-shrink: 0;
+}
+
+.label-editor-table-header__cell:last-child {
+  border-right: none;
+}
+
+.label-editor-table-header__label {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--table-header-text);
+  line-height: 16px;
+  white-space: nowrap;
+}

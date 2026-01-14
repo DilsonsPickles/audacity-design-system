@@ -24,43 +24,6 @@
   table-layout: fixed;
 }
 
-/* Table header */
-.label-editor__table-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background-color: var(--label-editor-header-bg);
-}
-
-.label-editor__table-header-cell {
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--label-editor-text-secondary);
-  border-bottom: 1px solid var(--label-editor-border);
-  background-color: var(--label-editor-header-bg);
-  white-space: nowrap;
-}
-
-/* Column widths */
-.label-editor__table-header-cell--track {
-  width: 120px;
-}
-
-.label-editor__table-header-cell--text {
-  width: auto;
-  min-width: 150px;
-}
-
-.label-editor__table-header-cell--time {
-  width: 180px;
-}
-
-.label-editor__table-header-cell--frequency {
-  width: 120px;
-}
-
 /* Table body */
 .label-editor__table-body {
   background-color: var(--label-editor-header-bg);
