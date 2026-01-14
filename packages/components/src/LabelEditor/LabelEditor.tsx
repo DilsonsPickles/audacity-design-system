@@ -120,10 +120,8 @@ export function LabelEditor({
     // Check if user selected "New Label Track..."
     if (value === '__NEW__' && onNewTrackRequest) {
       const newTrackIndex = await onNewTrackRequest(labelId);
-      if (newTrackIndex !== null) {
-        // Update label with the new track index
-        handleLabelChange(labelId, 'trackIndex', newTrackIndex);
-      }
+      // onNewTrackRequest handles both track creation AND label assignment
+      // No need to call handleLabelChange here - the parent will update everything
       // If null, user cancelled - do nothing
     } else {
       // Normal track change

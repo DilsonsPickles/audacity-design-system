@@ -2047,19 +2047,23 @@ function CanvasDemoContent() {
             labelsByTrack.get(label.trackIndex)!.push(label);
           });
 
-          // Update each track with its labels
+          // Update each existing track with its labels
+          // Note: If a label points to a non-existent track (e.g., one being created),
+          // it will be handled on the next render when that track exists
           state.tracks.forEach((_track, trackIndex) => {
-            const newLabels = (labelsByTrack.get(trackIndex) || []).map(label => ({
-              ...label,
-              id: parseInt(label.id, 10),
-            }));
-            dispatch({
-              type: 'UPDATE_TRACK',
-              payload: {
-                index: trackIndex,
-                track: { labels: newLabels }
-              }
-            });
+            if (labelsByTrack.has(trackIndex)) {
+              const newLabels = labelsByTrack.get(trackIndex)!.map(label => ({
+                ...label,
+                id: parseInt(label.id, 10),
+              }));
+              dispatch({
+                type: 'UPDATE_TRACK',
+                payload: {
+                  index: trackIndex,
+                  track: { labels: newLabels }
+                }
+              });
+            }
           });
         }}
         onClose={() => setIsLabelEditorOpen(false)}
@@ -2073,27 +2077,61 @@ function CanvasDemoContent() {
             return null; // User cancelled
           }
 
+          // Find the label that needs to be moved
+          let sourceTrackIndex = -1;
+          let labelToMove: any = null;
+
+          state.tracks.forEach((track, trackIndex) => {
+            const label = track.labels?.find(l => l.id === parseInt(labelId, 10));
+            if (label) {
+              sourceTrackIndex = trackIndex;
+              labelToMove = label;
+            }
+          });
+
+          if (!labelToMove || sourceTrackIndex === -1) {
+            toast.error('Label not found');
+            return null;
+          }
+
+          // Calculate the new track's index (where it will be added)
+          const newTrackIndex = state.tracks.length;
+
           // Find next available track ID
           const maxId = Math.max(...state.tracks.map(t => t.id), 0);
           const newTrackId = maxId + 1;
 
-          // Create new label track
+          // Create new label track WITH the label already in it
           const newTrack = {
             id: newTrackId,
             name: trackName,
             height: 76,
             clips: [],
-            labels: [],
+            labels: [{ ...labelToMove, trackIndex: newTrackIndex }],
           };
 
-          // Add track to state
+          // Remove label from source track
+          const sourceTrack = state.tracks[sourceTrackIndex];
+          const updatedSourceLabels = sourceTrack.labels?.filter(l => l.id !== labelToMove.id) || [];
+
+          // Dispatch both operations
+          dispatch({
+            type: 'UPDATE_TRACK',
+            payload: {
+              index: sourceTrackIndex,
+              track: { labels: updatedSourceLabels }
+            }
+          });
+
           dispatch({
             type: 'ADD_TRACK',
             payload: newTrack,
           });
 
+          toast.success(`Created label track: ${trackName}`);
+
           // Return the new track's index
-          return state.tracks.length;
+          return newTrackIndex;
         }}
         os={preferences.operatingSystem}
       />
