@@ -374,7 +374,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             width={clipWidth}
             height={height}
             selected={clipSelected}
-            inTimeSelection={timeSelection && isSelected ? (
+            inTimeSelection={timeSelection && isSelected && (timeSelection as any).renderOnCanvas !== false ? (
               clip.start < timeSelection.endTime && (clip.start + clip.duration) > timeSelection.startTime
             ) : false}
             clipStartTime={clip.start}

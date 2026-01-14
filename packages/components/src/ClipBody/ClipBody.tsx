@@ -8,19 +8,7 @@ import './ClipBody.css';
 export type ClipBodyVariant = 'waveform' | 'spectrogram';
 export type ClipBodyChannelMode = 'mono' | 'stereo' | 'split-mono' | 'split-stereo';
 
-// Color shade 500 for stereo divider lines
-const DIVIDER_COLORS: Record<ClipColor, string> = {
-  cyan: '#6CCBD8',
-  blue: '#84B5FF',
-  violet: '#ADABFC',
-  magenta: '#E1A3D6',
-  red: '#F39999',
-  orange: '#FFB183',
-  yellow: '#ECCC73',
-  green: '#8FCB7A',
-  teal: '#5CC3A9',
-  classic: '#CDD2F5',
-};
+// Stereo divider line color - fetched from CSS variables at runtime
 
 export interface ClipBodyProps {
   /** Clip color from the 9-color palette */
@@ -118,6 +106,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // DEBUG: Log props to understand why selected background isn't showing
+  console.log('ClipBody props:', { color, selected, inTimeSelection, variant });
+
   // Draw waveform or spectrogram on canvas
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -130,6 +121,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
+
+    // Get computed styles once at the top for reuse throughout rendering
+    const computedStyle = getComputedStyle(canvas);
 
     const canvasWidth = width || canvas.offsetWidth;
     const canvasHeight = height;
@@ -158,8 +152,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Draw background overlay ONLY for the overlapped portion
         // Get color from CSS variables (read from theme tokens)
-        const computedStyle = getComputedStyle(canvasRef.current);
-        const timeSelectionColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-body`).trim() || '#FFFFFF';
+        const timeSelectionColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-body`).trim();
 
         ctx.fillStyle = timeSelectionColor;
         ctx.fillRect(selStartX, 0, selWidth, canvasHeight);
@@ -173,7 +166,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       const halfHeight = canvasHeight / 2;
 
       // Top half: spectrogram
-      ctx.fillStyle = '#1a1d2e'; // Dark background for spectrogram
+      const spectrogramBg = computedStyle.getPropertyValue('--spectrogram-background').trim();
+      ctx.fillStyle = spectrogramBg;
       ctx.fillRect(0, 0, canvasWidth, halfHeight);
 
       // Clip spectrogram rendering to top half only (prevents pixel blocks from extending below split line)
@@ -197,8 +191,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         // Render L channel spectrogram (top quarter)
         renderMonoSpectrogram(ctx, waveformLeft, 0, 0, canvasWidth, quarterHeight, spectrogramOptions);
 
-        // Separator between L and R spectral (using color-specific 700 shade)
-        ctx.strokeStyle = DIVIDER_COLORS[color];
+        // Separator between L and R spectral (using color-specific divider)
+        const dividerColor = computedStyle.getPropertyValue(`--clip-${color}-divider`).trim();
+        ctx.strokeStyle = dividerColor;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, quarterHeight);
@@ -219,8 +214,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       ctx.restore(); // Remove clipping region
 
-      // Separator line between spectrogram and waveform - solid black for clarity
-      ctx.strokeStyle = '#000000';
+      // Separator line between spectrogram and waveform
+      const separatorColor = computedStyle.getPropertyValue('--split-separator').trim();
+      ctx.strokeStyle = separatorColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, splitY);
@@ -229,7 +225,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       // Bottom half: waveform
       // Get waveform colors from CSS variables (theme tokens)
-      const computedStyle = getComputedStyle(canvasRef.current);
       const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
       // Always use default waveform color - selection only affects body background
       const waveformColor = defaultWaveformColor;
@@ -274,8 +269,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
 
-        // Separator between L and R waveforms (using color-specific 700 shade)
-        ctx.strokeStyle = DIVIDER_COLORS[color];
+        // Separator between L and R waveforms (using color-specific divider)
+        const dividerColor2 = computedStyle.getPropertyValue(`--clip-${color}-divider`).trim();
+        ctx.strokeStyle = dividerColor2;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, splitY + stereoHeight);
@@ -359,9 +355,10 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           spectrogramOptions
         );
 
-        // Draw channel divider line using color shade 700
+        // Draw channel divider line using color-specific divider
         const lChannelHeight = canvasHeight * channelSplitRatio;
-        ctx.strokeStyle = DIVIDER_COLORS[color];
+        const dividerColor3 = computedStyle.getPropertyValue(`--clip-${color}-divider`).trim();
+        ctx.strokeStyle = dividerColor3;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, lChannelHeight);
@@ -416,7 +413,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       }
 
       // Get waveform colors from CSS variables (theme tokens)
-      const computedStyle = getComputedStyle(canvasRef.current);
       const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
       const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim();
       const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim();
@@ -448,8 +444,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
       }
 
-      // Draw channel divider line using color shade 700
-      ctx.strokeStyle = DIVIDER_COLORS[color];
+      // Draw channel divider line using color-specific divider
+      const dividerColor4 = computedStyle.getPropertyValue(`--clip-${color}-divider`).trim();
+      ctx.strokeStyle = dividerColor4;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, lChannelHeight);
@@ -510,7 +507,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       }
 
       // Get waveform colors from CSS variables (theme tokens)
-      const computedStyle = getComputedStyle(canvasRef.current);
       const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
       const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim();
       const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim();

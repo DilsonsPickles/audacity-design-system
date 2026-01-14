@@ -738,7 +738,7 @@ export function Canvas({
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}
                 backgroundColor={bgColor}
-                timeSelection={timeSelection}
+                timeSelection={timeSelection && (timeSelection.renderOnCanvas !== false) ? timeSelection : null}
                 isTimeSelectionDragging={selection.selection.isDragging}
                 clipStyle={preferences.clipStyle}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}

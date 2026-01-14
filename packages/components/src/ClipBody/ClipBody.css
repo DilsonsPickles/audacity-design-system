@@ -103,10 +103,10 @@
 
 /* Classic */
 .clip-body--classic {
-  background-color: #E4E8FA; /* Classic light lavender */
+  background-color: var(--clip-classic-body);
 }
 .clip-body--classic.clip-body--selected {
-  background-color: #E4E8FA; /* Same for selected */
+  background-color: var(--clip-classic-body-selected);
 }
 
 /* Time selection background is now rendered on canvas, not via CSS */

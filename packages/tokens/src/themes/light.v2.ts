@@ -441,7 +441,7 @@ export const lightTheme: ThemeTokens = {
         body: '#E4E8FA',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#B8BEE8',
-        bodySelected: '#E4E8FA',
+        bodySelected: '#A4C4F6',
         waveform: '#5359AD', // Classic uses colored waveform
         waveformSelected: '#5359AD', // Same color when selected
         waveformRms: '#7981C3', // Lighter RMS (60% opacity of #5359AD on #E4E8FA)

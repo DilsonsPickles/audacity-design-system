@@ -48,6 +48,7 @@ interface Track {
 interface TimeSelection {
   startTime: number;
   endTime: number;
+  renderOnCanvas?: boolean; // If false, only show in ruler (e.g., when clip is selected)
 }
 
 // SpectralSelection moved to SpectralSelectionContext for performance
@@ -307,13 +308,13 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }))
       }));
 
-      // Don't create time selection when selecting clip - only show time selection in ruler
       return {
         ...state,
         tracks: newTracks,
         selectedTrackIndices: [trackIndex],
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [], // Clear label selection when selecting clip
+        timeSelection: null, // EXPERIMENT: Remove time selection to test if that's causing the issue
       };
     }
 
