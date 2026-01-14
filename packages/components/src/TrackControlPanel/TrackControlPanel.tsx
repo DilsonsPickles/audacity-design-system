@@ -215,8 +215,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent) => {
-    // Don't handle shift-clicks - let them bubble up for multi-track selection
+    // Handle shift-clicks for multi-track selection
     if (e.shiftKey) {
+      onToggleSelection?.();
       return;
     }
     onClick?.();
