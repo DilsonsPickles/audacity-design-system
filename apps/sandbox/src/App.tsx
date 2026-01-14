@@ -1039,9 +1039,9 @@ function CanvasDemoContent() {
         return { startTime, endTime };
       }
     }
-    // Otherwise show regular time selection
-    return state.timeSelection;
-  }, [spectralSelection, state.timeSelection, state.tracks]);
+    // Show time selection, or clip duration indicator if no time selection exists
+    return state.timeSelection || state.clipDurationIndicator;
+  }, [spectralSelection, state.timeSelection, state.clipDurationIndicator, state.tracks]);
 
   // Define menu items for File menu
   const fileMenuItems: MenuItem[] = [

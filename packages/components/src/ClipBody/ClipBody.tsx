@@ -106,9 +106,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // DEBUG: Log props to understand why selected background isn't showing
-  console.log('ClipBody props:', { color, selected, inTimeSelection, variant });
-
   // Draw waveform or spectrogram on canvas
   useEffect(() => {
     const canvas = canvasRef.current;

@@ -121,6 +121,7 @@ export interface TracksState {
   envelopeAltMode: boolean;
   spectrogramMode: boolean;
   timeSelection: TimeSelection | null;
+  clipDurationIndicator: { startTime: number; endTime: number } | null; // Shows clip duration in ruler without affecting canvas
   playheadPosition: number; // in seconds
   hoveredPoint: { trackIndex: number; clipId: number; pointIndex: number } | null;
   // Stores track view modes before spectrogram overlay was applied
@@ -171,6 +172,7 @@ const initialState: TracksState = {
   envelopeAltMode: false,
   spectrogramMode: false,
   timeSelection: null,
+  clipDurationIndicator: null,
   playheadPosition: 1,
   hoveredPoint: null,
   viewModesBeforeOverlay: null,
@@ -308,13 +310,20 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }))
       }));
 
+      // Find the selected clip to create duration indicator for ruler display
+      const selectedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+      const newClipDurationIndicator = selectedClip ? {
+        startTime: selectedClip.start,
+        endTime: selectedClip.start + selectedClip.duration,
+      } : null;
+
       return {
         ...state,
         tracks: newTracks,
         selectedTrackIndices: [trackIndex],
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [], // Clear label selection when selecting clip
-        timeSelection: null, // EXPERIMENT: Remove time selection to test if that's causing the issue
+        clipDurationIndicator: newClipDurationIndicator,
       };
     }
 
@@ -451,6 +460,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       return {
         ...state,
         tracks: newTracks,
+        clipDurationIndicator: null, // Clear duration indicator when deselecting
       };
     }
 
