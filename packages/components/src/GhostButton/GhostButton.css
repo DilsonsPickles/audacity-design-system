@@ -11,6 +11,13 @@
   color: var(--ghost-icon-color);
 }
 
+/* Tiny size - 16px × 16px (table headers) */
+.ghost-button--tiny {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+}
+
 /* Small size (default) - 20px × 20px */
 .ghost-button--small {
   width: 20px;
