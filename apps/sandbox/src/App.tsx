@@ -2022,7 +2022,7 @@ function CanvasDemoContent() {
           label: track.name,
         }))}
         onChange={(updatedLabels) => {
-          // Update labels in the tracks context
+          // Group labels by track
           const labelsByTrack = new Map<number, typeof updatedLabels>();
           updatedLabels.forEach(label => {
             if (!labelsByTrack.has(label.trackIndex)) {
@@ -2034,9 +2034,13 @@ function CanvasDemoContent() {
           // Update each track with its labels
           state.tracks.forEach((track, trackIndex) => {
             const newLabels = labelsByTrack.get(trackIndex) || [];
-            // Note: You'll need to add a SET_TRACK_LABELS action to TracksContext
-            // For now, just log the update
-            console.log(`Track ${trackIndex} labels:`, newLabels);
+            dispatch({
+              type: 'UPDATE_TRACK',
+              payload: {
+                index: trackIndex,
+                track: { labels: newLabels }
+              }
+            });
           });
         }}
         onClose={() => setIsLabelEditorOpen(false)}
