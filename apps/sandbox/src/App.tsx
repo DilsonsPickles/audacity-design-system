@@ -9,26 +9,76 @@ import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
 import { TokenReview } from './pages/TokenReview';
 
-// Generate realistic waveform data - full resolution for dense waveforms
+// Generate noise waveform data with headroom
 function generateWaveform(durationSeconds: number, sampleRate: number = 48000): number[] {
   const totalSamples = Math.floor(durationSeconds * sampleRate);
   const waveform: number[] = [];
 
   for (let i = 0; i < totalSamples; i++) {
-    const t = i / sampleRate;
-    // High frequency sawtooth wave for dense solid waveforms
-    const freq = 8000;
-    const phase = (t * freq) % 1.0;
-    const sawtooth = (phase * 2) - 1; // Sawtooth wave from -1 to 1
-
-    // Add envelope for fade in/out
-    const envelope = Math.sin((i / totalSamples) * Math.PI) * 0.3;
-
-    waveform.push(sawtooth * envelope);
+    // Random noise between -1 and 1, scaled to 60% for headroom
+    const noise = ((Math.random() * 2) - 1) * 0.6;
+    waveform.push(noise);
   }
 
   return waveform;
 }
+
+// Generate RMS waveform data - smoother, lower amplitude than peak waveform
+function generateRmsWaveform(peakWaveform: number[], windowSize: number = 2048): number[] {
+  const rmsWaveform: number[] = [];
+  const halfWindow = Math.floor(windowSize / 2);
+
+  for (let i = 0; i < peakWaveform.length; i++) {
+    // Calculate RMS over a window centered at current sample
+    let sumSquares = 0;
+    let count = 0;
+
+    const start = Math.max(0, i - halfWindow);
+    const end = Math.min(peakWaveform.length, i + halfWindow);
+
+    for (let j = start; j < end; j++) {
+      sumSquares += peakWaveform[j] * peakWaveform[j];
+      count++;
+    }
+
+    // RMS = sqrt(mean(squares))
+    const rms = Math.sqrt(sumSquares / count);
+
+    // Preserve sign from original sample (RMS is always positive, but we want signed for display)
+    const sign = peakWaveform[i] >= 0 ? 1 : -1;
+    rmsWaveform.push(rms * sign);
+  }
+
+  return rmsWaveform;
+}
+
+// Generate waveforms for clips (peak + RMS)
+const clip1Waveform = generateWaveform(4.0);
+const clip1RmsWaveform = generateRmsWaveform(clip1Waveform);
+
+const clip2Waveform = generateWaveform(4.0);
+const clip2RmsWaveform = generateRmsWaveform(clip2Waveform);
+
+const clip3Waveform = generateWaveform(4.0);
+const clip3RmsWaveform = generateRmsWaveform(clip3Waveform);
+
+const clip4Waveform = generateWaveform(4.0);
+const clip4RmsWaveform = generateRmsWaveform(clip4Waveform);
+
+const clip5Waveform = generateWaveform(4.0);
+const clip5RmsWaveform = generateRmsWaveform(clip5Waveform);
+
+const clip6Waveform = generateWaveform(4.0);
+const clip6RmsWaveform = generateRmsWaveform(clip6Waveform);
+
+const clip7Waveform = generateWaveform(4.0);
+const clip7RmsWaveform = generateRmsWaveform(clip7Waveform);
+
+const clip8Waveform = generateWaveform(4.0);
+const clip8RmsWaveform = generateRmsWaveform(clip8Waveform);
+
+const clip9Waveform = generateWaveform(4.0);
+const clip9RmsWaveform = generateRmsWaveform(clip9Waveform);
 
 // Sample track data
 const sampleTracks = [
@@ -43,7 +93,8 @@ const sampleTracks = [
         name: 'Cyan Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip1Waveform,
+        waveformRms: clip1RmsWaveform,
         envelopePoints: [],
         color: 'cyan' as const,
       },
@@ -60,7 +111,8 @@ const sampleTracks = [
         name: 'Blue Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip2Waveform,
+        waveformRms: clip2RmsWaveform,
         envelopePoints: [],
         color: 'blue' as const,
       },
@@ -77,7 +129,8 @@ const sampleTracks = [
         name: 'Violet Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip3Waveform,
+        waveformRms: clip3RmsWaveform,
         envelopePoints: [],
         color: 'violet' as const,
       },
@@ -94,7 +147,8 @@ const sampleTracks = [
         name: 'Magenta Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip4Waveform,
+        waveformRms: clip4RmsWaveform,
         envelopePoints: [],
         color: 'magenta' as const,
       },
@@ -111,7 +165,8 @@ const sampleTracks = [
         name: 'Red Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip5Waveform,
+        waveformRms: clip5RmsWaveform,
         envelopePoints: [],
         color: 'red' as const,
       },
@@ -128,7 +183,8 @@ const sampleTracks = [
         name: 'Orange Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip6Waveform,
+        waveformRms: clip6RmsWaveform,
         envelopePoints: [],
         color: 'orange' as const,
       },
@@ -145,7 +201,8 @@ const sampleTracks = [
         name: 'Yellow Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip7Waveform,
+        waveformRms: clip7RmsWaveform,
         envelopePoints: [],
         color: 'yellow' as const,
       },
@@ -162,7 +219,8 @@ const sampleTracks = [
         name: 'Green Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip8Waveform,
+        waveformRms: clip8RmsWaveform,
         envelopePoints: [],
         color: 'green' as const,
       },
@@ -179,7 +237,8 @@ const sampleTracks = [
         name: 'Teal Clip',
         start: 0.5,
         duration: 4.0,
-        waveform: generateWaveform(4.0),
+        waveform: clip9Waveform,
+        waveformRms: clip9RmsWaveform,
         envelopePoints: [],
         color: 'teal' as const,
       },

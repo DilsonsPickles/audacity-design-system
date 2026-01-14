@@ -61,9 +61,12 @@ export function ThemeProvider({ theme = lightTheme, children }: ThemeProviderPro
         vars[`--clip-${colorName}-body-selected`] = colorStates.bodySelected;
         vars[`--clip-${colorName}-waveform`] = colorStates.waveform;
         vars[`--clip-${colorName}-waveform-selected`] = colorStates.waveformSelected;
+        vars[`--clip-${colorName}-waveform-rms`] = colorStates.waveformRms;
+        vars[`--clip-${colorName}-waveform-rms-selected`] = colorStates.waveformRmsSelected;
         vars[`--clip-${colorName}-time-selection-body`] = colorStates.timeSelectionBody;
         vars[`--clip-${colorName}-time-selection-header`] = colorStates.timeSelectionHeader;
         vars[`--clip-${colorName}-time-selection-waveform`] = colorStates.timeSelectionWaveform;
+        vars[`--clip-${colorName}-time-selection-waveform-rms`] = colorStates.timeSelectionWaveformRms;
       }
     });
 

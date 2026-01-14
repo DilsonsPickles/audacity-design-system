@@ -31,10 +31,16 @@ export interface ClipDisplayProps {
   waveformSrc?: string;
   /** Waveform data array (normalized -1 to 1) - for mono */
   waveformData?: number[];
+  /** RMS waveform data (normalized -1 to 1) - for mono */
+  waveformDataRms?: number[];
   /** Left channel waveform data (for stereo) */
   waveformLeft?: number[];
   /** Right channel waveform data (for stereo) */
   waveformRight?: number[];
+  /** Left channel RMS waveform data (for stereo) */
+  waveformLeftRms?: number[];
+  /** Right channel RMS waveform data (for stereo) */
+  waveformRightRms?: number[];
   /** Split ratio for stereo channels (0-1, default 0.5 for 50/50) */
   channelSplitRatio?: number;
   /** Envelope points for automation curve */
@@ -86,8 +92,11 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
   channelMode = 'mono',
   waveformSrc,
   waveformData,
+  waveformDataRms,
   waveformLeft,
   waveformRight,
+  waveformLeftRms,
+  waveformRightRms,
   channelSplitRatio = 0.5,
   envelope,
   showEnvelope = false,
@@ -223,8 +232,11 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
         height={bodyHeight}
         waveformSrc={waveformSrc}
         waveformData={waveformData}
+        waveformDataRms={waveformDataRms}
         waveformLeft={waveformLeft}
         waveformRight={waveformRight}
+        waveformLeftRms={waveformLeftRms}
+        waveformRightRms={waveformRightRms}
         channelSplitRatio={channelSplitRatio}
         envelope={envelope}
         showEnvelope={showEnvelope}

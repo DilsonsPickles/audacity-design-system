@@ -12,8 +12,11 @@ export interface TrackClip {
   duration: number;
   selected?: boolean;
   waveform?: number[];
+  waveformRms?: number[];
   waveformLeft?: number[];
   waveformRight?: number[];
+  waveformLeftRms?: number[];
+  waveformRightRms?: number[];
   envelopePoints?: Array<{ time: number; db: number }>;
 }
 
@@ -377,8 +380,11 @@ export const TrackNew: React.FC<TrackProps> = ({
             variant={variant}
             channelMode={channelMode}
             waveformData={waveformData}
+            waveformDataRms={clip.waveformRms}
             waveformLeft={waveformLeft}
             waveformRight={waveformRight}
+            waveformLeftRms={clip.waveformLeftRms}
+            waveformRightRms={clip.waveformRightRms}
             envelope={clip.envelopePoints}
             showEnvelope={envelopeMode}
             clipDuration={clip.duration}
