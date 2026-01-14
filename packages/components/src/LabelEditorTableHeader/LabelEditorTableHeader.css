@@ -15,6 +15,7 @@
 .label-editor-table-header__cell {
   padding: 8px;
   border-right: 1px solid var(--table-header-border);
+  border-bottom: 1px solid var(--table-header-border);
   box-sizing: border-box;
   text-align: left;
   font-weight: normal;
