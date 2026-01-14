@@ -30,12 +30,18 @@ export interface ClipColorStates {
   waveform: string;
   /** Waveform color when clip is selected */
   waveformSelected: string;
+  /** Default RMS waveform color */
+  waveformRms: string;
+  /** RMS waveform color when clip is selected */
+  waveformRmsSelected: string;
   /** Time selection overlay - clip body background */
   timeSelectionBody: string;
   /** Time selection overlay - clip header background */
   timeSelectionHeader: string;
   /** Time selection overlay - waveform color */
   timeSelectionWaveform: string;
+  /** Time selection overlay - RMS waveform color */
+  timeSelectionWaveformRms: string;
 }
 
 /**

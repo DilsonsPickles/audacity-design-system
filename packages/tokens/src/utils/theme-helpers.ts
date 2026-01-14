@@ -154,10 +154,13 @@ export function generateClipColorStates(baseColor: string): ClipColorStates {
     bodySelected: adjustLightness(baseColor, 30),
     waveform: 'rgba(0, 0, 0, 0.7)', // Default dark waveform
     waveformSelected: adjustLightness(baseColor, -70), // Dark colored waveform when selected
+    waveformRms: 'rgba(0, 0, 0, 0.4)', // Default RMS waveform (lighter than peak)
+    waveformRmsSelected: adjustLightness(baseColor, -60), // Lighter RMS when selected
     // Time selection colors - placeholder values (should be overridden in themes)
     timeSelectionBody: adjustLightness(baseColor, 60),
     timeSelectionHeader: adjustLightness(baseColor, 55),
     timeSelectionWaveform: adjustLightness(baseColor, -70),
+    timeSelectionWaveformRms: adjustLightness(baseColor, -60),
   };
 }
 

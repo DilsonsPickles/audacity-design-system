@@ -288,12 +288,15 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#ECF9FA',
         bodySelected: '#B4E5EA',
-        waveform: '#133E41', // 70% black overlay on body color
-        waveformSelected: '#133E41', // Same when selected
+        waveform: '#0D292C',
+        waveformSelected: '#0D292C',
+        waveformRms: '#407378',
+        waveformRmsSelected: '#407378',
         // Time selection colors (consistent rule: body L=header+15%, header L=header+5%, S=100%)
         timeSelectionBody: '#7BFFFF',        // Was: #9FFFFF
         timeSelectionHeader: '#24FFFF',      // Was: #7BFFFF
-        timeSelectionWaveform: '#1C373B',    // Was: #163134
+        timeSelectionWaveform: '#26424A',    // 10% white added to #0D292C
+        timeSelectionWaveformRms: '#5A8C95', // 10% white added to #407378
       },
       // Blue clip colors
       blue: {
@@ -303,11 +306,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F2F7FF',
         bodySelected: '#C0D9FF',
-        waveform: '#23374D', // 70% black overlay on body color
-        waveformSelected: '#23374D', // Same when selected
+        waveform: '#172533',
+        waveformSelected: '#172533',
+        waveformRms: '#536B85',
+        waveformRmsSelected: '#536B85',
         timeSelectionBody: '#A3FCFF',        // Was: #B7FAFF
         timeSelectionHeader: '#7EEBFF',      // Was: #99E8FF
-        timeSelectionWaveform: '#1C283B',    // Was: #1D2B3F
+        timeSelectionWaveform: '#303E4C',    // 10% white added to #172533
+        timeSelectionWaveformRms: '#6C849D', // 10% white added to #536B85
       },
       // Violet clip colors
       violet: {
@@ -317,11 +323,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F7F6FF',
         bodySelected: '#D5D3FE',
-        waveform: '#34334D', // 70% black overlay on body color
-        waveformSelected: '#34334D', // Same when selected
+        waveform: '#232233',
+        waveformSelected: '#232233',
+        waveformRms: '#676685',
+        waveformRmsSelected: '#676685',
         timeSelectionBody: '#DCF1FF',        // Was: #E0F0FF
         timeSelectionHeader: '#C8DCFF',      // Was: #CCDBFF
-        timeSelectionWaveform: '#1D1C3B',    // Was: #28283F
+        timeSelectionWaveform: '#3C3B4C',    // 10% white added to #232233
+        timeSelectionWaveformRms: '#807F9D', // 10% white added to #676685
       },
       // Magenta clip colors
       magenta: {
@@ -331,11 +340,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FBF4FC',
         bodySelected: '#EFD1EA',
-        waveform: '#473041', // 70% black overlay on body color
-        waveformSelected: '#473041', // Same when selected
+        waveform: '#2F202B',
+        waveformSelected: '#2F202B',
+        waveformRms: '#7E6277',
+        waveformRmsSelected: '#7E6277',
         timeSelectionBody: '#FFE7FF',        // Was: #FFE8FF
         timeSelectionHeader: '#FFCFFF',      // Was: #FFD1FF
-        timeSelectionWaveform: '#3B1C35',    // Was: #372534
+        timeSelectionWaveform: '#483944',    // 10% white added to #2F202B
+        timeSelectionWaveformRms: '#977B8F', // 10% white added to #7E6277
       },
       // Red clip colors
       red: {
@@ -345,11 +357,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FEF2F2',
         bodySelected: '#F9CBCB',
-        waveform: '#4D2C2D', // 70% black overlay on body color
-        waveformSelected: '#4D2C2D', // Same when selected
+        waveform: '#331E1E',
+        waveformSelected: '#331E1E',
+        waveformRms: '#855E5F',
+        waveformRmsSelected: '#855E5F',
         timeSelectionBody: '#FFDCE6',        // Was: #FFDEE6
         timeSelectionHeader: '#FFC2CC',      // Was: #FFC5CD
-        timeSelectionWaveform: '#3B1C1C',    // Was: #3C2323
+        timeSelectionWaveform: '#4C3737',    // 10% white added to #331E1E
+        timeSelectionWaveformRms: '#9E7777', // 10% white added to #855E5F
       },
       // Orange clip colors
       orange: {
@@ -359,11 +374,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FFF5EE',
         bodySelected: '#FFD7BF',
-        waveform: '#4D3425', // 70% black overlay on body color
-        waveformSelected: '#4D3425', // Same when selected
+        waveform: '#332318',
+        waveformSelected: '#332318',
+        waveformRms: '#856754',
+        waveformRmsSelected: '#856754',
         timeSelectionBody: '#FFF6CC',        // Was: #FFF6D0
         timeSelectionHeader: '#FFE2AB',      // Was: #FFE3B2
-        timeSelectionWaveform: '#3B271C',    // Was: #3F291D
+        timeSelectionWaveform: '#4C3C31',    // 10% white added to #332318
+        timeSelectionWaveformRms: '#9E806C', // 10% white added to #856754
       },
       // Yellow clip colors
       yellow: {
@@ -373,11 +391,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FCF8EE',
         bodySelected: '#F4E4B9',
-        waveform: '#493D1E', // 70% black overlay on body color
-        waveformSelected: '#493D1E', // Same when selected
+        waveform: '#302914',
+        waveformSelected: '#302914',
+        waveformRms: '#80724C',
+        waveformRmsSelected: '#80724C',
         timeSelectionBody: '#FFFFB8',        // Was: #FFFFC0
         timeSelectionHeader: '#FFFF8E',      // Was: #FFFF9D
-        timeSelectionWaveform: '#3B321C',    // Was: #3A3118
+        timeSelectionWaveform: '#49422D',    // 10% white added to #302914
+        timeSelectionWaveformRms: '#998B64', // 10% white added to #80724C
       },
       // Green clip colors
       green: {
@@ -387,11 +408,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F0F9EE',
         bodySelected: '#C5E5BC',
-        waveform: '#253D22', // 70% black overlay on body color
-        waveformSelected: '#253D22', // Same when selected
+        waveform: '#192916',
+        waveformSelected: '#192916',
+        waveformRms: '#557351',
+        waveformRmsSelected: '#557351',
         timeSelectionBody: '#B0FFC2',        // Was: #C2FFC7
         timeSelectionHeader: '#89FF9C',      // Was: #A7FFA6
-        timeSelectionWaveform: '#243B1C',    // Was: #20311A
+        timeSelectionWaveform: '#32422F',    // 10% white added to #192916
+        timeSelectionWaveformRms: '#6E8C69', // 10% white added to #557351
       },
       // Teal clip colors
       teal: {
@@ -401,11 +425,14 @@ export const lightTheme: ThemeTokens = {
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#EAF8F4',
         bodySelected: '#ACE1D3',
-        waveform: '#073B32', // 70% black overlay on body color
-        waveformSelected: '#073B32', // Same when selected
+        waveform: '#052822',
+        waveformSelected: '#052822',
+        waveformRms: '#317066',
+        waveformRmsSelected: '#317066',
         timeSelectionBody: '#5EFFF7',        // Was: #8FFFF6
         timeSelectionHeader: '#00FDE1',      // Was: #67F9E1
-        timeSelectionWaveform: '#1C3B33',    // Was: #122E27
+        timeSelectionWaveform: '#1E413B',    // 10% white added to #052822
+        timeSelectionWaveformRms: '#4A897E', // 10% white added to #317066
       },
       // Classic clip colors (for "Classic" clip style preference)
       classic: {
@@ -417,9 +444,12 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#E4E8FA',
         waveform: '#5359AD', // Classic uses colored waveform
         waveformSelected: '#5359AD', // Same color when selected
+        waveformRms: '#7981C3', // Lighter RMS (60% opacity of #5359AD on #E4E8FA)
+        waveformRmsSelected: '#7981C3', // Same when selected
         timeSelectionBody: '#A4C4F6',
         timeSelectionHeader: '#89A7EE',
-        timeSelectionWaveform: '#5359AD',
+        timeSelectionWaveform: '#6C72C6', // 10% white added to #5359AD
+        timeSelectionWaveformRms: '#929ADB', // 10% white added to #7981C3
       },
       border: {
         normal: '#000000',       // Black border (normal mode)
