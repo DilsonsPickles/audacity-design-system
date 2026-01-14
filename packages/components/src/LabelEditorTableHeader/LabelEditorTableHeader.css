@@ -5,11 +5,11 @@
 
 .label-editor-table-header {
   background-color: var(--table-header-bg);
+  border-bottom: 1px solid var(--table-header-border);
 }
 
 .label-editor-table-header__row {
   height: 32px;
-  border-bottom: 1px solid var(--table-header-border);
 }
 
 .label-editor-table-header__cell {
