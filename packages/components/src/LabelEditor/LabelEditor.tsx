@@ -184,18 +184,7 @@ export function LabelEditor({
     >
       <div className="label-editor">
         <div className="label-editor__scroll-container">
-          <LabelEditorTableHeader
-            columns={[
-              { label: 'Track', width: '120px' },
-              { label: 'Label text', width: '320px' },
-              { label: 'Start time', width: '180px', showMenu: true },
-              { label: 'End time', width: '180px', showMenu: true },
-              { label: 'Low frequency', width: '120px', showMenu: true },
-              { label: 'High frequency', width: '120px', showMenu: true },
-            ]}
-          />
-          <div className="label-editor__table-container">
-            <table className="label-editor__table">
+          <table className="label-editor__table">
             <colgroup>
               <col style={{ width: '120px' }} />
               <col style={{ width: '320px' }} />
@@ -204,6 +193,16 @@ export function LabelEditor({
               <col style={{ width: '120px' }} />
               <col style={{ width: '120px' }} />
             </colgroup>
+            <LabelEditorTableHeader
+              columns={[
+                { label: 'Track', width: '120px' },
+                { label: 'Label text', width: '320px' },
+                { label: 'Start time', width: '180px', showMenu: true },
+                { label: 'End time', width: '180px', showMenu: true },
+                { label: 'Low frequency', width: '120px', showMenu: true },
+                { label: 'High frequency', width: '120px', showMenu: true },
+              ]}
+            />
             <tbody className="label-editor__table-body">
               {labels.map((label) => (
                 <LabelEditorTableRow
@@ -235,7 +234,6 @@ export function LabelEditor({
               ))}
             </tbody>
           </table>
-        </div>
         </div>
       </div>
     </Dialog>

@@ -32,6 +32,12 @@
   table-layout: fixed;
 }
 
+.label-editor__table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 /* Table body */
 .label-editor__table-body {
   background-color: #F8F8F9;

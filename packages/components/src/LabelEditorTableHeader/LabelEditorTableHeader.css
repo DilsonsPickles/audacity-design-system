@@ -4,26 +4,20 @@
  */
 
 .label-editor-table-header {
-  display: table;
-  table-layout: fixed;
-  width: max-content;
-  min-width: 100%;
-  height: 32px;
   background-color: var(--table-header-bg);
-  border-bottom: 1px solid var(--table-header-border);
-  border-collapse: collapse;
 }
 
 .label-editor-table-header__row {
-  display: table-row;
+  height: 32px;
+  border-bottom: 1px solid var(--table-header-border);
 }
 
 .label-editor-table-header__cell {
-  display: table-cell;
-  vertical-align: middle;
   padding: 8px;
   border-right: 1px solid var(--table-header-border);
   box-sizing: border-box;
+  text-align: left;
+  font-weight: normal;
 }
 
 .label-editor-table-header__cell-content {

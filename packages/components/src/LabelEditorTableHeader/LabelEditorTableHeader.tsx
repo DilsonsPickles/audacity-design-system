@@ -51,34 +51,27 @@ export function LabelEditorTableHeader({
   } as React.CSSProperties;
 
   return (
-    <table className="label-editor-table-header" style={style}>
-      <colgroup>
+    <thead className="label-editor-table-header" style={style}>
+      <tr className="label-editor-table-header__row">
         {columns.map((column, index) => (
-          <col key={index} style={{ width: column.width }} />
+          <th key={index} className="label-editor-table-header__cell">
+            <div className="label-editor-table-header__cell-content">
+              <span className="label-editor-table-header__label">
+                {column.label}
+              </span>
+              {column.showMenu && (
+                <GhostButton
+                  icon="menu"
+                  size="tiny"
+                  onClick={column.onMenuClick}
+                  ariaLabel={`${column.label} menu`}
+                />
+              )}
+            </div>
+          </th>
         ))}
-      </colgroup>
-      <tbody>
-        <tr className="label-editor-table-header__row">
-          {columns.map((column, index) => (
-            <td key={index} className="label-editor-table-header__cell">
-              <div className="label-editor-table-header__cell-content">
-                <span className="label-editor-table-header__label">
-                  {column.label}
-                </span>
-                {column.showMenu && (
-                  <GhostButton
-                    icon="menu"
-                    size="tiny"
-                    onClick={column.onMenuClick}
-                    ariaLabel={`${column.label} menu`}
-                  />
-                )}
-              </div>
-            </td>
-          ))}
-        </tr>
-      </tbody>
-    </table>
+      </tr>
+    </thead>
   );
 }
 
