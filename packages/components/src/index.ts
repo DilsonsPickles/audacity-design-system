@@ -69,6 +69,7 @@ export * from './ProjectThumbnail';
 export * from './PreferenceThumbnail';
 export * from './ShortcutTableRow';
 export * from './ShortcutTableHeader';
+export * from './LabelEditor';
 
 /**
  * Audio Components

@@ -1,0 +1,152 @@
+/**
+ * Label Editor Styles
+ * Based on Figma design: node-id=8997-128847
+ */
+
+/* Section header (Labels + action buttons) */
+.label-editor__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--label-editor-border);
+  background-color: var(--label-editor-header-bg);
+  flex-shrink: 0;
+}
+
+.label-editor__section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label-editor-text);
+  margin: 0;
+}
+
+.label-editor__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Main container */
+.label-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Table container - scrollable */
+.label-editor__table-container {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Table */
+.label-editor__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* Table header */
+.label-editor__table-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--label-editor-header-bg);
+}
+
+.label-editor__table-header-cell {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--label-editor-text-secondary);
+  border-bottom: 1px solid var(--label-editor-border);
+  background-color: var(--label-editor-header-bg);
+  white-space: nowrap;
+}
+
+/* Column widths */
+.label-editor__table-header-cell--track {
+  width: 120px;
+}
+
+.label-editor__table-header-cell--text {
+  width: auto;
+  min-width: 150px;
+}
+
+.label-editor__table-header-cell--time {
+  width: 180px;
+}
+
+.label-editor__table-header-cell--frequency {
+  width: 120px;
+}
+
+/* Table body */
+.label-editor__table-body {
+  background-color: var(--label-editor-header-bg);
+}
+
+/* Table rows */
+.label-editor__table-row {
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.label-editor__table-row:hover {
+  background-color: var(--label-editor-row-hover);
+}
+
+.label-editor__table-row--selected {
+  outline: 2px solid var(--label-editor-row-selected);
+  outline-offset: -2px;
+}
+
+/* Table cells */
+.label-editor__table-cell {
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--label-editor-border);
+}
+
+/* Remove input borders and padding inside cells for seamless appearance */
+.label-editor__table-cell .text-input {
+  border: none;
+  background: transparent;
+  padding: 4px 6px;
+  width: 100%;
+}
+
+.label-editor__table-cell .text-input:focus {
+  outline: 1px solid var(--label-editor-row-selected);
+  outline-offset: -1px;
+  background-color: var(--label-editor-header-bg);
+}
+
+.label-editor__table-cell .dropdown {
+  width: 100%;
+}
+
+.label-editor__table-cell .timecode {
+  width: 100%;
+}
+
+/* Scrollbar styling */
+.label-editor__table-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.label-editor__table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.label-editor__table-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+}
+
+.label-editor__table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

@@ -60,6 +60,17 @@ export interface TimeSelection {
   endTime: number;
 }
 
+export interface Label {
+  id: string;
+  trackIndex: number;
+  text: string;
+  startTime: number;
+  endTime: number;
+  lowFrequency?: number; // Optional - for spectral labels
+  highFrequency?: number; // Optional - for spectral labels
+  selected?: boolean;
+}
+
 export interface SpectralSelection {
   startTime: number;
   endTime: number;

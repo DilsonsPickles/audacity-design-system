@@ -2,7 +2,7 @@ import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -301,6 +301,7 @@ function CanvasDemoContent() {
   const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = React.useState(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = React.useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
+  const [isLabelEditorOpen, setIsLabelEditorOpen] = React.useState(false);
 
   // Debug panel state
   const [isDebugPanelOpen, setIsDebugPanelOpen] = React.useState(false);
@@ -1278,6 +1279,13 @@ function CanvasDemoContent() {
                 <Button
                   variant="secondary"
                   size="default"
+                  onClick={() => setIsLabelEditorOpen(true)}
+                >
+                  Labels
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="default"
                   icon={'\uEF1F'}
                   onClick={() => toast.info('Export loop region clicked')}
                 >
@@ -2000,6 +2008,40 @@ function CanvasDemoContent() {
         onEditMetadata={() => {
           toast.info('Edit metadata clicked');
         }}
+        os={preferences.operatingSystem}
+      />
+
+      {/* Label Editor */}
+      <LabelEditor
+        isOpen={isLabelEditorOpen}
+        labels={state.tracks.flatMap((track, index) =>
+          (track.labels || []).map(label => ({ ...label, trackIndex: index }))
+        )}
+        tracks={state.tracks.map((track, index) => ({
+          value: index.toString(),
+          label: track.name,
+        }))}
+        onChange={(updatedLabels) => {
+          // Update labels in the tracks context
+          const labelsByTrack = new Map<number, typeof updatedLabels>();
+          updatedLabels.forEach(label => {
+            if (!labelsByTrack.has(label.trackIndex)) {
+              labelsByTrack.set(label.trackIndex, []);
+            }
+            labelsByTrack.get(label.trackIndex)!.push(label);
+          });
+
+          // Update each track with its labels
+          state.tracks.forEach((track, trackIndex) => {
+            const newLabels = labelsByTrack.get(trackIndex) || [];
+            // Note: You'll need to add a SET_TRACK_LABELS action to TracksContext
+            // For now, just log the update
+            console.log(`Track ${trackIndex} labels:`, newLabels);
+          });
+        }}
+        onClose={() => setIsLabelEditorOpen(false)}
+        onImport={() => toast.info('Import labels')}
+        onExport={() => toast.info('Export labels')}
         os={preferences.operatingSystem}
       />
 
