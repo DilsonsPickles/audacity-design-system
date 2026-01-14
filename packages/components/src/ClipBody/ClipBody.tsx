@@ -430,8 +430,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         }
       }
 
-      // Waveform colors for time selection (only used when clip is NOT selected)
-      const timeSelectionWaveformColorMap: Record<string, string> = {
+      // Waveform colors when selected
+      const selectedWaveformColorMap: Record<string, string> = {
         red: '#3C2323',
         cyan: '#163134',
         blue: '#1D2B3F',
@@ -444,8 +444,14 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         classic: '#5F73DC',
       };
 
-      // Normal waveform color
+      // Waveform color for classic clips within time selection
+      const classicTimeSelectionWaveformColor = '#3B4FB8'; // Darker shade of #5F73DC
+
+      // Normal waveform color (unselected)
       const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
+
+      // Choose waveform color based on selection state
+      const waveformColor = selected ? selectedWaveformColorMap[color] : defaultWaveformColor;
 
       // Draw L channel
       for (let px = 0; px < canvasWidth; px++) {
@@ -461,8 +467,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Waveform color stays constant - background overlay handles time selection indication
-        ctx.fillStyle = defaultWaveformColor;
+        // For classic mode: check if pixel is within time selection and use different color
+        const isInTimeSelection = px >= selStartPx && px < selEndPx;
+        if (color === 'classic' && isInTimeSelection) {
+          ctx.fillStyle = classicTimeSelectionWaveformColor;
+        } else {
+          ctx.fillStyle = waveformColor;
+        }
 
         const y1 = lChannelCenterY - max * lMaxAmplitude;
         const y2 = lChannelCenterY - min * lMaxAmplitude;
@@ -492,8 +503,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Waveform color stays constant - background overlay handles time selection indication
-        ctx.fillStyle = defaultWaveformColor;
+        // For classic mode: check if pixel is within time selection and use different color
+        const isInTimeSelection = px >= selStartPx && px < selEndPx;
+        if (color === 'classic' && isInTimeSelection) {
+          ctx.fillStyle = classicTimeSelectionWaveformColor;
+        } else {
+          ctx.fillStyle = waveformColor;
+        }
 
         const y1 = rChannelCenterY - max * rMaxAmplitude;
         const y2 = rChannelCenterY - min * rMaxAmplitude;
@@ -528,8 +544,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         }
       }
 
-      // Waveform colors for time selection (only used when clip is NOT selected)
-      const timeSelectionWaveformColorMap: Record<string, string> = {
+      // Waveform colors when selected
+      const selectedWaveformColorMap: Record<string, string> = {
         red: '#3C2323',
         cyan: '#163134',
         blue: '#1D2B3F',
@@ -542,8 +558,14 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         classic: '#5F73DC',
       };
 
-      // Normal waveform color
+      // Waveform color for classic clips within time selection
+      const classicTimeSelectionWaveformColor = '#3B4FB8'; // Darker shade of #5F73DC
+
+      // Normal waveform color (unselected)
       const defaultWaveformColor = color === 'classic' ? '#5F73DC' : 'rgba(0, 0, 0, 0.8)';
+
+      // Choose waveform color based on selection state
+      const waveformColor = selected ? selectedWaveformColorMap[color] : defaultWaveformColor;
 
       for (let px = 0; px < canvasWidth; px++) {
         const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -558,8 +580,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Waveform color stays constant - background overlay handles time selection indication
-        ctx.fillStyle = defaultWaveformColor;
+        // For classic mode: check if pixel is within time selection and use different color
+        const isInTimeSelection = px >= selStartPx && px < selEndPx;
+        if (color === 'classic' && isInTimeSelection) {
+          ctx.fillStyle = classicTimeSelectionWaveformColor;
+        } else {
+          ctx.fillStyle = waveformColor;
+        }
 
         const y1 = centerY - max * maxAmplitude;
         const y2 = centerY - min * maxAmplitude;

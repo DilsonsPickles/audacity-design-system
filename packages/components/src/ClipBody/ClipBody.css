@@ -109,34 +109,4 @@
   background-color: #E4E8FA; /* Same for selected */
 }
 
-/* Time-selected (within time selection) - vibrant colors */
-.clip-body--cyan.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--blue.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--violet.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--magenta.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--red.clip-body--time-selected {
-  background-color: #FFDEE6; /* Vibrant red */
-}
-.clip-body--orange.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--yellow.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--green.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--teal.clip-body--time-selected {
-  background-color: #FFFFFF; /* White for now */
-}
-.clip-body--classic.clip-body--time-selected {
-  /* No background color change - time selection is rendered on canvas */
-}
+/* Time selection background is now rendered on canvas, not via CSS */
