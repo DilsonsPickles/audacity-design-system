@@ -106,7 +106,7 @@ export function LabelEditorTableRow({
   const { theme } = useTheme();
 
   const style = {
-    '--label-editor-row-bg': selected ? 'rgba(103, 124, 228, 0.1)' : 'transparent',
+    '--label-editor-row-bg': selected ? 'rgba(103, 124, 228, 0.1)' : '#F8F8F9',
     '--label-editor-row-border': theme.border.default,
   } as React.CSSProperties;
 
