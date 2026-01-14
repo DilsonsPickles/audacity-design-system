@@ -46,7 +46,7 @@ export function LabelEditorTableHeader({
 
   const style = {
     '--table-header-bg': '#EBEBEF',
-    '--table-header-border': theme.border.default,
+    '--table-header-border': '#D4D5D9',
     '--table-header-text': theme.foreground.text.primary,
   } as React.CSSProperties;
 
