@@ -240,58 +240,19 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
     );
   };
 
-  if (type === 'point') {
-    // Point marker: center stalk with ears and label box to the right
-    return (
-      <div
-        className={`label-marker label-marker--point label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${focused ? 'label-marker--focused' : ''} ${className}`}
-        style={{
-          position: 'relative',
-          ...style,
-          width: '1px',
-          height: `${stalkHeight}px`, // Total height is just the stalk height (ears overlay on top)
-        }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onClick={onClick}
-        onDoubleClick={onDoubleClick}
-        onKeyDown={handleKeyDown}
-      >
-        {/* Left ear - draggable to create region by dragging left */}
-        {renderEar(true, handleDragStart('left'))}
+  // Determine if we should show flag style (point or very narrow region)
+  // When width < 10px, stalks overlap, so show flag style
+  const isPoint = type === 'point';
+  const isNarrowRegion = !isPoint && width < 10;
+  const showFlagStyle = isPoint || isNarrowRegion;
 
-        {/* Right ear - draggable to create region by dragging right */}
-        {renderEar(false, handleDragStart('right'))}
-
-        {/* Label box - draggable to move point label */}
-        <div
-          className="label-marker__label-box"
-          onMouseDown={handleMoveStart}
-          style={{ cursor: 'grab' }}
-        >
-          <div className="label-marker__label-text">{text || ''}</div>
-        </div>
-
-        {/* Center stalk - draggable to move point label */}
-        <div
-          className="label-marker__left-stalk"
-          onMouseDown={handleMoveStart}
-          style={{ cursor: 'grab' }}
-        >
-          <div className="label-marker__stalk-line" />
-        </div>
-      </div>
-    );
-  }
-
-  // Region marker: left and right stalks with ears and full-width label box
   return (
     <div
-      className={`label-marker label-marker--region label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${focused ? 'label-marker--focused' : ''} ${className}`}
+      className={`label-marker ${showFlagStyle ? 'label-marker--point' : 'label-marker--region'} label-marker--${actualState} ${isActive ? 'label-marker--active' : ''} ${focused ? 'label-marker--focused' : ''} ${className}`}
       style={{
         position: 'relative',
         ...style,
-        width: `${width}px`,
+        width: isPoint ? '1px' : `${width}px`,
         height: `${stalkHeight}px`, // Total height is just the stalk height (ears overlay on top)
       }}
       onMouseEnter={() => setIsHovered(true)}
@@ -300,38 +261,40 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
       onDoubleClick={onDoubleClick}
       onKeyDown={handleKeyDown}
     >
-      {/* Left ear - draggable to resize left side */}
+      {/* Left ear - for point: draggable to create region, for region: draggable to resize */}
       {renderEar(true, handleDragStart('left'))}
 
-      {/* Right ear - draggable to resize right side */}
+      {/* Right ear - for point: draggable to create region, for region: draggable to resize */}
       {renderEar(false, handleDragStart('right'))}
 
-      {/* Label box - full width, draggable to move region label */}
+      {/* Label box - single element that switches between banner and flag styles based on width */}
       <div
         className="label-marker__label-box"
         onMouseDown={handleMoveStart}
         style={{ cursor: 'grab' }}
       >
-        <div className="label-marker__label-text">{text}</div>
+        <div className="label-marker__label-text">{text || ''}</div>
       </div>
 
-      {/* Left stalk - full height, draggable */}
+      {/* Left stalk - for point: center stalk, for region: left edge stalk */}
       <div
         className="label-marker__left-stalk"
-        onMouseDown={handleDragStart('left')}
-        style={{ cursor: 'ew-resize' }}
+        onMouseDown={isPoint ? handleMoveStart : handleDragStart('left')}
+        style={{ cursor: isPoint ? 'grab' : 'ew-resize' }}
       >
         <div className="label-marker__stalk-line" />
       </div>
 
-      {/* Right stalk - full height, draggable */}
-      <div
-        className="label-marker__right-stalk"
-        onMouseDown={handleDragStart('right')}
-        style={{ cursor: 'ew-resize' }}
-      >
-        <div className="label-marker__stalk-line" />
-      </div>
+      {/* Right stalk - only for region labels (not true point labels) */}
+      {type !== 'point' && (
+        <div
+          className="label-marker__right-stalk"
+          onMouseDown={handleDragStart('right')}
+          style={{ cursor: 'ew-resize' }}
+        >
+          <div className="label-marker__stalk-line" />
+        </div>
+      )}
     </div>
   );
 };

@@ -475,6 +475,19 @@ export const lightTheme: ThemeTokens = {
       spectralBorder: '#84B5FF', // Blue border
     },
 
+    label: {
+      background: '#7EB1FF',           // Light blue background (unselected)
+      backgroundSelected: '#3399FF',   // Darker blue background (selected)
+      backgroundHover: '#0066CC',      // Dark blue background (hover)
+      text: 'rgba(0, 0, 0, 0.8)',      // Black text with 80% opacity
+      stalk: '#7EB1FF',                // Light blue stalk (unselected)
+      stalkSelected: '#3399FF',        // Darker blue stalk (selected)
+      stalkHover: '#0066CC',           // Dark blue stalk (hover)
+      ear: '#7EB1FF',                  // Light blue ear (unselected)
+      earSelected: '#3399FF',          // Darker blue ear (selected)
+      earHover: '#0066CC',             // Dark blue ear (hover)
+    },
+
     spectrogram: {
       low: '#1e3a8a',            // Dark blue for low frequencies
       mid: '#22c55e',            // Green for mid frequencies

@@ -442,6 +442,30 @@ export interface ThemeTokens {
       spectralBorder: string;
     };
 
+    /** Label colors */
+    label: {
+      /** Label background (unselected) */
+      background: string;
+      /** Label background (selected) */
+      backgroundSelected: string;
+      /** Label background (hover) */
+      backgroundHover: string;
+      /** Label text color */
+      text: string;
+      /** Label stalk color (unselected) */
+      stalk: string;
+      /** Label stalk color (selected) */
+      stalkSelected: string;
+      /** Label stalk color (hover) */
+      stalkHover: string;
+      /** Label ear color (unselected) */
+      ear: string;
+      /** Label ear color (selected) */
+      earSelected: string;
+      /** Label ear color (hover) */
+      earHover: string;
+    };
+
     /** Spectrogram colors */
     spectrogram: {
       /** Low frequency color */

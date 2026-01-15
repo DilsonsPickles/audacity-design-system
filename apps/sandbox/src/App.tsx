@@ -1491,8 +1491,8 @@ function CanvasDemoContent() {
                       id: nextLabelId,
                       trackIndex: index,
                       text: '',
-                      startTime: state.playheadPosition,
-                      endTime: state.playheadPosition,
+                      startTime: state.timeSelection?.startTime ?? state.playheadPosition,
+                      endTime: state.timeSelection?.endTime ?? state.playheadPosition,
                     };
 
                     dispatch({
@@ -2022,8 +2022,8 @@ function CanvasDemoContent() {
       {/* Label Editor */}
       <LabelEditor
         isOpen={isLabelEditorOpen}
-        labels={state.tracks.flatMap((track, index) =>
-          (track.labels || []).map(label => ({ ...label, id: String(label.id), trackIndex: index }))
+        labels={state.tracks.flatMap((track) =>
+          (track.labels || []).map(label => ({ ...label, id: String(label.id) }))
         )}
         tracks={[
           ...state.tracks
@@ -2069,12 +2069,104 @@ function CanvasDemoContent() {
         onClose={() => setIsLabelEditorOpen(false)}
         onImport={() => toast.info('Import labels')}
         onExport={() => toast.info('Export labels')}
+        onAddLabel={async () => {
+          console.log('onAddLabel called');
+          // Find first label track
+          const labelTrackIndex = state.tracks.findIndex(t => t.clips.length === 0);
+          console.log('labelTrackIndex:', labelTrackIndex);
+
+          if (labelTrackIndex === -1) {
+            // No label tracks exist - create one
+            const trackName = window.prompt('Enter label track name:', 'Label Track');
+            if (!trackName) return;
+
+            const newTrackIndex = state.tracks.length;
+            const maxId = Math.max(...state.tracks.map(t => t.id), 0);
+            const newTrackId = maxId + 1;
+
+            const newTrack = {
+              id: newTrackId,
+              name: trackName,
+              height: 76,
+              clips: [],
+              labels: [],
+            };
+
+            // Create track first
+            dispatch({
+              type: 'ADD_TRACK',
+              payload: newTrack,
+            });
+
+            // Then add label to the new track
+            const newLabel = {
+              id: Date.now(),
+              trackIndex: newTrackIndex,
+              text: '',
+              startTime: state.timeSelection?.startTime ?? state.playheadPosition,
+              endTime: state.timeSelection?.endTime ?? state.playheadPosition,
+            };
+
+            dispatch({
+              type: 'ADD_LABEL',
+              payload: {
+                trackIndex: newTrackIndex,
+                label: newLabel,
+              },
+            });
+
+            toast.success(`Created label track: ${trackName}`);
+          } else {
+            // Label track exists, add label to it
+            const newLabel = {
+              id: Date.now(),
+              trackIndex: labelTrackIndex,
+              text: '',
+              startTime: state.timeSelection?.startTime ?? state.playheadPosition,
+              endTime: state.timeSelection?.endTime ?? state.playheadPosition,
+            };
+
+            dispatch({
+              type: 'ADD_LABEL',
+              payload: {
+                trackIndex: labelTrackIndex,
+                label: newLabel,
+              },
+            });
+          }
+        }}
         onNewTrackRequest={async (labelId) => {
           // Prompt user for track name
           const trackName = window.prompt('Enter label track name:', 'Label Track');
 
           if (!trackName) {
             return null; // User cancelled
+          }
+
+          // Calculate the new track's index (where it will be added)
+          const newTrackIndex = state.tracks.length;
+
+          // Find next available track ID
+          const maxId = Math.max(...state.tracks.map(t => t.id), 0);
+          const newTrackId = maxId + 1;
+
+          // If labelId is empty, we're just creating a new empty track
+          if (!labelId) {
+            const newTrack = {
+              id: newTrackId,
+              name: trackName,
+              height: 76,
+              clips: [],
+              labels: [],
+            };
+
+            dispatch({
+              type: 'ADD_TRACK',
+              payload: newTrack,
+            });
+
+            toast.success(`Created label track: ${trackName}`);
+            return newTrackIndex;
           }
 
           // Find the label that needs to be moved
@@ -2093,13 +2185,6 @@ function CanvasDemoContent() {
             toast.error('Label not found');
             return null;
           }
-
-          // Calculate the new track's index (where it will be added)
-          const newTrackIndex = state.tracks.length;
-
-          // Find next available track ID
-          const maxId = Math.max(...state.tracks.map(t => t.id), 0);
-          const newTrackId = maxId + 1;
 
           // Create new label track WITH the label already in it
           const newTrack = {

@@ -542,7 +542,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
-        labels: [...(newTracks[trackIndex].labels || []), label],
+        labels: [label, ...(newTracks[trackIndex].labels || [])],
       };
       return { ...state, tracks: newTracks };
     }

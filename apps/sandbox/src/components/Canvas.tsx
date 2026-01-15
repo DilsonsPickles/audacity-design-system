@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, LabelMarker, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
+import React, { useRef, useEffect, useState } from 'react';
+import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTheme, LabelRectangle } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import { usePreferences } from '@audacity-ui/components';
@@ -96,8 +96,17 @@ export function Canvas({
   // Track focused label for accessibility
   const [focusedLabelId, setFocusedLabelId] = useState<number | null>(null);
 
+  // Track hovered ear for hover effects
+  const [hoveredEar, setHoveredEar] = useState<string | null>(null);
+
+  // Track hovered label banner for hover effects
+  const [hoveredBanner, setHoveredBanner] = useState<string | null>(null);
+
+  // Track label selection state for click cycle (label -> all tracks -> label)
+  const labelClickStateRef = useRef<{ labelKeyId: string; timestamp: number; state: 'label' | 'all-tracks' } | null>(null);
+
   // Label dragging state - stores initial positions for all labels being dragged
-  const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialStartTime: number; initialEndTime?: number }> | null>(null);
+  const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialStartTime: number; initialEndTime?: number; initialClientX: number; initialClientY: number }> | null>(null);
 
   // Track if channel resize is active
   const isChannelResizing = false;
@@ -696,6 +705,7 @@ export function Canvas({
                 left: 0,
                 width: `${width}px`,
                 height: `${trackHeight}px`,
+                overflow: 'hidden',
               }}
               onClick={(e) => {
                 // Don't handle clicks if we just finished dragging (creating time selection)
@@ -933,7 +943,487 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
               />
 
               {/* Render labels for label tracks */}
-              {track.labels && (() => {
+              {(() => {
+                if (!track.labels) return null;
+
+                const LABEL_HEIGHT = 14;
+                const LABEL_GAP = 2;
+
+                // Sort labels by start time (left-most first)
+                const sortedLabels = [...track.labels].sort((a, b) => a.startTime - b.startTime);
+
+                // Calculate row for each label to avoid overlaps
+                const labelRows = new Map<number, number>();
+
+                sortedLabels.forEach((label) => {
+                  const x = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
+                  const width = (label.endTime! - label.startTime) * pixelsPerSecond;
+                  const isPointLabel = label.startTime === label.endTime;
+
+                  // Find the first row where this label doesn't overlap with any previous label
+                  let row = 0;
+                  let hasOverlap = true;
+
+                  while (hasOverlap) {
+                    hasOverlap = false;
+
+                    // Check all labels already assigned to this row
+                    for (const [otherId, otherRow] of labelRows.entries()) {
+                      if (otherRow === row) {
+                        const otherLabel = track.labels.find(l => l.id === otherId)!;
+                        const otherX = CLIP_CONTENT_OFFSET + otherLabel.startTime * pixelsPerSecond;
+                        const otherWidth = (otherLabel.endTime! - otherLabel.startTime) * pixelsPerSecond;
+                        const otherIsPointLabel = otherLabel.startTime === otherLabel.endTime;
+
+                        let overlaps = false;
+
+                        if (isPointLabel && otherIsPointLabel) {
+                          // Point labels overlap if they're at the exact same position
+                          overlaps = label.startTime === otherLabel.startTime;
+                        } else if (isPointLabel) {
+                          // Point label overlaps region if it's within the region (including edges)
+                          overlaps = label.startTime >= otherLabel.startTime && label.startTime <= otherLabel.endTime!;
+                        } else if (otherIsPointLabel) {
+                          // Region overlaps point if the point is within the region (including edges)
+                          overlaps = otherLabel.startTime >= label.startTime && otherLabel.startTime <= label.endTime!;
+                        } else {
+                          // Region-region overlap (original logic)
+                          overlaps = !(x >= otherX + otherWidth || otherX >= x + width);
+                        }
+
+                        if (overlaps) {
+                          hasOverlap = true;
+                          break;
+                        }
+                      }
+                    }
+
+                    if (hasOverlap) {
+                      row++;
+                    }
+                  }
+
+                  labelRows.set(label.id, row);
+                });
+
+                return track.labels.map((label) => {
+                  const x = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
+                  const width = (label.endTime! - label.startTime) * pixelsPerSecond;
+                  const labelKeyId = `${trackIndex}-${label.id}`;
+                  const isSelected = selectedLabelIds.includes(labelKeyId);
+                  const row = labelRows.get(label.id) ?? 0;
+                  const topOffset = row * (LABEL_HEIGHT + LABEL_GAP);
+                  const trackHeight = track.height || 114;
+                  const stalkHeight = trackHeight - topOffset;
+                  const isPointLabel = label.startTime === label.endTime;
+                  const FLAG_WIDTH = 50; // Min width for point label flag
+
+                  const leftEarId = `${labelKeyId}-left`;
+                  const rightEarId = `${labelKeyId}-right`;
+                  const bothEarsId = `both-${labelKeyId}`;
+                  const isLeftEarHovered = hoveredEar === leftEarId || hoveredEar === bothEarsId;
+                  const isRightEarHovered = hoveredEar === rightEarId || hoveredEar === bothEarsId;
+                  const isBannerHovered = hoveredBanner === labelKeyId;
+
+                  return (
+                    <React.Fragment key={label.id}>
+                      {/* Left ear (resize handle) */}
+                      <svg
+                        width="7"
+                        height="14"
+                        viewBox="0 0 7 14"
+                        style={{
+                          position: 'absolute',
+                          left: `${x - 7}px`,
+                          top: `${topOffset}px`,
+                          cursor: isPointLabel ? 'move' : 'ew-resize',
+                          pointerEvents: 'auto',
+                          zIndex: 3,
+                        }}
+                        onMouseEnter={() => {
+                          if (isPointLabel) {
+                            setHoveredEar(bothEarsId); // Hover both ears for point labels
+                          } else {
+                            setHoveredEar(leftEarId);
+                          }
+                        }}
+                        onMouseLeave={() => setHoveredEar(null)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          dispatch({
+                            type: 'SET_SELECTED_LABELS',
+                            payload: e.shiftKey ? [...selectedLabelIds, labelKeyId] : [labelKeyId],
+                          });
+
+                          const handleMouseMove = (moveE: MouseEvent) => {
+                            const containerRect = containerRef.current?.getBoundingClientRect();
+                            if (!containerRect) return;
+
+                            const localX = moveE.clientX - containerRect.left;
+                            const newStartTime = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+                            // Allow inverse resizing
+                            const newStart = Math.min(newStartTime, label.endTime!);
+                            const newEnd = Math.max(newStartTime, label.endTime!);
+
+                            dispatch({
+                              type: 'UPDATE_LABEL',
+                              payload: {
+                                trackIndex,
+                                labelId: label.id,
+                                label: { startTime: newStart, endTime: newEnd },
+                              },
+                            });
+                          };
+
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                          };
+
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      >
+                        <path
+                          d="M0.723608 1.44722L7 14V0H1.61827C0.874886 0 0.391157 0.782314 0.723608 1.44722Z"
+                          fill={isLeftEarHovered ? '#0066CC' : (isSelected ? '#3399FF' : '#7EB1FF')}
+                        />
+                      </svg>
+
+                      {/* Left stalk (or single stalk for point labels) */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: `${x}px`,
+                          top: `${topOffset}px`,
+                          width: '1px',
+                          height: `${stalkHeight}px`,
+                          backgroundColor: isLeftEarHovered ? '#0066CC' : (isSelected ? '#3399FF' : '#7EB1FF'),
+                          pointerEvents: 'auto',
+                          cursor: isPointLabel ? 'move' : 'ew-resize',
+                        }}
+                        onMouseEnter={() => {
+                          if (isPointLabel) {
+                            setHoveredEar(bothEarsId); // Hover both ears for point labels
+                          } else {
+                            setHoveredEar(leftEarId);
+                          }
+                        }}
+                        onMouseLeave={() => setHoveredEar(null)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          dispatch({
+                            type: 'SET_SELECTED_LABELS',
+                            payload: e.shiftKey ? [...selectedLabelIds, labelKeyId] : [labelKeyId],
+                          });
+
+                          const handleMouseMove = (moveE: MouseEvent) => {
+                            const containerRect = containerRef.current?.getBoundingClientRect();
+                            if (!containerRect) return;
+
+                            const localX = moveE.clientX - containerRect.left;
+                            const newTime = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+                            if (isPointLabel) {
+                              // For point labels, move the entire point
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex,
+                                  labelId: label.id,
+                                  label: { startTime: newTime, endTime: newTime },
+                                },
+                              });
+                            } else {
+                              // For region labels, resize from left edge (allow inverse resizing)
+                              const newStart = Math.min(newTime, label.endTime!);
+                              const newEnd = Math.max(newTime, label.endTime!);
+
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex,
+                                  labelId: label.id,
+                                  label: { startTime: newStart, endTime: newEnd },
+                                },
+                              });
+                            }
+                          };
+
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                          };
+
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      />
+
+                      {/* Right stalk (only for region labels) */}
+                      {!isPointLabel && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: `${x + width}px`,
+                            top: `${topOffset}px`,
+                            width: '1px',
+                            height: `${stalkHeight}px`,
+                            backgroundColor: isRightEarHovered ? '#0066CC' : (isSelected ? '#3399FF' : '#7EB1FF'),
+                            pointerEvents: 'auto',
+                            cursor: 'ew-resize',
+                          }}
+                          onMouseEnter={() => setHoveredEar(rightEarId)}
+                          onMouseLeave={() => setHoveredEar(null)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            dispatch({
+                              type: 'SET_SELECTED_LABELS',
+                              payload: e.shiftKey ? [...selectedLabelIds, labelKeyId] : [labelKeyId],
+                            });
+
+                            const handleMouseMove = (moveE: MouseEvent) => {
+                              const containerRect = containerRef.current?.getBoundingClientRect();
+                              if (!containerRect) return;
+
+                              const localX = moveE.clientX - containerRect.left;
+                              const newEndTime = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+                              // Allow inverse resizing
+                              const newStart = Math.min(label.startTime, newEndTime);
+                              const newEnd = Math.max(label.startTime, newEndTime);
+
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex,
+                                  labelId: label.id,
+                                  label: { startTime: newStart, endTime: newEnd },
+                                },
+                              });
+                            };
+
+                            const handleMouseUp = () => {
+                              document.removeEventListener('mousemove', handleMouseMove);
+                              document.removeEventListener('mouseup', handleMouseUp);
+                            };
+
+                            document.addEventListener('mousemove', handleMouseMove);
+                            document.addEventListener('mouseup', handleMouseUp);
+                          }}
+                        />
+                      )}
+
+                      {/* Right ear (resize handle) */}
+                      <svg
+                        width="7"
+                        height="14"
+                        viewBox="0 0 7 14"
+                        style={{
+                          position: 'absolute',
+                          left: `${x + width}px`,
+                          top: `${topOffset}px`,
+                          cursor: 'ew-resize',
+                          pointerEvents: 'auto',
+                          zIndex: 3,
+                        }}
+                        onMouseEnter={() => setHoveredEar(rightEarId)}
+                        onMouseLeave={() => setHoveredEar(null)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          dispatch({
+                            type: 'SET_SELECTED_LABELS',
+                            payload: e.shiftKey ? [...selectedLabelIds, labelKeyId] : [labelKeyId],
+                          });
+
+                          const handleMouseMove = (moveE: MouseEvent) => {
+                            const containerRect = containerRef.current?.getBoundingClientRect();
+                            if (!containerRect) return;
+
+                            const localX = moveE.clientX - containerRect.left;
+                            const newEndTime = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+                            // Allow inverse resizing
+                            const newStart = Math.min(label.startTime, newEndTime);
+                            const newEnd = Math.max(label.startTime, newEndTime);
+
+                            dispatch({
+                              type: 'UPDATE_LABEL',
+                              payload: {
+                                trackIndex,
+                                labelId: label.id,
+                                label: { startTime: newStart, endTime: newEnd },
+                              },
+                            });
+                          };
+
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                          };
+
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      >
+                        <path
+                          d="M6.27639 1.44722L0 14V0H5.38173C6.12511 0 6.60884 0.782314 6.27639 1.44722Z"
+                          fill={isRightEarHovered ? '#0066CC' : (isSelected ? '#3399FF' : '#7EB1FF')}
+                        />
+                      </svg>
+
+                      {/* Label rectangle */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: isPointLabel ? `${x + 10}px` : `${x}px`, // Offset flag to the right for point labels (7px ear + 3px gap)
+                          top: `${topOffset}px`,
+                          width: isPointLabel ? `${FLAG_WIDTH}px` : `${width}px`,
+                          height: '14px',
+                          backgroundColor: isBannerHovered ? '#0066CC' : (isSelected ? '#3399FF' : '#7EB1FF'),
+                          pointerEvents: 'auto',
+                          borderRadius: isPointLabel ? '2px' : '0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          overflow: 'hidden',
+                          cursor: 'move',
+                        }}
+                        onMouseEnter={() => setHoveredBanner(labelKeyId)}
+                        onMouseLeave={() => setHoveredBanner(null)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          // Check if label is already selected BEFORE updating selection
+                          const wasAlreadySelected = selectedLabelIds.includes(labelKeyId);
+
+                          dispatch({
+                            type: 'SET_SELECTED_LABELS',
+                            payload: e.shiftKey ? [...selectedLabelIds, labelKeyId] : [labelKeyId],
+                          });
+
+                          const startX = e.clientX;
+                          const startY = e.clientY;
+                          const startLeft = x;
+                          let hasMoved = false;
+
+                          const handleMouseMove = (moveE: MouseEvent) => {
+                            const deltaX = moveE.clientX - startX;
+                            const deltaY = moveE.clientY - startY;
+
+                            // Check if we've moved more than 3px (drag threshold)
+                            if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+                              hasMoved = true;
+                            }
+
+                            if (!hasMoved) return;
+
+                            const newX = startLeft + deltaX;
+                            const newTime = Math.max(0, (newX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+                            if (isPointLabel) {
+                              // For point labels, move the point (keep startTime === endTime)
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex,
+                                  labelId: label.id,
+                                  label: {
+                                    startTime: newTime,
+                                    endTime: newTime,
+                                  },
+                                },
+                              });
+                            } else {
+                              // For region labels, maintain the duration
+                              const duration = label.endTime! - label.startTime;
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex,
+                                  labelId: label.id,
+                                  label: {
+                                    startTime: newTime,
+                                    endTime: newTime + duration,
+                                  },
+                                },
+                              });
+                            }
+                          };
+
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+
+                            // Handle click (no drag) for region labels only - use setTimeout to avoid conflicts
+                            if (!hasMoved && !isPointLabel && wasAlreadySelected) {
+                              // Check if all tracks are currently selected
+                              const allTrackIndices = tracks.map((_, idx) => idx);
+                              const allTracksSelected = allTrackIndices.every(idx => selectedTrackIndices.includes(idx));
+
+                              // Use setTimeout to ensure this happens after other event handlers
+                              setTimeout(() => {
+                                if (allTracksSelected) {
+                                  // Already expanded: collapse back to single track
+                                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                                  // Clear time selection
+                                  dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+                                } else {
+                                  // Not expanded: expand to all tracks with time selection
+                                  dispatch({
+                                    type: 'SET_TIME_SELECTION',
+                                    payload: {
+                                      startTime: label.startTime,
+                                      endTime: label.endTime!,
+                                    },
+                                  });
+                                  dispatch({
+                                    type: 'SET_SELECTED_TRACKS',
+                                    payload: allTrackIndices,
+                                  });
+                                }
+                              }, 0);
+                            }
+                          };
+
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      >
+                      {/* Label text */}
+                      <div
+                        style={{
+                          flex: 1,
+                          paddingLeft: '4px',
+                          paddingRight: '4px',
+                          fontSize: '12px',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: 500,
+                          color: 'rgba(0, 0, 0, 0.8)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {label.text}
+                      </div>
+                    </div>
+                    </React.Fragment>
+                  );
+                });
+              })()}
+
+              {false && track.labels && (() => {
                 const EAR_HEIGHT = 14;
                 const LABEL_BOX_GAP = 2; // Gap between label boxes
                 const LABEL_ROW_HEIGHT = EAR_HEIGHT + LABEL_BOX_GAP; // 14px ears + 2px gap = 16px total
@@ -1240,202 +1730,313 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                       }
                     }}
                   >
-                    <LabelMarker
-                      text={label.text}
-                      type={type}
-                      state="idle"
-                      selected={selectedLabelIds.includes(labelKeyId)}
-                      focused={focusedLabelId === label.id}
-                      width={width}
-                      stalkHeight={stalkHeight} // Stalk extends from current position to track bottom
-                      onSelect={() => {
-                        // Check if this label is already part of the selection
-                        const isPartOfSelection = selectedLabelIds.includes(labelKeyId);
-                        const wasAlreadySelected = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
-                        const allTracksSelected = selectedTrackIndices.length === tracks.length;
+                    {type === 'region' ? (
+                      <RegionLabel
+                        text={label.text}
+                        startTime={label.startTime}
+                        endTime={label.endTime!}
+                        selected={selectedLabelIds.includes(labelKeyId)}
+                        focused={focusedLabelId === label.id}
+                        stalkHeight={stalkHeight}
+                        onClick={() => {
+                          // Check if this label is already part of the selection
+                          const isPartOfSelection = selectedLabelIds.includes(labelKeyId);
+                          const wasAlreadySelected = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
+                          const allTracksSelected = selectedTrackIndices.length === tracks.length;
 
-                        // If clicking on a label that's part of a multi-selection, preserve the selection
-                        // This allows dragging all selected labels together
-                        if (isPartOfSelection && selectedLabelIds.length > 1) {
-                          // Don't change selection - preserve multi-selection for dragging
-                          return;
-                        }
+                          // If clicking on a label that's part of a multi-selection, preserve the selection
+                          // This allows dragging all selected labels together
+                          if (isPartOfSelection && selectedLabelIds.length > 1) {
+                            // Don't change selection - preserve multi-selection for dragging
+                            return;
+                          }
 
-                        // Check if this point label falls within a selected region label
-                        if (!wasAlreadySelected && label.endTime === undefined && allTracksSelected && selectedLabelIds.length > 0) {
-                          // Find the selected region label(s)
-                          let shouldDelete = false;
-                          for (const selectedLabelId of selectedLabelIds) {
-                            const [selectedTrackStr, selectedIdStr] = selectedLabelId.split('-');
-                            const selectedTrack = tracks[parseInt(selectedTrackStr, 10)];
-                            const selectedLabel = selectedTrack?.labels?.find(l => l.id === parseInt(selectedIdStr, 10));
+                          // If all tracks are selected and clicking a different label, add to selection
+                          if (allTracksSelected && !wasAlreadySelected && selectedLabelIds.length > 0) {
+                            // Add this label to existing selection
+                            dispatch({ type: 'SET_SELECTED_LABELS', payload: [...selectedLabelIds, labelKeyId] });
+                          } else {
+                            // Normal behavior: replace selection with this label
+                            dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                          }
 
-                            // If selected label is a region and this point label falls within it, delete the point label
-                            if (selectedLabel?.endTime !== undefined &&
-                                label.startTime >= selectedLabel.startTime &&
-                                label.startTime <= selectedLabel.endTime) {
-                              shouldDelete = true;
-                              break;
+                          // Update keyboard focus to this track
+                          onTrackFocusChange?.(trackIndex, true);
+
+                          // If clicking an already-selected region label
+                          if (wasAlreadySelected) {
+                            if (allTracksSelected) {
+                              // Already expanded: use timeout to detect clean click vs drag
+                              setTimeout(() => {
+                                if (labelDragStateRef.current) {
+                                  // Dragging: keep all tracks selected
+                                  const allTrackIndices = tracks.map((_, idx) => idx);
+                                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                                } else {
+                                  // Clean click: collapse back to just this track
+                                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                                }
+                              }, 100);
+                            } else {
+                              // Not expanded yet: delay to allow drag detection to cancel expansion
+                              setTimeout(() => {
+                                // Only expand if no drag is in progress
+                                if (!labelDragStateRef.current) {
+                                  const allTrackIndices = tracks.map((_, idx) => idx);
+                                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+                                }
+                              }, 100);
                             }
                           }
+                        }}
+                        onMove={(params) => {
+                          // Initialize drag state on first call for all selected labels
+                          if (!labelDragStateRef.current) {
+                            labelDragStateRef.current = new Map();
 
-                          if (shouldDelete) {
-                            // Delete this point label
-                            const updatedLabels = track.labels?.filter(l => l.id !== label.id) || [];
-                            dispatch({
-                              type: 'UPDATE_TRACK',
-                              payload: {
-                                index: trackIndex,
-                                track: { labels: updatedLabels }
+                            // Determine which labels to move
+                            const labelsToMove = selectedLabelIds.includes(labelKeyId) && selectedLabelIds.length > 1
+                              ? selectedLabelIds
+                              : [labelKeyId];
+
+                            // Store initial state for all labels being moved
+                            labelsToMove.forEach(selectedLabelId => {
+                              const [trackIdxStr, labelIdStr] = selectedLabelId.split('-');
+                              const tIdx = parseInt(trackIdxStr, 10);
+                              const lId = parseInt(labelIdStr, 10);
+                              const targetTrack = tracks[tIdx];
+                              const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
+
+                              if (targetLabel) {
+                                labelDragStateRef.current!.set(selectedLabelId, {
+                                  trackIndex: tIdx,
+                                  labelId: lId,
+                                  initialStartTime: targetLabel.startTime,
+                                  initialEndTime: targetLabel.endTime,
+                                  initialClientX: params.clientX,
+                                  initialClientY: params.clientY,
+                                });
                               }
                             });
-                            return; // Don't proceed with selection
                           }
-                        }
 
-                        // If all tracks are selected and clicking a different label, add to selection
-                        if (allTracksSelected && !wasAlreadySelected && selectedLabelIds.length > 0) {
-                          // Add this label to existing selection
-                          dispatch({ type: 'SET_SELECTED_LABELS', payload: [...selectedLabelIds, labelKeyId] });
-                        } else {
-                          // Normal behavior: replace selection with this label
-                          dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
-                        }
+                          // Calculate deltaX from initial position
+                          const dragState = labelDragStateRef.current.get(labelKeyId);
+                          if (!dragState) return;
 
-                        // Update keyboard focus to this track
-                        onTrackFocusChange?.(trackIndex, true);
+                          const deltaX = params.clientX - dragState.initialClientX;
+                          const deltaTime = deltaX / pixelsPerSecond;
 
-                        // If clicking an already-selected region label
-                        if (wasAlreadySelected && label.endTime !== undefined) {
-                          if (allTracksSelected) {
-                            // Already expanded: use timeout to detect clean click vs drag
-                            setTimeout(() => {
-                              if (labelDragStateRef.current) {
-                                // Dragging: keep all tracks selected
-                                const allTrackIndices = tracks.map((_, idx) => idx);
-                                dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-                              } else {
-                                // Clean click: collapse back to just this track
-                                dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
-                              }
-                            }, 100);
-                          } else {
-                            // Not expanded yet: delay to allow drag detection to cancel expansion
-                            setTimeout(() => {
-                              // Only expand if no drag is in progress
-                              if (!labelDragStateRef.current) {
-                                const allTrackIndices = tracks.map((_, idx) => idx);
-                                dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-                              }
-                            }, 100);
-                          }
-                        }
-                      }}
-                      onLabelMove={(deltaX) => {
-                        // Initialize drag state on first call for all selected labels
-                        if (!labelDragStateRef.current) {
-                          labelDragStateRef.current = new Map();
+                          // Move all labels in the drag state
+                          labelDragStateRef.current.forEach((ds) => {
+                            const newTime = Math.max(0, ds.initialStartTime + deltaTime);
 
-                          // Determine which labels to move
-                          const labelsToMove = selectedLabelIds.includes(labelKeyId) && selectedLabelIds.length > 1
-                            ? selectedLabelIds
-                            : [labelKeyId];
-
-                          // Store initial state for all labels being moved
-                          labelsToMove.forEach(selectedLabelId => {
-                            const [trackIdxStr, labelIdStr] = selectedLabelId.split('-');
-                            const tIdx = parseInt(trackIdxStr, 10);
-                            const lId = parseInt(labelIdStr, 10);
-                            const targetTrack = tracks[tIdx];
-                            const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
-
-                            if (targetLabel) {
-                              labelDragStateRef.current!.set(selectedLabelId, {
-                                trackIndex: tIdx,
-                                labelId: lId,
-                                initialStartTime: targetLabel.startTime,
-                                initialEndTime: targetLabel.endTime,
+                            if (ds.initialEndTime !== undefined) {
+                              // Region label: maintain duration while moving
+                              const duration = ds.initialEndTime - ds.initialStartTime;
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex: ds.trackIndex,
+                                  labelId: ds.labelId,
+                                  label: { startTime: newTime, endTime: newTime + duration },
+                                },
+                              });
+                            } else {
+                              // Point label: just update time
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex: ds.trackIndex,
+                                  labelId: ds.labelId,
+                                  label: { startTime: newTime },
+                                },
                               });
                             }
                           });
-                        }
+                        }}
+                        onResize={(params) => {
+                          // Convert clientX to time position
+                          const containerRect = containerRef.current?.getBoundingClientRect();
+                          if (!containerRect) return;
 
-                        // Calculate new time based on deltaX from initial position
-                        const deltaTime = deltaX / pixelsPerSecond;
+                          const localX = params.clientX - containerRect.left;
+                          const time = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
 
-                        // Move all labels in the drag state
-                        labelDragStateRef.current.forEach((dragState) => {
-                          const newTime = Math.max(0, dragState.initialStartTime + deltaTime);
-
-                          if (dragState.initialEndTime !== undefined) {
-                            // Region label: maintain duration while moving
-                            const duration = dragState.initialEndTime - dragState.initialStartTime;
+                          if (params.side === 'right') {
+                            // Right side resize: update endTime to cursor position
                             dispatch({
                               type: 'UPDATE_LABEL',
                               payload: {
-                                trackIndex: dragState.trackIndex,
-                                labelId: dragState.labelId,
-                                label: { startTime: newTime, endTime: newTime + duration },
+                                trackIndex,
+                                labelId: label.id,
+                                label: { endTime: Math.max(label.startTime + 0.1, time) }, // Min 0.1s duration
                               },
                             });
                           } else {
-                            // Point label: just update time
+                            // Left side resize: update startTime to cursor position
                             dispatch({
                               type: 'UPDATE_LABEL',
                               payload: {
-                                trackIndex: dragState.trackIndex,
-                                labelId: dragState.labelId,
-                                label: { startTime: newTime },
+                                trackIndex,
+                                labelId: label.id,
+                                label: { startTime: Math.min(time, label.endTime! - 0.1) }, // Min 0.1s duration
                               },
                             });
                           }
-                        });
-                      }}
-                      onRegionResize={(params) => {
-                        // Convert clientX to time position
-                        const containerRect = containerRef.current?.getBoundingClientRect();
-                        if (!containerRect) return;
+                        }}
+                      />
+                    ) : (
+                      <PointLabel
+                        text={label.text}
+                        selected={selectedLabelIds.includes(labelKeyId)}
+                        focused={focusedLabelId === label.id}
+                        stalkHeight={stalkHeight}
+                        onClick={() => {
+                          // Check if this label is already part of the selection
+                          const isPartOfSelection = selectedLabelIds.includes(labelKeyId);
+                          const wasAlreadySelected = selectedLabelIds.length === 1 && selectedLabelIds[0] === labelKeyId;
+                          const allTracksSelected = selectedTrackIndices.length === tracks.length;
 
-                        const localX = params.clientX - containerRect.left;
-                        const time = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+                          // If clicking on a label that's part of a multi-selection, preserve the selection
+                          // This allows dragging all selected labels together
+                          if (isPartOfSelection && selectedLabelIds.length > 1) {
+                            // Don't change selection - preserve multi-selection for dragging
+                            return;
+                          }
 
-                        if (params.side === 'right') {
-                          // Right side resize: update endTime to cursor position
-                          dispatch({
-                            type: 'UPDATE_LABEL',
-                            payload: {
-                              trackIndex,
-                              labelId: label.id,
-                              label: { endTime: Math.max(label.startTime + 0.1, time) }, // Min 0.1s duration
-                            },
+                          // Check if this point label falls within a selected region label
+                          if (!wasAlreadySelected && allTracksSelected && selectedLabelIds.length > 0) {
+                            // Find the selected region label(s)
+                            let shouldDelete = false;
+                            for (const selectedLabelId of selectedLabelIds) {
+                              const [selectedTrackStr, selectedIdStr] = selectedLabelId.split('-');
+                              const selectedTrack = tracks[parseInt(selectedTrackStr, 10)];
+                              const selectedLabel = selectedTrack?.labels?.find(l => l.id === parseInt(selectedIdStr, 10));
+
+                              // If selected label is a region and this point label falls within it, delete the point label
+                              if (selectedLabel?.endTime !== undefined &&
+                                  label.startTime >= selectedLabel.startTime &&
+                                  label.startTime <= selectedLabel.endTime) {
+                                shouldDelete = true;
+                                break;
+                              }
+                            }
+
+                            if (shouldDelete) {
+                              // Delete this point label
+                              const updatedLabels = track.labels?.filter(l => l.id !== label.id) || [];
+                              dispatch({
+                                type: 'UPDATE_TRACK',
+                                payload: {
+                                  index: trackIndex,
+                                  track: { labels: updatedLabels }
+                                }
+                              });
+                              return; // Don't proceed with selection
+                            }
+                          }
+
+                          // If all tracks are selected and clicking a different label, add to selection
+                          if (allTracksSelected && !wasAlreadySelected && selectedLabelIds.length > 0) {
+                            // Add this label to existing selection
+                            dispatch({ type: 'SET_SELECTED_LABELS', payload: [...selectedLabelIds, labelKeyId] });
+                          } else {
+                            // Normal behavior: replace selection with this label
+                            dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
+                          }
+
+                          // Update keyboard focus to this track
+                          onTrackFocusChange?.(trackIndex, true);
+                        }}
+                        onEarDrag={(params) => {
+                          // Convert clientX to time position
+                          const containerRect = containerRef.current?.getBoundingClientRect();
+                          if (!containerRect) return;
+
+                          const localX = params.clientX - containerRect.left;
+                          const time = Math.max(0, (localX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
+
+                          if (params.side === 'left') {
+                            // Left ear drag: convert point to region by adding endTime
+                            dispatch({
+                              type: 'UPDATE_LABEL',
+                              payload: {
+                                trackIndex,
+                                labelId: label.id,
+                                label: { endTime: label.startTime, startTime: Math.min(time, label.startTime - 0.1) },
+                              },
+                            });
+                          }
+                        }}
+                        onMove={(params) => {
+                          // Initialize drag state on first call for all selected labels
+                          if (!labelDragStateRef.current) {
+                            labelDragStateRef.current = new Map();
+
+                            // Determine which labels to move
+                            const labelsToMove = selectedLabelIds.includes(labelKeyId) && selectedLabelIds.length > 1
+                              ? selectedLabelIds
+                              : [labelKeyId];
+
+                            // Store initial state for all labels being moved
+                            labelsToMove.forEach(selectedLabelId => {
+                              const [trackIdxStr, labelIdStr] = selectedLabelId.split('-');
+                              const tIdx = parseInt(trackIdxStr, 10);
+                              const lId = parseInt(labelIdStr, 10);
+                              const targetTrack = tracks[tIdx];
+                              const targetLabel = targetTrack?.labels?.find(l => l.id === lId);
+
+                              if (targetLabel) {
+                                labelDragStateRef.current!.set(selectedLabelId, {
+                                  trackIndex: tIdx,
+                                  labelId: lId,
+                                  initialStartTime: targetLabel.startTime,
+                                  initialEndTime: targetLabel.endTime,
+                                  initialClientX: params.clientX,
+                                  initialClientY: params.clientY,
+                                });
+                              }
+                            });
+                          }
+
+                          // Calculate deltaX from initial position
+                          const dragState = labelDragStateRef.current.get(labelKeyId);
+                          if (!dragState) return;
+
+                          const deltaX = params.clientX - dragState.initialClientX;
+                          const deltaTime = deltaX / pixelsPerSecond;
+
+                          // Move all labels in the drag state
+                          labelDragStateRef.current.forEach((ds) => {
+                            const newTime = Math.max(0, ds.initialStartTime + deltaTime);
+
+                            if (ds.initialEndTime !== undefined) {
+                              // Region label: maintain duration while moving
+                              const duration = ds.initialEndTime - ds.initialStartTime;
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex: ds.trackIndex,
+                                  labelId: ds.labelId,
+                                  label: { startTime: newTime, endTime: newTime + duration },
+                                },
+                              });
+                            } else {
+                              // Point label: just update time
+                              dispatch({
+                                type: 'UPDATE_LABEL',
+                                payload: {
+                                  trackIndex: ds.trackIndex,
+                                  labelId: ds.labelId,
+                                  label: { startTime: newTime },
+                                },
+                              });
+                            }
                           });
-                        } else {
-                          // Left side resize
-                          if (label.endTime === undefined) {
-                            // Point label: converting to region by dragging left
-                            // Keep original time, set endTime to cursor (must be >= original time)
-                            dispatch({
-                              type: 'UPDATE_LABEL',
-                              payload: {
-                                trackIndex,
-                                labelId: label.id,
-                                label: { endTime: label.startTime, startTime: Math.min(time, label.startTime - 0.1) }, // Drag left from original position
-                              },
-                            });
-                          } else {
-                            // Region label: update time to cursor position, keep endTime
-                            dispatch({
-                              type: 'UPDATE_LABEL',
-                              payload: {
-                                trackIndex,
-                                labelId: label.id,
-                                label: { startTime: Math.min(time, label.endTime - 0.1) }, // Min 0.1s duration
-                              },
-                            });
-                          }
-                        }
-                      }}
-                    />
+                        }}
+                      />
+                    )}
                   </div>
                 );
               });

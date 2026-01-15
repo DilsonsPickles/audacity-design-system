@@ -327,8 +327,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
         )}
 
-        {/* Bottom Button */}
-        {height === 'default' && (
+        {/* Bottom Button - show for default height, or for label tracks in truncated mode */}
+        {(height === 'default' || (isLabelTrack && height === 'truncated')) && (
           <Button
             variant="secondary"
             size="small"

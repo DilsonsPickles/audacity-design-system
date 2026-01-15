@@ -75,11 +75,8 @@
 
 /* Dropdown Menu */
 .dropdown__menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 1000;
+  /* Position is set inline via portal (fixed) */
+  z-index: 10001; /* Above dialogs (10000) */
   background-color: var(--dropdown-menu-bg);
   border: 1px solid var(--dropdown-border);
   border-radius: 3px;

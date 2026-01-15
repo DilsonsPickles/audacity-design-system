@@ -4,6 +4,8 @@
   user-select: none;
   margin: 0;
   padding: 0;
+  overflow: visible; /* Allow stalks to overlap when region is very narrow */
+  min-width: 0; /* Allow region to shrink below default content size */
 }
 
 /* Left ear */
@@ -44,7 +46,7 @@
   background: var(--label-marker-bg);
   border-radius: 2px;
   z-index: 1;
-  overflow: hidden;
+  overflow: visible; /* Allow stalks to overlap when region is narrow */
 }
 
 /* Region marker - full width label box */
@@ -54,13 +56,18 @@
   padding: 2px 8px;
 }
 
+/* Region marker - narrow (shows flag style, no padding to prevent overflow) */
+.label-marker--region.label-marker--point .label-marker__label-box {
+  padding: 0;
+}
+
 /* Point marker - smaller label box positioned to the right */
 .label-marker--point .label-marker__label-box {
   left: 11px; /* Position to the right of the ears and stalk */
   min-width: 42px;
   max-width: 100px;
   width: fit-content;
-  padding: 2px 4px;
+  padding: 0;
 }
 
 /* Hover state for label box */
@@ -120,11 +127,15 @@
 
 /* Region marker - stalks at left and right edges */
 .label-marker--region .label-marker__left-stalk {
-  left: -4px;
+  left: 0;
+  transform: translateX(-4px); /* Center the 9px container */
+  pointer-events: auto; /* Ensure clickable even when overlapping */
 }
 
 .label-marker--region .label-marker__right-stalk {
-  right: -4px;
+  right: 0;
+  transform: translateX(4px); /* Center the 9px container */
+  pointer-events: auto; /* Ensure clickable even when overlapping */
 }
 
 /* Point marker - single stalk at center */

@@ -64,6 +64,11 @@ export interface LabelEditorProps {
    * Should return the new track index after creation
    */
   onNewTrackRequest?: (labelId: string) => Promise<number | null>;
+  /**
+   * Callback when user clicks "Add Label" button
+   * If not provided, default behavior is used
+   */
+  onAddLabel?: () => void | Promise<void>;
 }
 
 /**
@@ -81,6 +86,7 @@ export function LabelEditor({
   os = 'macos',
   playheadPosition = 0,
   onNewTrackRequest,
+  onAddLabel: onAddLabelCallback,
 }: LabelEditorProps) {
   const { theme } = useTheme();
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
@@ -89,18 +95,50 @@ export function LabelEditor({
   const handleLabelChange = (labelId: string, field: keyof Label, value: any) => {
     if (!onChange) return;
 
-    const newLabels = labels.map((label) =>
-      label.id === labelId ? { ...label, [field]: value } : label
-    );
+    const newLabels = labels.map((label) => {
+      if (label.id !== labelId) return label;
+
+      const updatedLabel = { ...label, [field]: value };
+
+      // If startTime === endTime, it's a point label (keep them equal)
+      // This handles the case where a region label is dragged back to a single point
+      if (updatedLabel.startTime === updatedLabel.endTime) {
+        // Ensure both times are equal (normalize to point label)
+        if (field === 'startTime') {
+          updatedLabel.endTime = value;
+        } else if (field === 'endTime') {
+          updatedLabel.startTime = value;
+        }
+      }
+
+      return updatedLabel;
+    });
     onChange(newLabels);
   };
 
-  const handleAddLabel = () => {
+  const handleAddLabel = async () => {
+    // If parent provides custom handler, use that
+    if (onAddLabelCallback) {
+      await onAddLabelCallback();
+      return;
+    }
+
+    // Default behavior
     if (!onChange) return;
+
+    // Find the first label track (excluding __NEW__ option)
+    const firstLabelTrack = tracks.find(t => t.value !== '__NEW__');
+
+    if (!firstLabelTrack) {
+      // No label tracks exist - can't add label without parent handling it
+      return;
+    }
+
+    const trackIndex = parseInt(firstLabelTrack.value, 10);
 
     const newLabel: Label = {
       id: `label-${Date.now()}`,
-      trackIndex: 0,
+      trackIndex,
       text: '',
       startTime: playheadPosition,
       endTime: playheadPosition,

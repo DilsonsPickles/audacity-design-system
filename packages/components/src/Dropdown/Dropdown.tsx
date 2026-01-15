@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
 import '../assets/fonts/musescore-icon.css';
 import './Dropdown.css';
@@ -55,6 +56,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number>(-1);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -65,7 +67,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const isClickInsideDropdown = dropdownRef.current?.contains(event.target as Node);
+      const isClickInsideMenu = menuRef.current?.contains(event.target as Node);
+
+      if (!isClickInsideDropdown && !isClickInsideMenu) {
         setIsOpen(false);
       }
     };
@@ -136,6 +141,32 @@ export const Dropdown: React.FC<DropdownProps> = ({
     // When dropdown is closed, arrow keys will be handled by parent (TabGroupField)
   };
 
+  // Calculate menu position when dropdown opens and update on scroll
+  useEffect(() => {
+    const updatePosition = () => {
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setMenuPosition({
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
+    };
+
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    } else {
+      setMenuPosition(null);
+    }
+  }, [isOpen]);
+
   // Focus management: when dropdown opens, focus the menu
   useEffect(() => {
     if (isOpen && menuRef.current) {
@@ -185,12 +216,24 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <span className="dropdown__icon musescore-icon">{'\uEF12'}</span>
       </button>
 
-      {isOpen && !disabled && (
+      {isOpen && !disabled && menuPosition && createPortal(
         <div
           ref={menuRef}
           className="dropdown__menu"
           role="listbox"
           tabIndex={-1}
+          style={{
+            position: 'fixed',
+            top: `${menuPosition.top}px`,
+            left: `${menuPosition.left}px`,
+            width: `${menuPosition.width}px`,
+            '--dropdown-menu-bg': '#FFFFFF',
+            '--dropdown-border': '#D4D5D9',
+            '--dropdown-menu-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
+            '--dropdown-text': theme.foreground.text.primary,
+            '--dropdown-option-hover-bg': theme.background.surface.hover,
+            '--dropdown-option-hover-outline': theme.border.focus,
+          } as React.CSSProperties}
         >
           {options.map((option, index) => (
             <div
@@ -207,7 +250,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
               {option.label}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

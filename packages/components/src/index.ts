@@ -90,6 +90,9 @@ export * from './EnvelopeInteractionLayer';
 export * from './Track';
 export { TrackNew } from './Track/TrackNew';
 export * from './LabelMarker';
+export * from './RegionLabel';
+export * from './PointLabel';
+export * from './Label';
 
 /**
  * Layout & Behavior Utilities

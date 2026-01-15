@@ -175,6 +175,31 @@ Now supports `variant` prop with light/dark modes.
 
 **Note:** Background and border are hardcoded per design spec. Will need dark theme equivalents.
 
+### 17. Label Rendering in Canvas.tsx (10 colors)
+**Hardcoded colors:**
+- `#7EB1FF` (unselected label background, stalk, ear)
+- `#3399FF` (selected label background, stalk, ear)
+- `#0066CC` (hover label background, stalk, ear)
+- `rgba(0, 0, 0, 0.8)` (label text)
+
+**Suggested tokens:**
+```typescript
+'--label-bg': theme.audio.label.background,
+'--label-bg-selected': theme.audio.label.backgroundSelected,
+'--label-bg-hover': theme.audio.label.backgroundHover,
+'--label-text': theme.audio.label.text,
+'--label-stalk': theme.audio.label.stalk,
+'--label-stalk-selected': theme.audio.label.stalkSelected,
+'--label-stalk-hover': theme.audio.label.stalkHover,
+'--label-ear': theme.audio.label.ear,
+'--label-ear-selected': theme.audio.label.earSelected,
+'--label-ear-hover': theme.audio.label.earHover,
+```
+
+**Location:** `apps/sandbox/src/components/Canvas.tsx` (label rendering section, lines ~1000-1400)
+
+**Note:** Labels use blue color scheme. All tokens have been added to v2 theme system.
+
 ---
 
 ## Quick Reference: Common Theme Tokens
