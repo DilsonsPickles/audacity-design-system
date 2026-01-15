@@ -335,7 +335,7 @@ export function Dialog({
 
   const baseStyle = isMaximized
     ? {
-        '--dialog-bg': theme.background.surface.elevated,
+        '--dialog-bg': theme.background.surface.default,
         '--dialog-footer-bg': theme.background.surface.default,
         '--dialog-border': theme.border.default,
         '--dialog-footer-border': footerBorder ? theme.border.default : 'transparent',
@@ -349,7 +349,7 @@ export function Dialog({
         left: dialogPosition.x !== 0 ? `${dialogPosition.x}px` : undefined,
         top: dialogPosition.y !== 0 ? `${dialogPosition.y}px` : undefined,
         margin: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? '0' : undefined,
-        '--dialog-bg': theme.background.surface.elevated,
+        '--dialog-bg': theme.background.surface.default,
         '--dialog-footer-bg': theme.background.surface.default,
         '--dialog-border': theme.border.default,
         '--dialog-footer-border': footerBorder ? theme.border.default : 'transparent',

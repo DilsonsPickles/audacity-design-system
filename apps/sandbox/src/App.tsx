@@ -1707,6 +1707,7 @@ function CanvasDemoContent() {
         os={preferences.operatingSystem}
         onClose={() => setIsShareDialogOpen(false)}
         width={400}
+        minHeight={0}
         headerContent={
           <SignInActionBar
             signedIn={isSignedIn}
