@@ -26,7 +26,7 @@
   max-height: calc(100vh - 32px);
   max-width: calc(100vw - 32px);
   min-width: 560px;
-  min-height: 488px;
+  /* min-height is now set via inline style prop (default: 488px) */
   overflow: hidden;
   transition: all 0.2s ease;
   margin: 16px;

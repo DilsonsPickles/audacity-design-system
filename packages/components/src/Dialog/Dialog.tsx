@@ -86,6 +86,11 @@ export interface DialogProps {
    * Inline styles (for CSS custom properties)
    */
   style?: React.CSSProperties;
+  /**
+   * Minimum height for the dialog
+   * @default 488
+   */
+  minHeight?: number | string;
 }
 
 /**
@@ -109,6 +114,7 @@ export function Dialog({
   noPadding = false,
   os = 'macos',
   style: externalStyle,
+  minHeight = 488,
 }: DialogProps) {
   const { theme } = useTheme();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -338,6 +344,7 @@ export function Dialog({
     : {
         width: dialogSize.width > 0 ? `${dialogSize.width}px` : (typeof width === 'number' ? `${width}px` : width),
         height: dialogSize.height > 0 ? `${dialogSize.height}px` : undefined,
+        minHeight: minHeight ? (typeof minHeight === 'number' ? `${minHeight}px` : minHeight) : undefined,
         position: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? 'fixed' : undefined,
         left: dialogPosition.x !== 0 ? `${dialogPosition.x}px` : undefined,
         top: dialogPosition.y !== 0 ? `${dialogPosition.y}px` : undefined,

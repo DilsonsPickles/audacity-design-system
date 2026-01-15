@@ -137,6 +137,7 @@ export const ShareAudioDialog: Story = {
           title="Save to audio.com"
           onClose={() => setIsOpen(false)}
           width={400}
+          minHeight={0}
           headerContent={
             <SignInActionBar
               signedIn={isSignedIn}
@@ -195,6 +196,7 @@ export const CreateAccountDialog: Story = {
           title="Save to audio.com"
           onClose={() => setIsOpen(false)}
           width={420}
+          minHeight={0}
           footer={
             <DialogFooter
               primaryText="Continue"
@@ -306,6 +308,7 @@ export const CompleteFlow: Story = {
             setProjectName('');
           }}
           width={400}
+          minHeight={0}
           headerContent={
             <SignInActionBar
               signedIn={isSignedIn}
@@ -357,6 +360,7 @@ export const CompleteFlow: Story = {
             setPassword('');
           }}
           width={420}
+          minHeight={0}
           footer={
             <DialogFooter
               primaryText="Continue"
