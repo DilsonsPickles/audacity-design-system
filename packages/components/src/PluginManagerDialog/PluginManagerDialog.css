@@ -154,6 +154,18 @@
 /* Footer */
 .plugin-manager-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding: 16px;
+  width: 100%;
+}
+
+.plugin-manager-footer__left {
+  display: flex;
+  gap: 8px;
+}
+
+.plugin-manager-footer__right {
+  display: flex;
+  gap: 8px;
 }

@@ -115,9 +115,22 @@ export function PluginManagerDialog({
       noPadding
       footer={
         <div className="plugin-manager-footer">
-          <Button variant="primary" onClick={onClose}>
-            OK
-          </Button>
+          <div className="plugin-manager-footer__left">
+            <Button variant="secondary" onClick={() => console.log('Rescan')}>
+              Rescan
+            </Button>
+            <Button variant="secondary" onClick={() => console.log('Get more effects')}>
+              Get more effects...
+            </Button>
+          </div>
+          <div className="plugin-manager-footer__right">
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={onClose}>
+              OK
+            </Button>
+          </div>
         </div>
       }
     >
