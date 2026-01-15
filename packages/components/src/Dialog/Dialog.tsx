@@ -188,10 +188,10 @@ export function Dialog({
   useEffect(() => {
     if (isOpen && dialogRef.current && !isMaximized) {
       const widthValue = typeof width === 'number' ? width : parseInt(width as string) || 400;
-      const rect = dialogRef.current.getBoundingClientRect();
+      // Only set width initially - let height be controlled by content unless manually resized
       setDialogSize({
         width: widthValue,
-        height: rect.height || 600,
+        height: 0, // 0 means auto-height based on content
       });
     }
   }, [isOpen, width, isMaximized]);
@@ -344,7 +344,7 @@ export function Dialog({
     : {
         width: dialogSize.width > 0 ? `${dialogSize.width}px` : (typeof width === 'number' ? `${width}px` : width),
         height: dialogSize.height > 0 ? `${dialogSize.height}px` : undefined,
-        minHeight: minHeight ? (typeof minHeight === 'number' ? `${minHeight}px` : minHeight) : undefined,
+        minHeight: minHeight && (typeof minHeight === 'string' || minHeight > 0) ? (typeof minHeight === 'number' ? `${minHeight}px` : minHeight) : undefined,
         position: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? 'fixed' : undefined,
         left: dialogPosition.x !== 0 ? `${dialogPosition.x}px` : undefined,
         top: dialogPosition.y !== 0 ? `${dialogPosition.y}px` : undefined,
