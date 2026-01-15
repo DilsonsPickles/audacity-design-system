@@ -1,0 +1,159 @@
+/* PluginManagerDialog - Plugin management dialog */
+
+.plugin-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.plugin-manager__table {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Table Header */
+.plugin-manager__header {
+  flex-shrink: 0;
+  background-color: var(--plugin-table-header-bg);
+  border-bottom: 1px solid var(--plugin-table-header-border);
+}
+
+.plugin-manager__header-row {
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.plugin-manager__header-cell {
+  padding: 12px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--plugin-table-header-text);
+  border-right: 1px solid var(--plugin-table-header-border);
+  user-select: none;
+}
+
+.plugin-manager__header-cell:last-child {
+  border-right: none;
+}
+
+.plugin-manager__header-cell--name,
+.plugin-manager__header-cell--type {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.plugin-manager__header-cell--name:hover,
+.plugin-manager__header-cell--type:hover {
+  background-color: var(--plugin-table-row-hover-bg);
+}
+
+.plugin-manager__header-cell--sorted {
+  font-weight: 700;
+}
+
+.plugin-manager__header-cell--name {
+  flex: 0 0 250px;
+  width: 250px;
+}
+
+.plugin-manager__header-cell--type {
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+.plugin-manager__header-cell--path {
+  flex: 1;
+  min-width: 200px;
+}
+
+.plugin-manager__header-cell--enabled {
+  flex: 0 0 80px;
+  width: 80px;
+  text-align: center;
+}
+
+.plugin-manager__sort-indicator {
+  margin-left: 8px;
+  font-size: 10px;
+}
+
+/* Table Body */
+.plugin-manager__body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 300px;
+  max-height: 500px;
+}
+
+.plugin-manager__row {
+  display: flex;
+  align-items: center;
+  background-color: var(--plugin-table-row-bg);
+  border-bottom: 1px solid var(--plugin-table-row-border);
+  transition: background-color 0.15s ease;
+}
+
+.plugin-manager__row:hover {
+  background-color: var(--plugin-table-row-hover-bg);
+}
+
+.plugin-manager__cell {
+  padding: 12px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--plugin-table-row-text);
+  border-right: 1px solid var(--plugin-table-row-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugin-manager__cell:last-child {
+  border-right: none;
+}
+
+.plugin-manager__cell--name {
+  flex: 0 0 250px;
+  width: 250px;
+  font-weight: 500;
+}
+
+.plugin-manager__cell--type {
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+.plugin-manager__cell--path {
+  flex: 1;
+  min-width: 200px;
+  color: var(--plugin-table-path-text);
+  font-size: 11px;
+}
+
+.plugin-manager__cell--enabled {
+  flex: 0 0 80px;
+  width: 80px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plugin-manager__cell--enabled input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+/* Footer */
+.plugin-manager-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px;
+}

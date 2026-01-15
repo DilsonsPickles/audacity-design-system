@@ -2,7 +2,7 @@ import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -306,6 +306,19 @@ function CanvasDemoContent() {
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = React.useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
   const [isLabelEditorOpen, setIsLabelEditorOpen] = React.useState(false);
+  const [isPluginManagerOpen, setIsPluginManagerOpen] = React.useState(false);
+
+  // Mock plugin data
+  const [plugins, setPlugins] = React.useState<Plugin[]>([
+    { id: '1', name: 'Reverb', type: 'Nyquist', path: '/Library/Audio/Plug-Ins/Nyquist/reverb.ny', enabled: true },
+    { id: '2', name: 'Delay', type: 'Nyquist', path: '/Library/Audio/Plug-Ins/Nyquist/delay.ny', enabled: true },
+    { id: '3', name: 'Compressor', type: 'Audacity', path: '/Applications/Audacity.app/Contents/PlugIns/compressor', enabled: true },
+    { id: '4', name: 'Noise Gate', type: 'Audacity', path: '/Applications/Audacity.app/Contents/PlugIns/noisegate', enabled: false },
+    { id: '5', name: 'AUGraphicEQ', type: 'AudioUnit', path: '/System/Library/Components/AUGraphicEQ.component', enabled: true },
+    { id: '6', name: 'AUDelay', type: 'AudioUnit', path: '/System/Library/Components/AUDelay.component', enabled: true },
+    { id: '7', name: 'Normalize', type: 'Audacity', path: '/Applications/Audacity.app/Contents/PlugIns/normalize', enabled: true },
+    { id: '8', name: 'Bass Boost', type: 'Nyquist', path: '/Library/Audio/Plug-Ins/Nyquist/bassboost.ny', enabled: false },
+  ]);
 
   // Debug panel state
   const [isDebugPanelOpen, setIsDebugPanelOpen] = React.useState(false);
@@ -1121,6 +1134,16 @@ function CanvasDemoContent() {
     },
   ];
 
+  // Define menu items for Effect menu
+  const effectMenuItems: MenuItem[] = [
+    {
+      label: 'Manage Plugins...',
+      onClick: () => {
+        setIsPluginManagerOpen(true);
+      }
+    },
+  ];
+
   // Define menu items for Generate menu
   const generateMenuItems: MenuItem[] = [
     {
@@ -1175,6 +1198,7 @@ function CanvasDemoContent() {
     File: fileMenuItems,
     Edit: editMenuItems,
     View: viewMenuItems,
+    Effect: effectMenuItems,
     Generate: generateMenuItems,
   };
 
@@ -2219,6 +2243,15 @@ function CanvasDemoContent() {
           // Return the new track's index
           return newTrackIndex;
         }}
+        os={preferences.operatingSystem}
+      />
+
+      {/* Plugin Manager Dialog */}
+      <PluginManagerDialog
+        isOpen={isPluginManagerOpen}
+        plugins={plugins}
+        onChange={setPlugins}
+        onClose={() => setIsPluginManagerOpen(false)}
         os={preferences.operatingSystem}
       />
 

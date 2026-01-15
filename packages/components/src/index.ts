@@ -73,6 +73,7 @@ export * from './LabelEditor';
 export * from './LabelEditorHeader';
 export * from './LabelEditorTableHeader';
 export * from './LabelEditorTableRow';
+export * from './PluginManagerDialog';
 
 /**
  * Audio Components
