@@ -44,6 +44,14 @@ export interface FooterProps {
    */
   tertiaryDisabled?: boolean;
   /**
+   * Custom content for the left side (overrides tertiaryText if provided)
+   */
+  leftContent?: React.ReactNode;
+  /**
+   * Custom content for the right side (overrides primaryText/secondaryText if provided)
+   */
+  rightContent?: React.ReactNode;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -63,11 +71,17 @@ export function Footer({
   primaryDisabled = false,
   secondaryDisabled = false,
   tertiaryDisabled = false,
+  leftContent,
+  rightContent,
   className = '',
 }: FooterProps) {
   return (
     <div className={`footer ${className}`}>
-      {tertiaryText && (
+      {leftContent ? (
+        <div className="footer__left-group">
+          {leftContent}
+        </div>
+      ) : tertiaryText ? (
         <div className="footer__left-group">
           <Button
             variant="secondary"
@@ -78,25 +92,31 @@ export function Footer({
             {tertiaryText}
           </Button>
         </div>
+      ) : null}
+      {rightContent ? (
+        <div className="footer__button-group">
+          {rightContent}
+        </div>
+      ) : (
+        <div className="footer__button-group">
+          <Button
+            variant="secondary"
+            size="default"
+            onClick={onSecondaryClick}
+            disabled={secondaryDisabled}
+          >
+            {secondaryText}
+          </Button>
+          <Button
+            variant="primary"
+            size="default"
+            onClick={onPrimaryClick}
+            disabled={primaryDisabled}
+          >
+            {primaryText}
+          </Button>
+        </div>
       )}
-      <div className="footer__button-group">
-        <Button
-          variant="secondary"
-          size="default"
-          onClick={onSecondaryClick}
-          disabled={secondaryDisabled}
-        >
-          {secondaryText}
-        </Button>
-        <Button
-          variant="primary"
-          size="default"
-          onClick={onPrimaryClick}
-          disabled={primaryDisabled}
-        >
-          {primaryText}
-        </Button>
-      </div>
     </div>
   );
 }

@@ -61,8 +61,11 @@
   height: 16px;
 }
 
-/* Focus state */
+/* Focus state - only show focus ring for keyboard navigation */
 .checkbox:focus {
   outline: none;
+}
+
+.checkbox:focus-visible {
   box-shadow: 0 0 0 var(--focus-ring-size) var(--checkbox-focus-color);
 }

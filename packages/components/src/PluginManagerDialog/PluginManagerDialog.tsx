@@ -5,15 +5,27 @@
 import React, { useState } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
-import { useTheme } from '../ThemeProvider';
+import { Checkbox } from '../Checkbox';
+import { SearchField } from '../SearchField';
+import { Dropdown } from '../Dropdown';
+import { Footer } from '../Footer';
+import { Table } from '../Table/Table';
+import { TableHeader } from '../Table/TableHeader';
+import { TableHeaderCell } from '../Table/TableHeaderCell';
+import { TableBody } from '../Table/TableBody';
+import { TableRow } from '../Table/TableRow';
+import { TableCell } from '../Table/TableCell';
+import type { SortDirection } from '../Table/TableHeaderCell';
 import './PluginManagerDialog.css';
 
 export type PluginType = 'Nyquist' | 'Audacity' | 'AudioUnit';
+export type PluginCategory = 'Effect' | 'Generator' | 'Analyzer' | 'Tool';
 
 export interface Plugin {
   id: string;
   name: string;
   type: PluginType;
+  category: PluginCategory;
   path: string;
   enabled: boolean;
 }
@@ -43,7 +55,6 @@ export interface PluginManagerDialogProps {
 }
 
 type SortColumn = 'name' | 'type' | null;
-type SortDirection = 'asc' | 'desc';
 
 /**
  * PluginManagerDialog component
@@ -55,9 +66,12 @@ export function PluginManagerDialog({
   onClose,
   os = 'macos',
 }: PluginManagerDialogProps) {
-  const { theme } = useTheme();
   const [sortColumn, setSortColumn] = useState<SortColumn>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<PluginType | 'All'>('All');
+  const [categoryFilter, setCategoryFilter] = useState<PluginCategory | 'All'>('All');
+  const [showFilter, setShowFilter] = useState<'All' | 'Enabled' | 'Disabled'>('All');
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -79,8 +93,41 @@ export function PluginManagerDialog({
     onChange(newPlugins);
   };
 
-  // Sort plugins
-  const sortedPlugins = [...plugins].sort((a, b) => {
+  // Filter and sort plugins
+  const filteredPlugins = plugins.filter(plugin => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = (
+        plugin.name.toLowerCase().includes(query) ||
+        plugin.type.toLowerCase().includes(query) ||
+        plugin.path.toLowerCase().includes(query)
+      );
+      if (!matchesSearch) return false;
+    }
+
+    // Type filter
+    if (typeFilter !== 'All' && plugin.type !== typeFilter) {
+      return false;
+    }
+
+    // Category filter
+    if (categoryFilter !== 'All' && plugin.category !== categoryFilter) {
+      return false;
+    }
+
+    // Show filter
+    if (showFilter === 'Enabled' && !plugin.enabled) {
+      return false;
+    }
+    if (showFilter === 'Disabled' && plugin.enabled) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const sortedPlugins = [...filteredPlugins].sort((a, b) => {
     if (!sortColumn) return 0;
 
     let comparison = 0;
@@ -93,17 +140,6 @@ export function PluginManagerDialog({
     return sortDirection === 'asc' ? comparison : -comparison;
   });
 
-  const style = {
-    '--plugin-table-header-bg': theme.background.surface.subtle,
-    '--plugin-table-header-text': theme.foreground.text.primary,
-    '--plugin-table-header-border': theme.border.default,
-    '--plugin-table-row-bg': theme.background.surface.default,
-    '--plugin-table-row-hover-bg': theme.background.surface.hover,
-    '--plugin-table-row-text': theme.foreground.text.primary,
-    '--plugin-table-row-border': theme.border.default,
-    '--plugin-table-path-text': theme.foreground.text.secondary,
-  } as React.CSSProperties;
-
   return (
     <Dialog
       isOpen={isOpen}
@@ -114,87 +150,121 @@ export function PluginManagerDialog({
       os={os}
       noPadding
       footer={
-        <div className="plugin-manager-footer">
-          <div className="plugin-manager-footer__left">
-            <Button variant="secondary" onClick={() => console.log('Rescan')}>
-              Rescan
-            </Button>
-            <Button variant="secondary" onClick={() => console.log('Get more effects')}>
-              Get more effects...
-            </Button>
-          </div>
-          <div className="plugin-manager-footer__right">
-            <Button variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={onClose}>
-              OK
-            </Button>
-          </div>
-        </div>
+        <Footer
+          leftContent={
+            <>
+              <Button variant="secondary" onClick={() => console.log('Rescan')}>
+                Rescan
+              </Button>
+              <Button variant="secondary" onClick={() => console.log('Get more effects')}>
+                Get more effects...
+              </Button>
+            </>
+          }
+          secondaryText="Cancel"
+          primaryText="OK"
+          onSecondaryClick={onClose}
+          onPrimaryClick={onClose}
+        />
       }
     >
-      <div className="plugin-manager" style={style}>
-        <div className="plugin-manager__table">
-          {/* Table Header */}
-          <div className="plugin-manager__header">
-            <div className="plugin-manager__header-row">
-              <div
-                className={`plugin-manager__header-cell plugin-manager__header-cell--name ${sortColumn === 'name' ? 'plugin-manager__header-cell--sorted' : ''}`}
-                onClick={() => handleSort('name')}
-              >
-                Name
-                {sortColumn === 'name' && (
-                  <span className="plugin-manager__sort-indicator">
-                    {sortDirection === 'asc' ? '▲' : '▼'}
-                  </span>
-                )}
-              </div>
-              <div
-                className={`plugin-manager__header-cell plugin-manager__header-cell--type ${sortColumn === 'type' ? 'plugin-manager__header-cell--sorted' : ''}`}
-                onClick={() => handleSort('type')}
-              >
-                Type
-                {sortColumn === 'type' && (
-                  <span className="plugin-manager__sort-indicator">
-                    {sortDirection === 'asc' ? '▲' : '▼'}
-                  </span>
-                )}
-              </div>
-              <div className="plugin-manager__header-cell plugin-manager__header-cell--path">
-                Path
-              </div>
-              <div className="plugin-manager__header-cell plugin-manager__header-cell--enabled">
-                Enabled
-              </div>
+      <div className="plugin-manager-filters">
+        <div className="plugin-manager-filters__row">
+          <div className="plugin-manager-filters__left">
+            <div className="plugin-manager-filter">
+              <label className="plugin-manager-filter__label">Type</label>
+              <Dropdown
+                value={typeFilter}
+                onChange={(value) => setTypeFilter(value as PluginType | 'All')}
+                options={[
+                  { value: 'All', label: 'All Types' },
+                  { value: 'Nyquist', label: 'Nyquist' },
+                  { value: 'Audacity', label: 'Audacity' },
+                  { value: 'AudioUnit', label: 'AudioUnit' },
+                ]}
+              />
+            </div>
+            <div className="plugin-manager-filter">
+              <label className="plugin-manager-filter__label">Category</label>
+              <Dropdown
+                value={categoryFilter}
+                onChange={(value) => setCategoryFilter(value as PluginCategory | 'All')}
+                options={[
+                  { value: 'All', label: 'All Categories' },
+                  { value: 'Effect', label: 'Effect' },
+                  { value: 'Generator', label: 'Generator' },
+                  { value: 'Analyzer', label: 'Analyzer' },
+                  { value: 'Tool', label: 'Tool' },
+                ]}
+              />
+            </div>
+            <div className="plugin-manager-filter">
+              <label className="plugin-manager-filter__label">Show</label>
+              <Dropdown
+                value={showFilter}
+                onChange={(value) => setShowFilter(value as 'All' | 'Enabled' | 'Disabled')}
+                options={[
+                  { value: 'All', label: 'All Plugins' },
+                  { value: 'Enabled', label: 'Enabled' },
+                  { value: 'Disabled', label: 'Disabled' },
+                ]}
+              />
             </div>
           </div>
-
-          {/* Table Body */}
-          <div className="plugin-manager__body">
-            {sortedPlugins.map((plugin) => (
-              <div key={plugin.id} className="plugin-manager__row">
-                <div className="plugin-manager__cell plugin-manager__cell--name">
-                  {plugin.name}
-                </div>
-                <div className="plugin-manager__cell plugin-manager__cell--type">
-                  {plugin.type}
-                </div>
-                <div className="plugin-manager__cell plugin-manager__cell--path">
-                  {plugin.path}
-                </div>
-                <div className="plugin-manager__cell plugin-manager__cell--enabled">
-                  <input
-                    type="checkbox"
-                    checked={plugin.enabled}
-                    onChange={() => handleToggleEnabled(plugin.id)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search plugins..."
+          />
         </div>
       </div>
+      <Table minBodyHeight={480} maxBodyHeight={480}>
+        <TableHeader>
+          <TableHeaderCell
+            sortable
+            sortDirection={sortColumn === 'name' ? sortDirection : null}
+            onSort={() => handleSort('name')}
+            width={250}
+          >
+            Name
+          </TableHeaderCell>
+          <TableHeaderCell
+            sortable
+            sortDirection={sortColumn === 'type' ? sortDirection : null}
+            onSort={() => handleSort('type')}
+            width={120}
+          >
+            Type
+          </TableHeaderCell>
+          <TableHeaderCell flexGrow>
+            Path
+          </TableHeaderCell>
+          <TableHeaderCell width={80} align="center">
+            Enabled
+          </TableHeaderCell>
+        </TableHeader>
+        <TableBody>
+          {sortedPlugins.map((plugin) => (
+            <TableRow key={plugin.id}>
+              <TableCell width={250}>
+                {plugin.name}
+              </TableCell>
+              <TableCell width={120}>
+                {plugin.type}
+              </TableCell>
+              <TableCell flexGrow>
+                {plugin.path}
+              </TableCell>
+              <TableCell width={80} align="center">
+                <Checkbox
+                  checked={plugin.enabled}
+                  onChange={() => handleToggleEnabled(plugin.id)}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </Dialog>
   );
 }
