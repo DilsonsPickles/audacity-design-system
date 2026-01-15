@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTheme, LabelRectangle } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTheme, RegionLabel, PointLabel } from '@audacity-ui/components';
 import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import { usePreferences } from '@audacity-ui/components';
@@ -103,7 +103,7 @@ export function Canvas({
   const [hoveredBanner, setHoveredBanner] = useState<string | null>(null);
 
   // Track label selection state for click cycle (label -> all tracks -> label)
-  const labelClickStateRef = useRef<{ labelKeyId: string; timestamp: number; state: 'label' | 'all-tracks' } | null>(null);
+  // const labelClickStateRef = useRef<{ labelKeyId: string; timestamp: number; state: 'label' | 'all-tracks' } | null>(null);
 
   // Label dragging state - stores initial positions for all labels being dragged
   const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialStartTime: number; initialEndTime?: number; initialClientX: number; initialClientY: number }> | null>(null);
@@ -1476,6 +1476,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
                 return track.labels.map((label, labelIndex) => {
                   const x = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
                   const type = label.endTime !== undefined ? 'region' : 'point';
+                  // @ts-ignore - width is legacy code, keeping for reference
                   const width = label.endTime !== undefined
                     ? (label.endTime - label.startTime) * pixelsPerSecond
                     : 225;
