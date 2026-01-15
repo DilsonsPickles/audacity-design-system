@@ -80,6 +80,7 @@
 /* Body without padding - for dialogs that need custom padding */
 .dialog__body--no-padding {
   padding: 0;
+  overflow: hidden;
 }
 
 /* Footer */
