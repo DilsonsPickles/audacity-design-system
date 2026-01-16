@@ -386,12 +386,16 @@ function CanvasDemoContent() {
   // 50 seconds total duration + 12px left padding
   const TOTAL_DURATION = 50; // seconds
   const LEFT_PADDING = 12; // pixels
-  const MAX_CANVAS_WIDTH = 32000; // Safe limit below browser max (~32,767px)
+  const MAX_CANVAS_WIDTH = 30000; // Safe limit well below browser max (~32,767px)
 
   // Calculate max pixels per second based on canvas width limit
-  const maxPixelsPerSecond = Math.floor((MAX_CANVAS_WIDTH - LEFT_PADDING) / TOTAL_DURATION);
+  // Subtract extra margin to account for Math.ceil() rounding
+  const maxPixelsPerSecond = Math.floor((MAX_CANVAS_WIDTH - LEFT_PADDING - 100) / TOTAL_DURATION);
 
-  const timelineWidth = Math.ceil(TOTAL_DURATION * pixelsPerSecond) + LEFT_PADDING;
+  const timelineWidth = Math.min(
+    Math.ceil(TOTAL_DURATION * pixelsPerSecond) + LEFT_PADDING,
+    MAX_CANVAS_WIDTH
+  );
 
   // Zoom functions
   const zoomIn = () => {
