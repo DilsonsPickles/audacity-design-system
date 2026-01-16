@@ -57,6 +57,7 @@ interface DragState {
 
 const CLICK_THRESHOLD = 10; // Pixels for detecting clicks on existing control points
 const ENVELOPE_LINE_FAR_THRESHOLD = 4; // Max distance from line for interaction
+const ENVELOPE_PROXIMITY_THRESHOLD = 16; // Pixels for cursor change and event capture
 const SNAP_THRESHOLD_TIME = 0.05; // Horizontal snapping threshold (50ms)
 const TIME_EPSILON = 0.001; // For detecting clip origin (time = 0)
 const ENVELOPE_MOVE_THRESHOLD = 3; // Pixels to distinguish click from drag
@@ -165,16 +166,50 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
   const dragStateRef = useRef<DragState | null>(null);
   const [localHiddenIndices, setLocalHiddenIndices] = useState<number[]>([]);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; db: number } | null>(null);
+  const [isNearEnvelope, setIsNearEnvelope] = useState(false);
+
+  // Helper function to check if mouse is near the envelope (within actual hit thresholds)
+  const checkProximityToEnvelope = (mouseX: number, mouseY: number): boolean => {
+    // Check proximity to existing points (10px hit area)
+    for (let i = 0; i < envelopePoints.length; i++) {
+      const point = envelopePoints[i];
+      const px = (point.time / duration) * width;
+      const py = dbToYNonLinear(point.db, height);
+      const distance = Math.sqrt((mouseX - px) ** 2 + (mouseY - py) ** 2);
+      if (distance <= CLICK_THRESHOLD) {
+        return true;
+      }
+    }
+
+    // Check proximity to envelope line segments (4px hit area)
+    const segments = buildEnvelopeSegments(envelopePoints, width, height, duration);
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      const dist = distanceToLineSegment(mouseX, mouseY, segment.x1, segment.y1, segment.x2, segment.y2);
+      if (dist <= ENVELOPE_LINE_FAR_THRESHOLD) {
+        return true;
+      }
+    }
+
+    return false;
+  };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!enabled || !containerRef.current) return;
 
-    // ALWAYS stop propagation to prevent Canvas from handling the click
-    e.stopPropagation();
-
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
+
+    // Only handle envelope interactions if mouse is near the envelope
+    const nearEnvelope = checkProximityToEnvelope(mouseX, mouseY);
+    if (!nearEnvelope) {
+      // Don't stop propagation - allow time selection to work
+      return;
+    }
+
+    // Stop propagation only when near envelope
+    e.stopPropagation();
 
     // Check for existing point click
     for (let i = 0; i < envelopePoints.length; i++) {
@@ -436,33 +471,40 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
 
   // Handle hover detection
   const handleContainerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current || !onHoveredPointChange) return;
+    if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
+    // Check proximity to envelope for cursor change
+    const nearEnvelope = checkProximityToEnvelope(mouseX, mouseY);
+    setIsNearEnvelope(nearEnvelope);
+
     // Check if hovering over a point
-    let hoveredIndex: number | null = null;
-    for (let i = 0; i < envelopePoints.length; i++) {
-      const point = envelopePoints[i];
-      const px = (point.time / duration) * width;
-      const py = dbToYNonLinear(point.db, height);
+    if (onHoveredPointChange) {
+      let hoveredIndex: number | null = null;
+      for (let i = 0; i < envelopePoints.length; i++) {
+        const point = envelopePoints[i];
+        const px = (point.time / duration) * width;
+        const py = dbToYNonLinear(point.db, height);
 
-      const dx = mouseX - px;
-      const dy = mouseY - py;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+        const dx = mouseX - px;
+        const dy = mouseY - py;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance <= CLICK_THRESHOLD) {
-        hoveredIndex = i;
-        break;
+        if (distance <= CLICK_THRESHOLD) {
+          hoveredIndex = i;
+          break;
+        }
       }
-    }
 
-    onHoveredPointChange(hoveredIndex);
+      onHoveredPointChange(hoveredIndex);
+    }
   };
 
   const handleContainerMouseLeave = () => {
+    setIsNearEnvelope(false);
     if (onHoveredPointChange) {
       onHoveredPointChange(null);
     }
@@ -480,20 +522,27 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
     <>
       <div
         ref={containerRef}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          handleMouseDown(e);
-        }}
+        onMouseDown={handleMouseDown}
         onMouseMove={handleContainerMouseMove}
         onMouseLeave={handleContainerMouseLeave}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          // Only stop propagation if near envelope
+          if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            if (checkProximityToEnvelope(mouseX, mouseY)) {
+              e.stopPropagation();
+            }
+          }
+        }}
         style={{
           position: 'absolute',
           left: x,
           top: y,
           width,
           height,
-          cursor: 'crosshair',
+          cursor: isNearEnvelope ? 'crosshair' : 'text',
           pointerEvents: enabled ? 'auto' : 'none',
         }}
       />
