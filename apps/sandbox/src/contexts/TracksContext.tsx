@@ -402,7 +402,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         };
       }
 
-      return { ...state, tracks: newTracks, timeSelection: newTimeSelection };
+      // Update clip duration indicator if the moved clip is selected
+      let newClipDurationIndicator = state.clipDurationIndicator;
+      if (clip.selected && state.clipDurationIndicator) {
+        newClipDurationIndicator = {
+          startTime: newStartTime,
+          endTime: newStartTime + clip.duration,
+        };
+      }
+
+      return { ...state, tracks: newTracks, timeSelection: newTimeSelection, clipDurationIndicator: newClipDurationIndicator };
     }
 
     case 'ADD_CLIP': {
@@ -512,6 +521,10 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'TRIM_CLIP': {
       const { trackIndex, clipId, newTrimStart, newDuration, newStart } = action.payload;
+
+      // Find the clip to check if it's selected
+      const clip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
@@ -534,7 +547,18 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           return clip;
         }),
       };
-      return { ...state, tracks: newTracks };
+
+      // Update clip duration indicator if the trimmed clip is selected
+      let newClipDurationIndicator = state.clipDurationIndicator;
+      if (clip?.selected && state.clipDurationIndicator) {
+        const finalStart = newStart !== undefined ? newStart : clip.start;
+        newClipDurationIndicator = {
+          startTime: finalStart,
+          endTime: finalStart + newDuration,
+        };
+      }
+
+      return { ...state, tracks: newTracks, clipDurationIndicator: newClipDurationIndicator };
     }
 
     case 'ADD_LABEL': {
