@@ -67,6 +67,67 @@ export interface EnvelopePointData {
   db: number;
 }
 
+/**
+ * Get the gain multiplier (linear, 0-1+) at a given time from envelope points
+ * Uses linear interpolation between points
+ * @param time - Time in seconds
+ * @param points - Array of envelope points
+ * @param duration - Clip duration in seconds
+ * @returns Gain multiplier (0 = silence, 1 = unity, >1 = amplification)
+ */
+export function getEnvelopeGainAtTime(
+  time: number,
+  points: EnvelopePointData[],
+  duration: number
+): number {
+  // No points = unity gain (0dB = 1.0 multiplier)
+  if (!points || points.length === 0) {
+    return 1.0;
+  }
+
+  // Clamp time to clip bounds
+  const t = Math.max(0, Math.min(duration, time));
+
+  // Find the two points that bracket this time
+  let beforePoint: EnvelopePointData | null = null;
+  let afterPoint: EnvelopePointData | null = null;
+
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i];
+    if (point.time <= t) {
+      beforePoint = point;
+    }
+    if (point.time >= t && !afterPoint) {
+      afterPoint = point;
+    }
+  }
+
+  // Determine the dB value at this time
+  let db: number;
+
+  if (!beforePoint && !afterPoint) {
+    // No points at all (shouldn't happen, but handle gracefully)
+    db = 0;
+  } else if (!beforePoint) {
+    // Before first point: use first point's dB
+    db = afterPoint!.db;
+  } else if (!afterPoint) {
+    // After last point: use last point's dB
+    db = beforePoint.db;
+  } else if (beforePoint.time === afterPoint.time) {
+    // Exactly on a point
+    db = beforePoint.db;
+  } else {
+    // Between two points: linear interpolation in dB space
+    const ratio = (t - beforePoint.time) / (afterPoint.time - beforePoint.time);
+    db = beforePoint.db + ratio * (afterPoint.db - beforePoint.db);
+  }
+
+  // Convert dB to linear gain multiplier
+  // Formula: gain = 10^(dB/20)
+  return Math.pow(10, db / 20);
+}
+
 export interface RenderEnvelopeLineOptions {
   /** Canvas 2D context */
   ctx: CanvasRenderingContext2D;

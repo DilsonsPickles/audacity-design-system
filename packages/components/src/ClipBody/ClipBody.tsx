@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
 import { renderMonoSpectrogram, renderStereoSpectrogram } from '../utils/spectrogram';
-import { renderEnvelopeLine, renderEnvelopePoints, type EnvelopePointData } from '../utils/envelope';
+import { renderEnvelopeLine, renderEnvelopePoints, getEnvelopeGainAtTime, type EnvelopePointData } from '../utils/envelope';
 import './ClipBody.css';
 
 export type ClipBodyVariant = 'waveform' | 'spectrogram';
@@ -261,6 +261,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             max = Math.max(max, sample);
           }
 
+          // Apply envelope gain to waveform amplitude
+          const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          min *= envelopeGain;
+          max *= envelopeGain;
+
           const y1 = lChannelY - max * maxAmplitude;
           const y2 = lChannelY - min * maxAmplitude;
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
@@ -290,6 +296,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             min = Math.min(min, sample);
             max = Math.max(max, sample);
           }
+
+          // Apply envelope gain to waveform amplitude
+          const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          min *= envelopeGain;
+          max *= envelopeGain;
 
           const y1 = rChannelY - max * maxAmplitude;
           const y2 = rChannelY - min * maxAmplitude;
@@ -323,6 +335,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             min = Math.min(min, sample);
             max = Math.max(max, sample);
           }
+
+          // Apply envelope gain to waveform amplitude
+          const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          min *= envelopeGain;
+          max *= envelopeGain;
 
           const y1 = waveformCenterY - max * maxAmplitude;
           const y2 = waveformCenterY - min * maxAmplitude;
@@ -431,6 +449,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
+        // Apply envelope gain to waveform amplitude
+        const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+        const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+        min *= envelopeGain;
+        max *= envelopeGain;
+
         // Choose color based on whether THIS pixel is within time selection
         const isPixelInSelection = px >= selStartPx && px < selEndPx;
         const waveformColor = isPixelInSelection ? timeSelectionWaveformColor : defaultWaveformColor;
@@ -464,6 +488,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           min = Math.min(min, sample);
           max = Math.max(max, sample);
         }
+
+        // Apply envelope gain to waveform amplitude
+        const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+        const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+        min *= envelopeGain;
+        max *= envelopeGain;
 
         // Choose color based on whether THIS pixel is within time selection
         const isPixelInSelection = px >= selStartPx && px < selEndPx;
@@ -523,6 +553,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           min = Math.min(min, sample);
           max = Math.max(max, sample);
         }
+
+        // Apply envelope gain to waveform amplitude
+        const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+        const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+        min *= envelopeGain;
+        max *= envelopeGain;
 
         // Choose color based on whether THIS pixel is within time selection
         const isPixelInSelection = px >= selStartPx && px < selEndPx;
