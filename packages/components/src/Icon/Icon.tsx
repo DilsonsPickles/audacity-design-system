@@ -41,6 +41,7 @@ export type IconName =
   | 'volume'
   | 'metronome'
   | 'plug'
+  | 'plugins'
   | 'microphone'
   | 'keyboard'
   | 'label'
@@ -88,6 +89,7 @@ const ICON_MAP: Record<IconName, string> = {
   volume: '\uEF4E',
   metronome: '\uEF20',
   plug: '\uF440',
+  plugins: '\uF440',
   microphone: '\uF41B',
   keyboard: '\uF35D',
   label: '\uF3C7',
