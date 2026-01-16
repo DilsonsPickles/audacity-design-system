@@ -55,6 +55,14 @@ export interface DebugPanelProps {
   // Cut mode
   cutMode: 'split' | 'ripple';
   onCutModeChange: (value: 'split' | 'ripple') => void;
+
+  // Envelope color
+  envelopeColor: 'yellow-green' | 'bright-cyan' | 'hot-pink';
+  onEnvelopeColorChange: (value: 'yellow-green' | 'bright-cyan' | 'hot-pink') => void;
+
+  // Control point style
+  controlPointStyle: 'musescore' | 'au4';
+  onControlPointStyleChange: (value: 'musescore' | 'au4') => void;
 }
 
 export function DebugPanel({
@@ -83,6 +91,10 @@ export function DebugPanel({
   onAccessibilityProfileChange,
   cutMode,
   onCutModeChange,
+  envelopeColor,
+  onEnvelopeColorChange,
+  controlPointStyle,
+  onControlPointStyleChange,
 }: DebugPanelProps) {
   return (
     <Dialog
@@ -290,6 +302,188 @@ export function DebugPanel({
                 Ripple (shifts timeline)
               </span>
             </label>
+          </div>
+        </div>
+
+        {/* Envelope Appearance Section */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Envelope Appearance
+          </h3>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}>
+            {/* Color options */}
+            <div>
+              <label style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '11px',
+                fontWeight: 600,
+                lineHeight: '14px',
+                color: '#14151a',
+                opacity: 0.7,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: '8px',
+                display: 'block',
+              }}>
+                Color
+              </label>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="radio"
+                    value="yellow-green"
+                    checked={envelopeColor === 'yellow-green'}
+                    onChange={(e) => onEnvelopeColorChange(e.target.value as 'yellow-green' | 'bright-cyan' | 'hot-pink')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    lineHeight: '16px',
+                    color: '#14151a',
+                  }}>
+                    Yellow-green (#b8ff00)
+                  </span>
+                </label>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="radio"
+                    value="bright-cyan"
+                    checked={envelopeColor === 'bright-cyan'}
+                    onChange={(e) => onEnvelopeColorChange(e.target.value as 'yellow-green' | 'bright-cyan' | 'hot-pink')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    lineHeight: '16px',
+                    color: '#14151a',
+                  }}>
+                    Bright cyan (#00e5ff)
+                  </span>
+                </label>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="radio"
+                    value="hot-pink"
+                    checked={envelopeColor === 'hot-pink'}
+                    onChange={(e) => onEnvelopeColorChange(e.target.value as 'yellow-green' | 'bright-cyan' | 'hot-pink')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    lineHeight: '16px',
+                    color: '#14151a',
+                  }}>
+                    Hot pink (#ff007f)
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Control point style options */}
+            <div>
+              <label style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '11px',
+                fontWeight: 600,
+                lineHeight: '14px',
+                color: '#14151a',
+                opacity: 0.7,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: '8px',
+                display: 'block',
+              }}>
+                Control Point Style
+              </label>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="radio"
+                    value="musescore"
+                    checked={controlPointStyle === 'musescore'}
+                    onChange={(e) => onControlPointStyleChange(e.target.value as 'musescore' | 'au4')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    lineHeight: '16px',
+                    color: '#14151a',
+                  }}>
+                    MuseScore style (6px, 1.5px stroke)
+                  </span>
+                </label>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="radio"
+                    value="au4"
+                    checked={controlPointStyle === 'au4'}
+                    onChange={(e) => onControlPointStyleChange(e.target.value as 'musescore' | 'au4')}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    lineHeight: '16px',
+                    color: '#14151a',
+                  }}>
+                    AU4 style (8px, 2px stroke)
+                  </span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 

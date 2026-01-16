@@ -46,6 +46,11 @@ export interface CanvasProps {
    * @default true
    */
   showRmsInWaveform?: boolean;
+  /**
+   * Control point style for envelope points
+   * @default 'musescore'
+   */
+  controlPointStyle?: 'musescore' | 'au4';
 }
 
 /**
@@ -64,6 +69,7 @@ export function Canvas({
   onTrackFocusChange,
   keyboardFocusedTrack = null,
   showRmsInWaveform = true,
+  controlPointStyle = 'musescore',
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -76,6 +82,27 @@ export function Canvas({
 
   // Use theme token as default if not provided
   const bgColor = backgroundColor ?? theme.background.canvas.default;
+
+  // Calculate envelope control point sizes based on style
+  // MuseScore: 6px diameter (3px radius), 1.5px stroke → outer: 3px, inner: 1.5px
+  // AU4: 8px diameter (4px radius), 2px stroke → outer: 4px, inner: 2px
+  const envelopePointSizes = React.useMemo(() => {
+    if (controlPointStyle === 'au4') {
+      return {
+        outerRadius: 4,
+        innerRadius: 2,
+        outerRadiusHover: 5,
+        innerRadiusHover: 2.5,
+      };
+    }
+    // musescore (default)
+    return {
+      outerRadius: 3,
+      innerRadius: 1.5,
+      outerRadiusHover: 4,
+      innerRadiusHover: 2,
+    };
+  }, [controlPointStyle]);
 
   // Clip dragging state
   const clipDragStateRef = useRef<ClipDragState | null>(null);
@@ -940,6 +967,7 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
 
                   // The actual trimming happens in the mousemove handler
                 }}
+                envelopePointSizes={envelopePointSizes}
               />
 
               {/* Render labels for label tracks */}

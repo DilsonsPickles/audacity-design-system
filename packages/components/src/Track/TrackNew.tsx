@@ -160,6 +160,16 @@ export interface TrackProps {
    * Clip style preference ('classic' or 'colourful')
    */
   clipStyle?: 'classic' | 'colourful';
+
+  /**
+   * Envelope control point sizes (for MuseScore vs AU4 style)
+   */
+  envelopePointSizes?: {
+    outerRadius: number;
+    innerRadius: number;
+    outerRadiusHover: number;
+    innerRadiusHover: number;
+  };
 }
 
 // Map track index to color
@@ -201,6 +211,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   timeSelection,
   isTimeSelectionDragging = false,
   clipStyle = 'colourful',
+  envelopePointSizes,
 }) => {
   const trackColor = getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -395,6 +406,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             pixelsPerSecond={pixelsPerSecond}
             hiddenPointIndices={clipHiddenPoints.get(clip.id) || []}
             hoveredPointIndex={clipHoveredPoints.get(clip.id) ?? null}
+            envelopePointSizes={envelopePointSizes}
             onHeaderClick={(shiftKey) => onClipClick?.(clip.id, shiftKey)}
             onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
             onTrimEdge={

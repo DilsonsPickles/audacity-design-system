@@ -278,7 +278,7 @@ const sampleTracks = [
 type Workspace = 'classic' | 'spectral-editing';
 
 function CanvasDemoContent() {
-  const { theme } = useTheme();
+  const { theme: baseTheme } = useTheme();
   const { state, dispatch } = useTracks();
   const { spectralSelection } = useSpectralSelection();
   const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
@@ -376,6 +376,43 @@ function CanvasDemoContent() {
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
+  const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
+  const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('musescore');
+
+  // Create a modified theme with the selected envelope color
+  const theme = React.useMemo(() => {
+    const envelopeColors = {
+      'yellow-green': {
+        line: '#b8ff00',
+        lineHover: '#d4ff33',
+        point: '#b8ff00',
+        hitZone: '#b8ff0026',
+      },
+      'bright-cyan': {
+        line: '#00e5ff',
+        lineHover: '#33eeff',
+        point: '#00e5ff',
+        hitZone: '#00e5ff26',
+      },
+      'hot-pink': {
+        line: '#ff007f',
+        lineHover: '#ff33a3',
+        point: '#ff007f',
+        hitZone: '#ff007f26',
+      },
+    };
+
+    return {
+      ...baseTheme,
+      audio: {
+        ...baseTheme.audio,
+        envelope: {
+          ...baseTheme.audio.envelope,
+          ...envelopeColors[envelopeColor],
+        },
+      },
+    };
+  }, [baseTheme, envelopeColor]);
 
   // View options
   const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(true);
@@ -1704,21 +1741,24 @@ function CanvasDemoContent() {
               }}
             >
               <div style={{ minWidth: '5000px', minHeight: `${canvasHeight}px`, position: 'relative', cursor: 'text' }}>
-                <Canvas
-                  pixelsPerSecond={100}
-                  width={5000}
-                  leftPadding={12}
-                  keyboardFocusedTrack={keyboardFocusedTrack}
-                  showRmsInWaveform={showRmsInWaveform}
-                  onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
-                    setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
-                  }}
-                  onTrackFocusChange={(trackIndex, hasFocus) => {
-                    setKeyboardFocusedTrack(hasFocus ? trackIndex : null);
-                    setControlPanelHasFocus(null);
-                  }}
-                  onHeightChange={setCanvasHeight}
-                />
+                <ThemeProvider theme={theme}>
+                  <Canvas
+                    pixelsPerSecond={100}
+                    width={5000}
+                    leftPadding={12}
+                    keyboardFocusedTrack={keyboardFocusedTrack}
+                    showRmsInWaveform={showRmsInWaveform}
+                    controlPointStyle={controlPointStyle}
+                    onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
+                      setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
+                    }}
+                    onTrackFocusChange={(trackIndex, hasFocus) => {
+                      setKeyboardFocusedTrack(hasFocus ? trackIndex : null);
+                      setControlPanelHasFocus(null);
+                    }}
+                    onHeightChange={setCanvasHeight}
+                  />
+                </ThemeProvider>
                 {/* Playhead stalk only (no icon) - extends to fill scrollable area */}
                 <PlayheadCursor
                   position={state.playheadPosition}
@@ -2355,6 +2395,10 @@ function CanvasDemoContent() {
         onAccessibilityProfileChange={setProfile}
         cutMode={state.cutMode}
         onCutModeChange={(mode) => dispatch({ type: 'SET_CUT_MODE', payload: mode })}
+        envelopeColor={envelopeColor}
+        onEnvelopeColorChange={setEnvelopeColor}
+        controlPointStyle={controlPointStyle}
+        onControlPointStyleChange={setControlPointStyle}
       />
 
       {/* Clip Context Menu */}

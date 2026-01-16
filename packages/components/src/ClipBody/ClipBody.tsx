@@ -66,6 +66,13 @@ export interface ClipBodyProps {
   inTimeSelection?: boolean;
   /** Time selection range (for calculating overlay position) */
   timeSelectionRange?: { startTime: number; endTime: number } | null;
+  /** Envelope control point sizes (for MuseScore vs AU4 style) */
+  envelopePointSizes?: {
+    outerRadius: number;
+    innerRadius: number;
+    outerRadiusHover: number;
+    innerRadiusHover: number;
+  };
 }
 
 /**
@@ -104,6 +111,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   hoveredPointIndex = null,
   inTimeSelection = false,
   timeSelectionRange = null,
+  envelopePointSizes,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
@@ -651,11 +659,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           height: envelopeHeight,
           color: theme.audio.envelope.point,
           centerColor: theme.audio.envelope.pointCenter,
-          hoveredPointIndex
+          hoveredPointIndex,
+          ...(envelopePointSizes || {})
         });
       }
     }
-  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, hiddenPointIndices, hoveredPointIndex, theme]);
+  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, hiddenPointIndices, hoveredPointIndex, theme, envelopePointSizes]);
 
   const className = [
     'clip-body',

@@ -71,6 +71,13 @@ export interface ClipDisplayProps {
   clipStartTime?: number;
   /** Time selection range (for calculating overlay position) */
   timeSelectionRange?: { startTime: number; endTime: number } | null;
+  /** Envelope control point sizes (for MuseScore vs AU4 style) */
+  envelopePointSizes?: {
+    outerRadius: number;
+    innerRadius: number;
+    outerRadiusHover: number;
+    innerRadiusHover: number;
+  };
 }
 
 /**
@@ -112,6 +119,7 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
   inTimeSelection = false,
   clipStartTime = 0,
   timeSelectionRange = null,
+  envelopePointSizes,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
@@ -249,6 +257,7 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
         inTimeSelection={inTimeSelection}
         clipStartTime={clipStartTime}
         timeSelectionRange={timeSelectionRange}
+        envelopePointSizes={envelopePointSizes}
       />
 
       {/* Trim handles */}

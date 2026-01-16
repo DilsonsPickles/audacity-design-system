@@ -1,6 +1,6 @@
 # Remaining Theme Migrations
 
-## Completed So Far: 15 Components ✅
+## Completed So Far: 16 Components ✅
 
 1. ContextMenu, ContextMenuItem, ClipContextMenu
 2. PreferencePanel, PreferenceThumbnail
@@ -9,6 +9,7 @@
 5. SearchField, NumberStepper
 6. Tooltip, ProgressBar
 7. TimeCode
+8. ClipBody (envelope rendering)
 
 ## Remaining: 15 Components
 
@@ -247,8 +248,8 @@ After migrating all components:
 
 ## Current Status
 
-**Migrated:** 15/30 components (50%)
-**Remaining:** 15 components
+**Migrated:** 16/30 components (53%)
+**Remaining:** 14 components
 **Build:** ✅ Passing
 **Sandbox:** ✅ Running
 **Theme Toggle:** ✅ Functional

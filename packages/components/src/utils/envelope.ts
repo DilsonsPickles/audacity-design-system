@@ -274,6 +274,14 @@ export interface RenderEnvelopePointsOptions {
   hiddenPointIndices?: number[];
   /** Index of point being hovered (for visual feedback) */
   hoveredPointIndex?: number | null;
+  /** Outer radius for normal state (default: 4) */
+  outerRadius?: number;
+  /** Inner radius for normal state (default: 2) */
+  innerRadius?: number;
+  /** Outer radius for hover state (default: 5) */
+  outerRadiusHover?: number;
+  /** Inner radius for hover state (default: 3) */
+  innerRadiusHover?: number;
 }
 
 /**
@@ -292,7 +300,11 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     color = 'red',
     centerColor = '#fff',
     hiddenPointIndices = [],
-    hoveredPointIndex
+    hoveredPointIndex,
+    outerRadius: outerRadiusNormal = 4,
+    innerRadius: innerRadiusNormal = 2,
+    outerRadiusHover: outerRadiusHoverValue = 5,
+    innerRadiusHover: innerRadiusHoverValue = 3,
   } = options;
 
   points.forEach((point, index) => {
@@ -303,8 +315,8 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     const py = dbToYNonLinear(point.db, y, height);
 
     const isHovered = hoveredPointIndex === index;
-    const outerRadius = isHovered ? 5 : 4;
-    const innerRadius = isHovered ? 3 : 2;
+    const outerRadius = isHovered ? outerRadiusHoverValue : outerRadiusNormal;
+    const innerRadius = isHovered ? innerRadiusHoverValue : innerRadiusNormal;
 
     // Outer circle with color
     ctx.fillStyle = color;
