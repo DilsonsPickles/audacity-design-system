@@ -511,12 +511,20 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'DELETE_CLIP': {
       const { trackIndex, clipId } = action.payload;
+
+      // Check if the deleted clip was selected
+      const deletedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
         clips: newTracks[trackIndex].clips.filter(c => c.id !== clipId),
       };
-      return { ...state, tracks: newTracks };
+
+      // Clear clip duration indicator if the deleted clip was selected
+      const newClipDurationIndicator = deletedClip?.selected ? null : state.clipDurationIndicator;
+
+      return { ...state, tracks: newTracks, clipDurationIndicator: newClipDurationIndicator };
     }
 
     case 'TRIM_CLIP': {
