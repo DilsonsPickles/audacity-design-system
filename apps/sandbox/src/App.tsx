@@ -1360,7 +1360,7 @@ function CanvasDemoContent() {
                 onClick={() => setIsShareDialogOpen(true)}
               />
               <GhostButton
-                icon="download"
+                icon="waveform"
                 label="Get effects"
                 onClick={() => {
                   console.log('Get effects clicked');
