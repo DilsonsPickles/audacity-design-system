@@ -382,18 +382,25 @@ function CanvasDemoContent() {
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
 
+  // Calculate timeline width based on zoom level
+  // 50 seconds total duration + 12px left padding
+  const TOTAL_DURATION = 50; // seconds
+  const LEFT_PADDING = 12; // pixels
+  const MAX_CANVAS_WIDTH = 32000; // Safe limit below browser max (~32,767px)
+
+  // Calculate max pixels per second based on canvas width limit
+  const maxPixelsPerSecond = Math.floor((MAX_CANVAS_WIDTH - LEFT_PADDING) / TOTAL_DURATION);
+
+  const timelineWidth = Math.ceil(TOTAL_DURATION * pixelsPerSecond) + LEFT_PADDING;
+
   // Zoom functions
   const zoomIn = () => {
-    setPixelsPerSecond(prev => Math.min(prev * 1.5, 1000)); // Max zoom: 1000 pixels/second
+    setPixelsPerSecond(prev => Math.min(prev * 1.5, maxPixelsPerSecond));
   };
 
   const zoomOut = () => {
     setPixelsPerSecond(prev => Math.max(prev / 1.5, 10)); // Min zoom: 10 pixels/second
   };
-
-  // Calculate timeline width based on zoom level
-  // 50 seconds total duration + 12px left padding
-  const timelineWidth = Math.ceil(50 * pixelsPerSecond) + 12;
 
   // Create a modified theme with the selected envelope color
   const theme = React.useMemo(() => {
