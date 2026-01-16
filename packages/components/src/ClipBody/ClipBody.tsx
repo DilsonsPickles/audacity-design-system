@@ -585,6 +585,12 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             max = Math.max(max, sample);
           }
 
+          // Apply envelope gain to RMS waveform amplitude
+          const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          min *= envelopeGain;
+          max *= envelopeGain;
+
           // Choose color based on whether THIS pixel is within time selection
           const isPixelInSelection = px >= selStartPx && px < selEndPx;
           const rmsColor = isPixelInSelection ? timeSelectionRmsColor : defaultRmsColor;
