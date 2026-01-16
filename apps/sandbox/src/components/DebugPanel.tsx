@@ -67,7 +67,6 @@ export interface DebugPanelProps {
   // Mixer
   showMixer: boolean;
   onShowMixerChange: (value: boolean) => void;
-  onGetEffects: () => void;
 }
 
 export function DebugPanel({
@@ -102,7 +101,6 @@ export function DebugPanel({
   onControlPointStyleChange,
   showMixer,
   onShowMixerChange,
-  onGetEffects,
 }: DebugPanelProps) {
   return (
     <Dialog
@@ -576,23 +574,11 @@ export function DebugPanel({
           }}>
             Mixer
           </h3>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
-            <LabeledCheckbox
-              label="Show mixer"
-              checked={showMixer}
-              onChange={onShowMixerChange}
-            />
-            <Button
-              onClick={onGetEffects}
-              variant="primary"
-            >
-              Get effects
-            </Button>
-          </div>
+          <LabeledCheckbox
+            label="Show mixer"
+            checked={showMixer}
+            onChange={onShowMixerChange}
+          />
         </div>
 
         {/* Track & Clip Controls Section */}

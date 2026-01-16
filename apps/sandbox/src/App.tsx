@@ -1352,12 +1352,20 @@ function CanvasDemoContent() {
         centerContent={
           activeMenuItem !== 'export' ? (
             <ToolbarGroup ariaLabel="Toolbar options" startTabIndex={3}>
-              <GhostButton icon="mixer" label="Mixer" />
+              {showMixer && <GhostButton icon="mixer" label="Mixer" />}
               <GhostButton icon="cog" label="Audio setup" />
               <GhostButton
                 icon="cloud"
                 label="Share audio"
                 onClick={() => setIsShareDialogOpen(true)}
+              />
+              <GhostButton
+                icon="download"
+                label="Get effects"
+                onClick={() => {
+                  console.log('Get effects clicked');
+                  toast.info('Getting effects...');
+                }}
               />
             </ToolbarGroup>
           ) : null
@@ -2448,10 +2456,6 @@ function CanvasDemoContent() {
         onControlPointStyleChange={setControlPointStyle}
         showMixer={showMixer}
         onShowMixerChange={setShowMixer}
-        onGetEffects={() => {
-          console.log('Get effects clicked');
-          toast.info('Getting effects...');
-        }}
       />
 
       {/* Clip Context Menu */}
