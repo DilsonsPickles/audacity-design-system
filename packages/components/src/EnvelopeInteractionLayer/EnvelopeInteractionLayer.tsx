@@ -65,15 +65,18 @@ const ENVELOPE_MOVE_THRESHOLD = 3; // Pixels to distinguish click from drag
 function dbToYNonLinear(db: number, height: number): number {
   const minDb = -60;
   const maxDb = 12;
-  const INFINITY_ZONE_HEIGHT = 1;
-  const usableHeight = height - INFINITY_ZONE_HEIGHT;
+  const BOTTOM_MARGIN = 3;
+  const usableHeight = height - BOTTOM_MARGIN;
 
-  if (db === -Infinity || db < minDb) {
-    return height;
+  if (db === -Infinity) {
+    return usableHeight; // Bottom of usable area
   }
 
+  // Clamp to valid dB range
+  const clampedDb = Math.max(minDb, Math.min(maxDb, db));
+
   const dbRange = maxDb - minDb;
-  const linear = (db - minDb) / dbRange;
+  const linear = (clampedDb - minDb) / dbRange;
   const normalized = Math.pow(linear, 3.0);
 
   return usableHeight - normalized * usableHeight;
@@ -83,10 +86,11 @@ function dbToYNonLinear(db: number, height: number): number {
 function yToDbNonLinear(y: number, height: number): number {
   const minDb = -60;
   const maxDb = 12;
-  const INFINITY_ZONE_HEIGHT = 1;
-  const usableHeight = height - INFINITY_ZONE_HEIGHT;
+  const BOTTOM_MARGIN = 3;
+  const usableHeight = height - BOTTOM_MARGIN;
 
-  if (y >= height - INFINITY_ZONE_HEIGHT) {
+  // At or past usable height triggers -infinity
+  if (y >= usableHeight) {
     return -Infinity;
   }
 
@@ -94,7 +98,7 @@ function yToDbNonLinear(y: number, height: number): number {
   const linear = Math.pow(normalized, 1.0 / 3.0);
   const db = minDb + linear * (maxDb - minDb);
 
-  return Math.max(minDb, Math.min(maxDb, db));
+  return db;
 }
 
 // Calculate distance from point to line segment
@@ -234,7 +238,10 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
 
       const rect = containerRef.current.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      let mouseY = e.clientY - rect.top;
+
+      // Clamp mouseY to prevent dragging outside the valid area
+      mouseY = Math.max(0, Math.min(height, mouseY));
 
       const dragState = dragStateRef.current;
 
@@ -254,8 +261,9 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
         const pointX = (relativeTime / duration) * width;
         const pointY = dbToYNonLinear(db, height);
 
-        // Update tooltip (x and y are relative to the EnvelopeInteractionLayer's position)
-        setTooltip({ x: pointX + x, y: pointY + y, db: Math.max(-60, Math.min(12, db)) });
+        // Update tooltip with viewport coordinates (for position: fixed)
+        // Allow -Infinity to pass through for display
+        setTooltip({ x: rect.left + pointX, y: rect.top + pointY, db });
 
         // Snap to other points horizontally
         for (let i = 0; i < envelopePoints.length; i++) {
@@ -299,7 +307,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
         const newPoints = [...envelopePoints];
         newPoints[dragState.pointIndex] = {
           time: relativeTime,
-          db: Math.max(-60, Math.min(12, db)),
+          db: db === -Infinity ? -Infinity : Math.max(-60, Math.min(12, db)),
         };
         newPoints.sort((a, b) => a.time - b.time);
 
@@ -329,8 +337,8 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
           const pointX = (centerTime / duration) * width;
           const pointY = dbToYNonLinear(avgDb, height);
 
-          // Update tooltip with average dB (relative to layer position)
-          setTooltip({ x: pointX + x, y: pointY + y, db: avgDb });
+          // Update tooltip with average dB (viewport coordinates)
+          setTooltip({ x: rect.left + pointX, y: rect.top + pointY, db: avgDb });
 
           const newPoints = [...envelopePoints];
           newPoints[dragState.segmentStartIndex] = { ...newPoints[dragState.segmentStartIndex], db: newDb1 };
@@ -344,11 +352,11 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
           // Create/update two points at clip boundaries
           const newDb = Math.max(-60, Math.min(12, 0 + deltaDb));
 
-          // Calculate tooltip position at cursor X, line Y (relative to layer)
+          // Calculate tooltip position at cursor X, line Y
           const pointY = dbToYNonLinear(newDb, height);
 
-          // Update tooltip
-          setTooltip({ x: mouseX + x, y: pointY + y, db: newDb });
+          // Update tooltip (viewport coordinates)
+          setTooltip({ x: rect.left + mouseX, y: rect.top + pointY, db: newDb });
 
           const newPoints = [
             { time: 0, db: newDb },

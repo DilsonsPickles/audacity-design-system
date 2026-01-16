@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
 import './Tooltip.css';
 
@@ -28,28 +29,37 @@ export const Tooltip: React.FC<TooltipProps> = ({
   visible = true,
   offset = 8,
 }) => {
-  const { theme } = useTheme();
-
-  const style = {
-    '--tooltip-bg': theme.foreground.text.primary,
-    '--tooltip-text': theme.background.surface.elevated,
-    '--tooltip-shadow': '0 2px 8px rgba(0, 0, 0, 0.3)',
-  } as React.CSSProperties;
-
   if (!visible) return null;
 
-  return (
+  const tooltipElement = (
     <div
       className="tooltip"
       style={{
         left: `${x}px`,
-        top: `${y + offset}px`,
-        ...style,
+        top: `${y - offset}px`,
       }}
     >
-      {content}
+      <div className="tooltip__content">
+        {content}
+      </div>
+      {/* Triangle pointer - rotated 180deg, positioned at bottom center */}
+      <div className="tooltip__arrow">
+        <svg width="16" height="7" viewBox="0 0 16 7" fill="none">
+          {/* Triangle with stroke - pointing up (will be rotated 180deg in CSS) */}
+          <path
+            d="M1 6.5L8 1L15 6.5"
+            stroke="#D4D5D9"
+            strokeWidth="1"
+            fill="#F8F8F9"
+            strokeLinejoin="miter"
+          />
+        </svg>
+      </div>
     </div>
   );
+
+  // Render tooltip at document body level to escape stacking context issues
+  return createPortal(tooltipElement, document.body);
 };
 
 export default Tooltip;

@@ -3,12 +3,13 @@
  * Extracted from working sandbox implementation in apps/demo/clip-envelope
  */
 
-const INFINITY_ZONE_HEIGHT = 1; // Bottom 1px represents -∞ dB
+const BOTTOM_MARGIN = 3; // Prevent envelope from going under clip border
+const INFINITY_ZONE = 1; // Within bottom margin, last 1px for -∞
 
 /**
  * Convert dB value to Y position using non-linear scale
  * Uses cubic power curve with 0dB positioned at about 2/3 down the clip
- * @param db - dB value (-60 to +12)
+ * @param db - dB value (-60 to +12, or -Infinity)
  * @param y - Top Y position of clip body
  * @param height - Height of clip body
  * @returns Y position in pixels
@@ -16,17 +17,20 @@ const INFINITY_ZONE_HEIGHT = 1; // Bottom 1px represents -∞ dB
 export function dbToYNonLinear(db: number, y: number, height: number): number {
   const minDb = -60;
   const maxDb = 12;
-  const usableHeight = height - INFINITY_ZONE_HEIGHT;
+  const usableHeight = height - BOTTOM_MARGIN;
 
-  // -Infinity maps to the bottom (y + height)
-  if (db === -Infinity || db < minDb) {
-    return y + height;
+  // -Infinity maps to the bottom of usable area (top of bottom margin)
+  if (db === -Infinity) {
+    return y + usableHeight;
   }
+
+  // Clamp to valid dB range
+  const clampedDb = Math.max(minDb, Math.min(maxDb, db));
 
   // Power curve mapping with 0dB at ~2/3 down
   // Using power of 3.0 to position 0dB lower in the clip
   const dbRange = maxDb - minDb; // 72 dB total range
-  const linear = (db - minDb) / dbRange; // 0 to 1
+  const linear = (clampedDb - minDb) / dbRange; // 0 to 1
 
   // Apply power curve: higher power pushes 0dB lower
   const normalized = Math.pow(linear, 3.0);
@@ -45,15 +49,16 @@ export function dbToYNonLinear(db: number, y: number, height: number): number {
 export function yToDbNonLinear(yPos: number, y: number, height: number): number {
   const minDb = -60;
   const maxDb = 12;
-  const usableHeight = height - INFINITY_ZONE_HEIGHT;
+  const usableHeight = height - BOTTOM_MARGIN;
 
-  // Last 1px at the bottom represents -infinity
+  // At or past the usable height triggers -infinity
   if (yPos >= y + usableHeight) {
     return -Infinity;
   }
 
-  // Convert Y position to normalized value (0-1)
-  const normalized = (usableHeight - (yPos - y)) / usableHeight;
+  // Convert Y position to normalized value (0-1) within usable area
+  const relativeY = yPos - y;
+  const normalized = (usableHeight - relativeY) / usableHeight;
 
   // Apply inverse cubic curve
   const linearNorm = Math.pow(normalized, 1 / 3);
@@ -171,7 +176,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
   if (points.length === 0) {
     // No control points - draw default line at 0dB
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
     ctx.beginPath();
@@ -185,7 +190,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
     if (visiblePoints.length === 0) {
       // All points are hidden - draw default line at 0dB
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
       ctx.beginPath();
@@ -198,7 +203,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
 
       // First segment: from clip start to first point
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
       ctx.beginPath();
@@ -218,7 +223,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
         const py2 = dbToYNonLinear(point2.db, y, height);
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.lineCap = 'butt';
         ctx.lineJoin = 'miter';
         ctx.beginPath();
@@ -234,7 +239,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
         const lastPy = dbToYNonLinear(lastPoint.db, y, height);
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.lineCap = 'butt';
         ctx.lineJoin = 'miter';
         ctx.beginPath();
@@ -298,8 +303,8 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     const py = dbToYNonLinear(point.db, y, height);
 
     const isHovered = hoveredPointIndex === index;
-    const outerRadius = isHovered ? 6 : 5;
-    const innerRadius = isHovered ? 3.5 : 3;
+    const outerRadius = isHovered ? 5 : 4;
+    const innerRadius = isHovered ? 3 : 2;
 
     // Outer circle with color
     ctx.fillStyle = color;
