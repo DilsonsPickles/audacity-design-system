@@ -263,6 +263,8 @@ export interface RenderEnvelopePointsOptions {
   height: number;
   /** Outer circle color (default: 'red') */
   color?: string;
+  /** Inner circle color (default: '#fff') */
+  centerColor?: string;
   /** Indices of points to hide (for drag interactions) */
   hiddenPointIndices?: number[];
   /** Index of point being hovered (for visual feedback) */
@@ -283,6 +285,7 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     width,
     height,
     color = 'red',
+    centerColor = '#fff',
     hiddenPointIndices = [],
     hoveredPointIndex
   } = options;
@@ -304,8 +307,8 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Inner white circle
-    ctx.fillStyle = '#fff';
+    // Inner circle with center color
+    ctx.fillStyle = centerColor;
     ctx.beginPath();
     ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
     ctx.fill();

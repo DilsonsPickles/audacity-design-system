@@ -3,6 +3,7 @@ import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
 import { renderMonoSpectrogram, renderStereoSpectrogram } from '../utils/spectrogram';
 import { renderEnvelopeLine, renderEnvelopePoints, getEnvelopeGainAtTime, type EnvelopePointData } from '../utils/envelope';
+import { useTheme } from '../ThemeProvider';
 import './ClipBody.css';
 
 export type ClipBodyVariant = 'waveform' | 'spectrogram';
@@ -105,6 +106,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   timeSelectionRange = null,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { theme } = useTheme();
 
   // Draw waveform or spectrogram on canvas
   useEffect(() => {
@@ -629,7 +631,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         y: envelopeY,
         width: canvasWidth,
         height: envelopeHeight,
-        color: 'white'
+        color: theme.audio.envelope.line
       });
 
       // Render envelope control points (only if there are real points, not just boundary points)
@@ -647,12 +649,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           y: envelopeY,
           width: canvasWidth,
           height: envelopeHeight,
-          color: 'white',
+          color: theme.audio.envelope.point,
+          centerColor: theme.audio.envelope.pointCenter,
           hoveredPointIndex
         });
       }
     }
-  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, hiddenPointIndices, hoveredPointIndex]);
+  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, hiddenPointIndices, hoveredPointIndex, theme]);
 
   const className = [
     'clip-body',
