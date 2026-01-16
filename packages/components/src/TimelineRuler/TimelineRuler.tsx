@@ -99,7 +99,13 @@ export function TimelineRuler({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    // Calculate DPR but constrain to prevent exceeding canvas max size (~32,767px)
+    const MAX_CANVAS_DIMENSION = 32000;
+    const baseDpr = window.devicePixelRatio || 1;
+    const maxDprForWidth = MAX_CANVAS_DIMENSION / width;
+    const maxDprForHeight = MAX_CANVAS_DIMENSION / height;
+    const dpr = Math.min(baseDpr, maxDprForWidth, maxDprForHeight);
+
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     ctx.scale(dpr, dpr);
