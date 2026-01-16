@@ -671,19 +671,6 @@ Enable users to control clip volume over time using visual automation curves wit
 
 ---
 
-## Success Metrics
-
-Implementation is complete when:
-
-- ✅ All 15 user stories have acceptance criteria met
-- ✅ Visual match with sandbox demo (pixel-perfect not required, behavior match required)
-- ✅ All edge cases tested and passing
-- ✅ Performance: 60fps during all interactions
-- ✅ Code review approved
-- ✅ Documentation updated
-
----
-
 ## Glossary
 
 - **Envelope**: Automation curve controlling clip volume over time
