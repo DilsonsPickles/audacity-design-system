@@ -657,38 +657,6 @@ Enable users to control clip volume over time using visual automation curves wit
 
 ---
 
-## Implementation Order Recommendation
-
-To build the system systematically, implement stories in this order:
-
-### Phase 1: Core Rendering (Week 1)
-1. Story 12: Data Structure
-2. Story 11: Non-Linear dB Scale
-3. Story 1: Display Envelope Line
-4. Story 7: Waveform Scaling
-5. Story 14: Clip Body Rendering
-
-### Phase 2: Basic Interaction (Week 2)
-6. Story 13: Interaction Layer Component
-7. Story 2: Add Points
-8. Story 3: Delete Points
-9. Story 4: Drag Points
-10. Story 10: Prevent Playhead Movement
-
-### Phase 3: Advanced Features (Week 3)
-11. Story 5: Point Eating
-12. Story 6: Horizontal Snapping
-13. Story 8: Envelope Mode Toggle
-14. Story 9: Automation Overlay Fill
-
-### Phase 4: Polish & Testing (Week 4)
-15. Story 15: Testing & QA
-16. Performance optimization
-17. Bug fixes
-18. Documentation review
-
----
-
 ## Reference Implementation
 
 - **Sandbox Demo**: `/apps/sandbox` - Full working implementation
