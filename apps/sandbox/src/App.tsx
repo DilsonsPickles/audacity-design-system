@@ -382,20 +382,39 @@ function CanvasDemoContent() {
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
 
-  // Calculate timeline width based on zoom level
-  // 50 seconds total duration + 12px left padding
-  const TOTAL_DURATION = 50; // seconds
+  // Calculate project length (end of last clip across all tracks)
+  const projectLength = React.useMemo(() => {
+    let maxEndTime = 0;
+    state.tracks.forEach(track => {
+      track.clips.forEach(clip => {
+        const clipEndTime = clip.start + clip.duration;
+        if (clipEndTime > maxEndTime) {
+          maxEndTime = clipEndTime;
+        }
+      });
+    });
+    return maxEndTime;
+  }, [state.tracks]);
+
+  // Calculate timeline width based on project content
   const LEFT_PADDING = 12; // pixels
-  const MAX_CANVAS_WIDTH = 30000; // Safe limit well below browser max (~32,767px)
+  const MIN_VIEWPORT_WIDTH = 5000; // Minimum starting width
+  const MAX_CANVAS_WIDTH = 32000; // Browser canvas limit safety
 
-  // Calculate max pixels per second based on canvas width limit
-  // Subtract extra margin to account for Math.ceil() rounding
-  const maxPixelsPerSecond = Math.floor((MAX_CANVAS_WIDTH - LEFT_PADDING - 100) / TOTAL_DURATION);
+  // Timeline duration: project length + 50% buffer, with minimum
+  const timelineDuration = Math.max(10, projectLength * 1.5);
 
-  const timelineWidth = Math.min(
-    Math.ceil(TOTAL_DURATION * pixelsPerSecond) + LEFT_PADDING,
-    MAX_CANVAS_WIDTH
+  // Calculate width in pixels
+  const calculatedWidth = Math.ceil(timelineDuration * pixelsPerSecond) + LEFT_PADDING;
+
+  // Apply constraints: min viewport width, max canvas width
+  const timelineWidth = Math.max(
+    MIN_VIEWPORT_WIDTH,
+    Math.min(calculatedWidth, MAX_CANVAS_WIDTH)
   );
+
+  // Calculate max pixels per second to stay under canvas limit
+  const maxPixelsPerSecond = Math.floor((MAX_CANVAS_WIDTH - LEFT_PADDING) / timelineDuration);
 
   // Zoom functions
   const zoomIn = () => {
@@ -1726,7 +1745,7 @@ function CanvasDemoContent() {
                 <TimelineRuler
                   pixelsPerSecond={pixelsPerSecond}
                   scrollX={0}
-                  totalDuration={50}
+                  totalDuration={timelineDuration}
                   width={timelineWidth}
                   height={40}
                   timeSelection={rulerTimeSelection}
