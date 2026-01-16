@@ -378,6 +378,7 @@ function CanvasDemoContent() {
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
   const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
   const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('musescore');
+  const [showMixer, setShowMixer] = React.useState(false);
 
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
@@ -2445,6 +2446,12 @@ function CanvasDemoContent() {
         onEnvelopeColorChange={setEnvelopeColor}
         controlPointStyle={controlPointStyle}
         onControlPointStyleChange={setControlPointStyle}
+        showMixer={showMixer}
+        onShowMixerChange={setShowMixer}
+        onGetEffects={() => {
+          console.log('Get effects clicked');
+          toast.info('Getting effects...');
+        }}
       />
 
       {/* Clip Context Menu */}

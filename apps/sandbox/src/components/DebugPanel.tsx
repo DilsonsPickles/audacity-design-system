@@ -63,6 +63,11 @@ export interface DebugPanelProps {
   // Control point style
   controlPointStyle: 'musescore' | 'au4';
   onControlPointStyleChange: (value: 'musescore' | 'au4') => void;
+
+  // Mixer
+  showMixer: boolean;
+  onShowMixerChange: (value: boolean) => void;
+  onGetEffects: () => void;
 }
 
 export function DebugPanel({
@@ -95,6 +100,9 @@ export function DebugPanel({
   onEnvelopeColorChange,
   controlPointStyle,
   onControlPointStyleChange,
+  showMixer,
+  onShowMixerChange,
+  onGetEffects,
 }: DebugPanelProps) {
   return (
     <Dialog
@@ -553,6 +561,37 @@ export function DebugPanel({
               checked={showFocusDebug}
               onChange={onShowFocusDebugChange}
             />
+          </div>
+        </div>
+
+        {/* Mixer Section */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Mixer
+          </h3>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            <LabeledCheckbox
+              label="Show mixer"
+              checked={showMixer}
+              onChange={onShowMixerChange}
+            />
+            <Button
+              onClick={onGetEffects}
+              variant="primary"
+            >
+              Get effects
+            </Button>
           </div>
         </div>
 
