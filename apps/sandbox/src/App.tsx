@@ -379,6 +379,22 @@ function CanvasDemoContent() {
   const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
   const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('musescore');
 
+  // Zoom state
+  const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
+
+  // Zoom functions
+  const zoomIn = () => {
+    setPixelsPerSecond(prev => Math.min(prev * 1.5, 1000)); // Max zoom: 1000 pixels/second
+  };
+
+  const zoomOut = () => {
+    setPixelsPerSecond(prev => Math.max(prev / 1.5, 10)); // Min zoom: 10 pixels/second
+  };
+
+  // Calculate timeline width based on zoom level
+  // 50 seconds total duration + 12px left padding
+  const timelineWidth = Math.ceil(50 * pixelsPerSecond) + 12;
+
   // Create a modified theme with the selected envelope color
   const theme = React.useMemo(() => {
     const envelopeColors = {
@@ -1433,8 +1449,8 @@ function CanvasDemoContent() {
                   </ToolbarButtonGroup>
 
                   <ToolbarButtonGroup gap={2}>
-                    <ToolButton icon="zoom-in" />
-                    <ToolButton icon="zoom-out" />
+                    <ToolButton icon="zoom-in" onClick={zoomIn} />
+                    <ToolButton icon="zoom-out" onClick={zoomOut} />
                   </ToolbarButtonGroup>
 
                   <ToolbarButtonGroup gap={2}>
@@ -1462,8 +1478,8 @@ function CanvasDemoContent() {
               {workspace === 'spectral-editing' && (
                 <>
                   <ToolbarButtonGroup gap={2}>
-                    <ToolButton icon="zoom-in" />
-                    <ToolButton icon="zoom-out" />
+                    <ToolButton icon="zoom-in" onClick={zoomIn} />
+                    <ToolButton icon="zoom-out" onClick={zoomOut} />
                   </ToolbarButtonGroup>
 
                   <ToolbarButtonGroup gap={2}>
@@ -1688,7 +1704,7 @@ function CanvasDemoContent() {
                     const rect = timelineRulerRef.current.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const CLIP_CONTENT_OFFSET = 12; // Match the constant from components
-                    const timePosition = (x - CLIP_CONTENT_OFFSET) / 100; // 100 = pixelsPerSecond
+                    const timePosition = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
                     setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
                   }
                 }}
@@ -1697,10 +1713,10 @@ function CanvasDemoContent() {
                 }}
               >
                 <TimelineRuler
-                  pixelsPerSecond={100}
+                  pixelsPerSecond={pixelsPerSecond}
                   scrollX={0}
                   totalDuration={50}
-                  width={5000}
+                  width={timelineWidth}
                   height={40}
                   timeSelection={rulerTimeSelection}
                   spectralSelection={spectralSelection}
@@ -1710,7 +1726,7 @@ function CanvasDemoContent() {
                 {/* Playhead icon only in ruler */}
                 <PlayheadCursor
                   position={state.playheadPosition}
-                  pixelsPerSecond={100}
+                  pixelsPerSecond={pixelsPerSecond}
                   height={0}
                   showTopIcon={true}
                   iconTopOffset={24}
@@ -1740,11 +1756,11 @@ function CanvasDemoContent() {
                 setMouseCursorPosition(undefined);
               }}
             >
-              <div style={{ minWidth: '5000px', minHeight: `${canvasHeight}px`, position: 'relative', cursor: 'text' }}>
+              <div style={{ minWidth: `${timelineWidth}px`, minHeight: `${canvasHeight}px`, position: 'relative', cursor: 'text' }}>
                 <ThemeProvider theme={theme}>
                   <Canvas
-                    pixelsPerSecond={100}
-                    width={5000}
+                    pixelsPerSecond={pixelsPerSecond}
+                    width={timelineWidth}
                     leftPadding={12}
                     keyboardFocusedTrack={keyboardFocusedTrack}
                     showRmsInWaveform={showRmsInWaveform}
@@ -1762,7 +1778,7 @@ function CanvasDemoContent() {
                 {/* Playhead stalk only (no icon) - extends to fill scrollable area */}
                 <PlayheadCursor
                   position={state.playheadPosition}
-                  pixelsPerSecond={100}
+                  pixelsPerSecond={pixelsPerSecond}
                   height={Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}
                   showTopIcon={false}
                 />
