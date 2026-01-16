@@ -936,11 +936,20 @@ onClipTrim={(clipId, edge, deltaSeconds) => {
 
                   // Initialize trim state on first call
                   if (!clipTrimStateRef.current) {
-                    // Store initial state for all selected clips
+                    // Select the clip if it's not already selected
+                    if (!clip.selected) {
+                      dispatch({
+                        type: 'SELECT_CLIP',
+                        payload: { trackIndex, clipId: clipId as number },
+                      });
+                    }
+
+                    // Store initial state for all selected clips (including the one we just selected)
                     const allClipsInitialState = new Map<string, { trimStart: number; duration: number; start: number; fullDuration: number }>();
                     tracks.forEach((t, tIndex) => {
                       t.clips.forEach(c => {
-                        if (c.selected) {
+                        // Include this clip even if it wasn't selected before (we just selected it)
+                        if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
                           const trimStart = (c as any).trimStart || 0;
                           const fullDuration = (c as any).fullDuration || (trimStart + c.duration);
                           const key = `${tIndex}-${c.id}`;
