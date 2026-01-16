@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import { TrackControlPanel } from '../../../../../packages/components/src/TrackControlPanel/TrackControlPanel';
+import { ThemeProvider } from '../../../../../packages/components/src/ThemeProvider';
 import '../../../../../packages/components/src/TrackControlPanel/TrackControlPanel.css';
+
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
 
 export default function ComponentsDemo() {
   const [volume, setVolume] = useState(75);
@@ -11,6 +15,7 @@ export default function ComponentsDemo() {
   const [isRecording, setIsRecording] = useState(false);
 
   return (
+    <ThemeProvider>
     <div style={{ padding: '40px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       <h1 style={{ marginBottom: '32px', fontSize: '32px', fontWeight: 'bold' }}>
         TrackControlPanel Component Demo
@@ -84,5 +89,6 @@ export default function ComponentsDemo() {
         </div>
       </div>
     </div>
+    </ThemeProvider>
   );
 }

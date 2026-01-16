@@ -2,8 +2,12 @@
 
 import ClipEnvelopeEditor from './components/ClipEnvelopeEditor';
 import { TracksProvider } from './contexts/TracksContext';
+import { ThemeProvider } from '@audacity-ui/components';
 import Script from 'next/script';
 import { Track, Clip } from './components/types';
+
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
 
 // Initialize sample tracks
 function initializeTracks(): Track[] {
@@ -73,9 +77,11 @@ export default function Home() {
   return (
     <>
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" />
-      <TracksProvider initialTracks={initialTracks}>
-        <ClipEnvelopeEditor />
-      </TracksProvider>
+      <ThemeProvider>
+        <TracksProvider initialTracks={initialTracks}>
+          <ClipEnvelopeEditor />
+        </TracksProvider>
+      </ThemeProvider>
     </>
   );
 }
