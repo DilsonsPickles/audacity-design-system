@@ -480,6 +480,11 @@ function CanvasDemoContent() {
     const level1Pixels = zoomLevelToPixelsPerSecond(zoomToggleLevel1);
     const level2Pixels = zoomLevelToPixelsPerSecond(zoomToggleLevel2);
 
+    // If both levels are the same, do nothing
+    if (level1Pixels === level2Pixels) {
+      return;
+    }
+
     // If current zoom is closer to level 1, switch to level 2, otherwise switch to level 1
     const distanceToLevel1 = Math.abs(pixelsPerSecond - level1Pixels);
     const distanceToLevel2 = Math.abs(pixelsPerSecond - level2Pixels);
@@ -571,7 +576,7 @@ function CanvasDemoContent() {
 
   // Zoom toggle levels - two predefined zoom levels to toggle between
   const [zoomToggleLevel1, setZoomToggleLevel1] = React.useState('zoom-default');
-  const [zoomToggleLevel2, setZoomToggleLevel2] = React.useState('seconds');
+  const [zoomToggleLevel2, setZoomToggleLevel2] = React.useState('5ths-of-seconds');
 
   // Track keyboard focus state - only one track can have keyboard focus at a time
   const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(null);
