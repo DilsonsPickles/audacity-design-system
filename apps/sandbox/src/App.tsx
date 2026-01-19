@@ -1688,7 +1688,14 @@ function CanvasDemoContent() {
                 <TransportButton
                   icon="loop"
                   active={loopRegionEnabled}
-                  onClick={() => setLoopRegionEnabled(!loopRegionEnabled)}
+                  onClick={() => {
+                    if (!loopRegionEnabled && state.timeSelection) {
+                      // If enabling loop and there's a selection, set loop region to selection
+                      setLoopRegionStart(state.timeSelection.startTime);
+                      setLoopRegionEnd(state.timeSelection.endTime);
+                    }
+                    setLoopRegionEnabled(!loopRegionEnabled);
+                  }}
                 />
               </ToolbarButtonGroup>
 
@@ -1738,7 +1745,14 @@ function CanvasDemoContent() {
                 <TransportButton
                   icon="loop"
                   active={loopRegionEnabled}
-                  onClick={() => setLoopRegionEnabled(!loopRegionEnabled)}
+                  onClick={() => {
+                    if (!loopRegionEnabled && state.timeSelection) {
+                      // If enabling loop and there's a selection, set loop region to selection
+                      setLoopRegionStart(state.timeSelection.startTime);
+                      setLoopRegionEnd(state.timeSelection.endTime);
+                    }
+                    setLoopRegionEnabled(!loopRegionEnabled);
+                  }}
                 />
               </ToolbarButtonGroup>
 

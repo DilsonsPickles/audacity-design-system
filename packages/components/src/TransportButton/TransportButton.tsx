@@ -21,6 +21,10 @@ export interface TransportButtonProps {
    */
   disabled?: boolean;
   /**
+   * Whether the button is in active/toggled state (for toggle buttons like loop)
+   */
+  active?: boolean;
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -38,6 +42,7 @@ export function TransportButton({
   state = 'idle',
   onClick,
   disabled = false,
+  active = false,
   className = '',
 }: TransportButtonProps) {
   const { theme } = useTheme();
@@ -85,7 +90,7 @@ export function TransportButton({
 
   return (
     <button
-      className={`transport-button transport-button--${currentState} ${className}`}
+      className={`transport-button transport-button--${currentState} ${active ? 'transport-button--active' : ''} ${className}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

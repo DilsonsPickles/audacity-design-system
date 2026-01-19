@@ -49,6 +49,17 @@
   cursor: not-allowed;
 }
 
+/* State: Active (for toggle buttons like loop) */
+.transport-button--active {
+  background-color: var(--transport-btn-pressed);
+}
+
+/* Active state with hover */
+.transport-button--active.transport-button--hover {
+  background-color: var(--transport-btn-hover);
+  filter: brightness(1.1);
+}
+
 /* Focus visible state */
 .transport-button:focus-visible {
   outline: 2px solid var(--transport-focus-color);
