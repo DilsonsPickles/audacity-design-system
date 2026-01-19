@@ -587,6 +587,7 @@ function CanvasDemoContent() {
   const [loopRegionStart, setLoopRegionStart] = React.useState<number | null>(null);
   const [loopRegionEnd, setLoopRegionEnd] = React.useState<number | null>(null);
   const [loopRegionInteracting, setLoopRegionInteracting] = React.useState(false);
+  const [loopRegionHovering, setLoopRegionHovering] = React.useState(false);
 
   // Sync loop region with AudioPlaybackManager
   React.useEffect(() => {
@@ -2140,9 +2141,10 @@ function CanvasDemoContent() {
                   }}
                   onLoopRegionInteracting={setLoopRegionInteracting}
                   onLoopRegionEnabledToggle={() => setLoopRegionEnabled(!loopRegionEnabled)}
+                  onLoopRegionHoverChange={setLoopRegionHovering}
                 />
-                {/* Loop region stalks in ruler (only visible during interaction and when enabled) */}
-                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && loopRegionEnabled && (
+                {/* Loop region stalks in ruler (visible on hover or during interaction, only when enabled) */}
+                {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
                   <>
                     {/* Start stalk */}
                     <div
@@ -2235,8 +2237,8 @@ function CanvasDemoContent() {
                   height={Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}
                   showTopIcon={false}
                 />
-                {/* Loop region stalks - extend down through all tracks (only visible during interaction and when enabled) */}
-                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && loopRegionEnabled && (
+                {/* Loop region stalks - extend down through all tracks (visible on hover or during interaction, only when enabled) */}
+                {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
                   <>
                     {/* Start stalk */}
                     <div

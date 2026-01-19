@@ -97,6 +97,10 @@ export interface TimelineRulerProps {
    * Callback when loop region is clicked (to toggle enabled state)
    */
   onLoopRegionEnabledToggle?: () => void;
+  /**
+   * Callback when loop region hover state changes
+   */
+  onLoopRegionHoverChange?: (isHovering: boolean) => void;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -125,6 +129,7 @@ export function TimelineRuler({
   onLoopRegionChange,
   onLoopRegionInteracting,
   onLoopRegionEnabledToggle,
+  onLoopRegionHoverChange,
 }: TimelineRulerProps) {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -252,6 +257,7 @@ export function TimelineRuler({
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (loopRegionStart === null || loopRegionEnd === null) {
       setCursor('default');
+      onLoopRegionHoverChange?.(false);
       return;
     }
 
@@ -265,6 +271,7 @@ export function TimelineRuler({
     // Only interact if mouse is in top half (where loop region is)
     if (mouseY > midHeight) {
       setCursor('default');
+      onLoopRegionHoverChange?.(false);
       return;
     }
 
@@ -278,6 +285,9 @@ export function TimelineRuler({
     const nearStart = Math.abs(mouseX - startX) < EDGE_THRESHOLD;
     const nearEnd = Math.abs(mouseX - endX) < EDGE_THRESHOLD;
     const insideRegion = mouseX >= startX && mouseX <= endX;
+
+    // Update hover state
+    onLoopRegionHoverChange?.(insideRegion);
 
     // Show resize/grab cursors if onLoopRegionChange is provided (both enabled and disabled states)
     if (onLoopRegionChange) {
@@ -380,9 +390,10 @@ export function TimelineRuler({
   };
 
   const handleMouseLeave = () => {
-    // Don't cancel drag on mouse leave - only clear cursor
+    // Don't cancel drag on mouse leave - only clear cursor and hover state
     if (!dragStateRef.current) {
       setCursor('default');
+      onLoopRegionHoverChange?.(false);
     }
   };
 
