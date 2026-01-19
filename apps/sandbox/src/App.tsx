@@ -582,6 +582,7 @@ function CanvasDemoContent() {
   const [loopRegionEnabled, setLoopRegionEnabled] = React.useState(false);
   const [loopRegionStart, setLoopRegionStart] = React.useState<number | null>(null);
   const [loopRegionEnd, setLoopRegionEnd] = React.useState<number | null>(null);
+  const [loopRegionInteracting, setLoopRegionInteracting] = React.useState(false);
 
   // Sync loop region with AudioPlaybackManager
   React.useEffect(() => {
@@ -2109,6 +2110,7 @@ function CanvasDemoContent() {
                     setLoopRegionStart(start);
                     setLoopRegionEnd(end);
                   }}
+                  onLoopRegionInteracting={setLoopRegionInteracting}
                 />
                 {/* Playhead icon only in ruler */}
                 <PlayheadCursor
@@ -2169,8 +2171,8 @@ function CanvasDemoContent() {
                   height={Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}
                   showTopIcon={false}
                 />
-                {/* Loop region stalks - extend down through all tracks */}
-                {loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null && (
+                {/* Loop region stalks - extend down through all tracks (only visible during interaction) */}
+                {loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
                   <>
                     {/* Start stalk */}
                     <div

@@ -89,6 +89,10 @@ export interface TimelineRulerProps {
    * Callback when loop region changes (drag or resize)
    */
   onLoopRegionChange?: (start: number, end: number) => void;
+  /**
+   * Callback when loop region interaction starts/stops
+   */
+  onLoopRegionInteracting?: (isInteracting: boolean) => void;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -115,6 +119,7 @@ export function TimelineRuler({
   loopRegionStart = null,
   loopRegionEnd = null,
   onLoopRegionChange,
+  onLoopRegionInteracting,
 }: TimelineRulerProps) {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -311,12 +316,15 @@ export function TimelineRuler({
     if (nearStart) {
       dragStateRef.current = { type: 'resize-start', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
       setCursor('ew-resize');
+      onLoopRegionInteracting?.(true);
     } else if (nearEnd) {
       dragStateRef.current = { type: 'resize-end', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
       setCursor('ew-resize');
+      onLoopRegionInteracting?.(true);
     } else if (insideRegion) {
       dragStateRef.current = { type: 'move', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
       setCursor('grabbing');
+      onLoopRegionInteracting?.(true);
     }
   };
 
@@ -326,10 +334,14 @@ export function TimelineRuler({
         setCursor('grab');
       }
       dragStateRef.current = null;
+      onLoopRegionInteracting?.(false);
     }
   };
 
   const handleMouseLeave = () => {
+    if (dragStateRef.current) {
+      onLoopRegionInteracting?.(false);
+    }
     dragStateRef.current = null;
     setCursor('default');
   };
