@@ -260,34 +260,8 @@ export function TimelineRuler({
     const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
     const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
 
-    // Handle dragging
-    if (dragStateRef.current) {
-      const deltaX = mouseX - dragStateRef.current.startX;
-      const deltaTime = deltaX / pixelsPerSecond;
-
-      if (dragStateRef.current.type === 'move') {
-        const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
-        const newEnd = dragStateRef.current.initialEnd + deltaTime;
-        onLoopRegionChange(newStart, newEnd);
-      } else if (dragStateRef.current.type === 'resize-start') {
-        const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
-        // Allow start to go past end (swap)
-        if (newStart > dragStateRef.current.initialEnd) {
-          onLoopRegionChange(dragStateRef.current.initialEnd, newStart);
-        } else {
-          onLoopRegionChange(newStart, dragStateRef.current.initialEnd);
-        }
-      } else if (dragStateRef.current.type === 'resize-end') {
-        const newEnd = dragStateRef.current.initialEnd + deltaTime;
-        // Allow end to go before start (swap)
-        if (newEnd < dragStateRef.current.initialStart) {
-          onLoopRegionChange(newEnd, dragStateRef.current.initialStart);
-        } else {
-          onLoopRegionChange(dragStateRef.current.initialStart, newEnd);
-        }
-      }
-      return;
-    }
+    // If dragging, document-level handler takes care of it
+    if (dragStateRef.current) return;
 
     // Set cursor based on mouse position
     const nearStart = Math.abs(mouseX - startX) < EDGE_THRESHOLD;
@@ -349,12 +323,59 @@ export function TimelineRuler({
   };
 
   const handleMouseLeave = () => {
-    if (dragStateRef.current) {
-      onLoopRegionInteracting?.(false);
+    // Don't cancel drag on mouse leave - only clear cursor
+    if (!dragStateRef.current) {
+      setCursor('default');
     }
-    dragStateRef.current = null;
-    setCursor('default');
   };
+
+  // Add document-level mouse event listeners for continuous dragging
+  useEffect(() => {
+    const handleDocumentMouseMove = (e: MouseEvent) => {
+      if (!dragStateRef.current || !onLoopRegionChange || !canvasRef.current) return;
+
+      const rect = canvasRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const deltaX = mouseX - dragStateRef.current.startX;
+      const deltaTime = deltaX / pixelsPerSecond;
+
+      if (dragStateRef.current.type === 'move') {
+        const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
+        const newEnd = dragStateRef.current.initialEnd + deltaTime;
+        onLoopRegionChange(newStart, newEnd);
+      } else if (dragStateRef.current.type === 'resize-start') {
+        const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
+        if (newStart > dragStateRef.current.initialEnd) {
+          onLoopRegionChange(dragStateRef.current.initialEnd, newStart);
+        } else {
+          onLoopRegionChange(newStart, dragStateRef.current.initialEnd);
+        }
+      } else if (dragStateRef.current.type === 'resize-end') {
+        const newEnd = dragStateRef.current.initialEnd + deltaTime;
+        if (newEnd < dragStateRef.current.initialStart) {
+          onLoopRegionChange(newEnd, dragStateRef.current.initialStart);
+        } else {
+          onLoopRegionChange(dragStateRef.current.initialStart, newEnd);
+        }
+      }
+    };
+
+    const handleDocumentMouseUp = () => {
+      if (dragStateRef.current) {
+        onLoopRegionInteracting?.(false);
+        dragStateRef.current = null;
+        setCursor('default');
+      }
+    };
+
+    document.addEventListener('mousemove', handleDocumentMouseMove);
+    document.addEventListener('mouseup', handleDocumentMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleDocumentMouseMove);
+      document.removeEventListener('mouseup', handleDocumentMouseUp);
+    };
+  }, [pixelsPerSecond, onLoopRegionChange, onLoopRegionInteracting]);
 
   return (
     <canvas

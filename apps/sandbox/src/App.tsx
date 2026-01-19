@@ -305,6 +305,7 @@ function CanvasDemoContent() {
   const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = React.useState(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = React.useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
+  const [exportType, setExportType] = React.useState<'full' | 'loop'>('full');
   const [isLabelEditorOpen, setIsLabelEditorOpen] = React.useState(false);
   const [isPluginManagerOpen, setIsPluginManagerOpen] = React.useState(false);
 
@@ -1729,7 +1730,10 @@ function CanvasDemoContent() {
                   variant="secondary"
                   size="default"
                   icon={'\uEF24'}
-                  onClick={() => setIsExportModalOpen(true)}
+                  onClick={() => {
+                    setExportType('full');
+                    setIsExportModalOpen(true);
+                  }}
                 >
                   Export audio
                 </Button>
@@ -1737,7 +1741,10 @@ function CanvasDemoContent() {
                   variant="secondary"
                   size="default"
                   icon={'\uEF1F'}
-                  onClick={() => toast.info('Export loop region clicked')}
+                  onClick={() => {
+                    setExportType('loop');
+                    setIsExportModalOpen(true);
+                  }}
                 >
                   Export loop region
                 </Button>
@@ -2112,6 +2119,37 @@ function CanvasDemoContent() {
                   }}
                   onLoopRegionInteracting={setLoopRegionInteracting}
                 />
+                {/* Loop region stalks in ruler (only visible during interaction) */}
+                {loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
+                  <>
+                    {/* Start stalk */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${12 + loopRegionStart * pixelsPerSecond}px`,
+                        top: 0,
+                        width: '2px',
+                        height: '40px',
+                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        pointerEvents: 'none',
+                        zIndex: 100,
+                      }}
+                    />
+                    {/* End stalk */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${12 + loopRegionEnd * pixelsPerSecond}px`,
+                        top: 0,
+                        width: '2px',
+                        height: '40px',
+                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        pointerEvents: 'none',
+                        zIndex: 100,
+                      }}
+                    />
+                  </>
+                )}
                 {/* Playhead icon only in ruler */}
                 <PlayheadCursor
                   position={state.playheadPosition}
@@ -2571,12 +2609,14 @@ function CanvasDemoContent() {
         onClose={() => setIsExportModalOpen(false)}
         onExport={(settings: ExportSettings) => {
           console.log('Export settings:', settings);
-          toast.success('Export started!');
+          console.log('Export type:', exportType);
+          toast.success(exportType === 'loop' ? 'Exporting loop region!' : 'Export started!');
         }}
         onEditMetadata={() => {
           toast.info('Edit metadata clicked');
         }}
         os={preferences.operatingSystem}
+        title={exportType === 'loop' ? 'Export audio in loop region' : undefined}
       />
 
       {/* Label Editor */}
