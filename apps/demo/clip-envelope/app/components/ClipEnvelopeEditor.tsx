@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Toolbar from './Toolbar';
 import ResizableTrackHeader from './ResizableTrackHeader';
 import ResizableRuler from './ResizableRuler';
+import VerticalAmplitudeRuler from './VerticalAmplitudeRuler';
 import TrackCanvas from './TrackCanvas';
 import TimelineRuler from './TimelineRuler';
 import Tooltip from './Tooltip';
@@ -136,6 +137,7 @@ export default function ClipEnvelopeEditor() {
 
   const [envelopeMode, setEnvelopeMode] = useState(false);
   const [envelopeAltMode, setEnvelopeAltMode] = useState(false);
+  const [showVerticalRulers, setShowVerticalRulers] = useState(true);
   const [timeSelection, setTimeSelection] = useState<TimeSelection | null>(null);
   const [hoveredClipHeader, setHoveredClipHeader] = useState<{ clipId: number; trackIndex: number } | null>(null);
   const [addTrackFlyoutOpen, setAddTrackFlyoutOpen] = useState(false);
@@ -155,6 +157,31 @@ export default function ClipEnvelopeEditor() {
   const [cursorStyle, setCursorStyle] = useState<string>('default');
   const [hoveredSegment, setHoveredSegment] = useState<{ trackIndex: number; clipId: number; segmentIndex: number } | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<{ trackIndex: number; clipId: number; pointIndex: number } | null>(null);
+
+  // Add keyboard navigation for track focus
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+
+        const currentIndex = focusedTrackIndex ?? 0;
+        let newIndex = currentIndex;
+
+        if (e.key === 'ArrowUp') {
+          newIndex = Math.max(0, currentIndex - 1);
+        } else if (e.key === 'ArrowDown') {
+          newIndex = Math.min(tracks.length - 1, currentIndex + 1);
+        }
+
+        if (newIndex !== currentIndex) {
+          dispatch({ type: 'SELECT_TRACK', payload: newIndex });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedTrackIndex, tracks.length, dispatch]);
 
   // Add document-level mouse event listeners for dragging beyond canvas
   useEffect(() => {
@@ -1193,8 +1220,10 @@ export default function ClipEnvelopeEditor() {
       <Toolbar
         envelopeMode={envelopeMode}
         envelopeAltMode={envelopeAltMode}
+        showVerticalRulers={showVerticalRulers}
         onToggleEnvelope={handleToggleEnvelope}
         onToggleEnvelopeAlt={handleToggleEnvelopeAlt}
+        onToggleVerticalRulers={() => setShowVerticalRulers(!showVerticalRulers)}
       />
 
       <div className="clip-envelope-editor__content">
@@ -1296,32 +1325,38 @@ export default function ClipEnvelopeEditor() {
           />
         </div>
 
-        {/* Rulers (fixed on right) */}
-        <div
-          className="fixed right-0 top-[50px] w-[50px] h-[calc(100vh-50px)] z-10 border-l"
-          style={{
-            backgroundColor: theme.ruler,
-            borderColor: theme.rulerBorder,
-            paddingTop: '40px',
-          }}
-        >
-          {tracks.map((track, index) => (
-            <ResizableRuler
-              key={track.id}
-              isFocused={focusedTrackIndex === index}
-              height={getTrackHeight(track)}
-              onClick={() => {
-                setSelectedTrackIndices([index]);
-                setFocusedTrackIndex(index);
-              }}
-              onHeightChange={(newHeight) => {
-                const newTracks = [...tracks];
-                newTracks[index] = { ...newTracks[index], height: newHeight };
-                setTracks(newTracks);
+        {/* Vertical Amplitude Rulers (fixed on right) */}
+        {showVerticalRulers && (
+          <div
+            className="fixed right-0 top-[50px] w-[32px] h-[calc(100vh-50px)] z-10 border-l flex flex-col"
+            style={{
+              backgroundColor: theme.canvas,
+              borderColor: '#3B3E4B',
+            }}
+          >
+            {/* Header (matches timeline ruler height) */}
+            <div
+              style={{
+                width: '100%',
+                height: '40px',
+                backgroundColor: theme.trackHeaderPanel,
+                borderBottom: `1px solid ${theme.trackHeaderBorder}`,
+                flexShrink: 0,
               }}
             />
-          ))}
-        </div>
+
+            {/* Track rulers */}
+            <div style={{ flex: 1, paddingTop: '2px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {tracks.map((track, index) => (
+                <VerticalAmplitudeRuler
+                  key={track.id}
+                  height={getTrackHeight(track)}
+                  selected={selectedTrackIndices.includes(index)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tooltip */}

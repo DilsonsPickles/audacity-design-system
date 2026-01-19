@@ -145,6 +145,8 @@ export function TracksProvider({ children, initialTracks = [] }: TracksProviderP
   const [state, dispatch] = useReducer(tracksReducer, {
     ...initialState,
     tracks: initialTracks,
+    selectedTrackIndices: initialTracks.length > 0 ? [0] : [],
+    focusedTrackIndex: initialTracks.length > 0 ? 0 : null,
   });
 
   return (

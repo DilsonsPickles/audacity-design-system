@@ -2,7 +2,7 @@ import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, type TrackRulerConfig } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -285,6 +285,7 @@ function CanvasDemoContent() {
   const { preferences, updatePreference } = usePreferences();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const [scrollX, setScrollX] = React.useState(0);
+  const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('project');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
@@ -537,6 +538,7 @@ function CanvasDemoContent() {
 
   // View options
   const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(true);
+  const [showVerticalRulers, setShowVerticalRulers] = React.useState(true);
 
   // Timeline ruler format options
   const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
@@ -597,7 +599,7 @@ function CanvasDemoContent() {
   }, [loopRegionEnabled, loopRegionStart, loopRegionEnd]);
 
   // Track keyboard focus state - only one track can have keyboard focus at a time
-  const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(null);
+  const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(0);
 
   // Track whether the control panel specifically has focus (for the inset outline)
   const [controlPanelHasFocus, setControlPanelHasFocus] = React.useState<number | null>(null);
@@ -1395,6 +1397,7 @@ function CanvasDemoContent() {
 
     // Always update scrollX state to keep timeline ruler in sync
     setScrollX(scrollLeft);
+    setScrollY(scrollTop);
 
     // Sync vertical scroll with track headers
     if (trackHeaderScrollRef.current && !isScrollingSyncRef.current) {
@@ -1530,6 +1533,13 @@ function CanvasDemoContent() {
       checked: showRmsInWaveform,
       onClick: () => {
         setShowRmsInWaveform(!showRmsInWaveform);
+      }
+    },
+    {
+      label: 'Show vertical rulers',
+      checked: showVerticalRulers,
+      onClick: () => {
+        setShowVerticalRulers(!showVerticalRulers);
       }
     },
   ];
@@ -2061,11 +2071,15 @@ function CanvasDemoContent() {
 
           {/* Timeline Ruler + Canvas Area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Timeline Ruler - Fixed at top */}
-            <div
-              ref={canvasContainerRef}
-              style={{ position: 'relative', flexShrink: 0, overflow: 'hidden' }}
-            >
+            {/* Row container for ruler/canvas + vertical rulers */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+              {/* Column for Timeline Ruler + Canvas */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Timeline Ruler - Fixed at top */}
+                <div
+                  ref={canvasContainerRef}
+                  style={{ position: 'relative', flexShrink: 0, overflow: 'hidden' }}
+                >
               <div
                 ref={timelineRulerRef}
                 style={{ transform: `translateX(-${scrollX}px)`, width: '5000px', position: 'relative' }}
@@ -2273,6 +2287,25 @@ function CanvasDemoContent() {
                   </>
                 )}
               </div>
+            </div>
+              </div>
+
+              {/* Vertical Amplitude Rulers - Fixed on right, synced scroll */}
+              {showVerticalRulers && (
+                <div style={{ position: 'relative', width: '80px', flexShrink: 0, overflowY: 'hidden' }}>
+                  <div style={{ transform: `translateY(-${scrollY}px)` }}>
+                    <VerticalRulerPanel
+                      tracks={state.tracks.map((track, index) => ({
+                        id: track.id.toString(),
+                        height: track.height || 114,
+                        selected: state.selectedTrackIndices.includes(index),
+                        stereo: false, // TODO: Add stereo support when needed
+                      }))}
+                      width={80}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

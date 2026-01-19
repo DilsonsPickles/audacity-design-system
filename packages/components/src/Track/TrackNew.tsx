@@ -147,6 +147,11 @@ export interface TrackProps {
   onClipMoveToTrack?: (clipId: string | number, direction: 1 | -1) => void;
 
   /**
+   * Callback when navigating vertically between tracks (Arrow Up/Down without modifiers)
+   */
+  onClipNavigateVertical?: (clipId: string | number, direction: 1 | -1) => void;
+
+  /**
    * Time selection range (for rendering vibrant clip colors within selection)
    */
   timeSelection?: { startTime: number; endTime: number } | null;
@@ -208,6 +213,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   onClipMove,
   onClipTrim,
   onClipMoveToTrack,
+  onClipNavigateVertical,
   timeSelection,
   isTimeSelectionDragging = false,
   clipStyle = 'colourful',
@@ -354,9 +360,16 @@ export const TrackNew: React.FC<TrackProps> = ({
               return;
             }
 
-            // Navigate between clips with arrow keys (without Cmd or Shift) - cycles through all clips
-            // Right/Down = next clip, Left/Up = previous clip
-            if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+            // Navigate vertically between tracks with arrow up/down (without Cmd or Shift)
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+              e.preventDefault();
+              const direction = e.key === 'ArrowDown' ? 1 : -1;
+              onClipNavigateVertical?.(clip.id, direction);
+              return;
+            }
+
+            // Navigate between clips with arrow left/right (without Cmd or Shift) - cycles through all clips
+            if (e.key === 'ArrowRight' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
               e.preventDefault();
               // Cycle to next clip, wrapping to first if at end
               const nextIndex = (clipIndex + 1) % clips.length;
@@ -370,7 +383,7 @@ export const TrackNew: React.FC<TrackProps> = ({
                   (e.currentTarget as HTMLElement).tabIndex = -1;
                 }
               }
-            } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+            } else if (e.key === 'ArrowLeft' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
               e.preventDefault();
               // Cycle to previous clip, wrapping to last if at beginning
               const prevIndex = (clipIndex - 1 + clips.length) % clips.length;

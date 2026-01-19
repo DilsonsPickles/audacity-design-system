@@ -732,7 +732,7 @@ export function Canvas({
                 left: 0,
                 width: `${width}px`,
                 height: `${trackHeight}px`,
-                overflow: 'hidden',
+                overflow: 'visible', // Changed from 'hidden' to allow focus outline to show
               }}
               onClick={(e) => {
                 // Don't handle clicks if we just finished dragging (creating time selection)
@@ -828,7 +828,25 @@ export function Canvas({
                     }
                   }, 0);
                 }}
-onClipTrim={(clipId, edge, deltaSeconds) => {
+                onClipNavigateVertical={(clipId, direction) => {
+                  // Calculate target track index
+                  const targetTrackIndex = trackIndex + direction;
+
+                  // Check if target track exists
+                  if (targetTrackIndex < 0 || targetTrackIndex >= tracks.length) return;
+
+                  // Focus the first clip on the target track
+                  setTimeout(() => {
+                    const targetTrack = document.querySelector(`[data-track-index="${targetTrackIndex}"]`);
+                    if (targetTrack) {
+                      const firstClip = targetTrack.querySelector('[role="button"]') as HTMLElement;
+                      if (firstClip) {
+                        firstClip.focus();
+                      }
+                    }
+                  }, 0);
+                }}
+                onClipTrim={(clipId, edge, deltaSeconds) => {
                   // Find the clip to get its current state
                   const clip = track.clips.find(c => c.id === clipId);
                   if (!clip) return;
