@@ -413,8 +413,17 @@ export function TimelineRuler({
       }
 
       if (dragStateRef.current.type === 'move') {
-        const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
-        const newEnd = dragStateRef.current.initialEnd + deltaTime;
+        // Maintain region width and prevent going below 0
+        const regionWidth = dragStateRef.current.initialEnd - dragStateRef.current.initialStart;
+        let newStart = dragStateRef.current.initialStart + deltaTime;
+        let newEnd = dragStateRef.current.initialEnd + deltaTime;
+
+        // If start would go negative, constrain both start and end
+        if (newStart < 0) {
+          newStart = 0;
+          newEnd = regionWidth;
+        }
+
         onLoopRegionChange(newStart, newEnd);
       } else if (dragStateRef.current.type === 'resize-start') {
         const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
