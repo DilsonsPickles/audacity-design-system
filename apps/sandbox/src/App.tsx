@@ -1689,10 +1689,19 @@ function CanvasDemoContent() {
                   icon="loop"
                   active={loopRegionEnabled}
                   onClick={() => {
-                    if (!loopRegionEnabled && state.timeSelection) {
-                      // If enabling loop and there's a selection, set loop region to selection
-                      setLoopRegionStart(state.timeSelection.startTime);
-                      setLoopRegionEnd(state.timeSelection.endTime);
+                    if (!loopRegionEnabled) {
+                      if (state.timeSelection) {
+                        // If enabling loop and there's a selection, set loop region to selection
+                        setLoopRegionStart(state.timeSelection.startTime);
+                        setLoopRegionEnd(state.timeSelection.endTime);
+                      } else {
+                        // No selection - create default 4-measure loop region
+                        const secondsPerBeat = 60 / bpm;
+                        const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+                        const loopDuration = secondsPerMeasure * 4; // 4 measures
+                        setLoopRegionStart(0);
+                        setLoopRegionEnd(loopDuration);
+                      }
                     }
                     setLoopRegionEnabled(!loopRegionEnabled);
                   }}
@@ -1746,10 +1755,19 @@ function CanvasDemoContent() {
                   icon="loop"
                   active={loopRegionEnabled}
                   onClick={() => {
-                    if (!loopRegionEnabled && state.timeSelection) {
-                      // If enabling loop and there's a selection, set loop region to selection
-                      setLoopRegionStart(state.timeSelection.startTime);
-                      setLoopRegionEnd(state.timeSelection.endTime);
+                    if (!loopRegionEnabled) {
+                      if (state.timeSelection) {
+                        // If enabling loop and there's a selection, set loop region to selection
+                        setLoopRegionStart(state.timeSelection.startTime);
+                        setLoopRegionEnd(state.timeSelection.endTime);
+                      } else {
+                        // No selection - create default 4-measure loop region
+                        const secondsPerBeat = 60 / bpm;
+                        const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+                        const loopDuration = secondsPerMeasure * 4; // 4 measures
+                        setLoopRegionStart(0);
+                        setLoopRegionEnd(loopDuration);
+                      }
                     }
                     setLoopRegionEnabled(!loopRegionEnabled);
                   }}
