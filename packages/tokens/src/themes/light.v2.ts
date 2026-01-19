@@ -229,7 +229,7 @@ export const lightTheme: ThemeTokens = {
   },
 
   border: {
-    default: '#DFE2E7',          // Standard border color
+    default: '#D4D5D9',          // Standard border color
     subtle: '#EBEDF0',           // Subtle border
     emphasis: '#C0C5CE',         // Emphasized border
     focus: '#84B5FF',            // Blue focus ring

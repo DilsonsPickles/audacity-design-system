@@ -226,7 +226,7 @@ export function LabelEditor({
   );
 
   const style = {
-    '--label-editor-border': theme.border.default,
+    '--label-editor-border': theme.background.table.row.border,
     '--label-editor-header-bg': theme.background.surface.elevated,
     '--label-editor-row-hover': theme.background.surface.hover,
     '--label-editor-row-selected': theme.border.focus,
@@ -247,17 +247,19 @@ export function LabelEditor({
       os={os}
       style={style}
     >
-      <div className="label-editor">
-        <div className="label-editor__scroll-container">
-          <table
-            className="label-editor__table"
-            style={{
-              '--table-header-bg': '#EBEBEF',
-              '--table-header-border': '#D4D5D9',
-              '--table-header-text': theme.foreground.text.primary,
-              '--label-editor-row-border': theme.border.default,
-            } as React.CSSProperties}
-          >
+      <div className="label-editor__container">
+        <table
+          className="label-editor__table"
+          style={{
+            '--table-header-bg': theme.background.table.header.background,
+            '--table-header-border': theme.background.table.header.border,
+            '--table-header-text': theme.background.table.header.text,
+            '--table-row-bg': theme.background.table.row.idle,
+            '--table-row-hover-bg': theme.background.table.row.hover,
+            '--table-row-selected-bg': theme.background.table.row.selected,
+            '--table-row-border': theme.background.table.row.border,
+          } as React.CSSProperties}
+        >
             <colgroup>
               <col style={{ width: '120px' }} />
               <col style={{ width: '320px' }} />
@@ -304,8 +306,8 @@ export function LabelEditor({
                 />
               ))}
             </tbody>
-          </table>
-        </div>
+        </table>
+        <div className="label-editor__spacer" />
       </div>
     </Dialog>
   );
