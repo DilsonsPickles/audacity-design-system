@@ -2141,8 +2141,8 @@ function CanvasDemoContent() {
                   onLoopRegionInteracting={setLoopRegionInteracting}
                   onLoopRegionEnabledToggle={() => setLoopRegionEnabled(!loopRegionEnabled)}
                 />
-                {/* Loop region stalks in ruler (only visible during interaction) */}
-                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
+                {/* Loop region stalks in ruler (only visible during interaction and when enabled) */}
+                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && loopRegionEnabled && (
                   <>
                     {/* Start stalk */}
                     <div
@@ -2235,8 +2235,8 @@ function CanvasDemoContent() {
                   height={Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}
                   showTopIcon={false}
                 />
-                {/* Loop region stalks - extend down through all tracks (only visible during interaction) */}
-                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
+                {/* Loop region stalks - extend down through all tracks (only visible during interaction and when enabled) */}
+                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && loopRegionEnabled && (
                   <>
                     {/* Start stalk */}
                     <div
