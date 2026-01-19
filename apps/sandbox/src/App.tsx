@@ -567,6 +567,28 @@ function CanvasDemoContent() {
     setIsPlaying(false);
   };
 
+  // Auto-scroll to keep playhead in view during playback
+  React.useEffect(() => {
+    if (!isPlaying || !scrollContainerRef.current) return;
+
+    const playheadPixelPosition = state.playheadPosition * pixelsPerSecond;
+    const containerWidth = scrollContainerRef.current.clientWidth;
+    const currentScrollX = scrollX;
+
+    // Check if playhead is off screen to the right
+    if (playheadPixelPosition > currentScrollX + containerWidth) {
+      // Page turn: scroll forward by one viewport width
+      const newScrollX = currentScrollX + containerWidth;
+      scrollContainerRef.current.scrollLeft = newScrollX;
+    }
+    // Check if playhead is off screen to the left
+    else if (playheadPixelPosition < currentScrollX) {
+      // Scroll to position playhead at 1/4 from the left edge
+      const newScrollX = Math.max(0, playheadPixelPosition - containerWidth / 4);
+      scrollContainerRef.current.scrollLeft = newScrollX;
+    }
+  }, [state.playheadPosition, isPlaying, pixelsPerSecond, scrollX]);
+
   // Focus and select first track on initial load if there are tracks
   React.useEffect(() => {
     if (state.tracks.length > 0 && keyboardFocusedTrack === null) {
