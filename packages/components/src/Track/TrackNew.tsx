@@ -284,6 +284,7 @@ export const TrackNew: React.FC<TrackProps> = ({
         <div
           key={clip.id}
           data-clip-id={clip.id}
+          data-track-index={trackIndex}
           data-first-clip={isFirstClip}
           style={{
             position: 'absolute',
@@ -294,6 +295,13 @@ export const TrackNew: React.FC<TrackProps> = ({
           role="button"
           aria-label={`${clip.name} clip`}
           onKeyDown={(e) => {
+            // Delete key: let it bubble to App.tsx handler, but DON'T stop propagation
+            // The App.tsx handler will read data-clip-id and data-track-index from this element
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+              // Don't preventDefault or stopPropagation - let it reach App.tsx
+              return;
+            }
+
             // Toggle selection with Enter key
             if (e.key === 'Enter') {
               e.preventDefault();

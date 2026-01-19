@@ -1103,23 +1103,128 @@ function CanvasDemoContent() {
           return;
         }
 
-        // Priority 2: If there are any selected clips, delete them
-        const hasSelectedClips = state.tracks.some(track =>
-          track.clips.some(clip => clip.selected)
-        );
+        // Priority 2: Delete focused clip and/or selected clips
+        // Check if a clip has keyboard focus
+        let focusedClipInfo: { clipId: string | number; trackIndex: number } | null = null;
+        const activeElement = document.activeElement;
+        if (activeElement) {
+          const clipIdStr = activeElement.getAttribute('data-clip-id');
+          const trackIndexStr = activeElement.getAttribute('data-track-index');
+          if (clipIdStr !== null && trackIndexStr !== null) {
+            // Try to parse as number, fallback to string
+            const clipId = !isNaN(Number(clipIdStr)) ? Number(clipIdStr) : clipIdStr;
+            focusedClipInfo = {
+              clipId: clipId,
+              trackIndex: parseInt(trackIndexStr, 10),
+            };
+          }
+        }
 
-        if (hasSelectedClips) {
-          // Delete all selected clips
-          state.tracks.forEach((track, trackIndex) => {
-            track.clips.forEach((clip) => {
-              if (clip.selected) {
-                dispatch({
-                  type: 'DELETE_CLIP',
-                  payload: { trackIndex, clipId: clip.id },
-                });
+        // Collect all clips to delete (union of focused + selected)
+        const clipsToDelete: Array<{ trackIndex: number; clipId: string | number }> = [];
+
+        // Add focused clip if present
+        if (focusedClipInfo) {
+          clipsToDelete.push(focusedClipInfo);
+        }
+
+        // Add all selected clips
+        state.tracks.forEach((track, trackIndex) => {
+          track.clips.forEach((clip) => {
+            if (clip.selected) {
+              // Avoid duplicates (if focused clip is also selected)
+              const isDuplicate = clipsToDelete.some(
+                item => item.clipId === clip.id && item.trackIndex === trackIndex
+              );
+              if (!isDuplicate) {
+                clipsToDelete.push({ trackIndex, clipId: clip.id });
               }
+            }
+          });
+        });
+
+        // Delete all clips in the union
+        if (clipsToDelete.length > 0) {
+          // Before deleting, determine where to move focus
+          let shouldMoveFocus = false;
+          let focusTrackIndex = 0;
+          let focusClipIndex = 0;
+
+          if (focusedClipInfo) {
+            // Find the current clip index in its track
+            const track = state.tracks[focusedClipInfo.trackIndex];
+            const clipIndex = track.clips.findIndex(c => c.id === focusedClipInfo.clipId);
+
+            if (clipIndex !== -1) {
+              shouldMoveFocus = true;
+              focusTrackIndex = focusedClipInfo.trackIndex;
+
+              // Try to focus next clip, or previous if last, or do nothing if only clip
+              const remainingClips = track.clips.filter(
+                c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo.trackIndex)
+              );
+
+              if (remainingClips.length > 0) {
+                // Find next clip that won't be deleted
+                let nextClipIndex = clipIndex;
+                for (let i = clipIndex + 1; i < track.clips.length; i++) {
+                  const clip = track.clips[i];
+                  const willBeDeleted = clipsToDelete.some(
+                    item => item.clipId === clip.id && item.trackIndex === focusedClipInfo.trackIndex
+                  );
+                  if (!willBeDeleted) {
+                    nextClipIndex = i;
+                    break;
+                  }
+                }
+
+                // If no next clip found, try previous
+                if (nextClipIndex === clipIndex) {
+                  for (let i = clipIndex - 1; i >= 0; i--) {
+                    const clip = track.clips[i];
+                    const willBeDeleted = clipsToDelete.some(
+                      item => item.clipId === clip.id && item.trackIndex === focusedClipInfo.trackIndex
+                    );
+                    if (!willBeDeleted) {
+                      nextClipIndex = i;
+                      break;
+                    }
+                  }
+                }
+
+                focusClipIndex = Math.max(0, nextClipIndex - clipsToDelete.filter(
+                  item => item.trackIndex === focusedClipInfo.trackIndex
+                ).length);
+              } else {
+                shouldMoveFocus = false; // No clips left in track
+              }
+            }
+          }
+
+          // Delete all clips
+          clipsToDelete.forEach(({ trackIndex, clipId }) => {
+            dispatch({
+              type: 'DELETE_CLIP',
+              payload: { trackIndex, clipId },
             });
           });
+
+          // Move focus to next clip after deletion completes
+          if (shouldMoveFocus) {
+            setTimeout(() => {
+              const trackElements = document.querySelectorAll('[data-track-index]');
+              const targetTrack = Array.from(trackElements).find(
+                el => el.getAttribute('data-track-index') === String(focusTrackIndex)
+              );
+              if (targetTrack) {
+                const clipElements = targetTrack.parentElement?.querySelectorAll('[role="button"]');
+                if (clipElements && clipElements[focusClipIndex]) {
+                  (clipElements[focusClipIndex] as HTMLElement).focus();
+                }
+              }
+            }, 50);
+          }
+
           return;
         }
 
