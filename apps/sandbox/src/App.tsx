@@ -532,6 +532,11 @@ function CanvasDemoContent() {
   // View options
   const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(true);
 
+  // Timeline ruler format options
+  const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
+  const [bpm, setBpm] = React.useState(120);
+  const [beatsPerMeasure, setBeatsPerMeasure] = React.useState(4);
+
   // Clip context menu state
   const [clipContextMenu, setClipContextMenu] = React.useState<{
     isOpen: boolean;
@@ -2040,6 +2045,9 @@ function CanvasDemoContent() {
                   spectralSelection={spectralSelection}
                   selectionColor="rgba(112, 181, 255, 0.5)"
                   cursorPosition={mouseCursorPosition}
+                  timeFormat={timelineFormat}
+                  bpm={bpm}
+                  beatsPerMeasure={beatsPerMeasure}
                 />
                 {/* Playhead icon only in ruler */}
                 <PlayheadCursor
@@ -2839,8 +2847,9 @@ function CanvasDemoContent() {
           x={timelineRulerContextMenu.x}
           y={timelineRulerContextMenu.y}
           onClose={() => setTimelineRulerContextMenu(null)}
-          timeFormat="minutes-seconds"
+          timeFormat={timelineFormat}
           onTimeFormatChange={(format) => {
+            setTimelineFormat(format);
             toast.info(`Time format changed to: ${format}`);
             setTimelineRulerContextMenu(null);
           }}

@@ -61,6 +61,18 @@ export interface TimelineRulerProps {
    * Current cursor/playback position in seconds
    */
   cursorPosition?: number;
+  /**
+   * Time format to display
+   */
+  timeFormat?: 'minutes-seconds' | 'beats-measures';
+  /**
+   * Beats per minute (for beats-measures format)
+   */
+  bpm?: number;
+  /**
+   * Time signature numerator (beats per measure)
+   */
+  beatsPerMeasure?: number;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -80,6 +92,9 @@ export function TimelineRuler({
   selectionColor,
   spectralHighlightColor,
   cursorPosition,
+  timeFormat = 'minutes-seconds',
+  bpm = 120,
+  beatsPerMeasure = 4,
 }: TimelineRulerProps) {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -156,7 +171,10 @@ export function TimelineRuler({
       height,
       txtColor,
       lnColor,
-      tckColor
+      tckColor,
+      timeFormat,
+      bpm,
+      beatsPerMeasure
     );
 
     // Draw cursor position line (using text color)
@@ -173,7 +191,7 @@ export function TimelineRuler({
         ctx.stroke();
       }
     }
-  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition]);
+  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure]);
 
   return (
     <canvas
@@ -189,6 +207,27 @@ export function TimelineRuler({
 }
 
 function drawTimeMarkers(
+  ctx: CanvasRenderingContext2D,
+  pixelsPerSecond: number,
+  scrollX: number,
+  totalDuration: number,
+  width: number,
+  height: number,
+  textColor: string,
+  topTickColor: string,
+  bottomTickColor: string,
+  timeFormat: 'minutes-seconds' | 'beats-measures',
+  bpm: number,
+  beatsPerMeasure: number
+) {
+  if (timeFormat === 'beats-measures') {
+    drawBeatsAndMeasures(ctx, pixelsPerSecond, scrollX, totalDuration, width, height, textColor, topTickColor, bottomTickColor, bpm, beatsPerMeasure);
+  } else {
+    drawMinutesAndSeconds(ctx, pixelsPerSecond, scrollX, totalDuration, width, height, textColor, topTickColor, bottomTickColor);
+  }
+}
+
+function drawMinutesAndSeconds(
   ctx: CanvasRenderingContext2D,
   pixelsPerSecond: number,
   scrollX: number,
@@ -281,6 +320,77 @@ function drawTimeMarkers(
     // Position label in top section, left-aligned to tick mark
     const textY = midHeight / 2 + 4; // Center in top half
     ctx.fillText(label, x + 4, textY); // 4px offset from tick for spacing
+  }
+}
+
+function drawBeatsAndMeasures(
+  ctx: CanvasRenderingContext2D,
+  pixelsPerSecond: number,
+  scrollX: number,
+  totalDuration: number,
+  width: number,
+  height: number,
+  textColor: string,
+  topTickColor: string,
+  bottomTickColor: string,
+  bpm: number,
+  beatsPerMeasure: number
+) {
+  const midHeight = height / 2;
+
+  // Calculate seconds per beat and seconds per measure
+  const secondsPerBeat = 60 / bpm;
+  const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+
+  // Calculate visible range in measures and beats
+  const startMeasure = Math.floor((scrollX / pixelsPerSecond) / secondsPerMeasure);
+  const endMeasure = Math.ceil(((scrollX + width) / pixelsPerSecond) / secondsPerMeasure);
+
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillStyle = textColor;
+  ctx.lineWidth = 1;
+
+  // Draw measures (major ticks) and beats (minor ticks)
+  for (let measure = startMeasure; measure <= endMeasure; measure++) {
+    for (let beat = 0; beat < beatsPerMeasure; beat++) {
+      const timeInSeconds = measure * secondsPerMeasure + beat * secondsPerBeat;
+      const x = CLIP_CONTENT_OFFSET + timeInSeconds * pixelsPerSecond - scrollX;
+
+      if (x < CLIP_CONTENT_OFFSET || x > width) continue;
+
+      const tickX = Math.floor(x) + 0.5;
+      const isMeasureBoundary = beat === 0;
+
+      if (isMeasureBoundary) {
+        // Major tick (measure boundary) - full height in both sections
+        ctx.strokeStyle = topTickColor;
+
+        // Top section
+        ctx.beginPath();
+        ctx.moveTo(tickX, 0);
+        ctx.lineTo(tickX, midHeight);
+        ctx.stroke();
+
+        // Bottom section
+        ctx.beginPath();
+        ctx.moveTo(tickX, midHeight);
+        ctx.lineTo(tickX, height);
+        ctx.stroke();
+
+        // Draw measure label
+        const measureLabel = `${measure + 1}`;
+        const textY = midHeight / 2 + 4;
+        ctx.fillText(measureLabel, x + 4, textY);
+      } else {
+        // Minor tick (beat) - shorter, in bottom section only
+        ctx.strokeStyle = bottomTickColor;
+        const minorTickHeight = (height - midHeight) * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(tickX, height - minorTickHeight);
+        ctx.lineTo(tickX, height);
+        ctx.stroke();
+      }
+    }
   }
 }
 
