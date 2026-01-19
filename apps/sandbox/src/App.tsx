@@ -2139,6 +2139,7 @@ function CanvasDemoContent() {
                     setLoopRegionEnd(end);
                   }}
                   onLoopRegionInteracting={setLoopRegionInteracting}
+                  onLoopRegionEnabledToggle={() => setLoopRegionEnabled(!loopRegionEnabled)}
                 />
                 {/* Loop region stalks in ruler (only visible during interaction) */}
                 {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (

@@ -93,6 +93,10 @@ export interface TimelineRulerProps {
    * Callback when loop region interaction starts/stops
    */
   onLoopRegionInteracting?: (isInteracting: boolean) => void;
+  /**
+   * Callback when loop region is clicked (to toggle enabled state)
+   */
+  onLoopRegionEnabledToggle?: () => void;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -120,10 +124,12 @@ export function TimelineRuler({
   loopRegionEnd = null,
   onLoopRegionChange,
   onLoopRegionInteracting,
+  onLoopRegionEnabledToggle,
 }: TimelineRulerProps) {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragStateRef = useRef<{ type: 'move' | 'resize-start' | 'resize-end'; startX: number; initialStart: number; initialEnd: number } | null>(null);
+  const clickStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [cursor, setCursor] = useState('default');
 
   // Use theme tokens as defaults if not provided
@@ -243,7 +249,7 @@ export function TimelineRuler({
   const EDGE_THRESHOLD = 5; // pixels from edge for resize cursor
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null || !onLoopRegionChange) {
+    if (loopRegionStart === null || loopRegionEnd === null) {
       setCursor('default');
       return;
     }
@@ -272,17 +278,25 @@ export function TimelineRuler({
     const nearEnd = Math.abs(mouseX - endX) < EDGE_THRESHOLD;
     const insideRegion = mouseX >= startX && mouseX <= endX;
 
-    if (nearStart || nearEnd) {
-      setCursor('ew-resize');
+    // Only show resize/grab cursors if loop is enabled and can be changed
+    if (loopRegionEnabled && onLoopRegionChange) {
+      if (nearStart || nearEnd) {
+        setCursor('ew-resize');
+      } else if (insideRegion) {
+        setCursor('grab');
+      } else {
+        setCursor('default');
+      }
     } else if (insideRegion) {
-      setCursor('grab');
+      // Loop region exists but is disabled - show pointer to indicate clickable
+      setCursor('pointer');
     } else {
       setCursor('default');
     }
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null || !onLoopRegionChange) return;
+    if (loopRegionStart === null || loopRegionEnd === null) return;
 
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -301,22 +315,30 @@ export function TimelineRuler({
     const nearEnd = Math.abs(mouseX - endX) < EDGE_THRESHOLD;
     const insideRegion = mouseX >= startX && mouseX <= endX;
 
-    if (nearStart) {
-      dragStateRef.current = { type: 'resize-start', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
-      setCursor('ew-resize');
-      onLoopRegionInteracting?.(true);
-    } else if (nearEnd) {
-      dragStateRef.current = { type: 'resize-end', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
-      setCursor('ew-resize');
-      onLoopRegionInteracting?.(true);
-    } else if (insideRegion) {
-      dragStateRef.current = { type: 'move', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
-      setCursor('grabbing');
-      onLoopRegionInteracting?.(true);
+    // Track click start for detecting click vs drag
+    clickStartRef.current = { x: mouseX, y: mouseY, time: Date.now() };
+
+    // Only allow dragging if loop is enabled
+    if (loopRegionEnabled && onLoopRegionChange) {
+      if (nearStart) {
+        dragStateRef.current = { type: 'resize-start', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
+        setCursor('ew-resize');
+        onLoopRegionInteracting?.(true);
+      } else if (nearEnd) {
+        dragStateRef.current = { type: 'resize-end', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
+        setCursor('ew-resize');
+        onLoopRegionInteracting?.(true);
+      } else if (insideRegion) {
+        dragStateRef.current = { type: 'move', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
+        setCursor('grabbing');
+        onLoopRegionInteracting?.(true);
+      }
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const wasDragging = dragStateRef.current !== null;
+
     if (dragStateRef.current) {
       if (dragStateRef.current.type === 'move') {
         setCursor('grab');
@@ -324,6 +346,34 @@ export function TimelineRuler({
       dragStateRef.current = null;
       onLoopRegionInteracting?.(false);
     }
+
+    // Detect click (vs drag) if we have a click start and didn't drag
+    if (!wasDragging && clickStartRef.current && loopRegionStart !== null && loopRegionEnd !== null) {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const midHeight = height / 2;
+
+      // Check if click stayed within loop region and top half
+      if (mouseY <= midHeight) {
+        const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
+        const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
+        const insideRegion = mouseX >= startX && mouseX <= endX;
+
+        // Check if mouse didn't move much (< 3px)
+        const dx = Math.abs(mouseX - clickStartRef.current.x);
+        const dy = Math.abs(mouseY - clickStartRef.current.y);
+        const wasClick = dx < 3 && dy < 3;
+
+        if (insideRegion && wasClick && onLoopRegionEnabledToggle) {
+          onLoopRegionEnabledToggle();
+        }
+      }
+    }
+
+    clickStartRef.current = null;
   };
 
   const handleMouseLeave = () => {
