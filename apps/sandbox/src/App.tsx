@@ -1695,19 +1695,25 @@ function CanvasDemoContent() {
                   active={loopRegionEnabled}
                   onClick={() => {
                     if (!loopRegionEnabled) {
-                      if (state.timeSelection) {
-                        // If enabling loop and there's a selection, set loop region to selection
-                        setLoopRegionStart(state.timeSelection.startTime);
-                        setLoopRegionEnd(state.timeSelection.endTime);
-                      } else {
-                        // No selection - create default 4-measure loop region
-                        const secondsPerBeat = 60 / bpm;
-                        const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-                        const loopDuration = secondsPerMeasure * 4; // 4 measures
-                        setLoopRegionStart(0);
-                        setLoopRegionEnd(loopDuration);
+                      // Enabling loop
+                      if (loopRegionStart === null || loopRegionEnd === null) {
+                        // No existing loop region - create one
+                        if (state.timeSelection) {
+                          // Use time selection if available
+                          setLoopRegionStart(state.timeSelection.startTime);
+                          setLoopRegionEnd(state.timeSelection.endTime);
+                        } else {
+                          // Create default 4-measure loop region
+                          const secondsPerBeat = 60 / bpm;
+                          const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+                          const loopDuration = secondsPerMeasure * 4; // 4 measures
+                          setLoopRegionStart(0);
+                          setLoopRegionEnd(loopDuration);
+                        }
                       }
+                      // If loop region already exists, just enable it without changing start/end
                     }
+                    // Toggle enabled state (doesn't clear the loop region)
                     setLoopRegionEnabled(!loopRegionEnabled);
                   }}
                 />
@@ -1774,18 +1780,23 @@ function CanvasDemoContent() {
                   active={loopRegionEnabled}
                   onClick={() => {
                     if (!loopRegionEnabled) {
-                      if (state.timeSelection) {
-                        // If enabling loop and there's a selection, set loop region to selection
-                        setLoopRegionStart(state.timeSelection.startTime);
-                        setLoopRegionEnd(state.timeSelection.endTime);
-                      } else {
-                        // No selection - create default 4-measure loop region
-                        const secondsPerBeat = 60 / bpm;
-                        const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-                        const loopDuration = secondsPerMeasure * 4; // 4 measures
-                        setLoopRegionStart(0);
-                        setLoopRegionEnd(loopDuration);
+                      // Enabling loop
+                      if (loopRegionStart === null || loopRegionEnd === null) {
+                        // No existing loop region - create one
+                        if (state.timeSelection) {
+                          // Use time selection if available
+                          setLoopRegionStart(state.timeSelection.startTime);
+                          setLoopRegionEnd(state.timeSelection.endTime);
+                        } else {
+                          // Create default 4-measure loop region
+                          const secondsPerBeat = 60 / bpm;
+                          const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+                          const loopDuration = secondsPerMeasure * 4; // 4 measures
+                          setLoopRegionStart(0);
+                          setLoopRegionEnd(loopDuration);
+                        }
                       }
+                      // If loop region already exists, just enable it without changing start/end
                     }
                     setLoopRegionEnabled(!loopRegionEnabled);
                   }}
@@ -3031,6 +3042,24 @@ function CanvasDemoContent() {
           }}
           loopRegionEnabled={loopRegionEnabled}
           onToggleLoopRegion={() => {
+            if (!loopRegionEnabled) {
+              // Enabling loop
+              if (loopRegionStart === null || loopRegionEnd === null) {
+                // No existing loop region - create one
+                if (state.timeSelection) {
+                  // Use time selection if available
+                  setLoopRegionStart(state.timeSelection.startTime);
+                  setLoopRegionEnd(state.timeSelection.endTime);
+                } else {
+                  // Create default 4-measure loop region
+                  const secondsPerBeat = 60 / bpm;
+                  const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+                  const loopDuration = secondsPerMeasure * 4;
+                  setLoopRegionStart(0);
+                  setLoopRegionEnd(loopDuration);
+                }
+              }
+            }
             setLoopRegionEnabled(!loopRegionEnabled);
             toast.info(`Loop region ${!loopRegionEnabled ? 'enabled' : 'disabled'}`);
             setTimelineRulerContextMenu(null);
