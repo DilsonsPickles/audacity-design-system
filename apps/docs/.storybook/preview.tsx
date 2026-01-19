@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Preview } from '@storybook/react';
-import { PreferencesProvider } from '@audacity-ui/components';
+import { PreferencesProvider, ThemeProvider } from '@audacity-ui/components';
 import '@audacity-ui/components/style.css';
 
 // Import Inter font from Google Fonts
@@ -30,9 +30,11 @@ const preview: Preview = {
   },
   decorators: [
     (Story) => (
-      <PreferencesProvider>
-        <Story />
-      </PreferencesProvider>
+      <ThemeProvider>
+        <PreferencesProvider>
+          <Story />
+        </PreferencesProvider>
+      </ThemeProvider>
     ),
   ],
 };

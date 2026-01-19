@@ -57,12 +57,14 @@
   overflow-y: scroll; /* Always show scrollbar to prevent content shift */
   min-height: var(--table-body-min-height, auto);
   max-height: var(--table-body-max-height, none);
+  background-color: var(--table-bg);
 }
 
 /* Table Row */
 .table__row {
   display: flex;
   align-items: center;
+  height: 40px;
   background-color: var(--table-row-bg);
   border-bottom: 1px solid var(--table-row-border);
   transition: background-color 0.15s ease;
@@ -82,7 +84,10 @@
 
 /* Table Cell */
 .table__cell {
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 8px;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;

@@ -162,11 +162,26 @@ export const darkTheme: ThemeTokens = {
 
     table: {
       background: '#25262b',     // Dark table background
-      header: '#2c2e33',         // Slightly lighter header
+      header: {
+        background: '#2c2e33',   // Slightly lighter header
+        text: '#e4e5e7',         // Light text
+        border: '#373a40',       // Border color
+      },
       row: {
         idle: 'transparent',     // No background for rows
         hover: '#2c2e33',        // Slightly lighter on hover
         selected: '#1e3a5f',     // Dark blue tint when selected
+        alternate: '#282930',    // Slightly lighter for striped rows
+        text: '#e4e5e7',         // Light text
+        border: '#373a40',       // Medium gray border
+      },
+      cell: {
+        idle: 'transparent',     // No background for cells
+        hover: '#2c2e33',        // Slightly lighter on hover
+        selected: '#1e3a5f',     // Dark blue tint when selected
+        text: '#e4e5e7',         // Light text
+        textSecondary: '#9ca3af', // Medium gray for secondary text
+        border: '#373a40',       // Medium gray border
       },
     },
 

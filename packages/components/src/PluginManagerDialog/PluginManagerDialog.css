@@ -3,13 +3,13 @@
 /* Filters */
 .plugin-manager-filters {
   padding: 16px;
-  border-bottom: 1px solid var(--dialog-border, #e0e0e0);
+  border-bottom: 1px solid var(--border-on-elevated);
 }
 
 .plugin-manager-filters__row {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  justify-content: space-between;
 }
 
 .plugin-manager-filters__left {
@@ -18,13 +18,14 @@
 }
 
 .plugin-manager-filters__row > .search-field {
-  flex: 1;
+  width: 240px;
 }
 
 .plugin-manager-filter {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 
 .plugin-manager-filter__label {
@@ -32,4 +33,5 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
+  white-space: nowrap;
 }

@@ -62,9 +62,9 @@ export function SearchField({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const style = {
-    '--search-field-bg': theme.background.surface.elevated,
-    '--search-field-border': theme.border.default,
-    '--search-field-border-hover': theme.border.focus,
+    '--search-field-bg': '#FFFFFF',
+    '--search-field-border': theme.border.input.idle,
+    '--search-field-border-hover': theme.border.input.hover,
     '--search-field-border-focus': theme.border.focus,
     '--search-field-icon': theme.foreground.icon.primary,
     '--search-field-text': theme.foreground.text.primary,

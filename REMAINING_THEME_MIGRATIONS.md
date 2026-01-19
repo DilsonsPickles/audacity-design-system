@@ -11,7 +11,7 @@
 7. TimeCode
 8. ClipBody (envelope rendering)
 
-## Remaining: 15 Components
+## Remaining: 16 Components
 
 ### Migration Pattern
 
@@ -176,7 +176,26 @@ Now supports `variant` prop with light/dark modes.
 
 **Note:** Background and border are hardcoded per design spec. Will need dark theme equivalents.
 
-### 17. Label Rendering in Canvas.tsx (10 colors)
+### 17. FilterChip (4 colors)
+**Hardcoded colors in CSS:**
+- `#d2d6dd` (border - slate-400)
+- `#ebedf0` (hover background - slate-200)
+- `#84b5ff` (selected background - blue-500)
+- `#14151a` (text - font-primary-color)
+
+**Suggested tokens:**
+```typescript
+'--filter-chip-border': theme.border.default,
+'--filter-chip-bg-hover': theme.background.surface.subtle,
+'--filter-chip-bg-selected': theme.foreground.icon.info, // or theme.brand.primary
+'--filter-chip-text': theme.foreground.text.primary,
+```
+
+**Location:** `packages/components/src/FilterChip/FilterChip.css`
+
+**Note:** Uses CSS variables as fallbacks (`var(--slate-400, #d2d6dd)`), but needs theme integration.
+
+### 18. Label Rendering in Canvas.tsx (10 colors)
 **Hardcoded colors:**
 - `#7EB1FF` (unselected label background, stalk, ear)
 - `#3399FF` (selected label background, stalk, ear)
@@ -248,8 +267,8 @@ After migrating all components:
 
 ## Current Status
 
-**Migrated:** 16/30 components (53%)
-**Remaining:** 14 components
+**Migrated:** 16/31 components (52%)
+**Remaining:** 15 components
 **Build:** ✅ Passing
 **Sandbox:** ✅ Running
 **Theme Toggle:** ✅ Functional

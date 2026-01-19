@@ -1,2 +1,2 @@
-export { PreferencesModal, type PreferencesModalProps, type PreferencesPage, type PreferencesMenuItem } from './PreferencesModal';
+export { PreferencesModal, type PreferencesModalProps, type PreferencesPage } from './PreferencesModal';
 export { default } from './PreferencesModal';

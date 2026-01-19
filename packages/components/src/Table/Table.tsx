@@ -37,14 +37,15 @@ export function Table({
   const { theme } = useTheme();
 
   const style = {
-    '--table-header-bg': theme.background.surface.subtle,
-    '--table-header-text': theme.foreground.text.primary,
-    '--table-header-border': theme.border.default,
-    '--table-row-bg': theme.background.surface.default,
-    '--table-row-hover-bg': theme.background.surface.hover,
-    '--table-row-text': theme.foreground.text.primary,
-    '--table-row-border': theme.border.default,
-    '--table-cell-secondary-text': theme.foreground.text.secondary,
+    '--table-bg': theme.background.table.background,
+    '--table-header-bg': theme.background.table.header.background,
+    '--table-header-text': theme.background.table.header.text,
+    '--table-header-border': theme.background.table.header.border,
+    '--table-row-bg': theme.background.table.row.idle,
+    '--table-row-hover-bg': theme.background.table.row.hover,
+    '--table-row-text': theme.background.table.row.text,
+    '--table-row-border': theme.background.table.row.border,
+    '--table-cell-secondary-text': theme.background.table.cell.textSecondary,
     ...(minBodyHeight && { '--table-body-min-height': typeof minBodyHeight === 'number' ? `${minBodyHeight}px` : minBodyHeight }),
     ...(maxBodyHeight && { '--table-body-max-height': typeof maxBodyHeight === 'number' ? `${maxBodyHeight}px` : maxBodyHeight }),
   } as React.CSSProperties;

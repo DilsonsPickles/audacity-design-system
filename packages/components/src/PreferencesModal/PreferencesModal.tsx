@@ -13,6 +13,7 @@ import { PreferencePanel } from '../PreferencePanel';
 import { ShortcutTableHeader } from '../ShortcutTableHeader';
 import { ShortcutTableRow } from '../ShortcutTableRow';
 import { SearchField } from '../SearchField';
+import { DialogSideNav, DialogSideNavItem } from '../DialogSideNav/DialogSideNav';
 import { useTabGroup } from '../hooks/useTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { usePreferences } from '../contexts/PreferencesContext';
@@ -30,12 +31,6 @@ export type PreferencesPage =
   | 'cloud'
   | 'advanced-options'
   | 'shortcuts';
-
-export interface PreferencesMenuItem {
-  id: PreferencesPage;
-  label: string;
-  icon: string;
-}
 
 export interface PreferencesModalProps {
   /**
@@ -65,7 +60,7 @@ export interface PreferencesModalProps {
   className?: string;
 }
 
-const menuItems: PreferencesMenuItem[] = [
+const menuItems: DialogSideNavItem<PreferencesPage>[] = [
   { id: 'general', label: 'General', icon: '\uEF55' }, // cog
   { id: 'appearance', label: 'Appearance', icon: '\uF444' }, // brush
   { id: 'audio-settings', label: 'Audio settings', icon: '\uEF4E' }, // volume
@@ -78,17 +73,6 @@ const menuItems: PreferencesMenuItem[] = [
   { id: 'shortcuts', label: 'Shortcuts', icon: '\uF441' }, // keyboard
   { id: 'advanced-options', label: 'Advanced options', icon: '\uEF55' }, // cog
 ];
-
-interface SidebarButtonProps {
-  item: PreferencesMenuItem;
-  itemIndex: number;
-  totalItems: number;
-  isSelected: boolean;
-  onSelect: (page: PreferencesPage, moveFocusToContent?: boolean, sourceButton?: HTMLButtonElement) => void;
-  buttonRef: (el: HTMLButtonElement | null) => void;
-  itemRefs: React.RefObject<(HTMLButtonElement | null)[]>;
-  activeIndexRef: React.MutableRefObject<number>;
-}
 
 interface TabGroupFieldProps {
   groupId: string;
@@ -232,70 +216,6 @@ function TabGroupField({
   );
 }
 
-function SidebarButton({
-  item,
-  itemIndex,
-  totalItems,
-  isSelected,
-  onSelect,
-  buttonRef,
-  itemRefs,
-  activeIndexRef,
-}: SidebarButtonProps) {
-  // Use the useTabGroup hook for profile-aware navigation
-  const { tabIndex, onKeyDown, onFocus, onBlur } = useTabGroup({
-    groupId: 'preferences-sidebar',
-    itemIndex,
-    totalItems,
-    itemRefs,
-    activeIndexRef,
-    onItemActivate: (index) => {
-      // When arrow keys are used in AU4 profile, change the page
-      const targetItem = menuItems[index];
-      if (targetItem) {
-        onSelect(targetItem.id, false);
-      }
-    },
-  });
-
-  return (
-    <button
-      ref={buttonRef}
-      className={`preferences-modal__menu-item ${
-        isSelected ? 'preferences-modal__menu-item--selected' : ''
-      }`}
-      onClick={() => onSelect(item.id)}
-      onFocus={(e) => {
-        onFocus?.(e);
-      }}
-      onBlur={(e) => {
-        onBlur?.(e);
-      }}
-      onKeyDown={(e) => {
-        // Handle Enter/Space to activate and move focus to content
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect(item.id, true, e.currentTarget);
-        }
-        // Call the profile-aware handler from useTabGroup
-        onKeyDown?.(e);
-      }}
-      role="tab"
-      aria-selected={isSelected}
-      aria-controls="preferences-content"
-      tabIndex={tabIndex}
-    >
-      <span className="preferences-modal__menu-icon musescore-icon">
-        {item.icon}
-      </span>
-      <span className="preferences-modal__menu-label">{item.label}</span>
-      {isSelected && (
-        <div className="preferences-modal__menu-indicator" />
-      )}
-    </button>
-  );
-}
-
 export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   isOpen,
   onClose,
@@ -305,11 +225,8 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   className = '',
 }) => {
   const [selectedPage, setSelectedPage] = useState<PreferencesPage>(currentPage);
-  const sidebarRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [focusedRegion, setFocusedRegion] = useState<'sidebar' | 'content'>('sidebar');
-  const sidebarButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const sidebarActiveIndexRef = useRef<number>(0);
   const { activeProfile } = useAccessibilityProfile();
 
   // Footer tab group state
@@ -330,29 +247,9 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
     }
   }, [isOpen, selectedPage]);
 
-  const handlePageChange = (page: PreferencesPage, moveFocusToContent = false, sourceButton?: HTMLButtonElement) => {
+  const handlePageChange = (page: PreferencesPage) => {
     setSelectedPage(page);
     onPageChange?.(page);
-
-    // When selecting via Enter/Space, move focus to content
-    if (moveFocusToContent && contentRef.current) {
-      // Small delay to ensure content has rendered
-      setTimeout(() => {
-        if (!contentRef.current) return;
-
-        // Find first focusable element, excluding container divs
-        const firstFocusable = contentRef.current.querySelector<HTMLElement>(
-          'button:not([tabindex="-1"]), [href]:not([tabindex="-1"]), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"])'
-        );
-        if (firstFocusable) {
-          firstFocusable.focus();
-          setFocusedRegion('content');
-        } else {
-          // If no focusable elements in content, keep focus on the nav button
-          sourceButton?.focus();
-        }
-      }, 10);
-    }
   };
 
   // Handle F6 keyboard navigation between regions
@@ -363,8 +260,9 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
         e.preventDefault();
         if (e.shiftKey) {
           // Shift+F6: Go to sidebar
-          if (sidebarRef.current) {
-            const firstButton = sidebarRef.current.querySelector<HTMLButtonElement>('button');
+          const sidebar = document.querySelector('.dialog-sidenav');
+          if (sidebar) {
+            const firstButton = sidebar.querySelector<HTMLButtonElement>('button');
             firstButton?.focus();
             setFocusedRegion('sidebar');
           }
@@ -407,32 +305,13 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
     >
       <div className="preferences-modal__content">
         {/* Sidebar Menu */}
-        <nav
-          ref={sidebarRef}
+        <DialogSideNav
+          items={menuItems}
+          selectedId={selectedPage}
+          onSelectId={handlePageChange}
+          ariaLabel="Preferences navigation"
           className="preferences-modal__sidebar"
-          role="tablist"
-          aria-label="Preferences navigation"
-          aria-orientation="vertical"
-        >
-          {menuItems.map((item, index) => {
-            const itemIndex = menuItems.findIndex(mi => mi.id === item.id);
-            return (
-              <SidebarButton
-                key={item.id}
-                item={item}
-                itemIndex={itemIndex}
-                totalItems={menuItems.length}
-                isSelected={selectedPage === item.id}
-                onSelect={handlePageChange}
-                buttonRef={(el) => {
-                  sidebarButtonRefs.current[itemIndex] = el;
-                }}
-                itemRefs={sidebarButtonRefs}
-                activeIndexRef={sidebarActiveIndexRef}
-              />
-            );
-          })}
-        </nav>
+        />
 
         {/* Content Area */}
         <main

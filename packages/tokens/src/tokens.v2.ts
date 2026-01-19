@@ -226,12 +226,33 @@ export interface ThemeTokens {
 
     /** Table backgrounds */
     table: {
+      /** Table container background */
       background: string;
-      header: string;
+      /** Table header background */
+      header: {
+        background: string;
+        text: string;
+        border: string;
+      };
+      /** Table row backgrounds */
       row: {
         idle: string;
         hover: string;
         selected: string;
+        /** Alternate row background (for striped tables) */
+        alternate: string;
+        text: string;
+        border: string;
+      };
+      /** Table cell backgrounds */
+      cell: {
+        idle: string;
+        hover: string;
+        selected: string;
+        text: string;
+        /** Secondary text within cells (smaller, muted) */
+        textSecondary: string;
+        border: string;
       };
     };
 

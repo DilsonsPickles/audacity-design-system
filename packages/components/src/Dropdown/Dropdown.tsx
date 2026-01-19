@@ -178,7 +178,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const style = {
     '--dropdown-bg': '#FFFFFF',
-    '--dropdown-border': '#D4D5D9',
+    '--dropdown-border': theme.border.input.idle,
     '--dropdown-border-hover': theme.border.input.hover,
     '--dropdown-border-active': theme.border.focus,
     '--dropdown-text': theme.foreground.text.primary,
@@ -228,7 +228,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
             left: `${menuPosition.left}px`,
             width: `${menuPosition.width}px`,
             '--dropdown-menu-bg': '#FFFFFF',
-            '--dropdown-border': '#D4D5D9',
+            '--dropdown-border': theme.border.input.idle,
             '--dropdown-menu-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
             '--dropdown-text': theme.foreground.text.primary,
             '--dropdown-option-hover-bg': theme.background.surface.hover,

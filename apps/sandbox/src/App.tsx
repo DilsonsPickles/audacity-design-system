@@ -2,7 +2,7 @@ import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -312,11 +312,11 @@ function CanvasDemoContent() {
   const [plugins, setPlugins] = React.useState<Plugin[]>([
     { id: '1', name: 'Reverb', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/reverb.ny', enabled: true },
     { id: '2', name: 'Delay', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/delay.ny', enabled: true },
-    { id: '3', name: 'Compressor', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/compressor', enabled: true },
-    { id: '4', name: 'Noise Gate', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/noisegate', enabled: false },
-    { id: '5', name: 'AUGraphicEQ', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUGraphicEQ.component', enabled: true },
-    { id: '6', name: 'AUDelay', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUDelay.component', enabled: true },
-    { id: '7', name: 'Normalize', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/normalize', enabled: true },
+    { id: '3', name: 'Compressor', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/compressor', enabled: true },
+    { id: '4', name: 'Noise Gate', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/noisegate', enabled: false },
+    { id: '5', name: 'AUGraphicEQ', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUGraphicEQ.component', enabled: true },
+    { id: '6', name: 'AUDelay', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUDelay.component', enabled: true },
+    { id: '7', name: 'Normalize', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/normalize', enabled: true },
     { id: '8', name: 'Bass Boost', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/bassboost.ny', enabled: false },
     { id: '9', name: 'Echo', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/echo.ny', enabled: true },
     { id: '10', name: 'Chorus', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/chorus.ny', enabled: true },
@@ -324,48 +324,54 @@ function CanvasDemoContent() {
     { id: '12', name: 'Flanger', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/flanger.ny', enabled: false },
     { id: '13', name: 'Tremolo', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/tremolo.ny', enabled: true },
     { id: '14', name: 'Wahwah', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/wahwah.ny', enabled: true },
-    { id: '15', name: 'EQ', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/eq', enabled: true },
-    { id: '16', name: 'Filter Curve', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/filtercurve', enabled: true },
-    { id: '17', name: 'Graphic EQ', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/graphiceq', enabled: false },
-    { id: '18', name: 'High Pass Filter', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/highpass', enabled: true },
-    { id: '19', name: 'Low Pass Filter', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/lowpass', enabled: true },
-    { id: '20', name: 'Notch Filter', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/notch', enabled: true },
-    { id: '21', name: 'AUReverb', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUReverb.component', enabled: true },
-    { id: '22', name: 'AUDistortion', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUDistortion.component', enabled: true },
-    { id: '23', name: 'AUDynamicsProcessor', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUDynamicsProcessor.component', enabled: false },
-    { id: '24', name: 'AUPeakLimiter', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUPeakLimiter.component', enabled: true },
-    { id: '25', name: 'AUMatrixReverb', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUMatrixReverb.component', enabled: true },
-    { id: '26', name: 'AUFilter', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUFilter.component', enabled: true },
-    { id: '27', name: 'AUParametricEQ', type: 'AudioUnit', category: 'Effect', path: '/System/Library/Components/AUParametricEQ.component', enabled: true },
+    { id: '15', name: 'EQ', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/eq', enabled: true },
+    { id: '16', name: 'Filter Curve', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/filtercurve', enabled: true },
+    { id: '17', name: 'Graphic EQ', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/graphiceq', enabled: false },
+    { id: '18', name: 'High Pass Filter', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/highpass', enabled: true },
+    { id: '19', name: 'Low Pass Filter', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/lowpass', enabled: true },
+    { id: '20', name: 'Notch Filter', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/notch', enabled: true },
+    { id: '21', name: 'AUReverb', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUReverb.component', enabled: true },
+    { id: '22', name: 'AUDistortion', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUDistortion.component', enabled: true },
+    { id: '23', name: 'AUDynamicsProcessor', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUDynamicsProcessor.component', enabled: false },
+    { id: '24', name: 'AUPeakLimiter', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUPeakLimiter.component', enabled: true },
+    { id: '25', name: 'AUMatrixReverb', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUMatrixReverb.component', enabled: true },
+    { id: '26', name: 'AUFilter', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUFilter.component', enabled: true },
+    { id: '27', name: 'AUParametricEQ', type: 'Audio unit', category: 'Effect', path: '/System/Library/Components/AUParametricEQ.component', enabled: true },
     { id: '28', name: 'Pitch Shift', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/pitchshift.ny', enabled: true },
-    { id: '29', name: 'Change Tempo', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/changetempo', enabled: true },
-    { id: '30', name: 'Change Speed', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/changespeed', enabled: false },
-    { id: '31', name: 'Fade In', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/fadein', enabled: true },
-    { id: '32', name: 'Fade Out', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/fadeout', enabled: true },
-    { id: '33', name: 'Crossfade Clips', type: 'Audacity', category: 'Tool', path: '/Applications/Audacity.app/Contents/PlugIns/crossfade', enabled: true },
+    { id: '29', name: 'Change Tempo', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/changetempo', enabled: true },
+    { id: '30', name: 'Change Speed', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/changespeed', enabled: false },
+    { id: '31', name: 'Fade In', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/fadein', enabled: true },
+    { id: '32', name: 'Fade Out', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/fadeout', enabled: true },
+    { id: '33', name: 'Crossfade Clips', type: 'Internal effect', category: 'Tool', path: '/Applications/Audacity.app/Contents/PlugIns/crossfade', enabled: true },
     { id: '34', name: 'Studio Fade Out', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/studiofadeout.ny', enabled: true },
     { id: '35', name: 'Adjustable Fade', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/adjustablefade.ny', enabled: true },
     { id: '36', name: 'Crossfade Tracks', type: 'Nyquist', category: 'Tool', path: '/Library/Audio/Plug-Ins/Nyquist/crossfadetracks.ny', enabled: false },
-    { id: '37', name: 'Invert', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/invert', enabled: true },
-    { id: '38', name: 'Reverse', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/reverse', enabled: true },
-    { id: '39', name: 'Silence', type: 'Audacity', category: 'Generator', path: '/Applications/Audacity.app/Contents/PlugIns/silence', enabled: true },
-    { id: '40', name: 'Truncate Silence', type: 'Audacity', category: 'Tool', path: '/Applications/Audacity.app/Contents/PlugIns/truncatesilence', enabled: true },
+    { id: '37', name: 'Invert', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/invert', enabled: true },
+    { id: '38', name: 'Reverse', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/reverse', enabled: true },
+    { id: '39', name: 'Silence', type: 'Internal effect', category: 'Generator', path: '/Applications/Audacity.app/Contents/PlugIns/silence', enabled: true },
+    { id: '40', name: 'Truncate Silence', type: 'Internal effect', category: 'Tool', path: '/Applications/Audacity.app/Contents/PlugIns/truncatesilence', enabled: true },
     { id: '41', name: 'Click Removal', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/clickremoval.ny', enabled: true },
-    { id: '42', name: 'Noise Reduction', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/noisereduction', enabled: false },
-    { id: '43', name: 'Repair', type: 'Audacity', category: 'Tool', path: '/Applications/Audacity.app/Contents/PlugIns/repair', enabled: true },
+    { id: '42', name: 'Noise Reduction', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/noisereduction', enabled: false },
+    { id: '43', name: 'Repair', type: 'Internal effect', category: 'Tool', path: '/Applications/Audacity.app/Contents/PlugIns/repair', enabled: true },
     { id: '44', name: 'De-clicker', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/declicker.ny', enabled: true },
     { id: '45', name: 'De-esser', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/deesser.ny', enabled: true },
     { id: '46', name: 'Limiter', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/limiter.ny', enabled: true },
-    { id: '47', name: 'Amplify', type: 'Audacity', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/amplify', enabled: true },
+    { id: '47', name: 'Amplify', type: 'Internal effect', category: 'Effect', path: '/Applications/Audacity.app/Contents/PlugIns/amplify', enabled: true },
     { id: '48', name: 'Auto Duck', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/autoduck.ny', enabled: true },
-    { id: '49', name: 'Loudness Normalization', type: 'Audacity', category: 'Analyzer', path: '/Applications/Audacity.app/Contents/PlugIns/loudness', enabled: false },
+    { id: '49', name: 'Loudness Normalization', type: 'Internal effect', category: 'Analyzer', path: '/Applications/Audacity.app/Contents/PlugIns/loudness', enabled: false },
     { id: '50', name: 'Vocoder', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/vocoder.ny', enabled: true },
     { id: '51', name: 'Vocal Reduction', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/vocalreduction.ny', enabled: true },
     { id: '52', name: 'Vocal Isolation', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/vocalisolation.ny', enabled: true },
     { id: '53', name: 'Spectral Edit Shelves', type: 'Nyquist', category: 'Analyzer', path: '/Library/Audio/Plug-Ins/Nyquist/spectralshelves.ny', enabled: true },
     { id: '54', name: 'Spectral Edit Multi Tool', type: 'Nyquist', category: 'Analyzer', path: '/Library/Audio/Plug-Ins/Nyquist/spectralmulti.ny', enabled: false },
     { id: '55', name: 'Spectral Edit Parametric EQ', type: 'Nyquist', category: 'Analyzer', path: '/Library/Audio/Plug-Ins/Nyquist/spectralparaeq.ny', enabled: true },
-    { id: '56', name: 'Tone Generator', type: 'Audacity', category: 'Generator', path: '/Applications/Audacity.app/Contents/PlugIns/tonegen', enabled: true },
+    { id: '56', name: 'Tone Generator', type: 'Internal effect', category: 'Generator', path: '/Applications/Audacity.app/Contents/PlugIns/tonegen', enabled: true },
+    { id: '57', name: 'FabFilter Pro-Q 3', type: 'VST3', category: 'Effect', path: '/Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 3.vst3', enabled: true },
+    { id: '58', name: 'Valhalla VintageVerb', type: 'VST', category: 'Effect', path: '/Library/Audio/Plug-Ins/VST/ValhallaVintageVerb.vst', enabled: true },
+    { id: '59', name: 'Calf Reverb', type: 'LV2', category: 'Effect', path: '/usr/lib/lv2/calf.lv2/reverb.so', enabled: false },
+    { id: '60', name: 'TAP Equalizer', type: 'LADSPA', category: 'Effect', path: '/usr/lib/ladspa/tap_eq.so', enabled: true },
+    { id: '61', name: 'Waves SSL G-Master', type: 'VST3', category: 'Effect', path: '/Library/Audio/Plug-Ins/VST3/Waves/SSLComp.vst3', enabled: true },
+    { id: '62', name: 'iZotope Ozone Imager', type: 'VST', category: 'Effect', path: '/Library/Audio/Plug-Ins/VST/iZotope/OzoneImager.vst', enabled: false },
   ]);
 
   // Debug panel state
@@ -379,6 +385,7 @@ function CanvasDemoContent() {
   const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
   const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('musescore');
   const [showMixer, setShowMixer] = React.useState(false);
+  const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
 
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
@@ -1362,10 +1369,7 @@ function CanvasDemoContent() {
               <GhostButton
                 icon="plugins"
                 label="Get effects"
-                onClick={() => {
-                  console.log('Get effects clicked');
-                  toast.info('Getting effects...');
-                }}
+                onClick={() => setIsPluginBrowserOpen(true)}
               />
             </ToolbarGroup>
           ) : null
@@ -2170,6 +2174,13 @@ function CanvasDemoContent() {
       <PreferencesModal
         isOpen={isPreferencesModalOpen}
         onClose={() => setIsPreferencesModalOpen(false)}
+        os={preferences.operatingSystem}
+      />
+
+      {/* Plugin Browser Dialog */}
+      <PluginBrowserDialog
+        isOpen={isPluginBrowserOpen}
+        onClose={() => setIsPluginBrowserOpen(false)}
         os={preferences.operatingSystem}
       />
 

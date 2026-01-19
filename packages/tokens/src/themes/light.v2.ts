@@ -161,12 +161,27 @@ export const lightTheme: ThemeTokens = {
     },
 
     table: {
-      background: '#FFFFFF',     // White table background
-      header: '#F9F9FA',         // Light gray header
+      background: '#F8F8F9',     // Light gray table background
+      header: {
+        background: '#EBEBEF',   // Light gray header
+        text: '#14151A',         // Dark text
+        border: '#D4D5D9',       // Border color
+      },
       row: {
         idle: 'transparent',     // No background for rows
-        hover: '#F9F9FA',        // Light gray on hover
+        hover: '#EDEEF1',        // Light gray on hover
         selected: '#DEEBFF',     // Blue tint when selected
+        alternate: '#FAFAFA',    // Very light gray for striped rows
+        text: '#14151A',         // Dark text
+        border: '#E2E3E6',       // Default border
+      },
+      cell: {
+        idle: 'transparent',     // No background for cells
+        hover: '#EDEEF1',        // Light gray on hover
+        selected: '#DEEBFF',     // Blue tint when selected
+        text: '#14151A',         // Dark text
+        textSecondary: '#6F788F', // Muted gray for secondary text
+        border: '#E2E3E6',       // Default border
       },
     },
 
