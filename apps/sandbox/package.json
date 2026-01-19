@@ -13,7 +13,8 @@
     "@audacity-ui/components": "workspace:*",
     "@audacity-ui/core": "workspace:*",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tone": "^15.1.22"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",

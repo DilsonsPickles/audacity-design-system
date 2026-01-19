@@ -73,6 +73,18 @@ export interface TimelineRulerProps {
    * Time signature numerator (beats per measure)
    */
   beatsPerMeasure?: number;
+  /**
+   * Whether loop region is enabled
+   */
+  loopRegionEnabled?: boolean;
+  /**
+   * Loop region start time in seconds
+   */
+  loopRegionStart?: number | null;
+  /**
+   * Loop region end time in seconds
+   */
+  loopRegionEnd?: number | null;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -95,6 +107,9 @@ export function TimelineRuler({
   timeFormat = 'minutes-seconds',
   bpm = 120,
   beatsPerMeasure = 4,
+  loopRegionEnabled = false,
+  loopRegionStart = null,
+  loopRegionEnd = null,
 }: TimelineRulerProps) {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -153,6 +168,21 @@ export function TimelineRuler({
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
     }
 
+    // Draw loop region in bottom half (if enabled and defined)
+    if (loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null) {
+      const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
+      const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
+
+      // Draw filled rectangle with semi-transparent green
+      ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+      ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
+
+      // Draw border with solid green
+      ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(startX, midHeight, endX - startX, height - midHeight);
+    }
+
     // Draw horizontal divider line at middle (skip the CLIP_CONTENT_OFFSET area)
     ctx.strokeStyle = lnColor;
     ctx.lineWidth = 1;
@@ -191,7 +221,7 @@ export function TimelineRuler({
         ctx.stroke();
       }
     }
-  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure]);
+  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure, loopRegionEnabled, loopRegionStart, loopRegionEnd]);
 
   return (
     <canvas

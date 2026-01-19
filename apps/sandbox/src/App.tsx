@@ -578,6 +578,18 @@ function CanvasDemoContent() {
   const [zoomToggleLevel1, setZoomToggleLevel1] = React.useState('zoom-default');
   const [zoomToggleLevel2, setZoomToggleLevel2] = React.useState('5ths-of-seconds');
 
+  // Loop region state - defines looping boundaries for playback
+  const [loopRegionEnabled, setLoopRegionEnabled] = React.useState(false);
+  const [loopRegionStart, setLoopRegionStart] = React.useState<number | null>(null);
+  const [loopRegionEnd, setLoopRegionEnd] = React.useState<number | null>(null);
+
+  // Sync loop region with AudioPlaybackManager
+  React.useEffect(() => {
+    const audioManager = audioManagerRef.current;
+    audioManager.setLoopEnabled(loopRegionEnabled);
+    audioManager.setLoopRegion(loopRegionStart, loopRegionEnd);
+  }, [loopRegionEnabled, loopRegionStart, loopRegionEnd]);
+
   // Track keyboard focus state - only one track can have keyboard focus at a time
   const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(null);
 
@@ -1673,7 +1685,11 @@ function CanvasDemoContent() {
               <ToolbarButtonGroup gap={2}>
                 <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
                 <TransportButton icon="stop" onClick={handleStop} />
-                <TransportButton icon="loop" />
+                <TransportButton
+                  icon="loop"
+                  active={loopRegionEnabled}
+                  onClick={() => setLoopRegionEnabled(!loopRegionEnabled)}
+                />
               </ToolbarButtonGroup>
 
               <ToolbarDivider />
@@ -1719,7 +1735,11 @@ function CanvasDemoContent() {
                 <TransportButton icon="record" disabled={isPlaying} />
                 <TransportButton icon="skip-back" disabled={isPlaying} />
                 <TransportButton icon="skip-forward" disabled={isPlaying} />
-                <TransportButton icon="loop" />
+                <TransportButton
+                  icon="loop"
+                  active={loopRegionEnabled}
+                  onClick={() => setLoopRegionEnabled(!loopRegionEnabled)}
+                />
               </ToolbarButtonGroup>
 
               {workspace === 'classic' && (
@@ -2050,6 +2070,9 @@ function CanvasDemoContent() {
                   timeFormat={timelineFormat}
                   bpm={bpm}
                   beatsPerMeasure={beatsPerMeasure}
+                  loopRegionEnabled={loopRegionEnabled}
+                  loopRegionStart={loopRegionStart}
+                  loopRegionEnd={loopRegionEnd}
                 />
                 {/* Playhead icon only in ruler */}
                 <PlayheadCursor
@@ -2873,21 +2896,40 @@ function CanvasDemoContent() {
             toast.info(`Click ruler to start playback ${!clickRulerToStartPlayback ? 'enabled' : 'disabled'}`);
             setTimelineRulerContextMenu(null);
           }}
-          loopRegionEnabled={false}
+          loopRegionEnabled={loopRegionEnabled}
           onToggleLoopRegion={() => {
-            toast.info('Toggle loop region - not yet implemented');
+            setLoopRegionEnabled(!loopRegionEnabled);
+            toast.info(`Loop region ${!loopRegionEnabled ? 'enabled' : 'disabled'}`);
             setTimelineRulerContextMenu(null);
           }}
           onClearLoopRegion={() => {
-            toast.info('Clear loop region - not yet implemented');
+            setLoopRegionStart(null);
+            setLoopRegionEnd(null);
+            setLoopRegionEnabled(false);
+            toast.info('Loop region cleared');
             setTimelineRulerContextMenu(null);
           }}
           onSetLoopRegionToSelection={() => {
-            toast.info('Set loop region to selection - not yet implemented');
+            if (state.timeSelection) {
+              setLoopRegionStart(state.timeSelection.startTime);
+              setLoopRegionEnd(state.timeSelection.endTime);
+              setLoopRegionEnabled(true);
+              toast.info('Loop region set to selection');
+            } else {
+              toast.info('No time selection to set loop region from');
+            }
             setTimelineRulerContextMenu(null);
           }}
           onSetSelectionToLoop={() => {
-            toast.info('Set selection to loop - not yet implemented');
+            if (loopRegionStart !== null && loopRegionEnd !== null) {
+              dispatch({
+                type: 'SET_TIME_SELECTION',
+                payload: { startTime: loopRegionStart, endTime: loopRegionEnd },
+              });
+              toast.info('Selection set to loop region');
+            } else {
+              toast.info('No loop region to set selection from');
+            }
             setTimelineRulerContextMenu(null);
           }}
           creatingLoopSelectsAudio={false}

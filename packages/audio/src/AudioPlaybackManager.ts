@@ -15,6 +15,9 @@ export class AudioPlaybackManager {
   private lastLoadedPosition: number = -1;
   private animationFrameId: number | null = null;
   private onPositionUpdate?: (position: number) => void;
+  private loopEnabled: boolean = false;
+  private loopStart: number | null = null;
+  private loopEnd: number | null = null;
 
   /**
    * Initialize audio context (must be called after user interaction)
@@ -350,6 +353,41 @@ export class AudioPlaybackManager {
 
     this.players.clear();
     this.volumes.clear();
+  }
+
+  /**
+   * Set loop region boundaries
+   */
+  setLoopRegion(start: number | null, end: number | null): void {
+    this.loopStart = start;
+    this.loopEnd = end;
+
+    const transport = Tone.getTransport();
+
+    if (start !== null && end !== null) {
+      transport.loopStart = start;
+      transport.loopEnd = end;
+    }
+  }
+
+  /**
+   * Enable or disable looping
+   */
+  setLoopEnabled(enabled: boolean): void {
+    this.loopEnabled = enabled;
+    const transport = Tone.getTransport();
+    transport.loop = enabled;
+  }
+
+  /**
+   * Get current loop state
+   */
+  getLoopState(): { enabled: boolean; start: number | null; end: number | null } {
+    return {
+      enabled: this.loopEnabled,
+      start: this.loopStart,
+      end: this.loopEnd,
+    };
   }
 }
 
