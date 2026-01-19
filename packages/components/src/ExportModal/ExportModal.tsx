@@ -251,9 +251,9 @@ export function ExportModal({
     }
   }, [format, exportType]);
 
-  const handleExport = () => {
-    // Validate loop region export
-    if (exportType === 'loop-region' && !hasLoopRegion) {
+  const handleExportTypeChange = (newType: string) => {
+    // Validate loop region export type selection
+    if (newType === 'loop-region' && !hasLoopRegion) {
       onClose(); // Close export modal first
       onValidationError?.(
         'No loop region',
@@ -261,7 +261,10 @@ export function ExportModal({
       );
       return;
     }
+    setExportType(newType);
+  };
 
+  const handleExport = () => {
     const settings: ExportSettings = {
       exportType,
       fileName,
@@ -308,7 +311,7 @@ export function ExportModal({
             <Dropdown
               options={exportTypeOptions}
               value={exportType}
-              onChange={setExportType}
+              onChange={handleExportTypeChange}
             />
           </div>
         </section>
