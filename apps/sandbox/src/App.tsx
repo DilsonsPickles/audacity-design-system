@@ -531,8 +531,8 @@ function CanvasDemoContent() {
 
   // Timeline ruler format options
   const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
-  const [bpm, setBpm] = React.useState(120); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [beatsPerMeasure, setBeatsPerMeasure] = React.useState(4); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [bpm] = React.useState(120);
+  const [beatsPerMeasure] = React.useState(4);
 
   // Clip context menu state
   const [clipContextMenu, setClipContextMenu] = React.useState<{
