@@ -37,11 +37,3 @@
   line-height: 20px;
   color: var(--alert-dialog-text);
 }
-
-.alert-dialog__footer {
-  padding: 16px 24px;
-  background-color: var(--alert-dialog-footer-bg);
-  border-top: 1px solid var(--alert-dialog-border);
-  display: flex;
-  justify-content: flex-end;
-}

@@ -5,6 +5,7 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
 import { DialogHeader } from '../DialogHeader';
+import { DialogFooter } from '../Footer';
 import { Button } from '../Button';
 import './AlertDialog.css';
 
@@ -50,7 +51,6 @@ export function AlertDialog({
   const style = {
     '--alert-dialog-bg': theme.background.dialog.body,
     '--alert-dialog-text': theme.foreground.text.primary,
-    '--alert-dialog-footer-bg': theme.background.dialog.footer,
     '--alert-dialog-border': theme.border.default,
   } as React.CSSProperties;
 
@@ -69,11 +69,13 @@ export function AlertDialog({
           <p className="alert-dialog__message">{message}</p>
         </div>
 
-        <div className="alert-dialog__footer">
-          <Button variant="primary" onClick={onClose}>
-            {buttonText}
-          </Button>
-        </div>
+        <DialogFooter
+          rightContent={
+            <Button variant="primary" onClick={onClose}>
+              {buttonText}
+            </Button>
+          }
+        />
       </div>
     </div>
   );
