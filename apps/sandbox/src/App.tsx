@@ -2,7 +2,7 @@ import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -490,6 +490,22 @@ function CanvasDemoContent() {
     openedViaKeyboard?: boolean;
   } | null>(null);
 
+  // Timeline ruler context menu state
+  const [timelineRulerContextMenu, setTimelineRulerContextMenu] = React.useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Update display while playing - master toggle for auto-scroll
+  const [updateDisplayWhilePlaying, setUpdateDisplayWhilePlaying] = React.useState(true);
+
+  // Pinned playhead mode - playhead stays at center, canvas scrolls (only when updateDisplayWhilePlaying is true)
+  const [pinnedPlayHead, setPinnedPlayHead] = React.useState(false);
+
+  // Click ruler to start playback - clicking timeline ruler starts playback from that position
+  const [clickRulerToStartPlayback, setClickRulerToStartPlayback] = React.useState(false);
+
   // Track keyboard focus state - only one track can have keyboard focus at a time
   const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(null);
 
@@ -507,6 +523,7 @@ function CanvasDemoContent() {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
   const isScrollingSyncRef = React.useRef(false);
+  const isProgrammaticScrollRef = React.useRef(false);
 
   // Audio playback state
   const [isPlaying, setIsPlaying] = React.useState(false);
@@ -569,25 +586,50 @@ function CanvasDemoContent() {
 
   // Auto-scroll to keep playhead in view during playback
   React.useEffect(() => {
-    if (!isPlaying || !scrollContainerRef.current) return;
+    // Only auto-scroll if playing and "Update display while playing" is enabled
+    if (!isPlaying || !updateDisplayWhilePlaying || !scrollContainerRef.current) return;
 
     const playheadPixelPosition = state.playheadPosition * pixelsPerSecond;
     const containerWidth = scrollContainerRef.current.clientWidth;
-    const currentScrollX = scrollX;
+    const currentScrollX = scrollContainerRef.current.scrollLeft;
 
-    // Check if playhead is off screen to the right
-    if (playheadPixelPosition > currentScrollX + containerWidth) {
-      // Page turn: scroll forward by one viewport width
-      const newScrollX = currentScrollX + containerWidth;
-      scrollContainerRef.current.scrollLeft = newScrollX;
+    if (pinnedPlayHead) {
+      // Pinned playhead mode: keep playhead at center, scroll canvas continuously
+      const centerPosition = containerWidth / 2;
+      const targetScrollX = Math.max(0, playheadPixelPosition - centerPosition);
+
+      // Only scroll if playhead has moved past center and scroll position needs updating
+      if (playheadPixelPosition > centerPosition && Math.abs(currentScrollX - targetScrollX) > 1) {
+        isProgrammaticScrollRef.current = true;
+        scrollContainerRef.current.scrollLeft = targetScrollX;
+        requestAnimationFrame(() => {
+          isProgrammaticScrollRef.current = false;
+        });
+      }
+    } else {
+      // Page turn mode: playhead moves across screen, jumps when off screen
+      // Check if playhead is off screen to the right
+      if (playheadPixelPosition > currentScrollX + containerWidth) {
+        // Page turn: scroll forward by one viewport width
+        const newScrollX = currentScrollX + containerWidth;
+        isProgrammaticScrollRef.current = true;
+        scrollContainerRef.current.scrollLeft = newScrollX;
+        requestAnimationFrame(() => {
+          isProgrammaticScrollRef.current = false;
+        });
+      }
+      // Check if playhead is off screen to the left
+      else if (playheadPixelPosition < currentScrollX) {
+        // Scroll to position playhead at 1/4 from the left edge
+        const newScrollX = Math.max(0, playheadPixelPosition - containerWidth / 4);
+        isProgrammaticScrollRef.current = true;
+        scrollContainerRef.current.scrollLeft = newScrollX;
+        requestAnimationFrame(() => {
+          isProgrammaticScrollRef.current = false;
+        });
+      }
     }
-    // Check if playhead is off screen to the left
-    else if (playheadPixelPosition < currentScrollX) {
-      // Scroll to position playhead at 1/4 from the left edge
-      const newScrollX = Math.max(0, playheadPixelPosition - containerWidth / 4);
-      scrollContainerRef.current.scrollLeft = newScrollX;
-    }
-  }, [state.playheadPosition, isPlaying, pixelsPerSecond, scrollX]);
+  }, [state.playheadPosition, isPlaying, pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead]);
 
   // Focus and select first track on initial load if there are tracks
   React.useEffect(() => {
@@ -1155,6 +1197,8 @@ function CanvasDemoContent() {
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const scrollTop = e.currentTarget.scrollTop;
+
+    // Always update scrollX state to keep timeline ruler in sync
     setScrollX(scrollLeft);
 
     // Sync vertical scroll with track headers
@@ -1775,6 +1819,43 @@ function CanvasDemoContent() {
                 }}
                 onMouseLeave={() => {
                   setMouseCursorPosition(undefined);
+                }}
+                onClick={async (e) => {
+                  // Only handle click if "Click ruler to start playback" is enabled
+                  if (!clickRulerToStartPlayback || !timelineRulerRef.current) return;
+
+                  const rect = timelineRulerRef.current.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const CLIP_CONTENT_OFFSET = 12;
+                  const clickedTime = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
+
+                  // Only proceed if clicked in valid time range
+                  if (clickedTime >= 0) {
+                    // Set playhead position to clicked time
+                    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: clickedTime });
+
+                    // Start playback from this position
+                    const audioManager = audioManagerRef.current;
+
+                    // Stop if currently playing
+                    if (audioManager.getIsPlaying()) {
+                      audioManager.stop();
+                      setIsPlaying(false);
+                    }
+
+                    // Load clips and start playback from clicked position
+                    audioManager.loadClips(state.tracks, clickedTime);
+                    await audioManager.play(clickedTime);
+                    setIsPlaying(true);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setTimelineRulerContextMenu({
+                    isOpen: true,
+                    x: e.clientX,
+                    y: e.clientY,
+                  });
                 }}
               >
                 <TimelineRuler
@@ -2571,6 +2652,66 @@ function CanvasDemoContent() {
               setTrackContextMenu(null);
               toast.success('Track deleted');
             }
+          }}
+        />
+      )}
+
+      {/* Timeline Ruler Context Menu */}
+      {timelineRulerContextMenu && (
+        <TimelineRulerContextMenu
+          isOpen={timelineRulerContextMenu.isOpen}
+          x={timelineRulerContextMenu.x}
+          y={timelineRulerContextMenu.y}
+          onClose={() => setTimelineRulerContextMenu(null)}
+          timeFormat="minutes-seconds"
+          onTimeFormatChange={(format) => {
+            toast.info(`Time format changed to: ${format}`);
+            setTimelineRulerContextMenu(null);
+          }}
+          updateDisplayWhilePlaying={updateDisplayWhilePlaying}
+          onToggleUpdateDisplay={() => {
+            setUpdateDisplayWhilePlaying(!updateDisplayWhilePlaying);
+            toast.info(`Update display while playing ${!updateDisplayWhilePlaying ? 'enabled' : 'disabled'}`);
+            setTimelineRulerContextMenu(null);
+          }}
+          pinnedPlayHead={pinnedPlayHead}
+          onTogglePinnedPlayHead={() => {
+            setPinnedPlayHead(!pinnedPlayHead);
+            toast.info(`Pinned play head ${!pinnedPlayHead ? 'enabled' : 'disabled'}`);
+            setTimelineRulerContextMenu(null);
+          }}
+          clickRulerToStartPlayback={clickRulerToStartPlayback}
+          onToggleClickRulerToStartPlayback={() => {
+            setClickRulerToStartPlayback(!clickRulerToStartPlayback);
+            toast.info(`Click ruler to start playback ${!clickRulerToStartPlayback ? 'enabled' : 'disabled'}`);
+            setTimelineRulerContextMenu(null);
+          }}
+          loopRegionEnabled={false}
+          onToggleLoopRegion={() => {
+            toast.info('Toggle loop region - not yet implemented');
+            setTimelineRulerContextMenu(null);
+          }}
+          onClearLoopRegion={() => {
+            toast.info('Clear loop region - not yet implemented');
+            setTimelineRulerContextMenu(null);
+          }}
+          onSetLoopRegionToSelection={() => {
+            toast.info('Set loop region to selection - not yet implemented');
+            setTimelineRulerContextMenu(null);
+          }}
+          onSetSelectionToLoop={() => {
+            toast.info('Set selection to loop - not yet implemented');
+            setTimelineRulerContextMenu(null);
+          }}
+          creatingLoopSelectsAudio={false}
+          onToggleCreatingLoopSelectsAudio={() => {
+            toast.info('Creating loop selects audio - toggled');
+            setTimelineRulerContextMenu(null);
+          }}
+          showVerticalRulers={false}
+          onToggleVerticalRulers={() => {
+            toast.info('Show vertical rulers - toggled');
+            setTimelineRulerContextMenu(null);
           }}
         />
       )}
