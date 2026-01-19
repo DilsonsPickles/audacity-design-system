@@ -180,17 +180,21 @@ export function TimelineRuler({
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
     }
 
-    // Draw loop region in top half (if enabled and defined)
-    if (loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null) {
+    // Draw loop region in top half (if defined, with active/inactive colors based on loopRegionEnabled)
+    if (loopRegionStart !== null && loopRegionEnd !== null) {
       const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
       const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
 
-      // Draw filled rectangle with theme color
-      ctx.fillStyle = theme.audio.timeline.loopRegionFill;
+      // Draw filled rectangle with theme color (active or inactive)
+      ctx.fillStyle = loopRegionEnabled
+        ? theme.audio.timeline.loopRegionFill
+        : theme.audio.timeline.loopRegionFillInactive;
       ctx.fillRect(startX, 0, endX - startX, midHeight);
 
-      // Draw border with theme color
-      ctx.strokeStyle = theme.audio.timeline.loopRegionBorder;
+      // Draw border with theme color (active or inactive)
+      ctx.strokeStyle = loopRegionEnabled
+        ? theme.audio.timeline.loopRegionBorder
+        : theme.audio.timeline.loopRegionBorderInactive;
       ctx.lineWidth = 2;
       ctx.strokeRect(startX, 0, endX - startX, midHeight);
     }

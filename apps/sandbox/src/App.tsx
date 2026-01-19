@@ -2141,7 +2141,7 @@ function CanvasDemoContent() {
                   onLoopRegionInteracting={setLoopRegionInteracting}
                 />
                 {/* Loop region stalks in ruler (only visible during interaction) */}
-                {loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
+                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
                   <>
                     {/* Start stalk */}
                     <div
@@ -2151,7 +2151,9 @@ function CanvasDemoContent() {
                         top: 0,
                         width: '2px',
                         height: '40px',
-                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        backgroundColor: loopRegionEnabled
+                          ? theme.audio.timeline.loopRegionBorder
+                          : theme.audio.timeline.loopRegionBorderInactive,
                         pointerEvents: 'none',
                         zIndex: 100,
                       }}
@@ -2164,7 +2166,9 @@ function CanvasDemoContent() {
                         top: 0,
                         width: '2px',
                         height: '40px',
-                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        backgroundColor: loopRegionEnabled
+                          ? theme.audio.timeline.loopRegionBorder
+                          : theme.audio.timeline.loopRegionBorderInactive,
                         pointerEvents: 'none',
                         zIndex: 100,
                       }}
@@ -2231,7 +2235,7 @@ function CanvasDemoContent() {
                   showTopIcon={false}
                 />
                 {/* Loop region stalks - extend down through all tracks (only visible during interaction) */}
-                {loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
+                {loopRegionStart !== null && loopRegionEnd !== null && loopRegionInteracting && (
                   <>
                     {/* Start stalk */}
                     <div
@@ -2241,7 +2245,9 @@ function CanvasDemoContent() {
                         top: 0,
                         width: '2px',
                         height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
-                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        backgroundColor: loopRegionEnabled
+                          ? theme.audio.timeline.loopRegionBorder
+                          : theme.audio.timeline.loopRegionBorderInactive,
                         pointerEvents: 'none',
                         zIndex: 100,
                       }}
@@ -2254,7 +2260,9 @@ function CanvasDemoContent() {
                         top: 0,
                         width: '2px',
                         height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
-                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        backgroundColor: loopRegionEnabled
+                          ? theme.audio.timeline.loopRegionBorder
+                          : theme.audio.timeline.loopRegionBorderInactive,
                         pointerEvents: 'none',
                         zIndex: 100,
                       }}

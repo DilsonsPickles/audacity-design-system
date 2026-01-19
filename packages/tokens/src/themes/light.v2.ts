@@ -480,8 +480,10 @@ export const lightTheme: ThemeTokens = {
       tickMinor: '#828387',      // Medium gray minor ticks (same as major for now)
       playhead: '#ef4444',       // Red playhead cursor
       playheadShadow: '#dc2626', // Darker red shadow
-      loopRegionFill: 'rgba(0, 255, 0, 0.2)', // Semi-transparent green fill
-      loopRegionBorder: 'rgba(0, 255, 0, 0.8)', // Solid green border
+      loopRegionFill: 'rgba(0, 255, 0, 0.2)', // Semi-transparent green fill (active)
+      loopRegionBorder: 'rgba(0, 255, 0, 0.8)', // Solid green border (active)
+      loopRegionFillInactive: 'rgba(130, 131, 135, 0.15)', // Semi-transparent gray fill (inactive)
+      loopRegionBorderInactive: 'rgba(130, 131, 135, 0.5)', // Gray border (inactive)
     },
 
     selection: {

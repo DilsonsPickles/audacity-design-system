@@ -447,10 +447,14 @@ export interface ThemeTokens {
       playhead: string;
       /** Playhead shadow/depth */
       playheadShadow: string;
-      /** Loop region fill */
+      /** Loop region fill (active/enabled) */
       loopRegionFill: string;
-      /** Loop region border */
+      /** Loop region border (active/enabled) */
       loopRegionBorder: string;
+      /** Loop region fill (inactive/disabled) */
+      loopRegionFillInactive: string;
+      /** Loop region border (inactive/disabled) */
+      loopRegionBorderInactive: string;
     };
 
     /** Selection colors */
