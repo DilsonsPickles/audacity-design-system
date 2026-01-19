@@ -254,6 +254,7 @@ export function ExportModal({
   const handleExport = () => {
     // Validate loop region export
     if (exportType === 'loop-region' && !hasLoopRegion) {
+      onClose(); // Close export modal first
       onValidationError?.(
         'No loop region',
         'Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.'

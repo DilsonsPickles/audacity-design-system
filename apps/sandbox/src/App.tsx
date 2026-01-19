@@ -2,7 +2,7 @@ import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -308,6 +308,9 @@ function CanvasDemoContent() {
   const [initialExportType, setInitialExportType] = React.useState<string>('full-project');
   const [isLabelEditorOpen, setIsLabelEditorOpen] = React.useState(false);
   const [isPluginManagerOpen, setIsPluginManagerOpen] = React.useState(false);
+  const [alertDialogOpen, setAlertDialogOpen] = React.useState(false);
+  const [alertDialogTitle, setAlertDialogTitle] = React.useState('');
+  const [alertDialogMessage, setAlertDialogMessage] = React.useState('');
 
   // Mock plugin data
   const [plugins, setPlugins] = React.useState<Plugin[]>([
@@ -1742,6 +1745,13 @@ function CanvasDemoContent() {
                   size="default"
                   icon={'\uEF1F'}
                   onClick={() => {
+                    // Validate loop region exists before opening export modal
+                    if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
+                      setAlertDialogTitle('No loop region');
+                      setAlertDialogMessage('Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.');
+                      setAlertDialogOpen(true);
+                      return;
+                    }
                     setInitialExportType('loop-region');
                     setIsExportModalOpen(true);
                   }}
@@ -2618,7 +2628,9 @@ function CanvasDemoContent() {
         initialExportType={initialExportType}
         hasLoopRegion={loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null}
         onValidationError={(title, message) => {
-          toast.error(`${title}: ${message}`);
+          setAlertDialogTitle(title);
+          setAlertDialogMessage(message);
+          setAlertDialogOpen(true);
         }}
       />
 
@@ -2830,6 +2842,15 @@ function CanvasDemoContent() {
         plugins={plugins}
         onChange={setPlugins}
         onClose={() => setIsPluginManagerOpen(false)}
+        os={preferences.operatingSystem}
+      />
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertDialogOpen}
+        onClose={() => setAlertDialogOpen(false)}
+        title={alertDialogTitle}
+        message={alertDialogMessage}
         os={preferences.operatingSystem}
       />
 
