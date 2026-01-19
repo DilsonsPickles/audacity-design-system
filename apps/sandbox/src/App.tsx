@@ -2169,6 +2169,37 @@ function CanvasDemoContent() {
                   height={Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}
                   showTopIcon={false}
                 />
+                {/* Loop region stalks - extend down through all tracks */}
+                {loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null && (
+                  <>
+                    {/* Start stalk */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${12 + loopRegionStart * pixelsPerSecond}px`,
+                        top: 0,
+                        width: '2px',
+                        height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
+                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                      }}
+                    />
+                    {/* End stalk */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${12 + loopRegionEnd * pixelsPerSecond}px`,
+                        top: 0,
+                        width: '2px',
+                        height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
+                        backgroundColor: theme.audio.timeline.loopRegionBorder,
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                      }}
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>
