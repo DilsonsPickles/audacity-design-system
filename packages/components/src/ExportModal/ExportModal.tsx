@@ -40,6 +40,14 @@ export interface ExportModalProps {
    * Initial export type to set when modal opens
    */
   initialExportType?: string;
+  /**
+   * Whether a loop region is currently active
+   */
+  hasLoopRegion?: boolean;
+  /**
+   * Callback to show validation error (e.g., no loop region)
+   */
+  onValidationError?: (title: string, message: string) => void;
 }
 
 export interface ExportSettings {
@@ -195,6 +203,8 @@ export function ExportModal({
   onEditMetadata,
   os = 'macos',
   initialExportType,
+  hasLoopRegion = false,
+  onValidationError,
 }: ExportModalProps) {
   const { theme } = useTheme();
 
@@ -242,6 +252,15 @@ export function ExportModal({
   }, [format, exportType]);
 
   const handleExport = () => {
+    // Validate loop region export
+    if (exportType === 'loop-region' && !hasLoopRegion) {
+      onValidationError?.(
+        'No loop region',
+        'Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.'
+      );
+      return;
+    }
+
     const settings: ExportSettings = {
       exportType,
       fileName,

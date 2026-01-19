@@ -2616,6 +2616,10 @@ function CanvasDemoContent() {
         }}
         os={preferences.operatingSystem}
         initialExportType={initialExportType}
+        hasLoopRegion={loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null}
+        onValidationError={(title, message) => {
+          toast.error(`${title}: ${message}`);
+        }}
       />
 
       {/* Label Editor */}
