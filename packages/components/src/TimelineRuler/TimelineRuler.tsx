@@ -130,6 +130,7 @@ export function TimelineRuler({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragStateRef = useRef<{ type: 'move' | 'resize-start' | 'resize-end'; startX: number; initialStart: number; initialEnd: number } | null>(null);
   const clickStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const hasMovedRef = useRef(false); // Track if mouse actually moved during drag
   const [cursor, setCursor] = useState('default');
 
   // Use theme tokens as defaults if not provided
@@ -317,6 +318,7 @@ export function TimelineRuler({
 
     // Track click start for detecting click vs drag
     clickStartRef.current = { x: mouseX, y: mouseY, time: Date.now() };
+    hasMovedRef.current = false; // Reset movement flag
 
     // Only allow dragging if loop is enabled
     if (loopRegionEnabled && onLoopRegionChange) {
@@ -337,7 +339,7 @@ export function TimelineRuler({
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const wasDragging = dragStateRef.current !== null;
+    const hadDragState = dragStateRef.current !== null;
 
     if (dragStateRef.current) {
       if (dragStateRef.current.type === 'move') {
@@ -347,8 +349,8 @@ export function TimelineRuler({
       onLoopRegionInteracting?.(false);
     }
 
-    // Detect click (vs drag) if we have a click start and didn't drag
-    if (!wasDragging && clickStartRef.current && loopRegionStart !== null && loopRegionEnd !== null) {
+    // Detect click (vs drag) - check if we didn't actually move, even if drag state was set
+    if (clickStartRef.current && !hasMovedRef.current && loopRegionStart !== null && loopRegionEnd !== null) {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
@@ -374,6 +376,7 @@ export function TimelineRuler({
     }
 
     clickStartRef.current = null;
+    hasMovedRef.current = false;
   };
 
   const handleMouseLeave = () => {
@@ -392,6 +395,11 @@ export function TimelineRuler({
       const mouseX = e.clientX - rect.left;
       const deltaX = mouseX - dragStateRef.current.startX;
       const deltaTime = deltaX / pixelsPerSecond;
+
+      // Mark that we've moved (for click detection)
+      if (Math.abs(deltaX) > 3) {
+        hasMovedRef.current = true;
+      }
 
       if (dragStateRef.current.type === 'move') {
         const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
