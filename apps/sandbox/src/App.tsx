@@ -305,7 +305,7 @@ function CanvasDemoContent() {
   const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = React.useState(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = React.useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
-  const [exportType, setExportType] = React.useState<'full' | 'loop'>('full');
+  const [initialExportType, setInitialExportType] = React.useState<string>('full-project');
   const [isLabelEditorOpen, setIsLabelEditorOpen] = React.useState(false);
   const [isPluginManagerOpen, setIsPluginManagerOpen] = React.useState(false);
 
@@ -1731,7 +1731,7 @@ function CanvasDemoContent() {
                   size="default"
                   icon={'\uEF24'}
                   onClick={() => {
-                    setExportType('full');
+                    setInitialExportType('full-project');
                     setIsExportModalOpen(true);
                   }}
                 >
@@ -1742,7 +1742,7 @@ function CanvasDemoContent() {
                   size="default"
                   icon={'\uEF1F'}
                   onClick={() => {
-                    setExportType('loop');
+                    setInitialExportType('loop-region');
                     setIsExportModalOpen(true);
                   }}
                 >
@@ -2609,14 +2609,13 @@ function CanvasDemoContent() {
         onClose={() => setIsExportModalOpen(false)}
         onExport={(settings: ExportSettings) => {
           console.log('Export settings:', settings);
-          console.log('Export type:', exportType);
-          toast.success(exportType === 'loop' ? 'Exporting loop region!' : 'Export started!');
+          toast.success(settings.exportType === 'loop-region' ? 'Exporting loop region!' : 'Export started!');
         }}
         onEditMetadata={() => {
           toast.info('Edit metadata clicked');
         }}
         os={preferences.operatingSystem}
-        title={exportType === 'loop' ? 'Export audio in loop region' : undefined}
+        initialExportType={initialExportType}
       />
 
       {/* Label Editor */}

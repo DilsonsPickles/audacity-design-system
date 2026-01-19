@@ -36,6 +36,10 @@ export interface ExportModalProps {
    * @default 'macos'
    */
   os?: 'macos' | 'windows';
+  /**
+   * Initial export type to set when modal opens
+   */
+  initialExportType?: string;
 }
 
 export interface ExportSettings {
@@ -78,6 +82,7 @@ function getFileExtension(format: string): string {
 
 const exportTypeOptions: DropdownOption[] = [
   { value: 'full-project', label: 'Export full project audio' },
+  { value: 'loop-region', label: 'Export audio in loop region' },
   { value: 'separate-tracks', label: 'Export tracks as separate audio files' },
   { value: 'label-audio', label: 'Export each label as a separate audio file' },
   { value: 'label-subtitle', label: 'Export all labels as a subtitle file' },
@@ -186,10 +191,18 @@ export function ExportModal({
   onExport,
   onEditMetadata,
   os = 'macos',
+  initialExportType,
 }: ExportModalProps) {
   const { theme } = useTheme();
 
   const [exportType, setExportType] = useState('full-project');
+
+  // Update export type when modal opens with initialExportType
+  useEffect(() => {
+    if (isOpen && initialExportType) {
+      setExportType(initialExportType);
+    }
+  }, [isOpen, initialExportType]);
   const [fileName, setFileName] = useState('untitled.wav');
   const [folder, setFolder] = useState('C:\\Users\\mom\\Documents\\Audacity');
   const [format, setFormat] = useState('wav');
@@ -216,9 +229,9 @@ export function ExportModal({
   const [externalCommand, setExternalCommand] = useState('');
   const [showOutput, setShowOutput] = useState(false);
 
-  // Update file name when format changes for full-project export
+  // Update file name when format changes for full-project or loop-region export
   useEffect(() => {
-    if (exportType === 'full-project') {
+    if (exportType === 'full-project' || exportType === 'loop-region') {
       const baseName = fileName.replace(/\.[^.]+$/, '');
       const extension = getFileExtension(format);
       setFileName(`${baseName}.${extension}`);
@@ -291,8 +304,8 @@ export function ExportModal({
                 : 'File name'}
             </label>
             <div className="export-modal__input-wrapper">
-              {/* Show editable input for full-project, read-only preview for others */}
-              {exportType === 'full-project' ? (
+              {/* Show editable input for full-project and loop-region, read-only preview for others */}
+              {exportType === 'full-project' || exportType === 'loop-region' ? (
                 <TextInput
                   value={fileName}
                   onChange={setFileName}
