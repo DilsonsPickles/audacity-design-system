@@ -58,6 +58,22 @@ export interface PreferencesModalProps {
    * Additional CSS classes
    */
   className?: string;
+  /**
+   * Zoom toggle preset 1 value
+   */
+  zoomToggleLevel1?: string;
+  /**
+   * Zoom toggle preset 1 change handler
+   */
+  onZoomToggleLevel1Change?: (value: string) => void;
+  /**
+   * Zoom toggle preset 2 value
+   */
+  zoomToggleLevel2?: string;
+  /**
+   * Zoom toggle preset 2 change handler
+   */
+  onZoomToggleLevel2Change?: (value: string) => void;
 }
 
 const menuItems: DialogSideNavItem<PreferencesPage>[] = [
@@ -223,6 +239,10 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   onPageChange,
   os = 'macos',
   className = '',
+  zoomToggleLevel1 = 'zoom-default',
+  onZoomToggleLevel1Change,
+  zoomToggleLevel2 = 'seconds',
+  onZoomToggleLevel2Change,
 }) => {
   const [selectedPage, setSelectedPage] = useState<PreferencesPage>(currentPage);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -327,7 +347,14 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
             {selectedPage === 'audio-settings' && <AudioSettingsPage />}
             {selectedPage === 'playback-recording' && <PlaybackRecordingPage />}
             {selectedPage === 'spectral-display' && <SpectralDisplayPage />}
-            {selectedPage === 'editing' && <EditingPage />}
+            {selectedPage === 'editing' && (
+              <EditingPage
+                zoomToggleLevel1={zoomToggleLevel1}
+                onZoomToggleLevel1Change={onZoomToggleLevel1Change}
+                zoomToggleLevel2={zoomToggleLevel2}
+                onZoomToggleLevel2Change={onZoomToggleLevel2Change}
+              />
+            )}
             {selectedPage === 'shortcuts' && <ShortcutsPage />}
             {/* Add other pages as needed */}
           </div>
@@ -1227,7 +1254,19 @@ function SpectralDisplayPage() {
 }
 
 // Audio Editing Page Content
-function EditingPage() {
+interface EditingPageProps {
+  zoomToggleLevel1?: string;
+  onZoomToggleLevel1Change?: (value: string) => void;
+  zoomToggleLevel2?: string;
+  onZoomToggleLevel2Change?: (value: string) => void;
+}
+
+function EditingPage({
+  zoomToggleLevel1 = 'zoom-default',
+  onZoomToggleLevel1Change,
+  zoomToggleLevel2 = 'seconds',
+  onZoomToggleLevel2Change,
+}: EditingPageProps) {
   const [deletingBehavior, setDeletingBehavior] = useState<'leave-gap' | 'close-gap'>('leave-gap');
   const [closeGapBehavior, setCloseGapBehavior] = useState<'selected-clip' | 'same-track' | 'all-tracks'>('selected-clip');
   const [pastingBehavior, setPastingBehavior] = useState<'overlaps' | 'pushes'>('overlaps');
@@ -1506,6 +1545,63 @@ function EditingPage() {
             onChange={() => setStereoToMono('left-only')}
             name="stereo-to-mono"
             value="left-only"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Zoom toggle */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Zoom toggle</h3>
+
+        <div className="preferences-page__field preferences-page__field--small">
+          <label className="preferences-page__label">Preset 1:</label>
+          <Dropdown
+            value={zoomToggleLevel1}
+            options={[
+              { value: 'fit-to-width', label: 'Fit to Width' },
+              { value: 'zoom-to-selection', label: 'Zoom to Selection' },
+              { value: 'zoom-default', label: 'Zoom Default' },
+              { value: 'minutes', label: 'Minutes' },
+              { value: 'seconds', label: 'Seconds' },
+              { value: '5ths-of-seconds', label: '5ths of Seconds' },
+              { value: '10ths-of-seconds', label: '10ths of Seconds' },
+              { value: '20ths-of-seconds', label: '20ths of Seconds' },
+              { value: '50ths-of-seconds', label: '50ths of Seconds' },
+              { value: '100ths-of-seconds', label: '100ths of Seconds' },
+              { value: '500ths-of-seconds', label: '500ths of Seconds' },
+              { value: 'milliseconds', label: 'MilliSeconds' },
+              { value: 'samples', label: 'Samples' },
+              { value: '4-pixels-per-sample', label: '4 Pixels per Sample' },
+              { value: 'max-zoom', label: 'Max Zoom' },
+            ]}
+            onChange={(value) => onZoomToggleLevel1Change?.(value)}
+          />
+        </div>
+
+        <div className="preferences-page__field preferences-page__field--small">
+          <label className="preferences-page__label">Preset 2:</label>
+          <Dropdown
+            value={zoomToggleLevel2}
+            options={[
+              { value: 'fit-to-width', label: 'Fit to Width' },
+              { value: 'zoom-to-selection', label: 'Zoom to Selection' },
+              { value: 'zoom-default', label: 'Zoom Default' },
+              { value: 'minutes', label: 'Minutes' },
+              { value: 'seconds', label: 'Seconds' },
+              { value: '5ths-of-seconds', label: '5ths of Seconds' },
+              { value: '10ths-of-seconds', label: '10ths of Seconds' },
+              { value: '20ths-of-seconds', label: '20ths of Seconds' },
+              { value: '50ths-of-seconds', label: '50ths of Seconds' },
+              { value: '100ths-of-seconds', label: '100ths of Seconds' },
+              { value: '500ths-of-seconds', label: '500ths of Seconds' },
+              { value: 'milliseconds', label: 'MilliSeconds' },
+              { value: 'samples', label: 'Samples' },
+              { value: '4-pixels-per-sample', label: '4 Pixels per Sample' },
+              { value: 'max-zoom', label: 'Max Zoom' },
+            ]}
+            onChange={(value) => onZoomToggleLevel2Change?.(value)}
           />
         </div>
       </div>

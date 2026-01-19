@@ -433,6 +433,67 @@ function CanvasDemoContent() {
     setPixelsPerSecond(prev => Math.max(prev / 1.5, 10)); // Min zoom: 10 pixels/second
   };
 
+  // Convert zoom level name to pixels per second
+  const zoomLevelToPixelsPerSecond = (level: string): number => {
+    // For dynamic calculations, we need the total timeline duration
+    const totalDuration = timelineDuration;
+
+    switch (level) {
+      case 'fit-to-width':
+        // Calculate pixels per second to fit entire timeline in viewport
+        // This would need the container width - using a reasonable default
+        return 50; // Placeholder - should calculate based on container width
+      case 'zoom-to-selection':
+        // Would need selection info - fallback to current zoom
+        return pixelsPerSecond;
+      case 'zoom-default':
+        return 100; // Default zoom level
+      case 'minutes':
+        return 20; // ~3 seconds per 60 pixels
+      case 'seconds':
+        return 100; // 1 second = 100 pixels
+      case '5ths-of-seconds':
+        return 200; // 0.2 seconds = 40 pixels
+      case '10ths-of-seconds':
+        return 300; // 0.1 seconds = 30 pixels
+      case '20ths-of-seconds':
+        return 400; // 0.05 seconds = 20 pixels
+      case '50ths-of-seconds':
+        return 600; // 0.02 seconds = 12 pixels
+      case '100ths-of-seconds':
+        return 1000; // 0.01 seconds = 10 pixels
+      case '500ths-of-seconds':
+        return 2000; // 0.002 seconds = 4 pixels
+      case 'milliseconds':
+        return 3000; // Very zoomed in
+      case 'samples':
+        return 4000; // Sample-level view
+      case '4-pixels-per-sample':
+        return 8000; // 4 pixels per sample (at 44.1kHz)
+      case 'max-zoom':
+        return maxPixelsPerSecond; // Maximum zoom
+      default:
+        return 100; // Fallback to default
+    }
+  };
+
+  const zoomToggle = () => {
+    // Toggle between the two predefined zoom levels
+    // Convert level names to pixel values
+    const level1Pixels = zoomLevelToPixelsPerSecond(zoomToggleLevel1);
+    const level2Pixels = zoomLevelToPixelsPerSecond(zoomToggleLevel2);
+
+    // If current zoom is closer to level 1, switch to level 2, otherwise switch to level 1
+    const distanceToLevel1 = Math.abs(pixelsPerSecond - level1Pixels);
+    const distanceToLevel2 = Math.abs(pixelsPerSecond - level2Pixels);
+
+    if (distanceToLevel1 < distanceToLevel2) {
+      setPixelsPerSecond(level2Pixels);
+    } else {
+      setPixelsPerSecond(level1Pixels);
+    }
+  };
+
   // Create a modified theme with the selected envelope color
   const theme = React.useMemo(() => {
     const envelopeColors = {
@@ -505,6 +566,10 @@ function CanvasDemoContent() {
 
   // Click ruler to start playback - clicking timeline ruler starts playback from that position
   const [clickRulerToStartPlayback, setClickRulerToStartPlayback] = React.useState(false);
+
+  // Zoom toggle levels - two predefined zoom levels to toggle between
+  const [zoomToggleLevel1, setZoomToggleLevel1] = React.useState('zoom-default');
+  const [zoomToggleLevel2, setZoomToggleLevel2] = React.useState('seconds');
 
   // Track keyboard focus state - only one track can have keyboard focus at a time
   const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(null);
@@ -1665,6 +1730,7 @@ function CanvasDemoContent() {
                   <ToolbarButtonGroup gap={2}>
                     <ToolButton icon="zoom-in" onClick={zoomIn} />
                     <ToolButton icon="zoom-out" onClick={zoomOut} />
+                    <ToolButton icon="zoom-toggle" onClick={zoomToggle} />
                   </ToolbarButtonGroup>
 
                   <ToolbarButtonGroup gap={2}>
@@ -1694,6 +1760,7 @@ function CanvasDemoContent() {
                   <ToolbarButtonGroup gap={2}>
                     <ToolButton icon="zoom-in" onClick={zoomIn} />
                     <ToolButton icon="zoom-out" onClick={zoomOut} />
+                    <ToolButton icon="zoom-toggle" onClick={zoomToggle} />
                   </ToolbarButtonGroup>
 
                   <ToolbarButtonGroup gap={2}>
@@ -2383,6 +2450,10 @@ function CanvasDemoContent() {
         isOpen={isPreferencesModalOpen}
         onClose={() => setIsPreferencesModalOpen(false)}
         os={preferences.operatingSystem}
+        zoomToggleLevel1={zoomToggleLevel1}
+        onZoomToggleLevel1Change={setZoomToggleLevel1}
+        zoomToggleLevel2={zoomToggleLevel2}
+        onZoomToggleLevel2Change={setZoomToggleLevel2}
       />
 
       {/* Plugin Browser Dialog */}
