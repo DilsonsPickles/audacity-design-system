@@ -7,6 +7,7 @@ import './Dropdown.css';
 export interface DropdownOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 export interface DropdownProps {
@@ -235,21 +236,33 @@ export const Dropdown: React.FC<DropdownProps> = ({
             '--dropdown-option-hover-outline': theme.border.focus,
           } as React.CSSProperties}
         >
-          {options.map((option, index) => (
-            <div
-              key={option.value}
-              className={`dropdown__option ${
-                option.value === value ? 'dropdown__option--selected' : ''
-              } ${hoveredIndex === index ? 'dropdown__option--hover' : ''}`}
-              onClick={() => handleSelect(option.value)}
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(-1)}
-              role="option"
-              aria-selected={option.value === value}
-            >
-              {option.label}
-            </div>
-          ))}
+          {options.map((option, index) => {
+            if (option.disabled) {
+              // Render separator for disabled items
+              return (
+                <div
+                  key={option.value}
+                  className="dropdown__separator"
+                  role="separator"
+                />
+              );
+            }
+            return (
+              <div
+                key={option.value}
+                className={`dropdown__option ${
+                  option.value === value ? 'dropdown__option--selected' : ''
+                } ${hoveredIndex === index ? 'dropdown__option--hover' : ''}`}
+                onClick={() => handleSelect(option.value)}
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(-1)}
+                role="option"
+                aria-selected={option.value === value}
+              >
+                {option.label}
+              </div>
+            );
+          })}
         </div>,
         document.body
       )}

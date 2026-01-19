@@ -120,6 +120,24 @@
   background-color: rgba(103, 124, 228, 0.25);
 }
 
+/* Separator */
+.dropdown__separator {
+  height: 8px;
+  margin: 0;
+  position: relative;
+}
+
+.dropdown__separator::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 1px;
+  background-color: rgba(223, 226, 231, 1);
+}
+
 /* Scrollbar styling */
 .dropdown__menu::-webkit-scrollbar {
   width: 8px;

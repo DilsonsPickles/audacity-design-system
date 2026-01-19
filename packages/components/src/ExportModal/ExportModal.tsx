@@ -82,9 +82,12 @@ function getFileExtension(format: string): string {
 
 const exportTypeOptions: DropdownOption[] = [
   { value: 'full-project', label: 'Export full project audio' },
+  { value: 'selected-audio', label: 'Export selected audio' },
   { value: 'loop-region', label: 'Export audio in loop region' },
-  { value: 'separate-tracks', label: 'Export tracks as separate audio files' },
-  { value: 'label-audio', label: 'Export each label as a separate audio file' },
+  { value: 'separator-1', label: '---', disabled: true },
+  { value: 'separate-tracks', label: 'Export tracks as separate audio files (stems)' },
+  { value: 'label-audio', label: 'Export each label as a separate audio file (chapters)' },
+  { value: 'separator-2', label: '---', disabled: true },
   { value: 'label-subtitle', label: 'Export all labels as a subtitle file' },
 ];
 
@@ -229,9 +232,9 @@ export function ExportModal({
   const [externalCommand, setExternalCommand] = useState('');
   const [showOutput, setShowOutput] = useState(false);
 
-  // Update file name when format changes for full-project or loop-region export
+  // Update file name when format changes for full-project, selected-audio, or loop-region export
   useEffect(() => {
-    if (exportType === 'full-project' || exportType === 'loop-region') {
+    if (exportType === 'full-project' || exportType === 'selected-audio' || exportType === 'loop-region') {
       const baseName = fileName.replace(/\.[^.]+$/, '');
       const extension = getFileExtension(format);
       setFileName(`${baseName}.${extension}`);
@@ -304,8 +307,8 @@ export function ExportModal({
                 : 'File name'}
             </label>
             <div className="export-modal__input-wrapper">
-              {/* Show editable input for full-project and loop-region, read-only preview for others */}
-              {exportType === 'full-project' || exportType === 'loop-region' ? (
+              {/* Show editable input for full-project, selected-audio, and loop-region, read-only preview for others */}
+              {exportType === 'full-project' || exportType === 'selected-audio' || exportType === 'loop-region' ? (
                 <TextInput
                   value={fileName}
                   onChange={setFileName}
