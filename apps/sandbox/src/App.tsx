@@ -2182,7 +2182,7 @@ function CanvasDemoContent() {
                         height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
                         backgroundColor: theme.audio.timeline.loopRegionBorder,
                         pointerEvents: 'none',
-                        zIndex: 10,
+                        zIndex: 100,
                       }}
                     />
                     {/* End stalk */}
@@ -2195,7 +2195,7 @@ function CanvasDemoContent() {
                         height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
                         backgroundColor: theme.audio.timeline.loopRegionBorder,
                         pointerEvents: 'none',
-                        zIndex: 10,
+                        zIndex: 100,
                       }}
                     />
                   </>
