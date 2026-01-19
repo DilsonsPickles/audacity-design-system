@@ -471,6 +471,8 @@ export const darkTheme: ThemeTokens = {
       tickMinor: '#373a40',      // Darker gray minor ticks
       playhead: '#ef4444',       // Red playhead cursor
       playheadShadow: '#dc2626', // Darker red shadow
+      loopRegionFill: 'rgba(0, 255, 0, 0.2)', // Semi-transparent green fill
+      loopRegionBorder: 'rgba(0, 255, 0, 0.8)', // Solid green border
     },
 
     selection: {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TimeSelection, SpectralSelection } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
 import { CLIP_CONTENT_OFFSET } from '../constants';
@@ -85,6 +85,10 @@ export interface TimelineRulerProps {
    * Loop region end time in seconds
    */
   loopRegionEnd?: number | null;
+  /**
+   * Callback when loop region changes (drag or resize)
+   */
+  onLoopRegionChange?: (start: number, end: number) => void;
 }
 
 const DEFAULT_HEIGHT = 40;
@@ -110,9 +114,12 @@ export function TimelineRuler({
   loopRegionEnabled = false,
   loopRegionStart = null,
   loopRegionEnd = null,
+  onLoopRegionChange,
 }: TimelineRulerProps) {
   const { theme } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dragStateRef = useRef<{ type: 'move' | 'resize-start' | 'resize-end'; startX: number; initialStart: number; initialEnd: number } | null>(null);
+  const [cursor, setCursor] = useState('default');
 
   // Use theme tokens as defaults if not provided
   const bgColor = backgroundColor ?? theme.background.surface.elevated;
@@ -173,12 +180,12 @@ export function TimelineRuler({
       const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
       const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
 
-      // Draw filled rectangle with semi-transparent green
-      ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+      // Draw filled rectangle with theme color
+      ctx.fillStyle = theme.audio.timeline.loopRegionFill;
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
 
-      // Draw border with solid green
-      ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+      // Draw border with theme color
+      ctx.strokeStyle = theme.audio.timeline.loopRegionBorder;
       ctx.lineWidth = 2;
       ctx.strokeRect(startX, midHeight, endX - startX, height - midHeight);
     }
@@ -223,6 +230,110 @@ export function TimelineRuler({
     }
   }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure, loopRegionEnabled, loopRegionStart, loopRegionEnd]);
 
+  // Mouse event handlers for loop region interaction
+  const EDGE_THRESHOLD = 5; // pixels from edge for resize cursor
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null || !onLoopRegionChange) {
+      setCursor('default');
+      return;
+    }
+
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const mouseX = e.clientX - rect.left;
+    const midHeight = height / 2;
+    const mouseY = e.clientY - rect.top;
+
+    // Only interact if mouse is in bottom half (where loop region is)
+    if (mouseY < midHeight) {
+      setCursor('default');
+      return;
+    }
+
+    const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
+    const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
+
+    // Handle dragging
+    if (dragStateRef.current) {
+      const deltaX = mouseX - dragStateRef.current.startX;
+      const deltaTime = deltaX / pixelsPerSecond;
+
+      if (dragStateRef.current.type === 'move') {
+        const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
+        const newEnd = dragStateRef.current.initialEnd + deltaTime;
+        onLoopRegionChange(newStart, newEnd);
+      } else if (dragStateRef.current.type === 'resize-start') {
+        const newStart = Math.max(0, Math.min(dragStateRef.current.initialEnd - 0.1, dragStateRef.current.initialStart + deltaTime));
+        onLoopRegionChange(newStart, dragStateRef.current.initialEnd);
+      } else if (dragStateRef.current.type === 'resize-end') {
+        const newEnd = Math.max(dragStateRef.current.initialStart + 0.1, dragStateRef.current.initialEnd + deltaTime);
+        onLoopRegionChange(dragStateRef.current.initialStart, newEnd);
+      }
+      return;
+    }
+
+    // Set cursor based on mouse position
+    const nearStart = Math.abs(mouseX - startX) < EDGE_THRESHOLD;
+    const nearEnd = Math.abs(mouseX - endX) < EDGE_THRESHOLD;
+    const insideRegion = mouseX >= startX && mouseX <= endX;
+
+    if (nearStart || nearEnd) {
+      setCursor('ew-resize');
+    } else if (insideRegion) {
+      setCursor('grab');
+    } else {
+      setCursor('default');
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null || !onLoopRegionChange) return;
+
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const mouseX = e.clientX - rect.left;
+    const midHeight = height / 2;
+    const mouseY = e.clientY - rect.top;
+
+    // Only interact if mouse is in bottom half
+    if (mouseY < midHeight) return;
+
+    const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
+    const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
+
+    const nearStart = Math.abs(mouseX - startX) < EDGE_THRESHOLD;
+    const nearEnd = Math.abs(mouseX - endX) < EDGE_THRESHOLD;
+    const insideRegion = mouseX >= startX && mouseX <= endX;
+
+    if (nearStart) {
+      dragStateRef.current = { type: 'resize-start', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
+      setCursor('ew-resize');
+    } else if (nearEnd) {
+      dragStateRef.current = { type: 'resize-end', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
+      setCursor('ew-resize');
+    } else if (insideRegion) {
+      dragStateRef.current = { type: 'move', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
+      setCursor('grabbing');
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (dragStateRef.current) {
+      if (dragStateRef.current.type === 'move') {
+        setCursor('grab');
+      }
+      dragStateRef.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    dragStateRef.current = null;
+    setCursor('default');
+  };
+
   return (
     <canvas
       ref={canvasRef}
@@ -231,7 +342,12 @@ export function TimelineRuler({
         width: `${width}px`,
         height: `${height}px`,
         display: 'block',
+        cursor,
       }}
+      onMouseMove={handleMouseMove}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     />
   );
 }

@@ -2105,6 +2105,10 @@ function CanvasDemoContent() {
                   loopRegionEnabled={loopRegionEnabled}
                   loopRegionStart={loopRegionStart}
                   loopRegionEnd={loopRegionEnd}
+                  onLoopRegionChange={(start, end) => {
+                    setLoopRegionStart(start);
+                    setLoopRegionEnd(end);
+                  }}
                 />
                 {/* Playhead icon only in ruler */}
                 <PlayheadCursor
