@@ -279,8 +279,8 @@ export function TimelineRuler({
     const nearEnd = Math.abs(mouseX - endX) < EDGE_THRESHOLD;
     const insideRegion = mouseX >= startX && mouseX <= endX;
 
-    // Only show resize/grab cursors if loop is enabled and can be changed
-    if (loopRegionEnabled && onLoopRegionChange) {
+    // Show resize/grab cursors if onLoopRegionChange is provided (both enabled and disabled states)
+    if (onLoopRegionChange) {
       if (nearStart || nearEnd) {
         setCursor('ew-resize');
       } else if (insideRegion) {
@@ -289,7 +289,7 @@ export function TimelineRuler({
         setCursor('default');
       }
     } else if (insideRegion) {
-      // Loop region exists but is disabled - show pointer to indicate clickable
+      // Loop region exists but no change handler - show pointer to indicate clickable
       setCursor('pointer');
     } else {
       setCursor('default');
@@ -320,8 +320,8 @@ export function TimelineRuler({
     clickStartRef.current = { x: mouseX, y: mouseY, time: Date.now() };
     hasMovedRef.current = false; // Reset movement flag
 
-    // Only allow dragging if loop is enabled
-    if (loopRegionEnabled && onLoopRegionChange) {
+    // Allow dragging if onLoopRegionChange is provided (works for both enabled and disabled states)
+    if (onLoopRegionChange) {
       if (nearStart) {
         dragStateRef.current = { type: 'resize-start', startX: mouseX, initialStart: loopRegionStart, initialEnd: loopRegionEnd };
         setCursor('ew-resize');
