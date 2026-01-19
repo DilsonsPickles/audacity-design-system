@@ -180,19 +180,19 @@ export function TimelineRuler({
       ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
     }
 
-    // Draw loop region in bottom half (if enabled and defined)
+    // Draw loop region in top half (if enabled and defined)
     if (loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null) {
       const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
       const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
 
       // Draw filled rectangle with theme color
       ctx.fillStyle = theme.audio.timeline.loopRegionFill;
-      ctx.fillRect(startX, midHeight, endX - startX, height - midHeight);
+      ctx.fillRect(startX, 0, endX - startX, midHeight);
 
       // Draw border with theme color
       ctx.strokeStyle = theme.audio.timeline.loopRegionBorder;
       ctx.lineWidth = 2;
-      ctx.strokeRect(startX, midHeight, endX - startX, height - midHeight);
+      ctx.strokeRect(startX, 0, endX - startX, midHeight);
     }
 
     // Draw horizontal divider line at middle (skip the CLIP_CONTENT_OFFSET area)
@@ -251,8 +251,8 @@ export function TimelineRuler({
     const midHeight = height / 2;
     const mouseY = e.clientY - rect.top;
 
-    // Only interact if mouse is in bottom half (where loop region is)
-    if (mouseY < midHeight) {
+    // Only interact if mouse is in top half (where loop region is)
+    if (mouseY > midHeight) {
       setCursor('default');
       return;
     }
@@ -270,11 +270,21 @@ export function TimelineRuler({
         const newEnd = dragStateRef.current.initialEnd + deltaTime;
         onLoopRegionChange(newStart, newEnd);
       } else if (dragStateRef.current.type === 'resize-start') {
-        const newStart = Math.max(0, Math.min(dragStateRef.current.initialEnd - 0.1, dragStateRef.current.initialStart + deltaTime));
-        onLoopRegionChange(newStart, dragStateRef.current.initialEnd);
+        const newStart = Math.max(0, dragStateRef.current.initialStart + deltaTime);
+        // Allow start to go past end (swap)
+        if (newStart > dragStateRef.current.initialEnd) {
+          onLoopRegionChange(dragStateRef.current.initialEnd, newStart);
+        } else {
+          onLoopRegionChange(newStart, dragStateRef.current.initialEnd);
+        }
       } else if (dragStateRef.current.type === 'resize-end') {
-        const newEnd = Math.max(dragStateRef.current.initialStart + 0.1, dragStateRef.current.initialEnd + deltaTime);
-        onLoopRegionChange(dragStateRef.current.initialStart, newEnd);
+        const newEnd = dragStateRef.current.initialEnd + deltaTime;
+        // Allow end to go before start (swap)
+        if (newEnd < dragStateRef.current.initialStart) {
+          onLoopRegionChange(newEnd, dragStateRef.current.initialStart);
+        } else {
+          onLoopRegionChange(dragStateRef.current.initialStart, newEnd);
+        }
       }
       return;
     }
@@ -303,8 +313,8 @@ export function TimelineRuler({
     const midHeight = height / 2;
     const mouseY = e.clientY - rect.top;
 
-    // Only interact if mouse is in bottom half
-    if (mouseY < midHeight) return;
+    // Only interact if mouse is in top half
+    if (mouseY > midHeight) return;
 
     const startX = CLIP_CONTENT_OFFSET + loopRegionStart * pixelsPerSecond - scrollX;
     const endX = CLIP_CONTENT_OFFSET + loopRegionEnd * pixelsPerSecond - scrollX;
