@@ -435,9 +435,6 @@ function CanvasDemoContent() {
 
   // Convert zoom level name to pixels per second
   const zoomLevelToPixelsPerSecond = (level: string): number => {
-    // For dynamic calculations, we need the total timeline duration
-    const totalDuration = timelineDuration;
-
     switch (level) {
       case 'fit-to-width':
         // Calculate pixels per second to fit entire timeline in viewport
@@ -534,8 +531,8 @@ function CanvasDemoContent() {
 
   // Timeline ruler format options
   const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
-  const [bpm, setBpm] = React.useState(120);
-  const [beatsPerMeasure, setBeatsPerMeasure] = React.useState(4);
+  const [bpm, setBpm] = React.useState(120); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [beatsPerMeasure, setBeatsPerMeasure] = React.useState(4); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   // Clip context menu state
   const [clipContextMenu, setClipContextMenu] = React.useState<{
@@ -1275,7 +1272,7 @@ function CanvasDemoContent() {
           clipsToDelete.forEach(({ trackIndex, clipId }) => {
             dispatch({
               type: 'DELETE_CLIP',
-              payload: { trackIndex, clipId },
+              payload: { trackIndex, clipId: typeof clipId === 'string' ? Number(clipId) : clipId },
             });
           });
 
