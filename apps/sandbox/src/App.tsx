@@ -2406,6 +2406,7 @@ function CanvasDemoContent() {
                     selected: state.selectedTrackIndices.includes(index),
                     stereo: false, // TODO: Add stereo support when needed
                     viewMode: track.viewMode,
+                    trackType: track.type,
                   }))}
                   width={64}
                   headerHeight={0}

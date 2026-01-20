@@ -17,6 +17,8 @@ export interface TrackRulerConfig {
   type?: 'mono' | 'stereo';
   /** View mode - determines which ruler to show */
   viewMode?: 'waveform' | 'spectrogram' | 'split';
+  /** Track type - label tracks show no ruler */
+  trackType?: 'audio' | 'label';
 }
 
 export interface VerticalRulerPanelProps {
@@ -125,10 +127,15 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               style={{ height: `${track.height}px` }}
               tabIndex={track.selected ? 0 : -1}
             >
-              {/* 20px spacer to align with clip header recess */}
-              <div className="vertical-ruler-panel__track-spacer" />
+              {/* 20px spacer to align with clip header recess (hidden for label tracks) */}
+              {track.trackType !== 'label' && (
+                <div className="vertical-ruler-panel__track-spacer" />
+              )}
 
-              {track.viewMode === 'split' ? (
+              {track.trackType === 'label' ? (
+                // Label tracks - no ruler needed
+                null
+              ) : track.viewMode === 'split' ? (
                 // Split view - frequency ruler on top, amplitude ruler on bottom
                 <div className="vertical-ruler-panel__split">
                   <FrequencyRuler

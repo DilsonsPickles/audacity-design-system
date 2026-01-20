@@ -98,6 +98,56 @@ npm run lint
 - `TimeSelectionCanvasOverlay.tsx` - Renders time selection overlay
 - `SpectralSelectionOverlay.tsx` - Renders spectral selection overlay
 
+**Rulers:**
+- `VerticalRuler.tsx` - Amplitude ruler for waveform view (linear scale)
+- `FrequencyRuler.tsx` - Frequency ruler for spectrogram view (Mel scale)
+- `VerticalRulerPanel.tsx` - Ruler panel with automatic mode switching
+  - Single amplitude ruler for waveform mode
+  - Single frequency ruler for spectrogram mode
+  - Dual rulers (frequency on top, amplitude on bottom) for split view mode
+  - Dual amplitude rulers (left/right channels) for stereo waveform mode
+
+### Key Components in `apps/sandbox/` (New Architecture)
+
+**Main Canvas:**
+- `Canvas.tsx` - Main rendering coordinator (~788 lines, reduced from 2,121 lines via refactoring)
+  - Manages track layout, time selection, spectral selection
+  - Coordinates TrackNew components, label rendering, and overlays
+  - Uses custom hooks for modular interaction handling
+  - Wraps labels in overflow container to clip without hiding focus outline
+
+**Custom Hooks:**
+- `useClipDragging.ts` - Handles clip dragging with multi-select support (~180 lines)
+- `useClipTrimming.ts` - Handles clip left/right edge trimming (~175 lines)
+- `useLabelDragging.ts` - Handles label drag interactions (~100 lines)
+
+**Label Rendering:**
+- `LabelRenderer.tsx` - Dedicated component for rendering labels (~420 lines)
+  - Renders label ears (resize handles), stalks, and banners
+  - Handles all label mouse interactions (resize, drag, selection)
+  - Implements label expansion behavior (click to expand to all tracks)
+  - Uses absolute positioning with proper z-index management
+
+**Label Utilities:**
+- `labelLayout.ts` - Label layout calculation utilities
+  - `calculateLabelRows()` - Greedy packing algorithm for label row assignment
+  - Sorts labels by start time (left-most label gets row 0 at top)
+  - Point labels use fixed 60px width for overlap detection
+  - Region labels use actual duration * pixelsPerSecond for width
+  - `isPointInLabel()` - Hit testing for label click detection
+  - Constants: `EAR_HEIGHT=14`, `LABEL_BOX_GAP=2`, `DEFAULT_POINT_LABEL_WIDTH=60`
+
+**Track Type System:**
+- Tracks have `type?: 'audio' | 'label'` property
+- Label tracks (`type: 'label'`) hide the 20px clip header recess
+- Audio tracks (default) show the darkened clip header area
+- Track type determines rendering behavior, not just presence of labels
+
+**Overflow Handling:**
+- Labels wrapped in container with `overflow: hidden` to clip overflowing content
+- Parent track wrapper uses `overflow: visible` to preserve focus outline
+- Focus outline rendered outside element bounds (not clipped by overflow hidden)
+
 ### Key Components in `apps/demo/clip-envelope/` (Legacy)
 
 **Main Controller:**
@@ -220,8 +270,16 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - ✅ Demo moved to `apps/demo/clip-envelope/`
 - ✅ Sandbox app (`apps/sandbox/`) uses new component architecture (TrackNew, ClipDisplay, EnvelopeInteractionLayer)
 - ✅ Storybook (`apps/docs/`) showcasing all components
+- ✅ **Canvas.tsx refactored** - Reduced from 2,121 to 788 lines (62.8% reduction)
+  - ✅ Extracted clip dragging logic to `useClipDragging` hook
+  - ✅ Extracted clip trimming logic to `useClipTrimming` hook
+  - ✅ Extracted label dragging logic to `useLabelDragging` hook
+  - ✅ Extracted label rendering to `LabelRenderer` component
+  - ✅ Extracted label layout utilities to `labelLayout.ts`
+  - ✅ Removed 619 lines of dead code
+- ✅ **Track type system** - Audio vs label tracks properly differentiated
+- ✅ **Vertical rulers** - Dual rulers for split view (frequency + amplitude)
 - ⏳ Legacy demo still uses local types/theme (not importing from packages)
-- ⏳ Old envelope interaction code in Canvas.tsx needs cleanup
 - ⏳ No `@audacity-ui/audio-components` yet
 
 **Next Steps (per roadmap):**
@@ -245,7 +303,16 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - `apps/demo/clip-envelope/app/components/types.ts` - Legacy types (to be removed)
 - `apps/demo/clip-envelope/app/theme.ts` - Legacy theme (to be removed)
 
-**Main Components:**
+**Sandbox App (New Architecture):**
+- `apps/sandbox/src/components/Canvas.tsx` - Main canvas coordinator (~788 lines, down from 2,121)
+- `apps/sandbox/src/components/LabelRenderer.tsx` - Label rendering component (~420 lines)
+- `apps/sandbox/src/hooks/useClipDragging.ts` - Clip dragging hook (~180 lines)
+- `apps/sandbox/src/hooks/useClipTrimming.ts` - Clip trimming hook (~175 lines)
+- `apps/sandbox/src/hooks/useLabelDragging.ts` - Label dragging hook (~100 lines)
+- `apps/sandbox/src/utils/labelLayout.ts` - Label layout utilities (~130 lines)
+- `apps/sandbox/src/contexts/TracksContext.tsx` - Track state management with track type system
+
+**Legacy Demo Components:**
 - `apps/demo/clip-envelope/app/components/ClipEnvelopeEditor.tsx` - State management & events (~1200 lines)
 - `apps/demo/clip-envelope/app/components/TrackCanvas.tsx` - Canvas rendering (~1000 lines)
 
@@ -253,6 +320,7 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - `docs/design-system-architecture.md` - Design system plan
 - `docs/automation-overlay-states.md` - 6 automation overlay states
 - `docs/clip-styling-states.md` - 10 clip styling states
+- `docs/label-interactions.md` - Label selection, deletion, and track expansion behavior
 
 ## Build System
 

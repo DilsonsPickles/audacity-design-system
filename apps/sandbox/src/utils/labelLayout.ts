@@ -39,11 +39,16 @@ export function calculateLabelRows(
 ): Map<number, number> {
   const labelRows = new Map<number, number>();
 
-  labels.forEach((label, labelIndex) => {
+  // Sort labels by start time (left-most first)
+  const sortedLabels = [...labels].sort((a, b) => a.startTime - b.startTime);
+
+  sortedLabels.forEach((label, labelIndex) => {
     const labelX = clipContentOffset + label.startTime * pixelsPerSecond;
-    const labelWidth = label.endTime !== undefined
-      ? (label.endTime - label.startTime) * pixelsPerSecond
-      : LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH;
+    // Point labels: startTime === endTime, use fixed width for overlap detection
+    const isPointLabel = label.startTime === label.endTime;
+    const labelWidth = isPointLabel
+      ? LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH
+      : (label.endTime! - label.startTime) * pixelsPerSecond;
 
     let row = 0;
     let foundRow = false;
@@ -53,13 +58,14 @@ export function calculateLabelRows(
 
       // Check all previously placed labels
       for (let i = 0; i < labelIndex; i++) {
-        const prevRow = labelRows.get(labels[i].id);
+        const prevRow = labelRows.get(sortedLabels[i].id);
         if (prevRow === row) {
-          const prevLabel = labels[i];
+          const prevLabel = sortedLabels[i];
           const prevX = clipContentOffset + prevLabel.startTime * pixelsPerSecond;
-          const prevWidth = prevLabel.endTime !== undefined
-            ? (prevLabel.endTime - prevLabel.startTime) * pixelsPerSecond
-            : LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH;
+          const isPrevPointLabel = prevLabel.startTime === prevLabel.endTime;
+          const prevWidth = isPrevPointLabel
+            ? LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH
+            : (prevLabel.endTime! - prevLabel.startTime) * pixelsPerSecond;
 
           // Check for overlap
           const overlap = !(labelX >= prevX + prevWidth || labelX + labelWidth <= prevX);
@@ -94,9 +100,10 @@ export function getLabelYOffset(row: number): number {
  * Calculate label dimensions
  */
 export function getLabelDimensions(label: Label, pixelsPerSecond: number) {
-  const width = label.endTime !== undefined
-    ? (label.endTime - label.startTime) * pixelsPerSecond
-    : LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH;
+  const isPointLabel = label.startTime === label.endTime;
+  const width = isPointLabel
+    ? LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH
+    : (label.endTime! - label.startTime) * pixelsPerSecond;
 
   return {
     width,
