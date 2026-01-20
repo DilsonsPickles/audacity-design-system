@@ -70,17 +70,22 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
   const range = max - min;
 
   // Adaptive minor tick density based on available space
-  // If ticks would be < 2px apart, reduce from 4 minor ticks to 1 (just the halfway point)
-  const MIN_TICK_SPACING = 2; // pixels
-  const effectiveMinorDivisions = minorDivisions;
+  const MIN_TICK_SPACING_REDUCED = 6; // pixels - threshold to go from 4 minors to 1 minor
+  const MIN_TICK_SPACING_NONE = 4; // pixels - threshold to remove all minor ticks
 
   // Calculate initial spacing with full minor ticks
-  let adjustedMinorDivisions = effectiveMinorDivisions;
+  let adjustedMinorDivisions = minorDivisions;
   let lastMajorTickIndex = (majorDivisions - 1) * (adjustedMinorDivisions + 1);
   let tickSpacing = height / lastMajorTickIndex;
 
-  // If spacing is too tight, reduce to just 1 minor tick (halfway point)
-  if (tickSpacing < MIN_TICK_SPACING && adjustedMinorDivisions > 1) {
+  // If spacing is very tight, remove all minor ticks (just show major ticks)
+  if (tickSpacing < MIN_TICK_SPACING_NONE) {
+    adjustedMinorDivisions = 0; // No minor ticks at all
+    lastMajorTickIndex = majorDivisions - 1;
+    tickSpacing = height / lastMajorTickIndex;
+  }
+  // If spacing is moderately tight, reduce to just 1 minor tick (halfway point)
+  else if (tickSpacing < MIN_TICK_SPACING_REDUCED && adjustedMinorDivisions > 1) {
     adjustedMinorDivisions = 1; // Just one tick in the middle
     lastMajorTickIndex = (majorDivisions - 1) * (adjustedMinorDivisions + 1);
     tickSpacing = height / lastMajorTickIndex;
