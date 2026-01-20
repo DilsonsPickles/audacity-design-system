@@ -70,25 +70,27 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
   const range = max - min;
 
   // Adaptive minor tick density based on available space
-  const MIN_TICK_SPACING_REDUCED = 6; // pixels - threshold to go from 4 minors to 1 minor
-  const MIN_TICK_SPACING_NONE = 4; // pixels - threshold to remove all minor ticks
+  // Ensure minor ticks are never closer than 6px to each other
+  const MIN_TICK_SPACING = 6; // pixels - minimum spacing between any ticks
 
-  // Calculate initial spacing with full minor ticks
+  // Calculate initial spacing with full minor ticks (4 minors between each major)
   let adjustedMinorDivisions = minorDivisions;
   let lastMajorTickIndex = (majorDivisions - 1) * (adjustedMinorDivisions + 1);
   let tickSpacing = height / lastMajorTickIndex;
 
-  // If spacing is very tight, remove all minor ticks (just show major ticks)
-  if (tickSpacing < MIN_TICK_SPACING_NONE) {
-    adjustedMinorDivisions = 0; // No minor ticks at all
-    lastMajorTickIndex = majorDivisions - 1;
-    tickSpacing = height / lastMajorTickIndex;
-  }
-  // If spacing is moderately tight, reduce to just 1 minor tick (halfway point)
-  else if (tickSpacing < MIN_TICK_SPACING_REDUCED && adjustedMinorDivisions > 1) {
+  // Reduce minor ticks if spacing would be < 6px
+  // Try 1 minor tick (halfway point) if 4 minors are too close
+  if (tickSpacing < MIN_TICK_SPACING && adjustedMinorDivisions > 1) {
     adjustedMinorDivisions = 1; // Just one tick in the middle
     lastMajorTickIndex = (majorDivisions - 1) * (adjustedMinorDivisions + 1);
     tickSpacing = height / lastMajorTickIndex;
+
+    // If even 1 minor tick is too close, remove all minor ticks
+    if (tickSpacing < MIN_TICK_SPACING) {
+      adjustedMinorDivisions = 0; // No minor ticks at all
+      lastMajorTickIndex = majorDivisions - 1;
+      tickSpacing = height / lastMajorTickIndex;
+    }
   }
 
   const ticks: Array<{
