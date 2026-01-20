@@ -42,6 +42,10 @@ export interface VerticalRulerPanelProps {
    */
   scrollY?: number;
   /**
+   * Mouse cursor Y position in pixels (relative to tracks container)
+   */
+  cursorY?: number;
+  /**
    * Additional CSS class name
    */
   className?: string;
@@ -59,6 +63,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
   headerHeight = 40,
   trackGap = 2,
   scrollY = 0,
+  cursorY,
   className = '',
 }) => {
   const { theme } = useTheme();
@@ -95,6 +100,17 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
 
       {/* Tracks container */}
       <div className="vertical-ruler-panel__tracks" style={{ transform: `translateY(-${scrollY}px)` }}>
+        {/* Horizontal cursor line */}
+        {cursorY !== undefined && (
+          <div
+            className="vertical-ruler-panel__cursor"
+            style={{
+              top: `${cursorY}px`,
+              width: '100%',
+            }}
+          />
+        )}
+
         {tracks.map((track, index) => (
           <React.Fragment key={track.id}>
             {/* Track ruler */}

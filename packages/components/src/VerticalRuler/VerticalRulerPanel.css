@@ -97,3 +97,14 @@
   background-color: #191D29;
   flex-shrink: 0;
 }
+
+/* Horizontal cursor line */
+.vertical-ruler-panel__cursor {
+  position: absolute;
+  left: 0;
+  height: 1px;
+  background-color: #ffffff;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 0 0 1px #000000;
+}

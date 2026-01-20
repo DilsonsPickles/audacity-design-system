@@ -185,6 +185,13 @@ function CanvasDemoContent() {
     }
   }, []); // Only run on mount
 
+  // Sync keyboardFocusedTrack with state.focusedTrackIndex
+  React.useEffect(() => {
+    if (state.focusedTrackIndex !== null) {
+      setKeyboardFocusedTrack(state.focusedTrackIndex);
+    }
+  }, [state.focusedTrackIndex]);
+
   // Mock plugin data
   const [plugins, setPlugins] = React.useState<Plugin[]>([
     { id: '1', name: 'Reverb', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/reverb.ny', enabled: true },
@@ -481,6 +488,12 @@ function CanvasDemoContent() {
 
   // Track mouse cursor position in timeline (in seconds)
   const [mouseCursorPosition, setMouseCursorPosition] = React.useState<number | undefined>(undefined);
+
+  // Track mouse cursor Y position for vertical ruler (in pixels, relative to tracks container)
+  const [mouseCursorY, setMouseCursorY] = React.useState<number | undefined>(undefined);
+
+  // Track whether mouse is over a track (not gap between tracks)
+  const [isOverTrack, setIsOverTrack] = React.useState(false);
 
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
@@ -2103,7 +2116,7 @@ function CanvasDemoContent() {
                 onMouseMove={(e) => {
                   if (timelineRulerRef.current) {
                     const rect = timelineRulerRef.current.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
+                    const x = e.clientX - rect.left + scrollX; // Add scrollX to account for transform
                     const CLIP_CONTENT_OFFSET = 12; // Match the constant from components
                     const timePosition = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
                     setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
@@ -2117,7 +2130,7 @@ function CanvasDemoContent() {
                   if (!clickRulerToStartPlayback || !timelineRulerRef.current) return;
 
                   const rect = timelineRulerRef.current.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
+                  const x = e.clientX - rect.left + scrollX; // Add scrollX to account for transform
                   const CLIP_CONTENT_OFFSET = 12;
                   const clickedTime = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
 
@@ -2152,7 +2165,7 @@ function CanvasDemoContent() {
               >
                 <TimelineRuler
                   pixelsPerSecond={pixelsPerSecond}
-                  scrollX={0}
+                  scrollX={scrollX}
                   totalDuration={timelineDuration}
                   width={timelineWidth}
                   height={40}
@@ -2259,13 +2272,33 @@ function CanvasDemoContent() {
                 if (scrollContainerRef.current) {
                   const rect = scrollContainerRef.current.getBoundingClientRect();
                   const x = e.clientX - rect.left + scrollX;
+                  const y = e.clientY - rect.top + scrollY;
                   const CLIP_CONTENT_OFFSET = 12;
                   const timePosition = (x - CLIP_CONTENT_OFFSET) / 100;
                   setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
+                  setMouseCursorY(y >= 0 ? y : undefined);
+
+                  // Check if mouse is over a track (not a gap)
+                  const TRACK_GAP = 2;
+                  let overTrack = false;
+                  let currentY = 0;
+
+                  for (const track of state.tracks) {
+                    const trackHeight = track.height || 114;
+                    if (y >= currentY && y < currentY + trackHeight) {
+                      overTrack = true;
+                      break;
+                    }
+                    currentY += trackHeight + TRACK_GAP;
+                  }
+
+                  setIsOverTrack(overTrack);
                 }
               }}
               onMouseLeave={() => {
                 setMouseCursorPosition(undefined);
+                setMouseCursorY(undefined);
+                setIsOverTrack(false);
               }}
             >
               <div style={{ minWidth: `${timelineWidth}px`, minHeight: `${canvasHeight}px`, position: 'relative', cursor: 'text' }}>
@@ -2281,7 +2314,9 @@ function CanvasDemoContent() {
                       setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                     }}
                     onTrackFocusChange={(trackIndex, hasFocus) => {
-                      setKeyboardFocusedTrack(hasFocus ? trackIndex : null);
+                      if (hasFocus) {
+                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+                      }
                       setControlPanelHasFocus(null);
                     }}
                     onHeightChange={setCanvasHeight}
@@ -2357,6 +2392,7 @@ function CanvasDemoContent() {
                   width={80}
                   headerHeight={0}
                   scrollY={scrollY}
+                  cursorY={isOverTrack ? mouseCursorY : undefined}
                 />
               )}
             </div>
