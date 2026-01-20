@@ -9,7 +9,7 @@ interface EnvelopePoint {
 }
 
 // Local Label interface for TracksContext (extends core Label with numeric id)
-interface Label extends Omit<CoreLabel, 'id'> {
+export interface Label extends Omit<CoreLabel, 'id'> {
   id: number;
 }
 
@@ -34,7 +34,7 @@ interface Clip {
   color?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
 }
 
-interface Track {
+export interface Track {
   id: number;
   name: string;
   type?: 'audio' | 'label'; // Track type: audio (default) or label

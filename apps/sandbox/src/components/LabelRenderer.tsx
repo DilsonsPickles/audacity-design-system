@@ -1,8 +1,6 @@
 import React from 'react';
 import type { Label } from '../contexts/TracksContext';
-import { calculateLabelRows, LABEL_LAYOUT_CONSTANTS } from '../utils/labelLayout';
-
-const { LABEL_ROW_HEIGHT, LABEL_ROW_GAP } = LABEL_LAYOUT_CONSTANTS;
+import { calculateLabelRows } from '../utils/labelLayout';
 
 interface LabelRendererProps {
   labels: Label[];

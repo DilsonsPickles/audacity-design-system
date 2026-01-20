@@ -55,11 +55,8 @@ export function useLabelDragging(options: UseLabelDraggingOptions): UseLabelDrag
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current || !labelDragStateRef.current) return;
 
-      const rect = containerRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-
       // Move all labels being dragged
-      labelDragStateRef.current.forEach((dragInfo, labelKeyId) => {
+      labelDragStateRef.current.forEach((dragInfo) => {
         const deltaX = e.clientX - dragInfo.initialClientX;
         const deltaTime = deltaX / pixelsPerSecond;
 
@@ -70,12 +67,14 @@ export function useLabelDragging(options: UseLabelDraggingOptions): UseLabelDrag
 
         // Dispatch update for this label
         dispatch({
-          type: 'UPDATE_LABEL_TIME',
+          type: 'UPDATE_LABEL',
           payload: {
             trackIndex: dragInfo.trackIndex,
             labelId: dragInfo.labelId,
-            startTime: newStartTime,
-            endTime: newEndTime,
+            label: {
+              startTime: newStartTime,
+              endTime: newEndTime,
+            },
           },
         });
       });

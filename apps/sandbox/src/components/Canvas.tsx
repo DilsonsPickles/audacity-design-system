@@ -6,7 +6,8 @@ import { usePreferences } from '@audacity-ui/components';
 import { useClipDragging } from '../hooks/useClipDragging';
 import { useClipTrimming } from '../hooks/useClipTrimming';
 import { useLabelDragging } from '../hooks/useLabelDragging';
-import { calculateLabelRows, isPointInLabel } from '../utils/labelLayout';
+import { useClipMouseDown } from '../hooks/useClipMouseDown';
+import { useContainerClick } from '../hooks/useContainerClick';
 import { LabelRenderer } from './LabelRenderer';
 import './Canvas.css';
 
@@ -153,10 +154,8 @@ export function Canvas({
     clipContentOffset: CLIP_CONTENT_OFFSET,
   });
 
-  // Label dragging - extracted to custom hook
-  const {
-    labelDragStateRef,
-  } = useLabelDragging({
+  // Label dragging - extracted to custom hook (handles mouseup internally)
+  useLabelDragging({
     containerRef,
     pixelsPerSecond,
     clipContentOffset: CLIP_CONTENT_OFFSET,
@@ -241,209 +240,41 @@ export function Canvas({
     }
   );
 
-  // Handle click to move playhead and select track
-  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // First, call the containerProps onClick handler to preserve drag prevention logic
-    if (containerProps.onClick) {
-      containerProps.onClick(e);
-    }
-
-    // Only update playhead and track focus if we're not dragging
-    const wasJustDragging = selection.selection.wasJustDragging();
-    if (wasJustDragging) {
-      return; // Skip everything - focus was already set during the drag
-    }
-
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Calculate time from click position, accounting for CLIP_CONTENT_OFFSET
-    const time = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
-
-    // Calculate which track was clicked (if any)
-    let clickedTrackIndex: number | null = null;
-    let currentY = TOP_GAP;
-    for (let i = 0; i < tracks.length; i++) {
-      const trackHeight = tracks[i].height || DEFAULT_TRACK_HEIGHT;
-      if (y >= currentY && y < currentY + trackHeight) {
-        clickedTrackIndex = i;
-        break;
-      }
-      currentY += trackHeight + TRACK_GAP;
-    }
-
-    // Check if click was below all tracks (in empty space)
-    const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
-
-    if (y > totalTracksHeight) {
-      // Clicked in empty space below tracks - deselect everything
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
-      dispatch({ type: 'SET_FOCUSED_TRACK', payload: null });
-      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-      onTrackFocusChange?.(0, false); // Clear keyboard focus
-    } else if (clickedTrackIndex !== null) {
-      // Clicked on a track - select it and set focus
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
-      dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
-      onTrackFocusChange?.(clickedTrackIndex, true);
-    }
-
-    // Always move playhead on click (allow it to go to 0 - stalk can touch the gap)
-    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, time) });
-  };
-
   const containerProps = selection.containerProps as any;
 
-  // Main mouse down handler - handles clip dragging
-  const handleClipMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) {
-      containerProps.onMouseDown?.(e);
-      return;
-    }
+  // Container click handler - extracted to custom hook
+  const handleContainerClick = useContainerClick({
+    containerRef,
+    tracks,
+    containerPropsOnClick: containerProps.onClick,
+    selectionWasJustDragging: selection.selection.wasJustDragging,
+    pixelsPerSecond,
+    dispatch,
+    onTrackFocusChange,
+    TOP_GAP,
+    TRACK_GAP,
+    DEFAULT_TRACK_HEIGHT,
+  });
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // If there's a spectral selection at this position, prioritize it
-    if (spectralSelection && hasSpectralView && selection.selection.isPositionOnSpectralClip) {
-      const isOnSpectralClip = selection.selection.isPositionOnSpectralClip(x, y);
-      if (isOnSpectralClip) {
-        containerProps.onMouseDown?.(e);
-        return;
-      }
-    }
-
-    // Check for clip header dragging
-    // Note: Selection is handled by TrackNew's onClipClick, this only sets up drag state
-    let currentY = TOP_GAP;
-    for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
-      const track = tracks[trackIndex];
-      const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
-
-      if (y >= currentY && y < currentY + trackHeight) {
-        for (const clip of track.clips) {
-          const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
-          const clipWidth = clip.duration * pixelsPerSecond;
-          const clipHeaderY = currentY;
-
-          // Check if click is on clip header
-          if (x >= clipX && x <= clipX + clipWidth &&
-              y >= clipHeaderY && y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
-
-            // Only clear selections and start drag if NOT shift-clicking
-            // (Shift-click is handled by onClipClick for multi-select)
-            if (!e.shiftKey) {
-              // If clicking on an unselected clip, select it exclusively first
-              // and only include this clip in the drag
-              let selectedClipsInitialPositions;
-              if (!clip.selected) {
-                // Clear time selection when starting drag on unselected clip
-                dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-                setSpectralSelection(null);
-
-                dispatch({
-                  type: 'SELECT_CLIP',
-                  payload: { trackIndex, clipId: clip.id },
-                });
-                // Don't select track - waveform colors should only change with explicit track selection
-                // dispatch({
-                //   type: 'SELECT_TRACK',
-                //   payload: trackIndex,
-                // });
-
-                // Only drag this one clip (state hasn't updated yet)
-                selectedClipsInitialPositions = [{
-                  clipId: clip.id,
-                  trackIndex: trackIndex,
-                  startTime: clip.start,
-                }];
-              } else {
-                // Clip is already selected - get all selected clips for multi-drag
-                // Don't clear time selection - it will move with the clips
-                const selectedClips = tracks.flatMap((track, tIndex) =>
-                  track.clips
-                    .filter(c => c.selected)
-                    .map(c => ({ clip: c, trackIndex: tIndex }))
-                );
-
-                selectedClipsInitialPositions = selectedClips.map(({ clip: c, trackIndex: tIndex }) => ({
-                  clipId: c.id,
-                  trackIndex: tIndex,
-                  startTime: c.start,
-                }));
-              }
-
-              // Start clip drag
-              clipDragStateRef.current = {
-                clip,
-                trackIndex,
-                offsetX: x - clipX,
-                initialX: x,
-                initialTrackIndex: trackIndex,
-                initialStartTime: clip.start,
-                selectedClipsInitialPositions,
-              };
-              didDragRef.current = false; // Reset drag flag
-            }
-
-            e.stopPropagation();
-            return;
-          }
-        }
-
-        // Check for label clicks (for immediate selection on mouse down, like clips)
-        if (track.labels && track.labels.length > 0 && !e.shiftKey) {
-          // Calculate label rows using utility function
-          const labelRowsMap = calculateLabelRows(track.labels, pixelsPerSecond, CLIP_CONTENT_OFFSET);
-
-          // Check if click is on any label
-          for (const label of track.labels) {
-            const row = labelRowsMap.get(label.id) ?? 0;
-
-            // Check if point is in label using utility function
-            if (isPointInLabel(x, y, label, row, pixelsPerSecond, CLIP_CONTENT_OFFSET, currentY)) {
-              const labelKeyId = `${trackIndex}-${label.id}`;
-              const isLabelSelected = selectedLabelIds.includes(labelKeyId);
-
-              // If clicking on an unselected label, select it exclusively
-              if (!isLabelSelected) {
-                dispatch({ type: 'SET_SELECTED_LABELS', payload: [labelKeyId] });
-              }
-
-              // Stop propagation to prevent onClick handler from firing
-              e.stopPropagation();
-              return;
-            }
-          }
-        }
-      }
-
-      currentY += trackHeight + TRACK_GAP;
-    }
-
-    // No clip interaction, pass through to audio selection
-    containerProps.onMouseDown?.(e);
-  };
-
-  // Document-level mouse up for label dragging
-  // Note: Clip dragging and trimming are now handled by custom hooks
-  useEffect(() => {
-    const handleMouseUp = () => {
-      // Handle label drag end
-      if (labelDragStateRef.current) {
-        labelDragStateRef.current = null;
-      }
-    };
-
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
+  // Clip and label mouse down handler - extracted to custom hook
+  const handleClipMouseDown = useClipMouseDown({
+    containerRef,
+    tracks,
+    selectedLabelIds,
+    spectralSelection,
+    hasSpectralView,
+    selectionIsPositionOnSpectralClip: selection.selection.isPositionOnSpectralClip,
+    containerPropsOnMouseDown: containerProps.onMouseDown,
+    clipDragStateRef,
+    didDragRef,
+    pixelsPerSecond,
+    dispatch,
+    setSpectralSelection,
+    TOP_GAP,
+    TRACK_GAP,
+    DEFAULT_TRACK_HEIGHT,
+    CLIP_HEADER_HEIGHT,
+  });
 
   // Compose the onClick handlers to preserve both drag prevention and playhead movement
   const composedOnClick = (e: React.MouseEvent<HTMLDivElement>) => {

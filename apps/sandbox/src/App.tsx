@@ -1962,7 +1962,7 @@ function CanvasDemoContent() {
                 const newTrack = {
                   id: state.tracks.length + 1,
                   name: type === 'label' ? `Label ${state.tracks.length + 1}` : `Track ${state.tracks.length + 1}`,
-                  type: type === 'label' ? 'label' : 'audio',
+                  type: (type === 'label' ? 'label' : 'audio') as 'audio' | 'label',
                   height: type === 'label' ? 82 : 114,
                   channelSplitRatio: 0.5,
                   clips: [],
