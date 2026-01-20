@@ -1962,6 +1962,7 @@ function CanvasDemoContent() {
                 const newTrack = {
                   id: state.tracks.length + 1,
                   name: type === 'label' ? `Label ${state.tracks.length + 1}` : `Track ${state.tracks.length + 1}`,
+                  type: type === 'label' ? 'label' : 'audio',
                   height: type === 'label' ? 82 : 114,
                   channelSplitRatio: 0.5,
                   clips: [],
@@ -2863,6 +2864,7 @@ function CanvasDemoContent() {
             const newTrack = {
               id: newTrackId,
               name: trackName,
+              type: 'label' as const,
               height: 76,
               clips: [],
               labels: [],
@@ -2931,6 +2933,7 @@ function CanvasDemoContent() {
             const newTrack = {
               id: newTrackId,
               name: trackName,
+              type: 'label' as const,
               height: 76,
               clips: [],
               labels: [],
@@ -2966,6 +2969,7 @@ function CanvasDemoContent() {
           const newTrack = {
             id: newTrackId,
             name: trackName,
+            type: 'label' as const,
             height: 76,
             clips: [],
             labels: [{ ...labelToMove, trackIndex: newTrackIndex }],

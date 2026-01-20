@@ -75,6 +75,12 @@ export interface TrackProps {
   isMuted?: boolean;
 
   /**
+   * Whether this is a label track (hides clip header recess)
+   * @default false
+   */
+  isLabelTrack?: boolean;
+
+  /**
    * Pixels per second (zoom level)
    * @default 100
    */
@@ -199,6 +205,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   isSelected = false,
   isFocused = false,
   isMuted = false,
+  isLabelTrack = false,
   pixelsPerSecond = 100,
   width,
   backgroundColor = '#212433',
@@ -561,19 +568,21 @@ export const TrackNew: React.FC<TrackProps> = ({
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
-        {/* Clip header recess - 20px darkened area at top of track */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '20px',
-            backgroundColor: 'rgba(0, 0, 0, 0.15)',
-            pointerEvents: 'none',
-            zIndex: 0,
-          }}
-        />
+        {/* Clip header recess - 20px darkened area at top of track (hidden for label tracks) */}
+        {!isLabelTrack && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '20px',
+              backgroundColor: 'rgba(0, 0, 0, 0.15)',
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          />
+        )}
 
         {renderTimeSelectionOverlay()}
         {renderClips()}

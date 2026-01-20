@@ -1,8 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTheme, RegionLabel, PointLabel } from '@audacity-ui/components';
-import { useTracksState, useTracksDispatch, ClipDragState } from '../contexts/TracksContext';
+import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import { usePreferences } from '@audacity-ui/components';
+import { useClipDragging } from '../hooks/useClipDragging';
+import { useClipTrimming } from '../hooks/useClipTrimming';
+import { useLabelDragging } from '../hooks/useLabelDragging';
+import { calculateLabelRows, isPointInLabel, LABEL_LAYOUT_CONSTANTS } from '../utils/labelLayout';
 import './Canvas.css';
 
 export interface CanvasProps {
@@ -104,21 +108,6 @@ export function Canvas({
     };
   }, [controlPointStyle]);
 
-  // Clip dragging state
-  const clipDragStateRef = useRef<ClipDragState | null>(null);
-  const didDragRef = useRef(false); // Track if mouse moved during drag
-
-  // Clip trim state
-  const clipTrimStateRef = useRef<{
-    trackIndex: number;
-    clipId: number;
-    edge: 'left' | 'right';
-    initialTrimStart: number;
-    initialDuration: number;
-    initialClipStart: number;
-    // Store initial state for all selected clips
-    allClipsInitialState: Map<string, { trimStart: number; duration: number; start: number; fullDuration: number }>;
-  } | null>(null);
 
   // Track focused label for accessibility
   const [focusedLabelId, setFocusedLabelId] = useState<number | null>(null);
@@ -128,12 +117,6 @@ export function Canvas({
 
   // Track hovered label banner for hover effects
   const [hoveredBanner, setHoveredBanner] = useState<string | null>(null);
-
-  // Track label selection state for click cycle (label -> all tracks -> label)
-  // const labelClickStateRef = useRef<{ labelKeyId: string; timestamp: number; state: 'label' | 'all-tracks' } | null>(null);
-
-  // Label dragging state - stores initial positions for all labels being dragged
-  const labelDragStateRef = useRef<Map<string, { trackIndex: number; labelId: number; initialStartTime: number; initialEndTime?: number; initialClientX: number; initialClientY: number }> | null>(null);
 
   // Track if channel resize is active
   const isChannelResizing = false;
@@ -147,6 +130,42 @@ export function Canvas({
   const TRACK_GAP = 2;
   const DEFAULT_TRACK_HEIGHT = 114;
   const CLIP_HEADER_HEIGHT = 20;
+
+  // Clip dragging - extracted to custom hook
+  const {
+    clipDragStateRef,
+    didDragRef,
+    startClipDrag,
+  } = useClipDragging({
+    containerRef,
+    tracks,
+    pixelsPerSecond,
+    clipContentOffset: CLIP_CONTENT_OFFSET,
+    topGap: TOP_GAP,
+    trackGap: TRACK_GAP,
+    defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
+  });
+
+  // Clip trimming - extracted to custom hook
+  const {
+    clipTrimStateRef,
+    startClipTrim,
+  } = useClipTrimming({
+    containerRef,
+    tracks,
+    pixelsPerSecond,
+    clipContentOffset: CLIP_CONTENT_OFFSET,
+  });
+
+  // Label dragging - extracted to custom hook
+  const {
+    labelDragStateRef,
+    startLabelDrag,
+  } = useLabelDragging({
+    containerRef,
+    pixelsPerSecond,
+    clipContentOffset: CLIP_CONTENT_OFFSET,
+  });
 
   // Calculate total height based on all tracks + 2px gaps (top + between tracks)
   const totalHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
@@ -382,65 +401,15 @@ export function Canvas({
 
         // Check for label clicks (for immediate selection on mouse down, like clips)
         if (track.labels && track.labels.length > 0 && !e.shiftKey) {
-          const EAR_HEIGHT = 14;
-          const LABEL_BOX_GAP = 2;
-          const LABEL_ROW_HEIGHT = EAR_HEIGHT + LABEL_BOX_GAP;
-          const LABEL_ROW_GAP = 0;
-
-          // Calculate label rows (same logic as in render)
-          const labelRows: number[] = [];
-          track.labels.forEach((label, labelIndex) => {
-            const labelX = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
-            const labelWidth = label.endTime !== undefined
-              ? (label.endTime - label.startTime) * pixelsPerSecond
-              : 60;
-
-            let row = 0;
-            let foundRow = false;
-
-            while (!foundRow) {
-              let canFitInRow = true;
-
-              for (let i = 0; i < labelIndex; i++) {
-                if (labelRows[i] === row) {
-                  const prevLabel = track.labels![i];
-                  const prevX = CLIP_CONTENT_OFFSET + prevLabel.startTime * pixelsPerSecond;
-                  const prevWidth = prevLabel.endTime !== undefined
-                    ? (prevLabel.endTime - prevLabel.startTime) * pixelsPerSecond
-                    : 60;
-
-                  const overlap = !(labelX >= prevX + prevWidth || labelX + labelWidth <= prevX);
-                  if (overlap) {
-                    canFitInRow = false;
-                    break;
-                  }
-                }
-              }
-
-              if (canFitInRow) {
-                foundRow = true;
-              } else {
-                row++;
-              }
-            }
-
-            labelRows.push(row);
-          });
+          // Calculate label rows using utility function
+          const labelRowsMap = calculateLabelRows(track.labels, pixelsPerSecond, CLIP_CONTENT_OFFSET);
 
           // Check if click is on any label
-          for (let labelIndex = 0; labelIndex < track.labels.length; labelIndex++) {
-            const label = track.labels[labelIndex];
-            const labelX = CLIP_CONTENT_OFFSET + label.startTime * pixelsPerSecond;
-            const labelWidth = label.endTime !== undefined
-              ? (label.endTime - label.startTime) * pixelsPerSecond
-              : 225;
-            const labelY = currentY + labelRows[labelIndex] * (LABEL_ROW_HEIGHT + LABEL_ROW_GAP);
-            const labelHeight = EAR_HEIGHT;
+          for (const label of track.labels) {
+            const row = labelRowsMap.get(label.id) ?? 0;
 
-            // Check if click is within label bounds
-            if (x >= labelX && x <= labelX + labelWidth &&
-                y >= labelY && y <= labelY + labelHeight) {
-
+            // Check if point is in label using utility function
+            if (isPointInLabel(x, y, label, row, pixelsPerSecond, CLIP_CONTENT_OFFSET, currentY)) {
               const labelKeyId = `${trackIndex}-${label.id}`;
               const isLabelSelected = selectedLabelIds.includes(labelKeyId);
 
@@ -464,238 +433,22 @@ export function Canvas({
     containerProps.onMouseDown?.(e);
   };
 
-  // Document-level mouse move and up for clip dragging
+  // Document-level mouse up for label dragging
+  // Note: Clip dragging and trimming are now handled by custom hooks
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-
-      // Handle clip dragging
-      if (clipDragStateRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        const dragState = clipDragStateRef.current;
-        didDragRef.current = true; // Mark that dragging has occurred
-
-        // Calculate new start time
-        const newStartTime = Math.max(0, (x - dragState.offsetX - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
-
-        // Find which track the cursor is over
-        let currentY = TOP_GAP;
-        let newTrackIndex = dragState.trackIndex;
-        for (let i = 0; i < tracks.length; i++) {
-          const trackHeight = tracks[i].height || DEFAULT_TRACK_HEIGHT;
-          if (y >= currentY && y < currentY + trackHeight) {
-            newTrackIndex = i;
-            break;
-          }
-          currentY += trackHeight + TRACK_GAP;
-        }
-
-        // Update cursor style
-        if (containerRef.current) {
-          containerRef.current.style.cursor = 'grabbing';
-        }
-
-        // Check if we're dragging multiple selected clips
-        const hasMultipleSelected = dragState.selectedClipsInitialPositions && dragState.selectedClipsInitialPositions.length > 1;
-        const isDraggedClipSelected = dragState.selectedClipsInitialPositions?.some(
-          pos => pos.clipId === dragState.clip.id
-        );
-
-        if (hasMultipleSelected && isDraggedClipSelected) {
-          // Calculate the delta from the dragged clip's INITIAL position
-          let deltaTime = newStartTime - dragState.initialStartTime;
-          const deltaTrack = newTrackIndex - dragState.initialTrackIndex;
-
-          // Find the leftmost clip in the selection
-          const leftmostClipStartTime = Math.min(
-            ...dragState.selectedClipsInitialPositions!.map((pos: { clipId: number; trackIndex: number; startTime: number }) => pos.startTime)
-          );
-
-          // Clamp deltaTime so that the leftmost clip doesn't go below 0
-          if (leftmostClipStartTime + deltaTime < 0) {
-            deltaTime = -leftmostClipStartTime;
-          }
-
-          // Move all selected clips by the same delta from their INITIAL positions
-          dragState.selectedClipsInitialPositions!.forEach((initialPos: { clipId: number; trackIndex: number; startTime: number }) => {
-            const targetTrackIndex = Math.max(0, Math.min(tracks.length - 1, initialPos.trackIndex + deltaTrack));
-            const targetStartTime = initialPos.startTime + deltaTime;
-
-            // Find the current track index of this clip (it may have moved already)
-            let currentTrackIndex = initialPos.trackIndex;
-            for (let i = 0; i < tracks.length; i++) {
-              if (tracks[i].clips.some(c => c.id === initialPos.clipId)) {
-                currentTrackIndex = i;
-                break;
-              }
-            }
-
-            dispatch({
-              type: 'MOVE_CLIP',
-              payload: {
-                clipId: initialPos.clipId,
-                fromTrackIndex: currentTrackIndex,
-                toTrackIndex: targetTrackIndex,
-                newStartTime: targetStartTime,
-              },
-            });
-          });
-        } else {
-          // Move only the dragged clip
-          dispatch({
-            type: 'MOVE_CLIP',
-            payload: {
-              clipId: dragState.clip.id,
-              fromTrackIndex: dragState.trackIndex,
-              toTrackIndex: newTrackIndex,
-              newStartTime,
-            },
-          });
-        }
-
-        // Update drag state if track changed
-        if (newTrackIndex !== dragState.trackIndex) {
-          dragState.trackIndex = newTrackIndex;
-          // Update selected track when clip moves to a different track
-          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [newTrackIndex] });
-        }
-      }
-
-      // Handle clip trimming
-      if (clipTrimStateRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const trimState = clipTrimStateRef.current;
-
-        // Find the clip being dragged
-        const draggedClip = tracks[trimState.trackIndex]?.clips.find(c => c.id === trimState.clipId);
-        if (!draggedClip) return;
-
-        // Calculate mouse position in timeline
-        const mouseTime = Math.max(0, (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond);
-
-        // Get initial state for all selected clips from stored Map
-        const allClipsInitialState = trimState.allClipsInitialState;
-        const selectedClips: Array<{
-          trackIndex: number;
-          clip: typeof tracks[number]['clips'][number];
-          initialState: { trimStart: number; duration: number; start: number; fullDuration: number };
-        }> = [];
-
-        tracks.forEach((track, trackIndex) => {
-          track.clips.forEach(clip => {
-            if (clip.selected) {
-              const key = `${trackIndex}-${clip.id}`;
-              const initialState = allClipsInitialState.get(key);
-              if (initialState) {
-                selectedClips.push({ trackIndex, clip, initialState });
-              }
-            }
-          });
-        });
-
-        if (trimState.edge === 'left') {
-          // Trimming left edge (non-destructive)
-          // Calculate desired trim delta for the dragged clip
-          const newTrimStart = Math.max(0, mouseTime - trimState.initialClipStart + trimState.initialTrimStart);
-          const trimDelta = newTrimStart - trimState.initialTrimStart;
-
-          // Calculate limits for all selected clips using their INITIAL state
-          let clampedTrimDelta = trimDelta;
-          selectedClips.forEach(({ initialState }) => {
-            const rightEdge = initialState.trimStart + initialState.duration;
-            // Don't allow trimming past 0
-            const minDelta = -initialState.trimStart;
-            // Don't allow trimming past right edge (min 0.01s visible)
-            const maxDelta = rightEdge - initialState.trimStart - 0.01;
-            clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
-          });
-
-          // Apply clamped delta to all selected clips using their INITIAL state
-          selectedClips.forEach(({ trackIndex, clip, initialState }) => {
-            const newTrimStartForClip = initialState.trimStart + clampedTrimDelta;
-            const rightEdge = initialState.trimStart + initialState.duration;
-            const newDuration = rightEdge - newTrimStartForClip;
-            const newStart = initialState.start + clampedTrimDelta;
-
-            dispatch({
-              type: 'TRIM_CLIP',
-              payload: {
-                trackIndex,
-                clipId: clip.id as number,
-                newTrimStart: newTrimStartForClip,
-                newDuration,
-                newStart,
-              },
-            });
-          });
-        } else {
-          // Trimming right edge (non-destructive)
-          // Calculate desired duration change for the dragged clip
-          const newDuration = Math.max(0.01, mouseTime - draggedClip.start);
-          const durationDelta = newDuration - trimState.initialDuration;
-
-          // Calculate limits for all selected clips using their INITIAL state
-          let clampedDurationDelta = durationDelta;
-          selectedClips.forEach(({ initialState }) => {
-            // Don't allow duration to go below 0.01s
-            const minDelta = 0.01 - initialState.duration;
-            // Don't allow duration to exceed available audio
-            const maxDelta = (initialState.fullDuration - initialState.trimStart) - initialState.duration;
-            clampedDurationDelta = Math.max(minDelta, Math.min(clampedDurationDelta, maxDelta));
-          });
-
-          // Apply clamped delta to all selected clips using their INITIAL state
-          selectedClips.forEach(({ trackIndex, clip, initialState }) => {
-            const newDurationForClip = initialState.duration + clampedDurationDelta;
-
-            dispatch({
-              type: 'TRIM_CLIP',
-              payload: {
-                trackIndex,
-                clipId: clip.id as number,
-                newTrimStart: initialState.trimStart,
-                newDuration: newDurationForClip,
-              },
-            });
-          });
-        }
-      }
-    };
-
     const handleMouseUp = () => {
-      // Handle clip drag end
-      if (clipDragStateRef.current) {
-        // Reset cursor
-        if (containerRef.current) {
-          containerRef.current.style.cursor = 'default';
-        }
-        clipDragStateRef.current = null;
-        // Note: didDragRef is reset in the click handler after it blocks the first click
-      }
-
-      // Handle clip trim end
-      if (clipTrimStateRef.current) {
-        clipTrimStateRef.current = null;
-      }
-
       // Handle label drag end
       if (labelDragStateRef.current) {
         labelDragStateRef.current = null;
       }
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [tracks, dispatch, pixelsPerSecond, CLIP_CONTENT_OFFSET, TOP_GAP, TRACK_GAP]);
+  }, []);
 
   // Compose the onClick handlers to preserve both drag prevention and playhead movement
   const composedOnClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -771,6 +524,7 @@ export function Canvas({
                 envelopeMode={envelopeMode}
                 isSelected={isSelected}
                 isFocused={isFocused}
+                isLabelTrack={track.type === 'label'}
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}

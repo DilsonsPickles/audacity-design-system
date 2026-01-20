@@ -37,6 +37,7 @@ interface Clip {
 interface Track {
   id: number;
   name: string;
+  type?: 'audio' | 'label'; // Track type: audio (default) or label
   height?: number;
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
