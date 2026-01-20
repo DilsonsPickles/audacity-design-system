@@ -286,7 +286,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         if (waveformLeftRms && waveformLeftRms.length > 0) {
           const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
           ctx.fillStyle = defaultRmsColor;
-          ctx.globalAlpha = 0.4;
 
           for (let px = 0; px < canvasWidth; px++) {
             const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
@@ -312,7 +311,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
           }
 
-          ctx.globalAlpha = 1.0;
         }
 
         // Separator between L and R waveforms (using color-specific divider)
@@ -355,7 +353,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         if (waveformRightRms && waveformRightRms.length > 0) {
           const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
           ctx.fillStyle = defaultRmsColor;
-          ctx.globalAlpha = 0.4;
 
           for (let px = 0; px < canvasWidth; px++) {
             const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
@@ -381,7 +378,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
           }
 
-          ctx.globalAlpha = 1.0;
         }
       } else if (hasMono) {
         // Mono: single waveform centered in bottom half
@@ -427,7 +423,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         if (waveformDataRms && waveformDataRms.length > 0) {
           const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
           ctx.fillStyle = defaultRmsColor;
-          ctx.globalAlpha = 0.4;
 
           for (let px = 0; px < canvasWidth; px++) {
             const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -453,7 +448,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
           }
 
-          ctx.globalAlpha = 1.0;
         }
       }
     } else if (variant === 'spectrogram') {
@@ -575,7 +569,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       // Draw L channel RMS (if RMS data provided)
       if (waveformLeftRms && waveformLeftRms.length > 0) {
-        ctx.globalAlpha = 0.4;
 
         for (let px = 0; px < canvasWidth; px++) {
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -606,7 +599,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
 
-        ctx.globalAlpha = 1.0;
       }
 
       // Draw channel divider line using color-specific divider
@@ -651,7 +643,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       // Draw R channel RMS (if RMS data provided)
       if (waveformRightRms && waveformRightRms.length > 0) {
-        ctx.globalAlpha = 0.4;
 
         for (let px = 0; px < canvasWidth; px++) {
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -682,7 +673,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
 
-        ctx.globalAlpha = 1.0;
       }
     } else if (hasMono) {
       // Mono: single waveform centered
@@ -753,7 +743,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       // Draw RMS waveform on top (if RMS data provided)
       if (waveformDataRms && waveformDataRms.length > 0) {
         // Set opacity for more subtle RMS overlay
-        ctx.globalAlpha = 0.4;
 
         for (let px = 0; px < canvasWidth; px++) {
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -785,7 +774,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         }
 
         // Reset opacity
-        ctx.globalAlpha = 1.0;
       }
       }
     }
