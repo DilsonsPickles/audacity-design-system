@@ -282,6 +282,39 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
 
+        // Draw L channel RMS (if RMS data provided)
+        if (waveformLeftRms && waveformLeftRms.length > 0) {
+          const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
+          ctx.fillStyle = defaultRmsColor;
+          ctx.globalAlpha = 0.4;
+
+          for (let px = 0; px < canvasWidth; px++) {
+            const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
+            const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixelL);
+
+            let min = waveformLeftRms[sampleStart] || 0;
+            let max = waveformLeftRms[sampleStart] || 0;
+
+            for (let i = sampleStart; i < sampleEnd && i < waveformLeftRms.length; i++) {
+              const sample = waveformLeftRms[i];
+              min = Math.min(min, sample);
+              max = Math.max(max, sample);
+            }
+
+            // Apply envelope gain to RMS waveform amplitude
+            const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+            const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+            min *= envelopeGain;
+            max *= envelopeGain;
+
+            const y1 = lChannelY - max * maxAmplitude;
+            const y2 = lChannelY - min * maxAmplitude;
+            ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+          }
+
+          ctx.globalAlpha = 1.0;
+        }
+
         // Separator between L and R waveforms (using color-specific divider)
         const dividerColor2 = computedStyle.getPropertyValue(`--clip-${color}-divider`).trim();
         ctx.strokeStyle = dividerColor2;
@@ -316,6 +349,39 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           const y1 = rChannelY - max * maxAmplitude;
           const y2 = rChannelY - min * maxAmplitude;
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+        }
+
+        // Draw R channel RMS (if RMS data provided)
+        if (waveformRightRms && waveformRightRms.length > 0) {
+          const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
+          ctx.fillStyle = defaultRmsColor;
+          ctx.globalAlpha = 0.4;
+
+          for (let px = 0; px < canvasWidth; px++) {
+            const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
+            const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixelL);
+
+            let min = waveformRightRms[sampleStart] || 0;
+            let max = waveformRightRms[sampleStart] || 0;
+
+            for (let i = sampleStart; i < sampleEnd && i < waveformRightRms.length; i++) {
+              const sample = waveformRightRms[i];
+              min = Math.min(min, sample);
+              max = Math.max(max, sample);
+            }
+
+            // Apply envelope gain to RMS waveform amplitude
+            const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+            const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+            min *= envelopeGain;
+            max *= envelopeGain;
+
+            const y1 = rChannelY - max * maxAmplitude;
+            const y2 = rChannelY - min * maxAmplitude;
+            ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+          }
+
+          ctx.globalAlpha = 1.0;
         }
       } else if (hasMono) {
         // Mono: single waveform centered in bottom half
@@ -355,6 +421,39 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           const y1 = waveformCenterY - max * maxAmplitude;
           const y2 = waveformCenterY - min * maxAmplitude;
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+        }
+
+        // Draw mono RMS (if RMS data provided)
+        if (waveformDataRms && waveformDataRms.length > 0) {
+          const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
+          ctx.fillStyle = defaultRmsColor;
+          ctx.globalAlpha = 0.4;
+
+          for (let px = 0; px < canvasWidth; px++) {
+            const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+            const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
+
+            let min = waveformDataRms[sampleStart] || 0;
+            let max = waveformDataRms[sampleStart] || 0;
+
+            for (let i = sampleStart; i < sampleEnd && i < waveformDataRms.length; i++) {
+              const sample = waveformDataRms[i];
+              min = Math.min(min, sample);
+              max = Math.max(max, sample);
+            }
+
+            // Apply envelope gain to RMS waveform amplitude
+            const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+            const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+            min *= envelopeGain;
+            max *= envelopeGain;
+
+            const y1 = waveformCenterY - max * maxAmplitude;
+            const y2 = waveformCenterY - min * maxAmplitude;
+            ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+          }
+
+          ctx.globalAlpha = 1.0;
         }
       }
     } else if (variant === 'spectrogram') {
