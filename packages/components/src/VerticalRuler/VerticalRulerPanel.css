@@ -28,7 +28,8 @@
 .vertical-ruler-panel__tracks {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0; /* Allow flex item to shrink below content size */
   overflow: hidden;
   padding-top: var(--panel-track-gap);
   border-left: 1px solid #323644;
