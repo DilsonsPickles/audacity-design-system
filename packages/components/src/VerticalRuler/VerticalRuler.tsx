@@ -93,11 +93,11 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
     const isMajor = i % (minorDivisions + 1) === 0;
     const majorIndex = Math.floor(i / (minorDivisions + 1));
 
-    // For the last major tick, position it 2px above the bottom to avoid focus outline
+    // For the last major tick, position it at the very bottom
     const isLastMajor = majorIndex === majorDivisions - 1 && isMajor;
     const isFirstMajor = majorIndex === 0 && isMajor;
     const value = max - (majorIndex * range) / (majorDivisions - 1);
-    const y = isLastMajor ? height - 2 : i * tickSpacing;
+    const y = isLastMajor ? height : i * tickSpacing;
     const isCenter = Math.abs(value) < 0.01; // Center line at 0.0
 
     ticks.push({ y, value, isMajor, isCenter, isFirst: isFirstMajor, isLast: isLastMajor, showLabel: false });
