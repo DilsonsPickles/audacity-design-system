@@ -9,6 +9,8 @@ import { useLabelDragging } from '../hooks/useLabelDragging';
 import { useClipMouseDown } from '../hooks/useClipMouseDown';
 import { useContainerClick } from '../hooks/useContainerClick';
 import { LabelRenderer } from './LabelRenderer';
+import { calculateTrackYOffset } from '../utils/trackLayout';
+import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT, CLIP_HEADER_HEIGHT } from '../constants/canvas';
 import './Canvas.css';
 
 export interface CanvasProps {
@@ -117,18 +119,9 @@ export function Canvas({
   // Track hovered label banner for hover effects
   const [hoveredBanner, setHoveredBanner] = useState<string | null>(null);
 
-  // Track if channel resize is active
-  const isChannelResizing = false;
-
   // RAF batching for spectral selection updates (performance optimization)
   const spectralSelectionRAFRef = useRef<number | null>(null);
   const pendingSpectralSelectionRef = useRef<typeof spectralSelection>(null);
-
-  // Configuration constants
-  const TOP_GAP = 2;
-  const TRACK_GAP = 2;
-  const DEFAULT_TRACK_HEIGHT = 114;
-  const CLIP_HEADER_HEIGHT = 20;
 
   // Clip dragging - extracted to custom hook
   const {
@@ -189,7 +182,6 @@ export function Canvas({
       defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
       trackGap: TRACK_GAP,
       initialGap: TOP_GAP,
-      enabled: !isChannelResizing, // Disable selection when channel resizing
     },
     {
       onTimeSelectionChange: (sel) => {
@@ -276,31 +268,23 @@ export function Canvas({
     CLIP_HEADER_HEIGHT,
   });
 
-  // Compose the onClick handlers to preserve both drag prevention and playhead movement
-  const composedOnClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    handleContainerClick(e);
-  };
-
   return (
     <div className="canvas-container" style={{ backgroundColor: bgColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible', cursor: 'text' }}>
       <div
         ref={containerRef}
         onMouseDown={handleClipMouseDown}
         onMouseMove={containerProps.onMouseMove}
-        onClick={composedOnClick}
+        onClick={handleContainerClick}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
         style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none', cursor: 'text' } as React.CSSProperties}
       >
         {tracks.map((track, trackIndex) => {
-          const trackHeight = track.height || 114;
+          const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
           const isSelected = selectedTrackIndices.includes(trackIndex);
           const isFocused = keyboardFocusedTrack === trackIndex;
 
           // Calculate y position for this track
-          let yOffset = TOP_GAP;
-          for (let i = 0; i < trackIndex; i++) {
-            yOffset += (tracks[i].height || 114) + TRACK_GAP;
-          }
+          const yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
 
           return (
             <div
