@@ -561,6 +561,20 @@ export const TrackNew: React.FC<TrackProps> = ({
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
+        {/* Clip header recess - 20px darkened area at top of track */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '20px',
+            backgroundColor: 'rgba(0, 0, 0, 0.15)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+
         {renderTimeSelectionOverlay()}
         {renderClips()}
         {renderEnvelopeInteractionLayers()}

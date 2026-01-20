@@ -1,0 +1,40 @@
+.custom-scrollbar {
+  position: absolute;
+  background: transparent;
+  z-index: 1000;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.custom-scrollbar--horizontal {
+  bottom: 0;
+  left: 4px;
+  right: auto;
+  padding-right: 4px;
+}
+
+.custom-scrollbar--vertical {
+  top: 4px;
+  right: 0;
+  bottom: auto;
+  padding-bottom: 4px;
+}
+
+.custom-scrollbar__thumb {
+  background: #6a6d76;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  border-radius: 16px;
+}
+
+.custom-scrollbar__thumb:hover {
+  background: #7a7d86;
+}
+
+.custom-scrollbar__thumb--dragging,
+.custom-scrollbar__thumb:active {
+  background: #8a8d96;
+  cursor: grabbing;
+}

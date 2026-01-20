@@ -2,6 +2,7 @@ import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
+import { CustomScrollbar } from './components/CustomScrollbar';
 import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, type TrackRulerConfig } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
@@ -2081,15 +2082,13 @@ function CanvasDemoContent() {
 
           {/* Timeline Ruler + Canvas Area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Row container for ruler/canvas + vertical rulers */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
-              {/* Column for Timeline Ruler + Canvas */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* Timeline Ruler - Fixed at top */}
-                <div
-                  ref={canvasContainerRef}
-                  style={{ position: 'relative', flexShrink: 0, overflow: 'hidden' }}
-                >
+            {/* Timeline Ruler Row (with fixed vertical ruler header) */}
+            <div style={{ display: 'flex', flexDirection: 'row', flexShrink: 0 }}>
+              {/* Timeline Ruler - Fixed at top */}
+              <div
+                ref={canvasContainerRef}
+                style={{ position: 'relative', flex: 1, overflow: 'hidden' }}
+              >
               <div
                 ref={timelineRulerRef}
                 style={{ transform: `translateX(-${scrollX}px)`, width: '5000px', position: 'relative' }}
@@ -2217,11 +2216,37 @@ function CanvasDemoContent() {
               </div>
             </div>
 
-            {/* Canvas - Scrollable (both directions) */}
-            <div
-              ref={scrollContainerRef}
-              onScroll={handleScroll}
-              style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', backgroundColor: theme.background.canvas.default, cursor: 'text' }}
+            {/* Fixed Vertical Ruler Header (next to timeline ruler) */}
+              {showVerticalRulers && (
+                <div style={{
+                  width: '80px',
+                  height: '40px', // Match timeline ruler height
+                  flexShrink: 0,
+                  backgroundColor: baseTheme.background.surface.subtle,
+                  borderLeft: `1px solid ${baseTheme.border.default}`,
+                  borderBottom: `1px solid ${baseTheme.border.default}`,
+                }} />
+              )}
+            </div>
+
+            {/* Canvas + Scrollable Vertical Rulers Row */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+              {/* Canvas wrapper for custom scrollbars */}
+              <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+                {/* Scrollable Canvas area */}
+                <div
+                  ref={scrollContainerRef}
+                  onScroll={handleScroll}
+                  className="canvas-scroll-container"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'scroll',
+                    backgroundColor: theme.background.canvas.default,
+                    cursor: 'text',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                  } as React.CSSProperties}
               onMouseMove={(e) => {
                 if (scrollContainerRef.current) {
                   const rect = scrollContainerRef.current.getBoundingClientRect();
@@ -2298,9 +2323,21 @@ function CanvasDemoContent() {
                 )}
               </div>
             </div>
-              </div>
 
-              {/* Vertical Amplitude Rulers - Fixed on right, synced scroll */}
+              {/* Custom Scrollbars */}
+              <CustomScrollbar
+                contentRef={scrollContainerRef}
+                orientation="horizontal"
+                height={20}
+              />
+              <CustomScrollbar
+                contentRef={scrollContainerRef}
+                orientation="vertical"
+                width={20}
+              />
+            </div>
+
+              {/* Vertical Amplitude Rulers - Scrollable (scrolls under fixed header) */}
               {showVerticalRulers && (
                 <div style={{ position: 'relative', width: '80px', flexShrink: 0, overflowY: 'hidden' }}>
                   <div style={{ transform: `translateY(-${scrollY}px)` }}>
@@ -2312,6 +2349,7 @@ function CanvasDemoContent() {
                         stereo: false, // TODO: Add stereo support when needed
                       }))}
                       width={80}
+                      headerHeight={0}
                     />
                   </div>
                 </div>
@@ -3181,9 +3219,9 @@ function CanvasDemoContent() {
             toast.info('Creating loop selects audio - toggled');
             setTimelineRulerContextMenu(null);
           }}
-          showVerticalRulers={false}
+          showVerticalRulers={showVerticalRulers}
           onToggleVerticalRulers={() => {
-            toast.info('Show vertical rulers - toggled');
+            setShowVerticalRulers(!showVerticalRulers);
             setTimelineRulerContextMenu(null);
           }}
         />

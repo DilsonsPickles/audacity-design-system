@@ -195,3 +195,27 @@
   color: #fff;
   margin-left: 4px;
 }
+
+/* Hide native scrollbars but keep scrolling functionality */
+.canvas-scroll-container {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-color: transparent transparent !important; /* Firefox - make scrollbar transparent */
+}
+
+.canvas-scroll-container::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.canvas-scroll-container::-webkit-scrollbar-track {
+  display: none !important;
+  background: transparent !important;
+}
+
+.canvas-scroll-container::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
