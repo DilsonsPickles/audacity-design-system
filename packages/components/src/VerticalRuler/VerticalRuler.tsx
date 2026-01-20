@@ -82,14 +82,16 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
   }> = [];
 
   // Generate ticks
-  // totalTicks is the number of intervals, so we need totalTicks + 1 tick positions
-  // But we actually want exactly majorDivisions major ticks, which spans totalTicks intervals
+  // We want exactly majorDivisions major ticks with minor ticks in between
+  // Calculate the position of the last major tick
+  const lastMajorTickIndex = (majorDivisions - 1) * (minorDivisions + 1);
+
   for (let i = 0; i <= totalTicks; i++) {
+    // Stop after the last major tick - no minor ticks should appear after -1.0
+    if (i > lastMajorTickIndex) break;
+
     const isMajor = i % (minorDivisions + 1) === 0;
     const majorIndex = Math.floor(i / (minorDivisions + 1));
-
-    // Skip any ticks that would go beyond the last major division
-    if (majorIndex >= majorDivisions) continue;
 
     // For the last major tick, position it 2px above the bottom to avoid focus outline
     const isLastMajor = majorIndex === majorDivisions - 1 && isMajor;
