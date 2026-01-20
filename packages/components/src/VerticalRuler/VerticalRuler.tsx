@@ -78,6 +78,7 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
     isCenter: boolean;
     isFirst: boolean;
     isLast: boolean;
+    showLabel: boolean;
   }> = [];
 
   // Generate ticks
@@ -97,7 +98,44 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
     const y = isLastMajor ? height - 2 : i * tickSpacing;
     const isCenter = Math.abs(value) < 0.01; // Center line at 0.0
 
-    ticks.push({ y, value, isMajor, isCenter, isFirst: isFirstMajor, isLast: isLastMajor });
+    ticks.push({ y, value, isMajor, isCenter, isFirst: isFirstMajor, isLast: isLastMajor, showLabel: false });
+  }
+
+  // Responsive label collision detection
+  // Adaptively choose which labels to show based on available height
+  const MIN_LABEL_SPACING = 14; // pixels needed per label
+  const availableSpace = height;
+  const maxVisibleLabels = Math.max(1, Math.floor(availableSpace / MIN_LABEL_SPACING));
+
+  // Priority-based label selection: prioritize important amplitude values
+  // Priority order (highest to lowest): 0.0 (center), ±1.0 (extremes), ±0.5
+  const majorTicks = ticks.filter(t => t.isMajor);
+
+  // Assign priorities
+  const labelPriorities = majorTicks.map((tick, index) => ({
+    tick,
+    index,
+    priority: tick.isCenter ? 1 : // 0.0 - most important
+              (tick.isFirst || tick.isLast) ? 2 : // ±1.0 - extremes
+              3 // everything else (±0.5, etc.)
+  }));
+
+  // Sort by priority (lower number = higher priority)
+  labelPriorities.sort((a, b) => a.priority - b.priority);
+
+  // Greedily select labels that don't collide, starting with highest priority
+  const selectedLabels: typeof labelPriorities = [];
+
+  for (const item of labelPriorities) {
+    // Check if this label would collide with any already-selected label
+    const wouldCollide = selectedLabels.some(selected =>
+      Math.abs(item.tick.y - selected.tick.y) < MIN_LABEL_SPACING
+    );
+
+    if (!wouldCollide && selectedLabels.length < maxVisibleLabels) {
+      selectedLabels.push(item);
+      item.tick.showLabel = true;
+    }
   }
 
   const style = {
@@ -135,8 +173,8 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
             {/* Tick mark */}
             <div className="vertical-ruler__tick-mark" />
 
-            {/* Label (only for major ticks) */}
-            {tick.isMajor && (
+            {/* Label (only for major ticks with showLabel=true) */}
+            {tick.isMajor && tick.showLabel && (
               <div className="vertical-ruler__label">
                 {tick.value.toFixed(1)}
               </div>
