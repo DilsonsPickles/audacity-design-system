@@ -128,7 +128,40 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               {/* 20px spacer to align with clip header recess */}
               <div className="vertical-ruler-panel__track-spacer" />
 
-              {track.stereo ? (
+              {track.viewMode === 'split' ? (
+                // Split view - frequency ruler on top, amplitude ruler on bottom
+                <div className="vertical-ruler-panel__split">
+                  <FrequencyRuler
+                    height={(track.height - 20) / 2}
+                    minFreq={10}
+                    maxFreq={22050}
+                    position="right"
+                    width={width}
+                    headerHeight={0}
+                  />
+                  <div className="vertical-ruler-panel__split-divider" />
+                  <VerticalRuler
+                    height={(track.height - 20) / 2}
+                    min={-1.0}
+                    max={1.0}
+                    majorDivisions={5}
+                    minorDivisions={4}
+                    position="right"
+                    width={width}
+                    headerHeight={0}
+                  />
+                </div>
+              ) : track.viewMode === 'spectrogram' ? (
+                // Spectrogram mode - frequency ruler
+                <FrequencyRuler
+                  height={track.height - 20}
+                  minFreq={10}
+                  maxFreq={22050}
+                  position="right"
+                  width={width}
+                  headerHeight={0}
+                />
+              ) : track.stereo ? (
                 // Stereo track - two rulers stacked
                 <div className="vertical-ruler-panel__stereo">
                   <VerticalRuler
@@ -148,39 +181,6 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                     max={1.0}
                     majorDivisions={3}
                     minorDivisions={1}
-                    position="right"
-                    width={width}
-                    headerHeight={0}
-                  />
-                </div>
-              ) : track.viewMode === 'spectrogram' ? (
-                // Spectrogram mode - frequency ruler
-                <FrequencyRuler
-                  height={track.height - 20}
-                  minFreq={10}
-                  maxFreq={22050}
-                  position="right"
-                  width={width}
-                  headerHeight={0}
-                />
-              ) : track.viewMode === 'split' ? (
-                // Split view - frequency ruler on top, amplitude ruler on bottom
-                <div className="vertical-ruler-panel__split">
-                  <FrequencyRuler
-                    height={(track.height - 20) / 2}
-                    minFreq={10}
-                    maxFreq={22050}
-                    position="right"
-                    width={width}
-                    headerHeight={0}
-                  />
-                  <div className="vertical-ruler-panel__split-divider" />
-                  <VerticalRuler
-                    height={(track.height - 20) / 2}
-                    min={-1.0}
-                    max={1.0}
-                    majorDivisions={5}
-                    minorDivisions={4}
                     position="right"
                     width={width}
                     headerHeight={0}

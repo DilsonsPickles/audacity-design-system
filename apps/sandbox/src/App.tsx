@@ -100,6 +100,7 @@ const sampleTracks = [
     id: 1,
     name: 'Track 1',
     height: 114,
+    viewMode: 'split' as const,
     channelSplitRatio: 0.5,
     clips: [
       {
