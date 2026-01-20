@@ -627,6 +627,12 @@ function CanvasDemoContent() {
   // Track the current selection edges for rapid arrow key updates
   const selectionEdgesRef = React.useRef<{ startTime: number; endTime: number } | null>(null);
 
+  // Clipboard for copy/cut/paste
+  const [clipboard, setClipboard] = React.useState<{
+    clips: any[]; // Array of clips with trackIndex
+    operation: 'copy' | 'cut';
+  } | null>(null);
+
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
 
@@ -1084,6 +1090,147 @@ function CanvasDemoContent() {
         } else {
           toast.warning('No time selection - create a time selection first (Shift+, and Shift+. or Shift+click and drag)');
         }
+        return;
+      }
+
+      // Copy selected clips (Cmd+C / Ctrl+C)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        e.preventDefault();
+
+        // Find all selected clips across all tracks
+        const selectedClips: any[] = [];
+        state.tracks.forEach((track, trackIndex) => {
+          track.clips.forEach(clip => {
+            if (clip.selected) {
+              selectedClips.push({ ...clip, trackIndex });
+            }
+          });
+        });
+
+        if (selectedClips.length > 0) {
+          setClipboard({ clips: selectedClips, operation: 'copy' });
+          toast.success(`Copied ${selectedClips.length} clip${selectedClips.length > 1 ? 's' : ''}`);
+        }
+        return;
+      }
+
+      // Cut selected clips (Cmd+X / Ctrl+X)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'x') {
+        e.preventDefault();
+
+        // Find all selected clips across all tracks
+        const selectedClips: any[] = [];
+        state.tracks.forEach((track, trackIndex) => {
+          track.clips.forEach(clip => {
+            if (clip.selected) {
+              selectedClips.push({ ...clip, trackIndex });
+            }
+          });
+        });
+
+        if (selectedClips.length > 0) {
+          setClipboard({ clips: selectedClips, operation: 'cut' });
+
+          // Immediately remove the cut clips from tracks
+          const tracksAfterCut = state.tracks.map((track, tIndex) => ({
+            ...track,
+            clips: track.clips.filter(clip =>
+              !selectedClips.some(cutClip => cutClip.id === clip.id && cutClip.trackIndex === tIndex)
+            ),
+          }));
+
+          dispatch({ type: 'SET_TRACKS', payload: tracksAfterCut });
+          toast.success(`Cut ${selectedClips.length} clip${selectedClips.length > 1 ? 's' : ''}`);
+        }
+        return;
+      }
+
+      // Paste clips (Cmd+V / Ctrl+V)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+
+        if (!clipboard || clipboard.clips.length === 0) {
+          toast.warning('Nothing to paste');
+          return;
+        }
+
+        // Paste at playhead position on the focused track
+        const targetTrackIndex = keyboardFocusedTrack ?? 0;
+        if (targetTrackIndex < 0 || targetTrackIndex >= state.tracks.length) {
+          toast.error('No valid track to paste to');
+          return;
+        }
+
+        const pasteTime = state.playheadPosition;
+
+        // Calculate time offset based on the earliest clip start time
+        const earliestClipStart = Math.min(...clipboard.clips.map(c => c.start));
+        const timeOffset = pasteTime - earliestClipStart;
+
+        // Calculate track offset to maintain relative positioning across tracks
+        const minSourceTrackIndex = Math.min(...clipboard.clips.map(c => c.trackIndex));
+        const trackOffset = targetTrackIndex - minSourceTrackIndex;
+
+        // Generate new clip IDs
+        let maxClipId = 0;
+        state.tracks.forEach(track => {
+          track.clips.forEach(clip => {
+            maxClipId = Math.max(maxClipId, clip.id);
+          });
+        });
+
+        // Create new clips with updated positions and track assignments
+        const newClipsWithTracks = clipboard.clips
+          .map((clipData, index) => {
+            const destTrackIndex = clipData.trackIndex + trackOffset;
+
+            // Skip clips that would paste outside available tracks
+            if (destTrackIndex < 0 || destTrackIndex >= state.tracks.length) {
+              return null;
+            }
+
+            return {
+              clip: {
+                ...clipData,
+                id: maxClipId + index + 1,
+                start: clipData.start + timeOffset,
+                selected: true,
+              },
+              destTrackIndex,
+            };
+          })
+          .filter((item): item is { clip: any; destTrackIndex: number } => item !== null);
+
+        // Group clips by destination track
+        const clipsByTrack = new Map<number, any[]>();
+        newClipsWithTracks.forEach(({ clip, destTrackIndex }) => {
+          if (!clipsByTrack.has(destTrackIndex)) {
+            clipsByTrack.set(destTrackIndex, []);
+          }
+          clipsByTrack.get(destTrackIndex)!.push(clip);
+        });
+
+        // Add clips to their respective tracks
+        const updatedTracks = state.tracks.map((track, index) => {
+          const clipsForThisTrack = clipsByTrack.get(index) || [];
+          return {
+            ...track,
+            clips: [
+              ...track.clips.map(c => ({ ...c, selected: false })),
+              ...clipsForThisTrack,
+            ],
+          };
+        });
+
+        dispatch({ type: 'SET_TRACKS', payload: updatedTracks });
+
+        // Note: Clipboard is NOT cleared after paste, allowing multiple pastes for both cut and copy
+        const totalPasted = newClipsWithTracks.length;
+        const tracksAffected = clipsByTrack.size;
+        const message = tracksAffected > 1
+          ? `Pasted ${totalPasted} clip${totalPasted > 1 ? 's' : ''} across ${tracksAffected} tracks`
+          : `Pasted ${totalPasted} clip${totalPasted > 1 ? 's' : ''}`;
+        toast.success(message);
         return;
       }
 
@@ -2986,12 +3133,40 @@ function CanvasDemoContent() {
             setClipContextMenu(null);
           }}
           onCut={() => {
-            toast.info('Cut clip - not yet implemented');
-            setClipContextMenu(null);
+            if (clipContextMenu) {
+              // Find the clip to cut
+              const track = state.tracks[clipContextMenu.trackIndex];
+              const clip = track?.clips.find(c => c.id === clipContextMenu.clipId);
+
+              if (clip) {
+                setClipboard({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut' });
+
+                // Immediately remove the clip from the track
+                dispatch({
+                  type: 'DELETE_CLIP',
+                  payload: {
+                    trackIndex: clipContextMenu.trackIndex,
+                    clipId: clipContextMenu.clipId,
+                  },
+                });
+
+                toast.success('Cut clip');
+              }
+              setClipContextMenu(null);
+            }
           }}
           onCopy={() => {
-            toast.info('Copy clip - not yet implemented');
-            setClipContextMenu(null);
+            if (clipContextMenu) {
+              // Find the clip to copy
+              const track = state.tracks[clipContextMenu.trackIndex];
+              const clip = track?.clips.find(c => c.id === clipContextMenu.clipId);
+
+              if (clip) {
+                setClipboard({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
+                toast.success('Copied clip');
+              }
+              setClipContextMenu(null);
+            }
           }}
           onDuplicate={() => {
             toast.info('Duplicate clip - not yet implemented');
