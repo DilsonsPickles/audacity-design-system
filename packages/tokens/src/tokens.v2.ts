@@ -271,6 +271,12 @@ export interface ThemeTokens {
       selected: string;
     };
 
+    /** Panel backgrounds (rulers, sidebars) */
+    panel: {
+      /** Ruler background */
+      ruler: string;
+    };
+
     /** Toast notification background */
     toast: string;
   };
@@ -301,6 +307,10 @@ export interface ThemeTokens {
       link: string;
       /** Link hover text */
       linkHover: string;
+      /** Primary contrast text (bright, for dark backgrounds like rulers and canvas) */
+      contrastPrimary: string;
+      /** Secondary contrast text (muted, for dark backgrounds) */
+      contrastSecondary: string;
     };
 
     /** Icon colors */
@@ -528,6 +538,26 @@ export interface ThemeTokens {
     tooltip: string;
     /** Tooltip text */
     tooltipText: string;
+  };
+
+  /** Stroke colors (rulers, ticks, grid lines) */
+  stroke: {
+    /** Ruler tick marks */
+    ruler: {
+      /** Primary tick marks (major ticks) */
+      primary: string;
+      /** Secondary tick marks (minor ticks) */
+      secondary: string;
+    };
+    /** Grid lines */
+    grid: {
+      /** Measure lines (at 0.0) */
+      measure: string;
+      /** Major grid lines */
+      major: string;
+      /** Minor grid lines */
+      minor: string;
+    };
   };
 
   /** Special utility colors */

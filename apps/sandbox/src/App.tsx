@@ -177,6 +177,14 @@ function CanvasDemoContent() {
   const [alertDialogTitle, setAlertDialogTitle] = React.useState('');
   const [alertDialogMessage, setAlertDialogMessage] = React.useState('');
 
+  // Select and focus track 0 on mount
+  React.useEffect(() => {
+    if (state.tracks.length > 0 && state.selectedTrackIndices.length === 0) {
+      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [0] });
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
+    }
+  }, []); // Only run on mount
+
   // Mock plugin data
   const [plugins, setPlugins] = React.useState<Plugin[]>([
     { id: '1', name: 'Reverb', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/reverb.ny', enabled: true },
@@ -2222,7 +2230,7 @@ function CanvasDemoContent() {
                   width: '80px',
                   height: '40px', // Match timeline ruler height
                   flexShrink: 0,
-                  backgroundColor: baseTheme.background.surface.subtle,
+                  backgroundColor: baseTheme.background.surface.elevated,
                   borderLeft: `1px solid ${baseTheme.border.default}`,
                   borderBottom: `1px solid ${baseTheme.border.default}`,
                 }} />
@@ -2337,22 +2345,19 @@ function CanvasDemoContent() {
               />
             </div>
 
-              {/* Vertical Amplitude Rulers - Scrollable (scrolls under fixed header) */}
+              {/* Vertical Amplitude Rulers */}
               {showVerticalRulers && (
-                <div style={{ position: 'relative', width: '80px', flexShrink: 0, overflowY: 'hidden' }}>
-                  <div style={{ transform: `translateY(-${scrollY}px)` }}>
-                    <VerticalRulerPanel
-                      tracks={state.tracks.map((track, index) => ({
-                        id: track.id.toString(),
-                        height: track.height || 114,
-                        selected: state.selectedTrackIndices.includes(index),
-                        stereo: false, // TODO: Add stereo support when needed
-                      }))}
-                      width={80}
-                      headerHeight={0}
-                    />
-                  </div>
-                </div>
+                <VerticalRulerPanel
+                  tracks={state.tracks.map((track, index) => ({
+                    id: track.id.toString(),
+                    height: track.height || 114,
+                    selected: state.selectedTrackIndices.includes(index),
+                    stereo: false, // TODO: Add stereo support when needed
+                  }))}
+                  width={80}
+                  headerHeight={0}
+                  scrollY={scrollY}
+                />
               )}
             </div>
           </div>

@@ -198,6 +198,10 @@ export const darkTheme: ThemeTokens = {
       selected: '#4c5058',       // Even lighter when selected
     },
 
+    panel: {
+      ruler: '#1f2024',          // Ruler background (darker)
+    },
+
     toast: '#e4e5e7',            // Light background for toast notifications
   },
 
@@ -214,6 +218,8 @@ export const darkTheme: ThemeTokens = {
       info: '#3b82f6',           // Blue for info
       link: '#60a5fa',           // Light blue for links
       linkHover: '#93c5fd',      // Lighter blue on hover
+      contrastPrimary: '#F4F5F9', // Bright text for dark backgrounds
+      contrastSecondary: '#C5C6CD', // Muted text for dark backgrounds
     },
 
     icon: {
@@ -517,6 +523,18 @@ export const darkTheme: ThemeTokens = {
     light: '#00000066',          // Black 40% light overlay (pre-computed from rgba)
     tooltip: '#18181b',          // Near-black tooltip background
     tooltipText: '#fafafa',      // Off-white tooltip text
+  },
+
+  stroke: {
+    ruler: {
+      primary: '#F4F5F9',        // Bright tick marks (major ticks)
+      secondary: '#8B8C96',      // Muted tick marks (minor ticks)
+    },
+    grid: {
+      measure: '#3B3E4B',        // Grid line at 0.0
+      major: '#3B3E4B',          // Major grid lines
+      minor: '#2F323C',          // Minor grid lines
+    },
   },
 
   utility: {

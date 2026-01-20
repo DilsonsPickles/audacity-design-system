@@ -195,7 +195,11 @@ export const lightTheme: ThemeTokens = {
     trackHeader: {
       idle: '#E3E3E8',           // Light gray idle state
       hover: '#D9D9DE',          // Slightly darker on hover
-      selected: '#D0D0D5',       
+      selected: '#D0D0D5',
+    },
+
+    panel: {
+      ruler: '#262932',          // Ruler background (dark even in light theme)
     },
 
     toast: '#14151A',            // Dark background for toast notifications
@@ -214,6 +218,8 @@ export const lightTheme: ThemeTokens = {
       info: '#305BCC',           // Blue for info
       link: '#305BCC',           // Blue for links
       linkHover: '#1A3FB3',      // Darker blue on hover
+      contrastPrimary: '#F4F5F9', // Bright text for dark backgrounds (rulers, canvas)
+      contrastSecondary: '#C5C6CD', // Muted text for dark backgrounds
     },
 
     icon: {
@@ -526,6 +532,18 @@ export const lightTheme: ThemeTokens = {
     light: '#00000066',          // Black 40% light overlay (pre-computed from rgba)
     tooltip: '#18181b',          // Near-black tooltip background
     tooltipText: '#fafafa',      // Off-white tooltip text
+  },
+
+  stroke: {
+    ruler: {
+      primary: '#F4F5F9',        // Bright tick marks (major ticks)
+      secondary: '#8B8C96',      // Muted tick marks (minor ticks)
+    },
+    grid: {
+      measure: '#3B3E4B',        // Grid line at 0.0
+      major: '#3B3E4B',          // Major grid lines
+      minor: '#2F323C',          // Minor grid lines
+    },
   },
 
   utility: {

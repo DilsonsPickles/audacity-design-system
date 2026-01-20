@@ -107,6 +107,7 @@ export * from './Label';
 export * from './ResizablePanel';
 export * from './SidePanel';
 export * from './TimelineRuler';
+export * from './VerticalRuler';
 export * from './TimeSelectionCanvasOverlay';
 export * from './TimeSelectionRulerOverlay';
 export * from './SpectralSelectionOverlay';
