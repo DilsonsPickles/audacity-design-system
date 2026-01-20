@@ -311,8 +311,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#B4E5EA',
         waveform: '#0D292C',
         waveformSelected: '#0D292C',
-        waveformRms: '#73A8AD', // Lighter - blended more with body color
-        waveformRmsSelected: '#73A8AD',
+        waveformRms: '#245256', // Subtle - lighter than waveform
+        waveformRmsSelected: '#245256',
         // Time selection colors (consistent rule: body L=header+15%, header L=header+5%, S=100%)
         timeSelectionBody: '#7BFFFF',        
         timeSelectionHeader: '#24FFFF',      
@@ -329,8 +329,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#C0D9FF',
         waveform: '#172533',
         waveformSelected: '#172533',
-        waveformRms: '#8BA1B8', // Lighter - blended more with body color
-        waveformRmsSelected: '#8BA1B8',
+        waveformRms: '#3A5265', // Subtle - lighter than waveform
+        waveformRmsSelected: '#3A5265',
         timeSelectionBody: '#A3FCFF',        
         timeSelectionHeader: '#7EEBFF',      
         timeSelectionWaveform: '#303E4C',    // 10% white added to #172533
@@ -346,8 +346,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#D5D3FE',
         waveform: '#232233',
         waveformSelected: '#232233',
-        waveformRms: '#9D9CB8', // Lighter - blended more with body color
-        waveformRmsSelected: '#9D9CB8',
+        waveformRms: '#46456A', // Subtle - lighter than waveform
+        waveformRmsSelected: '#46456A',
         timeSelectionBody: '#DCF1FF',        
         timeSelectionHeader: '#C8DCFF',      
         timeSelectionWaveform: '#3C3B4C',    // 10% white added to #232233
@@ -363,8 +363,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#EFD1EA',
         waveform: '#2F202B',
         waveformSelected: '#2F202B',
-        waveformRms: '#B598AA', // Lighter - blended more with body color
-        waveformRmsSelected: '#B598AA',
+        waveformRms: '#5F4357', // Subtle - lighter than waveform
+        waveformRmsSelected: '#5F4357',
         timeSelectionBody: '#FFE7FF',        
         timeSelectionHeader: '#FFCFFF',      
         timeSelectionWaveform: '#483944',    // 10% white added to #2F202B
@@ -380,8 +380,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#F9CBCB',
         waveform: '#331E1E',
         waveformSelected: '#331E1E',
-        waveformRms: '#BC9495', // Lighter - blended more with body color
-        waveformRmsSelected: '#BC9495',
+        waveformRms: '#664040', // Subtle - lighter than waveform
+        waveformRmsSelected: '#664040',
         timeSelectionBody: '#FFDCE6',        
         timeSelectionHeader: '#FFC2CC',      
         timeSelectionWaveform: '#4C3737',    // 10% white added to #331E1E
@@ -397,8 +397,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#FFD7BF',
         waveform: '#332318',
         waveformSelected: '#332318',
-        waveformRms: '#BC9D86', // Lighter - blended more with body color
-        waveformRmsSelected: '#BC9D86',
+        waveformRms: '#66462F', // Subtle - lighter than waveform
+        waveformRmsSelected: '#66462F',
         timeSelectionBody: '#FFF6CC',        
         timeSelectionHeader: '#FFE2AB',      
         timeSelectionWaveform: '#4C3C31',    // 10% white added to #332318
@@ -414,8 +414,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#F4E4B9',
         waveform: '#302914',
         waveformSelected: '#302914',
-        waveformRms: '#B7A77E', // Lighter - blended more with body color
-        waveformRmsSelected: '#B7A77E',
+        waveformRms: '#605329', // Subtle - lighter than waveform
+        waveformRmsSelected: '#605329',
         timeSelectionBody: '#FFFFB8',        
         timeSelectionHeader: '#FFFF8E',      
         timeSelectionWaveform: '#49422D',    // 10% white added to #302914
@@ -431,8 +431,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#C5E5BC',
         waveform: '#192916',
         waveformSelected: '#192916',
-        waveformRms: '#8DA983', // Lighter - blended more with body color
-        waveformRmsSelected: '#8DA983',
+        waveformRms: '#33522B', // Subtle - lighter than waveform
+        waveformRmsSelected: '#33522B',
         timeSelectionBody: '#B0FFC2',        
         timeSelectionHeader: '#89FF9C',      
         timeSelectionWaveform: '#32422F',    // 10% white added to #192916
@@ -448,8 +448,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#ACE1D3',
         waveform: '#052822',
         waveformSelected: '#052822',
-        waveformRms: '#5FA598', // Lighter - blended more with body color
-        waveformRmsSelected: '#5FA598',
+        waveformRms: '#0E4C44', // Subtle - lighter than waveform
+        waveformRmsSelected: '#0E4C44',
         timeSelectionBody: '#5EFFF7',        
         timeSelectionHeader: '#00FDE1',      
         timeSelectionWaveform: '#1E413B',    // 10% white added to #052822
@@ -465,8 +465,8 @@ export const lightTheme: ThemeTokens = {
         bodySelected: '#A4C4F6',
         waveform: '#5359AD', // Classic uses colored waveform
         waveformSelected: '#5359AD', // Same color when selected
-        waveformRms: '#A5AAD6', // Lighter - blended more with body color
-        waveformRmsSelected: '#A5AAD6', // Same when selected
+        waveformRms: '#8389D4', // Subtle - lighter than waveform
+        waveformRmsSelected: '#8389D4', // Same when selected
         timeSelectionBody: '#A4C4F6',
         timeSelectionHeader: '#89A7EE',
         timeSelectionWaveform: '#6C72C6', 
