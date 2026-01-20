@@ -7,11 +7,10 @@
   flex-direction: column;
   width: var(--panel-width);
   height: 100%;
-  min-height: 100%; /* Ensure panel extends to full height */
   background-color: var(--panel-canvas-bg) !important;
   border-left: 1px solid #323644;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: hidden; /* Hide overflow on the panel itself */
   position: relative;
 }
 
@@ -29,9 +28,9 @@
 .vertical-ruler-panel__tracks {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 100%; /* Ensure container is at least as tall as parent */
-  overflow: visible; /* Allow tracks to render even when scrolled */
+  flex: none; /* Don't use flex sizing - let content determine size */
+  width: 100%;
+  overflow: visible; /* Allow all tracks to render */
   padding-top: var(--panel-track-gap);
   border-left: 1px solid #323644;
   background-color: var(--panel-canvas-bg);
