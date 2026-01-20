@@ -69,23 +69,33 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
   // Calculate tick positions
   const range = max - min;
 
-  // Adaptive minor tick density based on available space
-  // Ensure ticks are never closer than 6px to each other
-  const MIN_TICK_SPACING = 6; // pixels
+  // Adaptive tick density based on available space
+  const MIN_TICK_SPACING = 6; // pixels - minimum spacing
+  const MAX_TICK_SPACING = 40; // pixels - maximum spacing (when to add more major ticks)
 
-  // Determine how many minor divisions we can fit based on available space
+  // Start with default values
+  let adjustedMajorDivisions = majorDivisions;
   let adjustedMinorDivisions = minorDivisions;
 
+  // First, check if we need MORE major ticks (spacing too large)
+  const defaultMajorSpacing = height / (majorDivisions - 1);
+  if (defaultMajorSpacing > MAX_TICK_SPACING) {
+    // Double the number of major divisions
+    // This will give us ticks at: 1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75, -1.0
+    adjustedMajorDivisions = (majorDivisions - 1) * 2 + 1; // 9 major ticks
+  }
+
+  // Now calculate minor tick density based on available space
   // Calculate what the spacing would be with full minor ticks (4 between each major)
-  const fullMinorsIndex = (majorDivisions - 1) * (minorDivisions + 1);
+  const fullMinorsIndex = (adjustedMajorDivisions - 1) * (minorDivisions + 1);
   const fullMinorsSpacing = height / fullMinorsIndex;
 
   // Calculate what the spacing would be with just 1 minor tick (halfway)
-  const oneMinorIndex = (majorDivisions - 1) * 2; // 2 = 1 minor + 1 for the major
+  const oneMinorIndex = (adjustedMajorDivisions - 1) * 2;
   const oneMinorSpacing = height / oneMinorIndex;
 
   // Calculate what the spacing would be with no minor ticks (just majors)
-  const noMinorsIndex = majorDivisions - 1;
+  const noMinorsIndex = adjustedMajorDivisions - 1;
   const noMinorsSpacing = height / noMinorsIndex;
 
   // Choose the appropriate number of minor divisions based on spacing
@@ -100,10 +110,10 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
     adjustedMinorDivisions = 0;
   }
 
-  // Calculate final spacing based on adjusted minor divisions
+  // Calculate final spacing based on adjusted divisions
   const lastMajorTickIndex = adjustedMinorDivisions === 0
     ? noMinorsIndex
-    : (majorDivisions - 1) * (adjustedMinorDivisions + 1);
+    : (adjustedMajorDivisions - 1) * (adjustedMinorDivisions + 1);
   const tickSpacing = height / lastMajorTickIndex;
 
   const ticks: Array<{
@@ -117,14 +127,14 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
   }> = [];
 
   // Generate ticks
-  // We want exactly majorDivisions major ticks with minor ticks in between
+  // We want exactly adjustedMajorDivisions major ticks with minor ticks in between
   for (let i = 0; i <= lastMajorTickIndex; i++) {
     const isMajor = i % (adjustedMinorDivisions + 1) === 0;
     const majorIndex = Math.floor(i / (adjustedMinorDivisions + 1));
 
-    const isLastMajor = majorIndex === majorDivisions - 1 && isMajor;
+    const isLastMajor = majorIndex === adjustedMajorDivisions - 1 && isMajor;
     const isFirstMajor = majorIndex === 0 && isMajor;
-    const value = max - (majorIndex * range) / (majorDivisions - 1);
+    const value = max - (majorIndex * range) / (adjustedMajorDivisions - 1);
     const y = i * tickSpacing; // All ticks use uniform spacing now
     const isCenter = Math.abs(value) < 0.01; // Center line at 0.0
 
