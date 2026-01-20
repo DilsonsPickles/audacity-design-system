@@ -70,28 +70,41 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
   const range = max - min;
 
   // Adaptive minor tick density based on available space
-  // Ensure minor ticks are never closer than 6px to each other
-  const MIN_TICK_SPACING = 6; // pixels - minimum spacing between any ticks
+  // Ensure ticks are never closer than 6px to each other
+  const MIN_TICK_SPACING = 6; // pixels
 
-  // Calculate initial spacing with full minor ticks (4 minors between each major)
+  // Determine how many minor divisions we can fit based on available space
   let adjustedMinorDivisions = minorDivisions;
-  let lastMajorTickIndex = (majorDivisions - 1) * (adjustedMinorDivisions + 1);
-  let tickSpacing = height / lastMajorTickIndex;
 
-  // Reduce minor ticks if spacing would be < 6px
-  // Try 1 minor tick (halfway point) if 4 minors are too close
-  if (tickSpacing < MIN_TICK_SPACING && adjustedMinorDivisions > 1) {
-    adjustedMinorDivisions = 1; // Just one tick in the middle
-    lastMajorTickIndex = (majorDivisions - 1) * (adjustedMinorDivisions + 1);
-    tickSpacing = height / lastMajorTickIndex;
+  // Calculate what the spacing would be with full minor ticks (4 between each major)
+  const fullMinorsIndex = (majorDivisions - 1) * (minorDivisions + 1);
+  const fullMinorsSpacing = height / fullMinorsIndex;
 
-    // If even 1 minor tick is too close, remove all minor ticks
-    if (tickSpacing < MIN_TICK_SPACING) {
-      adjustedMinorDivisions = 0; // No minor ticks at all
-      lastMajorTickIndex = majorDivisions - 1;
-      tickSpacing = height / lastMajorTickIndex;
-    }
+  // Calculate what the spacing would be with just 1 minor tick (halfway)
+  const oneMinorIndex = (majorDivisions - 1) * 2; // 2 = 1 minor + 1 for the major
+  const oneMinorSpacing = height / oneMinorIndex;
+
+  // Calculate what the spacing would be with no minor ticks (just majors)
+  const noMinorsIndex = majorDivisions - 1;
+  const noMinorsSpacing = height / noMinorsIndex;
+
+  // Choose the appropriate number of minor divisions based on spacing
+  if (fullMinorsSpacing >= MIN_TICK_SPACING) {
+    // All 4 minor ticks fit comfortably
+    adjustedMinorDivisions = minorDivisions;
+  } else if (oneMinorSpacing >= MIN_TICK_SPACING) {
+    // Only 1 minor tick (halfway) fits
+    adjustedMinorDivisions = 1;
+  } else {
+    // No minor ticks fit, show only major ticks
+    adjustedMinorDivisions = 0;
   }
+
+  // Calculate final spacing based on adjusted minor divisions
+  const lastMajorTickIndex = adjustedMinorDivisions === 0
+    ? noMinorsIndex
+    : (majorDivisions - 1) * (adjustedMinorDivisions + 1);
+  const tickSpacing = height / lastMajorTickIndex;
 
   const ticks: Array<{
     y: number;
