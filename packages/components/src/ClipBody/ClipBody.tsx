@@ -359,12 +359,11 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       }
     } else if (variant === 'spectrogram') {
       // Pure spectrogram rendering (no split view)
-      // PERFORMANCE: Use reduced settings for real-time interaction
       const spectrogramOptions = {
-        frequencyBands: 16, // Reduced from 64 for performance
-        fftWindowSize: 64, // Reduced from 256 for performance
+        frequencyBands: 32, // Lower resolution for snappier performance
+        fftWindowSize: 256, // Smaller FFT for faster computation
         intensityMultiplier: 1.5,
-        pixelSkip: 4, // Render every 4th pixel column
+        pixelSkip: 4, // Render every 4th pixel for better performance
       };
 
       if (isStereo) {

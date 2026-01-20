@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { VerticalRuler } from './VerticalRuler';
+import { FrequencyRuler } from './FrequencyRuler';
 import { useTheme } from '../ThemeProvider';
 import './VerticalRulerPanel.css';
 
@@ -14,6 +15,8 @@ export interface TrackRulerConfig {
   stereo?: boolean;
   /** Track type */
   type?: 'mono' | 'stereo';
+  /** View mode - determines which ruler to show */
+  viewMode?: 'waveform' | 'spectrogram' | 'split';
 }
 
 export interface VerticalRulerPanelProps {
@@ -150,8 +153,18 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                     headerHeight={0}
                   />
                 </div>
+              ) : track.viewMode === 'spectrogram' ? (
+                // Spectrogram mode - frequency ruler
+                <FrequencyRuler
+                  height={track.height - 20}
+                  minFreq={10}
+                  maxFreq={22050}
+                  position="right"
+                  width={width}
+                  headerHeight={0}
+                />
               ) : (
-                // Mono track - single ruler
+                // Waveform mode - amplitude ruler
                 <VerticalRuler
                   height={track.height - 20}
                   min={-1.0}

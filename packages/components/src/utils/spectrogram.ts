@@ -64,8 +64,8 @@ export function renderMonoSpectrogram(
   options: SpectrogramOptions = {}
 ): void {
   const {
-    frequencyBands = 64,
-    fftWindowSize = 256,
+    frequencyBands = 256,
+    fftWindowSize = 2048,
     intensityMultiplier = 1.5,
     pixelSkip = 1,
   } = options;
@@ -91,9 +91,11 @@ export function renderMonoSpectrogram(
       const intensity = Math.min(1, Math.sqrt(rawIntensity) * intensityMultiplier);
 
       ctx.fillStyle = getSpectrogramColor(intensity);
-      const yPos = y + (1 - (band / frequencyBands)) * height;
-      const bandHeight = Math.max(1, height / frequencyBands);
-      ctx.fillRect(x + px, yPos, pixelSkip, bandHeight);
+      // Calculate start and end Y positions to ensure no gaps
+      const yStart = y + (1 - ((band + 1) / frequencyBands)) * height;
+      const yEnd = y + (1 - (band / frequencyBands)) * height;
+      const bandHeight = Math.ceil(yEnd - yStart); // Ceil to avoid gaps
+      ctx.fillRect(x + px, yStart, pixelSkip, bandHeight);
     }
   }
 }
@@ -122,8 +124,8 @@ export function renderStereoSpectrogram(
   options: SpectrogramOptions = {}
 ): void {
   const {
-    frequencyBands = 64,
-    fftWindowSize = 256,
+    frequencyBands = 256,
+    fftWindowSize = 2048,
     intensityMultiplier = 1.5,
     pixelSkip = 1,
   } = options;
@@ -150,9 +152,10 @@ export function renderStereoSpectrogram(
       const intensity = Math.min(1, Math.sqrt(rawIntensity) * intensityMultiplier);
 
       ctx.fillStyle = getSpectrogramColor(intensity);
-      const yPos = y + (1 - (band / frequencyBands)) * lChannelHeight;
-      const bandHeight = Math.max(1, lChannelHeight / frequencyBands);
-      ctx.fillRect(x + px, yPos, pixelSkip, bandHeight);
+      const yStart = y + (1 - ((band + 1) / frequencyBands)) * lChannelHeight;
+      const yEnd = y + (1 - (band / frequencyBands)) * lChannelHeight;
+      const bandHeight = Math.ceil(yEnd - yStart);
+      ctx.fillRect(x + px, yStart, pixelSkip, bandHeight);
     }
   }
 
@@ -176,9 +179,10 @@ export function renderStereoSpectrogram(
       const intensity = Math.min(1, Math.sqrt(rawIntensity) * intensityMultiplier);
 
       ctx.fillStyle = getSpectrogramColor(intensity);
-      const yPos = dividerY + (1 - (band / frequencyBands)) * rChannelHeight;
-      const bandHeight = Math.max(1, rChannelHeight / frequencyBands);
-      ctx.fillRect(x + px, yPos, pixelSkip, bandHeight);
+      const yStart = dividerY + (1 - ((band + 1) / frequencyBands)) * rChannelHeight;
+      const yEnd = dividerY + (1 - (band / frequencyBands)) * rChannelHeight;
+      const bandHeight = Math.ceil(yEnd - yStart);
+      ctx.fillRect(x + px, yStart, pixelSkip, bandHeight);
     }
   }
 }
