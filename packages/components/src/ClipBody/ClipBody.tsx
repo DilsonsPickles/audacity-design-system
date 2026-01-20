@@ -474,6 +474,42 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
       }
 
+      // Draw L channel RMS (if RMS data provided)
+      if (waveformLeftRms && waveformLeftRms.length > 0) {
+        ctx.globalAlpha = 0.4;
+
+        for (let px = 0; px < canvasWidth; px++) {
+          const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+          const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
+
+          let min = waveformLeftRms[sampleStart] || 0;
+          let max = waveformLeftRms[sampleStart] || 0;
+
+          for (let i = sampleStart; i < sampleEnd && i < waveformLeftRms.length; i++) {
+            const sample = waveformLeftRms[i];
+            min = Math.min(min, sample);
+            max = Math.max(max, sample);
+          }
+
+          // Apply envelope gain to RMS waveform amplitude
+          const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          min *= envelopeGain;
+          max *= envelopeGain;
+
+          // Choose color based on whether THIS pixel is within time selection
+          const isPixelInSelection = px >= selStartPx && px < selEndPx;
+          const rmsColor = isPixelInSelection ? timeSelectionRmsColor : defaultRmsColor;
+          ctx.fillStyle = rmsColor;
+
+          const y1 = lChannelCenterY - max * lMaxAmplitude;
+          const y2 = lChannelCenterY - min * lMaxAmplitude;
+          ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+        }
+
+        ctx.globalAlpha = 1.0;
+      }
+
       // Draw channel divider line using color-specific divider
       const dividerColor4 = computedStyle.getPropertyValue(`--clip-${color}-divider`).trim();
       ctx.strokeStyle = dividerColor4;
@@ -512,6 +548,42 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         const y1 = rChannelCenterY - max * rMaxAmplitude;
         const y2 = rChannelCenterY - min * rMaxAmplitude;
         ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+      }
+
+      // Draw R channel RMS (if RMS data provided)
+      if (waveformRightRms && waveformRightRms.length > 0) {
+        ctx.globalAlpha = 0.4;
+
+        for (let px = 0; px < canvasWidth; px++) {
+          const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+          const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
+
+          let min = waveformRightRms[sampleStart] || 0;
+          let max = waveformRightRms[sampleStart] || 0;
+
+          for (let i = sampleStart; i < sampleEnd && i < waveformRightRms.length; i++) {
+            const sample = waveformRightRms[i];
+            min = Math.min(min, sample);
+            max = Math.max(max, sample);
+          }
+
+          // Apply envelope gain to RMS waveform amplitude
+          const pixelTime = clipTrimStart + (px / pixelsPerSecond);
+          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          min *= envelopeGain;
+          max *= envelopeGain;
+
+          // Choose color based on whether THIS pixel is within time selection
+          const isPixelInSelection = px >= selStartPx && px < selEndPx;
+          const rmsColor = isPixelInSelection ? timeSelectionRmsColor : defaultRmsColor;
+          ctx.fillStyle = rmsColor;
+
+          const y1 = rChannelCenterY - max * rMaxAmplitude;
+          const y2 = rChannelCenterY - min * rMaxAmplitude;
+          ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+        }
+
+        ctx.globalAlpha = 1.0;
       }
     } else if (hasMono) {
       // Mono: single waveform centered
@@ -581,6 +653,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       // Draw RMS waveform on top (if RMS data provided)
       if (waveformDataRms && waveformDataRms.length > 0) {
+        // Set opacity for more subtle RMS overlay
+        ctx.globalAlpha = 0.4;
+
         for (let px = 0; px < canvasWidth; px++) {
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
           const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
@@ -609,6 +684,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           const y2 = centerY - min * maxAmplitude;
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
+
+        // Reset opacity
+        ctx.globalAlpha = 1.0;
       }
       }
     }

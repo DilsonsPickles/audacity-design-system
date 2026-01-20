@@ -5,6 +5,19 @@
   cursor: text; /* Text cursor for time selection within clips */
 }
 
+/* Envelope mode overlay - adds semi-transparent overlay to improve contrast with envelope points */
+.clip-body--has-envelope::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.15); /* 15% black overlay */
+  pointer-events: none;
+  z-index: 1;
+}
+
 .clip-body__waveform {
   width: 100%;
   height: 100%;

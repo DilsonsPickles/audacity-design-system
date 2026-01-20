@@ -104,30 +104,51 @@ export const FrequencyRuler: React.FC<FrequencyRulerProps> = ({
       showLabel: true, // Will be updated by collision detection
     }));
 
-  // Collision detection: hide labels that would overlap
-  // Assume each label needs about 14px of vertical space (12px font + 2px padding)
-  const MIN_LABEL_SPACING = 14;
+  // Responsive label collision detection
+  // Adaptively choose which labels to show based on available height
+  const MIN_LABEL_SPACING = 14; // pixels needed per label
+  const availableSpace = height;
+  const maxVisibleLabels = Math.max(2, Math.floor(availableSpace / MIN_LABEL_SPACING));
 
-  // Sort by Y position (bottom to top) - prioritize lower frequencies
-  majorTicks.sort((a, b) => b.y - a.y);
+  // Priority-based label selection: prioritize logarithmically spaced frequencies
+  // Priority order (highest to lowest): 1k, 10k, 100, 5k, 500, 2k, 200, 20k
+  const labelPriorities: Record<number, number> = {
+    1000: 1,   // 1kHz - reference frequency
+    10000: 2,  // 10kHz - high frequency reference
+    100: 3,    // 100Hz - low frequency reference
+    5000: 4,   // 5kHz - mid-high
+    500: 5,    // 500Hz - mid-low
+    2000: 6,   // 2kHz - mid
+    200: 7,    // 200Hz - low
+    20000: 8,  // 20kHz - very high
+  };
 
-  // Check each pair of adjacent labels, starting from lowest frequency
-  for (let i = 0; i < majorTicks.length - 1; i++) {
-    if (!majorTicks[i].showLabel) continue; // Skip if already hidden
+  // Sort ticks by priority (lower number = higher priority)
+  majorTicks.sort((a, b) => {
+    const priorityA = labelPriorities[a.freq] ?? 999;
+    const priorityB = labelPriorities[b.freq] ?? 999;
+    return priorityA - priorityB;
+  });
 
-    for (let j = i + 1; j < majorTicks.length; j++) {
-      if (!majorTicks[j].showLabel) continue;
+  // Greedily select labels that don't collide, starting with highest priority
+  const selectedLabels: typeof majorTicks = [];
 
-      const distance = Math.abs(majorTicks[j].y - majorTicks[i].y);
-      if (distance < MIN_LABEL_SPACING) {
-        // Hide the higher frequency label (lower priority)
-        majorTicks[j].showLabel = false;
-      } else {
-        // Labels are far enough apart, stop checking
-        break;
-      }
+  for (const tick of majorTicks) {
+    // Check if this label would collide with any already-selected label
+    const wouldCollide = selectedLabels.some(selected =>
+      Math.abs(tick.y - selected.y) < MIN_LABEL_SPACING
+    );
+
+    if (!wouldCollide && selectedLabels.length < maxVisibleLabels) {
+      selectedLabels.push(tick);
+      tick.showLabel = true;
+    } else {
+      tick.showLabel = false;
     }
   }
+
+  // Sort back by Y position for rendering (top to bottom)
+  majorTicks.sort((a, b) => a.y - b.y);
 
   // Create minor ticks (without labels)
   const minorTicks = minorFrequencies
