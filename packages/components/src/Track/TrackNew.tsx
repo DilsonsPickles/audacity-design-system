@@ -568,8 +568,8 @@ export const TrackNew: React.FC<TrackProps> = ({
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
-        {/* Clip header recess - 20px darkened area at top of track (hidden for label tracks) */}
-        {!isLabelTrack && (
+        {/* Clip header recess - 20px darkened area at top of track (hidden for label tracks and when track is too small) */}
+        {!isLabelTrack && height > 44 && (
           <div
             style={{
               position: 'absolute',

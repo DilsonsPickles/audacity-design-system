@@ -127,8 +127,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               style={{ height: `${track.height}px` }}
               tabIndex={track.selected ? 0 : -1}
             >
-              {/* 20px spacer to align with clip header recess (hidden for label tracks) */}
-              {track.trackType !== 'label' && (
+              {/* 20px spacer to align with clip header recess (hidden for label tracks and when track is too small) */}
+              {track.trackType !== 'label' && track.height > 44 && (
                 <div className="vertical-ruler-panel__track-spacer" />
               )}
 
