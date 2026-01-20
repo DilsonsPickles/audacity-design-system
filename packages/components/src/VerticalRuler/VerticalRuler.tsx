@@ -69,7 +69,10 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
   // Calculate tick positions
   const range = max - min;
   const totalTicks = majorDivisions + (majorDivisions - 1) * minorDivisions;
-  const tickSpacing = height / totalTicks;
+  // Calculate the position of the last major tick
+  const lastMajorTickIndex = (majorDivisions - 1) * (minorDivisions + 1);
+  // Recalculate tick spacing so the last major tick lands exactly at height
+  const tickSpacing = height / lastMajorTickIndex;
 
   const ticks: Array<{
     y: number;
@@ -83,21 +86,14 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
 
   // Generate ticks
   // We want exactly majorDivisions major ticks with minor ticks in between
-  // Calculate the position of the last major tick
-  const lastMajorTickIndex = (majorDivisions - 1) * (minorDivisions + 1);
-
-  for (let i = 0; i <= totalTicks; i++) {
-    // Stop after the last major tick - no minor ticks should appear after -1.0
-    if (i > lastMajorTickIndex) break;
-
+  for (let i = 0; i <= lastMajorTickIndex; i++) {
     const isMajor = i % (minorDivisions + 1) === 0;
     const majorIndex = Math.floor(i / (minorDivisions + 1));
 
-    // For the last major tick, position it at the very bottom
     const isLastMajor = majorIndex === majorDivisions - 1 && isMajor;
     const isFirstMajor = majorIndex === 0 && isMajor;
     const value = max - (majorIndex * range) / (majorDivisions - 1);
-    const y = isLastMajor ? height : i * tickSpacing;
+    const y = i * tickSpacing; // All ticks use uniform spacing now
     const isCenter = Math.abs(value) < 0.01; // Center line at 0.0
 
     ticks.push({ y, value, isMajor, isCenter, isFirst: isFirstMajor, isLast: isLastMajor, showLabel: false });
