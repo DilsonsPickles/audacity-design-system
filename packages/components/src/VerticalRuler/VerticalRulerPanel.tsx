@@ -139,7 +139,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 // Split view - frequency ruler on top, amplitude ruler on bottom
                 <div className="vertical-ruler-panel__split">
                   <FrequencyRuler
-                    height={(track.height - 20) / 2}
+                    height={(track.height - (track.height > 44 ? 20 : 0)) / 2}
                     minFreq={10}
                     maxFreq={22050}
                     position="right"
@@ -148,7 +148,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                   />
                   <div className="vertical-ruler-panel__split-divider" />
                   <VerticalRuler
-                    height={(track.height - 20) / 2}
+                    height={(track.height - (track.height > 44 ? 20 : 0)) / 2}
                     min={-1.0}
                     max={1.0}
                     majorDivisions={5}
@@ -161,7 +161,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               ) : track.viewMode === 'spectrogram' ? (
                 // Spectrogram mode - frequency ruler
                 <FrequencyRuler
-                  height={track.height - 20}
+                  height={track.height - (track.height > 44 ? 20 : 0)}
                   minFreq={10}
                   maxFreq={22050}
                   position="right"
@@ -172,7 +172,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 // Stereo track - two rulers stacked
                 <div className="vertical-ruler-panel__stereo">
                   <VerticalRuler
-                    height={track.height / 2 - 1 - 20}
+                    height={track.height / 2 - 1 - (track.height > 44 ? 20 : 0)}
                     min={-1.0}
                     max={1.0}
                     majorDivisions={3}
@@ -183,7 +183,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                   />
                   <div className="vertical-ruler-panel__stereo-divider" />
                   <VerticalRuler
-                    height={track.height / 2 - 1 - 20}
+                    height={track.height / 2 - 1 - (track.height > 44 ? 20 : 0)}
                     min={-1.0}
                     max={1.0}
                     majorDivisions={3}
@@ -196,7 +196,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               ) : (
                 // Waveform mode - amplitude ruler
                 <VerticalRuler
-                  height={track.height - 20}
+                  height={track.height - (track.height > 44 ? 20 : 0)}
                   min={-1.0}
                   max={1.0}
                   majorDivisions={5}
