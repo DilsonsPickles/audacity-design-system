@@ -163,6 +163,29 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                   width={width}
                   headerHeight={0}
                 />
+              ) : track.viewMode === 'split' ? (
+                // Split view - frequency ruler on top, amplitude ruler on bottom
+                <div className="vertical-ruler-panel__split">
+                  <FrequencyRuler
+                    height={(track.height - 20) / 2}
+                    minFreq={10}
+                    maxFreq={22050}
+                    position="right"
+                    width={width}
+                    headerHeight={0}
+                  />
+                  <div className="vertical-ruler-panel__split-divider" />
+                  <VerticalRuler
+                    height={(track.height - 20) / 2}
+                    min={-1.0}
+                    max={1.0}
+                    majorDivisions={5}
+                    minorDivisions={4}
+                    position="right"
+                    width={width}
+                    headerHeight={0}
+                  />
+                </div>
               ) : (
                 // Waveform mode - amplitude ruler
                 <VerticalRuler

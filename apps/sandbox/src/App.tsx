@@ -3,7 +3,7 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { CustomScrollbar } from './components/CustomScrollbar';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, type TrackRulerConfig } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -93,24 +93,6 @@ const clip2RmsWaveform = generateRmsWaveform(clip2Waveform);
 
 const clip3Waveform = generateWaveform(4.0);
 const clip3RmsWaveform = generateRmsWaveform(clip3Waveform);
-
-const clip4Waveform = generateWaveform(4.0);
-const clip4RmsWaveform = generateRmsWaveform(clip4Waveform);
-
-const clip5Waveform = generateWaveform(4.0);
-const clip5RmsWaveform = generateRmsWaveform(clip5Waveform);
-
-const clip6Waveform = generateWaveform(4.0);
-const clip6RmsWaveform = generateRmsWaveform(clip6Waveform);
-
-const clip7Waveform = generateWaveform(4.0);
-const clip7RmsWaveform = generateRmsWaveform(clip7Waveform);
-
-const clip8Waveform = generateWaveform(4.0);
-const clip8RmsWaveform = generateRmsWaveform(clip8Waveform);
-
-const clip9Waveform = generateWaveform(4.0);
-const clip9RmsWaveform = generateRmsWaveform(clip9Waveform);
 
 // Sample track data
 const sampleTracks = [

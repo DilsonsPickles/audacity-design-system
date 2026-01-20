@@ -828,7 +828,7 @@ export function Canvas({
                     }
                   }, 0);
                 }}
-                onClipNavigateVertical={(clipId, direction) => {
+                onClipNavigateVertical={(_clipId, direction) => {
                   // Calculate target track index
                   const targetTrackIndex = trackIndex + direction;
 
