@@ -9,6 +9,7 @@ import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
 import { TokenReview } from './pages/TokenReview';
+import { SpectralRulerDemo } from './pages/SpectralRulerDemo';
 
 // Generate noise waveform data with headroom
 function generateWaveform(durationSeconds: number, sampleRate: number = 48000): number[] {
@@ -3321,6 +3322,17 @@ export default function App() {
   // Show token review page if ?page=tokens
   if (page === 'tokens') {
     return <TokenReview />;
+  }
+
+  // Show spectral ruler demo if ?page=spectral-ruler
+  if (page === 'spectral-ruler') {
+    return (
+      <PreferencesProvider>
+        <ThemeProvider>
+          <SpectralRulerDemo />
+        </ThemeProvider>
+      </PreferencesProvider>
+    );
   }
 
   // Default: show main app with preferences provider outside theme provider
