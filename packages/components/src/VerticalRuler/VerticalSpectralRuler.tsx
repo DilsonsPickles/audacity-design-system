@@ -104,6 +104,11 @@ const FREQUENCY_TIERS = {
     major: [20, 1000, 4000, 10000, 20000],
     minor: [50, 100, 200, 500, 800, 2000, 3000, 5000, 6000, 8000, 12000, 16000] // Essential reference points as minors
   },
+  // Tier 8: Ultra-minimal (for very small heights < 40px) - single center tick only, no labels
+  tier8: {
+    major: [], // No labeled ticks
+    minor: [1000] // Just a single center tick, unlabeled
+  },
 };
 
 /**
@@ -150,7 +155,10 @@ export const VerticalSpectralRuler: React.FC<VerticalSpectralRulerProps> = ({
   // Choose appropriate tier based on actual mel-scale spacing
   let selectedTier: { major: number[], minor: number[] };
 
-  if (checkTierSpacing(FREQUENCY_TIERS.tier1.major)) {
+  if (height < 40) {
+    // Ultra-minimal tier for very small heights
+    selectedTier = FREQUENCY_TIERS.tier8;
+  } else if (checkTierSpacing(FREQUENCY_TIERS.tier1.major)) {
     selectedTier = FREQUENCY_TIERS.tier1;
   } else if (checkTierSpacing(FREQUENCY_TIERS.tier2.major)) {
     selectedTier = FREQUENCY_TIERS.tier2;
