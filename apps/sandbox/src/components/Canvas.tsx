@@ -38,6 +38,10 @@ export interface CanvasProps {
    */
   onClipMenuClick?: (clipId: number, trackIndex: number, x: number, y: number, openedViaKeyboard?: boolean) => void;
   /**
+   * Callback when time selection context menu is requested
+   */
+  onTimeSelectionMenuClick?: (x: number, y: number) => void;
+  /**
    * Callback when track keyboard focus changes
    */
   onTrackFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
@@ -79,6 +83,7 @@ export function Canvas({
   leftPadding = 0,
   onHeightChange,
   onClipMenuClick,
+  onTimeSelectionMenuClick,
   onTrackFocusChange,
   keyboardFocusedTrack = null,
   showRmsInWaveform = true,
@@ -329,6 +334,13 @@ export function Canvas({
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
                   // Clear label selections
                   dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
+                }
+              }}
+              onContextMenu={(e) => {
+                // If there's a time selection, show time selection context menu
+                if (timeSelection) {
+                  e.preventDefault();
+                  onTimeSelectionMenuClick?.(e.clientX, e.clientY);
                 }
               }}
             >

@@ -3,7 +3,7 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { CustomScrollbar } from './components/CustomScrollbar';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TimeSelectionContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel } from '@audacity-ui/components';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { DebugPanel } from './components/DebugPanel';
@@ -539,6 +539,13 @@ function CanvasDemoContent() {
 
   // Timeline ruler context menu state
   const [timelineRulerContextMenu, setTimelineRulerContextMenu] = React.useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Time selection context menu state
+  const [timeSelectionContextMenu, setTimeSelectionContextMenu] = React.useState<{
     isOpen: boolean;
     x: number;
     y: number;
@@ -2544,6 +2551,9 @@ function CanvasDemoContent() {
                     onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
                       setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                     }}
+                    onTimeSelectionMenuClick={(x, y) => {
+                      setTimeSelectionContextMenu({ isOpen: true, x, y });
+                    }}
                     onTrackFocusChange={(trackIndex, hasFocus) => {
                       if (hasFocus) {
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
@@ -3502,6 +3512,67 @@ function CanvasDemoContent() {
           onToggleVerticalRulers={() => {
             setShowVerticalRulers(!showVerticalRulers);
             setTimelineRulerContextMenu(null);
+          }}
+        />
+      )}
+
+      {/* Time Selection Context Menu */}
+      {timeSelectionContextMenu && state.timeSelection && (
+        <TimeSelectionContextMenu
+          isOpen={timeSelectionContextMenu.isOpen}
+          x={timeSelectionContextMenu.x}
+          y={timeSelectionContextMenu.y}
+          onClose={() => setTimeSelectionContextMenu(null)}
+          cutMode={state.cutMode}
+          onCut={() => {
+            // Cut operation - same as Cmd+X but triggered from context menu
+            const { startTime, endTime } = state.timeSelection!;
+            const deletionDuration = endTime - startTime;
+
+            dispatch({
+              type: 'DELETE_TIME_RANGE',
+              payload: { startTime, endTime },
+            });
+
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+            if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
+              const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
+              dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+            }
+
+            const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
+            toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
+            setTimeSelectionContextMenu(null);
+          }}
+          onCopy={() => {
+            toast.info('Copy time selection - not yet implemented');
+            setTimeSelectionContextMenu(null);
+          }}
+          onPaste={() => {
+            toast.info('Paste into time selection - not yet implemented');
+            setTimeSelectionContextMenu(null);
+          }}
+          onDelete={() => {
+            // Delete operation - same as Delete key
+            const { startTime, endTime } = state.timeSelection!;
+            const deletionDuration = endTime - startTime;
+
+            dispatch({
+              type: 'DELETE_TIME_RANGE',
+              payload: { startTime, endTime },
+            });
+
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+            if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
+              const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
+              dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+            }
+
+            const cutModeLabel = state.cutMode === 'split' ? 'Split delete' : 'Ripple delete';
+            toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
+            setTimeSelectionContextMenu(null);
           }}
         />
       )}
