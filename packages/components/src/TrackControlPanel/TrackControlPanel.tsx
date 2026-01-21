@@ -30,6 +30,7 @@ export interface TrackControlPanelProps {
   className?: string;
   state?: 'idle' | 'hover' | 'active';
   height?: 'default' | 'truncated' | 'collapsed';
+  width?: number; // Width in pixels for responsive behavior
   tabIndex?: number;
   onFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down') => void;
@@ -58,6 +59,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   className = '',
   state = 'idle',
   height = 'default',
+  width,
   tabIndex,
   onFocusChange,
   onNavigateVertical,
@@ -327,8 +329,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
         )}
 
-        {/* Bottom Button - show for default height, or for label tracks in truncated mode */}
-        {(height === 'default' || (isLabelTrack && height === 'truncated')) && (
+        {/* Bottom Button - show for default height (or label tracks in truncated mode), and hide when width < 100px */}
+        {(height === 'default' || (isLabelTrack && height === 'truncated')) && (width === undefined || width >= 100) && (
           <Button
             variant="secondary"
             size="small"

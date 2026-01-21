@@ -147,6 +147,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   const [addTrackFlyoutOpen, setAddTrackFlyoutOpen] = useState(false);
   const [addTrackFlyoutPosition, setAddTrackFlyoutPosition] = useState({ x: 0, y: 0 });
   const addButtonRef = React.useRef<HTMLDivElement>(null);
+  const [panelWidth, setPanelWidth] = useState(280);
 
   const { activeProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
@@ -197,7 +198,10 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       resizable={resizable}
       minWidth={minWidth}
       maxWidth={maxWidth}
-      onResize={onResize}
+      onResize={(width) => {
+        setPanelWidth(width);
+        onResize?.(width);
+      }}
       className={`track-control-side-panel ${className}`}
       style={style}
     >
@@ -255,6 +259,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                 isFocused,
                 isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
                 onMenuClick: (event: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(index, event),
+                width: panelWidth,
               })}
             </ResizablePanel>
           );
