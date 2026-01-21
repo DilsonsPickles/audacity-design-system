@@ -59,6 +59,11 @@ export interface CanvasProps {
    * @default 'musescore'
    */
   controlPointStyle?: 'musescore' | 'au4';
+  /**
+   * Viewport height for calculating buffer space below last track
+   * @default 0
+   */
+  viewportHeight?: number;
 }
 
 /**
@@ -78,6 +83,7 @@ export function Canvas({
   keyboardFocusedTrack = null,
   showRmsInWaveform = true,
   controlPointStyle = 'musescore',
+  viewportHeight = 0,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -154,8 +160,10 @@ export function Canvas({
     clipContentOffset: CLIP_CONTENT_OFFSET,
   });
 
-  // Calculate total height based on all tracks + 2px gaps (top + between tracks)
-  const totalHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
+  // Calculate total height based on all tracks + 2px gaps (top + between tracks) + buffer space below
+  const tracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
+  const bufferSpace = viewportHeight * 0.5; // 50% of viewport height for buffer below last track
+  const totalHeight = tracksHeight + bufferSpace;
 
   // Notify parent when height changes
   useEffect(() => {

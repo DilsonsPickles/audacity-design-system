@@ -1955,6 +1955,7 @@ function CanvasDemoContent() {
               focusedTrackIndex={keyboardFocusedTrack}
               scrollRef={trackHeaderScrollRef}
               onScroll={handleTrackHeaderScroll}
+              bufferSpace={(scrollContainerRef.current?.clientHeight || 0) * 0.5}
               onTrackResize={(trackIndex, height) => {
                 dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
               }}
@@ -2327,6 +2328,7 @@ function CanvasDemoContent() {
                     keyboardFocusedTrack={keyboardFocusedTrack}
                     showRmsInWaveform={showRmsInWaveform}
                     controlPointStyle={controlPointStyle}
+                    viewportHeight={scrollContainerRef.current?.clientHeight || 0}
                     onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
                       setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                     }}

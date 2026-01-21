@@ -106,6 +106,12 @@ export interface TrackControlSidePanelProps {
    * Called when the track list is scrolled
    */
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+
+  /**
+   * Buffer space below the last track (px)
+   * @default 0
+   */
+  bufferSpace?: number;
 }
 
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
@@ -128,6 +134,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   className = '',
   scrollRef,
   onScroll,
+  bufferSpace = 0,
 }) => {
   const { theme } = useTheme();
   const childArray = React.Children.toArray(children) as ReactElement<TrackControlPanelProps>[];
@@ -225,7 +232,12 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       </div>
 
       {/* Track list */}
-      <div className="track-control-side-panel__list" ref={scrollRef} onScroll={onScroll}>
+      <div
+        className="track-control-side-panel__list"
+        ref={scrollRef}
+        onScroll={onScroll}
+        style={{ paddingBottom: `${bufferSpace}px` }}
+      >
         {childArray.map((child, index) => {
           const height = trackHeights[index] || 114; // Default to 114px
           const isFocused = focusedTrackIndex === index;
