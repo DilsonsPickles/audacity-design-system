@@ -253,6 +253,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
         const detectedSampleRate = waveformLeft.length / fullDuration;
 
+
         // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
         // This prevents waveform stretching when trimming
         const secondsPerPixel = 1 / pixelsPerSecond;

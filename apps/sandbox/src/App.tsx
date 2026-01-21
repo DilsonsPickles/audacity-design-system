@@ -1397,6 +1397,7 @@ function CanvasDemoContent() {
             const { startTime, endTime } = state.timeSelection;
             const deletionDuration = endTime - startTime;
 
+            // Use DELETE_TIME_RANGE to respect cut mode
             dispatch({
               type: 'DELETE_TIME_RANGE',
               payload: { startTime, endTime },
@@ -1413,7 +1414,8 @@ function CanvasDemoContent() {
               dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
             }
 
-            toast.success(`Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
+            const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
+            toast.success(`${cutModeLabel}: Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
           } else {
             // Clear time selection even when not deleting time
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
@@ -1425,7 +1427,38 @@ function CanvasDemoContent() {
           return;
         }
 
-        // Priority 2: Delete focused clip and/or selected clips
+        // Priority 2: If there's a time selection, perform cut operation (BEFORE checking clips)
+        if (state.timeSelection) {
+
+          const { startTime, endTime } = state.timeSelection;
+          const deletionDuration = endTime - startTime;
+
+
+          // Dispatch DELETE_TIME_RANGE action (respects cut mode: split/ripple)
+          dispatch({
+            type: 'DELETE_TIME_RANGE',
+            payload: { startTime, endTime },
+          });
+
+          // Clear time selection after deletion
+          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+          // Clear selection anchor so next Shift+. starts fresh
+          selectionAnchorRef.current = null;
+          selectionEdgesRef.current = null;
+
+          // Adjust playhead position based on cut mode
+          if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
+            // In ripple mode, if playhead is after the deletion, shift it left
+            const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+          }
+
+          const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
+          toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
+          return;
+        }
+
+        // Priority 3: Delete focused clip and/or selected clips
         // Check if a clip has keyboard focus
         let focusedClipInfo: { clipId: string | number; trackIndex: number } | null = null;
         const activeElement = document.activeElement;
@@ -1464,6 +1497,7 @@ function CanvasDemoContent() {
             }
           });
         });
+
 
         // Delete all clips in the union
         if (clipsToDelete.length > 0) {
@@ -1547,40 +1581,6 @@ function CanvasDemoContent() {
             }, 50);
           }
 
-          return;
-        }
-
-        // Priority 3: If there's a time selection, perform cut operation
-        if (state.timeSelection) {
-          const { startTime, endTime } = state.timeSelection;
-          const deletionDuration = endTime - startTime;
-
-          // Ensure we have tracks selected - if not, select all tracks
-          if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
-            const allTrackIndices = state.tracks.map((_, idx) => idx);
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-          }
-
-          // Dispatch DELETE_TIME_RANGE action
-          dispatch({
-            type: 'DELETE_TIME_RANGE',
-            payload: { startTime, endTime },
-          });
-
-          // Clear time selection after deletion
-          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-          // Clear selection anchor so next Shift+. starts fresh
-          selectionAnchorRef.current = null;
-          selectionEdgesRef.current = null;
-
-          // Adjust playhead position based on cut mode
-          if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
-            // In ripple mode, if playhead is after the deletion, shift it left
-            const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
-            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
-          }
-
-          toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
           return;
         }
 

@@ -88,6 +88,8 @@ export function applySplitCut(
         const firstClip: Clip = {
           ...clip,
           duration: relativeStart,
+          trimStart: clip.trimStart, // Preserve existing trimStart (don't inherit from spread)
+          fullDuration: clip.fullDuration || clip.duration, // Preserve full duration
           envelopePoints: clip.envelopePoints.filter(p => p.time < relativeStart),
         };
 
@@ -102,6 +104,7 @@ export function applySplitCut(
           start: endTime,
           duration: secondClipDuration,
           trimStart: newTrimStart,
+          fullDuration: clip.fullDuration || clip.duration, // Preserve full duration
           // Shift envelope points left by the amount cut + the first clip duration
           envelopePoints: clip.envelopePoints
             .filter(p => p.time >= relativeEnd)
