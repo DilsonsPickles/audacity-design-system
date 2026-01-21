@@ -168,24 +168,25 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
     // Render based on channel mode and variant
     if (channelMode === 'split-mono' || channelMode === 'split-stereo') {
-      // Split view: spectrogram on top half, waveform on bottom half
-      const splitY = canvasHeight / 2;
-      const halfHeight = canvasHeight / 2;
+      // Split view: spectrogram on top, waveform on bottom (ratio controlled by channelSplitRatio)
+      const topHeight = canvasHeight * channelSplitRatio;
+      const bottomHeight = canvasHeight * (1 - channelSplitRatio);
+      const splitY = topHeight;
 
-      // Top half: spectrogram
+      // Top section: spectrogram
       const spectrogramBg = computedStyle.getPropertyValue('--spectrogram-background').trim();
       ctx.fillStyle = spectrogramBg;
-      ctx.fillRect(0, 0, canvasWidth, halfHeight);
+      ctx.fillRect(0, 0, canvasWidth, topHeight);
 
-      // Clip spectrogram rendering to top half only (prevents pixel blocks from extending below split line)
+      // Clip spectrogram rendering to top section only (prevents pixel blocks from extending below split line)
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, 0, canvasWidth, halfHeight);
+      ctx.rect(0, 0, canvasWidth, topHeight);
       ctx.clip();
 
       if (channelMode === 'split-stereo' && isStereo) {
-        // Stereo split: L and R spectrograms in top half (quarters)
-        const quarterHeight = halfHeight / 2;
+        // Stereo split: L and R spectrograms in top section
+        const quarterHeight = topHeight / 2;
 
         // PERFORMANCE: Use reduced settings for real-time interaction
         const spectrogramOptions = {
@@ -210,8 +211,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         // Render R channel spectrogram (second quarter)
         renderMonoSpectrogram(ctx, waveformRight, 0, quarterHeight, canvasWidth, quarterHeight, spectrogramOptions);
       } else if (hasMono) {
-        // Mono split: single spectrogram in top half
-        renderMonoSpectrogram(ctx, waveformData!, 0, 0, canvasWidth, halfHeight, {
+        // Mono split: single spectrogram in top section
+        renderMonoSpectrogram(ctx, waveformData!, 0, 0, canvasWidth, topHeight, {
           frequencyBands: 16,
           fftWindowSize: 64,
           intensityMultiplier: 1.5,
@@ -240,8 +241,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       ctx.lineWidth = 1;
 
       if (channelMode === 'split-stereo' && isStereo) {
-        // Stereo: L and R waveforms in bottom half (quarters)
-        const stereoHeight = halfHeight / 2;
+        // Stereo: L and R waveforms in bottom section
+        const stereoHeight = bottomHeight / 2;
         const lChannelY = splitY + stereoHeight / 2;
         const rChannelY = splitY + stereoHeight + stereoHeight / 2;
         const maxAmplitude = (stereoHeight / 2) * 0.9;
@@ -380,9 +381,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         }
       } else if (hasMono) {
-        // Mono: single waveform centered in bottom half
-        const waveformCenterY = splitY + halfHeight / 2;
-        const maxAmplitude = (halfHeight / 2) * 0.9;
+        // Mono: single waveform centered in bottom section
+        const waveformCenterY = splitY + bottomHeight / 2;
+        const maxAmplitude = (bottomHeight / 2) * 0.9;
 
         // Calculate sample offset based on trim start
         // Detect the actual sample rate from the waveform array length
@@ -785,9 +786,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       let envelopeHeight = canvasHeight;
 
       if (channelMode === 'split-mono' || channelMode === 'split-stereo') {
-        // Split view: waveform is in bottom half, so envelope should only render there
-        envelopeY = canvasHeight / 2;
-        envelopeHeight = canvasHeight / 2;
+        // Split view: waveform is in bottom section, so envelope should only render there
+        envelopeY = canvasHeight * channelSplitRatio;
+        envelopeHeight = canvasHeight * (1 - channelSplitRatio);
       }
 
       // Filter out hidden points for both line and control points

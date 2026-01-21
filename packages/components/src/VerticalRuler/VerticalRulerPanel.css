@@ -68,6 +68,30 @@
   bottom: -2px;
 }
 
+/* Focused track - same as selected */
+.vertical-ruler-panel__track--focused {
+  background-color: var(--panel-track-selected);
+}
+
+.vertical-ruler-panel__track--focused::before,
+.vertical-ruler-panel__track--focused::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--panel-track-selected-border);
+  pointer-events: none;
+}
+
+.vertical-ruler-panel__track--focused::before {
+  top: -2px;
+}
+
+.vertical-ruler-panel__track--focused::after {
+  bottom: -2px;
+}
+
 /* Track gap */
 .vertical-ruler-panel__track-gap {
   width: 100%;

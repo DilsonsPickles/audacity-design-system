@@ -181,6 +181,18 @@ export interface TrackProps {
     outerRadiusHover: number;
     innerRadiusHover: number;
   };
+
+  /**
+   * Split view ratio (0-1, where 0.5 is center)
+   * Controls the position of the divider between spectrogram (top) and waveform (bottom)
+   * @default 0.5
+   */
+  channelSplitRatio?: number;
+
+  /**
+   * Callback when split view ratio changes (user drags divider)
+   */
+  onChannelSplitRatioChange?: (ratio: number) => void;
 }
 
 // Map track index to color
@@ -225,11 +237,51 @@ export const TrackNew: React.FC<TrackProps> = ({
   isTimeSelectionDragging = false,
   clipStyle = 'colourful',
   envelopePointSizes,
+  channelSplitRatio = 0.5,
+  onChannelSplitRatioChange,
 }) => {
   const trackColor = getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipHoveredPoints, setClipHoveredPoints] = React.useState<Map<string | number, number | null>>(new Map());
   const [hasKeyboardFocus, setHasKeyboardFocus] = React.useState(false);
+  const [isDraggingDivider, setIsDraggingDivider] = React.useState(false);
+  const [dividerHover, setDividerHover] = React.useState(false);
+  const trackRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle divider drag
+  React.useEffect(() => {
+    if (!isDraggingDivider || !onChannelSplitRatioChange) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!trackRef.current) return;
+
+      const rect = trackRef.current.getBoundingClientRect();
+      const mouseY = e.clientY - rect.top;
+
+      // Calculate ratio within clip body (excluding 20px header)
+      const CLIP_HEADER_HEIGHT = 20;
+      const clipBodyHeight = height - CLIP_HEADER_HEIGHT;
+      const yInBody = mouseY - CLIP_HEADER_HEIGHT;
+
+      // Constrain ratio between 0.1 and 0.9
+      const newRatio = Math.max(0.1, Math.min(0.9, yInBody / clipBodyHeight));
+
+      onChannelSplitRatioChange(newRatio);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingDivider(false);
+      document.body.style.cursor = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingDivider, onChannelSplitRatioChange, height]);
 
   // Calculate background color with white overlay based on selection state
   // Idle (not selected, not focused): 8% white
@@ -426,6 +478,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             waveformRight={waveformRight}
             waveformLeftRms={clip.waveformLeftRms}
             waveformRightRms={clip.waveformRightRms}
+            channelSplitRatio={channelSplitRatio}
             envelope={clip.envelopePoints}
             showEnvelope={envelopeMode}
             clipDuration={clip.duration}
@@ -556,6 +609,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   return (
     <div className={className} data-track-index={trackIndex}>
       <div
+        ref={trackRef}
         className={`track ${isSelected ? 'track--selected' : ''} ${isMuted ? 'track--muted' : ''}`}
         style={{
           position: 'relative',
@@ -587,6 +641,32 @@ export const TrackNew: React.FC<TrackProps> = ({
         {renderTimeSelectionOverlay()}
         {renderClips()}
         {renderEnvelopeInteractionLayers()}
+
+        {/* Split view divider - draggable horizontal line */}
+        {splitView && onChannelSplitRatioChange && (
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDraggingDivider(true);
+              document.body.style.cursor = 'ns-resize';
+            }}
+            onMouseEnter={() => setDividerHover(true)}
+            onMouseLeave={() => setDividerHover(false)}
+            style={{
+              position: 'absolute',
+              top: `${20 + (height - 20) * channelSplitRatio}px`,
+              left: 0,
+              width: '100%',
+              height: dividerHover || isDraggingDivider ? '3px' : '1px',
+              backgroundColor: dividerHover || isDraggingDivider ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+              cursor: 'ns-resize',
+              zIndex: 10,
+              transform: dividerHover || isDraggingDivider ? 'translateY(-1px)' : 'none',
+              transition: isDraggingDivider ? 'none' : 'all 0.1s ease',
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ export interface TrackRulerConfig {
   height: number;
   /** Whether track is selected */
   selected?: boolean;
+  /** Whether track has focus */
+  focused?: boolean;
   /** Whether track is stereo (shows two rulers) */
   stereo?: boolean;
   /** Track type */
@@ -19,6 +21,8 @@ export interface TrackRulerConfig {
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   /** Track type - label tracks show no ruler */
   trackType?: 'audio' | 'label';
+  /** Split ratio for split view (0-1, default 0.5) */
+  channelSplitRatio?: number;
 }
 
 export interface VerticalRulerPanelProps {
@@ -73,12 +77,14 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
 }) => {
   const { theme } = useTheme();
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const prevFocusedIndexRef = useRef<number>(-1);
 
-  // Auto-focus the selected track
+  // Auto-focus the focused track (only when focus changes)
   useEffect(() => {
-    const selectedIndex = tracks.findIndex(track => track.selected);
-    if (selectedIndex !== -1 && trackRefs.current[selectedIndex]) {
-      trackRefs.current[selectedIndex]?.focus();
+    const focusedIndex = tracks.findIndex(track => track.focused);
+    if (focusedIndex !== prevFocusedIndexRef.current && focusedIndex !== -1 && trackRefs.current[focusedIndex]) {
+      trackRefs.current[focusedIndex]?.focus();
+      prevFocusedIndexRef.current = focusedIndex;
     }
   }, [tracks]);
 
@@ -122,10 +128,10 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
             <div
               ref={(el) => (trackRefs.current[index] = el)}
               className={`vertical-ruler-panel__track ${
-                track.selected ? 'vertical-ruler-panel__track--selected' : ''
+                track.focused ? 'vertical-ruler-panel__track--focused' : ''
               }`}
               style={{ height: `${track.height}px` }}
-              tabIndex={track.selected ? 0 : -1}
+              tabIndex={track.focused ? 0 : -1}
             >
               {/* 20px spacer to align with clip header recess (hidden for label tracks and when track is too small) */}
               {track.trackType !== 'label' && track.height > 44 && (
@@ -137,27 +143,37 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 null
               ) : track.viewMode === 'split' ? (
                 // Split view - frequency ruler on top, amplitude ruler on bottom
-                <div className="vertical-ruler-panel__split">
-                  <FrequencyRuler
-                    height={(track.height - (track.height > 44 ? 20 : 0)) / 2}
-                    minFreq={10}
-                    maxFreq={22050}
-                    position="right"
-                    width={width}
-                    headerHeight={0}
-                  />
-                  <div className="vertical-ruler-panel__split-divider" />
-                  <VerticalRuler
-                    height={(track.height - (track.height > 44 ? 20 : 0)) / 2}
-                    min={-1.0}
-                    max={1.0}
-                    majorDivisions={5}
-                    minorDivisions={4}
-                    position="right"
-                    width={width}
-                    headerHeight={0}
-                  />
-                </div>
+                (() => {
+                  const splitRatio = track.channelSplitRatio ?? 0.5;
+                  const spacerHeight = track.height > 44 ? 20 : 0;
+                  const availableHeight = track.height - spacerHeight;
+                  const topHeight = availableHeight * splitRatio;
+                  const bottomHeight = availableHeight * (1 - splitRatio);
+
+                  return (
+                    <div className="vertical-ruler-panel__split">
+                      <FrequencyRuler
+                        height={topHeight}
+                        minFreq={10}
+                        maxFreq={22050}
+                        position="right"
+                        width={width}
+                        headerHeight={0}
+                      />
+                      <div className="vertical-ruler-panel__split-divider" />
+                      <VerticalRuler
+                        height={bottomHeight}
+                        min={-1.0}
+                        max={1.0}
+                        majorDivisions={5}
+                        minorDivisions={4}
+                        position="right"
+                        width={width}
+                        headerHeight={0}
+                      />
+                    </div>
+                  );
+                })()
               ) : track.viewMode === 'spectrogram' ? (
                 // Spectrogram mode - frequency ruler
                 <FrequencyRuler

@@ -206,10 +206,12 @@ export function Canvas({
       },
       onSelectedTracksChange: (trackIndices) => dispatch({ type: 'SET_SELECTED_TRACKS', payload: trackIndices }),
       onFocusedTrackChange: (trackIndex) => {
-        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+        // Don't clear focus when clicking empty space - maintain current focus
         if (trackIndex !== null) {
+          dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
           onTrackFocusChange?.(trackIndex, true); // Update keyboard focus state in App.tsx
         }
+        // If trackIndex is null (clicked empty space), do nothing - keep current focus
       },
       onSpectralSelectionChange: (sel) => {
         // Batch updates using requestAnimationFrame to reduce re-renders during drag
@@ -323,6 +325,8 @@ export function Canvas({
                   if (!e.shiftKey) {
                     dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
                   }
+                  // Set this track as focused
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
                   // Clear label selections
                   dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
                 }
@@ -567,6 +571,17 @@ export function Canvas({
                   // The actual trimming happens in the mousemove handler
                 }}
                 envelopePointSizes={envelopePointSizes}
+                channelSplitRatio={track.channelSplitRatio}
+                onChannelSplitRatioChange={(ratio) => {
+                  dispatch({
+                    type: 'UPDATE_CHANNEL_SPLIT_RATIO',
+                    payload: { index: trackIndex, ratio },
+                  });
+                }}
+                onTrackClick={() => {
+                  // When track background is clicked, set it as focused
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+                }}
               />
 
               {/* Render labels for label tracks */}

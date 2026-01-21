@@ -2488,9 +2488,11 @@ function CanvasDemoContent() {
                     id: track.id.toString(),
                     height: track.height || 114,
                     selected: state.selectedTrackIndices.includes(index),
+                    focused: state.focusedTrackIndex === index,
                     stereo: false, // TODO: Add stereo support when needed
                     viewMode: track.viewMode,
                     trackType: track.type,
+                    channelSplitRatio: track.channelSplitRatio,
                   }))}
                   width={64}
                   headerHeight={0}

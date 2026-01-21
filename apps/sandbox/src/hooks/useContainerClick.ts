@@ -72,17 +72,15 @@ export function useContainerClick({
     const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
 
     if (y > totalTracksHeight) {
-      // Clicked in empty space below tracks - deselect everything
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
-      dispatch({ type: 'SET_FOCUSED_TRACK', payload: null });
-      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-      onTrackFocusChange?.(0, false); // Clear keyboard focus
+      // Clicked in empty space below tracks - maintain focus for vertical ruler
+      // Don't change anything - keep current focused track and selection
     } else if (clickedTrackIndex !== null) {
-      // Clicked on a track - select it and set focus
+      // Clicked on a track - set it as focused
       dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
       onTrackFocusChange?.(clickedTrackIndex, true);
     }
+    // If clickedTrackIndex is null but y is within track bounds, do nothing - maintain current state
 
     // Always move playhead on click (allow it to go to 0 - stalk can touch the gap)
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, time) });
