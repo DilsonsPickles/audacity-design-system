@@ -25,6 +25,7 @@ export * from './PanKnob';
 export * from './Slider';
 export * from './ToggleButton';
 export * from './ToolButton';
+export * from './TrackMeter';
 export * from './ToggleToolButton';
 export * from './TrackControlPanel';
 export * from './TransportButton';

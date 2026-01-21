@@ -143,9 +143,10 @@ export const lightTheme: ThemeTokens = {
       },
 
       meter: {
-        background: '#EBEDF0',   // Light gray background
-        fill: '#74BE59',         // Green fill
+        background: '#CFCFD9',   // Meter background (from Figma)
+        fill: '#677CE4',         // Blue meter fill (active control value)
         peak: '#F08080',         // Red peak indicator
+        rms: 'rgba(255, 255, 255, 0.25)', // RMS overlay (white at 25% opacity)
       },
     },
 

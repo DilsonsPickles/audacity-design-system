@@ -209,6 +209,7 @@ export interface ThemeTokens {
         background: string;
         fill: string;
         peak: string;
+        rms: string;
       };
     };
 

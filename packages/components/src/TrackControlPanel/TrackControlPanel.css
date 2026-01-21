@@ -90,7 +90,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--tcp-gap);
-  padding: 12px; /* 12px padding all around for label tracks */
+  padding: 12px;
   min-width: 0;
   align-self: stretch;
   border-radius: var(--tcp-radius-md) 0 0 var(--tcp-radius-md);
@@ -264,38 +264,15 @@
 
 /* Volume Meter */
 .track-control-panel__meter {
-  width: 8px;
+  width: 24px;
   padding: 6px 8px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   gap: 2px;
   flex-shrink: 0;
   align-self: stretch;
-}
-
-.track-control-panel__meter-bar {
-  position: relative;
-  flex: 1;
-  border-radius: 1px;
-  overflow: hidden;
-}
-
-.track-control-panel__meter-clip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 6px;
-  background: var(--tcp-control-meter-bg);
-}
-
-.track-control-panel__meter-main {
-  position: absolute;
-  top: 8px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--tcp-control-meter-bg);
 }
 
 /* Collapsed state - hide controls */

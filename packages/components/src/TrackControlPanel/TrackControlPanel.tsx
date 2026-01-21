@@ -6,6 +6,7 @@ import { Icon } from '../Icon';
 import { PanKnob } from '../PanKnob';
 import { Slider } from '../Slider';
 import { ToggleButton } from '../ToggleButton';
+import { TrackMeter } from '../TrackMeter';
 import './TrackControlPanel.css';
 
 export interface TrackControlPanelProps {
@@ -35,6 +36,20 @@ export interface TrackControlPanelProps {
   onFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down') => void;
   onTabOut?: () => void;
+  // Meter props (for mono tracks, use meterLevel; for stereo, use meterLevelLeft/meterLevelRight)
+  meterLevel?: number; // 0-100 - current meter level (mono)
+  meterLevelLeft?: number; // 0-100 - left channel meter level (stereo)
+  meterLevelRight?: number; // 0-100 - right channel meter level (stereo)
+  meterClipped?: boolean; // Whether meter is clipping (mono)
+  meterClippedLeft?: boolean; // Whether left channel is clipping (stereo)
+  meterClippedRight?: boolean; // Whether right channel is clipping (stereo)
+  meterStyle?: 'default' | 'rms'; // Meter display style
+  meterRecentPeak?: number; // 0-100 - recent peak level (mono)
+  meterRecentPeakLeft?: number; // 0-100 - left channel recent peak (stereo)
+  meterRecentPeakRight?: number; // 0-100 - right channel recent peak (stereo)
+  meterMaxPeak?: number; // 0-100 - max peak level (mono)
+  meterMaxPeakLeft?: number; // 0-100 - left channel max peak (stereo)
+  meterMaxPeakRight?: number; // 0-100 - right channel max peak (stereo)
 }
 
 export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
@@ -64,6 +79,19 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onFocusChange,
   onNavigateVertical,
   onTabOut,
+  meterLevel = 0,
+  meterLevelLeft,
+  meterLevelRight,
+  meterClipped = false,
+  meterClippedLeft,
+  meterClippedRight,
+  meterStyle = 'default',
+  meterRecentPeak,
+  meterRecentPeakLeft,
+  meterRecentPeakRight,
+  meterMaxPeak,
+  meterMaxPeakLeft,
+  meterMaxPeakRight,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -346,12 +374,42 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         )}
       </div>
 
-      {/* Volume Meter - Always visible */}
+      {/* Volume Meter - Always visible (empty for label tracks to maintain alignment) */}
       <div className="track-control-panel__meter">
-        <div className="track-control-panel__meter-bar">
-          <div className="track-control-panel__meter-clip"></div>
-          <div className="track-control-panel__meter-main"></div>
-        </div>
+        {!isLabelTrack && (
+          trackType === 'stereo' ? (
+            <>
+              {/* Left channel meter */}
+              <TrackMeter
+                variant="stereo"
+                volume={meterLevelLeft ?? 0}
+                clipped={meterClippedLeft ?? false}
+                meterStyle={meterStyle}
+                recentPeak={meterRecentPeakLeft}
+                maxPeak={meterMaxPeakLeft}
+              />
+              {/* Right channel meter */}
+              <TrackMeter
+                variant="stereo"
+                volume={meterLevelRight ?? 0}
+                clipped={meterClippedRight ?? false}
+                meterStyle={meterStyle}
+                recentPeak={meterRecentPeakRight}
+                maxPeak={meterMaxPeakRight}
+              />
+            </>
+          ) : (
+            /* Mono meter */
+            <TrackMeter
+              variant="mono"
+              volume={meterLevel}
+              clipped={meterClipped}
+              meterStyle={meterStyle}
+              recentPeak={meterRecentPeak}
+              maxPeak={meterMaxPeak}
+            />
+          )
+        )}
       </div>
     </div>
   );

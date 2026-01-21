@@ -2041,9 +2041,18 @@ function CanvasDemoContent() {
                 dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
               }}
               onAddTrackType={(type: TrackType) => {
+                let trackName = `Track ${state.tracks.length + 1}`;
+                if (type === 'label') {
+                  trackName = `Label ${state.tracks.length + 1}`;
+                } else if (type === 'stereo') {
+                  trackName = `Stereo ${state.tracks.length + 1}`;
+                } else if (type === 'mono') {
+                  trackName = `Mono ${state.tracks.length + 1}`;
+                }
+
                 const newTrack = {
                   id: state.tracks.length + 1,
-                  name: type === 'label' ? `Label ${state.tracks.length + 1}` : `Track ${state.tracks.length + 1}`,
+                  name: trackName,
                   type: (type === 'label' ? 'label' : 'audio') as 'audio' | 'label',
                   height: type === 'label' ? 82 : 114,
                   channelSplitRatio: 0.5,
@@ -2073,7 +2082,12 @@ function CanvasDemoContent() {
             >
             {state.tracks.map((track, index) => {
               // Determine track type from track name (temporary until we add trackType to state)
-              const trackType = track.name.toLowerCase().includes('label') ? 'label' : 'mono';
+              let trackType: 'mono' | 'stereo' | 'label' = 'mono';
+              if (track.name.toLowerCase().includes('label')) {
+                trackType = 'label';
+              } else if (track.name.toLowerCase().includes('stereo')) {
+                trackType = 'stereo';
+              }
 
               // Determine height state based on track height
               const trackHeight = track.height || 114;
@@ -2096,6 +2110,12 @@ function CanvasDemoContent() {
                   isMuted={false}
                   isSolo={false}
                   isFocused={keyboardFocusedTrack === index}
+                  // Meter props - inactive (0) when no audio is playing
+                  meterLevel={0}
+                  meterLevelLeft={0}
+                  meterLevelRight={0}
+                  meterClipped={false}
+                  meterStyle="default"
                   onMuteToggle={() => {}}
                   onSoloToggle={() => {}}
                   tabIndex={isFlatNavigation ? 0 : (100 + index * 2)}

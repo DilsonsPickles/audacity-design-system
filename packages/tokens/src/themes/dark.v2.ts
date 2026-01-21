@@ -146,6 +146,7 @@ export const darkTheme: ThemeTokens = {
         background: '#1a1b1e',   // Very dark background
         fill: '#22c55e',         // Green fill (brighter in dark theme)
         peak: '#ef4444',         // Red peak indicator
+        rms: 'rgba(255, 255, 255, 0.25)', // RMS overlay (white at 25% opacity)
       },
     },
 

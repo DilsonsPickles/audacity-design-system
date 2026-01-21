@@ -46,6 +46,27 @@ const meta = {
       options: ['default', 'truncated', 'collapsed'],
       description: 'Height variant',
     },
+    meterLevel: {
+      control: { type: 'range', min: 0, max: 100, step: 1 },
+      description: 'Current meter level (0-100)',
+    },
+    meterClipped: {
+      control: 'boolean',
+      description: 'Whether the meter is clipping',
+    },
+    meterStyle: {
+      control: 'select',
+      options: ['default', 'rms'],
+      description: 'Meter display style',
+    },
+    meterRecentPeak: {
+      control: { type: 'range', min: 0, max: 100, step: 1 },
+      description: 'Recent peak level (0-100)',
+    },
+    meterMaxPeak: {
+      control: { type: 'range', min: 0, max: 100, step: 1 },
+      description: 'Max peak level (0-100)',
+    },
   },
 } satisfies Meta<typeof TrackControlPanel>;
 
@@ -63,6 +84,11 @@ export const MonoDefaultIdle: Story = {
     isSolo: false,
     state: 'idle',
     height: 'default',
+    meterLevel: 66,
+    meterClipped: false,
+    meterStyle: 'default',
+    meterRecentPeak: 66,
+    meterMaxPeak: 79,
   },
 };
 
@@ -145,6 +171,34 @@ export const StereoDefaultIdle: Story = {
     isSolo: false,
     state: 'idle',
     height: 'default',
+    meterLevelLeft: 75,
+    meterLevelRight: 60,
+    meterClippedLeft: false,
+    meterClippedRight: false,
+    meterStyle: 'default',
+    meterRecentPeakLeft: 75,
+    meterRecentPeakRight: 60,
+    meterMaxPeakLeft: 85,
+    meterMaxPeakRight: 72,
+  },
+};
+
+// Stereo track with RMS meters
+export const StereoWithRMS: Story = {
+  args: {
+    ...StereoDefaultIdle.args,
+    meterStyle: 'rms',
+  },
+};
+
+// Stereo track with clipping on one channel
+export const StereoClippingLeft: Story = {
+  args: {
+    ...StereoDefaultIdle.args,
+    meterLevelLeft: 100,
+    meterClippedLeft: true,
+    meterRecentPeakLeft: 100,
+    meterMaxPeakLeft: 100,
   },
 };
 
