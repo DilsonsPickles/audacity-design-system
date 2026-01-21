@@ -2326,6 +2326,7 @@ function CanvasDemoContent() {
                   height={0}
                   showTopIcon={true}
                   iconTopOffset={24}
+                  scrollX={scrollX}
                   onPositionChange={(newPosition) => {
                     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
                   }}

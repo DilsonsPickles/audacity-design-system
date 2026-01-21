@@ -34,6 +34,11 @@ export interface PlayheadCursorProps {
    * @default 0
    */
   minPosition?: number;
+  /**
+   * Horizontal scroll offset in pixels (for timeline ruler)
+   * @default 0
+   */
+  scrollX?: number;
 }
 
 /**
@@ -52,8 +57,9 @@ export function PlayheadCursor({
   iconTopOffset = 0,
   onPositionChange,
   minPosition = 0,
+  scrollX = 0,
 }: PlayheadCursorProps) {
-  const x = CLIP_CONTENT_OFFSET + position * pixelsPerSecond;
+  const x = CLIP_CONTENT_OFFSET + position * pixelsPerSecond - scrollX;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
