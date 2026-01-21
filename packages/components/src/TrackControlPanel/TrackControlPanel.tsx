@@ -258,21 +258,21 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
 
           <div className="track-control-panel__header-right">
-            {/* Mono/Stereo buttons - shown when collapsed/truncated */}
-            {!isLabelTrack && height !== 'default' && (
-              <div className="track-control-panel__channel-buttons">
+            {/* Mute and Solo buttons - shown in header when collapsed */}
+            {!isLabelTrack && height === 'collapsed' && (
+              <div className="track-control-panel__button-group">
                 <ToggleButton
-                  active={false}
-                  onClick={() => {}}
-                  ariaLabel="Mono"
+                  active={isMuted}
+                  onClick={onMuteToggle}
+                  ariaLabel="Mute"
                   tabIndex={-1}
                 >
                   M
                 </ToggleButton>
                 <ToggleButton
-                  active={false}
-                  onClick={() => {}}
-                  ariaLabel="Stereo"
+                  active={isSolo}
+                  onClick={onSoloToggle}
+                  ariaLabel="Solo"
                   tabIndex={-1}
                 >
                   S
@@ -329,8 +329,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
         )}
 
-        {/* Bottom Button - show for default height (or label tracks in truncated mode), and hide when width < 100px */}
-        {(height === 'default' || (isLabelTrack && height === 'truncated')) && (width === undefined || width >= 100) && (
+        {/* Bottom Button - show for default height only (hidden in truncated and collapsed) */}
+        {height === 'default' && (
           <Button
             variant="secondary"
             size="small"
