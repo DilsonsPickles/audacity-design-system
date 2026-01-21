@@ -14,7 +14,7 @@ export const SpectralRulerDemo: React.FC = () => {
         </label>
         <input
           type="range"
-          min="100"
+          min="44"
           max="2000"
           value={height}
           onChange={(e) => setHeight(Number(e.target.value))}

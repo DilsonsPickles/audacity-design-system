@@ -99,6 +99,11 @@ const FREQUENCY_TIERS = {
     major: [20, 100, 1000, 4000, 8000, 16000, 20000],
     minor: [50, 200, 315, 500, 800, 1600, 2000, 2500, 3150, 5000, 6300, 10000, 12500, 14000, 17000, 18000] // More minors
   },
+  // Tier 7: Absolute minimum (for very small track heights like 44px)
+  tier7: {
+    major: [20, 1000, 4000, 10000, 20000],
+    minor: [50, 100, 200, 500, 800, 2000, 3000, 5000, 6000, 8000, 12000, 16000] // Essential reference points as minors
+  },
 };
 
 /**
@@ -155,8 +160,10 @@ export const VerticalSpectralRuler: React.FC<VerticalSpectralRulerProps> = ({
     selectedTier = FREQUENCY_TIERS.tier4;
   } else if (checkTierSpacing(FREQUENCY_TIERS.tier5.major)) {
     selectedTier = FREQUENCY_TIERS.tier5;
-  } else {
+  } else if (checkTierSpacing(FREQUENCY_TIERS.tier6.major)) {
     selectedTier = FREQUENCY_TIERS.tier6;
+  } else {
+    selectedTier = FREQUENCY_TIERS.tier7;
   }
 
   // Filter frequencies to only those within our range
