@@ -568,7 +568,9 @@ function drawMinutesAndSeconds(
   // Draw top section ticks (only for major intervals)
   ctx.strokeStyle = topTickColor;
   for (let time = startTime; time <= endTime; time += majorInterval) {
-    const x = CLIP_CONTENT_OFFSET + time * pixelsPerSecond - scrollX;
+    // Round to avoid floating point precision issues (same as bottom ticks)
+    const roundedTime = Math.round(time / majorInterval) * majorInterval;
+    const x = CLIP_CONTENT_OFFSET + roundedTime * pixelsPerSecond - scrollX;
 
     if (x < CLIP_CONTENT_OFFSET || x > width) continue;
 
@@ -583,11 +585,13 @@ function drawMinutesAndSeconds(
 
   // Draw time labels for major ticks only
   for (let time = startTime; time <= endTime; time += majorInterval) {
-    const x = CLIP_CONTENT_OFFSET + time * pixelsPerSecond - scrollX;
+    // Round to avoid floating point precision issues (same as ticks)
+    const roundedTime = Math.round(time / majorInterval) * majorInterval;
+    const x = CLIP_CONTENT_OFFSET + roundedTime * pixelsPerSecond - scrollX;
 
     if (x < CLIP_CONTENT_OFFSET || x > width) continue;
 
-    const label = formatTime(time);
+    const label = formatTime(roundedTime);
     // Position label in top section, left-aligned to tick mark
     const textY = midHeight / 2 + 4; // Center in top half
     ctx.fillText(label, x + 4, textY); // 4px offset from tick for spacing

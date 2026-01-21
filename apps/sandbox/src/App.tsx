@@ -395,6 +395,84 @@ function CanvasDemoContent() {
     }
   };
 
+  const zoomToSelection = () => {
+    if (!state.timeSelection) {
+      toast.warning('No Selection', 'Please select a time range first');
+      return;
+    }
+
+    const selectionDuration = state.timeSelection.endTime - state.timeSelection.startTime;
+
+    // Calculate pixels per second to fit the selection in the viewport (100% width)
+    const viewportWidth = scrollContainerRef.current?.clientWidth || 800;
+    const newPixelsPerSecond = Math.floor(viewportWidth / selectionDuration);
+
+    // Apply zoom level constraints
+    const constrainedZoom = Math.max(10, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
+    setPixelsPerSecond(constrainedZoom);
+
+    // Scroll to show the selection at the left edge
+    const scrollPosition = state.timeSelection.startTime * constrainedZoom;
+
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = Math.max(0, scrollPosition);
+    }
+  };
+
+  const zoomToFitProject = () => {
+    // Find the earliest start time and latest end time across all clips
+    let projectStart = Infinity;
+    let projectEnd = 0;
+
+    state.tracks.forEach(track => {
+      track.clips.forEach(clip => {
+        const clipStart = clip.start;
+        const clipEnd = clip.start + clip.duration;
+        projectStart = Math.min(projectStart, clipStart);
+        projectEnd = Math.max(projectEnd, clipEnd);
+      });
+    });
+
+    // If no clips found, show a message
+    if (projectStart === Infinity || projectEnd === 0) {
+      toast.warning('No Audio', 'Project has no audio clips to display');
+      return;
+    }
+
+    const projectDuration = projectEnd - projectStart;
+
+    console.log('Zoom to Fit:', {
+      projectStart,
+      projectEnd,
+      projectDuration,
+      viewportWidth: scrollContainerRef.current?.clientWidth,
+    });
+
+    // Calculate pixels per second to fit the entire project in the viewport
+    // Use full viewport width
+    const viewportWidth = scrollContainerRef.current?.clientWidth || 800;
+    const newPixelsPerSecond = viewportWidth / projectDuration;
+
+    console.log('Calculated zoom:', {
+      newPixelsPerSecond,
+      min: 10,
+      max: maxPixelsPerSecond,
+    });
+
+    // Apply zoom level constraints
+    const constrainedZoom = Math.max(10, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
+    setPixelsPerSecond(constrainedZoom);
+
+    // Scroll to the start of the project
+    const scrollPosition = projectStart * constrainedZoom;
+
+    console.log('Scroll position:', scrollPosition);
+
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = scrollPosition;
+    }
+  };
+
   // Create a modified theme with the selected envelope color
   const theme = React.useMemo(() => {
     const envelopeColors = {
@@ -1876,6 +1954,8 @@ function CanvasDemoContent() {
                   <ToolbarButtonGroup gap={2}>
                     <ToolButton icon="zoom-in" onClick={zoomIn} />
                     <ToolButton icon="zoom-out" onClick={zoomOut} />
+                    <ToolButton icon="zoom-to-selection" onClick={zoomToSelection} />
+                    <ToolButton icon="zoom-to-fit" onClick={zoomToFitProject} />
                     <ToolButton icon="zoom-toggle" onClick={zoomToggle} />
                   </ToolbarButtonGroup>
 
@@ -2129,11 +2209,11 @@ function CanvasDemoContent() {
               >
               <div
                 ref={timelineRulerRef}
-                style={{ transform: `translateX(-${scrollX}px)`, width: '5000px', position: 'relative' }}
+                style={{ width: '100%', position: 'relative' }}
                 onMouseMove={(e) => {
                   if (timelineRulerRef.current) {
                     const rect = timelineRulerRef.current.getBoundingClientRect();
-                    const x = e.clientX - rect.left + scrollX; // Add scrollX to account for transform
+                    const x = e.clientX - rect.left + scrollX; // Add scrollX to convert viewport to canvas space
                     const CLIP_CONTENT_OFFSET = 12; // Match the constant from components
                     const timePosition = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
                     setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
@@ -2147,7 +2227,7 @@ function CanvasDemoContent() {
                   if (!clickRulerToStartPlayback || !timelineRulerRef.current) return;
 
                   const rect = timelineRulerRef.current.getBoundingClientRect();
-                  const x = e.clientX - rect.left + scrollX; // Add scrollX to account for transform
+                  const x = e.clientX - rect.left + scrollX; // Add scrollX since click is in viewport space
                   const CLIP_CONTENT_OFFSET = 12;
                   const clickedTime = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
 

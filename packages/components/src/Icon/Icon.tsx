@@ -48,7 +48,9 @@ export type IconName =
   | 'midi'
   | 'chevron-left'
   | 'chevron-right'
-  | 'zoom-toggle';
+  | 'zoom-toggle'
+  | 'zoom-to-selection'
+  | 'zoom-to-fit';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -98,6 +100,8 @@ const ICON_MAP: Record<IconName, string> = {
   'chevron-left': '\uF39C',
   'chevron-right': '\uF39B',
   'zoom-toggle': '\uF437',
+  'zoom-to-selection': '\uF438',
+  'zoom-to-fit': '\uF439',
 };
 
 export interface IconProps {
