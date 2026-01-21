@@ -127,6 +127,12 @@ export interface TracksState {
   // Stores track view modes before spectrogram overlay was applied
   viewModesBeforeOverlay: (('waveform' | 'spectrogram' | 'split') | undefined)[] | null;
   cutMode: CutMode; // 'split' or 'ripple'
+  // Recording state
+  isRecording: boolean;
+  recordingTrackIndex: number | null;
+  recordingStartTime: number; // Timestamp when recording started
+  recordingMeterLevel: number; // 0-100, current meter level during recording
+  recordingPeakLevel: number; // 0-100, peak level during recording
 }
 
 // Action types
@@ -161,7 +167,10 @@ export type TracksAction =
   | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> }  }
   | { type: 'SET_SELECTED_LABELS'; payload: string[] }
   | { type: 'TOGGLE_LABEL_SELECTION'; payload: string }
-  | { type: 'SET_CUT_MODE'; payload: CutMode };
+  | { type: 'SET_CUT_MODE'; payload: CutMode }
+  | { type: 'START_RECORDING'; payload: { trackIndex: number } }
+  | { type: 'STOP_RECORDING' }
+  | { type: 'UPDATE_RECORDING_METERS'; payload: { level: number; peak: number } };
 
 // Initial state
 const initialState: TracksState = {
@@ -178,6 +187,11 @@ const initialState: TracksState = {
   hoveredPoint: null,
   viewModesBeforeOverlay: null,
   cutMode: 'split', // Default to split cut mode
+  isRecording: false,
+  recordingTrackIndex: null,
+  recordingStartTime: 0,
+  recordingMeterLevel: 0,
+  recordingPeakLevel: 0,
 };
 
 // Reducer
@@ -186,8 +200,14 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     case 'SET_TRACKS':
       return { ...state, tracks: action.payload };
 
-    case 'ADD_TRACK':
-      return { ...state, tracks: [...state.tracks, action.payload] };
+    case 'ADD_TRACK': {
+      const newTracks = [...state.tracks, action.payload];
+      return {
+        ...state,
+        tracks: newTracks,
+        focusedTrackIndex: newTracks.length - 1, // Auto-focus the newly added track
+      };
+    }
 
     case 'UPDATE_TRACK': {
       const newTracks = [...state.tracks];
@@ -509,6 +529,33 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'SET_CUT_MODE':
       return { ...state, cutMode: action.payload };
+
+    case 'START_RECORDING':
+      return {
+        ...state,
+        isRecording: true,
+        recordingTrackIndex: action.payload.trackIndex,
+        recordingStartTime: Date.now(),
+        recordingMeterLevel: 0,
+        recordingPeakLevel: 0,
+      };
+
+    case 'STOP_RECORDING':
+      return {
+        ...state,
+        isRecording: false,
+        recordingTrackIndex: null,
+        recordingStartTime: 0,
+        recordingMeterLevel: 0,
+        recordingPeakLevel: 0,
+      };
+
+    case 'UPDATE_RECORDING_METERS':
+      return {
+        ...state,
+        recordingMeterLevel: action.payload.level,
+        recordingPeakLevel: Math.max(state.recordingPeakLevel, action.payload.peak),
+      };
 
     case 'DELETE_CLIP': {
       const { trackIndex, clipId } = action.payload;

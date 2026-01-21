@@ -10,6 +10,7 @@ import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
 import { TokenReview } from './pages/TokenReview';
 import { SpectralRulerDemo } from './pages/SpectralRulerDemo';
+import { RecordingManager } from './utils/RecordingManager';
 
 // Generate noise waveform data with headroom
 function generateWaveform(durationSeconds: number, sampleRate: number = 48000): number[] {
@@ -599,6 +600,9 @@ function CanvasDemoContent() {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const audioManagerRef = React.useRef(getAudioPlaybackManager());
 
+  // Recording state
+  const recordingManagerRef = React.useRef<RecordingManager | null>(null);
+
   // Track the anchor point for time selection (the fixed end while extending)
   const selectionAnchorRef = React.useRef<number | null>(null);
 
@@ -632,6 +636,14 @@ function CanvasDemoContent() {
     };
   }, [dispatch]);
 
+  // Reload clips for playback whenever tracks change (but not during playback/recording)
+  React.useEffect(() => {
+    if (!isPlaying && !state.isRecording) {
+      const audioManager = audioManagerRef.current;
+      audioManager.loadClips(state.tracks, state.playheadPosition);
+    }
+  }, [state.tracks, isPlaying, state.isRecording, state.playheadPosition]);
+
   // Handle play/pause transport controls
   const handlePlay = async () => {
     const audioManager = audioManagerRef.current;
@@ -659,6 +671,99 @@ function CanvasDemoContent() {
     audioManager.stop();
     setIsPlaying(false);
   };
+
+  // Handle recording
+  const handleRecord = async () => {
+    if (state.isRecording) {
+      // Stop recording
+      if (recordingManagerRef.current) {
+        await recordingManagerRef.current.stopRecording();
+        recordingManagerRef.current = null;
+      }
+      dispatch({ type: 'STOP_RECORDING' });
+    } else {
+      // Start recording - find a track to record into
+      let trackIndex = state.focusedTrackIndex;
+
+      // If no track is focused, use the first non-label track
+      if (trackIndex === null) {
+        trackIndex = state.tracks.findIndex(t =>
+          !t.name.toLowerCase().includes('label')
+        );
+      }
+
+      // If still no track found, we need at least one audio track
+      if (trackIndex === -1) {
+        toast.error('Please add an audio track before recording');
+        return;
+      }
+
+      // Start recording
+      dispatch({ type: 'START_RECORDING', payload: { trackIndex } });
+
+      // Capture trackIndex and playhead position for callback closure
+      const recordingTrackIndex = trackIndex;
+      const recordingStartPosition = state.playheadPosition;
+
+      // Create recording manager
+      recordingManagerRef.current = new RecordingManager({
+        onMeterUpdate: (level, peak) => {
+          dispatch({
+            type: 'UPDATE_RECORDING_METERS',
+            payload: { level, peak }
+          });
+        },
+        onPlayheadUpdate: (position) => {
+          dispatch({
+            type: 'SET_PLAYHEAD_POSITION',
+            payload: position
+          });
+        },
+        onRecordingComplete: (audioBuffer) => {
+          // Generate waveform from audio buffer
+          const channelData = audioBuffer.getChannelData(0);
+          const waveform = Array.from(channelData);
+          const waveformRms = generateRmsWaveform(waveform);
+
+          // Create new clip at recording start position
+          const clipDuration = audioBuffer.duration;
+          const clipId = Date.now();
+
+          // Add audio buffer to playback manager
+          const audioManager = audioManagerRef.current;
+          audioManager.addClipBuffer(clipId, audioBuffer);
+
+          dispatch({
+            type: 'ADD_CLIP',
+            payload: {
+              trackIndex: recordingTrackIndex,
+              clip: {
+                id: clipId,
+                name: 'Recording',
+                start: recordingStartPosition,
+                duration: clipDuration,
+                waveform,
+                waveformRms,
+                envelopePoints: [],
+                color: 'cyan' as const,
+              },
+            },
+          });
+        },
+      });
+
+      await recordingManagerRef.current.startRecording(recordingStartPosition);
+    }
+  };
+
+  // Cleanup recording manager on unmount
+  React.useEffect(() => {
+    return () => {
+      if (recordingManagerRef.current) {
+        recordingManagerRef.current.dispose();
+      }
+    };
+  }, []);
 
   // Auto-scroll to keep playhead in view during playback
   React.useEffect(() => {
@@ -1908,7 +2013,12 @@ function CanvasDemoContent() {
               <ToolbarButtonGroup gap={2}>
                 <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
                 <TransportButton icon="stop" onClick={handleStop} />
-                <TransportButton icon="record" disabled={isPlaying} />
+                <TransportButton
+                  icon="record"
+                  active={state.isRecording}
+                  disabled={isPlaying}
+                  onClick={handleRecord}
+                />
                 <TransportButton icon="skip-back" disabled={isPlaying} />
                 <TransportButton icon="skip-forward" disabled={isPlaying} />
                 <TransportButton
@@ -2110,11 +2220,11 @@ function CanvasDemoContent() {
                   isMuted={false}
                   isSolo={false}
                   isFocused={keyboardFocusedTrack === index}
-                  // Meter props - inactive (0) when no audio is playing
-                  meterLevel={0}
-                  meterLevelLeft={0}
-                  meterLevelRight={0}
-                  meterClipped={false}
+                  // Meter props - show recording levels if this track is recording
+                  meterLevel={state.isRecording && state.recordingTrackIndex === index ? state.recordingMeterLevel : 0}
+                  meterLevelLeft={state.isRecording && state.recordingTrackIndex === index ? state.recordingMeterLevel : 0}
+                  meterLevelRight={state.isRecording && state.recordingTrackIndex === index ? state.recordingMeterLevel : 0}
+                  meterClipped={state.recordingPeakLevel > 100}
                   meterStyle="default"
                   onMuteToggle={() => {}}
                   onSoloToggle={() => {}}
@@ -3407,7 +3517,7 @@ function ThemedApp() {
   return (
     <ThemeProvider theme={currentTheme}>
       <AccessibilityProfileProvider initialProfileId="wcag-flat">
-        <TracksProvider initialTracks={sampleTracks}>
+        <TracksProvider initialTracks={[]}>
           <SpectralSelectionProvider>
             <CanvasDemoContent />
           </SpectralSelectionProvider>
