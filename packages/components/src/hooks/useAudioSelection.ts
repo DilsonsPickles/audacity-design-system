@@ -336,6 +336,10 @@ export function useAudioSelection(
 
   // Mouse event handlers for the container
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    // Only handle left mouse button (button 0)
+    // Ignore right-click (button 2) to allow context menus
+    if (e.button !== 0) return;
+
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;

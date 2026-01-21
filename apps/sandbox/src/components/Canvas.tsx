@@ -290,6 +290,13 @@ export function Canvas({
         onMouseDown={handleClipMouseDown}
         onMouseMove={containerProps.onMouseMove}
         onClick={handleContainerClick}
+        onContextMenu={(e) => {
+          // If there's a time selection, show time selection context menu
+          if (timeSelection) {
+            e.preventDefault();
+            onTimeSelectionMenuClick?.(e.clientX, e.clientY);
+          }
+        }}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
         style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none', cursor: 'text' } as React.CSSProperties}
       >
@@ -334,13 +341,6 @@ export function Canvas({
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
                   // Clear label selections
                   dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
-                }
-              }}
-              onContextMenu={(e) => {
-                // If there's a time selection, show time selection context menu
-                if (timeSelection) {
-                  e.preventDefault();
-                  onTimeSelectionMenuClick?.(e.clientX, e.clientY);
                 }
               }}
             >

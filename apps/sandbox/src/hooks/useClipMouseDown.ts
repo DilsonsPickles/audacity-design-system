@@ -50,6 +50,10 @@ export function useClipMouseDown({
 }: ClipMouseDownConfig) {
 
   const handleClipMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only handle left mouse button (button 0)
+    // Ignore right-click (button 2) to allow context menus
+    if (e.button !== 0) return;
+
     if (!containerRef.current) {
       containerPropsOnMouseDown?.(e);
       return;
