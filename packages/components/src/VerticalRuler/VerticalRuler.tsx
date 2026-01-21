@@ -68,53 +68,23 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
 
   // Calculate tick positions
   const range = max - min;
+  const MIN_LABEL_SPACING = 24; // pixels needed per label (increased for better readability)
 
-  // Adaptive tick density based on available space
-  const MIN_TICK_SPACING = 6; // pixels - minimum spacing
-  const MAX_TICK_SPACING = 40; // pixels - maximum spacing (when to add more major ticks)
+  // Check if we have enough space for different labeling tiers
+  const MIN_TICK_SPACING = 6; // Minimum spacing for minor ticks
+  const labelsFor01Increments = 21; // 0.1 increments
+  const labelsFor05Increments = 5;  // 0.5 increments
+  const labelsFor10Increments = 3;  // 1.0, 0.0, -1.0 only
 
-  // Start with default values
-  let adjustedMajorDivisions = majorDivisions;
-  let adjustedMinorDivisions = minorDivisions;
+  const spacingFor01 = height / (labelsFor01Increments - 1);
+  const spacingFor05 = height / (labelsFor05Increments - 1);
+  const spacingFor10 = height / (labelsFor10Increments - 1);
 
-  // First, check if we need MORE major ticks (spacing too large)
-  const defaultMajorSpacing = height / (majorDivisions - 1);
-  if (defaultMajorSpacing > MAX_TICK_SPACING) {
-    // Double the number of major divisions
-    // This will give us ticks at: 1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75, -1.0
-    adjustedMajorDivisions = (majorDivisions - 1) * 2 + 1; // 9 major ticks
-  }
-
-  // Now calculate minor tick density based on available space
-  // Calculate what the spacing would be with full minor ticks (4 between each major)
-  const fullMinorsIndex = (adjustedMajorDivisions - 1) * (minorDivisions + 1);
-  const fullMinorsSpacing = height / fullMinorsIndex;
-
-  // Calculate what the spacing would be with just 1 minor tick (halfway)
-  const oneMinorIndex = (adjustedMajorDivisions - 1) * 2;
-  const oneMinorSpacing = height / oneMinorIndex;
-
-  // Calculate what the spacing would be with no minor ticks (just majors)
-  const noMinorsIndex = adjustedMajorDivisions - 1;
-  const noMinorsSpacing = height / noMinorsIndex;
-
-  // Choose the appropriate number of minor divisions based on spacing
-  if (fullMinorsSpacing >= MIN_TICK_SPACING) {
-    // All 4 minor ticks fit comfortably
-    adjustedMinorDivisions = minorDivisions;
-  } else if (oneMinorSpacing >= MIN_TICK_SPACING) {
-    // Only 1 minor tick (halfway) fits
-    adjustedMinorDivisions = 1;
-  } else {
-    // No minor ticks fit, show only major ticks
-    adjustedMinorDivisions = 0;
-  }
-
-  // Calculate final spacing based on adjusted divisions
-  const lastMajorTickIndex = adjustedMinorDivisions === 0
-    ? noMinorsIndex
-    : (adjustedMajorDivisions - 1) * (adjustedMinorDivisions + 1);
-  const tickSpacing = height / lastMajorTickIndex;
+  // Check spacing for different minor tick densities
+  const spacingWith4Minors01 = height / ((labelsFor01Increments - 1) * 2); // 0.05 increments (1 minor between 0.1)
+  const spacingWith4Minors05 = height / ((labelsFor05Increments - 1) * 5); // 0.1 increments (4 minors between 0.5)
+  const spacingWith1Minor05 = height / ((labelsFor05Increments - 1) * 2);  // 0.25 increments (1 minor between 0.5)
+  const spacingWith1Minor10 = height / ((labelsFor10Increments - 1) * 2);  // 0.5 increments (1 minor between 1.0)
 
   const ticks: Array<{
     y: number;
@@ -126,55 +96,104 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
     showLabel: boolean;
   }> = [];
 
-  // Generate ticks
-  // We want exactly adjustedMajorDivisions major ticks with minor ticks in between
-  for (let i = 0; i <= lastMajorTickIndex; i++) {
-    const isMajor = i % (adjustedMinorDivisions + 1) === 0;
-    const majorIndex = Math.floor(i / (adjustedMinorDivisions + 1));
-
-    const isLastMajor = majorIndex === adjustedMajorDivisions - 1 && isMajor;
-    const isFirstMajor = majorIndex === 0 && isMajor;
-    const value = max - (majorIndex * range) / (adjustedMajorDivisions - 1);
-    const y = i * tickSpacing; // All ticks use uniform spacing now
-    const isCenter = Math.abs(value) < 0.01; // Center line at 0.0
-
-    ticks.push({ y, value, isMajor, isCenter, isFirst: isFirstMajor, isLast: isLastMajor, showLabel: false });
-  }
-
-  // Responsive label collision detection
-  // Adaptively choose which labels to show based on available height
-  const MIN_LABEL_SPACING = 14; // pixels needed per label
-  const availableSpace = height;
-  const maxVisibleLabels = Math.max(1, Math.floor(availableSpace / MIN_LABEL_SPACING));
-
-  // Priority-based label selection: prioritize important amplitude values
-  // Priority order (highest to lowest): 0.0 (center), ±1.0 (extremes), ±0.5
-  const majorTicks = ticks.filter(t => t.isMajor);
-
-  // Assign priorities
-  const labelPriorities = majorTicks.map((tick, index) => ({
-    tick,
-    index,
-    priority: tick.isCenter ? 1 : // 0.0 - most important
-              (tick.isFirst || tick.isLast) ? 2 : // ±1.0 - extremes
-              3 // everything else (±0.5, etc.)
-  }));
-
-  // Sort by priority (lower number = higher priority)
-  labelPriorities.sort((a, b) => a.priority - b.priority);
-
-  // Greedily select labels that don't collide, starting with highest priority
-  const selectedLabels: typeof labelPriorities = [];
-
-  for (const item of labelPriorities) {
-    // Check if this label would collide with any already-selected label
-    const wouldCollide = selectedLabels.some(selected =>
-      Math.abs(item.tick.y - selected.tick.y) < MIN_LABEL_SPACING
-    );
-
-    if (!wouldCollide && selectedLabels.length < maxVisibleLabels) {
-      selectedLabels.push(item);
-      item.tick.showLabel = true;
+  if (spacingFor01 >= MIN_LABEL_SPACING && spacingWith4Minors01 >= MIN_TICK_SPACING) {
+    // Tier 1: 0.1 labels + minor ticks (1.0, tick, 0.9, tick, 0.8...)
+    const totalTicks = (labelsFor01Increments - 1) * 2 + 1; // 41 ticks
+    for (let i = 0; i < totalTicks; i++) {
+      const isMajor = i % 2 === 0;
+      ticks.push({
+        y: (i * height) / (totalTicks - 1),
+        value: max - (i * range) / (totalTicks - 1),
+        isMajor,
+        isCenter: Math.abs(max - (i * range) / (totalTicks - 1)) < 0.01,
+        isFirst: i === 0,
+        isLast: i === totalTicks - 1,
+        showLabel: isMajor,
+      });
+    }
+  } else if (spacingFor01 >= MIN_LABEL_SPACING) {
+    // Tier 2: 0.1 labels only, no minors (1.0, 0.9, 0.8...)
+    for (let i = 0; i < labelsFor01Increments; i++) {
+      ticks.push({
+        y: (i * height) / (labelsFor01Increments - 1),
+        value: max - (i * range) / (labelsFor01Increments - 1),
+        isMajor: true,
+        isCenter: Math.abs(max - (i * range) / (labelsFor01Increments - 1)) < 0.01,
+        isFirst: i === 0,
+        isLast: i === labelsFor01Increments - 1,
+        showLabel: true,
+      });
+    }
+  } else if (spacingFor05 >= MIN_LABEL_SPACING && spacingWith4Minors05 >= MIN_TICK_SPACING) {
+    // Tier 3: 0.5 labels + 4 minors (1.0, tick, tick, tick, tick, 0.5...)
+    const totalTicks = (labelsFor05Increments - 1) * 5 + 1; // 21 ticks
+    for (let i = 0; i < totalTicks; i++) {
+      const isMajor = i % 5 === 0;
+      ticks.push({
+        y: (i * height) / (totalTicks - 1),
+        value: max - (i * range) / (totalTicks - 1),
+        isMajor,
+        isCenter: Math.abs(max - (i * range) / (totalTicks - 1)) < 0.01,
+        isFirst: i === 0,
+        isLast: i === totalTicks - 1,
+        showLabel: isMajor,
+      });
+    }
+  } else if (spacingFor05 >= MIN_LABEL_SPACING && spacingWith1Minor05 >= MIN_TICK_SPACING) {
+    // Tier 4: 0.5 labels + 1 minor (1.0, tick, 0.5...)
+    const totalTicks = (labelsFor05Increments - 1) * 2 + 1; // 9 ticks
+    for (let i = 0; i < totalTicks; i++) {
+      const isMajor = i % 2 === 0;
+      ticks.push({
+        y: (i * height) / (totalTicks - 1),
+        value: max - (i * range) / (totalTicks - 1),
+        isMajor,
+        isCenter: Math.abs(max - (i * range) / (totalTicks - 1)) < 0.01,
+        isFirst: i === 0,
+        isLast: i === totalTicks - 1,
+        showLabel: isMajor,
+      });
+    }
+  } else if (spacingFor05 >= MIN_LABEL_SPACING) {
+    // Tier 5: 0.5 labels only, no minors (1.0, 0.5, 0.0, -0.5, -1.0)
+    for (let i = 0; i < labelsFor05Increments; i++) {
+      ticks.push({
+        y: (i * height) / (labelsFor05Increments - 1),
+        value: max - (i * range) / (labelsFor05Increments - 1),
+        isMajor: true,
+        isCenter: Math.abs(max - (i * range) / (labelsFor05Increments - 1)) < 0.01,
+        isFirst: i === 0,
+        isLast: i === labelsFor05Increments - 1,
+        showLabel: true,
+      });
+    }
+  } else if (spacingFor10 >= MIN_LABEL_SPACING && spacingWith1Minor10 >= MIN_TICK_SPACING) {
+    // Tier 6: 1.0, 0.0, -1.0 + 1 minor (1.0, tick, 0.0...)
+    const totalTicks = (labelsFor10Increments - 1) * 2 + 1; // 5 ticks
+    for (let i = 0; i < totalTicks; i++) {
+      const isMajor = i % 2 === 0;
+      ticks.push({
+        y: (i * height) / (totalTicks - 1),
+        value: max - (i * range) / (totalTicks - 1),
+        isMajor,
+        isCenter: Math.abs(max - (i * range) / (totalTicks - 1)) < 0.01,
+        isFirst: i === 0,
+        isLast: i === totalTicks - 1,
+        showLabel: isMajor,
+      });
+    }
+  } else {
+    // Tier 7: 1.0, 0.0, -1.0 only, no minors
+    for (let i = 0; i < labelsFor10Increments; i++) {
+      ticks.push({
+        y: (i * height) / (labelsFor10Increments - 1),
+        value: max - (i * range) / (labelsFor10Increments - 1),
+        isMajor: true,
+        isCenter: Math.abs(max - (i * range) / (labelsFor10Increments - 1)) < 0.01,
+        isFirst: i === 0,
+        isLast: i === labelsFor10Increments - 1,
+        showLabel: true,
+      });
     }
   }
 

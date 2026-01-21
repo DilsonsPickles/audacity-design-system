@@ -246,7 +246,6 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               key={child.key || index}
               initialHeight={height}
               minHeight={44}
-              maxHeight={400}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
               isFirstPanel={index === 0}
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
