@@ -182,7 +182,7 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
         showLabel: isMajor,
       });
     }
-  } else {
+  } else if (height >= 16) {
     // Tier 7: 1.0, 0.0, -1.0 only, no minors
     for (let i = 0; i < labelsFor10Increments; i++) {
       ticks.push({
@@ -195,6 +195,17 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({
         showLabel: true,
       });
     }
+  } else {
+    // Tier 8: Ultra-minimal for very small heights (< 16px) - center tick only, no labels
+    ticks.push({
+      y: height / 2,
+      value: 0,
+      isMajor: true,
+      isCenter: true,
+      isFirst: false,
+      isLast: false,
+      showLabel: false,
+    });
   }
 
   const style = {

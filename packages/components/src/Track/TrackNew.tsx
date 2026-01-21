@@ -263,8 +263,13 @@ export const TrackNew: React.FC<TrackProps> = ({
       const clipBodyHeight = height - CLIP_HEADER_HEIGHT;
       const yInBody = mouseY - CLIP_HEADER_HEIGHT;
 
-      // Constrain ratio between 0.1 and 0.9
-      const newRatio = Math.max(0.1, Math.min(0.9, yInBody / clipBodyHeight));
+      // Calculate min/max ratio based on 16px minimum height for each section
+      const MIN_SECTION_HEIGHT = 16;
+      const minRatio = MIN_SECTION_HEIGHT / clipBodyHeight;
+      const maxRatio = 1 - (MIN_SECTION_HEIGHT / clipBodyHeight);
+
+      // Constrain ratio to ensure both sections are at least 16px
+      const newRatio = Math.max(minRatio, Math.min(maxRatio, yInBody / clipBodyHeight));
 
       onChannelSplitRatioChange(newRatio);
     };
