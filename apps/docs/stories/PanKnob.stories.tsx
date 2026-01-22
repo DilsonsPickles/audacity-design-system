@@ -9,6 +9,10 @@ const meta = {
   component: PanKnob,
   parameters: {
     layout: 'centered',
+    design: {
+      type: 'figma',
+      url: 'https://www.figma.com/design/8rgC6MOTSEY1MHO4wWnucb/01---Audacity-Component-library?node-id=111-1383',
+    },
   },
   tags: ['autodocs'],
   argTypes: {
