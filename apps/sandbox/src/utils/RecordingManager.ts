@@ -246,6 +246,28 @@ export class RecordingManager {
     }
   }
 
+  /**
+   * Get list of available audio output devices
+   */
+  static async getAudioOutputDevices(): Promise<MediaDeviceInfo[]> {
+    try {
+      // Request permission first by getting user media
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Now enumerate devices (will include labels after permission granted)
+      const devices = await navigator.mediaDevices.enumerateDevices();
+
+      // Stop the temporary stream
+      stream.getTracks().forEach(track => track.stop());
+
+      // Filter for audio output devices only
+      return devices.filter(device => device.kind === 'audiooutput');
+    } catch (error) {
+      console.error('Failed to enumerate audio devices:', error);
+      return [];
+    }
+  }
+
   dispose(): void {
     this.stopMonitoring();
 
