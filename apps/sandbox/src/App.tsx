@@ -713,8 +713,8 @@ function CanvasDemoContent() {
         await audioManager.play(state.playheadPosition);
       } else {
         // Check if playhead has been moved while paused
-        const currentTransportPosition = audioManager.getCurrentPosition();
-        const playheadMoved = Math.abs(state.playheadPosition - currentTransportPosition) > 0.01;
+        const pausedPosition = audioManager.getPausedPosition();
+        const playheadMoved = pausedPosition !== null && Math.abs(state.playheadPosition - pausedPosition) > 0.01;
 
         if (playheadMoved) {
           // Playhead was moved - reload clips and start from new position

@@ -15,6 +15,7 @@ export class AudioPlaybackManager {
   private isPaused: boolean = false;
   // @ts-ignore - playbackPosition is used for tracking state
   private playbackPosition: number = 0;
+  private pausedPosition: number | null = null; // Position where we paused
   private lastLoadedPosition: number = -1;
   private animationFrameId: number | null = null;
   private onPositionUpdate?: (position: number) => void;
@@ -257,6 +258,7 @@ export class AudioPlaybackManager {
     if (this.isPaused) {
       // Resume from paused state
       this.isPaused = false;
+      this.pausedPosition = null; // Clear paused position
       this.frozenMeterLevels.clear(); // Clear frozen levels when resuming
 
       // If a new start time is provided and it's different from current Transport position,
@@ -301,6 +303,7 @@ export class AudioPlaybackManager {
     // Capture current position
     const currentPosition = Tone.getTransport().seconds;
     this.playbackPosition = currentPosition;
+    this.pausedPosition = currentPosition; // Store where we paused
 
     // Send final position update
     if (this.onPositionUpdate) {
@@ -358,6 +361,11 @@ export class AudioPlaybackManager {
     this.playbackPosition = timeInSeconds;
     Tone.getTransport().seconds = timeInSeconds;
 
+    // Update paused position if we're paused
+    if (this.isPaused) {
+      this.pausedPosition = timeInSeconds;
+    }
+
     if (this.onPositionUpdate) {
       this.onPositionUpdate(timeInSeconds);
     }
@@ -396,6 +404,13 @@ export class AudioPlaybackManager {
    */
   getIsPaused(): boolean {
     return this.isPaused;
+  }
+
+  /**
+   * Get the position where playback was paused (or null if not paused)
+   */
+  getPausedPosition(): number | null {
+    return this.pausedPosition;
   }
 
   /**
