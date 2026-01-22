@@ -730,7 +730,14 @@ function CanvasDemoContent() {
     }
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
+    // Stop recording if active
+    if (state.isRecording && recordingManagerRef.current) {
+      await recordingManagerRef.current.stopRecording();
+      dispatch({ type: 'STOP_RECORDING' });
+    }
+
+    // Stop playback
     const audioManager = audioManagerRef.current;
     audioManager.stop();
     setIsPlaying(false);
@@ -936,7 +943,7 @@ function CanvasDemoContent() {
           setMicWaveformData(waveformData);
         },
         onRecordingWaveformUpdate: (waveformData, waveformRms) => {
-          // Update the clip with live waveform data as we record
+          // Send both waveform and RMS - RMS renders as filled when showRmsInWaveform is true
           dispatch({
             type: 'UPDATE_CLIP',
             payload: {

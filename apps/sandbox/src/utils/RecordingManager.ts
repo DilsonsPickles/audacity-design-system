@@ -12,7 +12,7 @@ export class RecordingManager {
   private recorder: Tone.Recorder | null = null;
   private meter: Tone.Meter | null = null;
   private userMedia: Tone.UserMedia | null = null;
-  private analyser: AnalyserNode | null = null;
+  private waveform: Tone.Waveform | null = null;
   private meterUpdateInterval: number | null = null;
   private waveformUpdateInterval: number | null = null;
   private callbacks: RecordingManagerCallbacks;
@@ -44,14 +44,9 @@ export class RecordingManager {
       this.meter = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
       this.userMedia.connect(this.meter);
 
-      // Create analyser for waveform data
-      const audioContext = Tone.getContext().rawContext;
-      this.analyser = audioContext.createAnalyser();
-      this.analyser.fftSize = 2048;
-      this.analyser.smoothingTimeConstant = 0;
-
-      // Connect userMedia to analyser
-      this.userMedia.connect(this.analyser as any);
+      // Create Tone.Waveform for waveform data (2048 samples)
+      this.waveform = new Tone.Waveform(2048);
+      this.userMedia.connect(this.waveform);
 
       this.isMonitoring = true;
 
@@ -68,15 +63,13 @@ export class RecordingManager {
       // Start waveform updates
       if (this.callbacks.onWaveformUpdate) {
         this.waveformUpdateInterval = window.setInterval(() => {
-          if (this.analyser) {
-            const bufferLength = this.analyser.frequencyBinCount;
-            const dataArray = new Float32Array(bufferLength);
-            this.analyser.getFloatTimeDomainData(dataArray);
+          if (this.waveform) {
+            const dataArray = this.waveform.getValue();
 
             // Sample the data to get ~200 points for display
             const sampledData: number[] = [];
-            const step = Math.floor(bufferLength / 200);
-            for (let i = 0; i < bufferLength; i += step) {
+            const step = Math.floor(dataArray.length / 200);
+            for (let i = 0; i < dataArray.length; i += step) {
               sampledData.push(dataArray[i]);
             }
 
@@ -106,9 +99,9 @@ export class RecordingManager {
       this.waveformUpdateInterval = null;
     }
 
-    if (this.analyser) {
-      this.analyser.disconnect();
-      this.analyser = null;
+    if (this.waveform) {
+      this.waveform.dispose();
+      this.waveform = null;
     }
 
     if (this.userMedia) {
@@ -144,18 +137,22 @@ export class RecordingManager {
         // Start recording
         this.recorder.start();
 
-        // If we have an analyser and the callback exists, periodically sample it
-        if (this.analyser && this.callbacks.onRecordingWaveformUpdate) {
+        // Accumulate waveform samples from Tone.Waveform
+        if (this.waveform && this.callbacks.onRecordingWaveformUpdate) {
           this.waveformUpdateInterval = window.setInterval(() => {
-            if (this.analyser) {
-              const bufferLength = this.analyser.frequencyBinCount;
-              const dataArray = new Float32Array(bufferLength);
-              this.analyser.getFloatTimeDomainData(dataArray);
+            if (this.waveform) {
+              const dataArray = this.waveform.getValue();
 
-              // Append samples to our recorded buffer
-              this.recordedSamples.push(...dataArray);
+              // Downsample to reduce jitter - take every 4th sample
+              const downsampledData: number[] = [];
+              for (let i = 0; i < dataArray.length; i += 4) {
+                downsampledData.push(dataArray[i]);
+              }
 
-              // Generate RMS waveform for the accumulated samples
+              // Append downsampled data
+              this.recordedSamples.push(...downsampledData);
+
+              // Generate RMS waveform with larger window for smoother appearance
               const waveformRms = this.generateRmsWaveform(this.recordedSamples);
               this.callbacks.onRecordingWaveformUpdate([...this.recordedSamples], waveformRms);
             }
@@ -201,7 +198,7 @@ export class RecordingManager {
 
   async stopRecording(): Promise<void> {
     try {
-      // Stop the waveform update interval for recording
+      // Stop the waveform update interval
       if (this.waveformUpdateInterval) {
         clearInterval(this.waveformUpdateInterval);
         this.waveformUpdateInterval = null;
@@ -260,7 +257,7 @@ export class RecordingManager {
    * Generate RMS waveform from raw samples
    */
   private generateRmsWaveform(samples: number[]): number[] {
-    const windowSize = 256;
+    const windowSize = 512; // Larger window for smoother waveform
     const rmsWaveform: number[] = [];
 
     for (let i = 0; i < samples.length; i += windowSize) {
