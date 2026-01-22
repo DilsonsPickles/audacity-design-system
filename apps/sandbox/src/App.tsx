@@ -554,6 +554,21 @@ function CanvasDemoContent() {
   // Ref to prevent menu from re-opening immediately after closing
   const contextMenuClosedTimeRef = React.useRef<number>(0);
 
+  // Close time selection context menu when clicking anywhere (except right-click)
+  const handleGlobalMouseDown = React.useCallback((e: MouseEvent) => {
+    // Close menu on left-click (button 0) or middle-click (button 1)
+    // Don't close on right-click (button 2) as that might open the menu
+    if (e.button !== 2 && timeSelectionContextMenu) {
+      contextMenuClosedTimeRef.current = Date.now();
+      setTimeSelectionContextMenu(null);
+    }
+  }, [timeSelectionContextMenu]);
+
+  React.useEffect(() => {
+    document.addEventListener('mousedown', handleGlobalMouseDown);
+    return () => document.removeEventListener('mousedown', handleGlobalMouseDown);
+  }, [handleGlobalMouseDown]);
+
   // Update display while playing - master toggle for auto-scroll
   const [updateDisplayWhilePlaying, setUpdateDisplayWhilePlaying] = React.useState(true);
 
@@ -2555,13 +2570,10 @@ function CanvasDemoContent() {
                       setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                     }}
                     onTimeSelectionMenuClick={(x, y) => {
-                      console.log('App.tsx - onTimeSelectionMenuClick called with x:', x, 'y:', y);
                       // Prevent menu from opening within 300ms of being closed
                       const timeSinceClosed = Date.now() - contextMenuClosedTimeRef.current;
                       if (timeSinceClosed > 300) {
                         setTimeSelectionContextMenu({ isOpen: true, x, y });
-                      } else {
-                        console.log('Preventing menu open - too soon after close:', timeSinceClosed, 'ms');
                       }
                     }}
                     onTrackFocusChange={(trackIndex, hasFocus) => {
@@ -3527,13 +3539,12 @@ function CanvasDemoContent() {
       )}
 
       {/* Time Selection Context Menu */}
-      {timeSelectionContextMenu && state.timeSelection && (console.log('Rendering TimeSelectionContextMenu - state:', timeSelectionContextMenu, 'timeSelection:', state.timeSelection), true) && (
+      {timeSelectionContextMenu && (
         <TimeSelectionContextMenu
-          isOpen={timeSelectionContextMenu.isOpen}
+          isOpen={timeSelectionContextMenu.isOpen && !!state.timeSelection}
           x={timeSelectionContextMenu.x}
           y={timeSelectionContextMenu.y}
           onClose={() => {
-            console.log('TimeSelectionContextMenu onClose called');
             contextMenuClosedTimeRef.current = Date.now();
             setTimeSelectionContextMenu(null);
           }}

@@ -289,23 +289,23 @@ export function Canvas({
       <div
         ref={containerRef}
         onMouseDown={(e) => {
-          console.log('Canvas onMouseDown - button:', e.button);
           lastMouseButtonRef.current = e.button;
           handleClipMouseDown(e);
         }}
         onMouseMove={containerProps.onMouseMove}
         onClick={handleContainerClick}
         onContextMenu={(e) => {
-          console.log('Canvas onContextMenu - lastButton:', lastMouseButtonRef.current, 'timeSelection:', !!timeSelection, 'isDragging:', selection.selection.isDragging, 'isCreating:', selection.selection.isCreating);
-          // Only show context menu if:
+          // Always prevent default browser context menu
+          e.preventDefault();
+
+          // Only show OUR context menu if:
           // 1. The last mouse button pressed was right-click (button 2)
           // 2. There's an existing time selection
           // 3. We're not currently dragging or creating a selection
           if (lastMouseButtonRef.current === 2 && timeSelection && !selection.selection.isDragging && !selection.selection.isCreating) {
-            e.preventDefault();
-            console.log('Showing context menu');
             onTimeSelectionMenuClick?.(e.clientX, e.clientY);
           }
+
           // Reset the button ref after handling
           lastMouseButtonRef.current = 0;
         }}
