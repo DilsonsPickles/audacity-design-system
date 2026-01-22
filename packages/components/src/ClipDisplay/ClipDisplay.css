@@ -6,6 +6,12 @@
   box-sizing: border-box;
 }
 
+/* Recording state: remove right-side border radius for "printing" effect */
+.clip-display--recording {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 /* Selected state: add inset white border inside the black border */
 .clip-display--selected::after {
   content: '';

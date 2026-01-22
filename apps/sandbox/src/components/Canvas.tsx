@@ -68,6 +68,10 @@ export interface CanvasProps {
    * @default 0
    */
   viewportHeight?: number;
+  /**
+   * ID of the clip currently being recorded (shows recording state)
+   */
+  recordingClipId?: number | null;
 }
 
 /**
@@ -89,6 +93,7 @@ export function Canvas({
   showRmsInWaveform = true,
   controlPointStyle = 'musescore',
   viewportHeight = 0,
+  recordingClipId = null,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -378,6 +383,7 @@ export function Canvas({
                 timeSelection={timeSelection && (timeSelection.renderOnCanvas !== false) ? timeSelection : null}
                 isTimeSelectionDragging={selection.selection.isDragging}
                 clipStyle={preferences.clipStyle}
+                recordingClipId={recordingClipId}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onClipMove={(clipId, deltaSeconds) => {
                   // Find the clip to get its current position

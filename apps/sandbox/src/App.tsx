@@ -292,6 +292,7 @@ function CanvasDemoContent() {
   const [selectedPlaybackDevice, setSelectedPlaybackDevice] = React.useState('Built-in Speakers');
   const [availableAudioInputs, setAvailableAudioInputs] = React.useState<MediaDeviceInfo[]>([]);
   const [availableAudioOutputs, setAvailableAudioOutputs] = React.useState<MediaDeviceInfo[]>([]);
+  const [recordingClipId, setRecordingClipId] = React.useState<number | null>(null);
 
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
@@ -822,57 +823,133 @@ function CanvasDemoContent() {
       const recordingTrackIndex = trackIndex;
       const recordingStartPosition = state.playheadPosition;
 
-      // If not already monitoring, create recording manager
-      if (!recordingManagerRef.current) {
-        recordingManagerRef.current = new RecordingManager({
-          onMeterUpdate: (level, peak) => {
-            dispatch({
-              type: 'UPDATE_RECORDING_METERS',
-              payload: { level, peak }
-            });
+      // Create an empty clip immediately for recording
+      const clipId = Date.now();
+      setRecordingClipId(clipId);
+      dispatch({
+        type: 'ADD_CLIP',
+        payload: {
+          trackIndex: recordingTrackIndex,
+          clip: {
+            id: clipId,
+            name: 'Recording',
+            start: recordingStartPosition,
+            duration: 0, // Will be updated when recording completes
+            waveform: [],
+            waveformRms: [],
+            envelopePoints: [],
+            color: 'cyan' as const,
           },
-          onPlayheadUpdate: (position) => {
-            dispatch({
-              type: 'SET_PLAYHEAD_POSITION',
-              payload: position
-            });
-          },
-          onRecordingComplete: (audioBuffer) => {
+        },
+      });
+
+      // If monitoring manager exists, dispose it first
+      if (recordingManagerRef.current) {
+        recordingManagerRef.current.dispose();
+      }
+
+      // Create a new recording manager with proper callbacks
+      recordingManagerRef.current = new RecordingManager({
+        onMeterUpdate: (level, peak) => {
+          dispatch({
+            type: 'UPDATE_RECORDING_METERS',
+            payload: { level, peak }
+          });
+        },
+        onPlayheadUpdate: (position) => {
+          dispatch({
+            type: 'SET_PLAYHEAD_POSITION',
+            payload: position
+          });
+
+          // Update the clip duration as we record
+          const elapsedDuration = position - recordingStartPosition;
+          dispatch({
+            type: 'UPDATE_CLIP',
+            payload: {
+              trackIndex: recordingTrackIndex,
+              clipId: clipId,
+              updates: {
+                duration: elapsedDuration,
+              },
+            },
+          });
+        },
+        onRecordingComplete: (audioBuffer) => {
           // Generate waveform from audio buffer
           const channelData = audioBuffer.getChannelData(0);
           const waveform = Array.from(channelData);
           const waveformRms = generateRmsWaveform(waveform);
 
-          // Create new clip at recording start position
+          // Update the existing clip with waveform data
           const clipDuration = audioBuffer.duration;
-          const clipId = Date.now();
 
           // Add audio buffer to playback manager
           const audioManager = audioManagerRef.current;
           audioManager.addClipBuffer(clipId, audioBuffer);
 
           dispatch({
-            type: 'ADD_CLIP',
+            type: 'UPDATE_CLIP',
             payload: {
               trackIndex: recordingTrackIndex,
-              clip: {
-                id: clipId,
-                name: 'Recording',
-                start: recordingStartPosition,
+              clipId: clipId,
+              updates: {
                 duration: clipDuration,
                 waveform,
                 waveformRms,
-                envelopePoints: [],
-                color: 'cyan' as const,
               },
             },
           });
+
+          // Clear recording clip ID
+          setRecordingClipId(null);
+
+          // Restart monitoring after recording completes
+          const restartMonitoring = async () => {
+            try {
+              recordingManagerRef.current = new RecordingManager({
+                onMeterUpdate: (level, peak) => {
+                  if (state.focusedTrackIndex !== null) {
+                    dispatch({
+                      type: 'UPDATE_RECORDING_METERS',
+                      payload: { level, peak }
+                    });
+                  }
+                },
+                onPlayheadUpdate: () => {},
+                onRecordingComplete: () => {},
+                onWaveformUpdate: (waveformData) => {
+                  setMicWaveformData(waveformData);
+                },
+              });
+
+              await recordingManagerRef.current.startMonitoring();
+              setIsMicMonitoring(true);
+            } catch (error) {
+              console.log('Failed to restart monitoring:', error);
+            }
+          };
+
+          restartMonitoring();
         },
         onWaveformUpdate: (waveformData) => {
           setMicWaveformData(waveformData);
         },
+        onRecordingWaveformUpdate: (waveformData, waveformRms) => {
+          // Update the clip with live waveform data as we record
+          dispatch({
+            type: 'UPDATE_CLIP',
+            payload: {
+              trackIndex: recordingTrackIndex,
+              clipId: clipId,
+              updates: {
+                waveform: waveformData,
+                waveformRms: waveformRms,
+              },
+            },
+          });
+        },
       });
-      }
 
       await recordingManagerRef.current.startRecording(recordingStartPosition);
     }
@@ -2712,6 +2789,7 @@ function CanvasDemoContent() {
                     showRmsInWaveform={showRmsInWaveform}
                     controlPointStyle={controlPointStyle}
                     viewportHeight={scrollContainerRef.current?.clientHeight || 0}
+                    recordingClipId={recordingClipId}
                     onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
                       setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                     }}

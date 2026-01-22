@@ -5,6 +5,7 @@ export interface RecordingManagerCallbacks {
   onRecordingComplete: (audioBuffer: AudioBuffer) => void;
   onPlayheadUpdate: (position: number) => void;
   onWaveformUpdate?: (waveformData: number[]) => void;
+  onRecordingWaveformUpdate?: (waveformData: number[], waveformRms: number[]) => void;
 }
 
 export class RecordingManager {
@@ -19,6 +20,7 @@ export class RecordingManager {
   private recordingStartTime = 0;
   private recordingStartPosition = 0;
   private isMonitoring = false;
+  private recordedSamples: number[] = [];
 
   constructor(callbacks: RecordingManagerCallbacks) {
     this.callbacks = callbacks;
@@ -131,6 +133,9 @@ export class RecordingManager {
         await this.startMonitoring();
       }
 
+      // Reset recorded samples
+      this.recordedSamples = [];
+
       // Create recorder and connect to existing userMedia
       if (this.userMedia) {
         this.recorder = new Tone.Recorder();
@@ -138,6 +143,24 @@ export class RecordingManager {
 
         // Start recording
         this.recorder.start();
+
+        // If we have an analyser and the callback exists, periodically sample it
+        if (this.analyser && this.callbacks.onRecordingWaveformUpdate) {
+          this.waveformUpdateInterval = window.setInterval(() => {
+            if (this.analyser) {
+              const bufferLength = this.analyser.frequencyBinCount;
+              const dataArray = new Float32Array(bufferLength);
+              this.analyser.getFloatTimeDomainData(dataArray);
+
+              // Append samples to our recorded buffer
+              this.recordedSamples.push(...dataArray);
+
+              // Generate RMS waveform for the accumulated samples
+              const waveformRms = this.generateRmsWaveform(this.recordedSamples);
+              this.callbacks.onRecordingWaveformUpdate([...this.recordedSamples], waveformRms);
+            }
+          }, 1000 / 30); // 30 FPS for waveform updates
+        }
       }
 
       // Reset peak level and recording start time
@@ -178,6 +201,12 @@ export class RecordingManager {
 
   async stopRecording(): Promise<void> {
     try {
+      // Stop the waveform update interval for recording
+      if (this.waveformUpdateInterval) {
+        clearInterval(this.waveformUpdateInterval);
+        this.waveformUpdateInterval = null;
+      }
+
       // Stop recording and get audio blob
       if (this.recorder) {
         try {
@@ -197,6 +226,9 @@ export class RecordingManager {
         this.recorder.dispose();
         this.recorder = null;
       }
+
+      // Clear recorded samples
+      this.recordedSamples = [];
 
       // Return to monitoring mode (keep mic active, just stop recording)
       // Restart the meter interval without playhead updates
@@ -222,6 +254,22 @@ export class RecordingManager {
 
   getIsMonitoring(): boolean {
     return this.isMonitoring;
+  }
+
+  /**
+   * Generate RMS waveform from raw samples
+   */
+  private generateRmsWaveform(samples: number[]): number[] {
+    const windowSize = 256;
+    const rmsWaveform: number[] = [];
+
+    for (let i = 0; i < samples.length; i += windowSize) {
+      const window = samples.slice(i, i + windowSize);
+      const rms = Math.sqrt(window.reduce((sum, val) => sum + val * val, 0) / window.length);
+      rmsWaveform.push(rms);
+    }
+
+    return rmsWaveform;
   }
 
   /**

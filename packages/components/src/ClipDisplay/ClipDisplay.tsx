@@ -78,6 +78,8 @@ export interface ClipDisplayProps {
     outerRadiusHover: number;
     innerRadiusHover: number;
   };
+  /** Whether this clip is currently being recorded (shows menu, removes right border radius) */
+  isRecording?: boolean;
 }
 
 /**
@@ -120,6 +122,7 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
   clipStartTime = 0,
   timeSelectionRange = null,
   envelopePointSizes,
+  isRecording = false,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
@@ -133,6 +136,7 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
     selected && 'clip-display--selected',
     isTruncated && 'clip-display--truncated',
     isTruncated && isHovering && 'clip-display--truncated-hover',
+    isRecording && 'clip-display--recording',
   ]
     .filter(Boolean)
     .join(' ');
@@ -214,7 +218,7 @@ export const ClipDisplay: React.FC<ClipDisplayProps> = ({
             state={isHeaderHovering ? 'hover' : 'default'}
             name={name}
             width={width}
-            showMenu={true}
+            showMenu={!isRecording}
             clipStartTime={clipStartTime}
             clipDuration={clipDuration}
             timeSelectionRange={timeSelectionRange}

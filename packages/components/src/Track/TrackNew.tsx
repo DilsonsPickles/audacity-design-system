@@ -173,6 +173,11 @@ export interface TrackProps {
   clipStyle?: 'classic' | 'colourful';
 
   /**
+   * ID of the clip currently being recorded (to show recording state)
+   */
+  recordingClipId?: string | number | null;
+
+  /**
    * Envelope control point sizes (for MuseScore vs AU4 style)
    */
   envelopePointSizes?: {
@@ -236,6 +241,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   timeSelection,
   isTimeSelectionDragging = false,
   clipStyle = 'colourful',
+  recordingClipId = null,
   envelopePointSizes,
   channelSplitRatio = 0.5,
   onChannelSplitRatioChange,
@@ -493,6 +499,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             hiddenPointIndices={clipHiddenPoints.get(clip.id) || []}
             hoveredPointIndex={clipHoveredPoints.get(clip.id) ?? null}
             envelopePointSizes={envelopePointSizes}
+            isRecording={recordingClipId === clip.id}
             onHeaderClick={(shiftKey) => onClipClick?.(clip.id, shiftKey)}
             onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
             onTrimEdge={
