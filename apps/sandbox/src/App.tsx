@@ -2212,7 +2212,7 @@ function CanvasDemoContent() {
                   id: state.tracks.length + 1,
                   name: trackName,
                   type: (type === 'label' ? 'label' : 'audio') as 'audio' | 'label',
-                  height: type === 'label' ? 82 : 114,
+                  height: type === 'label' ? 76 : 114,
                   ...(type === 'stereo' ? { channelSplitRatio: 0.5 } : {}),
                   clips: [],
                 };
@@ -2326,6 +2326,7 @@ function CanvasDemoContent() {
                   }}
                   state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
                   height={heightState}
+                  trackHeight={trackHeight}
                   onClick={() => {
                     dispatch({ type: 'SELECT_TRACK', payload: index });
                     setKeyboardFocusedTrack(index);
@@ -3561,75 +3562,7 @@ function CanvasDemoContent() {
         />
       )}
 
-      {/* Time Selection Context Menu */}
-      {/* timeSelectionContextMenu && (
-        <div ref={timeSelectionMenuRef}>
-          <TimeSelectionContextMenu
-            isOpen={timeSelectionContextMenu.isOpen && !!state.timeSelection}
-            x={timeSelectionContextMenu.x}
-            y={timeSelectionContextMenu.y}
-            onClose={() => {
-              contextMenuClosedTimeRef.current = Date.now();
-              setTimeSelectionContextMenu(null);
-            }}
-          cutMode={state.cutMode}
-          onCut={() => {
-            // Cut operation - same as Cmd+X but triggered from context menu
-            const { startTime, endTime } = state.timeSelection!;
-            const deletionDuration = endTime - startTime;
-
-            dispatch({
-              type: 'DELETE_TIME_RANGE',
-              payload: { startTime, endTime },
-            });
-
-            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-
-            if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
-              const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
-              dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
-            }
-
-            const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
-            toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
-            contextMenuClosedTimeRef.current = Date.now();
-            setTimeSelectionContextMenu(null);
-          }}
-          onCopy={() => {
-            toast.info('Copy time selection - not yet implemented');
-            contextMenuClosedTimeRef.current = Date.now();
-            setTimeSelectionContextMenu(null);
-          }}
-          onPaste={() => {
-            toast.info('Paste into time selection - not yet implemented');
-            contextMenuClosedTimeRef.current = Date.now();
-            setTimeSelectionContextMenu(null);
-          }}
-          onDelete={() => {
-            // Delete operation - same as Delete key
-            const { startTime, endTime } = state.timeSelection!;
-            const deletionDuration = endTime - startTime;
-
-            dispatch({
-              type: 'DELETE_TIME_RANGE',
-              payload: { startTime, endTime },
-            });
-
-            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-
-            if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
-              const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
-              dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
-            }
-
-            const cutModeLabel = state.cutMode === 'split' ? 'Split delete' : 'Ripple delete';
-            toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
-            contextMenuClosedTimeRef.current = Date.now();
-            setTimeSelectionContextMenu(null);
-          }}
-          />
-        </div>
-      ) */}
+      {/* Time Selection Context Menu - Temporarily disabled */}
     </div>
   );
 }

@@ -116,7 +116,14 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   const isLabelTrack = trackType === 'label';
 
   // Determine if Effect button should be visible based on actual pixel height (>= 102px)
-  const showEffectButton = trackHeight ? trackHeight >= 102 : height === 'default';
+  // Audio tracks: show when height >= 102px
+  // Label tracks: show when height >= 76px
+  const showEffectButton = isLabelTrack
+    ? (trackHeight ? trackHeight >= 76 : height === 'default')
+    : (trackHeight ? trackHeight >= 102 : height === 'default');
+
+  // For label tracks < 76px, show small add button in header instead
+  const showLabelHeaderButton = isLabelTrack && trackHeight && trackHeight < 76;
 
   const handleFocus = (e: React.FocusEvent) => {
     // Focus entered somewhere within the panel (could be panel itself or a child)
@@ -266,7 +273,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   return (
     <div
-      className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${className}`}
+      className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${isLabelTrack ? 'track-control-panel--label' : ''} ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
@@ -289,7 +296,19 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
 
           <div className="track-control-panel__header-right">
-            {/* Mute and Solo buttons - shown in header when height <= 70px */}
+            {/* Small add label button for label tracks < 76px */}
+            {showLabelHeaderButton && (
+              <ToggleButton
+                active={false}
+                onClick={onAddLabelClick}
+                ariaLabel="Add label"
+                tabIndex={-1}
+              >
+                <Icon name="plus" size={16} />
+              </ToggleButton>
+            )}
+
+            {/* Mute and Solo buttons in header for audio tracks <= 70px */}
             {!isLabelTrack && trackHeight && trackHeight <= 70 && (
               <div className="track-control-panel__button-group">
                 <ToggleButton
@@ -320,7 +339,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
         </div>
 
-        {/* Controls Row - Hidden for label tracks and when height <= 70px */}
+        {/* Controls Row - Hidden for label tracks and when audio track height <= 70px */}
         {!isLabelTrack && (!trackHeight || trackHeight > 70) && (
           <div className="track-control-panel__controls-row">
             {/* Pan Knob */}
@@ -338,7 +357,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
               tabIndex={-1}
             />
 
-            {/* Mute and Solo Buttons - shown in controls row when height > 70px */}
+            {/* Mute and Solo Buttons */}
             <div className="track-control-panel__button-group">
               <ToggleButton
                 active={isMuted}
@@ -360,7 +379,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
         )}
 
-        {/* Bottom Button - show when track height >= 100px */}
+        {/* Bottom Button */}
+        {/* Audio tracks: show Effect button when height >= 102px */}
+        {/* Label tracks: show Add label button when height >= 76px */}
         {showEffectButton && (
           <Button
             variant="secondary"

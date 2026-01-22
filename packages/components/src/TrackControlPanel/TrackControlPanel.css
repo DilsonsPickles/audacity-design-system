@@ -275,8 +275,8 @@
   align-self: stretch;
 }
 
-/* Collapsed state - hide controls */
-.track-control-panel--collapsed .track-control-panel__controls-row,
-.track-control-panel--collapsed .track-control-panel__effects-button {
+/* Collapsed state - hide controls (but NOT for label tracks) */
+.track-control-panel--collapsed:not(.track-control-panel--label) .track-control-panel__controls-row,
+.track-control-panel--collapsed:not(.track-control-panel--label) .track-control-panel__effects-button {
   display: none;
 }
