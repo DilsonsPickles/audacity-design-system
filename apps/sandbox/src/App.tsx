@@ -3,7 +3,7 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { CustomScrollbar } from './components/CustomScrollbar';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, MenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel } from '@audacity-ui/components';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
@@ -3167,36 +3167,35 @@ function CanvasDemoContent() {
               padding: '4px 0',
             }}
           >
-            <MenuItem
+            <ContextMenuItem
               label="Host"
               hasSubmenu
               onClick={() => {}}
             />
-            <MenuItem
+            <ContextMenuItem
               label="Playback device"
               hasSubmenu
               onClick={() => {}}
             />
-            <MenuItem
-              label="Recording device"
-              description={selectedRecordingDevice}
+            <ContextMenuItem
+              label={`Recording device: ${selectedRecordingDevice}`}
               hasSubmenu
               onClick={() => {}}
             />
-            <MenuItem
+            <ContextMenuItem
               label="Recording channels"
               hasSubmenu
               onClick={() => {}}
             />
             <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
-            <MenuItem
+            <ContextMenuItem
               label="Rescan audio devices"
               onClick={() => {
                 toast.info('Rescanning audio devices...');
                 setAudioSetupMenuAnchor(null);
               }}
             />
-            <MenuItem
+            <ContextMenuItem
               label="Audio settings"
               onClick={() => {
                 setAudioSetupMenuAnchor(null);
