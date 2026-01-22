@@ -292,6 +292,21 @@ export class AudioPlaybackManager {
   pause(): void {
     if (!this.isPlaying) return;
 
+    // Stop position tracking first to prevent race conditions
+    this.stopPositionTracking();
+
+    // Pause transport
+    Tone.getTransport().pause();
+
+    // Capture current position
+    const currentPosition = Tone.getTransport().seconds;
+    this.playbackPosition = currentPosition;
+
+    // Send final position update
+    if (this.onPositionUpdate) {
+      this.onPositionUpdate(currentPosition);
+    }
+
     // Capture current meter levels before pausing
     this.frozenMeterLevels.clear();
     this.meters.forEach((meter, trackIndex) => {
@@ -302,17 +317,15 @@ export class AudioPlaybackManager {
       this.frozenMeterLevels.set(trackIndex, linearValue);
     });
 
-    this.isPlaying = false;
-    this.isPaused = true;
-    Tone.getTransport().pause();
-    this.stopPositionTracking();
-
     // Send one final meter update with frozen values
     if (this.onMeterUpdate) {
       this.frozenMeterLevels.forEach((level, trackIndex) => {
         this.onMeterUpdate!(trackIndex, level);
       });
     }
+
+    this.isPlaying = false;
+    this.isPaused = true;
   }
 
   /**
