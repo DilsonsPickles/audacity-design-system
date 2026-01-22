@@ -3,12 +3,17 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { PanKnob } from '@audacity-ui/components';
 import '@audacity-ui/components/style.css';
+import figma from '@figma/code-connect';
 
 const meta = {
   title: 'Components/PanKnob',
   component: PanKnob,
   parameters: {
     layout: 'centered',
+    design: {
+      type: 'figma',
+      url: 'https://www.figma.com/design/8rgC6MOTSEY1MHO4wWnucb/01---Audacity-Component-library?node-id=111-1383',
+    },
   },
   tags: ['autodocs'],
   argTypes: {
