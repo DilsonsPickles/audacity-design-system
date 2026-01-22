@@ -712,18 +712,10 @@ function CanvasDemoContent() {
         // Start playback from current playhead position
         await audioManager.play(state.playheadPosition);
       } else {
-        // Check if playhead has been moved while paused
-        const pausedPosition = audioManager.getPausedPosition();
-        const playheadMoved = pausedPosition !== null && Math.abs(state.playheadPosition - pausedPosition) > 0.01;
-
-        if (playheadMoved) {
-          // Playhead was moved - reload clips and start from new position
-          audioManager.loadClips(state.tracks, state.playheadPosition);
-          await audioManager.play(state.playheadPosition);
-        } else {
-          // Resume from pause at same position - don't pass startTime to preserve Transport position
-          await audioManager.play();
-        }
+        // Resuming from pause - use the actual paused position from audio manager
+        const resumePosition = audioManager.getPausedPosition() ?? state.playheadPosition;
+        audioManager.loadClips(state.tracks, resumePosition);
+        await audioManager.play(resumePosition);
       }
 
       setIsPlaying(true);

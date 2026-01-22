@@ -151,12 +151,10 @@ export class AudioPlaybackManager {
               const trackGain = this.trackGains.get(trackIndex);
               const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
-              // Calculate offset if playhead is in the middle of the clip
-              const offsetIntoClip = Math.max(0, startTime - clip.start);
-
               // Sync player to transport and schedule it
-              // Start at clip.start in timeline, offset by trimStart + offsetIntoClip in the buffer
-              player.sync().start(clip.start, trimStart + offsetIntoClip);
+              // The .sync() mechanism automatically handles the Transport position offset
+              // We only need to specify the timeline start position and buffer offset (trimStart)
+              player.sync().start(clip.start, trimStart);
 
               this.players.set(String(clip.id), player);
             } else {
@@ -177,10 +175,9 @@ export class AudioPlaybackManager {
 
                 // Only schedule if segment should play from current start time
                 if (timelineStart + segment.duration > startTime) {
-                  const offsetIntoSegment = Math.max(0, startTime - timelineStart);
-
                   // Sync player to transport
-                  player.sync().start(timelineStart, bufferOffset + offsetIntoSegment, segment.duration - offsetIntoSegment);
+                  // The .sync() mechanism automatically handles the Transport position offset
+                  player.sync().start(timelineStart, bufferOffset, segment.duration);
 
                   this.players.set(`${clip.id}_segment_${segmentIndex}`, player);
                 }
@@ -253,36 +250,19 @@ export class AudioPlaybackManager {
 
     await Tone.start(); // Ensure audio context is started
     this.isPlaying = true;
+    this.isPaused = false;
+    this.pausedPosition = null; // Clear paused position
+    this.frozenMeterLevels.clear(); // Clear frozen levels when playing
 
-    // Check if we're resuming from pause
-    if (this.isPaused) {
-      // Resume from paused state
-      this.isPaused = false;
-      this.pausedPosition = null; // Clear paused position
-      this.frozenMeterLevels.clear(); // Clear frozen levels when resuming
-
-      // If a new start time is provided and it's different from current Transport position,
-      // update the Transport position before starting
-      if (startTime !== undefined) {
-        const currentPos = Tone.getTransport().seconds;
-        if (Math.abs(currentPos - startTime) > 0.01) {
-          Tone.getTransport().seconds = startTime;
-          this.playbackPosition = startTime;
-        }
-      }
-
-      Tone.getTransport().start();
-    } else {
-      // If start time is provided, seek to that position first
-      if (startTime !== undefined) {
-        Tone.getTransport().seconds = startTime;
-        this.playbackPosition = startTime;
-      }
-
-      // Start Tone.js transport from the current position
-      // Using start('+0', startTime) tells Transport to start immediately at the specified time
-      Tone.getTransport().start('+0', startTime);
+    // If start time is provided, seek to that position first
+    if (startTime !== undefined) {
+      Tone.getTransport().seconds = startTime;
+      this.playbackPosition = startTime;
     }
+
+    // Start Tone.js transport from the current position
+    // Using start('+0', startTime) tells Transport to start immediately at the specified time
+    Tone.getTransport().start('+0', startTime);
 
     // Start animation loop for position updates
     this.startPositionTracking();
@@ -294,16 +274,18 @@ export class AudioPlaybackManager {
   pause(): void {
     if (!this.isPlaying) return;
 
-    // Stop position tracking first to prevent race conditions
+    // Use the last tracked playback position instead of querying Transport
+    // because Transport.seconds can be unreliable during state transitions
+    const currentPosition = this.playbackPosition;
+
+    // Stop position tracking
     this.stopPositionTracking();
 
     // Pause transport
     Tone.getTransport().pause();
 
-    // Capture current position
-    const currentPosition = Tone.getTransport().seconds;
-    this.playbackPosition = currentPosition;
-    this.pausedPosition = currentPosition; // Store where we paused
+    // Store the paused position
+    this.pausedPosition = currentPosition;
 
     // Send final position update
     if (this.onPositionUpdate) {
