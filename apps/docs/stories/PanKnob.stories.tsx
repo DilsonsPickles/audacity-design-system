@@ -3,7 +3,6 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { PanKnob } from '@audacity-ui/components';
 import '@audacity-ui/components/style.css';
-import figma from '@figma/code-connect';
 
 const meta = {
   title: 'Components/PanKnob',
