@@ -287,7 +287,8 @@ function CanvasDemoContent() {
   const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('musescore');
   const [showMixer, setShowMixer] = React.useState(false);
   const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
-  const [isAudioSetupOpen, setIsAudioSetupOpen] = React.useState(false);
+  const [audioSetupMenuAnchor, setAudioSetupMenuAnchor] = React.useState<{ x: number; y: number } | null>(null);
+  const [selectedRecordingDevice, setSelectedRecordingDevice] = React.useState('MacBook Pro Microphone');
 
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
@@ -1973,7 +1974,10 @@ function CanvasDemoContent() {
               <GhostButton
                 icon="cog"
                 label="Audio setup"
-                onClick={() => setIsAudioSetupOpen(true)}
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setAudioSetupMenuAnchor({ x: rect.left, y: rect.bottom + 4 });
+                }}
               />
               <GhostButton
                 icon="cloud"
@@ -3142,71 +3146,66 @@ function CanvasDemoContent() {
         os={preferences.operatingSystem}
       />
 
-      {/* Audio Setup Dialog */}
-      <Dialog
-        isOpen={isAudioSetupOpen}
-        onClose={() => setIsAudioSetupOpen(false)}
-        title="Audio Setup"
-        os={preferences.operatingSystem}
-      >
-        <div style={{ padding: '20px' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
-              Recording Device
-            </label>
-            <select
-              style={{
-                width: '100%',
-                padding: '8px',
-                fontSize: '13px',
-                border: '1px solid #d0d0d0',
-                borderRadius: '4px',
+      {/* Audio Setup Context Menu */}
+      {audioSetupMenuAnchor && (
+        <div
+          style={{
+            position: 'fixed',
+            top: audioSetupMenuAnchor.y,
+            left: audioSetupMenuAnchor.x,
+            zIndex: 10000,
+            minWidth: '220px',
+          }}
+          onMouseLeave={() => setAudioSetupMenuAnchor(null)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              border: '1px solid #d0d0d0',
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              padding: '4px 0',
+            }}
+          >
+            <MenuItem
+              label="Host"
+              hasSubmenu
+              onClick={() => {}}
+            />
+            <MenuItem
+              label="Playback device"
+              hasSubmenu
+              onClick={() => {}}
+            />
+            <MenuItem
+              label="Recording device"
+              description={selectedRecordingDevice}
+              hasSubmenu
+              onClick={() => {}}
+            />
+            <MenuItem
+              label="Recording channels"
+              hasSubmenu
+              onClick={() => {}}
+            />
+            <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
+            <MenuItem
+              label="Rescan audio devices"
+              onClick={() => {
+                toast.info('Rescanning audio devices...');
+                setAudioSetupMenuAnchor(null);
               }}
-            >
-              <option>Default Microphone</option>
-              <option>Built-in Microphone</option>
-              <option>External USB Microphone</option>
-            </select>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
-              Playback Device
-            </label>
-            <select
-              style={{
-                width: '100%',
-                padding: '8px',
-                fontSize: '13px',
-                border: '1px solid #d0d0d0',
-                borderRadius: '4px',
+            />
+            <MenuItem
+              label="Audio settings"
+              onClick={() => {
+                setAudioSetupMenuAnchor(null);
+                toast.info('Opening audio settings...');
               }}
-            >
-              <option>Default Speakers</option>
-              <option>Built-in Speakers</option>
-              <option>Headphones</option>
-            </select>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', fontSize: '13px' }}>
-              <input type="checkbox" style={{ marginRight: '8px' }} />
-              Software playthrough (hear input while recording)
-            </label>
+            />
           </div>
         </div>
-
-        <DialogFooter
-          primaryAction={{
-            label: 'OK',
-            onClick: () => setIsAudioSetupOpen(false),
-          }}
-          secondaryAction={{
-            label: 'Cancel',
-            onClick: () => setIsAudioSetupOpen(false),
-          }}
-        />
-      </Dialog>
+      )}
 
       {/* Export Modal */}
       <ExportModal
