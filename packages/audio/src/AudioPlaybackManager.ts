@@ -33,6 +33,28 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Set the audio output device
+   * @param deviceId - The device ID to route audio to, or null for default
+   */
+  async setAudioOutputDevice(deviceId: string | null): Promise<void> {
+    try {
+      const context = Tone.getContext().rawContext as any;
+
+      // Check if setSinkId is supported (Chrome/Edge)
+      if (typeof context.setSinkId === 'function') {
+        await context.setSinkId(deviceId || '');
+        console.log('Audio output device set to:', deviceId || 'default');
+      } else {
+        console.warn('setSinkId is not supported in this browser');
+        throw new Error('Audio output device selection is not supported in this browser');
+      }
+    } catch (error) {
+      console.error('Failed to set audio output device:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Generate a tone and return the audio buffer and waveform data
    */
   async generateTone(

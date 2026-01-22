@@ -3206,10 +3206,18 @@ function CanvasDemoContent() {
                   key={device.deviceId}
                   label={device.label || 'Unknown Device'}
                   icon={selectedPlaybackDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectedPlaybackDevice(device.label || 'Unknown Device');
                     setAudioSetupMenuAnchor(null);
-                    toast.success(`Playback device: ${device.label || 'Unknown Device'}`);
+
+                    // Actually route audio to the selected device
+                    try {
+                      const audioManager = audioManagerRef.current;
+                      await audioManager.setAudioOutputDevice(device.deviceId);
+                      toast.success(`Playback device: ${device.label || 'Unknown Device'}`);
+                    } catch (error) {
+                      toast.error('Failed to set playback device. Your browser may not support this feature.');
+                    }
                   }}
                 />
               ))}
