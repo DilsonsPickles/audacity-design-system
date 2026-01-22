@@ -554,13 +554,23 @@ function CanvasDemoContent() {
   // Ref to prevent menu from re-opening immediately after closing
   const contextMenuClosedTimeRef = React.useRef<number>(0);
 
-  // Close time selection context menu when clicking anywhere (except right-click)
+  // Ref to track the menu element so we can exclude it from click-outside detection
+  const timeSelectionMenuRef = React.useRef<HTMLDivElement>(null);
+
+  // Close time selection context menu when clicking anywhere (except right-click or on the menu itself)
   const handleGlobalMouseDown = React.useCallback((e: MouseEvent) => {
     // Close menu on left-click (button 0) or middle-click (button 1)
     // Don't close on right-click (button 2) as that might open the menu
+    // Don't close if clicking on the menu itself (let the menu handle its own clicks)
     if (e.button !== 2 && timeSelectionContextMenu) {
-      contextMenuClosedTimeRef.current = Date.now();
-      setTimeSelectionContextMenu(null);
+      const target = e.target as Node;
+      const menuElement = timeSelectionMenuRef.current;
+
+      // If clicking outside the menu, close it
+      if (menuElement && !menuElement.contains(target)) {
+        contextMenuClosedTimeRef.current = Date.now();
+        setTimeSelectionContextMenu(null);
+      }
     }
   }, [timeSelectionContextMenu]);
 
@@ -3540,14 +3550,15 @@ function CanvasDemoContent() {
 
       {/* Time Selection Context Menu */}
       {timeSelectionContextMenu && (
-        <TimeSelectionContextMenu
-          isOpen={timeSelectionContextMenu.isOpen && !!state.timeSelection}
-          x={timeSelectionContextMenu.x}
-          y={timeSelectionContextMenu.y}
-          onClose={() => {
-            contextMenuClosedTimeRef.current = Date.now();
-            setTimeSelectionContextMenu(null);
-          }}
+        <div ref={timeSelectionMenuRef}>
+          <TimeSelectionContextMenu
+            isOpen={timeSelectionContextMenu.isOpen && !!state.timeSelection}
+            x={timeSelectionContextMenu.x}
+            y={timeSelectionContextMenu.y}
+            onClose={() => {
+              contextMenuClosedTimeRef.current = Date.now();
+              setTimeSelectionContextMenu(null);
+            }}
           cutMode={state.cutMode}
           onCut={() => {
             // Cut operation - same as Cmd+X but triggered from context menu
@@ -3603,7 +3614,8 @@ function CanvasDemoContent() {
             contextMenuClosedTimeRef.current = Date.now();
             setTimeSelectionContextMenu(null);
           }}
-        />
+          />
+        </div>
       )}
     </div>
   );
