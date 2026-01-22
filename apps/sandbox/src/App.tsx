@@ -2555,6 +2555,11 @@ function CanvasDemoContent() {
                   scrollX={scrollX}
                   onPositionChange={(newPosition) => {
                     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+                    // Also update Transport position if paused (so resume continues from new position)
+                    const audioManager = audioManagerRef.current;
+                    if (audioManager.getIsPaused()) {
+                      audioManager.seek(newPosition);
+                    }
                   }}
                   minPosition={0} // Allow playhead stalk to touch the 12px gap area
                 />
