@@ -33,13 +33,15 @@ export class AudioPlaybackManager {
   async generateTone(
     duration: number,
     frequency: number = 440,
-    waveform: 'sine' | 'square' | 'sawtooth' | 'triangle' = 'sine'
-  ): Promise<{ buffer: AudioBuffer; waveformData: number[] }> {
+    waveform: 'sine' | 'square' | 'sawtooth' | 'triangle' = 'sine',
+    stereo: boolean = false
+  ): Promise<{ buffer: AudioBuffer; waveformData: number[] | { left: number[]; right: number[] } }> {
     await Tone.start();
 
     // Create an offline context to render the tone
     const sampleRate = Tone.context.sampleRate;
-    const offlineContext = new OfflineAudioContext(1, duration * sampleRate, sampleRate);
+    const numChannels = stereo ? 2 : 1;
+    const offlineContext = new OfflineAudioContext(numChannels, duration * sampleRate, sampleRate);
 
     // Create oscillator
     const oscillator = offlineContext.createOscillator();
@@ -65,15 +67,31 @@ export class AudioPlaybackManager {
     const buffer = await offlineContext.startRendering();
 
     // Generate waveform data for visualization
-    const channelData = buffer.getChannelData(0);
-    const waveformData: number[] = [];
-    const samplesPerPixel = Math.floor(channelData.length / (duration * 100)); // ~100 samples per second
+    if (stereo) {
+      const leftChannelData = buffer.getChannelData(0);
+      const rightChannelData = buffer.getChannelData(1);
+      const samplesPerPixel = Math.floor(leftChannelData.length / (duration * 100)); // ~100 samples per second
 
-    for (let i = 0; i < channelData.length; i += samplesPerPixel) {
-      waveformData.push(channelData[i]);
+      const waveformLeft: number[] = [];
+      const waveformRight: number[] = [];
+
+      for (let i = 0; i < leftChannelData.length; i += samplesPerPixel) {
+        waveformLeft.push(leftChannelData[i]);
+        waveformRight.push(rightChannelData[i]);
+      }
+
+      return { buffer, waveformData: { left: waveformLeft, right: waveformRight } };
+    } else {
+      const channelData = buffer.getChannelData(0);
+      const waveformData: number[] = [];
+      const samplesPerPixel = Math.floor(channelData.length / (duration * 100)); // ~100 samples per second
+
+      for (let i = 0; i < channelData.length; i += samplesPerPixel) {
+        waveformData.push(channelData[i]);
+      }
+
+      return { buffer, waveformData };
     }
-
-    return { buffer, waveformData };
   }
 
   /**

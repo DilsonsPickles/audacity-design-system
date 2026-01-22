@@ -1839,18 +1839,30 @@ function CanvasDemoContent() {
           const duration = 4.0; // 4 seconds
           const startTime = state.playheadPosition;
 
+          // Check if track is stereo (has channelSplitRatio defined)
+          const track = state.tracks[trackIndex];
+          const isStereo = track.channelSplitRatio !== undefined;
+
           // Generate actual audio using Tone.js
-          const { buffer, waveformData } = await audioManager.generateTone(duration, 8000, 'sawtooth');
+          const { buffer, waveformData } = await audioManager.generateTone(duration, 8000, 'sawtooth', isStereo);
 
           // Store the audio buffer for playback
           audioManager.addClipBuffer(newClipId, buffer);
 
-          const newClip = {
+          const newClip = isStereo && typeof waveformData === 'object' && 'left' in waveformData ? {
             id: newClipId,
             name: 'Tone',
             start: startTime,
             duration: duration,
-            waveform: waveformData,
+            waveformLeft: waveformData.left,
+            waveformRight: waveformData.right,
+            envelopePoints: [],
+          } : {
+            id: newClipId,
+            name: 'Tone',
+            start: startTime,
+            duration: duration,
+            waveform: Array.isArray(waveformData) ? waveformData : [],
             envelopePoints: [],
           };
 
@@ -2200,7 +2212,7 @@ function CanvasDemoContent() {
                   name: trackName,
                   type: (type === 'label' ? 'label' : 'audio') as 'audio' | 'label',
                   height: type === 'label' ? 82 : 114,
-                  channelSplitRatio: 0.5,
+                  ...(type === 'stereo' ? { channelSplitRatio: 0.5 } : {}),
                   clips: [],
                 };
                 dispatch({ type: 'ADD_TRACK', payload: newTrack });
