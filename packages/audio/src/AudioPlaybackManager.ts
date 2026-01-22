@@ -8,6 +8,8 @@ export class AudioPlaybackManager {
   private players: Map<string, Tone.Player> = new Map();
   private volumes: Map<string, Tone.Volume> = new Map();
   private audioBuffers: Map<string, AudioBuffer> = new Map();
+  private meters: Map<number, Tone.Meter> = new Map(); // Track index -> Meter
+  private trackGains: Map<number, Tone.Gain> = new Map(); // Track index -> Gain node
   private isPlaying: boolean = false;
   private isPaused: boolean = false;
   // @ts-ignore - playbackPosition is used for tracking state
@@ -15,6 +17,7 @@ export class AudioPlaybackManager {
   private lastLoadedPosition: number = -1;
   private animationFrameId: number | null = null;
   private onPositionUpdate?: (position: number) => void;
+  private onMeterUpdate?: (trackIndex: number, level: number) => void;
   private loopEnabled: boolean = false;
   private loopStart: number | null = null;
   private loopEnd: number | null = null;
@@ -113,8 +116,25 @@ export class AudioPlaybackManager {
     });
     this.players.clear();
 
+    // Clear and recreate track gain nodes and meters
+    this.trackGains.forEach(gain => gain.dispose());
+    this.meters.forEach(meter => meter.dispose());
+    this.trackGains.clear();
+    this.meters.clear();
+
+    // Create gain nodes and meters for each track
+    tracks.forEach((track, trackIndex) => {
+      if (track.type !== 'label') {
+        const gain = new Tone.Gain(1).toDestination();
+        const meter = new Tone.Meter();
+        gain.connect(meter);
+        this.trackGains.set(trackIndex, gain);
+        this.meters.set(trackIndex, meter);
+      }
+    });
+
     // Create players for all clips that have audio buffers
-    tracks.forEach(track => {
+    tracks.forEach((track, trackIndex) => {
       track.clips.forEach((clip: any) => {
         const buffer = this.audioBuffers.get(String(clip.id));
         if (buffer) {
@@ -126,7 +146,8 @@ export class AudioPlaybackManager {
             if (deletedRegions.length === 0) {
               // No deleted regions - create a single player for the entire clip
               const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
-              const player = new Tone.Player(toneBuffer).toDestination();
+              const trackGain = this.trackGains.get(trackIndex);
+              const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
               // Calculate offset if playhead is in the middle of the clip
               const offsetIntoClip = Math.max(0, startTime - clip.start);
@@ -143,7 +164,8 @@ export class AudioPlaybackManager {
               segments.forEach((segment, segmentIndex) => {
                 // Create a Tone.js buffer from the AudioBuffer
                 const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
-                const player = new Tone.Player(toneBuffer).toDestination();
+                const trackGain = this.trackGains.get(trackIndex);
+                const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
                 // Calculate timeline position for this segment
                 const timelineStart = clip.start + segment.timelineOffset;
@@ -309,6 +331,13 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Set callback for meter level updates
+   */
+  setMeterUpdateCallback(callback: (trackIndex: number, level: number) => void): void {
+    this.onMeterUpdate = callback;
+  }
+
+  /**
    * Get current playback position in seconds
    */
   getCurrentPosition(): number {
@@ -343,6 +372,21 @@ export class AudioPlaybackManager {
         this.onPositionUpdate(currentTime);
       }
 
+      // Update meters for each track
+      if (this.onMeterUpdate) {
+        this.meters.forEach((meter, trackIndex) => {
+          // Get dB value and convert to 0-100 scale
+          // Tone.Meter returns values in dB (typically -Infinity to 0)
+          const dbValue = meter.getValue();
+          // Convert dB to linear scale (0-100)
+          // -60dB or less = 0, 0dB = 100
+          const linearValue = typeof dbValue === 'number'
+            ? Math.max(0, Math.min(100, ((dbValue + 60) / 60) * 100))
+            : 0;
+          this.onMeterUpdate(trackIndex, linearValue);
+        });
+      }
+
       this.animationFrameId = requestAnimationFrame(updatePosition);
     };
 
@@ -368,9 +412,13 @@ export class AudioPlaybackManager {
     // Dispose of all players and volumes
     this.players.forEach(player => player.dispose());
     this.volumes.forEach(volume => volume.dispose());
+    this.trackGains.forEach(gain => gain.dispose());
+    this.meters.forEach(meter => meter.dispose());
 
     this.players.clear();
     this.volumes.clear();
+    this.trackGains.clear();
+    this.meters.clear();
   }
 
   /**

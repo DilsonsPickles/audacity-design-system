@@ -636,6 +636,9 @@ function CanvasDemoContent() {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const audioManagerRef = React.useRef(getAudioPlaybackManager());
 
+  // Track meter levels during playback (trackIndex -> level 0-100)
+  const [trackMeterLevels, setTrackMeterLevels] = React.useState<Map<number, number>>(new Map());
+
   // Recording state
   const recordingManagerRef = React.useRef<RecordingManager | null>(null);
 
@@ -664,6 +667,15 @@ function CanvasDemoContent() {
     // Set up position update callback to sync playhead with audio
     audioManager.setPositionUpdateCallback((position) => {
       dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: position });
+    });
+
+    // Set up meter update callback to display playback levels
+    audioManager.setMeterUpdateCallback((trackIndex, level) => {
+      setTrackMeterLevels(prev => {
+        const next = new Map(prev);
+        next.set(trackIndex, level);
+        return next;
+      });
     });
 
     // Cleanup on unmount
@@ -706,6 +718,7 @@ function CanvasDemoContent() {
     const audioManager = audioManagerRef.current;
     audioManager.stop();
     setIsPlaying(false);
+    setTrackMeterLevels(new Map()); // Reset all meter levels to 0
   };
 
   // Handle recording
@@ -2268,10 +2281,28 @@ function CanvasDemoContent() {
                   isMuted={false}
                   isSolo={false}
                   isFocused={keyboardFocusedTrack === index}
-                  // Meter props - show recording levels if this track is recording
-                  meterLevel={state.isRecording && state.recordingTrackIndex === index ? state.recordingMeterLevel : 0}
-                  meterLevelLeft={state.isRecording && state.recordingTrackIndex === index ? state.recordingMeterLevel : 0}
-                  meterLevelRight={state.isRecording && state.recordingTrackIndex === index ? state.recordingMeterLevel : 0}
+                  // Meter props - show recording levels if this track is recording, playback levels if playing
+                  meterLevel={
+                    state.isRecording && state.recordingTrackIndex === index
+                      ? state.recordingMeterLevel
+                      : isPlaying
+                        ? trackMeterLevels.get(index) || 0
+                        : 0
+                  }
+                  meterLevelLeft={
+                    state.isRecording && state.recordingTrackIndex === index
+                      ? state.recordingMeterLevel
+                      : isPlaying
+                        ? trackMeterLevels.get(index) || 0
+                        : 0
+                  }
+                  meterLevelRight={
+                    state.isRecording && state.recordingTrackIndex === index
+                      ? state.recordingMeterLevel
+                      : isPlaying
+                        ? trackMeterLevels.get(index) || 0
+                        : 0
+                  }
                   meterClipped={state.recordingPeakLevel > 100}
                   meterStyle="default"
                   onMuteToggle={() => {}}
