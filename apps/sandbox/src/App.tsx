@@ -701,15 +701,21 @@ function CanvasDemoContent() {
       audioManager.pause();
       setIsPlaying(false);
     } else {
-      // Always load clips to ensure we're playing from the correct position
-      // This handles:
-      // - First play
-      // - Resume after stop
-      // - Resume after pause with position change (via , or .)
-      audioManager.loadClips(state.tracks, state.playheadPosition);
+      // Check if resuming from pause
+      const isPaused = audioManager.getIsPaused();
 
-      // Start playback from current playhead position
-      await audioManager.play(state.playheadPosition);
+      if (!isPaused) {
+        // Load clips for:
+        // - First play
+        // - Resume after stop
+        audioManager.loadClips(state.tracks, state.playheadPosition);
+        // Start playback from current playhead position
+        await audioManager.play(state.playheadPosition);
+      } else {
+        // Resume from pause - don't pass startTime to preserve Transport position
+        await audioManager.play();
+      }
+
       setIsPlaying(true);
     }
   };
