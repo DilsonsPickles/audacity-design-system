@@ -291,9 +291,10 @@ export function Canvas({
         onMouseMove={containerProps.onMouseMove}
         onClick={handleContainerClick}
         onContextMenu={(e) => {
-          // Only show context menu if there's a time selection AND we're not currently dragging
-          // (Don't show menu while creating a time selection)
-          if (timeSelection && !selection.selection.isDragging) {
+          // Only show context menu on right-click (button 2) when there's an existing time selection
+          // Don't show while creating/dragging a selection
+          const isRightClick = e.button === 2;
+          if (isRightClick && timeSelection && !selection.selection.isDragging && !selection.selection.isCreating) {
             e.preventDefault();
             onTimeSelectionMenuClick?.(e.clientX, e.clientY);
           }
