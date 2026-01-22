@@ -2673,7 +2673,7 @@ function CanvasDemoContent() {
                     height: track.height || 114,
                     selected: state.selectedTrackIndices.includes(index),
                     focused: state.focusedTrackIndex === index,
-                    stereo: false, // TODO: Add stereo support when needed
+                    stereo: track.channelSplitRatio !== undefined,
                     viewMode: track.viewMode,
                     trackType: track.type,
                     channelSplitRatio: track.channelSplitRatio,
