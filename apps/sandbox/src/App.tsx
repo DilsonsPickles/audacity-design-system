@@ -3197,35 +3197,18 @@ function CanvasDemoContent() {
               hasSubmenu
               onClick={() => {}}
             >
-              {availableAudioInputs.length > 0 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '100%',
-                    top: 0,
-                    minWidth: '250px',
-                    background: '#fff',
-                    border: '1px solid #d0d0d0',
-                    borderRadius: '4px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                    padding: '4px 0',
-                    marginLeft: '4px',
+              {availableAudioInputs.map((device) => (
+                <ContextMenuItem
+                  key={device.deviceId}
+                  label={device.label || 'Unknown Device'}
+                  icon={selectedRecordingDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
+                  onClick={() => {
+                    setSelectedRecordingDevice(device.label || 'Unknown Device');
+                    setAudioSetupMenuAnchor(null);
+                    toast.success(`Recording device: ${device.label || 'Unknown Device'}`);
                   }}
-                >
-                  {availableAudioInputs.map((device) => (
-                    <ContextMenuItem
-                      key={device.deviceId}
-                      label={device.label || 'Unknown Device'}
-                      icon={selectedRecordingDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
-                      onClick={() => {
-                        setSelectedRecordingDevice(device.label || 'Unknown Device');
-                        setAudioSetupMenuAnchor(null);
-                        toast.success(`Recording device: ${device.label || 'Unknown Device'}`);
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+                />
+              ))}
             </ContextMenuItem>
             <ContextMenuItem
               label="Recording channels"
