@@ -731,56 +731,38 @@ function CanvasDemoContent() {
     setTrackMeterLevels(new Map()); // Reset all meter levels to 0
   };
 
-  // Handle mic monitoring toggle
-  const handleToggleMicMonitoring = async () => {
-    if (isMicMonitoring) {
-      // Stop monitoring
-      if (recordingManagerRef.current) {
-        recordingManagerRef.current.stopMonitoring();
-        recordingManagerRef.current = null;
+  // Start mic monitoring automatically when component mounts
+  React.useEffect(() => {
+    const startAutoMonitoring = async () => {
+      try {
+        // Create recording manager for monitoring
+        recordingManagerRef.current = new RecordingManager({
+          onMeterUpdate: (level, peak) => {
+            // Only update if we have a focused track
+            if (state.focusedTrackIndex !== null) {
+              dispatch({
+                type: 'UPDATE_RECORDING_METERS',
+                payload: { level, peak }
+              });
+            }
+          },
+          onPlayheadUpdate: () => {}, // Not used during monitoring
+          onRecordingComplete: () => {}, // Not used during monitoring
+          onWaveformUpdate: (waveformData) => {
+            setMicWaveformData(waveformData);
+          },
+        });
+
+        await recordingManagerRef.current.startMonitoring();
+        setIsMicMonitoring(true);
+      } catch (error) {
+        // Mic access denied or not available - silently fail
+        console.log('Microphone monitoring not available:', error);
       }
-      setIsMicMonitoring(false);
-      setMicWaveformData([]);
-      dispatch({ type: 'STOP_RECORDING' }); // Clear recording track index
-    } else {
-      // Find track to monitor
-      let trackIndex = state.focusedTrackIndex;
+    };
 
-      // If no track is focused, use the first non-label track
-      if (trackIndex === null) {
-        trackIndex = state.tracks.findIndex(t =>
-          !t.name.toLowerCase().includes('label')
-        );
-      }
-
-      // If still no track found, we need at least one audio track
-      if (trackIndex === -1) {
-        toast.error('Please add an audio track before monitoring');
-        return;
-      }
-
-      // Set the recording track index for meter display
-      dispatch({ type: 'START_RECORDING', payload: { trackIndex } });
-
-      // Start monitoring
-      recordingManagerRef.current = new RecordingManager({
-        onMeterUpdate: (level, peak) => {
-          dispatch({
-            type: 'UPDATE_RECORDING_METERS',
-            payload: { level, peak }
-          });
-        },
-        onPlayheadUpdate: () => {}, // Not used during monitoring
-        onRecordingComplete: () => {}, // Not used during monitoring
-        onWaveformUpdate: (waveformData) => {
-          setMicWaveformData(waveformData);
-        },
-      });
-
-      await recordingManagerRef.current.startMonitoring();
-      setIsMicMonitoring(true);
-    }
-  };
+    startAutoMonitoring();
+  }, []); // Run once on mount
 
   // Handle recording
   const handleRecord = async () => {
@@ -2145,13 +2127,6 @@ function CanvasDemoContent() {
                   disabled={isPlaying}
                   onClick={handleRecord}
                 />
-                <TransportButton
-                  icon="microphone"
-                  active={isMicMonitoring}
-                  disabled={isPlaying || state.isRecording}
-                  onClick={handleToggleMicMonitoring}
-                  title="Toggle microphone monitoring"
-                />
                 <TransportButton icon="skip-back" disabled={isPlaying} />
                 <TransportButton icon="skip-forward" disabled={isPlaying} />
                 <TransportButton
@@ -2353,27 +2328,33 @@ function CanvasDemoContent() {
                   isMuted={false}
                   isSolo={false}
                   isFocused={keyboardFocusedTrack === index}
-                  // Meter props - show recording levels if this track is recording, monitoring levels if monitoring, playback levels if playing
+                  // Meter props - show recording levels if recording, monitoring levels if focused and monitoring, playback levels if playing
                   meterLevel={
-                    (state.isRecording || isMicMonitoring) && state.recordingTrackIndex === index
+                    state.isRecording && state.recordingTrackIndex === index
                       ? state.recordingMeterLevel
-                      : isPlaying
-                        ? trackMeterLevels.get(index) || 0
-                        : 0
+                      : isMicMonitoring && state.focusedTrackIndex === index
+                        ? state.recordingMeterLevel
+                        : isPlaying
+                          ? trackMeterLevels.get(index) || 0
+                          : 0
                   }
                   meterLevelLeft={
-                    (state.isRecording || isMicMonitoring) && state.recordingTrackIndex === index
+                    state.isRecording && state.recordingTrackIndex === index
                       ? state.recordingMeterLevel
-                      : isPlaying
-                        ? trackMeterLevels.get(index) || 0
-                        : 0
+                      : isMicMonitoring && state.focusedTrackIndex === index
+                        ? state.recordingMeterLevel
+                        : isPlaying
+                          ? trackMeterLevels.get(index) || 0
+                          : 0
                   }
                   meterLevelRight={
-                    (state.isRecording || isMicMonitoring) && state.recordingTrackIndex === index
+                    state.isRecording && state.recordingTrackIndex === index
                       ? state.recordingMeterLevel
-                      : isPlaying
-                        ? trackMeterLevels.get(index) || 0
-                        : 0
+                      : isMicMonitoring && state.focusedTrackIndex === index
+                        ? state.recordingMeterLevel
+                        : isPlaying
+                          ? trackMeterLevels.get(index) || 0
+                          : 0
                   }
                   meterClipped={state.recordingPeakLevel > 100}
                   meterStyle="default"
