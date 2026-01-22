@@ -1,2 +1,3 @@
-export { Clip, type ClipProps } from './Clip';
-export type { Clip as ClipData, EnvelopePoint as EnvelopePointData, TimeSelection, ClipTheme } from '@audacity-ui/core';
+export { Clip } from './Clip';
+export type { ClipProps, ClipState } from './Clip';
+export type { ClipColor } from '../types/clip';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipDisplay } from '../ClipDisplay/ClipDisplay';
+import { Clip } from '../Clip/Clip';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
 import { CLIP_CONTENT_OFFSET } from '../constants';
@@ -210,7 +210,7 @@ function getTrackColor(trackIndex: number, clipStyle: 'classic' | 'colourful' = 
 }
 
 /**
- * Track component - renders a single audio track with clips using ClipDisplay components
+ * Track component - renders a single audio track with clips using Clip components
  */
 export const TrackNew: React.FC<TrackProps> = ({
   clips,
@@ -470,7 +470,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             }
           }}
         >
-          <ClipDisplay
+          <Clip
             color={clipStyle === 'classic' ? 'classic' : ((clip as any).color || trackColor)}
             name={clip.name}
             width={clipWidth}

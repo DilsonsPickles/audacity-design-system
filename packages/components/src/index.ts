@@ -85,7 +85,6 @@ export * from './PluginManagerDialog';
  * Audio Components
  */
 export * from './Clip';
-export * from './ClipDisplay';
 export * from './ClipHeader';
 export * from './ClipBody';
 export * from './ClipContextMenu';

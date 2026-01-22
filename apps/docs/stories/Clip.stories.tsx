@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ClipDisplay, generateSpeechWaveform } from '@audacity-ui/components';
+import { Clip, generateSpeechWaveform } from '@audacity-ui/components';
 
 // Generate sample waveform data for stories
 const sampleWaveform = generateSpeechWaveform(0.5, 1800);
@@ -16,9 +16,9 @@ const sampleEnvelope = [
   { time: 0.8, db: -3 },
 ];
 
-const meta: Meta<typeof ClipDisplay> = {
-  title: 'Audio/ClipDisplay',
-  component: ClipDisplay,
+const meta: Meta<typeof Clip> = {
+  title: 'Audio/Clip',
+  component: Clip,
   tags: ['autodocs'],
   parameters: {
     layout: 'centered',
