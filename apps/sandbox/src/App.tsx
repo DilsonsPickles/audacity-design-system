@@ -287,6 +287,7 @@ function CanvasDemoContent() {
   const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('musescore');
   const [showMixer, setShowMixer] = React.useState(false);
   const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
+  const [isAudioSetupOpen, setIsAudioSetupOpen] = React.useState(false);
 
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
@@ -1969,7 +1970,11 @@ function CanvasDemoContent() {
           activeMenuItem !== 'export' ? (
             <ToolbarGroup ariaLabel="Toolbar options" startTabIndex={3}>
               {showMixer && <GhostButton icon="mixer" label="Mixer" />}
-              <GhostButton icon="cog" label="Audio setup" />
+              <GhostButton
+                icon="cog"
+                label="Audio setup"
+                onClick={() => setIsAudioSetupOpen(true)}
+              />
               <GhostButton
                 icon="cloud"
                 label="Share audio"
@@ -3136,6 +3141,72 @@ function CanvasDemoContent() {
         onClose={() => setIsPluginBrowserOpen(false)}
         os={preferences.operatingSystem}
       />
+
+      {/* Audio Setup Dialog */}
+      <Dialog
+        isOpen={isAudioSetupOpen}
+        onClose={() => setIsAudioSetupOpen(false)}
+        title="Audio Setup"
+        os={preferences.operatingSystem}
+      >
+        <div style={{ padding: '20px' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
+              Recording Device
+            </label>
+            <select
+              style={{
+                width: '100%',
+                padding: '8px',
+                fontSize: '13px',
+                border: '1px solid #d0d0d0',
+                borderRadius: '4px',
+              }}
+            >
+              <option>Default Microphone</option>
+              <option>Built-in Microphone</option>
+              <option>External USB Microphone</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>
+              Playback Device
+            </label>
+            <select
+              style={{
+                width: '100%',
+                padding: '8px',
+                fontSize: '13px',
+                border: '1px solid #d0d0d0',
+                borderRadius: '4px',
+              }}
+            >
+              <option>Default Speakers</option>
+              <option>Built-in Speakers</option>
+              <option>Headphones</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', fontSize: '13px' }}>
+              <input type="checkbox" style={{ marginRight: '8px' }} />
+              Software playthrough (hear input while recording)
+            </label>
+          </div>
+        </div>
+
+        <DialogFooter
+          primaryAction={{
+            label: 'OK',
+            onClick: () => setIsAudioSetupOpen(false),
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: () => setIsAudioSetupOpen(false),
+          }}
+        />
+      </Dialog>
 
       {/* Export Modal */}
       <ExportModal
