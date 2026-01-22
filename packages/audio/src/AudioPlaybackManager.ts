@@ -10,6 +10,7 @@ export class AudioPlaybackManager {
   private audioBuffers: Map<string, AudioBuffer> = new Map();
   private meters: Map<number, Tone.Meter> = new Map(); // Track index -> Meter
   private trackGains: Map<number, Tone.Gain> = new Map(); // Track index -> Gain node
+  private frozenMeterLevels: Map<number, number> = new Map(); // Frozen levels for pause
   private isPlaying: boolean = false;
   private isPaused: boolean = false;
   // @ts-ignore - playbackPosition is used for tracking state
@@ -256,6 +257,7 @@ export class AudioPlaybackManager {
     if (this.isPaused) {
       // Resume from paused state
       this.isPaused = false;
+      this.frozenMeterLevels.clear(); // Clear frozen levels when resuming
 
       // If a new start time is provided and it's different from current Transport position,
       // update the Transport position before starting
@@ -290,10 +292,27 @@ export class AudioPlaybackManager {
   pause(): void {
     if (!this.isPlaying) return;
 
+    // Capture current meter levels before pausing
+    this.frozenMeterLevels.clear();
+    this.meters.forEach((meter, trackIndex) => {
+      const dbValue = meter.getValue();
+      const linearValue = typeof dbValue === 'number'
+        ? Math.max(0, Math.min(100, ((dbValue + 60) / 60) * 100))
+        : 0;
+      this.frozenMeterLevels.set(trackIndex, linearValue);
+    });
+
     this.isPlaying = false;
     this.isPaused = true;
     Tone.getTransport().pause();
     this.stopPositionTracking();
+
+    // Send one final meter update with frozen values
+    if (this.onMeterUpdate) {
+      this.frozenMeterLevels.forEach((level, trackIndex) => {
+        this.onMeterUpdate!(trackIndex, level);
+      });
+    }
   }
 
   /**
@@ -302,12 +321,20 @@ export class AudioPlaybackManager {
   stop(): void {
     this.pause();
     this.isPaused = false;
+    this.frozenMeterLevels.clear(); // Clear frozen levels on stop
     this.playbackPosition = 0;
     Tone.getTransport().stop();
     Tone.getTransport().position = 0;
 
     if (this.onPositionUpdate) {
       this.onPositionUpdate(0);
+    }
+
+    // Reset meters to 0 on stop
+    if (this.onMeterUpdate) {
+      this.meters.forEach((_, trackIndex) => {
+        this.onMeterUpdate!(trackIndex, 0);
+      });
     }
   }
 
