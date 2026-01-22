@@ -96,6 +96,7 @@ export function Canvas({
   const { spectralSelection, setSpectralSelection } = useSpectralSelection();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastMouseButtonRef = useRef<number>(0);
   const { activeProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
 
@@ -287,17 +288,23 @@ export function Canvas({
     <div className="canvas-container" style={{ backgroundColor: bgColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible', cursor: 'text' }}>
       <div
         ref={containerRef}
-        onMouseDown={handleClipMouseDown}
+        onMouseDown={(e) => {
+          lastMouseButtonRef.current = e.button;
+          handleClipMouseDown(e);
+        }}
         onMouseMove={containerProps.onMouseMove}
         onClick={handleContainerClick}
         onContextMenu={(e) => {
-          // Only show context menu on right-click (button 2) when there's an existing time selection
-          // Don't show while creating/dragging a selection
-          const isRightClick = e.button === 2;
-          if (isRightClick && timeSelection && !selection.selection.isDragging && !selection.selection.isCreating) {
+          // Only show context menu if:
+          // 1. The last mouse button pressed was right-click (button 2)
+          // 2. There's an existing time selection
+          // 3. We're not currently dragging or creating a selection
+          if (lastMouseButtonRef.current === 2 && timeSelection && !selection.selection.isDragging && !selection.selection.isCreating) {
             e.preventDefault();
             onTimeSelectionMenuClick?.(e.clientX, e.clientY);
           }
+          // Reset the button ref after handling
+          lastMouseButtonRef.current = 0;
         }}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
         style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none', cursor: 'text' } as React.CSSProperties}
