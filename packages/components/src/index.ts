@@ -91,7 +91,6 @@ export * from './ClipBody';
 export * from './ClipContextMenu';
 export * from './TrackContextMenu';
 export * from './TimelineRulerContextMenu';
-export * from './TimeSelectionContextMenu';
 export * from './AutomationCurvePoint';
 export * from './EnvelopePoint';
 export * from './EnvelopeCurve';

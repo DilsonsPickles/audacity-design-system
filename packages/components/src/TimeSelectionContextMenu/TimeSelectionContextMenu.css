@@ -1,7 +1,0 @@
-/* TimeSelectionContextMenu - Context menu for time selections */
-
-.time-selection-context-menu-divider {
-  height: 1px;
-  background-color: var(--time-selection-context-menu-divider-bg);
-  margin: 4px 0;
-}

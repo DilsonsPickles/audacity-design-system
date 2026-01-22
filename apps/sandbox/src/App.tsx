@@ -551,6 +551,9 @@ function CanvasDemoContent() {
     y: number;
   } | null>(null);
 
+  // Ref to prevent menu from re-opening immediately after closing
+  const contextMenuClosedTimeRef = React.useRef<number>(0);
+
   // Update display while playing - master toggle for auto-scroll
   const [updateDisplayWhilePlaying, setUpdateDisplayWhilePlaying] = React.useState(true);
 
@@ -2552,7 +2555,14 @@ function CanvasDemoContent() {
                       setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                     }}
                     onTimeSelectionMenuClick={(x, y) => {
-                      setTimeSelectionContextMenu({ isOpen: true, x, y });
+                      console.log('App.tsx - onTimeSelectionMenuClick called with x:', x, 'y:', y);
+                      // Prevent menu from opening within 300ms of being closed
+                      const timeSinceClosed = Date.now() - contextMenuClosedTimeRef.current;
+                      if (timeSinceClosed > 300) {
+                        setTimeSelectionContextMenu({ isOpen: true, x, y });
+                      } else {
+                        console.log('Preventing menu open - too soon after close:', timeSinceClosed, 'ms');
+                      }
                     }}
                     onTrackFocusChange={(trackIndex, hasFocus) => {
                       if (hasFocus) {
@@ -3517,12 +3527,16 @@ function CanvasDemoContent() {
       )}
 
       {/* Time Selection Context Menu */}
-      {timeSelectionContextMenu && state.timeSelection && (
+      {timeSelectionContextMenu && state.timeSelection && (console.log('Rendering TimeSelectionContextMenu - state:', timeSelectionContextMenu, 'timeSelection:', state.timeSelection), true) && (
         <TimeSelectionContextMenu
           isOpen={timeSelectionContextMenu.isOpen}
           x={timeSelectionContextMenu.x}
           y={timeSelectionContextMenu.y}
-          onClose={() => setTimeSelectionContextMenu(null)}
+          onClose={() => {
+            console.log('TimeSelectionContextMenu onClose called');
+            contextMenuClosedTimeRef.current = Date.now();
+            setTimeSelectionContextMenu(null);
+          }}
           cutMode={state.cutMode}
           onCut={() => {
             // Cut operation - same as Cmd+X but triggered from context menu
@@ -3543,14 +3557,17 @@ function CanvasDemoContent() {
 
             const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
             toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
+            contextMenuClosedTimeRef.current = Date.now();
             setTimeSelectionContextMenu(null);
           }}
           onCopy={() => {
             toast.info('Copy time selection - not yet implemented');
+            contextMenuClosedTimeRef.current = Date.now();
             setTimeSelectionContextMenu(null);
           }}
           onPaste={() => {
             toast.info('Paste into time selection - not yet implemented');
+            contextMenuClosedTimeRef.current = Date.now();
             setTimeSelectionContextMenu(null);
           }}
           onDelete={() => {
@@ -3572,6 +3589,7 @@ function CanvasDemoContent() {
 
             const cutModeLabel = state.cutMode === 'split' ? 'Split delete' : 'Ripple delete';
             toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
+            contextMenuClosedTimeRef.current = Date.now();
             setTimeSelectionContextMenu(null);
           }}
         />
