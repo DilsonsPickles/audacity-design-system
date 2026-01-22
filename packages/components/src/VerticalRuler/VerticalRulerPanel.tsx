@@ -186,29 +186,39 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 />
               ) : track.stereo ? (
                 // Stereo track - two rulers stacked
-                <div className="vertical-ruler-panel__stereo">
-                  <VerticalRuler
-                    height={track.height / 2 - 1 - (track.height > 44 ? 20 : 0)}
-                    min={-1.0}
-                    max={1.0}
-                    majorDivisions={3}
-                    minorDivisions={1}
-                    position="right"
-                    width={width}
-                    headerHeight={0}
-                  />
-                  <div className="vertical-ruler-panel__stereo-divider" />
-                  <VerticalRuler
-                    height={track.height / 2 - 1 - (track.height > 44 ? 20 : 0)}
-                    min={-1.0}
-                    max={1.0}
-                    majorDivisions={3}
-                    minorDivisions={1}
-                    position="right"
-                    width={width}
-                    headerHeight={0}
-                  />
-                </div>
+                (() => {
+                  const splitRatio = track.channelSplitRatio ?? 0.5;
+                  const spacerHeight = track.height > 44 ? 20 : 0;
+                  const availableHeight = track.height - spacerHeight;
+                  const topHeight = availableHeight * splitRatio;
+                  const bottomHeight = availableHeight * (1 - splitRatio);
+
+                  return (
+                    <div className="vertical-ruler-panel__stereo">
+                      <VerticalRuler
+                        height={topHeight}
+                        min={-1.0}
+                        max={1.0}
+                        majorDivisions={3}
+                        minorDivisions={1}
+                        position="right"
+                        width={width}
+                        headerHeight={0}
+                      />
+                      <div className="vertical-ruler-panel__stereo-divider" />
+                      <VerticalRuler
+                        height={bottomHeight}
+                        min={-1.0}
+                        max={1.0}
+                        majorDivisions={3}
+                        minorDivisions={1}
+                        position="right"
+                        width={width}
+                        headerHeight={0}
+                      />
+                    </div>
+                  );
+                })()
               ) : (
                 // Waveform mode - amplitude ruler
                 <VerticalRuler

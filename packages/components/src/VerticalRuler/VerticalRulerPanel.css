@@ -111,8 +111,8 @@
 /* Stereo divider line */
 .vertical-ruler-panel__stereo-divider {
   width: 100%;
-  height: 2px;
-  background-color: var(--panel-grid-border);
+  height: 0px;
+  border-bottom: 1px solid var(--panel-grid-border);
   flex-shrink: 0;
 }
 
