@@ -289,6 +289,8 @@ function CanvasDemoContent() {
   const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
   const [audioSetupMenuAnchor, setAudioSetupMenuAnchor] = React.useState<{ x: number; y: number } | null>(null);
   const [selectedRecordingDevice, setSelectedRecordingDevice] = React.useState('MacBook Pro Microphone');
+  const [availableAudioInputs, setAvailableAudioInputs] = React.useState<MediaDeviceInfo[]>([]);
+  const [recordingDeviceSubmenuOpen, setRecordingDeviceSubmenuOpen] = React.useState(false);
 
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
@@ -765,6 +767,19 @@ function CanvasDemoContent() {
 
     startAutoMonitoring();
   }, []); // Run once on mount
+
+  // Load available audio input devices when audio setup menu opens
+  React.useEffect(() => {
+    if (audioSetupMenuAnchor) {
+      RecordingManager.getAudioInputDevices().then(devices => {
+        setAvailableAudioInputs(devices);
+        // Set the first device as default if none selected
+        if (devices.length > 0 && !selectedRecordingDevice) {
+          setSelectedRecordingDevice(devices[0].label || 'Default');
+        }
+      });
+    }
+  }, [audioSetupMenuAnchor]);
 
   // Handle recording
   const handleRecord = async () => {
@@ -3181,7 +3196,37 @@ function CanvasDemoContent() {
               label={`Recording device: ${selectedRecordingDevice}`}
               hasSubmenu
               onClick={() => {}}
-            />
+            >
+              {availableAudioInputs.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '100%',
+                    top: 0,
+                    minWidth: '250px',
+                    background: '#fff',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                    padding: '4px 0',
+                    marginLeft: '4px',
+                  }}
+                >
+                  {availableAudioInputs.map((device) => (
+                    <ContextMenuItem
+                      key={device.deviceId}
+                      label={device.label || 'Unknown Device'}
+                      icon={selectedRecordingDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
+                      onClick={() => {
+                        setSelectedRecordingDevice(device.label || 'Unknown Device');
+                        setAudioSetupMenuAnchor(null);
+                        toast.success(`Recording device: ${device.label || 'Unknown Device'}`);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </ContextMenuItem>
             <ContextMenuItem
               label="Recording channels"
               hasSubmenu
