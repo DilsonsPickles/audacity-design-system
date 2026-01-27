@@ -51,10 +51,10 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
   hiddenPointIndices = [],
   hoveredPointIndex = null,
   pointSizes = {
-    outerRadius: 4,
-    innerRadius: 2,
-    outerRadiusHover: 5,
-    innerRadiusHover: 3,
+    outerRadius: 5,    // 10px diameter (AU4 style)
+    innerRadius: 3,    // Creates 2px visual stroke/ring
+    outerRadiusHover: 6,
+    innerRadiusHover: 4,
   },
 }) => {
   // Filter out hidden points
