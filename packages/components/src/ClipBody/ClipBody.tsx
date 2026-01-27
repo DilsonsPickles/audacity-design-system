@@ -837,9 +837,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       )}
 
       {/* SVG-based envelope overlay */}
-      {showEnvelope && envelope && (
+      {showEnvelope && (
         <EnvelopeOverlay
-          points={envelope}
+          points={envelope || []}
           duration={clipDuration}
           width={width || 0}
           height={envelopeHeight}
