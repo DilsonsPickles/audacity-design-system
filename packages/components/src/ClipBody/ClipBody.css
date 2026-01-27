@@ -23,6 +23,8 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  position: relative;
+  z-index: 2; /* Render above the envelope overlay (z-index: 1) */
 }
 
 .clip-body__envelope {
