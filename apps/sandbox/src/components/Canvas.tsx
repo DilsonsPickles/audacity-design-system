@@ -110,14 +110,14 @@ export function Canvas({
 
   // Calculate envelope control point sizes based on style
   // MuseScore: 6px diameter (3px radius), 1.5px stroke → outer: 3px, inner: 1.5px
-  // AU4: 8px diameter (4px radius), 2px stroke → outer: 4px, inner: 2px
+  // AU4: 10px diameter (5px radius), 2px stroke → outer: 5px, inner: 3px
   const envelopePointSizes = React.useMemo(() => {
     if (controlPointStyle === 'au4') {
       return {
-        outerRadius: 4,
-        innerRadius: 2,
-        outerRadiusHover: 5,
-        innerRadiusHover: 2.5,
+        outerRadius: 5,
+        innerRadius: 3,
+        outerRadiusHover: 6,
+        innerRadiusHover: 4,
       };
     }
     // musescore (default)
