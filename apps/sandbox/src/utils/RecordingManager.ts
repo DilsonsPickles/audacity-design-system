@@ -9,10 +9,10 @@ export interface RecordingManagerCallbacks {
 }
 
 export class RecordingManager {
-  private recorder: Tone.Recorder | null = null;
-  private meter: Tone.Meter | null = null;
-  private userMedia: Tone.UserMedia | null = null;
-  private waveform: Tone.Waveform | null = null;
+  private recorder: any = null; // Tone.Recorder type issues with strict mode
+  private meter: any = null; // Tone.Meter type issues with strict mode
+  private userMedia: any = null; // Tone.UserMedia type issues with strict mode
+  private waveform: any = null; // Tone.Waveform type issues with strict mode
   private meterUpdateInterval: number | null = null;
   private waveformUpdateInterval: number | null = null;
   private callbacks: RecordingManagerCallbacks;
@@ -34,18 +34,18 @@ export class RecordingManager {
 
     try {
       // Request microphone access
-      this.userMedia = new Tone.UserMedia();
+      this.userMedia = new (Tone as any).UserMedia();
       await this.userMedia.open();
 
       // Wait for mic to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Create meter for level monitoring
-      this.meter = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
+      this.meter = new (Tone as any).Meter({ normalRange: false, smoothing: 0.8 });
       this.userMedia.connect(this.meter);
 
       // Create Tone.Waveform for waveform data (2048 samples)
-      this.waveform = new Tone.Waveform(2048);
+      this.waveform = new (Tone as any).Waveform(2048);
       this.userMedia.connect(this.waveform);
 
       this.isMonitoring = true;
@@ -131,7 +131,7 @@ export class RecordingManager {
 
       // Create recorder and connect to existing userMedia
       if (this.userMedia) {
-        this.recorder = new Tone.Recorder();
+        this.recorder = new (Tone as any).Recorder();
         this.userMedia.connect(this.recorder);
 
         // Start recording
@@ -211,7 +211,7 @@ export class RecordingManager {
 
           // Convert blob to AudioBuffer
           const arrayBuffer = await recording.arrayBuffer();
-          const audioBuffer = await Tone.getContext().rawContext.decodeAudioData(arrayBuffer);
+          const audioBuffer = await (Tone as any).context.rawContext.decodeAudioData(arrayBuffer);
 
           // Notify callback with audio buffer
           this.callbacks.onRecordingComplete(audioBuffer);

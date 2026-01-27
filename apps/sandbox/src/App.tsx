@@ -3,7 +3,7 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { CustomScrollbar } from './components/CustomScrollbar';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem } from '@audacity-ui/components';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
@@ -58,103 +58,103 @@ function generateWaveform(durationSeconds: number, sampleRate: number = 48000): 
   return waveform;
 }
 
-// Generate RMS waveform data - smoother, lower amplitude than peak waveform
-function generateRmsWaveform(peakWaveform: number[], windowSize: number = 2048): number[] {
-  const rmsWaveform: number[] = [];
-  const halfWindow = Math.floor(windowSize / 2);
+// Generate RMS waveform data - smoother, lower amplitude than peak waveform (currently unused)
+// function generateRmsWaveform(peakWaveform: number[], windowSize: number = 2048): number[] {
+//   const rmsWaveform: number[] = [];
+//   const halfWindow = Math.floor(windowSize / 2);
 
-  for (let i = 0; i < peakWaveform.length; i++) {
-    // Calculate RMS over a window centered at current sample
-    let sumSquares = 0;
-    let count = 0;
+//   for (let i = 0; i < peakWaveform.length; i++) {
+//     // Calculate RMS over a window centered at current sample
+//     let sumSquares = 0;
+//     let count = 0;
 
-    const start = Math.max(0, i - halfWindow);
-    const end = Math.min(peakWaveform.length, i + halfWindow);
+//     const start = Math.max(0, i - halfWindow);
+//     const end = Math.min(peakWaveform.length, i + halfWindow);
 
-    for (let j = start; j < end; j++) {
-      sumSquares += peakWaveform[j] * peakWaveform[j];
-      count++;
-    }
+//     for (let j = start; j < end; j++) {
+//       sumSquares += peakWaveform[j] * peakWaveform[j];
+//       count++;
+//     }
 
-    // RMS = sqrt(mean(squares))
-    const rms = Math.sqrt(sumSquares / count);
+//     // RMS = sqrt(mean(squares))
+//     const rms = Math.sqrt(sumSquares / count);
 
-    // Preserve sign from original sample (RMS is always positive, but we want signed for display)
-    const sign = peakWaveform[i] >= 0 ? 1 : -1;
-    rmsWaveform.push(rms * sign);
-  }
+//     // Preserve sign from original sample (RMS is always positive, but we want signed for display)
+//     const sign = peakWaveform[i] >= 0 ? 1 : -1;
+//     rmsWaveform.push(rms * sign);
+//   }
 
-  return rmsWaveform;
-}
+//   return rmsWaveform;
+// }
 
-// Generate waveforms for clips (peak + RMS)
-const clip1Waveform = generateWaveform(4.0);
-const clip1RmsWaveform = generateRmsWaveform(clip1Waveform);
+// Generate waveforms for clips (peak + RMS) - currently unused
+// const clip1Waveform = generateWaveform(4.0);
+// const clip1RmsWaveform = generateRmsWaveform(clip1Waveform);
 
-const clip2Waveform = generateWaveform(4.0);
-const clip2RmsWaveform = generateRmsWaveform(clip2Waveform);
+// const clip2Waveform = generateWaveform(4.0);
+// const clip2RmsWaveform = generateRmsWaveform(clip2Waveform);
 
-const clip3Waveform = generateWaveform(4.0);
-const clip3RmsWaveform = generateRmsWaveform(clip3Waveform);
+// const clip3Waveform = generateWaveform(4.0);
+// const clip3RmsWaveform = generateRmsWaveform(clip3Waveform);
 
-// Sample track data
-const sampleTracks = [
-  {
-    id: 1,
-    name: 'Track 1',
-    height: 114,
-    viewMode: 'split' as const,
-    channelSplitRatio: 0.5,
-    clips: [
-      {
-        id: 1,
-        name: 'Cyan Clip',
-        start: 0.5,
-        duration: 4.0,
-        waveform: clip1Waveform,
-        waveformRms: clip1RmsWaveform,
-        envelopePoints: [],
-        color: 'cyan' as const,
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Track 2',
-    height: 114,
-    channelSplitRatio: 0.5,
-    clips: [
-      {
-        id: 2,
-        name: 'Blue Clip',
-        start: 0.5,
-        duration: 4.0,
-        waveform: clip2Waveform,
-        waveformRms: clip2RmsWaveform,
-        envelopePoints: [],
-        color: 'blue' as const,
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Track 3',
-    height: 114,
-    channelSplitRatio: 0.5,
-    clips: [
-      {
-        id: 3,
-        name: 'Violet Clip',
-        start: 0.5,
-        duration: 4.0,
-        waveform: clip3Waveform,
-        waveformRms: clip3RmsWaveform,
-        envelopePoints: [],
-        color: 'violet' as const,
-      },
-    ],
-  },
-];
+// Sample track data (currently unused)
+// const sampleTracks = [
+//   {
+//     id: 1,
+//     name: 'Track 1',
+//     height: 114,
+//     viewMode: 'split' as const,
+//     channelSplitRatio: 0.5,
+//     clips: [
+//       {
+//         id: 1,
+//         name: 'Cyan Clip',
+//         start: 0.5,
+//         duration: 4.0,
+//         waveform: clip1Waveform,
+//         waveformRms: clip1RmsWaveform,
+//         envelopePoints: [],
+//         color: 'cyan' as const,
+//       },
+//     ],
+//   },
+//   {
+//     id: 2,
+//     name: 'Track 2',
+//     height: 114,
+//     channelSplitRatio: 0.5,
+//     clips: [
+//       {
+//         id: 2,
+//         name: 'Blue Clip',
+//         start: 0.5,
+//         duration: 4.0,
+//         waveform: clip2Waveform,
+//         waveformRms: clip2RmsWaveform,
+//         envelopePoints: [],
+//         color: 'blue' as const,
+//       },
+//     ],
+//   },
+//   {
+//     id: 3,
+//     name: 'Track 3',
+//     height: 114,
+//     channelSplitRatio: 0.5,
+//     clips: [
+//       {
+//         id: 3,
+//         name: 'Violet Clip',
+//         start: 0.5,
+//         duration: 4.0,
+//         waveform: clip3Waveform,
+//         waveformRms: clip3RmsWaveform,
+//         envelopePoints: [],
+//         color: 'violet' as const,
+//       },
+//     ],
+//   },
+// ];
 
 type Workspace = 'classic' | 'spectral-editing';
 
@@ -713,7 +713,7 @@ function CanvasDemoContent() {
   // Recording state
   const recordingManagerRef = React.useRef<RecordingManager | null>(null);
   const [isMicMonitoring, setIsMicMonitoring] = React.useState(false);
-  const [micWaveformData, setMicWaveformData] = React.useState<number[]>([]);
+  const [_micWaveformData, setMicWaveformData] = React.useState<number[]>([]);
 
   // Track the anchor point for time selection (the fixed end while extending)
   const selectionAnchorRef = React.useRef<number | null>(null);
@@ -908,7 +908,6 @@ function CanvasDemoContent() {
             start: recordingStartPosition,
             duration: 0, // Will be updated when recording completes
             waveform: [],
-            waveformRms: [],
             envelopePoints: [],
             color: 'cyan' as const,
           },
@@ -951,7 +950,8 @@ function CanvasDemoContent() {
           // Generate waveform from audio buffer
           const channelData = audioBuffer.getChannelData(0);
           const waveform = Array.from(channelData);
-          const waveformRms = generateRmsWaveform(waveform);
+          // RMS waveform generation removed as it's not used
+          // const _waveformRms = generateRmsWaveform(waveform);
 
           // Update the existing clip with waveform data
           const clipDuration = audioBuffer.duration;
@@ -968,7 +968,6 @@ function CanvasDemoContent() {
               updates: {
                 duration: clipDuration,
                 waveform,
-                waveformRms,
               },
             },
           });
@@ -1007,7 +1006,7 @@ function CanvasDemoContent() {
         onWaveformUpdate: (waveformData) => {
           setMicWaveformData(waveformData);
         },
-        onRecordingWaveformUpdate: (waveformData, waveformRms) => {
+        onRecordingWaveformUpdate: (waveformData, _waveformRms) => {
           // Send both waveform and RMS - RMS renders as filled when showRmsInWaveform is true
           dispatch({
             type: 'UPDATE_CLIP',
@@ -1016,7 +1015,6 @@ function CanvasDemoContent() {
               clipId: clipId,
               updates: {
                 waveform: waveformData,
-                waveformRms: waveformRms,
               },
             },
           });
@@ -2028,6 +2026,10 @@ function CanvasDemoContent() {
           setEffectsPanel({
             isOpen: true,
             trackIndex,
+            left: 0,
+            top: 0,
+            height: 600,
+            width: 240,
           });
         }
       }
@@ -2461,7 +2463,7 @@ function CanvasDemoContent() {
                     newMap.set(trackIndex, newEffects);
                     setTrackEffectsMap(newMap);
                   },
-                  onEffectChange: (index, effectId) => {
+                  onEffectChange: (index, _effectId) => {
                     const effect = currentTrackEffects[index];
                     setEffectDialog({
                       isOpen: true,
@@ -2478,6 +2480,7 @@ function CanvasDemoContent() {
                     const newMap = new Map(trackEffectsMap);
                     newMap.set(trackIndex, newEffects);
                     setTrackEffectsMap(newMap);
+                    console.log('Reordered effect:', movedEffect);
                   },
                   onAddEffect: () => {
                     const newEffect = {
@@ -2490,7 +2493,7 @@ function CanvasDemoContent() {
                     setTrackEffectsMap(newMap);
                     toast.success('Effect added');
                   },
-                  onContextMenu: (e) => {
+                  onContextMenu: (_e) => {
                     toast.info('Track effects context menu');
                   },
                   onRemoveEffect: (index) => {
@@ -2516,7 +2519,7 @@ function CanvasDemoContent() {
                   newEffects[index] = { ...newEffects[index], enabled };
                   setMasterEffects(newEffects);
                 },
-                onEffectChange: (index, effectId) => {
+                onEffectChange: (index, _effectId) => {
                   const effect = masterEffects[index];
                   setEffectDialog({
                     isOpen: true,
@@ -2531,6 +2534,7 @@ function CanvasDemoContent() {
                   const [movedEffect] = newEffects.splice(fromIndex, 1);
                   newEffects.splice(toIndex, 0, movedEffect);
                   setMasterEffects(newEffects);
+                  console.log('Reordered master effect:', movedEffect);
                 },
                 onAddEffect: () => {
                   const newEffect = {
@@ -2541,7 +2545,7 @@ function CanvasDemoContent() {
                   setMasterEffects([...masterEffects, newEffect]);
                   toast.success('Master effect added');
                 },
-                onContextMenu: (e) => {
+                onContextMenu: (_e) => {
                   toast.info('Master effects context menu');
                 },
                 onRemoveEffect: (index) => {
@@ -2670,7 +2674,7 @@ function CanvasDemoContent() {
                   meterStyle="default"
                   onMuteToggle={() => {}}
                   onSoloToggle={() => {}}
-                  onEffectsClick={(event) => {
+                  onEffectsClick={() => {
                     // Toggle effects panel for this track
                     const isCurrentlyOpen = effectsPanel?.isOpen && effectsPanel.trackIndex === index;
                     setEffectsPanel(isCurrentlyOpen ? null : {
