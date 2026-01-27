@@ -544,6 +544,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
           height,
           cursor: isNearEnvelope ? 'crosshair' : 'text',
           pointerEvents: enabled ? 'auto' : 'none',
+          zIndex: 3, // Above canvas (z-index: 2) and dark overlay (z-index: 1)
         }}
       />
       {tooltip && (
