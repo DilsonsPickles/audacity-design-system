@@ -94,6 +94,7 @@ export * from './AutomationCurvePoint';
 export * from './EnvelopePoint';
 export * from './EnvelopeCurve';
 export * from './EnvelopeInteractionLayer';
+export * from './EnvelopeOverlay';
 export * from './Track';
 export { TrackNew } from './Track/TrackNew';
 export * from './LabelMarker';

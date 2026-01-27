@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
 import { renderMonoSpectrogram, renderStereoSpectrogram } from '../utils/spectrogram';
-import { renderEnvelopeLine, renderEnvelopePoints, getEnvelopeGainAtTime, type EnvelopePointData } from '../utils/envelope';
+import { getEnvelopeGainAtTime, type EnvelopePointData } from '../utils/envelope';
+import { EnvelopeOverlay } from '../EnvelopeOverlay/EnvelopeOverlay';
 import { useTheme } from '../ThemeProvider';
 import './ClipBody.css';
 
@@ -780,57 +781,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       }
     }
 
-    // Render envelope if showEnvelope is true (always show line, even with 0 points)
-    if (showEnvelope) {
-      // For split view, envelope only renders on the waveform portion (bottom half)
-      let envelopeY = 0;
-      let envelopeHeight = canvasHeight;
-
-      if (channelMode === 'split-mono' || channelMode === 'split-stereo') {
-        // Split view: waveform is in bottom section, so envelope should only render there
-        envelopeY = canvasHeight * channelSplitRatio;
-        envelopeHeight = canvasHeight * (1 - channelSplitRatio);
-      }
-
-      // Filter out hidden points for both line and control points
-      const visiblePoints = envelope ? envelope.filter((_, index) => !hiddenPointIndices.includes(index)) : [];
-
-      // Render envelope line (with hidden points filtered out)
-      // Always render line even with 0 points (defaults to 0dB horizontal line)
-      renderEnvelopeLine({
-        ctx,
-        points: visiblePoints,
-        duration: clipDuration,
-        x: 0,
-        y: envelopeY,
-        width: canvasWidth,
-        height: envelopeHeight,
-        color: theme.audio.envelope.line
-      });
-
-      // Render envelope control points (only if there are real points, not just boundary points)
-      // Don't render points if we only have 2 boundary points (at time=0 and time=duration)
-      const hasBoundaryPoints = visiblePoints.length === 2 &&
-                                visiblePoints[0].time === 0 &&
-                                Math.abs(visiblePoints[1].time - clipDuration) < 0.001;
-
-      if (visiblePoints.length > 0 && !hasBoundaryPoints) {
-        renderEnvelopePoints({
-          ctx,
-          points: visiblePoints,
-          duration: clipDuration,
-          x: 0,
-          y: envelopeY,
-          width: canvasWidth,
-          height: envelopeHeight,
-          color: theme.audio.envelope.point,
-          centerColor: theme.audio.envelope.pointCenter,
-          hoveredPointIndex,
-          ...(envelopePointSizes || {})
-        });
-      }
-    }
-  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, hiddenPointIndices, hoveredPointIndex, theme, envelopePointSizes]);
+    // Envelope rendering moved to SVG overlay (see return JSX below)
+  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, theme]);
 
   const className = [
     'clip-body',
@@ -848,6 +800,14 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     height: `${height}px`,
     ...(width && { width: `${width}px` }),
   };
+
+  // Calculate envelope Y offset and height for split view
+  const envelopeYOffset = (channelMode === 'split-mono' || channelMode === 'split-stereo')
+    ? height * channelSplitRatio
+    : 0;
+  const envelopeHeight = (channelMode === 'split-mono' || channelMode === 'split-stereo')
+    ? height * (1 - channelSplitRatio)
+    : height;
 
   return (
     <div
@@ -873,6 +833,23 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           src={waveformSrc}
           alt=""
           className="clip-body__waveform"
+        />
+      )}
+
+      {/* SVG-based envelope overlay */}
+      {showEnvelope && envelope && (
+        <EnvelopeOverlay
+          points={envelope}
+          duration={clipDuration}
+          width={width || 0}
+          height={envelopeHeight}
+          yOffset={envelopeYOffset}
+          lineColor={theme.audio.envelope.line}
+          pointColor={theme.audio.envelope.point}
+          pointCenterColor={theme.audio.envelope.pointCenter}
+          hiddenPointIndices={hiddenPointIndices}
+          hoveredPointIndex={hoveredPointIndex}
+          pointSizes={envelopePointSizes}
         />
       )}
     </div>
