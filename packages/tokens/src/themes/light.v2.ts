@@ -259,6 +259,11 @@ export const lightTheme: ThemeTokens = {
     },
   },
 
+  accent: {
+    primary: '#677CE4',          // Blue - for selected tracks
+    secondary: '#FF9857',        // Orange - for master track
+  },
+
   semantic: {
     success: {
       background: '#74BE59',     // Green background

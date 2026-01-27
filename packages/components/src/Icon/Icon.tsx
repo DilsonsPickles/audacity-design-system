@@ -5,6 +5,7 @@ import './Icon.css';
 export type IconName =
   | 'mixer'
   | 'menu'
+  | 'gripper'
   | 'undo'
   | 'redo'
   | 'play'
@@ -50,12 +51,15 @@ export type IconName =
   | 'chevron-right'
   | 'zoom-toggle'
   | 'zoom-to-selection'
-  | 'zoom-to-fit';
+  | 'zoom-to-fit'
+  | 'power'
+  | 'save';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
   mixer: '\uF41B',
   menu: '\uEF13',
+  gripper: '\uF3A2',
   undo: '\uEF19',
   redo: '\uEF1A',
   play: '\uF446',
@@ -102,6 +106,8 @@ const ICON_MAP: Record<IconName, string> = {
   'zoom-toggle': '\uF437',
   'zoom-to-selection': '\uF438',
   'zoom-to-fit': '\uF439',
+  power: '\uF38F',
+  save: '\uEF29',
 };
 
 export interface IconProps {

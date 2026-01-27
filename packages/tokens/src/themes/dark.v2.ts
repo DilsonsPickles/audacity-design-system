@@ -259,6 +259,11 @@ export const darkTheme: ThemeTokens = {
     },
   },
 
+  accent: {
+    primary: '#677CE4',          // Blue - for selected tracks
+    secondary: '#FF9857',        // Orange - for master track
+  },
+
   semantic: {
     success: {
       background: '#22c55e',     // Green background

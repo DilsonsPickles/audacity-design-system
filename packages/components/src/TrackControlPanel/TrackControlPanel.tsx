@@ -316,6 +316,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
                   onClick={onMuteToggle}
                   ariaLabel="Mute"
                   tabIndex={-1}
+                  size={20}
                 >
                   M
                 </ToggleButton>
@@ -324,6 +325,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
                   onClick={onSoloToggle}
                   ariaLabel="Solo"
                   tabIndex={-1}
+                  size={20}
                 >
                   S
                 </ToggleButton>
@@ -364,6 +366,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
                 onClick={onMuteToggle}
                 ariaLabel="Mute"
                 tabIndex={-1}
+                size={20}
               >
                 M
               </ToggleButton>
@@ -372,6 +375,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
                 onClick={onSoloToggle}
                 ariaLabel="Solo"
                 tabIndex={-1}
+                size={20}
               >
                 S
               </ToggleButton>

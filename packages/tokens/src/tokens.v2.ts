@@ -372,6 +372,14 @@ export interface ThemeTokens {
     };
   };
 
+  /** Accent colors */
+  accent: {
+    /** Primary accent color (blue - for selected tracks) */
+    primary: string;
+    /** Secondary accent color (orange - for master track) */
+    secondary: string;
+  };
+
   /** Semantic colors (success, warning, error, info) */
   semantic: {
     success: {

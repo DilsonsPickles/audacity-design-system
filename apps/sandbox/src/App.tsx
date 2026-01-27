@@ -3,7 +3,7 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { CustomScrollbar } from './components/CustomScrollbar';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect } from '@audacity-ui/components';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
@@ -550,6 +550,71 @@ function CanvasDemoContent() {
     x: number;
     y: number;
   } | null>(null);
+
+  // Effects panel state
+  const [effectsPanel, setEffectsPanel] = React.useState<{
+    isOpen: boolean;
+    trackIndex: number;
+    left: number;
+    top: number;
+    height: number;
+    width: number;
+  } | null>(null);
+
+  // Track effects - stored per track index
+  const [trackEffectsMap, setTrackEffectsMap] = React.useState<Map<number, Effect[]>>(
+    new Map([
+      [0, [
+        { id: 't0-1', name: 'Reverb', enabled: true },
+        { id: 't0-2', name: 'Compressor', enabled: true },
+      ]],
+      [1, [
+        { id: 't1-1', name: 'EQ', enabled: true },
+        { id: 't1-2', name: 'Delay', enabled: false },
+      ]],
+      [2, [
+        { id: 't2-1', name: 'Chorus', enabled: true },
+      ]],
+    ])
+  );
+
+  // Sample master effects (temporary - in real app this would come from project state)
+  const [masterEffects, setMasterEffects] = React.useState<Effect[]>([
+    { id: 'm1', name: 'Limiter', enabled: true },
+    { id: 'm2', name: 'Mastering EQ', enabled: true },
+  ]);
+
+  // Master toggle states for effect stacks (independent of individual effect states)
+  const [trackEffectStackEnabled, setTrackEffectStackEnabled] = React.useState<Map<number, boolean>>(
+    new Map([
+      [0, true],
+      [1, true],
+      [2, true],
+    ])
+  );
+  const [masterEffectStackEnabled, setMasterEffectStackEnabled] = React.useState(true);
+
+  // Effect dialog state
+  const [effectDialog, setEffectDialog] = React.useState<{
+    isOpen: boolean;
+    effectId: string;
+    effectName: string;
+    trackIndex?: number; // undefined means master effect
+    effectIndex: number;
+  } | null>(null);
+
+  // Update effects panel when track selection changes
+  React.useEffect(() => {
+    if (effectsPanel?.isOpen && state.selectedTrackIndices.length > 0) {
+      const selectedTrackIndex = state.selectedTrackIndices[0];
+      if (effectsPanel.trackIndex !== selectedTrackIndex) {
+        setEffectsPanel({
+          ...effectsPanel,
+          trackIndex: selectedTrackIndex,
+        });
+      }
+    }
+  }, [state.selectedTrackIndices, effectsPanel]);
 
   // Time selection context menu state
   const [timeSelectionContextMenu, setTimeSelectionContextMenu] = React.useState<{
@@ -1965,6 +2030,25 @@ function CanvasDemoContent() {
   // Define menu items for View menu
   const viewMenuItems: MenuItem[] = [
     {
+      label: 'Show effects',
+      checked: effectsPanel?.isOpen ?? false,
+      onClick: () => {
+        if (effectsPanel?.isOpen) {
+          // Close effects panel
+          setEffectsPanel(null);
+        } else {
+          // Open effects panel for the first selected track, or track 0 if none selected
+          const trackIndex = state.selectedTrackIndices.length > 0
+            ? state.selectedTrackIndices[0]
+            : 0;
+          setEffectsPanel({
+            isOpen: true,
+            trackIndex,
+          });
+        }
+      }
+    },
+    {
       label: 'Show RMS in waveform',
       checked: showRmsInWaveform,
       onClick: () => {
@@ -2363,6 +2447,131 @@ function CanvasDemoContent() {
         />
       ) : (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Effects Panel - Hidden on export tab */}
+          {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
+            const trackIndex = effectsPanel.trackIndex;
+            const currentTrackEffects = trackEffectsMap.get(trackIndex) || [];
+
+            return (
+              <EffectsPanel
+                isOpen={effectsPanel.isOpen}
+                mode="sidebar"
+                trackSection={{
+                  trackName: state.tracks[trackIndex]?.name || 'Track',
+                  effects: currentTrackEffects,
+                  allEnabled: trackEffectStackEnabled.get(trackIndex) ?? true,
+                  onToggleAll: (enabled) => {
+                    // Update master toggle state
+                    const newStackMap = new Map(trackEffectStackEnabled);
+                    newStackMap.set(trackIndex, enabled);
+                    setTrackEffectStackEnabled(newStackMap);
+                    // Update all effect enabled states
+                    const newMap = new Map(trackEffectsMap);
+                    newMap.set(trackIndex, currentTrackEffects.map(e => ({ ...e, enabled })));
+                    setTrackEffectsMap(newMap);
+                  },
+                  onEffectToggle: (index, enabled) => {
+                    const newEffects = [...currentTrackEffects];
+                    newEffects[index] = { ...newEffects[index], enabled };
+                    const newMap = new Map(trackEffectsMap);
+                    newMap.set(trackIndex, newEffects);
+                    setTrackEffectsMap(newMap);
+                  },
+                  onEffectChange: (index, effectId) => {
+                    const effect = currentTrackEffects[index];
+                    setEffectDialog({
+                      isOpen: true,
+                      effectId: effect.id,
+                      effectName: effect.name,
+                      trackIndex,
+                      effectIndex: index,
+                    });
+                  },
+                  onEffectsReorder: (fromIndex, toIndex) => {
+                    const newEffects = [...currentTrackEffects];
+                    const [movedEffect] = newEffects.splice(fromIndex, 1);
+                    newEffects.splice(toIndex, 0, movedEffect);
+                    const newMap = new Map(trackEffectsMap);
+                    newMap.set(trackIndex, newEffects);
+                    setTrackEffectsMap(newMap);
+                  },
+                  onAddEffect: () => {
+                    const newEffect = {
+                      id: `t${trackIndex}-${currentTrackEffects.length + 1}`,
+                      name: `New Effect ${currentTrackEffects.length + 1}`,
+                      enabled: true,
+                    };
+                    const newMap = new Map(trackEffectsMap);
+                    newMap.set(trackIndex, [...currentTrackEffects, newEffect]);
+                    setTrackEffectsMap(newMap);
+                    toast.success('Effect added');
+                  },
+                  onContextMenu: (e) => {
+                    toast.info('Track effects context menu');
+                  },
+                  onRemoveEffect: (index) => {
+                    const newEffects = [...currentTrackEffects];
+                    newEffects.splice(index, 1);
+                    const newMap = new Map(trackEffectsMap);
+                    newMap.set(trackIndex, newEffects);
+                    setTrackEffectsMap(newMap);
+                    toast.success('Effect removed');
+                  },
+                }}
+              masterSection={{
+                effects: masterEffects,
+                allEnabled: masterEffectStackEnabled,
+                onToggleAll: (enabled) => {
+                  // Update master toggle state
+                  setMasterEffectStackEnabled(enabled);
+                  // Update all effect enabled states
+                  setMasterEffects(masterEffects.map(e => ({ ...e, enabled })));
+                },
+                onEffectToggle: (index, enabled) => {
+                  const newEffects = [...masterEffects];
+                  newEffects[index] = { ...newEffects[index], enabled };
+                  setMasterEffects(newEffects);
+                },
+                onEffectChange: (index, effectId) => {
+                  const effect = masterEffects[index];
+                  setEffectDialog({
+                    isOpen: true,
+                    effectId: effect.id,
+                    effectName: effect.name,
+                    trackIndex: undefined, // master effect
+                    effectIndex: index,
+                  });
+                },
+                onEffectsReorder: (fromIndex, toIndex) => {
+                  const newEffects = [...masterEffects];
+                  const [movedEffect] = newEffects.splice(fromIndex, 1);
+                  newEffects.splice(toIndex, 0, movedEffect);
+                  setMasterEffects(newEffects);
+                },
+                onAddEffect: () => {
+                  const newEffect = {
+                    id: `m${masterEffects.length + 1}`,
+                    name: `New Master Effect ${masterEffects.length + 1}`,
+                    enabled: true,
+                  };
+                  setMasterEffects([...masterEffects, newEffect]);
+                  toast.success('Master effect added');
+                },
+                onContextMenu: (e) => {
+                  toast.info('Master effects context menu');
+                },
+                onRemoveEffect: (index) => {
+                  const newEffects = [...masterEffects];
+                  newEffects.splice(index, 1);
+                  setMasterEffects(newEffects);
+                  toast.success('Master effect removed');
+                },
+              }}
+              onClose={() => setEffectsPanel(null)}
+            />
+          );
+        })()}
+
           {/* Track Control Side Panel - Hidden on export tab */}
           {activeMenuItem !== 'export' && (
             <TrackControlSidePanel
@@ -2477,6 +2686,18 @@ function CanvasDemoContent() {
                   meterStyle="default"
                   onMuteToggle={() => {}}
                   onSoloToggle={() => {}}
+                  onEffectsClick={(event) => {
+                    // Toggle effects panel for this track
+                    const isCurrentlyOpen = effectsPanel?.isOpen && effectsPanel.trackIndex === index;
+                    setEffectsPanel(isCurrentlyOpen ? null : {
+                      isOpen: true,
+                      trackIndex: index,
+                      left: 0,
+                      top: 0,
+                      height: 0,
+                      width: 0,
+                    });
+                  }}
                   tabIndex={isFlatNavigation ? 0 : (100 + index * 2)}
                   onFocusChange={(hasFocus) => {
                     // When control panel gets focus, set both states
@@ -2937,6 +3158,32 @@ function CanvasDemoContent() {
         isOpen={welcomeDialog.isOpen}
         onClose={welcomeDialog.onClose}
       />
+
+      {/* Effect Dialog */}
+      {effectDialog && (
+        <EffectDialog
+          effectName={effectDialog.effectName}
+          isOpen={effectDialog.isOpen}
+          onClose={() => setEffectDialog(null)}
+          headerSlot={
+            <EffectHeader
+              presetName="Default preset"
+              onSavePreset={() => toast.info('Save preset')}
+              onUndo={() => toast.info('Undo')}
+              onDeletePreset={() => toast.info('Delete preset')}
+              onMoreOptions={() => toast.info('More options')}
+            />
+          }
+          onOk={() => {
+            toast.success(`Applied ${effectDialog.effectName}`);
+          }}
+          onPreview={() => {
+            toast.info(`Previewing ${effectDialog.effectName}`);
+          }}
+        >
+          <AmplifyEffect />
+        </EffectDialog>
+      )}
 
       {/* Share Audio Dialog */}
       <Dialog

@@ -116,6 +116,8 @@ export * from './ProjectToolbar';
 export * from './Toolbar';
 export * from './ToolbarGroup';
 export * from './TrackControlSidePanel';
+export * from './EffectsPanel';
+export * from './EffectDialog';
 export * from './TimeCode';
 export * from './SelectionToolbar';
 

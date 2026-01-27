@@ -1,6 +1,6 @@
 .toggle-button {
-  width: 20px;
-  height: 20px;
+  width: var(--toggle-btn-size, 28px);
+  height: var(--toggle-btn-size, 28px);
   border: none;
   border-radius: 2px;
   background-color: var(--toggle-btn-bg);
@@ -8,7 +8,7 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   font-size: 12px;
   font-weight: 400;
-  line-height: 20px;
+  line-height: var(--toggle-btn-size, 28px);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -27,6 +27,7 @@
 
 .toggle-button--active {
   background-color: var(--toggle-btn-bg-active);
+  color: var(--toggle-btn-text-active);
 }
 
 .toggle-button--active:hover:not(.toggle-button--disabled) {
