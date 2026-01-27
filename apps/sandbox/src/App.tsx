@@ -1215,16 +1215,7 @@ function CanvasDemoContent() {
       }
 
       // Move track focus with up/down arrow keys
-      // Only if we're NOT in tab navigation mode (no button/input has focus)
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        const activeElement = document.activeElement as HTMLElement;
-
-        // Only handle if focus is on body or canvas - not on any interactive element
-        // This prevents arrow keys from moving track focus during tab navigation
-        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS') {
-          return; // Let the focused element handle arrow keys
-        }
-
         e.preventDefault();
 
         // If there's a focused track, move focus up or down
@@ -1342,13 +1333,6 @@ function CanvasDemoContent() {
 
       // Toggle track selection with Enter key
       if (e.key === 'Enter') {
-        const activeElement = document.activeElement as HTMLElement;
-
-        // Only handle if focus is on body or canvas - not on any interactive element
-        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS') {
-          return; // Let the focused element handle Enter
-        }
-
         if (keyboardFocusedTrack !== null) {
           e.preventDefault();
 
