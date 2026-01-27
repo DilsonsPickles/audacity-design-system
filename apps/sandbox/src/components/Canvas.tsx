@@ -60,7 +60,7 @@ export interface CanvasProps {
   showRmsInWaveform?: boolean;
   /**
    * Control point style for envelope points
-   * @default 'musescore'
+   * @default 'au4'
    */
   controlPointStyle?: 'musescore' | 'au4';
   /**
@@ -91,7 +91,7 @@ export function Canvas({
   onTrackFocusChange,
   keyboardFocusedTrack = null,
   showRmsInWaveform = true,
-  controlPointStyle = 'musescore',
+  controlPointStyle = 'au4',
   viewportHeight = 0,
   recordingClipId = null,
 }: CanvasProps) {

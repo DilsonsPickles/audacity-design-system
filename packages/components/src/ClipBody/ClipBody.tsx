@@ -554,9 +554,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Apply envelope gain to waveform amplitude
+        // Apply envelope gain to waveform amplitude (whenever envelope points exist)
         const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-        const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+        const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
         min *= envelopeGain;
         max *= envelopeGain;
 
@@ -628,9 +628,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Apply envelope gain to waveform amplitude
+        // Apply envelope gain to waveform amplitude (whenever envelope points exist)
         const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-        const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+        const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
         min *= envelopeGain;
         max *= envelopeGain;
 
@@ -727,9 +727,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           max = Math.max(max, sample);
         }
 
-        // Apply envelope gain to waveform amplitude
+        // Apply envelope gain to waveform amplitude (whenever envelope points exist)
         const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-        const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+        const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
         min *= envelopeGain;
         max *= envelopeGain;
 

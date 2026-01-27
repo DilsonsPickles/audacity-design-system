@@ -284,7 +284,7 @@ function CanvasDemoContent() {
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
   const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
-  const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('musescore');
+  const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('au4');
   const [showMixer, setShowMixer] = React.useState(false);
   const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
   const [audioSetupMenuAnchor, setAudioSetupMenuAnchor] = React.useState<{ x: number; y: number } | null>(null);
