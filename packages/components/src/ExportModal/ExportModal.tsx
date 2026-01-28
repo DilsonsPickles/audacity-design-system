@@ -12,6 +12,7 @@ import { TextInput } from '../TextInput';
 import { LabeledRadio } from '../LabeledRadio';
 import { LabeledCheckbox } from '../LabeledCheckbox';
 import { Separator } from '../Separator';
+import { ChannelMappingDialog } from '../ChannelMappingDialog';
 import './ExportModal.css';
 
 export interface ExportModalProps {
@@ -242,6 +243,10 @@ export function ExportModal({
   const [externalCommand, setExternalCommand] = useState('');
   const [showOutput, setShowOutput] = useState(false);
 
+  // Channel mapping dialog state
+  const [isChannelMappingOpen, setIsChannelMappingOpen] = useState(false);
+  const [channelMapping, setChannelMapping] = useState<boolean[][] | undefined>(undefined);
+
   // Update file name when format changes for full-project, selected-audio, or loop-region export
   useEffect(() => {
     if (exportType === 'full-project' || exportType === 'selected-audio' || exportType === 'loop-region') {
@@ -414,29 +419,40 @@ export function ExportModal({
 
           {/* Channels - shown for all formats except Custom FFmpeg and External program */}
           {format !== 'custom-ffmpeg' && format !== 'external' && (
-            <div className="export-modal__field export-modal__field--radio-group">
-              <label className="export-modal__label">Channels</label>
-              <div className="export-modal__radio-group">
-                <LabeledRadio
-                  label="Mono"
-                  checked={channels === 'mono'}
-                  onChange={() => setChannels('mono')}
-                  name="channels"
-                />
-                <LabeledRadio
-                  label="Stereo"
-                  checked={channels === 'stereo'}
-                  onChange={() => setChannels('stereo')}
-                  name="channels"
-                />
-                <LabeledRadio
-                  label="Custom mapping"
-                  checked={channels === 'custom'}
-                  onChange={() => setChannels('custom')}
-                  name="channels"
-                />
+            <>
+              <div className="export-modal__field export-modal__field--radio-group">
+                <label className="export-modal__label">Channels</label>
+                <div className="export-modal__radio-group">
+                  <LabeledRadio
+                    label="Mono"
+                    checked={channels === 'mono'}
+                    onChange={() => setChannels('mono')}
+                    name="channels"
+                  />
+                  <LabeledRadio
+                    label="Stereo"
+                    checked={channels === 'stereo'}
+                    onChange={() => setChannels('stereo')}
+                    name="channels"
+                  />
+                  <LabeledRadio
+                    label="Custom mapping"
+                    checked={channels === 'custom'}
+                    onChange={() => setChannels('custom')}
+                    name="channels"
+                  />
+                </div>
               </div>
-            </div>
+
+              {/* Edit mapping button - shown when Custom mapping is selected */}
+              {channels === 'custom' && (
+                <div className="export-modal__field" style={{ paddingLeft: '154px' }}>
+                  <Button variant="secondary" onClick={() => setIsChannelMappingOpen(true)}>
+                    Edit mapping
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Sample rate - shown for all formats except Custom FFmpeg and External program */}
@@ -793,6 +809,39 @@ export function ExportModal({
           </Button>
         </div>
       </div>
+
+      {/* Channel Mapping Dialog */}
+      {isChannelMappingOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={() => setIsChannelMappingOpen(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <ChannelMappingDialog
+              trackCount={6}
+              channelCount={17}
+              initialMapping={channelMapping}
+              onApply={(mapping) => {
+                setChannelMapping(mapping);
+                setIsChannelMappingOpen(false);
+              }}
+              onCancel={() => setIsChannelMappingOpen(false)}
+              open={true}
+            />
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

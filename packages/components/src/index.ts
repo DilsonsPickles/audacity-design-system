@@ -54,6 +54,8 @@ export * from './LabeledCheckbox';
 export * from './Radio';
 export * from './LabeledRadio';
 export * from './NumberStepper';
+export * from './ChannelMappingDialog';
+export * from './CustomScrollbar';
 export * from './Tooltip';
 export * from './FilterChip';
 export * from './CloudProjectIndicator';
