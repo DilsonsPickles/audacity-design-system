@@ -134,7 +134,7 @@ export const AddTrackFlyout: React.FC<AddTrackFlyoutProps> = ({
 
   const handleOptionClick = (type: TrackType) => {
     onSelectTrackType(type);
-    onClose();
+    // Don't close - let user add multiple tracks or close manually
   };
 
   if (!isOpen) return null;
