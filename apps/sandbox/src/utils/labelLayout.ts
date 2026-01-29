@@ -28,6 +28,44 @@ export const LABEL_LAYOUT_CONSTANTS: LabelLayoutConstants = {
   DEFAULT_REGION_LABEL_WIDTH: 225,
 };
 
+// Point label width constraints for dynamic text sizing
+export const POINT_LABEL_MIN_WIDTH = 50;
+export const POINT_LABEL_MAX_WIDTH = 400;
+
+// Canvas for measuring text (created once, reused)
+let measureCanvas: HTMLCanvasElement | null = null;
+let measureContext: CanvasRenderingContext2D | null = null;
+
+/**
+ * Calculate the width needed for a point label's text
+ * Returns a width between POINT_LABEL_MIN_WIDTH and POINT_LABEL_MAX_WIDTH
+ */
+export function calculatePointLabelWidth(text: string | undefined): number {
+  if (!text || text.trim() === '') {
+    return POINT_LABEL_MIN_WIDTH;
+  }
+
+  // Create canvas context for measuring text if not already created
+  if (!measureCanvas) {
+    measureCanvas = document.createElement('canvas');
+    measureContext = measureCanvas.getContext('2d');
+  }
+
+  if (!measureContext) {
+    return POINT_LABEL_MIN_WIDTH;
+  }
+
+  // Set font to match label rendering (12px system font)
+  measureContext.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+  const metrics = measureContext.measureText(text);
+  // No padding - use exact text width
+  const textWidth = Math.ceil(metrics.width);
+
+  // Clamp between min and max
+  return Math.max(POINT_LABEL_MIN_WIDTH, Math.min(textWidth, POINT_LABEL_MAX_WIDTH));
+}
+
 /**
  * Calculate which row each label should appear in to avoid overlaps
  * Uses a greedy algorithm to pack labels into rows
@@ -44,10 +82,10 @@ export function calculateLabelRows(
 
   sortedLabels.forEach((label, labelIndex) => {
     const labelX = clipContentOffset + label.startTime * pixelsPerSecond;
-    // Point labels: startTime === endTime, use fixed width for overlap detection
+    // Point labels: startTime === endTime, use dynamic width based on text content
     const isPointLabel = label.startTime === label.endTime;
     const labelWidth = isPointLabel
-      ? LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH
+      ? calculatePointLabelWidth(label.text)
       : (label.endTime! - label.startTime) * pixelsPerSecond;
 
     let row = 0;
@@ -64,7 +102,7 @@ export function calculateLabelRows(
           const prevX = clipContentOffset + prevLabel.startTime * pixelsPerSecond;
           const isPrevPointLabel = prevLabel.startTime === prevLabel.endTime;
           const prevWidth = isPrevPointLabel
-            ? LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH
+            ? calculatePointLabelWidth(prevLabel.text)
             : (prevLabel.endTime! - prevLabel.startTime) * pixelsPerSecond;
 
           // Check for overlap
@@ -102,7 +140,7 @@ export function getLabelYOffset(row: number): number {
 export function getLabelDimensions(label: Label, pixelsPerSecond: number) {
   const isPointLabel = label.startTime === label.endTime;
   const width = isPointLabel
-    ? LABEL_LAYOUT_CONSTANTS.DEFAULT_POINT_LABEL_WIDTH
+    ? calculatePointLabelWidth(label.text)
     : (label.endTime! - label.startTime) * pixelsPerSecond;
 
   return {

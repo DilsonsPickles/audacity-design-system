@@ -4,17 +4,17 @@
 
 The Clip Envelope is an overlay that allows the User to manipulate a clip's gain over time.
 
-### Overlay
-
-- A dark overlay over the top of the clip body that appears when the mode is enabled
-- It is limited to the clip's body only, it does not overlay the clip's header
-- Non-linear scale from +12 dB to -60dB with the last pixel being -inf dB
-
 ### Control toggle
 
 - It's the "on-switch" for the mode that lives in the toolbar
 - It lives in its own group in the toolbar alongside spectrogram toggle and cut tool
 - When active, clip envelopes are overlayed on all clips in project
+
+### Overlay
+
+- A dark overlay over the top of the clip body that appears when the mode is enabled
+- It is limited to the clip's body only, it does not overlay the clip's header
+- Non-linear scale from +12 dB to -60dB with the last pixel being -inf dB
 
 ### Envelope
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Label } from '../contexts/TracksContext';
-import { calculateLabelRows } from '../utils/labelLayout';
+import { calculateLabelRows, calculatePointLabelWidth } from '../utils/labelLayout';
 
 interface LabelRendererProps {
   labels: Label[];
@@ -35,7 +35,6 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
 }) => {
   const LABEL_HEIGHT = 14;
   const LABEL_GAP = 2;
-  const FLAG_WIDTH = 50;
 
   // Calculate label rows using utility function
   const labelRows = calculateLabelRows(labels, pixelsPerSecond, clipContentOffset);
@@ -44,13 +43,16 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
     <>
       {labels.map((label) => {
         const x = clipContentOffset + label.startTime * pixelsPerSecond;
-        const width = (label.endTime! - label.startTime) * pixelsPerSecond;
+        const isPointLabel = label.startTime === label.endTime;
+        // Point labels use dynamic width based on text content, region labels use time duration
+        const width = isPointLabel
+          ? calculatePointLabelWidth(label.text)
+          : (label.endTime! - label.startTime) * pixelsPerSecond;
         const labelKeyId = `${trackIndex}-${label.id}`;
         const isSelected = selectedLabelIds.includes(labelKeyId);
         const row = labelRows.get(label.id) ?? 0;
         const topOffset = row * (LABEL_HEIGHT + LABEL_GAP);
         const stalkHeight = trackHeight - topOffset;
-        const isPointLabel = label.startTime === label.endTime;
 
         const leftEarId = `${labelKeyId}-left`;
         const rightEarId = `${labelKeyId}-right`;
@@ -353,7 +355,7 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
                 position: 'absolute',
                 left: isPointLabel ? `${x + 10}px` : `${x}px`, // Offset flag to the right for point labels (7px ear + 3px gap)
                 top: `${topOffset}px`,
-                width: isPointLabel ? `${FLAG_WIDTH}px` : `${width}px`,
+                width: `${width}px`,
                 height: '14px',
                 backgroundColor: isBannerHovered ? '#0066CC' : (isSelected ? '#3399FF' : '#7EB1FF'),
                 pointerEvents: 'auto',
