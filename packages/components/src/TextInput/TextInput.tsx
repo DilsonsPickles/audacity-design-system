@@ -56,6 +56,14 @@ export interface TextInputProps {
    * Tab index for keyboard navigation
    */
   tabIndex?: number;
+  /**
+   * Whether to use a textarea for multi-line input
+   */
+  multiline?: boolean;
+  /**
+   * Maximum width for multiline input (triggers word wrap)
+   */
+  maxWidth?: number | string;
 }
 
 /**
@@ -74,17 +82,20 @@ export function TextInput({
   width,
   type = 'text',
   tabIndex,
+  multiline = false,
+  maxWidth,
 }: TextInputProps) {
   const { theme } = useTheme();
   const [internalValue, setInternalValue] = useState(defaultValue || '');
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isControlled = value !== undefined;
   const currentValue = isControlled ? value : internalValue;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     if (!isControlled) {
       setInternalValue(newValue);
@@ -101,6 +112,15 @@ export function TextInput({
     setIsFocused(false);
     onBlur?.();
   };
+
+  // Auto-grow textarea height based on content
+  useEffect(() => {
+    if (multiline && textareaRef.current) {
+      const textarea = textareaRef.current;
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [currentValue, multiline]);
 
   // Determine state class
   let stateClass = 'text-input--idle';
@@ -123,9 +143,11 @@ export function TextInput({
     : 'text-input--empty';
 
   const widthStyle = width ? (typeof width === 'number' ? `${width}px` : width) : undefined;
+  const maxWidthStyle = maxWidth ? (typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth) : undefined;
 
   const style = {
     ...(widthStyle ? { width: widthStyle } : {}),
+    ...(maxWidthStyle ? { maxWidth: maxWidthStyle } : {}),
     '--input-bg': theme.background.control.input.idle,
     '--input-border-idle': theme.border.default,
     '--input-hover-border-color': theme.border.input.hover,
@@ -139,23 +161,43 @@ export function TextInput({
 
   return (
     <div
-      className={`text-input ${stateClass} ${typeClass} ${className}`}
+      className={`text-input ${stateClass} ${typeClass} ${className} ${multiline ? 'text-input--multiline' : ''}`}
       style={style}
       onMouseEnter={() => !disabled && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <input
-        ref={inputRef}
-        type={type}
-        value={currentValue}
-        placeholder={placeholder}
-        disabled={disabled}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        className="text-input__field"
-        tabIndex={tabIndex}
-      />
+      {multiline ? (
+        <textarea
+          ref={textareaRef}
+          value={currentValue}
+          placeholder={placeholder}
+          disabled={disabled}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          className="text-input__field"
+          tabIndex={tabIndex}
+          rows={1}
+          style={{
+            resize: 'none',
+            overflow: 'hidden',
+            wordWrap: 'break-word',
+          }}
+        />
+      ) : (
+        <input
+          ref={inputRef}
+          type={type}
+          value={currentValue}
+          placeholder={placeholder}
+          disabled={disabled}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          className="text-input__field"
+          tabIndex={tabIndex}
+        />
+      )}
     </div>
   );
 }

@@ -140,9 +140,16 @@ export function CustomScrollbar({
     const handleResize = () => updateThumb();
     window.addEventListener('resize', handleResize);
 
+    // Use ResizeObserver to detect when the content container itself is resized
+    const resizeObserver = new ResizeObserver(() => {
+      updateThumb();
+    });
+    resizeObserver.observe(content);
+
     return () => {
       content.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
     };
   }, [contentRef, updateThumb]);
 

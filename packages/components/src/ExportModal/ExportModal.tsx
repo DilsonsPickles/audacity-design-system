@@ -3,7 +3,7 @@
  * Based on Figma design: node-id=9119-62209
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { DialogHeader } from '../DialogHeader';
 import { Button } from '../Button';
@@ -13,6 +13,7 @@ import { LabeledRadio } from '../LabeledRadio';
 import { LabeledCheckbox } from '../LabeledCheckbox';
 import { Separator } from '../Separator';
 import { ChannelMappingDialog } from '../ChannelMappingDialog';
+import { useTabGroup } from '../hooks/useTabGroup';
 import './ExportModal.css';
 
 export interface ExportModalProps {
@@ -49,6 +50,10 @@ export interface ExportModalProps {
    * Callback to show validation error (e.g., no loop region)
    */
   onValidationError?: (title: string, message: string) => void;
+  /**
+   * Array of tracks for channel mapping
+   */
+  tracks?: Array<{ id: number; name: string }>;
 }
 
 export interface ExportSettings {
@@ -194,6 +199,123 @@ const mp2VersionOptions: DropdownOption[] = [
   { value: 'mpeg2', label: 'MPEG-2 Layer II' },
 ];
 
+interface TabGroupFieldProps {
+  groupId: string;
+  itemIndex: number;
+  totalItems: number;
+  itemRefs: React.RefObject<(HTMLElement | null)[]>;
+  activeIndexRef: React.MutableRefObject<number>;
+  activeIndex?: number;
+  onActiveIndexChange?: (index: number) => void;
+  resetKey?: string | number;
+  children: React.ReactNode;
+}
+
+/**
+ * Wrapper component that applies tab group behavior to form fields
+ */
+function TabGroupField({
+  groupId,
+  itemIndex,
+  totalItems,
+  itemRefs,
+  activeIndexRef,
+  activeIndex = 0,
+  onActiveIndexChange,
+  resetKey,
+  children,
+}: TabGroupFieldProps) {
+  const fieldRef = useRef<HTMLDivElement>(null);
+
+  const { tabIndex, onKeyDown, onFocus, onBlur } = useTabGroup({
+    groupId,
+    itemIndex,
+    totalItems,
+    itemRefs,
+    activeIndexRef,
+    activeIndex,
+    resetKey,
+    onItemActivate: (newIndex) => {
+      onActiveIndexChange?.(newIndex);
+    },
+  });
+
+  // Store ref to focusable element for navigation
+  useEffect(() => {
+    if (!fieldRef.current || !itemRefs.current) return;
+
+    const focusableElement = fieldRef.current.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [role="checkbox"], [role="radio"]'
+    );
+
+    if (focusableElement) {
+      // Store the fieldRef wrapper so blur handler can detect focus within descendants
+      itemRefs.current[itemIndex] = fieldRef.current;
+
+      const handlers: Array<{ type: string; handler: (e: Event) => void }> = [];
+
+      // Add keyboard handler
+      if (onKeyDown) {
+        const keydownHandler = (e: Event) => {
+          const keyEvent = e as KeyboardEvent;
+          // Don't handle Space/Enter - let the element's own handler deal with it
+          if (keyEvent.key === ' ' || keyEvent.key === 'Enter') {
+            return;
+          }
+          onKeyDown(e as any);
+        };
+        focusableElement.addEventListener('keydown', keydownHandler);
+        handlers.push({ type: 'keydown', handler: keydownHandler });
+      }
+
+      // Add focus handler
+      if (onFocus) {
+        const focusHandler = (e: Event) => {
+          onFocus(e as any);
+        };
+        focusableElement.addEventListener('focus', focusHandler);
+        handlers.push({ type: 'focus', handler: focusHandler });
+      }
+
+      // Add blur handler
+      if (onBlur) {
+        const blurHandler = (e: Event) => {
+          onBlur(e as any);
+        };
+        focusableElement.addEventListener('blur', blurHandler);
+        handlers.push({ type: 'blur', handler: blurHandler });
+      }
+
+      return () => {
+        handlers.forEach(({ type, handler }) => {
+          focusableElement.removeEventListener(type, handler);
+        });
+      };
+    }
+  }, [onKeyDown, onFocus, onBlur, itemIndex, itemRefs]);
+
+  // Clone children and inject tabIndex prop into interactive components
+  const childrenWithProps = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      // Check if it's a Dropdown, TextInput, LabeledCheckbox, LabeledRadio, or Button component
+      if (child.type === Dropdown || child.type === TextInput || child.type === Button) {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+      // For LabeledCheckbox components
+      if ((child.type as any).name === 'LabeledCheckbox' || child.type === LabeledCheckbox) {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+      // For LabeledRadio components
+      if ((child.type as any).name === 'LabeledRadio' || child.type === LabeledRadio) {
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      }
+    }
+    return child;
+  });
+
+  return <div ref={fieldRef}>{childrenWithProps}</div>;
+}
+
 /**
  * ExportModal component - Modal for exporting audio with various options
  */
@@ -206,6 +328,7 @@ export function ExportModal({
   initialExportType,
   hasLoopRegion = false,
   onValidationError,
+  tracks = [],
 }: ExportModalProps) {
   const { theme } = useTheme();
 
@@ -246,6 +369,32 @@ export function ExportModal({
   // Channel mapping dialog state
   const [isChannelMappingOpen, setIsChannelMappingOpen] = useState(false);
   const [channelMapping, setChannelMapping] = useState<boolean[][] | undefined>(undefined);
+
+  // Tab group state for accessibility
+  // Tab Group 1: Export type
+  const exportTypeRefs = useRef<(HTMLElement | null)[]>([]);
+  const exportTypeActiveIndexRef = useRef<number>(0);
+  const [exportTypeActiveIndex, setExportTypeActiveIndex] = useState<number>(0);
+
+  // Tab Group 2: File (filename, folder, format)
+  const fileRefs = useRef<(HTMLElement | null)[]>([]);
+  const fileActiveIndexRef = useRef<number>(0);
+  const [fileActiveIndex, setFileActiveIndex] = useState<number>(0);
+
+  // Tab Group 3: Audio options (channels, sample rate, encoding)
+  const audioOptionsRefs = useRef<(HTMLElement | null)[]>([]);
+  const audioOptionsActiveIndexRef = useRef<number>(0);
+  const [audioOptionsActiveIndex, setAudioOptionsActiveIndex] = useState<number>(0);
+
+  // Tab Group 4: Rendering (trim checkbox)
+  const renderingRefs = useRef<(HTMLElement | null)[]>([]);
+  const renderingActiveIndexRef = useRef<number>(0);
+  const [renderingActiveIndex, setRenderingActiveIndex] = useState<number>(0);
+
+  // Tab Group 5: Footer buttons (Edit metadata, Cancel, Export)
+  const footerRefs = useRef<(HTMLElement | null)[]>([]);
+  const footerActiveIndexRef = useRef<number>(0);
+  const [footerActiveIndex, setFooterActiveIndex] = useState<number>(0);
 
   // Update file name when format changes for full-project, selected-audio, or loop-region export
   useEffect(() => {
@@ -312,11 +461,22 @@ export function ExportModal({
           <h3 className="export-modal__section-title">Export</h3>
           <div className="export-modal__field export-modal__field--medium">
             <label className="export-modal__label">Type</label>
-            <Dropdown
-              options={exportTypeOptions}
-              value={exportType}
-              onChange={handleExportTypeChange}
-            />
+            <TabGroupField
+              groupId="export-type"
+              itemIndex={0}
+              totalItems={1}
+              itemRefs={exportTypeRefs}
+              activeIndexRef={exportTypeActiveIndexRef}
+              activeIndex={exportTypeActiveIndex}
+              onActiveIndexChange={setExportTypeActiveIndex}
+              resetKey="export-modal"
+            >
+              <Dropdown
+                options={exportTypeOptions}
+                value={exportType}
+                onChange={handleExportTypeChange}
+              />
+            </TabGroupField>
           </div>
         </section>
 
@@ -334,19 +494,30 @@ export function ExportModal({
                 : 'File name'}
             </label>
             <div className="export-modal__input-wrapper">
-              {/* Show editable input for full-project, selected-audio, and loop-region, read-only preview for others */}
-              {exportType === 'full-project' || exportType === 'selected-audio' || exportType === 'loop-region' ? (
-                <TextInput
-                  value={fileName}
-                  onChange={setFileName}
-                />
-              ) : (
-                <TextInput
-                  value={`TrackName.${getFileExtension(format)}`}
-                  onChange={() => {}}
-                  disabled
-                />
-              )}
+              <TabGroupField
+                groupId="file"
+                itemIndex={0}
+                totalItems={4}
+                itemRefs={fileRefs}
+                activeIndexRef={fileActiveIndexRef}
+                activeIndex={fileActiveIndex}
+                onActiveIndexChange={setFileActiveIndex}
+                resetKey="export-modal"
+              >
+                {/* Show editable input for full-project, selected-audio, and loop-region, read-only preview for others */}
+                {exportType === 'full-project' || exportType === 'selected-audio' || exportType === 'loop-region' ? (
+                  <TextInput
+                    value={fileName}
+                    onChange={setFileName}
+                  />
+                ) : (
+                  <TextInput
+                    value={`TrackName.${getFileExtension(format)}`}
+                    onChange={() => {}}
+                    disabled
+                  />
+                )}
+              </TabGroupField>
               {/* Invisible button matching Browse button below for perfect alignment */}
               <div style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
                 <Button variant="secondary" tabIndex={-1}>
@@ -379,24 +550,57 @@ export function ExportModal({
           <div className="export-modal__field export-modal__field--large">
             <label className="export-modal__label">Folder</label>
             <div className="export-modal__input-wrapper">
-              <TextInput
-                value={folder}
-                onChange={setFolder}
-              />
-              <Button variant="secondary" onClick={handleBrowseFolder}>
-                Browse...
-              </Button>
+              <TabGroupField
+                groupId="file"
+                itemIndex={1}
+                totalItems={4}
+                itemRefs={fileRefs}
+                activeIndexRef={fileActiveIndexRef}
+                activeIndex={fileActiveIndex}
+                onActiveIndexChange={setFileActiveIndex}
+                resetKey="export-modal"
+              >
+                <TextInput
+                  value={folder}
+                  onChange={setFolder}
+                />
+              </TabGroupField>
+              <TabGroupField
+                groupId="file"
+                itemIndex={2}
+                totalItems={4}
+                itemRefs={fileRefs}
+                activeIndexRef={fileActiveIndexRef}
+                activeIndex={fileActiveIndex}
+                onActiveIndexChange={setFileActiveIndex}
+                resetKey="export-modal"
+              >
+                <Button variant="secondary" onClick={handleBrowseFolder}>
+                  Browse...
+                </Button>
+              </TabGroupField>
             </div>
           </div>
 
           {/* Format dropdown */}
           <div className="export-modal__field export-modal__field--small">
             <label className="export-modal__label">Format</label>
-            <Dropdown
-              options={formatOptions}
-              value={format}
-              onChange={setFormat}
-            />
+            <TabGroupField
+              groupId="file"
+              itemIndex={3}
+              totalItems={4}
+              itemRefs={fileRefs}
+              activeIndexRef={fileActiveIndexRef}
+              activeIndex={fileActiveIndex}
+              onActiveIndexChange={setFileActiveIndex}
+              resetKey="export-modal"
+            >
+              <Dropdown
+                options={formatOptions}
+                value={format}
+                onChange={setFormat}
+              />
+            </TabGroupField>
           </div>
 
           {/* Checkbox - only for separate-tracks and label-audio */}
@@ -423,35 +627,86 @@ export function ExportModal({
               <div className="export-modal__field export-modal__field--radio-group">
                 <label className="export-modal__label">Channels</label>
                 <div className="export-modal__radio-group">
-                  <LabeledRadio
-                    label="Mono"
-                    checked={channels === 'mono'}
-                    onChange={() => setChannels('mono')}
-                    name="channels"
-                  />
-                  <LabeledRadio
-                    label="Stereo"
-                    checked={channels === 'stereo'}
-                    onChange={() => setChannels('stereo')}
-                    name="channels"
-                  />
-                  <LabeledRadio
-                    label="Custom mapping"
-                    checked={channels === 'custom'}
-                    onChange={() => setChannels('custom')}
-                    name="channels"
-                  />
+                  <TabGroupField
+                    groupId="audio-options"
+                    itemIndex={0}
+                    totalItems={6}
+                    itemRefs={audioOptionsRefs}
+                    activeIndexRef={audioOptionsActiveIndexRef}
+                    activeIndex={audioOptionsActiveIndex}
+                    onActiveIndexChange={setAudioOptionsActiveIndex}
+                    resetKey="export-modal"
+                  >
+                    <LabeledRadio
+                      label="Mono"
+                      checked={channels === 'mono'}
+                      onChange={() => setChannels('mono')}
+                      name="channels"
+                    />
+                  </TabGroupField>
+                  <TabGroupField
+                    groupId="audio-options"
+                    itemIndex={1}
+                    totalItems={6}
+                    itemRefs={audioOptionsRefs}
+                    activeIndexRef={audioOptionsActiveIndexRef}
+                    activeIndex={audioOptionsActiveIndex}
+                    onActiveIndexChange={setAudioOptionsActiveIndex}
+                    resetKey="export-modal"
+                  >
+                    <LabeledRadio
+                      label="Stereo"
+                      checked={channels === 'stereo'}
+                      onChange={() => setChannels('stereo')}
+                      name="channels"
+                    />
+                  </TabGroupField>
+                  <TabGroupField
+                    groupId="audio-options"
+                    itemIndex={2}
+                    totalItems={6}
+                    itemRefs={audioOptionsRefs}
+                    activeIndexRef={audioOptionsActiveIndexRef}
+                    activeIndex={audioOptionsActiveIndex}
+                    onActiveIndexChange={setAudioOptionsActiveIndex}
+                    resetKey="export-modal"
+                  >
+                    <LabeledRadio
+                      label="Custom mapping"
+                      checked={channels === 'custom'}
+                      onChange={() => setChannels('custom')}
+                      name="channels"
+                    />
+                  </TabGroupField>
                 </div>
               </div>
 
               {/* Edit mapping button - shown when Custom mapping is selected */}
-              {channels === 'custom' && (
-                <div className="export-modal__field" style={{ paddingLeft: '154px' }}>
-                  <Button variant="secondary" onClick={() => setIsChannelMappingOpen(true)}>
+              <div className="export-modal__field" style={{ paddingLeft: '154px', display: channels === 'custom' ? 'block' : 'none' }}>
+                <TabGroupField
+                  groupId="audio-options"
+                  itemIndex={3}
+                  totalItems={6}
+                  itemRefs={audioOptionsRefs}
+                  activeIndexRef={audioOptionsActiveIndexRef}
+                  activeIndex={audioOptionsActiveIndex}
+                  onActiveIndexChange={setAudioOptionsActiveIndex}
+                  resetKey="export-modal"
+                >
+                  <Button
+                    variant="secondary"
+                    onClick={() => setIsChannelMappingOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setIsChannelMappingOpen(true);
+                      }
+                    }}
+                  >
                     Edit mapping
                   </Button>
-                </div>
-              )}
+                </TabGroupField>
+              </div>
             </>
           )}
 
@@ -459,11 +714,22 @@ export function ExportModal({
           {format !== 'custom-ffmpeg' && format !== 'external' && (
             <div className="export-modal__field export-modal__field--small">
               <label className="export-modal__label">Sample rate</label>
-              <Dropdown
-                options={sampleRateOptions}
-                value={sampleRate}
-                onChange={setSampleRate}
-              />
+              <TabGroupField
+                groupId="audio-options"
+                itemIndex={4}
+                totalItems={6}
+                itemRefs={audioOptionsRefs}
+                activeIndexRef={audioOptionsActiveIndexRef}
+                activeIndex={audioOptionsActiveIndex}
+                onActiveIndexChange={setAudioOptionsActiveIndex}
+                resetKey="export-modal"
+              >
+                <Dropdown
+                  options={sampleRateOptions}
+                  value={sampleRate}
+                  onChange={setSampleRate}
+                />
+              </TabGroupField>
             </div>
           )}
 
@@ -472,11 +738,22 @@ export function ExportModal({
           {format === 'wav' && (
             <div className="export-modal__field export-modal__field--small">
               <label className="export-modal__label">Encoding</label>
-              <Dropdown
-                options={encodingOptions}
-                value={encoding}
-                onChange={setEncoding}
-              />
+              <TabGroupField
+                groupId="audio-options"
+                itemIndex={5}
+                totalItems={6}
+                itemRefs={audioOptionsRefs}
+                activeIndexRef={audioOptionsActiveIndexRef}
+                activeIndex={audioOptionsActiveIndex}
+                onActiveIndexChange={setAudioOptionsActiveIndex}
+                resetKey="export-modal"
+              >
+                <Dropdown
+                  options={encodingOptions}
+                  value={encoding}
+                  onChange={setEncoding}
+                />
+              </TabGroupField>
             </div>
           )}
 
@@ -484,11 +761,22 @@ export function ExportModal({
           {format === 'aiff' && (
             <div className="export-modal__field export-modal__field--small">
               <label className="export-modal__label">Encoding</label>
-              <Dropdown
-                options={encodingOptions}
-                value={encoding}
-                onChange={setEncoding}
-              />
+              <TabGroupField
+                groupId="audio-options"
+                itemIndex={5}
+                totalItems={6}
+                itemRefs={audioOptionsRefs}
+                activeIndexRef={audioOptionsActiveIndexRef}
+                activeIndex={audioOptionsActiveIndex}
+                onActiveIndexChange={setAudioOptionsActiveIndex}
+                resetKey="export-modal"
+              >
+                <Dropdown
+                  options={encodingOptions}
+                  value={encoding}
+                  onChange={setEncoding}
+                />
+              </TabGroupField>
             </div>
           )}
 
@@ -787,60 +1075,87 @@ export function ExportModal({
         {/* Rendering section */}
         <section className="export-modal__section">
           <h3 className="export-modal__section-title">Rendering</h3>
-          <LabeledCheckbox
-            label="Trim blank space before first clip"
-            checked={trimBlankSpace}
-            onChange={setTrimBlankSpace}
-          />
+          <TabGroupField
+            groupId="rendering"
+            itemIndex={0}
+            totalItems={1}
+            itemRefs={renderingRefs}
+            activeIndexRef={renderingActiveIndexRef}
+            activeIndex={renderingActiveIndex}
+            onActiveIndexChange={setRenderingActiveIndex}
+            resetKey="export-modal"
+          >
+            <LabeledCheckbox
+              label="Trim blank space before first clip"
+              checked={trimBlankSpace}
+              onChange={setTrimBlankSpace}
+            />
+          </TabGroupField>
         </section>
       </div>
 
       {/* Footer */}
       <div className="export-modal__footer">
-        <Button variant="secondary" onClick={onEditMetadata}>
-          Edit metadata
-        </Button>
+        <TabGroupField
+          groupId="footer"
+          itemIndex={0}
+          totalItems={3}
+          itemRefs={footerRefs}
+          activeIndexRef={footerActiveIndexRef}
+          activeIndex={footerActiveIndex}
+          onActiveIndexChange={setFooterActiveIndex}
+          resetKey="export-modal"
+        >
+          <Button variant="secondary" onClick={onEditMetadata}>
+            Edit metadata
+          </Button>
+        </TabGroupField>
         <div className="export-modal__button-group">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleExport}>
-            Export
-          </Button>
+          <TabGroupField
+            groupId="footer"
+            itemIndex={1}
+            totalItems={3}
+            itemRefs={footerRefs}
+            activeIndexRef={footerActiveIndexRef}
+            activeIndex={footerActiveIndex}
+            onActiveIndexChange={setFooterActiveIndex}
+            resetKey="export-modal"
+          >
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+          </TabGroupField>
+          <TabGroupField
+            groupId="footer"
+            itemIndex={2}
+            totalItems={3}
+            itemRefs={footerRefs}
+            activeIndexRef={footerActiveIndexRef}
+            activeIndex={footerActiveIndex}
+            onActiveIndexChange={setFooterActiveIndex}
+            resetKey="export-modal"
+          >
+            <Button variant="primary" onClick={handleExport}>
+              Export
+            </Button>
+          </TabGroupField>
         </div>
       </div>
 
       {/* Channel Mapping Dialog */}
       {isChannelMappingOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
+        <ChannelMappingDialog
+          tracks={tracks}
+          channelCount={17}
+          initialMapping={channelMapping}
+          onApply={(mapping) => {
+            setChannelMapping(mapping);
+            setIsChannelMappingOpen(false);
           }}
-          onClick={() => setIsChannelMappingOpen(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <ChannelMappingDialog
-              trackCount={6}
-              channelCount={17}
-              initialMapping={channelMapping}
-              onApply={(mapping) => {
-                setChannelMapping(mapping);
-                setIsChannelMappingOpen(false);
-              }}
-              onCancel={() => setIsChannelMappingOpen(false)}
-              open={true}
-            />
-          </div>
-        </div>
+          onCancel={() => setIsChannelMappingOpen(false)}
+          open={true}
+          os={os}
+        />
       )}
       </div>
     </div>

@@ -6,19 +6,110 @@
  * Used in the export dialog when "custom mapping" is selected.
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Dialog } from '../Dialog';
 import { useTheme } from '../ThemeProvider';
 import { Checkbox } from '../Checkbox';
 import { Button } from '../Button';
 import { NumberStepper } from '../NumberStepper';
 import { CustomScrollbar } from '../CustomScrollbar';
+import { useTabGroup } from '../hooks/useTabGroup';
 import './ChannelMappingDialog.css';
+
+interface TabGroupFieldProps {
+  groupId: string;
+  itemIndex: number;
+  totalItems: number;
+  itemRefs: React.RefObject<(HTMLElement | null)[]>;
+  activeIndexRef: React.MutableRefObject<number>;
+  activeIndex?: number;
+  onActiveIndexChange?: (index: number) => void;
+  children: React.ReactNode;
+}
+
+function TabGroupField({
+  groupId,
+  itemIndex,
+  totalItems,
+  itemRefs,
+  activeIndexRef,
+  activeIndex = 0,
+  onActiveIndexChange,
+  children,
+}: TabGroupFieldProps) {
+  const fieldRef = useRef<HTMLDivElement>(null);
+
+  const { tabIndex, onKeyDown, onFocus, onBlur } = useTabGroup({
+    groupId,
+    itemIndex,
+    totalItems,
+    itemRefs,
+    activeIndexRef,
+    activeIndex,
+    onItemActivate: (newIndex) => {
+      onActiveIndexChange?.(newIndex);
+    },
+  });
+
+  useEffect(() => {
+    if (!fieldRef.current || !itemRefs.current) return;
+
+    const focusableElement = fieldRef.current.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [role="checkbox"], [role="radio"]'
+    );
+
+    if (focusableElement) {
+      itemRefs.current[itemIndex] = fieldRef.current;
+
+      const handlers: Array<{ type: string; handler: (e: Event) => void }> = [];
+
+      if (onKeyDown) {
+        const keydownHandler = (e: Event) => {
+          const keyEvent = e as KeyboardEvent;
+          if (keyEvent.key === ' ' || keyEvent.key === 'Enter') {
+            return;
+          }
+          onKeyDown(e as any);
+        };
+        focusableElement.addEventListener('keydown', keydownHandler);
+        handlers.push({ type: 'keydown', handler: keydownHandler });
+      }
+
+      if (onFocus) {
+        focusableElement.addEventListener('focus', onFocus as any);
+        handlers.push({ type: 'focus', handler: onFocus as any });
+      }
+
+      if (onBlur) {
+        focusableElement.addEventListener('blur', onBlur as any);
+        handlers.push({ type: 'blur', handler: onBlur as any });
+      }
+
+      return () => {
+        handlers.forEach(({ type, handler }) => {
+          focusableElement.removeEventListener(type, handler);
+        });
+      };
+    }
+  }, [onKeyDown, onFocus, onBlur, itemIndex, itemRefs]);
+
+  const childrenWithProps = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child as React.ReactElement<any>, {
+        tabIndex,
+      });
+    }
+    return child;
+  });
+
+  return <div ref={fieldRef}>{childrenWithProps}</div>;
+}
 
 export interface ChannelMappingDialogProps {
   /**
-   * Number of tracks
+   * Array of tracks to display in the mapping
    */
-  trackCount?: number;
+  tracks?: Array<{ id: number; name: string }>;
   /**
    * Number of output channels
    */
@@ -40,6 +131,11 @@ export interface ChannelMappingDialogProps {
    */
   open?: boolean;
   /**
+   * Operating system for platform-specific header controls
+   * @default 'macos'
+   */
+  os?: 'macos' | 'windows';
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -49,17 +145,50 @@ export interface ChannelMappingDialogProps {
  * ChannelMappingDialog - Maps audio tracks to output channels
  */
 export function ChannelMappingDialog({
-  trackCount = 6,
+  tracks = [],
   channelCount: initialChannelCount = 17,
   initialMapping,
   onApply,
   onCancel,
   open = true,
+  os = 'macos',
   className = '',
 }: ChannelMappingDialogProps) {
   const { theme } = useTheme();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const channelCountInputRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const cellRefs = useRef<(HTMLDivElement | null)[][]>([]);
   const [channelCount, setChannelCount] = useState(initialChannelCount);
+  const [focusedCell, setFocusedCell] = useState<{ row: number; col: number }>({ row: 0, col: 0 });
+  const trackCount = tracks.length;
+
+  // Footer tab group state
+  const footerRefs = useRef<(HTMLElement | null)[]>([]);
+  const footerActiveIndexRef = useRef<number>(0);
+  const [footerActiveIndex, setFooterActiveIndex] = useState<number>(0);
+
+  // Sync footer state with ref
+  useEffect(() => {
+    footerActiveIndexRef.current = footerActiveIndex;
+  }, [footerActiveIndex]);
+
+  // Reset footer active index when dialog opens
+  useEffect(() => {
+    if (open) {
+      setFooterActiveIndex(0);
+      footerActiveIndexRef.current = 0;
+    }
+  }, [open]);
+
+  // Auto-focus the channel count input when dialog opens
+  useEffect(() => {
+    if (open && channelCountInputRef.current) {
+      setTimeout(() => {
+        channelCountInputRef.current?.focus();
+      }, 0);
+    }
+  }, [open]);
 
   // Initialize mapping grid: [trackIndex][channelIndex] = boolean
   const [mapping, setMapping] = useState<boolean[][]>(() => {
@@ -105,7 +234,50 @@ export function ChannelMappingDialog({
     onCancel?.();
   };
 
-  if (!open) return null;
+  // Handle cell keyboard navigation
+  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, row: number, col: number) => {
+    let newRow = row;
+    let newCol = col;
+    let handled = false;
+
+    switch (e.key) {
+      case 'ArrowUp':
+        newRow = Math.max(0, row - 1);
+        handled = true;
+        break;
+      case 'ArrowDown':
+        newRow = Math.min(trackCount - 1, row + 1);
+        handled = true;
+        break;
+      case 'ArrowLeft':
+        newCol = Math.max(0, col - 1);
+        handled = true;
+        break;
+      case 'ArrowRight':
+        newCol = Math.min(channelCount - 1, col + 1);
+        handled = true;
+        break;
+      case ' ':
+      case 'Enter':
+        handleCheckboxChange(row, col, !mapping[row][col]);
+        handled = true;
+        break;
+    }
+
+    if (handled) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (newRow !== row || newCol !== col) {
+        setFocusedCell({ row: newRow, col: newCol });
+        cellRefs.current[newRow]?.[newCol]?.focus();
+      }
+    }
+  };
+
+  const handleCellFocus = (row: number, col: number) => {
+    setFocusedCell({ row, col });
+  };
 
   const style = {
     '--dialog-bg': theme.background.dialog.body,
@@ -122,19 +294,17 @@ export function ChannelMappingDialog({
   } as React.CSSProperties;
 
   return (
-    <div className={`channel-mapping-dialog ${className}`} style={style}>
-      {/* Dialog Header */}
-      <div className="channel-mapping-dialog__header">
-        <div className="channel-mapping-dialog__title">Edit mapping</div>
-        <button
-          className="channel-mapping-dialog__close"
-          onClick={handleCancel}
-          aria-label="Close dialog"
-        >
-          ×
-        </button>
-      </div>
-
+    <Dialog
+      isOpen={open}
+      title="Edit mapping"
+      onClose={handleCancel}
+      className={`channel-mapping-dialog ${className}`}
+      width={320}
+      minHeight={304}
+      noPadding={true}
+      os={os}
+      style={style}
+    >
       {/* Dialog Body */}
       <div className="channel-mapping-dialog__body">
         {/* Channel Count Stepper */}
@@ -143,6 +313,7 @@ export function ChannelMappingDialog({
             Channel count
           </label>
           <NumberStepper
+            ref={channelCountInputRef}
             value={channelCount.toString()}
             onChange={handleChannelCountChange}
             min={1}
@@ -157,9 +328,9 @@ export function ChannelMappingDialog({
           {/* Track Labels Column */}
           <div className="channel-mapping-dialog__track-column">
             <div className="channel-mapping-dialog__track-header" />
-            {Array.from({ length: trackCount }, (_, i) => (
-              <div key={i} className="channel-mapping-dialog__track-label">
-                Track {i + 1}
+            {tracks.map((track, i) => (
+              <div key={track.id} className="channel-mapping-dialog__track-label">
+                {track.name}
               </div>
             ))}
             <div className="channel-mapping-dialog__track-footer" />
@@ -172,7 +343,7 @@ export function ChannelMappingDialog({
               ref={scrollContainerRef}
               className="channel-mapping-dialog__scroll-container"
             >
-              <div className="channel-mapping-dialog__grid">
+              <div ref={gridRef} className="channel-mapping-dialog__grid">
                 {/* Channel Number Headers */}
                 <div className="channel-mapping-dialog__channel-headers">
                   {Array.from({ length: channelCount }, (_, i) => (
@@ -183,17 +354,35 @@ export function ChannelMappingDialog({
                 </div>
 
                 {/* Checkbox Grid Rows */}
-                {Array.from({ length: trackCount }, (_, trackIndex) => (
-                  <div key={trackIndex} className="channel-mapping-dialog__grid-row">
-                    {Array.from({ length: channelCount }, (_, channelIndex) => (
-                      <div key={channelIndex} className="channel-mapping-dialog__grid-cell">
-                        <Checkbox
-                          checked={mapping[trackIndex][channelIndex]}
-                          onChange={(checked) => handleCheckboxChange(trackIndex, channelIndex, checked)}
-                          aria-label={`Map Track ${trackIndex + 1} to Channel ${channelIndex + 1}`}
-                        />
-                      </div>
-                    ))}
+                {tracks.map((track, trackIndex) => (
+                  <div key={track.id} className="channel-mapping-dialog__grid-row">
+                    {Array.from({ length: channelCount }, (_, channelIndex) => {
+                      // Initialize cellRefs array if needed
+                      if (!cellRefs.current[trackIndex]) {
+                        cellRefs.current[trackIndex] = [];
+                      }
+
+                      return (
+                        <div
+                          key={channelIndex}
+                          ref={(el) => {
+                            if (cellRefs.current[trackIndex]) {
+                              cellRefs.current[trackIndex][channelIndex] = el;
+                            }
+                          }}
+                          className="channel-mapping-dialog__grid-cell"
+                          tabIndex={focusedCell.row === trackIndex && focusedCell.col === channelIndex ? 0 : -1}
+                          onKeyDown={(e) => handleCellKeyDown(e, trackIndex, channelIndex)}
+                          onFocus={() => handleCellFocus(trackIndex, channelIndex)}
+                        >
+                          <Checkbox
+                            checked={mapping[trackIndex]?.[channelIndex] ?? false}
+                            onChange={(checked) => handleCheckboxChange(trackIndex, channelIndex, checked)}
+                            aria-label={`Map ${track.name} to Channel ${channelIndex + 1}`}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
@@ -216,14 +405,34 @@ export function ChannelMappingDialog({
 
       {/* Dialog Footer */}
       <div className="channel-mapping-dialog__footer">
-        <Button variant="secondary" onClick={handleCancel}>
-          Cancel
-        </Button>
-        <Button variant="primary" onClick={handleApply}>
-          Apply
-        </Button>
+        <TabGroupField
+          groupId="dialog-footer"
+          itemIndex={0}
+          totalItems={2}
+          itemRefs={footerRefs}
+          activeIndexRef={footerActiveIndexRef}
+          activeIndex={footerActiveIndex}
+          onActiveIndexChange={setFooterActiveIndex}
+        >
+          <Button variant="secondary" onClick={handleCancel}>
+            Cancel
+          </Button>
+        </TabGroupField>
+        <TabGroupField
+          groupId="dialog-footer"
+          itemIndex={1}
+          totalItems={2}
+          itemRefs={footerRefs}
+          activeIndexRef={footerActiveIndexRef}
+          activeIndex={footerActiveIndex}
+          onActiveIndexChange={setFooterActiveIndex}
+        >
+          <Button variant="primary" onClick={handleApply}>
+            Apply
+          </Button>
+        </TabGroupField>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

@@ -129,6 +129,8 @@ export function LabelEditorTableRow({
           value={labelText}
           onChange={onLabelTextChange}
           placeholder="Label text"
+          multiline
+          maxWidth={400}
         />
       </td>
       <td className="label-editor-table-row__cell">

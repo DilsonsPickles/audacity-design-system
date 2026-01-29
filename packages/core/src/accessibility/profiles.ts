@@ -119,6 +119,41 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
         wrap: true,
       },
 
+      // Export Modal - Export Type section
+      'export-type': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
+      // Export Modal - File section (filename, folder, format)
+      'file': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
+      // Export Modal - Audio Options section (channels, sample rate, encoding)
+      'audio-options': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
+      // Export Modal - Rendering section
+      'rendering': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
+      // Export Modal - Footer buttons (Edit metadata, Cancel, Export)
+      'footer': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
       // Dialog/modal footer buttons
       'dialog-footer': {
         tabindex: 'roving',
@@ -248,6 +283,36 @@ export const WCAG_FLAT_PROFILE: AccessibilityProfile = {
       },
 
       'spectral-algorithm': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'export-type': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'file': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'audio-options': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'rendering': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'footer': {
         tabindex: 'sequential',
         arrows: false,
         wrap: false,

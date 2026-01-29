@@ -56,7 +56,7 @@ export interface NumberStepperProps {
 /**
  * NumberStepper component - Number input with up/down arrows
  */
-export function NumberStepper({
+export const NumberStepper = React.forwardRef<HTMLInputElement, NumberStepperProps>(({
   value,
   defaultValue = '',
   placeholder,
@@ -68,7 +68,7 @@ export function NumberStepper({
   step = 1,
   min,
   max,
-}: NumberStepperProps) {
+}, ref) => {
   const { theme } = useTheme();
   const [internalValue, setInternalValue] = useState(defaultValue);
   const [isFocused, setIsFocused] = useState(false);
@@ -185,6 +185,7 @@ export function NumberStepper({
       style={widthStyle ? { width: widthStyle, ...style } : style}
     >
       <input
+        ref={ref}
         type="text"
         value={currentValue}
         placeholder={placeholder}
@@ -219,6 +220,8 @@ export function NumberStepper({
       </div>
     </div>
   );
-}
+});
+
+NumberStepper.displayName = 'NumberStepper';
 
 export default NumberStepper;

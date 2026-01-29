@@ -47,6 +47,10 @@ export interface ButtonProps {
    * Tab index for keyboard navigation
    */
   tabIndex?: number;
+  /**
+   * Keyboard event handler
+   */
+  onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -60,6 +64,7 @@ export const Button: React.FC<ButtonProps> = ({
   className = '',
   type = 'button',
   tabIndex,
+  onKeyDown,
 }) => {
   const { theme } = useTheme();
 
@@ -84,6 +89,7 @@ export const Button: React.FC<ButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       tabIndex={tabIndex}
+      onKeyDown={onKeyDown}
       style={style}
     >
       {showIcon && icon && (

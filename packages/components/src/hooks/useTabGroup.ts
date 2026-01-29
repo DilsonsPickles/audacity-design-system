@@ -150,12 +150,30 @@ export function useTabGroup({
   }, [groupConfig, itemIndex, currentActiveIndex, baseTabIndex]);
 
   // Focus an item by index
+  // Check if an element is hidden
+  const isElementHidden = useCallback((element: HTMLElement): boolean => {
+    let currentEl: HTMLElement | null = element;
+    while (currentEl && currentEl !== document.body) {
+      const style = window.getComputedStyle(currentEl);
+      if (style.display === 'none' || style.visibility === 'hidden') {
+        return true;
+      }
+      currentEl = currentEl.parentElement;
+    }
+    return false;
+  }, []);
+
   const focusItem = useCallback(
-    (index: number) => {
-      if (!itemRefs?.current) return;
+    (index: number, skipHidden: boolean = false): boolean => {
+      if (!itemRefs?.current) return false;
 
       const element = itemRefs.current[index];
       if (element) {
+        // Check if element or any of its parents are hidden
+        if (skipHidden && isElementHidden(element)) {
+          return false;
+        }
+
         // If element has a querySelector method, it's likely a wrapper div
         // Find the focusable element within it
         if ('querySelector' in element && typeof element.querySelector === 'function') {
@@ -164,14 +182,16 @@ export function useTabGroup({
           );
           if (focusableElement) {
             focusableElement.focus();
-            return;
+            return true;
           }
         }
         // Otherwise, focus the element directly
         element.focus();
+        return true;
       }
+      return false;
     },
-    [itemRefs]
+    [itemRefs, isElementHidden]
   );
 
   // Handle keyboard navigation
@@ -209,13 +229,43 @@ export function useTabGroup({
 
       if (handled) {
         e.preventDefault();
-        activeIndexRef.current = newIndex;
-        setLocalActiveIndex(newIndex);
-        focusItem(newIndex);
+
+        // Try to focus the item, skipping if it's hidden
+        let finalIndex = newIndex;
+        let focused = focusItem(newIndex, true);
+
+        // If the item is hidden, try to find the next visible item in the direction we're moving
+        if (!focused) {
+          const direction = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+          let attempts = 0;
+          const maxAttempts = totalItems;
+
+          while (!focused && attempts < maxAttempts) {
+            finalIndex += direction;
+
+            // Handle wrapping
+            if (groupConfig.wrap) {
+              finalIndex = (finalIndex + totalItems) % totalItems;
+            } else {
+              // If not wrapping and we've reached the edge, stop
+              if (finalIndex < 0 || finalIndex >= totalItems) {
+                // Stay at current index if no visible item found
+                finalIndex = activeIndexRef.current;
+                break;
+              }
+            }
+
+            focused = focusItem(finalIndex, true);
+            attempts++;
+          }
+        }
+
+        activeIndexRef.current = finalIndex;
+        setLocalActiveIndex(finalIndex);
 
         // Notify parent that item was activated (e.g., for changing pages)
         if (onItemActivate) {
-          onItemActivate(newIndex);
+          onItemActivate(finalIndex);
         }
       }
     },
