@@ -273,22 +273,6 @@ export class RecordingManager {
   }
 
   /**
-   * Generate RMS waveform from raw samples
-   */
-  private generateRmsWaveform(samples: number[]): number[] {
-    const windowSize = 512; // Larger window for smoother waveform
-    const rmsWaveform: number[] = [];
-
-    for (let i = 0; i < samples.length; i += windowSize) {
-      const window = samples.slice(i, i + windowSize);
-      const rms = Math.sqrt(window.reduce((sum, val) => sum + val * val, 0) / window.length);
-      rmsWaveform.push(rms);
-    }
-
-    return rmsWaveform;
-  }
-
-  /**
    * Get list of available audio input devices
    */
   static async getAudioInputDevices(): Promise<MediaDeviceInfo[]> {
