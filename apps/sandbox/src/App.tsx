@@ -1,9 +1,9 @@
 import React from 'react';
+import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { CustomScrollbar } from './components/CustomScrollbar';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar } from '@audacity-ui/components';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
@@ -517,7 +517,7 @@ function CanvasDemoContent() {
   }, [baseTheme, envelopeColor]);
 
   // View options
-  const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(true);
+  const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(false);
   const [showVerticalRulers, setShowVerticalRulers] = React.useState(true);
 
   // Timeline ruler format options
@@ -950,8 +950,9 @@ function CanvasDemoContent() {
           // Generate waveform from audio buffer
           const channelData = audioBuffer.getChannelData(0);
           const waveform = Array.from(channelData);
-          // RMS waveform generation removed as it's not used
-          // const _waveformRms = generateRmsWaveform(waveform);
+
+          // Generate RMS waveform
+          const waveformRms = generateRmsWaveform(waveform);
 
           // Update the existing clip with waveform data
           const clipDuration = audioBuffer.duration;
@@ -968,6 +969,7 @@ function CanvasDemoContent() {
               updates: {
                 duration: clipDuration,
                 waveform,
+                waveformRms,
               },
             },
           });
@@ -1006,8 +1008,11 @@ function CanvasDemoContent() {
         onWaveformUpdate: (waveformData) => {
           setMicWaveformData(waveformData);
         },
-        onRecordingWaveformUpdate: (waveformData, _waveformRms) => {
-          // Send both waveform and RMS - RMS renders as filled when showRmsInWaveform is true
+        onRecordingWaveformUpdate: (waveformData, waveformRms, sampleRate) => {
+          // Calculate duration from sample count and sample rate
+          const duration = waveformData.length / sampleRate;
+
+          // Send waveform, RMS, and calculated duration
           dispatch({
             type: 'UPDATE_CLIP',
             payload: {
@@ -1015,6 +1020,8 @@ function CanvasDemoContent() {
               clipId: clipId,
               updates: {
                 waveform: waveformData,
+                waveformRms: waveformRms,
+                duration: duration,
               },
             },
           });
@@ -2090,6 +2097,8 @@ function CanvasDemoContent() {
           // Store the audio buffer for playback
           audioManager.addClipBuffer(newClipId, buffer);
 
+          // Generate RMS waveforms (imported at top of file)
+
           const newClip = isStereo && typeof waveformData === 'object' && 'left' in waveformData ? {
             id: newClipId,
             name: 'Tone',
@@ -2097,6 +2106,8 @@ function CanvasDemoContent() {
             duration: duration,
             waveformLeft: waveformData.left,
             waveformRight: waveformData.right,
+            waveformLeftRms: generateRmsWaveform(waveformData.left),
+            waveformRightRms: generateRmsWaveform(waveformData.right),
             envelopePoints: [],
           } : {
             id: newClipId,
@@ -2104,8 +2115,20 @@ function CanvasDemoContent() {
             start: startTime,
             duration: duration,
             waveform: Array.isArray(waveformData) ? waveformData : [],
+            waveformRms: Array.isArray(waveformData) ? generateRmsWaveform(waveformData) : [],
             envelopePoints: [],
           };
+
+          console.log('[Generate Tone] Created clip:', {
+            id: newClip.id,
+            isStereo,
+            hasWaveformRms: !!(newClip as any).waveformRms,
+            hasWaveformLeftRms: !!(newClip as any).waveformLeftRms,
+            hasWaveformRightRms: !!(newClip as any).waveformRightRms,
+            waveformRmsLength: (newClip as any).waveformRms?.length,
+            waveformLeftRmsLength: (newClip as any).waveformLeftRms?.length,
+            waveformRightRmsLength: (newClip as any).waveformRightRms?.length,
+          });
 
           // Add clip to track
           dispatch({
@@ -3075,11 +3098,13 @@ function CanvasDemoContent() {
                 contentRef={scrollContainerRef}
                 orientation="horizontal"
                 height={20}
+                className="custom-scrollbar--canvas-horizontal"
               />
               <CustomScrollbar
                 contentRef={scrollContainerRef}
                 orientation="vertical"
                 width={20}
+                className="custom-scrollbar--canvas-vertical"
               />
             </div>
 
@@ -3598,6 +3623,7 @@ function CanvasDemoContent() {
         os={preferences.operatingSystem}
         initialExportType={initialExportType}
         hasLoopRegion={loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null}
+        tracks={state.tracks.map(track => ({ id: track.id, name: track.name }))}
         onValidationError={(title, message) => {
           setAlertDialogTitle(title);
           setAlertDialogMessage(message);

@@ -26,6 +26,9 @@ interface Clip {
   waveform?: number[];
   waveformLeft?: number[];
   waveformRight?: number[];
+  waveformRms?: number[];
+  waveformLeftRms?: number[];
+  waveformRightRms?: number[];
   envelopePoints: EnvelopePoint[];
   selected?: boolean;
   trimStart?: number;

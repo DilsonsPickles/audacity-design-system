@@ -1,12 +1,16 @@
 import * as Tone from 'tone';
+import { generateRmsWaveform } from './rmsWaveform';
 
 export interface RecordingManagerCallbacks {
   onMeterUpdate: (level: number, peak: number) => void;
   onRecordingComplete: (audioBuffer: AudioBuffer) => void;
   onPlayheadUpdate: (position: number) => void;
   onWaveformUpdate?: (waveformData: number[]) => void;
-  onRecordingWaveformUpdate?: (waveformData: number[], waveformRms: number[]) => void;
+  onRecordingWaveformUpdate?: (waveformData: number[], waveformRms: number[], sampleRate: number) => void;
 }
+
+// Fixed sample rate for all recordings (typical browser default)
+const SAMPLE_RATE = 44100;
 
 export class RecordingManager {
   private recorder: any = null; // Tone.Recorder type issues with strict mode
@@ -21,6 +25,7 @@ export class RecordingManager {
   private recordingStartPosition = 0;
   private isMonitoring = false;
   private recordedSamples: number[] = [];
+  private actualSampleRate = SAMPLE_RATE; // Track actual sample rate from AudioContext
 
   constructor(callbacks: RecordingManagerCallbacks) {
     this.callbacks = callbacks;
@@ -36,6 +41,10 @@ export class RecordingManager {
       // Request microphone access
       this.userMedia = new (Tone as any).UserMedia();
       await this.userMedia.open();
+
+      // Get actual sample rate from AudioContext
+      this.actualSampleRate = (Tone as any).context.sampleRate || SAMPLE_RATE;
+      console.log(`Recording with sample rate: ${this.actualSampleRate} Hz`);
 
       // Wait for mic to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -137,24 +146,34 @@ export class RecordingManager {
         // Start recording
         this.recorder.start();
 
-        // Accumulate waveform samples from Tone.Waveform
+        // Calculate expected duration during live recording
         if (this.waveform && this.callbacks.onRecordingWaveformUpdate) {
           this.waveformUpdateInterval = window.setInterval(() => {
             if (this.waveform) {
               const dataArray = this.waveform.getValue();
 
-              // Downsample to reduce jitter - take every 4th sample
+              // Append current snapshot (downsampled)
               const downsampledData: number[] = [];
               for (let i = 0; i < dataArray.length; i += 4) {
                 downsampledData.push(dataArray[i]);
               }
-
-              // Append downsampled data
               this.recordedSamples.push(...downsampledData);
 
-              // Generate RMS waveform with larger window for smoother appearance
-              const waveformRms = this.generateRmsWaveform(this.recordedSamples);
-              this.callbacks.onRecordingWaveformUpdate([...this.recordedSamples], waveformRms);
+              // Calculate expected duration based on elapsed time
+              const elapsedSeconds = (Date.now() - this.recordingStartTime) / 1000;
+
+              // Generate RMS waveform
+              const waveformRms = generateRmsWaveform(this.recordedSamples);
+
+              // Pass samples, RMS, and ELAPSED TIME as "fake sample rate"
+              // Duration will be calculated as: samples.length / fakeRate = samples.length / (samples.length / elapsed) = elapsed
+              const fakeSampleRate = this.recordedSamples.length / Math.max(0.001, elapsedSeconds);
+
+              this.callbacks.onRecordingWaveformUpdate(
+                [...this.recordedSamples],
+                waveformRms,
+                fakeSampleRate
+              );
             }
           }, 1000 / 30); // 30 FPS for waveform updates
         }

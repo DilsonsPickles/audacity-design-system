@@ -294,23 +294,24 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
             const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixelL);
 
-            let min = waveformLeftRms[sampleStart] || 0;
-            let max = waveformLeftRms[sampleStart] || 0;
-
+            // Find min and max RMS values in this pixel's sample range
+            let minRms = waveformLeftRms[sampleStart] || 0;
+            let maxRms = waveformLeftRms[sampleStart] || 0;
             for (let i = sampleStart; i < sampleEnd && i < waveformLeftRms.length; i++) {
-              const sample = waveformLeftRms[i];
-              min = Math.min(min, sample);
-              max = Math.max(max, sample);
+              const rmsValue = waveformLeftRms[i];
+              minRms = Math.min(minRms, rmsValue);
+              maxRms = Math.max(maxRms, rmsValue);
             }
 
-            // Apply envelope gain to RMS waveform amplitude
+            // Apply envelope gain to RMS amplitude
             const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-            const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
-            min *= envelopeGain;
-            max *= envelopeGain;
+            const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+            minRms *= envelopeGain;
+            maxRms *= envelopeGain;
 
-            const y1 = lChannelY - max * maxAmplitude;
-            const y2 = lChannelY - min * maxAmplitude;
+            // Render RMS as filled bar (RMS values vary, creating envelope shape)
+            const y1 = lChannelY - maxRms * maxAmplitude;
+            const y2 = lChannelY + maxRms * maxAmplitude;
             ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
           }
 
@@ -361,23 +362,24 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             const sampleStart = trimStartSample + Math.floor(px * samplesPerPixelL);
             const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixelL);
 
-            let min = waveformRightRms[sampleStart] || 0;
-            let max = waveformRightRms[sampleStart] || 0;
-
+            // Find min and max RMS values in this pixel's sample range
+            let minRms = waveformRightRms[sampleStart] || 0;
+            let maxRms = waveformRightRms[sampleStart] || 0;
             for (let i = sampleStart; i < sampleEnd && i < waveformRightRms.length; i++) {
-              const sample = waveformRightRms[i];
-              min = Math.min(min, sample);
-              max = Math.max(max, sample);
+              const rmsValue = waveformRightRms[i];
+              minRms = Math.min(minRms, rmsValue);
+              maxRms = Math.max(maxRms, rmsValue);
             }
 
-            // Apply envelope gain to RMS waveform amplitude
+            // Apply envelope gain to RMS amplitude
             const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-            const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
-            min *= envelopeGain;
-            max *= envelopeGain;
+            const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+            minRms *= envelopeGain;
+            maxRms *= envelopeGain;
 
-            const y1 = rChannelY - max * maxAmplitude;
-            const y2 = rChannelY - min * maxAmplitude;
+            // Render RMS as filled bar (RMS values vary, creating envelope shape)
+            const y1 = rChannelY - maxRms * maxAmplitude;
+            const y2 = rChannelY + maxRms * maxAmplitude;
             ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
           }
 
@@ -431,23 +433,24 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
             const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
-            let min = waveformDataRms[sampleStart] || 0;
-            let max = waveformDataRms[sampleStart] || 0;
-
+            // Find min and max RMS values in this pixel's sample range
+            let minRms = waveformDataRms[sampleStart] || 0;
+            let maxRms = waveformDataRms[sampleStart] || 0;
             for (let i = sampleStart; i < sampleEnd && i < waveformDataRms.length; i++) {
-              const sample = waveformDataRms[i];
-              min = Math.min(min, sample);
-              max = Math.max(max, sample);
+              const rmsValue = waveformDataRms[i];
+              minRms = Math.min(minRms, rmsValue);
+              maxRms = Math.max(maxRms, rmsValue);
             }
 
-            // Apply envelope gain to RMS waveform amplitude
+            // Apply envelope gain to RMS amplitude
             const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-            const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
-            min *= envelopeGain;
-            max *= envelopeGain;
+            const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+            minRms *= envelopeGain;
+            maxRms *= envelopeGain;
 
-            const y1 = waveformCenterY - max * maxAmplitude;
-            const y2 = waveformCenterY - min * maxAmplitude;
+            // Render RMS as filled bar (RMS values vary, creating envelope shape)
+            const y1 = waveformCenterY - maxRms * maxAmplitude;
+            const y2 = waveformCenterY + maxRms * maxAmplitude;
             ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
           }
 
@@ -577,28 +580,29 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
           const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
-          let min = waveformLeftRms[sampleStart] || 0;
-          let max = waveformLeftRms[sampleStart] || 0;
-
+          // Find min and max RMS values in this pixel's sample range
+          let minRms = waveformLeftRms[sampleStart] || 0;
+          let maxRms = waveformLeftRms[sampleStart] || 0;
           for (let i = sampleStart; i < sampleEnd && i < waveformLeftRms.length; i++) {
-            const sample = waveformLeftRms[i];
-            min = Math.min(min, sample);
-            max = Math.max(max, sample);
+            const rmsValue = waveformLeftRms[i];
+            minRms = Math.min(minRms, rmsValue);
+            maxRms = Math.max(maxRms, rmsValue);
           }
 
-          // Apply envelope gain to RMS waveform amplitude
+          // Apply envelope gain to RMS amplitude
           const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
-          min *= envelopeGain;
-          max *= envelopeGain;
+          const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          minRms *= envelopeGain;
+          maxRms *= envelopeGain;
 
           // Choose color based on whether THIS pixel is within time selection
           const isPixelInSelection = px >= selStartPx && px < selEndPx;
           const rmsColor = isPixelInSelection ? timeSelectionRmsColor : defaultRmsColor;
           ctx.fillStyle = rmsColor;
 
-          const y1 = lChannelCenterY - max * lMaxAmplitude;
-          const y2 = lChannelCenterY - min * lMaxAmplitude;
+          // Render RMS as filled bar (RMS values vary, creating envelope shape)
+          const y1 = lChannelCenterY - maxRms * lMaxAmplitude;
+          const y2 = lChannelCenterY + maxRms * lMaxAmplitude;
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
 
@@ -651,28 +655,29 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
           const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
-          let min = waveformRightRms[sampleStart] || 0;
-          let max = waveformRightRms[sampleStart] || 0;
-
+          // Find min and max RMS values in this pixel's sample range
+          let minRms = waveformRightRms[sampleStart] || 0;
+          let maxRms = waveformRightRms[sampleStart] || 0;
           for (let i = sampleStart; i < sampleEnd && i < waveformRightRms.length; i++) {
-            const sample = waveformRightRms[i];
-            min = Math.min(min, sample);
-            max = Math.max(max, sample);
+            const rmsValue = waveformRightRms[i];
+            minRms = Math.min(minRms, rmsValue);
+            maxRms = Math.max(maxRms, rmsValue);
           }
 
-          // Apply envelope gain to RMS waveform amplitude
+          // Apply envelope gain to RMS amplitude
           const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
-          min *= envelopeGain;
-          max *= envelopeGain;
+          const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          minRms *= envelopeGain;
+          maxRms *= envelopeGain;
 
           // Choose color based on whether THIS pixel is within time selection
           const isPixelInSelection = px >= selStartPx && px < selEndPx;
           const rmsColor = isPixelInSelection ? timeSelectionRmsColor : defaultRmsColor;
           ctx.fillStyle = rmsColor;
 
-          const y1 = rChannelCenterY - max * rMaxAmplitude;
-          const y2 = rChannelCenterY - min * rMaxAmplitude;
+          // Render RMS as filled bar (RMS values vary, creating envelope shape)
+          const y1 = rChannelCenterY - maxRms * rMaxAmplitude;
+          const y2 = rChannelCenterY + maxRms * rMaxAmplitude;
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
 
@@ -745,38 +750,37 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
       // Draw RMS waveform on top (if RMS data provided)
       if (waveformDataRms && waveformDataRms.length > 0) {
-        // Set opacity for more subtle RMS overlay
 
         for (let px = 0; px < canvasWidth; px++) {
           const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
           const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
 
-          let min = waveformDataRms[sampleStart] || 0;
-          let max = waveformDataRms[sampleStart] || 0;
-
+          // Find min and max RMS values in this pixel's sample range
+          let minRms = waveformDataRms[sampleStart] || 0;
+          let maxRms = waveformDataRms[sampleStart] || 0;
           for (let i = sampleStart; i < sampleEnd && i < waveformDataRms.length; i++) {
-            const sample = waveformDataRms[i];
-            min = Math.min(min, sample);
-            max = Math.max(max, sample);
+            const rmsValue = waveformDataRms[i];
+            minRms = Math.min(minRms, rmsValue);
+            maxRms = Math.max(maxRms, rmsValue);
           }
 
-          // Apply envelope gain to RMS waveform amplitude
+          // Apply envelope gain to RMS amplitude
           const pixelTime = clipTrimStart + (px / pixelsPerSecond);
-          const envelopeGain = showEnvelope && envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
-          min *= envelopeGain;
-          max *= envelopeGain;
+          const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
+          minRms *= envelopeGain;
+          maxRms *= envelopeGain;
 
           // Choose color based on whether THIS pixel is within time selection
           const isPixelInSelection = px >= selStartPx && px < selEndPx;
           const rmsColor = isPixelInSelection ? timeSelectionRmsColor : defaultRmsColor;
           ctx.fillStyle = rmsColor;
 
-          const y1 = centerY - max * maxAmplitude;
-          const y2 = centerY - min * maxAmplitude;
+          // Render RMS as filled bar (RMS values vary, so this creates the envelope shape)
+          const y1 = centerY - maxRms * maxAmplitude;
+          const y2 = centerY + maxRms * maxAmplitude;
           ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
         }
 
-        // Reset opacity
       }
       }
     }
