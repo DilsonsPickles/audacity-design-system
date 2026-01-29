@@ -342,7 +342,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         showMidiOption={showMidiOption}
         onSelectTrackType={(type: TrackType) => {
           onAddTrackType?.(type);
-          setAddTrackFlyoutOpen(false);
+          // Don't close flyout - let user click outside or press Escape
         }}
         onClose={() => setAddTrackFlyoutOpen(false)}
       />
