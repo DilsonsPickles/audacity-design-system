@@ -146,7 +146,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   });
   const [addTrackFlyoutOpen, setAddTrackFlyoutOpen] = useState(false);
   const [addTrackFlyoutPosition, setAddTrackFlyoutPosition] = useState({ x: 0, y: 0 });
+  const [addTrackFlyoutAutoFocus, setAddTrackFlyoutAutoFocus] = useState(false);
   const addButtonRef = React.useRef<HTMLDivElement>(null);
+  const addButtonElementRef = React.useRef<HTMLButtonElement>(null);
 
   const { activeProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
@@ -206,9 +208,10 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         <h2 className="track-control-side-panel__title">Tracks</h2>
         <div ref={addButtonRef}>
           <Button
+            ref={addButtonElementRef}
             variant="secondary"
             size="default"
-            onClick={() => {
+            onClick={(e) => {
               // If using new onAddTrackType callback, show flyout
               if (onAddTrackType && addButtonRef.current) {
                 const rect = addButtonRef.current.getBoundingClientRect();
@@ -216,6 +219,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   x: rect.left + rect.width / 2 - 96, // Center the flyout (192px / 2 = 96)
                   y: rect.bottom + 8, // 8px gap below button
                 });
+
+                // Check if this was triggered by keyboard (Enter/Space)
+                // React synthetic events don't expose nativeEvent.detail, so we check if it's a MouseEvent
+                const isKeyboard = e && (e as any).nativeEvent && (e as any).nativeEvent.detail === 0;
+                setAddTrackFlyoutAutoFocus(isKeyboard);
                 setAddTrackFlyoutOpen(!addTrackFlyoutOpen);
               } else if (onAddTrack) {
                 // Fallback to old callback for backward compatibility
@@ -340,6 +348,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         x={addTrackFlyoutPosition.x}
         y={addTrackFlyoutPosition.y}
         showMidiOption={showMidiOption}
+        autoFocus={addTrackFlyoutAutoFocus}
+        triggerRef={addButtonElementRef}
         onSelectTrackType={(type: TrackType) => {
           onAddTrackType?.(type);
           // Don't close flyout - let user click outside or press Escape

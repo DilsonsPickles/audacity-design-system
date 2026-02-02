@@ -1338,6 +1338,22 @@ function CanvasDemoContent() {
 
       // Toggle track selection with Enter key
       if (e.key === 'Enter') {
+        // Don't interfere with interactive elements (buttons, inputs, etc.)
+        const target = e.target as HTMLElement;
+        const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
+        const hasRole = target.getAttribute('role');
+        const isInteractive = interactiveElements.includes(target.tagName) ||
+                              hasRole === 'button' ||
+                              hasRole === 'checkbox' ||
+                              hasRole === 'menuitem' ||
+                              hasRole === 'menuitemcheckbox' ||
+                              hasRole === 'menuitemradio';
+
+        if (isInteractive) {
+          // Let the interactive element handle the Enter key
+          return;
+        }
+
         if (keyboardFocusedTrack !== null) {
           e.preventDefault();
 
@@ -2241,7 +2257,7 @@ function CanvasDemoContent() {
         }
       />
       {activeMenuItem !== 'home' && (
-        <Toolbar startTabIndex={5}>
+        <Toolbar startTabIndex={5} tabGroupId="tool-toolbar">
           {/* Transport controls */}
           {activeMenuItem === 'export' ? (
             // Export tab: Play, stop, loop + export buttons
@@ -2974,6 +2990,7 @@ function CanvasDemoContent() {
                   ref={scrollContainerRef}
                   onScroll={handleScroll}
                   className="canvas-scroll-container"
+                  tabIndex={-1}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -3145,20 +3162,28 @@ function CanvasDemoContent() {
           instructionText={showFocusDebug ? focusedElement : undefined}
           onFormatChange={setTimeCodeFormat}
           onSelectionStartChange={(newStart) => {
-            if (state.timeSelection) {
-              dispatch({
-                type: 'SET_TIME_SELECTION',
-                payload: { ...state.timeSelection, startTime: newStart }
-              });
-            }
+            // Create selection if it doesn't exist, otherwise update start time
+            const endTime = state.timeSelection?.endTime ?? newStart;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: newStart,
+                endTime: endTime,
+                trackIndices: state.timeSelection?.trackIndices ?? []
+              }
+            });
           }}
           onSelectionEndChange={(newEnd) => {
-            if (state.timeSelection) {
-              dispatch({
-                type: 'SET_TIME_SELECTION',
-                payload: { ...state.timeSelection, endTime: newEnd }
-              });
-            }
+            // Create selection if it doesn't exist, otherwise update end time
+            const startTime = state.timeSelection?.startTime ?? 0;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: startTime,
+                endTime: newEnd,
+                trackIndices: state.timeSelection?.trackIndices ?? []
+              }
+            });
           }}
         />
       )}

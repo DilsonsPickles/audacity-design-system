@@ -5,10 +5,11 @@
  * Matches Figma design: node-id=111-1630
  */
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { TimeCode, TimeCodeFormat } from '../TimeCode/TimeCode';
 import { CloudProjectIndicator } from '../CloudProjectIndicator';
+import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import './SelectionToolbar.css';
 
 export interface SelectionToolbarProps {
@@ -97,6 +98,59 @@ export function SelectionToolbar({
   className = '',
 }: SelectionToolbarProps) {
   const { theme } = useTheme();
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const { activeProfile } = useAccessibilityProfile();
+
+  // Get tab group configuration for selection-toolbar
+  const tabGroupConfig = activeProfile?.config?.tabGroups?.['selection-toolbar'];
+  const useTabGroups = tabGroupConfig?.arrows === true;
+  const startTabIndex = tabGroupConfig?.tabindex === 'roving' ? 0 : undefined;
+
+  // Initialize roving tabindex on mount
+  useEffect(() => {
+    if (!useTabGroups || startTabIndex === undefined || !toolbarRef.current) return;
+
+    // Find all focusable elements (TimeCode containers with role="group")
+    const allElements = toolbarRef.current.querySelectorAll('[role="group"]');
+    const focusables = Array.from(allElements).filter(el => {
+      const element = el as HTMLElement;
+      return true; // Include all TimeCode containers
+    });
+
+    // Set first element to startTabIndex, rest to -1
+    focusables.forEach((el, index) => {
+      (el as HTMLElement).tabIndex = index === 0 ? startTabIndex : -1;
+    });
+  }, [useTabGroups, startTabIndex]);
+
+  // Handle arrow key navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!useTabGroups || startTabIndex === undefined) return;
+    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const allElements = toolbarRef.current?.querySelectorAll('[role="group"]');
+    if (!allElements) return;
+
+    const focusables = Array.from(allElements).filter(() => true);
+    const currentIndex = focusables.indexOf(document.activeElement!);
+
+    if (currentIndex === -1) return;
+
+    let nextIndex: number;
+    if (e.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % focusables.length;
+    } else {
+      nextIndex = (currentIndex - 1 + focusables.length) % focusables.length;
+    }
+
+    // Update tabIndex: current element gets -1, next element gets startTabIndex
+    (focusables[currentIndex] as HTMLElement).tabIndex = -1;
+    (focusables[nextIndex] as HTMLElement).tabIndex = startTabIndex;
+    (focusables[nextIndex] as HTMLElement).focus();
+  };
 
   const style = {
     '--selection-toolbar-bg': theme.background.surface.default,
@@ -116,7 +170,14 @@ export function SelectionToolbar({
   const durationValue = duration ?? 0;
 
   return (
-    <div className={`selection-toolbar ${className}`} style={style}>
+    <div
+      ref={toolbarRef}
+      className={`selection-toolbar ${className}`}
+      style={style}
+      role={useTabGroups ? "toolbar" : undefined}
+      aria-label={useTabGroups ? "Selection toolbar" : undefined}
+      onKeyDown={handleKeyDown}
+    >
       {/* Left side - Status and instruction */}
       <div className="selection-toolbar__left">
         <div className="selection-toolbar__status">

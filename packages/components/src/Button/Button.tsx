@@ -34,7 +34,7 @@ export interface ButtonProps {
   /**
    * Click handler
    */
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   /**
    * Additional CSS classes
    */
@@ -53,7 +53,7 @@ export interface ButtonProps {
   onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   variant = 'secondary',
   size = 'default',
   children,
@@ -65,7 +65,7 @@ export const Button: React.FC<ButtonProps> = ({
   type = 'button',
   tabIndex,
   onKeyDown,
-}) => {
+}, ref) => {
   const { theme } = useTheme();
 
   // Get colors from theme based on variant
@@ -84,6 +84,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      ref={ref}
       type={type}
       className={`button button--${variant} button--${size} ${disabled ? 'button--disabled' : ''} ${className}`}
       onClick={onClick}
@@ -100,6 +101,6 @@ export const Button: React.FC<ButtonProps> = ({
       <span className="button__text">{children}</span>
     </button>
   );
-};
+});
 
 export default Button;

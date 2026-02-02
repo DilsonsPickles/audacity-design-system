@@ -94,7 +94,6 @@
   align-items: flex-start;
   gap: 1px;
   border-radius: var(--border-radius-borderradius-md, 3px);
-  overflow: hidden;
 }
 
 /* Ensure timecode components fit properly */

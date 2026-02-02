@@ -35,6 +35,13 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
         wrap: true,
       },
 
+      // Selection toolbar (bottom toolbar with timecodes)
+      'selection-toolbar': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
       // Project toolbar (Home, Project, Export tabs)
       'project-toolbar': {
         tabindex: 'roving',
@@ -211,6 +218,12 @@ export const WCAG_FLAT_PROFILE: AccessibilityProfile = {
       },
 
       'tool-toolbar': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'selection-toolbar': {
         tabindex: 'sequential',
         arrows: false,
         wrap: false,

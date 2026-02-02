@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { TimeCodeDigit } from './TimeCodeDigit';
 import { TimeCodeUnit } from './TimeCodeUnit';
 import type { TimeCodeUnitType } from './TimeCodeUnit';
@@ -113,10 +113,19 @@ export function TimeCode({
   const [hoverDigitIndex, setHoverDigitIndex] = useState<number | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [menuOpenedViaKeyboard, setMenuOpenedViaKeyboard] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const digitRefsMap = useRef<Map<number, HTMLSpanElement>>(new Map());
+
 
   const segments = formatTimeToSegments(value, format, sampleRate, frameRate);
+  const segmentsRef = useRef(segments);
+
+  // Keep segmentsRef up to date
+  useEffect(() => {
+    segmentsRef.current = segments;
+  }, [segments]);
 
   const handleDigitClick = (digitGlobalIndex: number) => {
     if (disabled) return;
@@ -124,7 +133,7 @@ export function TimeCode({
     setEditingDigitIndex(digitGlobalIndex);
   };
 
-  const handleDigitChange = (digitGlobalIndex: number, newDigitValue: string) => {
+  const handleDigitChange = useCallback((digitGlobalIndex: number, newDigitValue: string, autoAdvance = true) => {
     if (!onChange) return;
 
     // Find which segment and digit position this corresponds to
@@ -164,19 +173,25 @@ export function TimeCode({
     const newSeconds = segmentsToSeconds(newSegments, format, sampleRate, frameRate);
     onChange(newSeconds);
 
-    // Move to next digit
-    const nextDigitIndex = findNextEditableDigit(digitGlobalIndex, segments);
-    if (nextDigitIndex !== null) {
-      setEditingDigitIndex(nextDigitIndex);
+    // Move to next digit (only if autoAdvance is true)
+    if (autoAdvance) {
+      const nextDigitIndex = findNextEditableDigit(digitGlobalIndex, segments);
+      if (nextDigitIndex !== null) {
+        const nextDigitElement = digitRefsMap.current.get(nextDigitIndex);
+        if (nextDigitElement) {
+          nextDigitElement.focus();
+        }
+        setEditingDigitIndex(nextDigitIndex);
+      }
     }
-  };
+  }, [onChange, segments, format, sampleRate, frameRate]);
 
   const handleFormatSelect = (newFormat: TimeCodeFormat) => {
     onFormatChange?.(newFormat);
     setShowMenu(false);
   };
 
-  const handleMenuButtonClick = () => {
+  const openMenu = (viaKeyboard = false) => {
     if (disabled || !buttonRef.current) return;
 
     const rect = buttonRef.current.getBoundingClientRect();
@@ -184,7 +199,13 @@ export function TimeCode({
       x: rect.left,
       y: rect.bottom + 4,
     });
+
+    setMenuOpenedViaKeyboard(viaKeyboard);
     setShowMenu(!showMenu);
+  };
+
+  const handleMenuButtonClick = () => {
+    openMenu(false);
   };
 
   // Handle keyboard input for editing digits
@@ -192,36 +213,123 @@ export function TimeCode({
     if (!isEditing || editingDigitIndex === null || disabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Tab (with or without Shift): Exit edit mode and move to next/prev tab group
+      if (e.key === 'Tab') {
+        setIsEditing(false);
+        setEditingDigitIndex(null);
+        containerRef.current?.focus();
+        // Don't preventDefault - let the browser handle Tab naturally
+        return;
+      }
+
       // Number keys (0-9)
       if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();
+        e.stopPropagation();
         handleDigitChange(editingDigitIndex, e.key);
       }
-      // Arrow keys for navigation
-      else if (e.key === 'ArrowRight' || e.key === 'Tab') {
+      // Arrow Up/Down: Increment/decrement digit value
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
-        const nextIndex = findNextEditableDigit(editingDigitIndex, segments);
-        if (nextIndex !== null) {
-          setEditingDigitIndex(nextIndex);
+        e.stopPropagation();
+
+        // Use segmentsRef to get the latest segments value
+        const currentSegments = segmentsRef.current;
+
+        // Find the current digit's segment and value
+        let targetSegmentIndex = -1;
+        let targetDigitPosition = -1;
+
+        for (let i = 0; i < currentSegments.length; i++) {
+          const segment = currentSegments[i];
+          if (segment.type !== 'unit') continue;
+
+          for (let j = 0; j < segment.value.length; j++) {
+            const globalIndex = i * 100 + j;
+            if (globalIndex === editingDigitIndex) {
+              targetSegmentIndex = i;
+              targetDigitPosition = j;
+              break;
+            }
+          }
+          if (targetSegmentIndex !== -1) break;
         }
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        const prevIndex = findPreviousEditableDigit(editingDigitIndex, segments);
-        if (prevIndex !== null) {
-          setEditingDigitIndex(prevIndex);
+
+        if (targetSegmentIndex !== -1) {
+          const targetSegment = currentSegments[targetSegmentIndex];
+          const currentDigitValue = parseInt(targetSegment.value[targetDigitPosition], 10);
+
+          // Increment or decrement with wrapping 0-9
+          let newDigitValue: number;
+          if (e.key === 'ArrowUp') {
+            newDigitValue = (currentDigitValue + 1) % 10;
+          } else {
+            newDigitValue = (currentDigitValue - 1 + 10) % 10;
+          }
+
+          // Don't auto-advance when using up/down arrows
+          handleDigitChange(editingDigitIndex, newDigitValue.toString(), false);
         }
       }
-      // Escape to exit editing
+      // Arrow Right: Move to next digit, wrap to first
+      else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentSegments = segmentsRef.current;
+        let nextIndex = findNextEditableDigit(editingDigitIndex, currentSegments);
+        // Wrap around to first digit if at the end
+        if (nextIndex === null) {
+          nextIndex = findNextEditableDigit(-1, currentSegments);
+        }
+        if (nextIndex !== null) {
+          const nextDigitElement = digitRefsMap.current.get(nextIndex);
+          if (nextDigitElement) {
+            nextDigitElement.focus();
+            setEditingDigitIndex(nextIndex);
+          }
+        }
+      }
+      // Arrow Left: Move to previous digit, wrap to last
+      else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentSegments = segmentsRef.current;
+        let prevIndex = findPreviousEditableDigit(editingDigitIndex, currentSegments);
+        // Wrap around to last digit if at the beginning
+        if (prevIndex === null) {
+          prevIndex = findLastEditableDigit(currentSegments);
+        }
+        if (prevIndex !== null) {
+          const prevDigitElement = digitRefsMap.current.get(prevIndex);
+          if (prevDigitElement) {
+            prevDigitElement.focus();
+            setEditingDigitIndex(prevIndex);
+          }
+        }
+      }
+      // Shift+F10: Open format dropdown menu while editing
+      else if (e.key === 'F10' && e.shiftKey && showFormatSelector) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsEditing(false);
+        setEditingDigitIndex(null);
+        openMenu(true);
+      }
+      // Escape to exit editing and return focus to container
       else if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         setIsEditing(false);
         setEditingDigitIndex(null);
+        containerRef.current?.focus();
       }
-      // Enter to confirm and exit
+      // Enter to confirm and exit, return focus to container
       else if (e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         setIsEditing(false);
         setEditingDigitIndex(null);
+        containerRef.current?.focus();
       }
     };
 
@@ -233,14 +341,16 @@ export function TimeCode({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    // Use capture phase to intercept Tab before browser navigation
+    document.addEventListener('keydown', handleKeyDown, true);
     document.addEventListener('click', handleClick);
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.removeEventListener('click', handleClick);
     };
-  }, [isEditing, editingDigitIndex, disabled, segments]);
+  }, [isEditing, editingDigitIndex, disabled, segments, handleDigitChange]);
+
 
   const caretColor = variant === 'light' ? theme.foreground.text.primary : '#f4f5f9';
 
@@ -255,11 +365,47 @@ export function TimeCode({
     '--timecode-unit-hover-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
   } as React.CSSProperties;
 
+  // Handle arrow key navigation within TimeCode
+  const handleContainerKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+
+    // Only handle keys when the container itself is focused (not bubbling from children)
+    if (e.target !== e.currentTarget) return;
+
+    // Space/Enter: Enter first digit for editing
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      const currentSegments = segmentsRef.current;
+      const firstDigitIndex = findNextEditableDigit(-1, currentSegments);
+      if (firstDigitIndex !== null) {
+        const firstDigitElement = digitRefsMap.current.get(firstDigitIndex);
+        if (firstDigitElement) {
+          firstDigitElement.focus();
+          setIsEditing(true);
+          setEditingDigitIndex(firstDigitIndex);
+        }
+      }
+    }
+    // Shift+F10: Open format dropdown menu
+    else if (e.key === 'F10' && e.shiftKey && showFormatSelector) {
+      e.preventDefault();
+      e.stopPropagation();
+      openMenu(true);
+    }
+    // Let arrow keys bubble up to Toolbar for navigation between toolbar items
+    // (Don't preventDefault on arrow keys here - let Toolbar handle them)
+  };
+
   return (
     <div
       ref={containerRef}
       className={`timecode timecode--${variant} ${disabled ? 'timecode--disabled' : ''} ${className}`}
       style={style}
+      role="group"
+      aria-label="Time code"
+      tabIndex={0}
+      onKeyDown={handleContainerKeyDown}
     >
       <div className="timecode__display">
         {segments.map((segment, index) => (
@@ -276,12 +422,18 @@ export function TimeCode({
                 return (
                   <TimeCodeDigit
                     key={digitGlobalIndex}
+                    ref={(el) => {
+                      if (el && segment.editable) {
+                        digitRefsMap.current.set(digitGlobalIndex, el);
+                      }
+                    }}
                     value={digit}
                     state={digitState}
                     editable={segment.editable && !disabled}
                     onClick={() => handleDigitClick(digitGlobalIndex)}
                     onMouseEnter={() => setHoverDigitIndex(digitGlobalIndex)}
                     onMouseLeave={() => setHoverDigitIndex(null)}
+                    tabIndex={-1}
                   />
                 );
               })
@@ -301,15 +453,30 @@ export function TimeCode({
             className="timecode__format-button"
             onClick={handleMenuButtonClick}
             disabled={disabled}
+            tabIndex={-1}
           >
             <Icon name="caret-down" size={16} color={caretColor} />
           </button>
 
           <ContextMenu
             isOpen={showMenu}
-            onClose={() => setShowMenu(false)}
+            onClose={() => {
+              setShowMenu(false);
+              // When closing menu, restore focus to TimeCode container
+              if (menuOpenedViaKeyboard && containerRef.current) {
+                setTimeout(() => {
+                  // Restore tabIndex to 0 so Toolbar's roving tabindex works
+                  if (containerRef.current) {
+                    containerRef.current.tabIndex = 0;
+                    containerRef.current.focus();
+                  }
+                }, 0);
+              }
+              setMenuOpenedViaKeyboard(false);
+            }}
             x={menuPosition.x}
             y={menuPosition.y}
+            autoFocus={menuOpenedViaKeyboard}
           >
             <ContextMenuItem
               label="dd:hh:mm:ss"
@@ -656,6 +823,19 @@ function formatHz(seconds: number): TimeCodeSegment[] {
 
 // Helper function to find the next editable digit
 function findNextEditableDigit(currentIndex: number, segments: TimeCodeSegment[]): number | null {
+  // Special case: -1 means find the first editable digit
+  if (currentIndex === -1) {
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      if (segment.type !== 'unit' || !segment.editable) continue;
+
+      for (let j = 0; j < segment.value.length; j++) {
+        return i * 100 + j;
+      }
+    }
+    return null;
+  }
+
   let foundCurrent = false;
 
   for (let i = 0; i < segments.length; i++) {
@@ -698,6 +878,22 @@ function findPreviousEditableDigit(currentIndex: number, segments: TimeCodeSegme
   }
 
   return null;
+}
+
+// Helper function to find the last editable digit
+function findLastEditableDigit(segments: TimeCodeSegment[]): number | null {
+  let lastIndex: number | null = null;
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+    if (segment.type !== 'unit' || !segment.editable) continue;
+
+    for (let j = 0; j < segment.value.length; j++) {
+      lastIndex = i * 100 + j;
+    }
+  }
+
+  return lastIndex;
 }
 
 // Helper function to convert segments back to seconds
