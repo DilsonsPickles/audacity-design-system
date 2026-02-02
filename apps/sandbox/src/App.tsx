@@ -1,4 +1,5 @@
 import React from 'react';
+import { flushSync } from 'react-dom';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
@@ -1221,6 +1222,13 @@ function CanvasDemoContent() {
 
       // Move track focus with up/down arrow keys
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        // Don't handle if focus is on a track header (it handles its own navigation)
+        const target = e.target as HTMLElement;
+        const hasGroupRole = target.getAttribute('role') === 'group';
+        if (hasGroupRole) {
+          return; // Let TrackControlPanel handle the navigation
+        }
+
         e.preventDefault();
 
         // If there's a focused track, move focus up or down
@@ -1339,6 +1347,7 @@ function CanvasDemoContent() {
       // Toggle track selection with Enter key
       if (e.key === 'Enter') {
         // Don't interfere with interactive elements (buttons, inputs, etc.)
+        // Also allow track headers (role="group") to handle their own Enter key
         const target = e.target as HTMLElement;
         const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
         const hasRole = target.getAttribute('role');
@@ -1347,7 +1356,8 @@ function CanvasDemoContent() {
                               hasRole === 'checkbox' ||
                               hasRole === 'menuitem' ||
                               hasRole === 'menuitemcheckbox' ||
-                              hasRole === 'menuitemradio';
+                              hasRole === 'menuitemradio' ||
+                              hasRole === 'group'; // Track headers handle their own Enter key
 
         if (isInteractive) {
           // Let the interactive element handle the Enter key
@@ -2729,11 +2739,19 @@ function CanvasDemoContent() {
                   onFocusChange={(hasFocus) => {
                     // When control panel gets focus, set both states
                     setControlPanelHasFocus(hasFocus ? index : null);
-                    setKeyboardFocusedTrack(hasFocus ? index : null);
+                    if (hasFocus) {
+                      setKeyboardFocusedTrack(index);
+                    }
+                    // Don't clear keyboardFocusedTrack on blur - keep it pointing to last focused track
                   }}
                   onNavigateVertical={(direction) => {
                     const nextIndex = direction === 'up' ? index - 1 : index + 1;
                     if (nextIndex >= 0 && nextIndex < state.tracks.length) {
+                      // Update both keyboard focus states immediately with flushSync
+                      flushSync(() => {
+                        setKeyboardFocusedTrack(nextIndex);
+                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
+                      });
                       // Find the next/previous track control panel and focus it
                       const panels = document.querySelectorAll('[aria-label*="track controls"]');
                       if (panels[nextIndex]) {
@@ -3061,6 +3079,7 @@ function CanvasDemoContent() {
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
                       }
                       setControlPanelHasFocus(null);
+                      setKeyboardFocusedTrack(null);
                     }}
                     onHeightChange={setCanvasHeight}
                   />

@@ -245,6 +245,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         ref={scrollRef}
         onScroll={onScroll}
         style={{ paddingBottom: `${bufferSpace}px` }}
+        tabIndex={-1}
       >
         {childArray.map((child, index) => {
           const height = trackHeights[index] || 114; // Default to 114px
