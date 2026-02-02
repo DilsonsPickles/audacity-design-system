@@ -105,7 +105,7 @@ export interface TrackProps {
   /**
    * Callback when track background is clicked
    */
-  onTrackClick?: () => void;
+  onTrackClick?: (event: React.MouseEvent) => void;
 
   /**
    * Callback when envelope points change
@@ -382,7 +382,8 @@ export const TrackNew: React.FC<TrackProps> = ({
             if (e.key === 'Enter') {
               e.preventDefault();
               e.stopPropagation();
-              onClipClick?.(clip.id, e.shiftKey);
+              // Always pass true for shiftKey to trigger toggle behavior
+              onClipClick?.(clip.id, true);
               return;
             }
 

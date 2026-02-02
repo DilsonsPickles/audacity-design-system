@@ -72,6 +72,14 @@ export interface CanvasProps {
    * ID of the clip currently being recorded (shows recording state)
    */
   recordingClipId?: number | null;
+  /**
+   * Selection anchor for Shift+Click/Arrow range selection
+   */
+  selectionAnchor?: number | null;
+  /**
+   * Setter for selection anchor
+   */
+  setSelectionAnchor?: (anchor: number | null) => void;
 }
 
 /**
@@ -94,6 +102,8 @@ export function Canvas({
   controlPointStyle = 'au4',
   viewportHeight = 0,
   recordingClipId = null,
+  selectionAnchor = null,
+  setSelectionAnchor,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -608,9 +618,30 @@ export function Canvas({
                     payload: { index: trackIndex, ratio },
                   });
                 }}
-                onTrackClick={() => {
+                onTrackClick={(e) => {
                   // When track background is clicked, set it as focused
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+
+                  // If Shift is held, extend/contract selection (range selection)
+                  if (e.shiftKey) {
+                    // Use the first selected track as anchor if no anchor is set
+                    const anchor = selectionAnchor ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : trackIndex);
+                    if (selectionAnchor === null) {
+                      setSelectionAnchor(anchor);
+                    }
+
+                    // Calculate range selection from anchor to clicked track
+                    const start = Math.min(anchor, trackIndex);
+                    const end = Math.max(anchor, trackIndex);
+                    const newSelection: number[] = [];
+                    for (let i = start; i <= end; i++) {
+                      newSelection.push(i);
+                    }
+                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                  } else {
+                    // Clear anchor when Shift is not held
+                    setSelectionAnchor(null);
+                  }
                 }}
               />
 

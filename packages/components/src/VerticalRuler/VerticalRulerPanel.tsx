@@ -131,7 +131,6 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 track.focused ? 'vertical-ruler-panel__track--focused' : ''
               }`}
               style={{ height: `${track.height}px` }}
-              tabIndex={track.focused ? 0 : -1}
             >
               {/* 20px spacer to align with clip header recess (hidden for label tracks and when track is too small) */}
               {track.trackType !== 'label' && track.height > 44 && (

@@ -58,7 +58,6 @@ export function ThemeProvider({ theme = lightTheme, children }: ThemeProviderPro
         vars[`--clip-${colorName}-header-selected`] = colorStates.headerSelected;
         vars[`--clip-${colorName}-header-selected-hover`] = colorStates.headerSelectedHover;
         vars[`--clip-${colorName}-body`] = colorStates.body;
-        vars[`--clip-${colorName}-body-selected`] = colorStates.bodySelected;
         vars[`--clip-${colorName}-waveform`] = colorStates.waveform;
         vars[`--clip-${colorName}-waveform-selected`] = colorStates.waveformSelected;
         vars[`--clip-${colorName}-waveform-rms`] = colorStates.waveformRms;

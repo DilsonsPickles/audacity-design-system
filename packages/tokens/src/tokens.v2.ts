@@ -24,8 +24,6 @@ export interface ClipColorStates {
   headerSelectedHover: string;
   /** Default body color */
   body: string;
-  /** Body selected state */
-  bodySelected: string;
   /** Default waveform color */
   waveform: string;
   /** Waveform color when clip is selected */
@@ -34,7 +32,7 @@ export interface ClipColorStates {
   waveformRms: string;
   /** RMS waveform color when clip is selected */
   waveformRmsSelected: string;
-  /** Time selection overlay - clip body background */
+  /** Time selection/selected clip - clip body background */
   timeSelectionBody: string;
   /** Time selection overlay - clip header background */
   timeSelectionHeader: string;

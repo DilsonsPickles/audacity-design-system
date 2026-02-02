@@ -202,15 +202,6 @@ export interface ThemeV1 {
 
   // Clip colors - New 9-color palette from Figma
   clipColors: {
-    cyan: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    blue: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    violet: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    magenta: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    red: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    orange: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    yellow: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    green: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
-    teal: { header: string; headerHover: string; body: string; headerSelected: string; headerSelectedHover: string; bodySelected: string };
   };
 
   clipBorder: {
@@ -283,7 +274,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#90D8E1',
       headerSelected: '#D8F2F3',
       headerSelectedHover: '#ECF9FA',
-      bodySelected: '#B4E5EA'
     },
     blue: {
       header: '#84B5FF',
@@ -291,7 +281,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#A2C7FF',
       headerSelected: '#DEEBFF',
       headerSelectedHover: '#F2F7FF',
-      bodySelected: '#C0D9FF'
     },
     violet: {
       header: '#ADABFC',
@@ -299,7 +288,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#C1BFFE',
       headerSelected: '#E9E8FF',
       headerSelectedHover: '#F7F6FF',
-      bodySelected: '#D5D3FE'
     },
     magenta: {
       header: '#E1A3D6',
@@ -307,7 +295,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#E8BAE0',
       headerSelected: '#F6E8F4',
       headerSelectedHover: '#FBF4FC',
-      bodySelected: '#EFD1EA'
     },
     red: {
       header: '#F39999',
@@ -315,7 +302,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#F6B2B2',
       headerSelected: '#FCE4E4',
       headerSelectedHover: '#FEF2F2',
-      bodySelected: '#F9CBCB'
     },
     orange: {
       header: '#FFB183',
@@ -323,7 +309,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#FFC4A1',
       headerSelected: '#FFEADD',
       headerSelectedHover: '#FFF5EE',
-      bodySelected: '#FFD7BF'
     },
     yellow: {
       header: '#ECCC73',
@@ -331,7 +316,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#F0D896',
       headerSelected: '#F8F0DC',
       headerSelectedHover: '#FCF8EE',
-      bodySelected: '#F4E4B9'
     },
     green: {
       header: '#8FCB7A',
@@ -339,7 +323,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#AAD89B',
       headerSelected: '#E0F2DD',
       headerSelectedHover: '#F0F9EE',
-      bodySelected: '#C5E5BC'
     },
     teal: {
       header: '#5CC3A9',
@@ -347,7 +330,6 @@ export const lightThemeV1: ThemeV1 = {
       body: '#84D2BE',
       headerSelected: '#D4F0E8',
       headerSelectedHover: '#EAF8F4',
-      bodySelected: '#ACE1D3'
     },
   },
 
@@ -421,7 +403,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#90D8E1',
       headerSelected: '#D8F2F3',
       headerSelectedHover: '#ECF9FA',
-      bodySelected: '#B4E5EA'
     },
     blue: {
       header: '#84B5FF',
@@ -429,7 +410,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#A2C7FF',
       headerSelected: '#DEEBFF',
       headerSelectedHover: '#F2F7FF',
-      bodySelected: '#C0D9FF'
     },
     violet: {
       header: '#ADABFC',
@@ -437,7 +417,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#C1BFFE',
       headerSelected: '#E9E8FF',
       headerSelectedHover: '#F7F6FF',
-      bodySelected: '#D5D3FE'
     },
     magenta: {
       header: '#E1A3D6',
@@ -445,7 +424,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#E8BAE0',
       headerSelected: '#F6E8F4',
       headerSelectedHover: '#FBF4FC',
-      bodySelected: '#EFD1EA'
     },
     red: {
       header: '#F39999',
@@ -453,7 +431,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#F6B2B2',
       headerSelected: '#FCE4E4',
       headerSelectedHover: '#FEF2F2',
-      bodySelected: '#F9CBCB'
     },
     orange: {
       header: '#FFB183',
@@ -461,7 +438,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#FFC4A1',
       headerSelected: '#FFEADD',
       headerSelectedHover: '#FFF5EE',
-      bodySelected: '#FFD7BF'
     },
     yellow: {
       header: '#ECCC73',
@@ -469,7 +445,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#F0D896',
       headerSelected: '#F8F0DC',
       headerSelectedHover: '#FCF8EE',
-      bodySelected: '#F4E4B9'
     },
     green: {
       header: '#8FCB7A',
@@ -477,7 +452,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#AAD89B',
       headerSelected: '#E0F2DD',
       headerSelectedHover: '#F0F9EE',
-      bodySelected: '#C5E5BC'
     },
     teal: {
       header: '#5CC3A9',
@@ -485,7 +459,6 @@ export const darkThemeV1: ThemeV1 = {
       body: '#84D2BE',
       headerSelected: '#D4F0E8',
       headerSelectedHover: '#EAF8F4',
-      bodySelected: '#ACE1D3'
     },
   },
 

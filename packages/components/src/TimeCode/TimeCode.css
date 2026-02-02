@@ -7,9 +7,14 @@
   line-height: 28px;
   position: relative;
   border-radius: 2px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--timecode-border);
   width: fit-content;
+}
+
+.timecode:focus {
+  outline: 3px solid #4A9EFF;
+  outline-offset: 2px;
 }
 
 .timecode__display {
@@ -20,6 +25,8 @@
   min-height: 28px;
   user-select: none;
   gap: 1px;
+  overflow: hidden;
+  border-radius: 2px;
 }
 
 .timecode__separator {

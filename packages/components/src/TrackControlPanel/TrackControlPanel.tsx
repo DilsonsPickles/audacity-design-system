@@ -35,6 +35,7 @@ export interface TrackControlPanelProps {
   tabIndex?: number;
   onFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down') => void;
+  onNavigateVerticalWithShift?: (direction: 'up' | 'down') => void; // Shift+Arrow for range selection
   onTabOut?: () => void;
   // Meter props (for mono tracks, use meterLevel; for stereo, use meterLevelLeft/meterLevelRight)
   meterLevel?: number; // 0-100 - current meter level (mono)
@@ -78,6 +79,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   tabIndex,
   onFocusChange,
   onNavigateVertical,
+  onNavigateVerticalWithShift,
   onTabOut,
   meterLevel = 0,
   meterLevelLeft,
@@ -191,7 +193,14 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     // Handle up/down navigation when panel itself is focused
     if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && isPanelFocused) {
       e.preventDefault();
-      onNavigateVertical?.(e.key === 'ArrowUp' ? 'up' : 'down');
+      const direction = e.key === 'ArrowUp' ? 'up' : 'down';
+
+      // If Shift is held, extend selection (range selection)
+      if (e.shiftKey) {
+        onNavigateVerticalWithShift?.(direction);
+      } else {
+        onNavigateVertical?.(direction);
+      }
       return;
     }
 

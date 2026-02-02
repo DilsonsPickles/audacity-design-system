@@ -314,7 +314,6 @@ export const lightTheme: ThemeTokens = {
         body: '#3FCEDA',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#ECF9FA',
-        bodySelected: '#B4E5EA',
         waveform: '#0D292C',
         waveformSelected: '#0D292C',
         waveformRms: '#2B6B73', // Subtle but visible - lighter than waveform
@@ -332,7 +331,6 @@ export const lightTheme: ThemeTokens = {
         body: '#75B7FF',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F2F7FF',
-        bodySelected: '#C0D9FF',
         waveform: '#172533',
         waveformSelected: '#172533',
         waveformRms: '#4A6E85', // Subtle but visible
@@ -349,7 +347,6 @@ export const lightTheme: ThemeTokens = {
         body: '#ADABFF',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F7F6FF',
-        bodySelected: '#D5D3FE',
         waveform: '#232233',
         waveformSelected: '#232233',
         waveformRms: '#5D5A8A', // Subtle but visible
@@ -366,7 +363,6 @@ export const lightTheme: ThemeTokens = {
         body: '#ECA0D9',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FBF4FC',
-        bodySelected: '#EFD1EA',
         waveform: '#2F202B',
         waveformSelected: '#2F202B',
         waveformRms: '#7F5A72', // Subtle but visible
@@ -383,7 +379,6 @@ export const lightTheme: ThemeTokens = {
         body: '#FF9496',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FEF2F2',
-        bodySelected: '#F9CBCB',
         waveform: '#331E1E',
         waveformSelected: '#331E1E',
         waveformRms: '#8A5555', // Subtle but visible
@@ -400,7 +395,6 @@ export const lightTheme: ThemeTokens = {
         body: '#FFAD7A',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FFF5EE',
-        bodySelected: '#FFD7BF',
         waveform: '#332318',
         waveformSelected: '#332318',
         waveformRms: '#8A5F3F', // Subtle but visible
@@ -417,7 +411,6 @@ export const lightTheme: ThemeTokens = {
         body: '#F2CB63',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#FCF8EE',
-        bodySelected: '#F4E4B9',
         waveform: '#302914',
         waveformSelected: '#302914',
         waveformRms: '#807039', // Subtle but visible
@@ -434,7 +427,6 @@ export const lightTheme: ThemeTokens = {
         body: '#7CCD70',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#F0F9EE',
-        bodySelected: '#C5E5BC',
         waveform: '#192916',
         waveformSelected: '#192916',
         waveformRms: '#446C3A', // Subtle but visible
@@ -451,7 +443,6 @@ export const lightTheme: ThemeTokens = {
         body: '#17C6A8',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#EAF8F4',
-        bodySelected: '#ACE1D3',
         waveform: '#052822',
         waveformSelected: '#052822',
         waveformRms: '#1A6659', // Subtle but visible
@@ -468,7 +459,6 @@ export const lightTheme: ThemeTokens = {
         body: '#E4E8FA',
         headerSelected: '#FFFFFF',
         headerSelectedHover: '#B8BEE8',
-        bodySelected: '#A4C4F6',
         waveform: '#5359AD', // Classic uses colored waveform
         waveformSelected: '#5359AD', // Same color when selected
         waveformRms: '#8389D4', // Subtle - lighter than waveform

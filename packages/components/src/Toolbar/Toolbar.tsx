@@ -30,6 +30,11 @@ export interface ToolbarProps {
    * Starting tabIndex for the first element in the toolbar (default: 0)
    */
   startTabIndex?: number;
+  /**
+   * Tab group ID for accessibility profile configuration
+   * @default 'transport-toolbar'
+   */
+  tabGroupId?: string;
 }
 
 /**
@@ -47,6 +52,7 @@ export function Toolbar({
   className = '',
   enableTabGroup = true,
   startTabIndex = 0,
+  tabGroupId = 'transport-toolbar',
 }: ToolbarProps) {
   const { theme } = useTheme();
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -59,15 +65,36 @@ export function Toolbar({
   } as React.CSSProperties;
 
   // Check if this toolbar should use tab groups based on profile
-  const groupConfig = activeProfile.config.tabGroups['transport-toolbar']; // Using transport-toolbar as the group ID
+  const groupConfig = activeProfile.config.tabGroups[tabGroupId];
   const useTabGroups = enableTabGroup && groupConfig?.tabindex === 'roving';
   const useArrowNavigation = enableTabGroup && groupConfig?.arrows;
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('[Toolbar] Config:', {
+      tabGroupId,
+      groupConfig,
+      useTabGroups,
+      useArrowNavigation,
+      enableTabGroup,
+    });
+  }, [tabGroupId, groupConfig, useTabGroups, useArrowNavigation, enableTabGroup]);
 
   // Set tabIndex on all focusable elements after render
   React.useEffect(() => {
     if (!toolbarRef.current) return;
 
-    const focusables = toolbarRef.current.querySelectorAll('button, select, input');
+    const allElements = toolbarRef.current.querySelectorAll('button, select, input, [role="group"]');
+    const focusables = Array.from(allElements).filter(el => {
+      const element = el as HTMLElement;
+      // Skip buttons/inputs inside a role="group" (like TimeCode's internal elements)
+      if (element.getAttribute('role') !== 'group') {
+        const parentGroup = element.closest('[role="group"]');
+        if (parentGroup) return false;
+      }
+      return true;
+    });
+
     focusables.forEach((element, index) => {
       if (useTabGroups) {
         // Tab group mode: First element gets startTabIndex, all others get -1
@@ -85,8 +112,18 @@ export function Toolbar({
 
     const relatedTarget = e.relatedTarget as HTMLElement | null;
     if (!toolbarRef.current?.contains(relatedTarget)) {
-      const focusables = toolbarRef.current?.querySelectorAll('button, select, input');
-      if (focusables) {
+      const allElements = toolbarRef.current?.querySelectorAll('button, select, input, [role="group"]');
+      if (allElements) {
+        const focusables = Array.from(allElements).filter(el => {
+          const element = el as HTMLElement;
+          // Skip buttons/inputs inside a role="group" (like TimeCode's internal elements)
+          if (element.getAttribute('role') !== 'group') {
+            const parentGroup = element.closest('[role="group"]');
+            if (parentGroup) return false;
+          }
+          return true;
+        });
+
         focusables.forEach((el, index) => {
           (el as HTMLElement).tabIndex = index === 0 ? startTabIndex : -1;
         });
@@ -96,21 +133,55 @@ export function Toolbar({
 
   // Handle keyboard navigation within the toolbar (only if arrow navigation is enabled)
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!useArrowNavigation) return;
+    console.log('[Toolbar] handleKeyDown:', { key: e.key, useArrowNavigation, defaultPrevented: e.defaultPrevented });
+
+    if (!useArrowNavigation) {
+      console.log('[Toolbar] Arrow navigation disabled, returning');
+      return;
+    }
 
     // Only handle arrow keys - let Tab/Shift+Tab work naturally
     if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(e.key)) {
       return;
     }
 
+    // If the event was already handled by a child element (like TimeCode internal navigation),
+    // don't intercept it. Check if defaultPrevented or if propagation was stopped.
+    if (e.defaultPrevented) {
+      console.log('[Toolbar] Event already handled, returning');
+      return;
+    }
+
+    console.log('[Toolbar] Handling arrow key navigation');
     e.preventDefault();
 
-    // Get all focusable elements in the toolbar
-    const focusables = toolbarRef.current?.querySelectorAll('button, select, input');
-    if (!focusables || focusables.length === 0) return;
+    // Get all focusable elements in the toolbar (excluding elements with tabindex="-1")
+    const allElements = toolbarRef.current?.querySelectorAll('button, select, input, [role="group"]');
+    console.log('[Toolbar] All elements found:', allElements?.length);
 
-    const currentIndex = Array.from(focusables).indexOf(document.activeElement as HTMLElement);
-    if (currentIndex === -1) return;
+    if (!allElements || allElements.length === 0) return;
+
+    const focusables = Array.from(allElements).filter(el => {
+      const element = el as HTMLElement;
+      // Don't filter by tabIndex here - we manage that dynamically
+      // Only exclude elements that are inside a role="group" (like TimeCode's internal buttons)
+      if (element.getAttribute('role') !== 'group') {
+        const parentGroup = element.closest('[role="group"]');
+        if (parentGroup) return false;
+      }
+      return true;
+    });
+
+    console.log('[Toolbar] Focusable elements:', focusables.length, focusables.map(el => el.tagName + (el.getAttribute('role') ? `[${el.getAttribute('role')}]` : '')));
+    console.log('[Toolbar] Current active element:', document.activeElement);
+
+    const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
+    console.log('[Toolbar] Current index:', currentIndex);
+
+    if (currentIndex === -1) {
+      console.log('[Toolbar] Active element not in focusables list, aborting');
+      return;
+    }
 
     let nextIndex: number;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -119,10 +190,14 @@ export function Toolbar({
       nextIndex = (currentIndex - 1 + focusables.length) % focusables.length;
     }
 
+    console.log('[Toolbar] Moving from index', currentIndex, 'to', nextIndex);
+
     // Update tabIndex: current element gets -1, next element gets startTabIndex
     (focusables[currentIndex] as HTMLElement).tabIndex = -1;
     (focusables[nextIndex] as HTMLElement).tabIndex = startTabIndex;
     (focusables[nextIndex] as HTMLElement).focus();
+
+    console.log('[Toolbar] Focus moved to:', focusables[nextIndex]);
   };
 
   return (

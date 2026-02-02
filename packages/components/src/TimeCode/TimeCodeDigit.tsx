@@ -34,33 +34,45 @@ export interface TimeCodeDigitProps {
    * Optional className
    */
   className?: string;
+  /**
+   * Tab index for keyboard navigation
+   */
+  tabIndex?: number;
 }
 
 /**
  * TimeCodeDigit - Individual digit component for timecode display
  * States: default (idle), hover, active (editing)
  */
-export function TimeCodeDigit({
-  value,
-  state = 'default',
-  editable = true,
-  onClick,
-  onMouseEnter,
-  onMouseLeave,
-  className = '',
-}: TimeCodeDigitProps) {
-  const stateClass = `timecode-digit--${state}`;
-  const editableClass = !editable ? 'timecode-digit--readonly' : '';
+export const TimeCodeDigit = React.forwardRef<HTMLSpanElement, TimeCodeDigitProps>(
+  function TimeCodeDigit(
+    {
+      value,
+      state = 'default',
+      editable = true,
+      onClick,
+      onMouseEnter,
+      onMouseLeave,
+      className = '',
+      tabIndex,
+    },
+    ref
+  ) {
+    const stateClass = `timecode-digit--${state}`;
+    const editableClass = !editable ? 'timecode-digit--readonly' : '';
 
-  return (
-    <span
-      className={`timecode-digit ${stateClass} ${editableClass} ${className}`}
-      onClick={editable ? onClick : undefined}
-      onMouseEnter={editable ? onMouseEnter : undefined}
-      onMouseLeave={editable ? onMouseLeave : undefined}
-      data-state={state}
-    >
-      {value}
-    </span>
-  );
-}
+    return (
+      <span
+        ref={ref}
+        className={`timecode-digit ${stateClass} ${editableClass} ${className}`}
+        onClick={editable ? onClick : undefined}
+        onMouseEnter={editable ? onMouseEnter : undefined}
+        onMouseLeave={editable ? onMouseLeave : undefined}
+        data-state={state}
+        tabIndex={tabIndex}
+      >
+        {value}
+      </span>
+    );
+  }
+);

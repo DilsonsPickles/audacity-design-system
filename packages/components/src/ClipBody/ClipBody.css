@@ -49,7 +49,7 @@
   background-color: var(--clip-cyan-body);
 }
 .clip-body--cyan.clip-body--selected {
-  background-color: var(--clip-cyan-body-selected);
+  background-color: var(--clip-cyan-time-selection-body);
 }
 
 /* Blue */
@@ -57,7 +57,7 @@
   background-color: var(--clip-blue-body);
 }
 .clip-body--blue.clip-body--selected {
-  background-color: var(--clip-blue-body-selected);
+  background-color: var(--clip-blue-time-selection-body);
 }
 
 /* Violet */
@@ -65,7 +65,7 @@
   background-color: var(--clip-violet-body);
 }
 .clip-body--violet.clip-body--selected {
-  background-color: var(--clip-violet-body-selected);
+  background-color: var(--clip-violet-time-selection-body);
 }
 
 /* Magenta */
@@ -73,7 +73,7 @@
   background-color: var(--clip-magenta-body);
 }
 .clip-body--magenta.clip-body--selected {
-  background-color: var(--clip-magenta-body-selected);
+  background-color: var(--clip-magenta-time-selection-body);
 }
 
 /* Red */
@@ -81,7 +81,7 @@
   background-color: var(--clip-red-body);
 }
 .clip-body--red.clip-body--selected {
-  background-color: var(--clip-red-body-selected);
+  background-color: var(--clip-red-time-selection-body);
 }
 
 /* Orange */
@@ -89,7 +89,7 @@
   background-color: var(--clip-orange-body);
 }
 .clip-body--orange.clip-body--selected {
-  background-color: var(--clip-orange-body-selected);
+  background-color: var(--clip-orange-time-selection-body);
 }
 
 /* Yellow */
@@ -97,7 +97,7 @@
   background-color: var(--clip-yellow-body);
 }
 .clip-body--yellow.clip-body--selected {
-  background-color: var(--clip-yellow-body-selected);
+  background-color: var(--clip-yellow-time-selection-body);
 }
 
 /* Green */
@@ -105,7 +105,7 @@
   background-color: var(--clip-green-body);
 }
 .clip-body--green.clip-body--selected {
-  background-color: var(--clip-green-body-selected);
+  background-color: var(--clip-green-time-selection-body);
 }
 
 /* Teal */
@@ -113,7 +113,7 @@
   background-color: var(--clip-teal-body);
 }
 .clip-body--teal.clip-body--selected {
-  background-color: var(--clip-teal-body-selected);
+  background-color: var(--clip-teal-time-selection-body);
 }
 
 /* Classic */
@@ -121,7 +121,7 @@
   background-color: var(--clip-classic-body);
 }
 .clip-body--classic.clip-body--selected {
-  background-color: var(--clip-classic-body-selected);
+  background-color: var(--clip-classic-time-selection-body);
 }
 
 /* Time selection background is now rendered on canvas, not via CSS */

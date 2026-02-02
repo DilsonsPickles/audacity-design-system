@@ -141,7 +141,6 @@ export function adjustSaturation(color: string, amount: number): string {
  * //   body: '#A2C7FF',             (15% lighter)
  * //   headerSelected: '#DEEBFF',   (40% lighter)
  * //   headerSelectedHover: '#F2F7FF', (50% lighter)
- * //   bodySelected: '#C0D9FF'      (30% lighter)
  * // }
  */
 export function generateClipColorStates(baseColor: string): ClipColorStates {
@@ -151,7 +150,6 @@ export function generateClipColorStates(baseColor: string): ClipColorStates {
     body: adjustLightness(baseColor, 15),
     headerSelected: adjustLightness(baseColor, 40),
     headerSelectedHover: adjustLightness(baseColor, 50),
-    bodySelected: adjustLightness(baseColor, 30),
     waveform: 'rgba(0, 0, 0, 0.7)', // Default dark waveform
     waveformSelected: adjustLightness(baseColor, -70), // Dark colored waveform when selected
     waveformRms: 'rgba(0, 0, 0, 0.4)', // Default RMS waveform (lighter than peak)
