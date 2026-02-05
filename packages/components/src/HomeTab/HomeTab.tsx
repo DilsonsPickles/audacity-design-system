@@ -7,7 +7,7 @@ import { Button } from '../Button';
 import { useTheme } from '../ThemeProvider';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
-import { getProjects, deleteProject, type StoredProject } from '../utils/projectStorage';
+import { getProjects, saveProject, deleteProject, type StoredProject } from '../utils/projectStorage';
 import './HomeTab.css';
 
 export interface HomeTabProps {
@@ -60,6 +60,42 @@ export function HomeTab({
   const handleDeleteProject = (id: string) => {
     deleteProject(id);
     setStoredProjects(getProjects());
+  };
+
+  const handleCreateNewProject = () => {
+    // Generate unique project ID
+    const projectId = `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create new project
+    const newProject: StoredProject = {
+      id: projectId,
+      title: `New Project ${new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      })}`,
+      dateCreated: Date.now(),
+      dateModified: Date.now(),
+      isCloudProject: false,
+      thumbnailUrl: undefined,
+    };
+
+    // Save to localStorage
+    saveProject(newProject);
+
+    // Reload projects list
+    setStoredProjects(getProjects());
+
+    // Call parent onNewProject callback if provided
+    if (onNewProject) {
+      onNewProject();
+    }
+
+    console.log('Created new project:', projectId);
   };
 
   // Helper to format date for display
@@ -373,7 +409,7 @@ export function HomeTab({
                       <ProjectThumbnail
                         isNewProject
                         title="New project"
-                        onClick={onNewProject}
+                        onClick={handleCreateNewProject}
                       />
                       {storedProjects.map((project) => (
                         <ProjectThumbnail
@@ -397,7 +433,10 @@ export function HomeTab({
                     </div>
                   ) : (
                     <div className="home-tab__projects-list">
-                      <button className="home-tab__list-item home-tab__list-item--new-project">
+                      <button
+                        className="home-tab__list-item home-tab__list-item--new-project"
+                        onClick={handleCreateNewProject}
+                      >
                         <div className="home-tab__list-item-name">
                           <div className="home-tab__list-item-thumbnail">
                             <Icon name="plus" size={24} />
@@ -855,7 +894,7 @@ export function HomeTab({
               </Button>
             </div>
             <div className="home-tab__footer-right">
-              <Button variant="secondary" size="default" onClick={onNewProject}>
+              <Button variant="secondary" size="default" onClick={handleCreateNewProject}>
                 New
               </Button>
               <Button variant="secondary" size="default" onClick={onOpenOther}>
