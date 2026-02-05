@@ -116,7 +116,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px 16px 32px;
+  padding: 0 32px 32px 32px;
 }
 
 .home-tab__tabs-left {
@@ -270,9 +270,9 @@
 /* Projects Grid */
 .home-tab__projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 280px);
-  gap: 24px;
-  padding: 0 32px 0 32px;
+  grid-template-columns: repeat(auto-fill, 224px);
+  gap: 24px 56px;
+  padding: 0 32px 32px 32px;
   align-content: start;
 }
 

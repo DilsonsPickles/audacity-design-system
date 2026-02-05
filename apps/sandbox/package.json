@@ -12,6 +12,9 @@
     "@audacity-ui/audio": "workspace:*",
     "@audacity-ui/components": "workspace:*",
     "@audacity-ui/core": "workspace:*",
+    "dexie": "^4.3.0",
+    "dom-to-image-more": "^3.7.2",
+    "html2canvas": "^1.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tone": "^15.1.22"

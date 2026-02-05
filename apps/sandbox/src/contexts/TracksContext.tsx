@@ -140,6 +140,7 @@ export interface TracksState {
 
 // Action types
 export type TracksAction =
+  | { type: 'RESET_STATE' }
   | { type: 'SET_TRACKS'; payload: Track[] }
   | { type: 'ADD_TRACK'; payload: Track }
   | { type: 'UPDATE_TRACK'; payload: { index: number; track: Partial<Track> } }
@@ -201,6 +202,9 @@ const initialState: TracksState = {
 // Reducer
 function tracksReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
+    case 'RESET_STATE':
+      return initialState;
+
     case 'SET_TRACKS':
       return { ...state, tracks: action.payload };
 

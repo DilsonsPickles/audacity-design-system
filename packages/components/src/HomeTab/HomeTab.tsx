@@ -14,10 +14,12 @@ export interface HomeTabProps {
   isSignedIn?: boolean;
   onCreateAccount?: () => void;
   onSignIn?: () => void;
-  onNewProject?: () => void;
+  onNewProject?: (projectId: string) => void;
+  onOpenProject?: (projectId: string) => void;
   onOpenOther?: () => void;
   onSearch?: (query: string) => void;
   className?: string;
+  projects?: StoredProject[]; // Optional: override internal project loading
 }
 
 export function HomeTab({
@@ -25,9 +27,11 @@ export function HomeTab({
   onCreateAccount,
   onSignIn,
   onNewProject,
+  onOpenProject,
   onOpenOther,
   onSearch,
   className = '',
+  projects: externalProjects,
 }: HomeTabProps) {
   const { theme } = useTheme();
   const [activeSidebarItem, setActiveSidebarItem] = React.useState<'my-accounts' | 'project' | 'learn'>('project');
@@ -41,11 +45,15 @@ export function HomeTab({
   const [storedProjects, setStoredProjects] = React.useState<StoredProject[]>([]);
   const itemsPerPage = 12;
 
-  // Load projects from localStorage on mount
+  // Load projects from localStorage on mount (unless external projects provided)
   React.useEffect(() => {
-    const projects = getProjects();
-    setStoredProjects(projects);
-  }, []);
+    if (externalProjects) {
+      setStoredProjects(externalProjects);
+    } else {
+      const projects = getProjects();
+      setStoredProjects(projects);
+    }
+  }, [externalProjects]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -90,12 +98,10 @@ export function HomeTab({
     // Reload projects list
     setStoredProjects(getProjects());
 
-    // Call parent onNewProject callback if provided
+    // Call parent onNewProject callback with project ID to open it
     if (onNewProject) {
-      onNewProject();
+      onNewProject(projectId);
     }
-
-    console.log('Created new project:', projectId);
   };
 
   // Helper to format date for display
@@ -405,31 +411,38 @@ export function HomeTab({
               {activeSection === 'new-recent' && (
                 <>
                   {viewMode === 'grid' ? (
-                    <div className="home-tab__projects-grid">
-                      <ProjectThumbnail
-                        isNewProject
-                        title="New project"
-                        onClick={handleCreateNewProject}
-                      />
-                      {storedProjects.map((project) => (
+                    <div className="home-tab__projects-scroll-container">
+                      <div className="home-tab__projects-grid">
                         <ProjectThumbnail
-                          key={project.id}
-                          title={project.title}
-                          dateText={formatDateText(project.dateModified)}
-                          thumbnailUrl={project.thumbnailUrl}
-                          isCloudProject={project.isCloudProject}
-                          onClick={() => console.log('Open project:', project.id)}
-                          onContextMenu={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setContextMenu({
-                              x: rect.right,
-                              y: rect.bottom,
-                              itemId: project.id,
-                              isCloudItem: project.isCloudProject,
-                            });
-                          }}
+                          isNewProject
+                          title="New project"
+                          onClick={handleCreateNewProject}
                         />
-                      ))}
+                        {storedProjects.map((project) => (
+                          <ProjectThumbnail
+                            key={project.id}
+                            title={project.title}
+                            dateText={formatDateText(project.dateModified)}
+                            thumbnailUrl={project.thumbnailUrl}
+                            isCloudProject={project.isCloudProject}
+                            onClick={() => {
+                              console.log('Open project:', project.id);
+                              if (onOpenProject) {
+                                onOpenProject(project.id);
+                              }
+                            }}
+                            onContextMenu={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setContextMenu({
+                                x: rect.right,
+                                y: rect.bottom,
+                                itemId: project.id,
+                                isCloudItem: project.isCloudProject,
+                              });
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="home-tab__projects-list">
@@ -458,7 +471,12 @@ export function HomeTab({
                         <div key={project.id} className="home-tab__list-item-wrapper">
                           <button
                             className="home-tab__list-item"
-                            onClick={() => console.log('Open project:', project.id)}
+                            onClick={() => {
+                              console.log('Open project:', project.id);
+                              if (onOpenProject) {
+                                onOpenProject(project.id);
+                              }
+                            }}
                           >
                             <div className="home-tab__list-item-name">
                               <div className="home-tab__list-item-thumbnail">

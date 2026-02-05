@@ -5,6 +5,7 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar } from '@audacity-ui/components';
+import { saveProject, getProject, getProjects } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
@@ -170,6 +171,9 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
+  const [homeTabKey, setHomeTabKey] = React.useState(0);
+  const [currentProjectId, setCurrentProjectId] = React.useState<string | null>(null);
+  const [indexedDBProjects, setIndexedDBProjects] = React.useState<any[]>([]);
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
@@ -733,6 +737,16 @@ function CanvasDemoContent() {
 
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
+
+  // Load projects from IndexedDB on mount
+  React.useEffect(() => {
+    const loadProjects = async () => {
+      const projects = await getProjects();
+      setIndexedDBProjects(projects);
+      console.log('Initial load - projects from IndexedDB:', projects.length);
+    };
+    loadProjects();
+  }, []);
 
   // Initialize audio playback manager
   React.useEffect(() => {
@@ -2210,8 +2224,16 @@ function CanvasDemoContent() {
       />
       <ProjectToolbar
         activeItem={activeMenuItem}
-        onMenuItemClick={(item) => {
+        onMenuItemClick={async (item) => {
           setActiveMenuItem(item);
+          // Force HomeTab to remount and reload projects when navigating back to home
+          if (item === 'home') {
+            setHomeTabKey(prev => prev + 1);
+            // Load projects from IndexedDB
+            const projects = await getProjects();
+            setIndexedDBProjects(projects);
+            console.log('Loaded projects from IndexedDB:', projects.length);
+          }
           if (item === 'debug') {
             setIsDebugPanelOpen(true);
           }
@@ -2498,10 +2520,65 @@ function CanvasDemoContent() {
       {activeMenuItem === 'home' ? (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           <HomeTab
+            key={homeTabKey}
             isSignedIn={isSignedIn}
+            projects={indexedDBProjects}
             onCreateAccount={() => setIsCreateAccountOpen(true)}
             onSignIn={() => setIsShareDialogOpen(true)}
-            onNewProject={() => console.log('New project')}
+            onNewProject={async (projectId) => {
+              console.log('Opening new project:', projectId);
+
+              // Create a new project stub in IndexedDB
+              const newProject = {
+                id: projectId,
+                title: `New Project ${new Date().toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                })}`,
+                dateCreated: Date.now(),
+                dateModified: Date.now(),
+                isCloudProject: false,
+                thumbnailUrl: undefined,
+              };
+
+              // Save to IndexedDB
+              await saveProject(newProject);
+              console.log('New project saved to IndexedDB:', projectId);
+
+              // Reset state to start fresh
+              dispatch({ type: 'RESET_STATE' });
+
+              setCurrentProjectId(projectId);
+              setActiveMenuItem('project');
+            }}
+            onOpenProject={async (projectId) => {
+              console.log('Opening existing project:', projectId);
+              const project = await getProject(projectId);
+              if (project) {
+                setCurrentProjectId(projectId);
+
+                // Restore tracks state from project data if available
+                if (project.data?.tracks) {
+                  console.log('Restoring tracks:', project.data.tracks.length);
+                  dispatch({ type: 'SET_TRACKS', payload: project.data.tracks });
+                }
+
+                // Restore playhead position if available
+                if (project.data?.playheadPosition !== undefined) {
+                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: project.data.playheadPosition });
+                }
+
+                setActiveMenuItem('project');
+                toast.success('Project loaded');
+              } else {
+                toast.error('Project not found');
+              }
+            }}
             onOpenOther={() => console.log('Open other')}
           />
         </div>
@@ -3603,10 +3680,94 @@ function CanvasDemoContent() {
           setIsSaveProjectModalOpen(false);
           setIsShareDialogOpen(true);
         }}
-        onSaveToComputer={() => {
-          console.log('Save to computer');
+        onSaveToComputer={async () => {
+          console.log('Save to computer - currentProjectId:', currentProjectId);
           setIsSaveProjectModalOpen(false);
-          toast.info('Saving to computer...');
+
+          if (!currentProjectId) {
+            console.error('No current project ID');
+            toast.error('No project open');
+            return;
+          }
+
+          try {
+            // Get current project from IndexedDB
+            const project = await getProject(currentProjectId);
+            console.log('Retrieved project from IndexedDB:', project);
+            if (!project) {
+              console.error('Project not found for ID:', currentProjectId);
+              toast.error('Project not found');
+              return;
+            }
+
+            // Capture canvas screenshot for thumbnail
+            let thumbnailUrl: string | undefined;
+            if (scrollContainerRef.current) {
+              console.log('Attempting to capture screenshot...');
+              console.log('Scroll container dimensions:', {
+                width: scrollContainerRef.current.clientWidth,
+                height: scrollContainerRef.current.clientHeight,
+                scrollWidth: scrollContainerRef.current.scrollWidth,
+                scrollHeight: scrollContainerRef.current.scrollHeight,
+              });
+
+              try {
+                // Use dom-to-image-more (better CSS support than html2canvas)
+                const domtoimage = (await import('dom-to-image-more')).default;
+
+                // Capture as data URL directly (224x126 aspect ratio)
+                const dataUrl = await domtoimage.toJpeg(scrollContainerRef.current, {
+                  quality: 0.8,
+                  bgcolor: '#F5F5F7',
+                  width: 448, // 2x for retina
+                  height: 252, // 2x for retina
+                  style: {
+                    transform: 'scale(1)',
+                    transformOrigin: 'top left',
+                  },
+                });
+
+                thumbnailUrl = dataUrl;
+                console.log('Screenshot captured, thumbnail size:', thumbnailUrl.length, 'bytes');
+              } catch (error) {
+                console.error('Error capturing screenshot:', error);
+                // Continue without thumbnail
+              }
+            } else {
+              console.warn('scrollContainerRef.current is null');
+            }
+
+            // Serialize tracks state with full clip data including waveforms
+            // IndexedDB can handle large binary data unlike localStorage
+            const projectData = {
+              tracks: state.tracks,
+              playheadPosition: state.playheadPosition,
+            };
+
+            console.log('Saving project with data and thumbnail to IndexedDB...');
+            console.log('Thumbnail URL present?', !!thumbnailUrl);
+            console.log('Number of tracks:', state.tracks.length);
+            console.log('Total clips:', state.tracks.reduce((sum, t) => sum + t.clips.length, 0));
+
+            // Update project with data and thumbnail (async)
+            await saveProject({
+              ...project,
+              data: projectData,
+              thumbnailUrl,
+            });
+
+            console.log('Project saved successfully to IndexedDB');
+
+            // Verify it was saved
+            const savedProject = await getProject(currentProjectId);
+            console.log('Verified saved project has thumbnail?', !!savedProject?.thumbnailUrl);
+            console.log('Verified saved tracks:', savedProject?.data?.tracks.length);
+
+            toast.success('Project saved');
+          } catch (error) {
+            console.error('Error saving project:', error);
+            toast.error('Failed to save project');
+          }
         }}
         dontShowAgain={dontShowSaveModalAgain}
         onDontShowAgainChange={setDontShowSaveModalAgain}
