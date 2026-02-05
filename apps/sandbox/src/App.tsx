@@ -3339,7 +3339,6 @@ function CanvasDemoContent() {
               payload: {
                 startTime: newStart,
                 endTime: endTime,
-                trackIndices: state.timeSelection?.trackIndices ?? []
               }
             });
           }}
@@ -3351,7 +3350,6 @@ function CanvasDemoContent() {
               payload: {
                 startTime: startTime,
                 endTime: newEnd,
-                trackIndices: state.timeSelection?.trackIndices ?? []
               }
             });
           }}

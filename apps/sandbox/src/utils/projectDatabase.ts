@@ -4,7 +4,6 @@
  */
 
 import Dexie, { Table } from 'dexie';
-import type { Track } from '@audacity-ui/core';
 
 export interface StoredProject {
   id: string;
@@ -14,7 +13,7 @@ export interface StoredProject {
   thumbnailUrl?: string;
   isCloudProject: boolean;
   data?: {
-    tracks: Track[];
+    tracks: any[]; // Use any to avoid type conflicts between core and local Track types
     playheadPosition: number;
   };
 }
