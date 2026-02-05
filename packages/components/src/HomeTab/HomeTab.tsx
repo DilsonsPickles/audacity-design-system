@@ -232,10 +232,10 @@ export function HomeTab({
       {/* Left Sidebar */}
       <div className="home-tab__sidebar">
         <button
-          className={`home-tab__sidebar-item ${activeSidebarItem === 'my-accounts' ? 'home-tab__sidebar-item--active' : ''}`}
+          className={`home-tab__sidebar-item home-tab__sidebar-item--account ${activeSidebarItem === 'my-accounts' ? 'home-tab__sidebar-item--active' : ''}`}
           onClick={() => setActiveSidebarItem('my-accounts')}
         >
-          <Icon name="user" size={20} className="home-tab__sidebar-icon" />
+          <Icon name="user" size={16} className="home-tab__sidebar-icon" />
           <span className="home-tab__sidebar-label">My accounts</span>
         </button>
         <button
@@ -934,14 +934,37 @@ export function HomeTab({
 
           {/* My accounts page */}
           {activeSidebarItem === 'my-accounts' && (
-            <div className="home-tab__empty-state">
-              <div className="home-tab__empty-text">
-                <div className="home-tab__empty-title">My accounts</div>
-                <div className="home-tab__empty-description">
-                  Account settings and profile information
+            <>
+              {/* Header */}
+              <div className="home-tab__header">
+                <h1 className="home-tab__title">Accounts</h1>
+              </div>
+              <div className="home-tab__accounts-page">
+                <div className="home-tab__accounts-list">
+                  {/* Audio.com Service */}
+                  <div className="home-tab__accounts-section">
+                    <h2 className="home-tab__accounts-section-title">Audio.com</h2>
+                    <div className="home-tab__accounts-card">
+                      <div className="home-tab__accounts-avatar">
+                        <Icon name="user" size={48} />
+                      </div>
+                      <div className="home-tab__accounts-content">
+                        <h3 className="home-tab__accounts-title">Not signed in</h3>
+                        <p className="home-tab__accounts-subtitle">Audio.com</p>
+                      </div>
+                      <div className="home-tab__accounts-actions">
+                        <Button variant="primary" size="default" onClick={onSignIn}>
+                          Sign in
+                        </Button>
+                        <Button variant="primary" size="default" onClick={onCreateAccount}>
+                          Create account
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* Learn page */}
@@ -957,22 +980,24 @@ export function HomeTab({
           )}
         </div>
 
-        {/* Bottom Actions */}
-        <div className="home-tab__footer">
-          <div className="home-tab__footer-left">
-            <Button variant="secondary" size="default">
-              View projects in audio.com
-            </Button>
+        {/* Bottom Actions - Only shown on Project page */}
+        {activeSidebarItem === 'project' && (
+          <div className="home-tab__footer">
+            <div className="home-tab__footer-left">
+              <Button variant="secondary" size="default">
+                View projects in audio.com
+              </Button>
+            </div>
+            <div className="home-tab__footer-right">
+              <Button variant="secondary" size="default" onClick={onNewProject}>
+                New
+              </Button>
+              <Button variant="secondary" size="default" onClick={onOpenOther}>
+                Open other...
+              </Button>
+            </div>
           </div>
-          <div className="home-tab__footer-right">
-            <Button variant="secondary" size="default" onClick={onNewProject}>
-              New
-            </Button>
-            <Button variant="secondary" size="default" onClick={onOpenOther}>
-              Open other...
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Context Menu */}
