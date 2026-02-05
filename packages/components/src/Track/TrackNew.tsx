@@ -366,6 +366,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             position: 'absolute',
             left: `${clipX}px`,
             top: 0,
+            zIndex: 2, // Above clip header recess (z-index: 1)
           }}
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
@@ -635,7 +636,10 @@ export const TrackNew: React.FC<TrackProps> = ({
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
+        {renderTimeSelectionOverlay()}
+
         {/* Clip header recess - 20px darkened area at top of track (hidden for label tracks and when track is too small) */}
+        {/* Rendered after time selection overlay but before clips so clips render on top */}
         {!isLabelTrack && height > 44 && (
           <div
             style={{
@@ -646,12 +650,11 @@ export const TrackNew: React.FC<TrackProps> = ({
               height: '20px',
               backgroundColor: 'rgba(0, 0, 0, 0.15)',
               pointerEvents: 'none',
-              zIndex: 0,
+              zIndex: 1, // Above time selection overlay (z-index: 0), below clips (z-index: 2)
             }}
           />
         )}
 
-        {renderTimeSelectionOverlay()}
         {renderClips()}
         {renderEnvelopeInteractionLayers()}
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { SearchField } from '../SearchField';
 import { Icon } from '../Icon';
 import { ProjectThumbnail } from '../ProjectThumbnail';
+import { AudioFileThumbnail } from '../AudioFileThumbnail';
 import { Button } from '../Button';
 import { useTheme } from '../ThemeProvider';
 import './HomeTab.css';
@@ -29,6 +30,176 @@ export function HomeTab({
   const [activeSidebarItem, setActiveSidebarItem] = React.useState<'my-accounts' | 'project' | 'learn'>('project');
   const [activeSection, setActiveSection] = React.useState<'cloud-projects' | 'new-recent' | 'cloud-audio'>('new-recent');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [audioPage, setAudioPage] = React.useState(1);
+  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const itemsPerPage = 12;
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 5000);
+  };
+
+  // Audacity logo SVG for project thumbnails
+  const AudacityLogo = () => (
+    <svg width="64" height="65" viewBox="0 0 64 65" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M63.75 48.1044C63.75 55.9076 57.2768 62.2334 49.2916 62.2334C41.3065 62.2334 34.8333 55.9076 34.8333 48.1044C34.8333 40.3012 41.3065 33.9755 49.2916 33.9755C57.2768 33.9755 63.75 40.3012 63.75 48.1044Z" fill="#C0C5CE"/>
+      <path d="M32.1542 0C19.0551 0 8.43626 10.7189 8.43624 23.9412C8.43625 25.8815 8.66529 28.4361 9.09693 30.2427H10.113C9.92834 29.1257 9.83141 27.3059 9.83141 26.1289C9.83144 15.7589 17.3272 7.35236 26.5735 7.35229C35.8199 7.35229 43.3155 15.7589 43.3155 26.1289C43.3155 27.1144 43.2477 29.0844 43.1173 30.0289H55.3356C55.6869 28.39 55.8721 25.6862 55.8721 23.9412C55.8721 10.7189 45.2532 1.73515e-05 32.1542 0Z" fill="#C0C5CE"/>
+      <path d="M0.25 48.1044C0.25 56.0106 6.58251 62.4199 14.3941 62.4199V33.789C6.58251 33.789 0.25 40.1983 0.25 48.1044Z" fill="#C0C5CE"/>
+      <path d="M27.4195 31.1503L32.6764 48.1044L27.4195 64.976L22.4723 48.1044L27.4195 31.1503Z" fill="#C0C5CE"/>
+      <path d="M19.9817 39.0219L22.7734 48.1044L19.9817 57.31L16.5873 48.1044L19.9817 39.0219Z" fill="#C0C5CE"/>
+    </svg>
+  );
+
+  // Spinner component
+  const Spinner = () => {
+    const accentColor = theme.accent.primary;
+    const gaugeColor = theme.background.control.panKnob.gauge;
+
+    return (
+      <div className="home-tab__spinner">
+        <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          {/* Background arc (light) */}
+          <circle
+            cx="24"
+            cy="24"
+            r="18"
+            stroke={gaugeColor}
+            strokeWidth="4"
+            fill="none"
+          />
+          {/* Animated foreground arc (solid) */}
+          <circle
+            cx="24"
+            cy="24"
+            r="18"
+            stroke={accentColor}
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray="28 85"
+            transform="rotate(0 24 24)"
+          >
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from="0 24 24"
+              to="360 24 24"
+              dur="1s"
+              repeatCount="indefinite"
+            />
+          </circle>
+        </svg>
+      </div>
+    );
+  };
+
+  // Cloud projects data - Generate 250 projects for pagination testing
+  const projectTemplates = [
+    { title: 'Podcast Episode', dateText: 'TODAY', hasThumbnail: true, size: '19 KB' },
+    { title: 'Music Mix', dateText: 'YESTERDAY', hasThumbnail: true, size: '22 KB' },
+    { title: 'Interview Recording', dateText: '2 DAYS AGO', hasThumbnail: false, size: '18 KB' },
+    { title: 'Voice Over Session', dateText: '1 WEEK AGO', hasThumbnail: true, size: '20 KB' },
+    { title: 'Band Practice', dateText: '2 WEEKS AGO', hasThumbnail: true, size: '25 KB' },
+    { title: 'Audio Book Chapter', dateText: '1 MONTH AGO', hasThumbnail: false, size: '17 KB' },
+    { title: 'Documentary Narration', dateText: '1 MONTH AGO', hasThumbnail: true, size: '21 KB' },
+    { title: 'Song Demo', dateText: '2 MONTHS AGO', hasThumbnail: true, size: '23 KB' },
+    { title: 'Radio Commercial', dateText: '2 MONTHS AGO', hasThumbnail: false, size: '16 KB' },
+    { title: 'Live Concert Recording', dateText: '3 MONTHS AGO', hasThumbnail: true, size: '28 KB' },
+    { title: 'Meditation Guide', dateText: '3 MONTHS AGO', hasThumbnail: true, size: '19 KB' },
+    { title: 'Jingle Production', dateText: '4 MONTHS AGO', hasThumbnail: false, size: '15 KB' },
+    { title: 'Piano Composition', dateText: '4 MONTHS AGO', hasThumbnail: true, size: '24 KB' },
+    { title: 'Field Recording', dateText: '5 MONTHS AGO', hasThumbnail: true, size: '26 KB' },
+    { title: 'Voicemail Greeting', dateText: '5 MONTHS AGO', hasThumbnail: false, size: '14 KB' },
+    { title: 'Hip Hop Beat', dateText: '6 MONTHS AGO', hasThumbnail: true, size: '21 KB' },
+    { title: 'Jazz Improv', dateText: '6 MONTHS AGO', hasThumbnail: true, size: '27 KB' },
+    { title: 'Gaming Stream Audio', dateText: '7 MONTHS AGO', hasThumbnail: false, size: '18 KB' },
+    { title: 'Choir Practice', dateText: '8 MONTHS AGO', hasThumbnail: true, size: '23 KB' },
+    { title: 'Ambient Soundscape', dateText: '9 MONTHS AGO', hasThumbnail: true, size: '20 KB' },
+  ];
+
+  const allCloudProjects = Array.from({ length: 250 }, (_, i) => {
+    const template = projectTemplates[i % projectTemplates.length];
+    const number = Math.floor(i / projectTemplates.length) + 1;
+    return {
+      title: `${template.title} ${number > 1 ? number : ''}`.trim(),
+      dateText: template.dateText,
+      thumbnailUrl: template.hasThumbnail ? `https://picsum.photos/seed/project${i}/280/170` : undefined,
+      size: template.size,
+    };
+  });
+
+  const totalPages = Math.ceil(allCloudProjects.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProjects = allCloudProjects.slice(startIndex, endIndex);
+
+  // Cloud audio files data - Generate 200 audio files for pagination testing
+  const audioTemplates = [
+    { title: 'Vocal Recording', dateText: 'TODAY', duration: '3:24', size: '8.2 MB' },
+    { title: 'Guitar Solo', dateText: 'YESTERDAY', duration: '2:15', size: '5.4 MB' },
+    { title: 'Bass Line', dateText: '2 DAYS AGO', duration: '4:01', size: '9.7 MB' },
+    { title: 'Drum Loop', dateText: '1 WEEK AGO', duration: '1:30', size: '3.6 MB' },
+    { title: 'Piano Melody', dateText: '2 WEEKS AGO', duration: '5:12', size: '12.5 MB' },
+    { title: 'Synth Pad', dateText: '1 MONTH AGO', duration: '3:45', size: '9.0 MB' },
+    { title: 'Sound Effect', dateText: '1 MONTH AGO', duration: '0:08', size: '0.3 MB' },
+    { title: 'Backing Track', dateText: '2 MONTHS AGO', duration: '4:30', size: '10.8 MB' },
+    { title: 'Vocal Harmony', dateText: '2 MONTHS AGO', duration: '2:54', size: '7.0 MB' },
+    { title: 'Field Recording', dateText: '3 MONTHS AGO', duration: '6:20', size: '15.2 MB' },
+  ];
+
+  const allAudioFiles = Array.from({ length: 200 }, (_, i) => {
+    const template = audioTemplates[i % audioTemplates.length];
+    const number = Math.floor(i / audioTemplates.length) + 1;
+    return {
+      title: `${template.title} ${number > 1 ? number : ''}`.trim(),
+      dateText: template.dateText,
+      duration: template.duration,
+      size: template.size,
+    };
+  });
+
+  const audioTotalPages = Math.ceil(allAudioFiles.length / itemsPerPage);
+  const audioStartIndex = (audioPage - 1) * itemsPerPage;
+  const audioEndIndex = audioStartIndex + itemsPerPage;
+  const currentAudioFiles = allAudioFiles.slice(audioStartIndex, audioEndIndex);
+
+  // Reset to page 1 when switching sections
+  React.useEffect(() => {
+    setCurrentPage(1);
+    setAudioPage(1);
+  }, [activeSection]);
+
+  // Generate page numbers with ellipsis - always shows 7 slots for consistent width
+  const getPageNumbers = (total: number, current: number) => {
+    const pages: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
+    const maxVisible = 7; // Always show exactly 7 slots
+
+    if (total <= maxVisible) {
+      // Show all pages if total is small, pad with empty slots
+      const actualPages = Array.from({ length: total }, (_, i) => i + 1);
+      return actualPages;
+    }
+
+    // Always 7 slots: first ... middle3 ... last
+    // Pattern: 1 ... x x x ... last = 7 items
+
+    if (current <= 3) {
+      // Near start: 1 2 3 4 5 ... last
+      pages.push(1, 2, 3, 4, 5, 'ellipsis-end', total);
+    } else if (current >= total - 2) {
+      // Near end: 1 ... last-4 last-3 last-2 last-1 last
+      pages.push(1, 'ellipsis-start', total - 4, total - 3, total - 2, total - 1, total);
+    } else {
+      // Middle: 1 ... current-1 current current+1 ... last
+      pages.push(1, 'ellipsis-start', current - 1, current, current + 1, 'ellipsis-end', total);
+    }
+
+    return pages;
+  };
 
   const style = {
     '--home-tab-bg': theme.background.surface.default,
@@ -127,11 +298,30 @@ export function HomeTab({
                   </button>
                 </div>
                 <div className="home-tab__tabs-right">
-                  <button className="home-tab__icon-btn home-tab__icon-btn--active">
-                    <Icon name="menu" size={16} />
+                  {(activeSection === 'cloud-projects' || activeSection === 'cloud-audio') && (
+                    <Button
+                      variant="secondary"
+                      size="default"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      icon={<Icon name="refresh" size={16} />}
+                    >
+                      Refresh
+                    </Button>
+                  )}
+                  <button
+                    className={`home-tab__icon-btn ${viewMode === 'grid' ? 'home-tab__icon-btn--active' : ''}`}
+                    onClick={() => setViewMode('grid')}
+                    aria-label="Grid view"
+                  >
+                    <Icon name="grid-view" size={16} />
                   </button>
-                  <button className="home-tab__icon-btn">
-                    <Icon name="menu" size={16} />
+                  <button
+                    className={`home-tab__icon-btn ${viewMode === 'list' ? 'home-tab__icon-btn--active' : ''}`}
+                    onClick={() => setViewMode('list')}
+                    aria-label="List view"
+                  >
+                    <Icon name="list-view" size={16} />
                   </button>
                 </div>
               </div>
@@ -143,41 +333,124 @@ export function HomeTab({
             <>
               {/* New & recent tab - show local files + cloud projects (if signed in) */}
               {activeSection === 'new-recent' && (
-                <div className="home-tab__projects-grid">
-                  <ProjectThumbnail
-                    isNewProject
-                    title="New project"
-                    onClick={onNewProject}
-                  />
-                  {isSignedIn && (
-                    <ProjectThumbnail
-                      title="New Project 2025-10-21 10-57-03-23 03"
-                      dateText="TODAY"
-                      thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                      isCloudProject
-                    />
+                <>
+                  {viewMode === 'grid' ? (
+                    <div className="home-tab__projects-grid">
+                      <ProjectThumbnail
+                        isNewProject
+                        title="New project"
+                        onClick={onNewProject}
+                      />
+                      {isSignedIn && (
+                        <ProjectThumbnail
+                          title="New Project 2025-10-21 10-57-03-23 03"
+                          dateText="TODAY"
+                          thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                          isCloudProject
+                        />
+                      )}
+                      <ProjectThumbnail
+                        title="New Project 2025-10-21 10-57-03-23 03"
+                        dateText="TODAY"
+                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                      />
+                      <ProjectThumbnail
+                        title="New Project 2025-10-21 10-57-03-23 03"
+                        dateText="TODAY"
+                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                      />
+                      <ProjectThumbnail
+                        title="New Project 2025-10-21 10-57-03-23 03"
+                        dateText="TODAY"
+                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                      />
+                      <ProjectThumbnail
+                        title="New Project 2025-10-21 10-57-03-23 03"
+                        dateText="TODAY"
+                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                      />
+                    </div>
+                  ) : (
+                    <div className="home-tab__projects-list">
+                      <button className="home-tab__list-item home-tab__list-item--new-project">
+                        <div className="home-tab__list-item-name">
+                          <div className="home-tab__list-item-thumbnail">
+                            <Icon name="plus" size={24} />
+                          </div>
+                          <div className="home-tab__list-item-title">New project</div>
+                        </div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                      </button>
+                      <div className="home-tab__list-header">
+                        <div className="home-tab__list-header-cell">Name</div>
+                        <div className="home-tab__list-header-cell"></div>
+                        <div className="home-tab__list-header-cell">Modified</div>
+                        <div className="home-tab__list-header-cell">Size</div>
+                      </div>
+                      {isSignedIn && (
+                        <button className="home-tab__list-item">
+                          <div className="home-tab__list-item-name">
+                            <div className="home-tab__list-item-thumbnail">
+                              <AudacityLogo />
+                            </div>
+                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
+                          </div>
+                          <div className="home-tab__list-item-cloud-badge">
+                            <Icon name="cloud-filled" size={12} />
+                          </div>
+                          <div className="home-tab__list-item-modified">TODAY</div>
+                          <div className="home-tab__list-item-size">19 KB</div>
+                        </button>
+                      )}
+                      <button className="home-tab__list-item">
+                        <div className="home-tab__list-item-name">
+                          <div className="home-tab__list-item-thumbnail">
+                            <AudacityLogo />
+                          </div>
+                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
+                        </div>
+                        <div></div>
+                        <div className="home-tab__list-item-modified">TODAY</div>
+                        <div className="home-tab__list-item-size">19 KB</div>
+                      </button>
+                      <button className="home-tab__list-item">
+                        <div className="home-tab__list-item-name">
+                          <div className="home-tab__list-item-thumbnail">
+                            <AudacityLogo />
+                          </div>
+                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
+                        </div>
+                        <div></div>
+                        <div className="home-tab__list-item-modified">TODAY</div>
+                        <div className="home-tab__list-item-size">19 KB</div>
+                      </button>
+                      <button className="home-tab__list-item">
+                        <div className="home-tab__list-item-name">
+                          <div className="home-tab__list-item-thumbnail">
+                            <AudacityLogo />
+                          </div>
+                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
+                        </div>
+                        <div></div>
+                        <div className="home-tab__list-item-modified">TODAY</div>
+                        <div className="home-tab__list-item-size">19 KB</div>
+                      </button>
+                      <button className="home-tab__list-item">
+                        <div className="home-tab__list-item-name">
+                          <div className="home-tab__list-item-thumbnail">
+                            <AudacityLogo />
+                          </div>
+                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
+                        </div>
+                        <div></div>
+                        <div className="home-tab__list-item-modified">TODAY</div>
+                        <div className="home-tab__list-item-size">19 KB</div>
+                      </button>
+                    </div>
                   )}
-                  <ProjectThumbnail
-                    title="New Project 2025-10-21 10-57-03-23 03"
-                    dateText="TODAY"
-                    thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                  />
-                  <ProjectThumbnail
-                    title="New Project 2025-10-21 10-57-03-23 03"
-                    dateText="TODAY"
-                    thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                  />
-                  <ProjectThumbnail
-                    title="New Project 2025-10-21 10-57-03-23 03"
-                    dateText="TODAY"
-                    thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                  />
-                  <ProjectThumbnail
-                    title="New Project 2025-10-21 10-57-03-23 03"
-                    dateText="TODAY"
-                    thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                  />
-                </div>
+                </>
               )}
 
               {/* Cloud projects tab - show sign-in prompt if not signed in */}
@@ -200,6 +473,103 @@ export function HomeTab({
                 </div>
               )}
 
+              {/* Cloud projects tab - show projects when signed in */}
+              {activeSection === 'cloud-projects' && isSignedIn && (
+                <div className="home-tab__projects-scroll-container">
+                  {isRefreshing ? (
+                    <Spinner />
+                  ) : (
+                    <>
+                      {viewMode === 'grid' ? (
+                        <div className="home-tab__projects-grid">
+                          {currentProjects.map((project, index) => (
+                            <ProjectThumbnail
+                              key={`${project.title}-${index}`}
+                              title={project.title}
+                              dateText={project.dateText}
+                              thumbnailUrl={project.thumbnailUrl}
+                              isCloudProject
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                    <div className="home-tab__projects-list">
+                      <div className="home-tab__list-header">
+                        <div className="home-tab__list-header-cell">Name</div>
+                        <div className="home-tab__list-header-cell"></div>
+                        <div className="home-tab__list-header-cell">Modified</div>
+                        <div className="home-tab__list-header-cell">Size</div>
+                      </div>
+                      {currentProjects.map((project, index) => {
+                        return (
+                          <button key={`${project.title}-${index}`} className="home-tab__list-item">
+                            <div className="home-tab__list-item-name">
+                              <div className="home-tab__list-item-thumbnail">
+                                {project.thumbnailUrl ? (
+                                  <img src={project.thumbnailUrl} alt={project.title} />
+                                ) : (
+                                  <AudacityLogo />
+                                )}
+                              </div>
+                              <div className="home-tab__list-item-title">{project.title}</div>
+                            </div>
+                            <div className="home-tab__list-item-cloud-badge">
+                              <Icon name="cloud-filled" size={12} />
+                            </div>
+                            <div className="home-tab__list-item-modified">{project.dateText}</div>
+                            <div className="home-tab__list-item-size">{project.size}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {totalPages > 1 && (
+                    <div className="home-tab__pagination-container">
+                      <div className="home-tab__pagination">
+                        <button
+                          className="home-tab__pagination-btn"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          aria-label="Previous page"
+                        >
+                          <Icon name="chevron-left" size={16} />
+                        </button>
+                        {getPageNumbers(totalPages, currentPage).map((page, index) => {
+                          if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                            return (
+                              <span key={page} className="home-tab__pagination-ellipsis">
+                                …
+                              </span>
+                            );
+                          }
+                          return (
+                            <button
+                              key={page}
+                              className={`home-tab__pagination-number ${currentPage === page ? 'home-tab__pagination-number--active' : ''}`}
+                              onClick={() => setCurrentPage(page)}
+                              aria-label={`Page ${page}`}
+                              aria-current={currentPage === page ? 'page' : undefined}
+                            >
+                              {page}
+                            </button>
+                          );
+                        })}
+                        <button
+                          className="home-tab__pagination-btn"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          aria-label="Next page"
+                        >
+                          <Icon name="chevron-right" size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Cloud audio files tab - show sign-in prompt if not signed in */}
               {activeSection === 'cloud-audio' && !isSignedIn && (
                 <div className="home-tab__empty-state">
@@ -217,6 +587,122 @@ export function HomeTab({
                       Sign in
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {/* Cloud audio files tab - show audio files when signed in */}
+              {activeSection === 'cloud-audio' && isSignedIn && (
+                <div className="home-tab__projects-scroll-container">
+                  {isRefreshing ? (
+                    <Spinner />
+                  ) : (
+                    <>
+                      {viewMode === 'grid' ? (
+                        <div className="home-tab__projects-grid">
+                          {currentAudioFiles.map((audioFile, index) => (
+                            <AudioFileThumbnail
+                              key={`${audioFile.title}-${index}`}
+                              title={audioFile.title}
+                              dateText={audioFile.dateText}
+                              duration={audioFile.duration}
+                              isCloudFile
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                    <div className="home-tab__projects-list">
+                      <div className="home-tab__list-header">
+                        <div className="home-tab__list-header-cell">Name</div>
+                        <div className="home-tab__list-header-cell"></div>
+                        <div className="home-tab__list-header-cell">Modified</div>
+                        <div className="home-tab__list-header-cell">Size</div>
+                      </div>
+                      {currentAudioFiles.map((audioFile, index) => {
+                        // Static waveform pattern
+                        const bars = [
+                          0.4, 0.6, 0.8, 0.9, 0.7, 0.5, 0.6, 0.8, 0.95, 0.85,
+                          0.7, 0.6, 0.5, 0.7, 0.9, 1.0, 0.95, 0.8, 0.6, 0.5
+                        ];
+
+                        return (
+                          <button key={`${audioFile.title}-${index}`} className="home-tab__list-item">
+                            <div className="home-tab__list-item-name">
+                              <div className="home-tab__list-item-thumbnail">
+                                <svg width="100%" height="100%" viewBox="0 0 64 48" preserveAspectRatio="none">
+                                  {bars.map((height, i) => {
+                                    const x = (i / bars.length) * 64;
+                                    const barHeight = height * 40;
+                                    const y = (48 - barHeight) / 2;
+                                    return (
+                                      <rect
+                                        key={i}
+                                        x={x}
+                                        y={y}
+                                        width={64 / bars.length - 0.5}
+                                        height={barHeight}
+                                        fill="#677CE4"
+                                        opacity={0.7}
+                                      />
+                                    );
+                                  })}
+                                </svg>
+                              </div>
+                              <div className="home-tab__list-item-title">{audioFile.title}</div>
+                            </div>
+                            <div className="home-tab__list-item-cloud-badge">
+                              <Icon name="cloud-filled" size={12} />
+                            </div>
+                            <div className="home-tab__list-item-modified">{audioFile.dateText}</div>
+                            <div className="home-tab__list-item-size">{audioFile.size}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {audioTotalPages > 1 && (
+                    <div className="home-tab__pagination-container">
+                      <div className="home-tab__pagination">
+                        <button
+                          className="home-tab__pagination-btn"
+                          onClick={() => setAudioPage(p => Math.max(1, p - 1))}
+                          disabled={audioPage === 1}
+                          aria-label="Previous page"
+                        >
+                          <Icon name="chevron-left" size={16} />
+                        </button>
+                        {getPageNumbers(audioTotalPages, audioPage).map((page, index) => {
+                          if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                            return (
+                              <span key={page} className="home-tab__pagination-ellipsis">
+                                …
+                              </span>
+                            );
+                          }
+                          return (
+                            <button
+                              key={page}
+                              className={`home-tab__pagination-number ${audioPage === page ? 'home-tab__pagination-number--active' : ''}`}
+                              onClick={() => setAudioPage(page)}
+                              aria-label={`Page ${page}`}
+                              aria-current={audioPage === page ? 'page' : undefined}
+                            >
+                              {page}
+                            </button>
+                          );
+                        })}
+                        <button
+                          className="home-tab__pagination-btn"
+                          onClick={() => setAudioPage(p => Math.min(audioTotalPages, p + 1))}
+                          disabled={audioPage === audioTotalPages}
+                          aria-label="Next page"
+                        >
+                          <Icon name="chevron-right" size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                    </>
+                  )}
                 </div>
               )}
             </>
@@ -249,9 +735,11 @@ export function HomeTab({
 
         {/* Bottom Actions */}
         <div className="home-tab__footer">
-          <Button variant="secondary" size="default">
-            Project manager (online)
-          </Button>
+          <div className="home-tab__footer-left">
+            <Button variant="secondary" size="default">
+              Project manager (online)
+            </Button>
+          </div>
           <div className="home-tab__footer-right">
             <Button variant="secondary" size="default" onClick={onNewProject}>
               New

@@ -395,10 +395,11 @@ export function useTimeSelection({
       // Start creating new selection
       const trackIndex = yToTrackIndex(y, tracks, initialGap, trackGap, defaultTrackHeight);
 
-      // Set focus and select the track where we start dragging
+      // Set focus where we start dragging
+      // Don't change selection here - let the click handler handle it (to support Shift+Click)
       if (trackIndex >= 0 && trackIndex < tracks.length) {
         onFocusedTrackChange(trackIndex);
-        onSelectedTracksChange([trackIndex]); // Also select the track on mousedown
+        // onSelectedTracksChange([trackIndex]); // REMOVED: Let click handler manage selection
       }
 
       // Check if starting inside a spectral-enabled clip (or explicitly allowed via parameter)

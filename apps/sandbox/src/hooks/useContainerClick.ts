@@ -13,6 +13,9 @@ interface ContainerClickConfig {
   TOP_GAP: number;
   TRACK_GAP: number;
   DEFAULT_TRACK_HEIGHT: number;
+  selectedTrackIndices: number[];
+  selectionAnchor: number | null;
+  setSelectionAnchor: (anchor: number | null) => void;
 }
 
 /**
@@ -34,18 +37,22 @@ export function useContainerClick({
   TOP_GAP,
   TRACK_GAP,
   DEFAULT_TRACK_HEIGHT,
+  selectedTrackIndices,
+  selectionAnchor,
+  setSelectionAnchor,
 }: ContainerClickConfig) {
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // First, call the containerProps onClick handler to preserve drag prevention logic
-    if (containerPropsOnClick) {
-      containerPropsOnClick(e);
-    }
-
     // Only update playhead and track focus if we're not dragging
     const wasJustDragging = selectionWasJustDragging();
-    if (wasJustDragging) {
-      return; // Skip everything - focus was already set during the drag
+    if (wasJustDragging && !e.shiftKey) {
+      return; // Skip everything - focus was already set during the drag (unless Shift is held)
+    }
+
+    // Skip the containerProps onClick handler if Shift is held
+    // (it would change selection before our Shift+Click logic runs)
+    if (containerPropsOnClick && !e.shiftKey) {
+      containerPropsOnClick(e);
     }
 
     if (!containerRef.current) return;
@@ -75,8 +82,35 @@ export function useContainerClick({
       // Clicked in empty space below tracks - maintain focus for vertical ruler
       // Don't change anything - keep current focused track and selection
     } else if (clickedTrackIndex !== null) {
-      // Clicked on a track - set it as focused
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
+      console.log('[useContainerClick] Clicked track:', clickedTrackIndex, 'Shift:', e.shiftKey);
+      console.log('[useContainerClick] Current selection:', selectedTrackIndices);
+      console.log('[useContainerClick] Current anchor:', selectionAnchor);
+
+      // Clicked on a track - handle selection based on Shift key
+      if (e.shiftKey) {
+        // Shift+Click: Range selection
+        const anchor = selectionAnchor ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : clickedTrackIndex);
+        console.log('[useContainerClick] Using anchor:', anchor);
+        if (selectionAnchor === null) {
+          setSelectionAnchor(anchor);
+        }
+
+        // Calculate range selection from anchor to clicked track
+        const start = Math.min(anchor, clickedTrackIndex);
+        const end = Math.max(anchor, clickedTrackIndex);
+        const newSelection: number[] = [];
+        for (let i = start; i <= end; i++) {
+          newSelection.push(i);
+        }
+        console.log('[useContainerClick] New selection:', newSelection);
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      } else {
+        // Normal click - select only clicked track
+        console.log('[useContainerClick] Normal click - selecting only:', clickedTrackIndex);
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
+        // Clear anchor
+        setSelectionAnchor(null);
+      }
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
       onTrackFocusChange?.(clickedTrackIndex, true);
     }

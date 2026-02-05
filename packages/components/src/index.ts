@@ -73,6 +73,7 @@ export * from './TabList';
 export * from './HomeTab';
 export * from './SearchField';
 export * from './ProjectThumbnail';
+export * from './AudioFileThumbnail';
 export * from './PreferenceThumbnail';
 export * from './ShortcutTableRow';
 export * from './ShortcutTableHeader';

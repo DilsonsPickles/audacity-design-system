@@ -4,6 +4,7 @@
 
 .home-tab {
   display: flex;
+  width: 100%;
   height: 100%;
   background-color: var(--home-tab-bg);
   font-family: 'Inter', sans-serif;
@@ -61,6 +62,7 @@
 /* Main Content Area */
 .home-tab__main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -72,6 +74,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* Header */
@@ -79,7 +82,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 32px 16px 32px;
+  padding: 32px 32px 40px 32px;
 }
 
 .home-tab__title {
@@ -96,7 +99,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
+  padding: 0 32px 16px 32px;
 }
 
 .home-tab__tabs-left {
@@ -234,16 +237,157 @@
   gap: 12px;
 }
 
+/* Projects Scroll Container */
+.home-tab__projects-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--home-tab-projects-grid-bg);
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.home-tab__projects-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
 /* Projects Grid */
 .home-tab__projects-grid {
-  flex: 1;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 32px;
-  padding: 40px 32px;
-  overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, 280px);
+  gap: 24px;
+  padding: 0 32px 0 32px;
   align-content: start;
-  background-color: var(--home-tab-projects-grid-bg);
+}
+
+/* Projects List */
+.home-tab__projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 32px 32px 32px;
+}
+
+/* List Header */
+.home-tab__list-header {
+  display: grid;
+  grid-template-columns: 1fr 80px 220px 180px;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default, #D4D5D9);
+  background: transparent;
+}
+
+.home-tab__list-header-cell {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--foreground-text-secondary, #6C7079);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* List Item */
+.home-tab__list-item {
+  display: grid;
+  grid-template-columns: 1fr 80px 220px 180px;
+  gap: 16px;
+  align-items: center;
+  padding: 0 16px;
+  height: 64px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  border-bottom: 1px solid var(--border-default, #D4D5D9);
+  transition: background-color 0.15s ease;
+}
+
+.home-tab__list-item:hover {
+  background-color: var(--background-surface-hover, rgba(20, 21, 26, 0.05));
+}
+
+/* New Project List Item - Full Width */
+.home-tab__list-item--new-project {
+  display: flex;
+  grid-template-columns: unset;
+  border-bottom: none;
+}
+
+/* Name Column */
+.home-tab__list-item-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  position: relative;
+}
+
+.home-tab__list-item-thumbnail {
+  width: 64px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: var(--background-surface-elevated, #E3E3E8);
+  border: 1px solid var(--border-default, #D4D5D9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.home-tab__list-item-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-tab__list-item-thumbnail svg {
+  width: 50%;
+  height: 50%;
+  max-width: 32px;
+  max-height: 32px;
+}
+
+.home-tab__list-item-title {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--foreground-text-primary, #14151A);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cloud Badge - in its own column */
+.home-tab__list-item-cloud-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background-color: var(--blue-600, #66A3FF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground-icon-inverse, #F4F5F9);
+  flex-shrink: 0;
+  justify-self: center;
+}
+
+/* Modified Column */
+.home-tab__list-item-modified {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--foreground-text-primary, #14151A);
+}
+
+/* Size Column */
+.home-tab__list-item-size {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--foreground-text-primary, #14151A);
 }
 
 /* Footer */
@@ -256,8 +400,107 @@
   background-color: var(--home-tab-footer-bg);
 }
 
+.home-tab__footer-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
 .home-tab__footer-right {
   display: flex;
   gap: 8px;
+}
+
+/* Pagination */
+.home-tab__pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 24px 32px 40px 32px;
+}
+
+.home-tab__pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-tab__pagination-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--home-tab-card-text);
+  user-select: none;
+}
+
+.home-tab__pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background-color: rgba(194, 196, 207, 0.7);
+  cursor: pointer;
+  color: var(--home-tab-card-text);
+  transition: background-color 0.15s ease;
+}
+
+.home-tab__pagination-btn:hover:not(:disabled) {
+  background-color: rgba(194, 196, 207, 0.85);
+}
+
+.home-tab__pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.home-tab__pagination-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background-color: rgba(194, 196, 207, 0.7);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--home-tab-card-text);
+  transition: background-color 0.15s ease;
+}
+
+.home-tab__pagination-number:hover {
+  background-color: rgba(194, 196, 207, 0.85);
+}
+
+.home-tab__pagination-number--active {
+  background-color: rgba(103, 124, 228, 0.5);
+  font-weight: 600;
+}
+
+.home-tab__pagination-number--active:hover {
+  background-color: rgba(103, 124, 228, 0.6);
+}
+
+/* Spinner */
+.home-tab__spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 1;
+  min-height: 400px;
 }
 

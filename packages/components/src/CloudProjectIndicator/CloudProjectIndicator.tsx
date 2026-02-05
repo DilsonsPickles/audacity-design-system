@@ -1,7 +1,10 @@
 /**
  * CloudProjectIndicator Component
  *
- * Displays a cloud icon to indicate that the current project is synced to the cloud
+ * Displays a cloud icon badge to indicate that the current project is synced to the cloud
+ * - 24px circular blue badge
+ * - 16px white cloud icon centered
+ * - Drop shadow for elevation
  */
 
 import React from 'react';
@@ -9,7 +12,7 @@ import './CloudProjectIndicator.css';
 
 export interface CloudProjectIndicatorProps {
   /**
-   * Upload state - when true, shows upload icon (EF25) instead of cloud (F435)
+   * Upload state - when true, shows upload icon instead of cloud
    */
   isUploading?: boolean;
   /**
@@ -19,13 +22,14 @@ export interface CloudProjectIndicatorProps {
 }
 
 /**
- * CloudProjectIndicator - Shows a cloud icon for cloud-synced projects
+ * CloudProjectIndicator - Shows a cloud icon badge for cloud-synced projects
  */
 export function CloudProjectIndicator({
   isUploading = false,
   className = '',
 }: CloudProjectIndicatorProps) {
-  const icon = isUploading ? '\uEF25' : '\uF435';
+  // F454 = cloud-filled, EF25 = cloud-outline (for uploading state)
+  const icon = isUploading ? '\uEF25' : '\uF454';
 
   return (
     <div className={`cloud-project-indicator ${className}`}>

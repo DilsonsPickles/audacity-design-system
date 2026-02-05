@@ -22,6 +22,7 @@ export type IconName =
   | 'zoom-out'
   | 'automation'
   | 'cloud'
+  | 'cloud-filled'
   | 'cloud-sync'
   | 'export'
   | 'copy'
@@ -53,7 +54,12 @@ export type IconName =
   | 'zoom-to-selection'
   | 'zoom-to-fit'
   | 'power'
-  | 'save';
+  | 'save'
+  | 'grid-view'
+  | 'list-view'
+  | 'lock'
+  | 'eye'
+  | 'refresh';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -76,6 +82,7 @@ const ICON_MAP: Record<IconName, string> = {
   'zoom-out': '\uEF16',
   automation: '\uF45C',
   cloud: '\uEF25',
+  'cloud-filled': '\uF454',
   'cloud-sync': '\uEF25',
   export: '\uEF24',
   copy: '\uF398',
@@ -108,6 +115,11 @@ const ICON_MAP: Record<IconName, string> = {
   'zoom-to-fit': '\uF439',
   power: '\uF38F',
   save: '\uEF29',
+  'grid-view': '\uF35B',
+  'list-view': '\uF3AA',
+  lock: '\uF375',
+  eye: '\uEF23',
+  refresh: '\uF358',
 };
 
 export interface IconProps {

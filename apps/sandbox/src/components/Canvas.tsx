@@ -277,6 +277,9 @@ export function Canvas({
     TOP_GAP,
     TRACK_GAP,
     DEFAULT_TRACK_HEIGHT,
+    selectedTrackIndices,
+    selectionAnchor,
+    setSelectionAnchor,
   });
 
   // Clip and label mouse down handler - extracted to custom hook
@@ -347,23 +350,56 @@ export function Canvas({
                 overflow: 'visible', // Allow focus outline to show
               }}
               onClick={(e) => {
-                // Don't handle clicks if we just finished dragging (creating time selection)
-                if (selection.selection.wasJustDragging()) {
-                  return;
-                }
-
                 // Only handle clicks on empty space (not on clips or labels)
                 // Check if click was on TrackNew background or wrapper
                 const target = e.target as HTMLElement;
                 const isTrackBackground = target.classList?.contains('track') || e.target === e.currentTarget;
 
                 if (isTrackBackground) {
+                  // Handle Shift+Click for range selection FIRST (before drag check)
+                  // This allows Shift+Click to work even after setting playhead
+                  if (e.shiftKey) {
+                    // Deselect all clips
+                    dispatch({ type: 'DESELECT_ALL_CLIPS' });
+
+                    // Use the first selected track as anchor if no anchor is set
+                    const anchor = selectionAnchor ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : trackIndex);
+                    if (selectionAnchor === null && setSelectionAnchor) {
+                      setSelectionAnchor(anchor);
+                    }
+
+                    // Calculate range selection from anchor to clicked track
+                    const start = Math.min(anchor, trackIndex);
+                    const end = Math.max(anchor, trackIndex);
+                    const newSelection: number[] = [];
+                    for (let i = start; i <= end; i++) {
+                      newSelection.push(i);
+                    }
+                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+
+                    // Set this track as focused
+                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+                    // Clear label selections
+                    dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
+                    return; // Done with Shift+Click handling
+                  }
+
+                  // Don't handle regular clicks if we just finished dragging (creating time selection)
+                  if (selection.selection.wasJustDragging()) {
+                    return;
+                  }
+
+                  // Regular click handling
                   // Deselect all clips
                   dispatch({ type: 'DESELECT_ALL_CLIPS' });
-                  // Select this track (only if not shift-clicking - shift-click is handled by useAudioSelection)
-                  if (!e.shiftKey) {
-                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+
+                  // Normal click - select only this track
+                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
+                  // Clear anchor
+                  if (setSelectionAnchor) {
+                    setSelectionAnchor(null);
                   }
+
                   // Set this track as focused
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
                   // Clear label selections
@@ -451,13 +487,18 @@ export function Canvas({
                   // Check if target track exists
                   if (targetTrackIndex < 0 || targetTrackIndex >= tracks.length) return;
 
-                  // Focus the first clip on the target track
+                  // Focus the first clip on the target track and scroll into view
                   setTimeout(() => {
                     const targetTrack = document.querySelector(`[data-track-index="${targetTrackIndex}"]`);
                     if (targetTrack) {
                       const firstClip = targetTrack.querySelector('[role="button"]') as HTMLElement;
                       if (firstClip) {
                         firstClip.focus();
+                        // Scroll the track into view
+                        targetTrack.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'nearest',
+                        });
                       }
                     }
                   }, 0);

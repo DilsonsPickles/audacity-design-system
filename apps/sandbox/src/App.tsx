@@ -169,11 +169,11 @@ function CanvasDemoContent() {
   const [scrollX, setScrollX] = React.useState(0);
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
-  const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('project');
+  const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
-  const [isSignedIn, setIsSignedIn] = React.useState(false);
+  const [isSignedIn, setIsSignedIn] = React.useState(true);
   const [isCreateAccountOpen, setIsCreateAccountOpen] = React.useState(false);
   const [isSyncingDialogOpen, setIsSyncingDialogOpen] = React.useState(false);
   const [isCloudProject, setIsCloudProject] = React.useState(false);
@@ -2496,13 +2496,15 @@ function CanvasDemoContent() {
       )}
 
       {activeMenuItem === 'home' ? (
-        <HomeTab
-          isSignedIn={isSignedIn}
-          onCreateAccount={() => setIsCreateAccountOpen(true)}
-          onSignIn={() => setIsShareDialogOpen(true)}
-          onNewProject={() => console.log('New project')}
-          onOpenOther={() => console.log('Open other')}
-        />
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <HomeTab
+            isSignedIn={isSignedIn}
+            onCreateAccount={() => setIsCreateAccountOpen(true)}
+            onSignIn={() => setIsShareDialogOpen(true)}
+            onNewProject={() => console.log('New project')}
+            onOpenOther={() => console.log('Open other')}
+          />
+        </div>
       ) : (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* Effects Panel - Hidden on export tab */}
@@ -2781,6 +2783,11 @@ function CanvasDemoContent() {
                       const panels = document.querySelectorAll('[aria-label*="track controls"]');
                       if (panels[nextIndex]) {
                         (panels[nextIndex] as HTMLElement).focus();
+                        // Scroll the track into view
+                        (panels[nextIndex] as HTMLElement).scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'nearest',
+                        });
                       }
                     }
                   }}
@@ -2812,6 +2819,11 @@ function CanvasDemoContent() {
                       const panels = document.querySelectorAll('[aria-label*="track controls"]');
                       if (panels[nextIndex]) {
                         (panels[nextIndex] as HTMLElement).focus();
+                        // Scroll the track into view
+                        (panels[nextIndex] as HTMLElement).scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'nearest',
+                        });
                       }
                     }
                   }}
@@ -2853,6 +2865,8 @@ function CanvasDemoContent() {
                   onClick={() => {
                     dispatch({ type: 'SELECT_TRACK', payload: index });
                     setKeyboardFocusedTrack(index);
+                    // Clear selection anchor on normal click
+                    setSelectionAnchor(null);
                   }}
                   onToggleSelection={() => {
                     // Cmd/Ctrl+Click: Toggle track selection
@@ -2868,21 +2882,21 @@ function CanvasDemoContent() {
                     }
                   }}
                   onRangeSelection={() => {
-                    // Shift+Click: Select range from last selected track to this track
-                    if (state.selectedTrackIndices.length === 0) {
-                      // No existing selection, just select this track
-                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [index] });
-                      return;
+                    // Shift+Click: Select range using anchor-based selection
+                    // Use the first selected track as anchor if no anchor is set
+                    const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : index);
+                    if (selectionAnchor === null) {
+                      setSelectionAnchor(anchor);
                     }
 
-                    // Find the last selected track (highest index in current selection)
-                    const lastSelected = Math.max(...state.selectedTrackIndices);
-                    const start = Math.min(lastSelected, index);
-                    const end = Math.max(lastSelected, index);
-
-                    // Create array of all indices between start and end (inclusive)
-                    const rangeSelection = Array.from({ length: end - start + 1 }, (_, i) => start + i);
-                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: rangeSelection });
+                    // Calculate range selection from anchor to clicked track
+                    const start = Math.min(anchor, index);
+                    const end = Math.max(anchor, index);
+                    const newSelection: number[] = [];
+                    for (let i = start; i <= end; i++) {
+                      newSelection.push(i);
+                    }
+                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
                   }}
                   onTabOut={() => {
                     // Find the first clip in THIS track specifically
