@@ -24,6 +24,10 @@ export interface AudioFileThumbnailProps {
    */
   onClick?: () => void;
   /**
+   * Context menu button click handler
+   */
+  onContextMenu?: (e: React.MouseEvent) => void;
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -77,29 +81,45 @@ export function AudioFileThumbnail({
   duration = '0:00',
   isCloudFile = false,
   onClick,
+  onContextMenu,
   className = '',
 }: AudioFileThumbnailProps) {
   return (
-    <button
-      className={`audio-file-thumbnail ${className}`}
-      onClick={onClick}
-      type="button"
-    >
-      <div className="audio-file-thumbnail__image">
-        <WaveformVisual />
-        {isCloudFile && (
-          <div className="audio-file-thumbnail__cloud-badge">
-            <Icon name="cloud-filled" size={16} />
+    <div className={`audio-file-thumbnail ${className}`}>
+      <button
+        className="audio-file-thumbnail__button"
+        onClick={onClick}
+        type="button"
+      >
+        <div className="audio-file-thumbnail__image">
+          <WaveformVisual />
+          {isCloudFile && (
+            <div className="audio-file-thumbnail__cloud-badge">
+              <Icon name="cloud-filled" size={16} />
+            </div>
+          )}
+          {onContextMenu && (
+            <button
+              className="audio-file-thumbnail__context-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onContextMenu(e);
+              }}
+              type="button"
+              aria-label="More options"
+            >
+              <Icon name="menu" size={16} />
+            </button>
+          )}
+          <div className="audio-file-thumbnail__duration">
+            {duration}
           </div>
-        )}
-        <div className="audio-file-thumbnail__duration">
-          {duration}
         </div>
-      </div>
-      <div className="audio-file-thumbnail__info">
-        <div className="audio-file-thumbnail__title">{title}</div>
-        <div className="audio-file-thumbnail__date">{dateText}</div>
-      </div>
-    </button>
+        <div className="audio-file-thumbnail__info">
+          <div className="audio-file-thumbnail__title">{title}</div>
+          <div className="audio-file-thumbnail__date">{dateText}</div>
+        </div>
+      </button>
+    </div>
   );
 }

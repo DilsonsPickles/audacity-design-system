@@ -39,6 +39,10 @@ export interface ProjectThumbnailProps {
    */
   onClick?: () => void;
   /**
+   * Context menu button click handler
+   */
+  onContextMenu?: (e: React.MouseEvent) => void;
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -58,49 +62,78 @@ export function ProjectThumbnail({
   isNewProject = false,
   isCloudProject = false,
   onClick,
+  onContextMenu,
   className = '',
 }: ProjectThumbnailProps) {
   const [imageLoaded, setImageLoaded] = React.useState(false);
 
+  // Generate small thumbnail URL for lazy loading placeholder
+  // Replaces the size in the URL (e.g., /280/170 -> /28/17)
+  const smallThumbnailUrl = thumbnailUrl?.replace(/\/(\d+)\/(\d+)/, (match, w, h) => {
+    const width = Math.floor(parseInt(w) / 10);
+    const height = Math.floor(parseInt(h) / 10);
+    return `/${width}/${height}`;
+  });
+
   return (
-    <button
-      className={`project-thumbnail ${isNewProject ? 'project-thumbnail--new' : ''} ${className}`}
-      onClick={onClick}
-      type="button"
-    >
-      <div className="project-thumbnail__image">
-        {isNewProject ? (
-          <Icon name="plus" size={40} className="project-thumbnail__plus-icon" />
-        ) : thumbnailUrl ? (
-          <>
-            {!imageLoaded && (
-              <div className="project-thumbnail__placeholder">
-                <AudacityLogo />
-              </div>
-            )}
-            <img
-              src={thumbnailUrl}
-              alt={title}
-              className="project-thumbnail__img"
-              onLoad={() => setImageLoaded(true)}
-              style={{ display: imageLoaded ? 'block' : 'none' }}
-            />
-          </>
-        ) : (
-          <div className="project-thumbnail__placeholder">
-            <AudacityLogo />
-          </div>
-        )}
-        {isCloudProject && !isNewProject && (
-          <div className="project-thumbnail__cloud-badge">
-            <Icon name="cloud-filled" size={16} />
-          </div>
-        )}
-      </div>
-      <div className="project-thumbnail__info">
-        <div className="project-thumbnail__title">{title}</div>
-        {!isNewProject && <div className="project-thumbnail__date">{dateText}</div>}
-      </div>
-    </button>
+    <div className={`project-thumbnail ${isNewProject ? 'project-thumbnail--new' : ''} ${className}`}>
+      <button
+        className="project-thumbnail__button"
+        onClick={onClick}
+        type="button"
+      >
+        <div className="project-thumbnail__image">
+          {isNewProject ? (
+            <Icon name="plus" size={40} className="project-thumbnail__plus-icon" />
+          ) : thumbnailUrl ? (
+            <>
+              {/* Small blurred thumbnail as placeholder */}
+              {!imageLoaded && smallThumbnailUrl && (
+                <img
+                  src={smallThumbnailUrl}
+                  alt=""
+                  className="project-thumbnail__img project-thumbnail__img--placeholder"
+                  aria-hidden="true"
+                />
+              )}
+              {/* Full resolution image */}
+              <img
+                src={thumbnailUrl}
+                alt={title}
+                className="project-thumbnail__img"
+                onLoad={() => setImageLoaded(true)}
+                style={{ display: imageLoaded ? 'block' : 'none' }}
+              />
+            </>
+          ) : (
+            <div className="project-thumbnail__placeholder">
+              <AudacityLogo />
+            </div>
+          )}
+          {isCloudProject && !isNewProject && (
+            <div className="project-thumbnail__cloud-badge">
+              <Icon name="cloud-filled" size={16} />
+            </div>
+          )}
+          {onContextMenu && !isNewProject && (
+            <button
+              className="project-thumbnail__context-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onContextMenu(e);
+              }}
+              type="button"
+              aria-label="More options"
+            >
+              <Icon name="menu" size={16} />
+            </button>
+          )}
+        </div>
+        <div className="project-thumbnail__info">
+          <div className="project-thumbnail__title">{title}</div>
+          {!isNewProject && <div className="project-thumbnail__date">{dateText}</div>}
+        </div>
+      </button>
+    </div>
   );
 }

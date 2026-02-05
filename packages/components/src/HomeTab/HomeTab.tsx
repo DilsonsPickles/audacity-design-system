@@ -5,6 +5,8 @@ import { ProjectThumbnail } from '../ProjectThumbnail';
 import { AudioFileThumbnail } from '../AudioFileThumbnail';
 import { Button } from '../Button';
 import { useTheme } from '../ThemeProvider';
+import { ContextMenu } from '../ContextMenu';
+import { ContextMenuItem } from '../ContextMenuItem';
 import './HomeTab.css';
 
 export interface HomeTabProps {
@@ -34,6 +36,7 @@ export function HomeTab({
   const [audioPage, setAudioPage] = React.useState(1);
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; itemId: string; isCloudItem: boolean } | null>(null);
   const itemsPerPage = 12;
 
   const handleRefresh = () => {
@@ -42,6 +45,7 @@ export function HomeTab({
       setIsRefreshing(false);
     }, 5000);
   };
+
 
   // Audacity logo SVG for project thumbnails
   const AudacityLogo = () => (
@@ -347,27 +351,72 @@ export function HomeTab({
                           dateText="TODAY"
                           thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
                           isCloudProject
+                          onContextMenu={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setContextMenu({
+                              x: rect.right,
+                              y: rect.bottom,
+                              itemId: 'new-recent-cloud-0',
+                              isCloudItem: true,
+                            });
+                          }}
                         />
                       )}
                       <ProjectThumbnail
                         title="New Project 2025-10-21 10-57-03-23 03"
                         dateText="TODAY"
                         thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                        onContextMenu={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setContextMenu({
+                            x: rect.right,
+                            y: rect.bottom,
+                            itemId: 'new-recent-local-0',
+                            isCloudItem: false,
+                          });
+                        }}
                       />
                       <ProjectThumbnail
                         title="New Project 2025-10-21 10-57-03-23 03"
                         dateText="TODAY"
                         thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                        onContextMenu={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setContextMenu({
+                            x: rect.right,
+                            y: rect.bottom,
+                            itemId: 'new-recent-local-1',
+                            isCloudItem: false,
+                          });
+                        }}
                       />
                       <ProjectThumbnail
                         title="New Project 2025-10-21 10-57-03-23 03"
                         dateText="TODAY"
                         thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                        onContextMenu={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setContextMenu({
+                            x: rect.right,
+                            y: rect.bottom,
+                            itemId: 'new-recent-local-2',
+                            isCloudItem: false,
+                          });
+                        }}
                       />
                       <ProjectThumbnail
                         title="New Project 2025-10-21 10-57-03-23 03"
                         dateText="TODAY"
                         thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
+                        onContextMenu={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setContextMenu({
+                            x: rect.right,
+                            y: rect.bottom,
+                            itemId: 'new-recent-local-3',
+                            isCloudItem: false,
+                          });
+                        }}
                       />
                     </div>
                   ) : (
@@ -389,7 +438,41 @@ export function HomeTab({
                         <div className="home-tab__list-header-cell">Modified</div>
                         <div className="home-tab__list-header-cell">Size</div>
                       </div>
+                      <div className="home-tab__list-items">
                       {isSignedIn && (
+                        <div className="home-tab__list-item-wrapper">
+                          <button className="home-tab__list-item">
+                            <div className="home-tab__list-item-name">
+                              <div className="home-tab__list-item-thumbnail">
+                                <AudacityLogo />
+                              </div>
+                              <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
+                            </div>
+                            <div className="home-tab__list-item-cloud-badge">
+                              <Icon name="cloud-filled" size={12} />
+                            </div>
+                            <div className="home-tab__list-item-modified">TODAY</div>
+                            <div className="home-tab__list-item-size">19 KB</div>
+                          </button>
+                          <button
+                            className="home-tab__list-item-context-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setContextMenu({
+                                x: rect.right,
+                                y: rect.bottom,
+                                itemId: 'new-recent-cloud-list-0',
+                                isCloudItem: true,
+                              });
+                            }}
+                            aria-label="More options"
+                          >
+                            <Icon name="menu" size={16} />
+                          </button>
+                        </div>
+                      )}
+                      <div className="home-tab__list-item-wrapper">
                         <button className="home-tab__list-item">
                           <div className="home-tab__list-item-name">
                             <div className="home-tab__list-item-thumbnail">
@@ -397,57 +480,115 @@ export function HomeTab({
                             </div>
                             <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
                           </div>
-                          <div className="home-tab__list-item-cloud-badge">
-                            <Icon name="cloud-filled" size={12} />
-                          </div>
+                          <div></div>
                           <div className="home-tab__list-item-modified">TODAY</div>
                           <div className="home-tab__list-item-size">19 KB</div>
                         </button>
-                      )}
-                      <button className="home-tab__list-item">
-                        <div className="home-tab__list-item-name">
-                          <div className="home-tab__list-item-thumbnail">
-                            <AudacityLogo />
+                        <button
+                          className="home-tab__list-item-context-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setContextMenu({
+                              x: rect.right,
+                              y: rect.bottom,
+                              itemId: 'new-recent-local-list-0',
+                              isCloudItem: false,
+                            });
+                          }}
+                          aria-label="More options"
+                        >
+                          <Icon name="menu" size={16} />
+                        </button>
+                      </div>
+                      <div className="home-tab__list-item-wrapper">
+                        <button className="home-tab__list-item">
+                          <div className="home-tab__list-item-name">
+                            <div className="home-tab__list-item-thumbnail">
+                              <AudacityLogo />
+                            </div>
+                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
                           </div>
-                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                        </div>
-                        <div></div>
-                        <div className="home-tab__list-item-modified">TODAY</div>
-                        <div className="home-tab__list-item-size">19 KB</div>
-                      </button>
-                      <button className="home-tab__list-item">
-                        <div className="home-tab__list-item-name">
-                          <div className="home-tab__list-item-thumbnail">
-                            <AudacityLogo />
+                          <div></div>
+                          <div className="home-tab__list-item-modified">TODAY</div>
+                          <div className="home-tab__list-item-size">19 KB</div>
+                        </button>
+                        <button
+                          className="home-tab__list-item-context-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setContextMenu({
+                              x: rect.right,
+                              y: rect.bottom,
+                              itemId: 'new-recent-local-list-1',
+                              isCloudItem: false,
+                            });
+                          }}
+                          aria-label="More options"
+                        >
+                          <Icon name="menu" size={16} />
+                        </button>
+                      </div>
+                      <div className="home-tab__list-item-wrapper">
+                        <button className="home-tab__list-item">
+                          <div className="home-tab__list-item-name">
+                            <div className="home-tab__list-item-thumbnail">
+                              <AudacityLogo />
+                            </div>
+                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
                           </div>
-                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                        </div>
-                        <div></div>
-                        <div className="home-tab__list-item-modified">TODAY</div>
-                        <div className="home-tab__list-item-size">19 KB</div>
-                      </button>
-                      <button className="home-tab__list-item">
-                        <div className="home-tab__list-item-name">
-                          <div className="home-tab__list-item-thumbnail">
-                            <AudacityLogo />
+                          <div></div>
+                          <div className="home-tab__list-item-modified">TODAY</div>
+                          <div className="home-tab__list-item-size">19 KB</div>
+                        </button>
+                        <button
+                          className="home-tab__list-item-context-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setContextMenu({
+                              x: rect.right,
+                              y: rect.bottom,
+                              itemId: 'new-recent-local-list-2',
+                              isCloudItem: false,
+                            });
+                          }}
+                          aria-label="More options"
+                        >
+                          <Icon name="menu" size={16} />
+                        </button>
+                      </div>
+                      <div className="home-tab__list-item-wrapper">
+                        <button className="home-tab__list-item">
+                          <div className="home-tab__list-item-name">
+                            <div className="home-tab__list-item-thumbnail">
+                              <AudacityLogo />
+                            </div>
+                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
                           </div>
-                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                        </div>
-                        <div></div>
-                        <div className="home-tab__list-item-modified">TODAY</div>
-                        <div className="home-tab__list-item-size">19 KB</div>
-                      </button>
-                      <button className="home-tab__list-item">
-                        <div className="home-tab__list-item-name">
-                          <div className="home-tab__list-item-thumbnail">
-                            <AudacityLogo />
-                          </div>
-                          <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                        </div>
-                        <div></div>
-                        <div className="home-tab__list-item-modified">TODAY</div>
-                        <div className="home-tab__list-item-size">19 KB</div>
-                      </button>
+                          <div></div>
+                          <div className="home-tab__list-item-modified">TODAY</div>
+                          <div className="home-tab__list-item-size">19 KB</div>
+                        </button>
+                        <button
+                          className="home-tab__list-item-context-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setContextMenu({
+                              x: rect.right,
+                              y: rect.bottom,
+                              itemId: 'new-recent-local-list-3',
+                              isCloudItem: false,
+                            });
+                          }}
+                          aria-label="More options"
+                        >
+                          <Icon name="menu" size={16} />
+                        </button>
+                      </div>
+                      </div>
                     </div>
                   )}
                 </>
@@ -482,15 +623,27 @@ export function HomeTab({
                     <>
                       {viewMode === 'grid' ? (
                         <div className="home-tab__projects-grid">
-                          {currentProjects.map((project, index) => (
-                            <ProjectThumbnail
-                              key={`${project.title}-${index}`}
-                              title={project.title}
-                              dateText={project.dateText}
-                              thumbnailUrl={project.thumbnailUrl}
-                              isCloudProject
-                            />
-                          ))}
+                          {currentProjects.map((project, index) => {
+                            const itemId = `cloud-project-${index}`;
+                            return (
+                              <ProjectThumbnail
+                                key={`${project.title}-${index}`}
+                                title={project.title}
+                                dateText={project.dateText}
+                                thumbnailUrl={project.thumbnailUrl}
+                                isCloudProject
+                                onContextMenu={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setContextMenu({
+                                    x: rect.right,
+                                    y: rect.bottom,
+                                    itemId,
+                                    isCloudItem: true,
+                                  });
+                                }}
+                              />
+                            );
+                          })}
                         </div>
                       ) : (
                     <div className="home-tab__projects-list">
@@ -500,27 +653,57 @@ export function HomeTab({
                         <div className="home-tab__list-header-cell">Modified</div>
                         <div className="home-tab__list-header-cell">Size</div>
                       </div>
+                      <div className="home-tab__list-items">
                       {currentProjects.map((project, index) => {
+                        const itemId = `cloud-project-${index}`;
+
                         return (
-                          <button key={`${project.title}-${index}`} className="home-tab__list-item">
-                            <div className="home-tab__list-item-name">
-                              <div className="home-tab__list-item-thumbnail">
-                                {project.thumbnailUrl ? (
-                                  <img src={project.thumbnailUrl} alt={project.title} />
-                                ) : (
-                                  <AudacityLogo />
-                                )}
+                          <div
+                            key={`${project.title}-${index}`}
+                            className="home-tab__list-item-wrapper"
+                          >
+                            <button
+                              className="home-tab__list-item"
+                              onClick={() => {
+                                console.log('Open project:', itemId);
+                              }}
+                            >
+                              <div className="home-tab__list-item-name">
+                                <div className="home-tab__list-item-thumbnail">
+                                  {project.thumbnailUrl ? (
+                                    <img src={project.thumbnailUrl} alt={project.title} />
+                                  ) : (
+                                    <AudacityLogo />
+                                  )}
+                                </div>
+                                <div className="home-tab__list-item-title">{project.title}</div>
                               </div>
-                              <div className="home-tab__list-item-title">{project.title}</div>
-                            </div>
-                            <div className="home-tab__list-item-cloud-badge">
-                              <Icon name="cloud-filled" size={12} />
-                            </div>
-                            <div className="home-tab__list-item-modified">{project.dateText}</div>
-                            <div className="home-tab__list-item-size">{project.size}</div>
-                          </button>
+                              <div className="home-tab__list-item-cloud-badge">
+                                <Icon name="cloud-filled" size={12} />
+                              </div>
+                              <div className="home-tab__list-item-modified">{project.dateText}</div>
+                              <div className="home-tab__list-item-size">{project.size}</div>
+                            </button>
+                            <button
+                              className="home-tab__list-item-context-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setContextMenu({
+                                  x: rect.right,
+                                  y: rect.bottom,
+                                  itemId,
+                                  isCloudItem: true,
+                                });
+                              }}
+                              aria-label="More options"
+                            >
+                              <Icon name="menu" size={16} />
+                            </button>
+                          </div>
                         );
                       })}
+                      </div>
                     </div>
                   )}
                   {totalPages > 1 && (
@@ -599,15 +782,27 @@ export function HomeTab({
                     <>
                       {viewMode === 'grid' ? (
                         <div className="home-tab__projects-grid">
-                          {currentAudioFiles.map((audioFile, index) => (
-                            <AudioFileThumbnail
-                              key={`${audioFile.title}-${index}`}
-                              title={audioFile.title}
-                              dateText={audioFile.dateText}
-                              duration={audioFile.duration}
-                              isCloudFile
-                            />
-                          ))}
+                          {currentAudioFiles.map((audioFile, index) => {
+                            const itemId = `cloud-audio-${index}`;
+                            return (
+                              <AudioFileThumbnail
+                                key={`${audioFile.title}-${index}`}
+                                title={audioFile.title}
+                                dateText={audioFile.dateText}
+                                duration={audioFile.duration}
+                                isCloudFile
+                                onContextMenu={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setContextMenu({
+                                    x: rect.right,
+                                    y: rect.bottom,
+                                    itemId,
+                                    isCloudItem: true,
+                                  });
+                                }}
+                              />
+                            );
+                          })}
                         </div>
                       ) : (
                     <div className="home-tab__projects-list">
@@ -617,46 +812,75 @@ export function HomeTab({
                         <div className="home-tab__list-header-cell">Modified</div>
                         <div className="home-tab__list-header-cell">Size</div>
                       </div>
+                      <div className="home-tab__list-items">
                       {currentAudioFiles.map((audioFile, index) => {
                         // Static waveform pattern
                         const bars = [
                           0.4, 0.6, 0.8, 0.9, 0.7, 0.5, 0.6, 0.8, 0.95, 0.85,
                           0.7, 0.6, 0.5, 0.7, 0.9, 1.0, 0.95, 0.8, 0.6, 0.5
                         ];
+                        const itemId = `cloud-audio-${index}`;
 
                         return (
-                          <button key={`${audioFile.title}-${index}`} className="home-tab__list-item">
-                            <div className="home-tab__list-item-name">
-                              <div className="home-tab__list-item-thumbnail">
-                                <svg width="100%" height="100%" viewBox="0 0 64 48" preserveAspectRatio="none">
-                                  {bars.map((height, i) => {
-                                    const x = (i / bars.length) * 64;
-                                    const barHeight = height * 40;
-                                    const y = (48 - barHeight) / 2;
-                                    return (
-                                      <rect
-                                        key={i}
-                                        x={x}
-                                        y={y}
-                                        width={64 / bars.length - 0.5}
-                                        height={barHeight}
-                                        fill="#677CE4"
-                                        opacity={0.7}
-                                      />
-                                    );
-                                  })}
-                                </svg>
+                          <div
+                            key={`${audioFile.title}-${index}`}
+                            className="home-tab__list-item-wrapper"
+                          >
+                            <button
+                              className="home-tab__list-item"
+                              onClick={() => {
+                                console.log('Open audio file:', itemId);
+                              }}
+                            >
+                              <div className="home-tab__list-item-name">
+                                <div className="home-tab__list-item-thumbnail">
+                                  <svg width="100%" height="100%" viewBox="0 0 64 48" preserveAspectRatio="none">
+                                    {bars.map((height, i) => {
+                                      const x = (i / bars.length) * 64;
+                                      const barHeight = height * 40;
+                                      const y = (48 - barHeight) / 2;
+                                      return (
+                                        <rect
+                                          key={i}
+                                          x={x}
+                                          y={y}
+                                          width={64 / bars.length - 0.5}
+                                          height={barHeight}
+                                          fill="#677CE4"
+                                          opacity={0.7}
+                                        />
+                                      );
+                                    })}
+                                  </svg>
+                                </div>
+                                <div className="home-tab__list-item-title">{audioFile.title}</div>
                               </div>
-                              <div className="home-tab__list-item-title">{audioFile.title}</div>
-                            </div>
-                            <div className="home-tab__list-item-cloud-badge">
-                              <Icon name="cloud-filled" size={12} />
-                            </div>
-                            <div className="home-tab__list-item-modified">{audioFile.dateText}</div>
-                            <div className="home-tab__list-item-size">{audioFile.size}</div>
-                          </button>
+                              <div className="home-tab__list-item-cloud-badge">
+                                <Icon name="cloud-filled" size={12} />
+                              </div>
+                              <div className="home-tab__list-item-modified">{audioFile.dateText}</div>
+                              <div className="home-tab__list-item-size">{audioFile.size}</div>
+                            </button>
+                            <button
+                              className="home-tab__list-item-context-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setContextMenu({
+                                  x: rect.right,
+                                  y: rect.bottom,
+                                  itemId,
+                                  isCloudItem: true,
+                                });
+                              }}
+                              aria-label="More options"
+                            >
+                              <Icon name="menu" size={16} />
+                            </button>
+                          </div>
                         );
                       })}
+                      </div>
                     </div>
                   )}
                   {audioTotalPages > 1 && (
@@ -737,7 +961,7 @@ export function HomeTab({
         <div className="home-tab__footer">
           <div className="home-tab__footer-left">
             <Button variant="secondary" size="default">
-              Project manager (online)
+              View projects in audio.com
             </Button>
           </div>
           <div className="home-tab__footer-right">
@@ -750,6 +974,69 @@ export function HomeTab({
           </div>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          isOpen={true}
+          onClose={() => setContextMenu(null)}
+          x={contextMenu.x}
+          y={contextMenu.y}
+        >
+          <ContextMenuItem
+            label="Open"
+            onClick={() => {
+              console.log('Open:', contextMenu.itemId);
+              setContextMenu(null);
+            }}
+            onClose={() => setContextMenu(null)}
+          />
+          {contextMenu.isCloudItem && (
+            <ContextMenuItem
+              label="View in audio.com"
+              onClick={() => {
+                console.log('View in audio.com:', contextMenu.itemId);
+                setContextMenu(null);
+              }}
+              onClose={() => setContextMenu(null)}
+            />
+          )}
+          <ContextMenuItem
+            label="Rename"
+            onClick={() => {
+              console.log('Rename:', contextMenu.itemId);
+              setContextMenu(null);
+            }}
+            onClose={() => setContextMenu(null)}
+          />
+          <ContextMenuItem
+            label="Duplicate"
+            onClick={() => {
+              console.log('Duplicate:', contextMenu.itemId);
+              setContextMenu(null);
+            }}
+            onClose={() => setContextMenu(null)}
+          />
+          {contextMenu.isCloudItem && (
+            <ContextMenuItem
+              label="Download"
+              onClick={() => {
+                console.log('Download:', contextMenu.itemId);
+                setContextMenu(null);
+              }}
+              onClose={() => setContextMenu(null)}
+            />
+          )}
+          <ContextMenuItem
+            label="Delete"
+            onClick={() => {
+              console.log('Delete:', contextMenu.itemId);
+              setContextMenu(null);
+            }}
+            onClose={() => setContextMenu(null)}
+          />
+        </ContextMenu>
+      )}
     </div>
   );
 }

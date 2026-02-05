@@ -61,7 +61,7 @@ export function ProjectToolbar({
 
   const style = {
     '--toolbar-bg': theme.background.surface.default,
-    '--toolbar-border': theme.border.onSurface,
+    '--toolbar-border': theme.border.default,
     '--toolbar-text': theme.foreground.text.tertiary,
     '--toolbar-hover': theme.background.surface.hover,
     '--toolbar-active-text': theme.foreground.text.primary,

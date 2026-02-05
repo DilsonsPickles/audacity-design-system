@@ -79,7 +79,9 @@
 /* Disabled state */
 .button--disabled {
   background-color: var(--button-bg-disabled) !important;
+  color: var(--foreground-text-disabled, rgba(20, 21, 26, 0.38)) !important;
   cursor: not-allowed;
+  opacity: 1;
 }
 
 /* Icon */

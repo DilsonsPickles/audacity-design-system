@@ -264,7 +264,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0 32px 32px 32px;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* List Header */
@@ -272,9 +273,21 @@
   display: grid;
   grid-template-columns: 1fr 80px 220px 180px;
   gap: 16px;
-  padding: 12px 16px;
+  padding: 12px 16px 12px 16px;
+  padding-right: 60px; /* 16px base + 44px for context button space */
+  margin: 0 32px;
   border-bottom: 1px solid var(--border-default, #D4D5D9);
-  background: transparent;
+  background: var(--home-tab-content-bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* List Items Container */
+.home-tab__list-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 32px 32px 32px;
 }
 
 .home-tab__list-header-cell {
@@ -284,6 +297,27 @@
   color: var(--foreground-text-secondary, #6C7079);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* List Item Wrapper */
+.home-tab__list-item-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-default, #D4D5D9);
+  transition: background-color 0.15s ease;
+}
+
+.home-tab__list-item-wrapper:hover {
+  background-color: var(--background-surface-hover, rgba(20, 21, 26, 0.05));
+}
+
+.home-tab__list-item-wrapper--selected {
+  background-color: var(--background-control-active, rgba(103, 124, 228, 0.2));
+}
+
+.home-tab__list-item-wrapper--selected:hover {
+  background-color: var(--background-control-active, rgba(103, 124, 228, 0.25));
 }
 
 /* List Item */
@@ -299,12 +333,34 @@
   cursor: pointer;
   text-align: left;
   font-family: 'Inter', sans-serif;
-  border-bottom: 1px solid var(--border-default, #D4D5D9);
-  transition: background-color 0.15s ease;
+  flex: 1;
+  min-width: 0;
 }
 
-.home-tab__list-item:hover {
-  background-color: var(--background-surface-hover, rgba(20, 21, 26, 0.05));
+/* Context Menu Button */
+.home-tab__list-item-context-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+  color: var(--foreground-icon-secondary, rgba(20, 21, 26, 0.6));
+}
+
+.home-tab__list-item-context-btn:hover {
+  background-color: var(--background-surface-hover, rgba(20, 21, 26, 0.1));
+  color: var(--foreground-icon-primary, #14151A);
+}
+
+.home-tab__list-item-context-btn:active {
+  background-color: var(--background-surface-active, rgba(20, 21, 26, 0.15));
 }
 
 /* New Project List Item - Full Width */
@@ -312,6 +368,10 @@
   display: flex;
   grid-template-columns: unset;
   border-bottom: none;
+  flex: 0 0 auto; /* Don't grow or shrink */
+  height: 64px; /* Fixed height */
+  margin: 0 32px;
+  padding: 0 16px;
 }
 
 /* Name Column */
@@ -502,5 +562,15 @@
   width: 100%;
   flex: 1;
   min-height: 400px;
+}
+
+/* Action Bar */
+.home-tab__action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default, #D4D5D9);
+  background-color: var(--background-surface-elevated, #FFFFFF);
 }
 
