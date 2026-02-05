@@ -7,6 +7,7 @@ import { Button } from '../Button';
 import { useTheme } from '../ThemeProvider';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
+import { getProjects, deleteProject, type StoredProject } from '../utils/projectStorage';
 import './HomeTab.css';
 
 export interface HomeTabProps {
@@ -37,15 +38,44 @@ export function HomeTab({
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; itemId: string; isCloudItem: boolean } | null>(null);
+  const [storedProjects, setStoredProjects] = React.useState<StoredProject[]>([]);
   const itemsPerPage = 12;
+
+  // Load projects from localStorage on mount
+  React.useEffect(() => {
+    const projects = getProjects();
+    setStoredProjects(projects);
+  }, []);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    // Reload projects from localStorage
+    const projects = getProjects();
+    setStoredProjects(projects);
     setTimeout(() => {
       setIsRefreshing(false);
-    }, 5000);
+    }, 500);
   };
 
+  const handleDeleteProject = (id: string) => {
+    deleteProject(id);
+    setStoredProjects(getProjects());
+  };
+
+  // Helper to format date for display
+  const formatDateText = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days === 0) return 'TODAY';
+    if (days === 1) return 'YESTERDAY';
+    if (days < 7) return `${days} DAYS AGO`;
+    if (days < 14) return '1 WEEK AGO';
+    if (days < 30) return `${Math.floor(days / 7)} WEEKS AGO`;
+    if (days < 60) return '1 MONTH AGO';
+    return `${Math.floor(days / 30)} MONTHS AGO`;
+  };
 
   // Audacity logo SVG for project thumbnails
   const AudacityLogo = () => (
@@ -345,79 +375,25 @@ export function HomeTab({
                         title="New project"
                         onClick={onNewProject}
                       />
-                      {isSignedIn && (
+                      {storedProjects.map((project) => (
                         <ProjectThumbnail
-                          title="New Project 2025-10-21 10-57-03-23 03"
-                          dateText="TODAY"
-                          thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                          isCloudProject
+                          key={project.id}
+                          title={project.title}
+                          dateText={formatDateText(project.dateModified)}
+                          thumbnailUrl={project.thumbnailUrl}
+                          isCloudProject={project.isCloudProject}
+                          onClick={() => console.log('Open project:', project.id)}
                           onContextMenu={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
                             setContextMenu({
                               x: rect.right,
                               y: rect.bottom,
-                              itemId: 'new-recent-cloud-0',
-                              isCloudItem: true,
+                              itemId: project.id,
+                              isCloudItem: project.isCloudProject,
                             });
                           }}
                         />
-                      )}
-                      <ProjectThumbnail
-                        title="New Project 2025-10-21 10-57-03-23 03"
-                        dateText="TODAY"
-                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                        onContextMenu={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setContextMenu({
-                            x: rect.right,
-                            y: rect.bottom,
-                            itemId: 'new-recent-local-0',
-                            isCloudItem: false,
-                          });
-                        }}
-                      />
-                      <ProjectThumbnail
-                        title="New Project 2025-10-21 10-57-03-23 03"
-                        dateText="TODAY"
-                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                        onContextMenu={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setContextMenu({
-                            x: rect.right,
-                            y: rect.bottom,
-                            itemId: 'new-recent-local-1',
-                            isCloudItem: false,
-                          });
-                        }}
-                      />
-                      <ProjectThumbnail
-                        title="New Project 2025-10-21 10-57-03-23 03"
-                        dateText="TODAY"
-                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                        onContextMenu={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setContextMenu({
-                            x: rect.right,
-                            y: rect.bottom,
-                            itemId: 'new-recent-local-2',
-                            isCloudItem: false,
-                          });
-                        }}
-                      />
-                      <ProjectThumbnail
-                        title="New Project 2025-10-21 10-57-03-23 03"
-                        dateText="TODAY"
-                        thumbnailUrl="http://localhost:3845/assets/329180063227bc117665a470bbac924319d222aa.png"
-                        onContextMenu={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setContextMenu({
-                            x: rect.right,
-                            y: rect.bottom,
-                            itemId: 'new-recent-local-3',
-                            isCloudItem: false,
-                          });
-                        }}
-                      />
+                      ))}
                     </div>
                   ) : (
                     <div className="home-tab__projects-list">
@@ -439,20 +415,26 @@ export function HomeTab({
                         <div className="home-tab__list-header-cell">Size</div>
                       </div>
                       <div className="home-tab__list-items">
-                      {isSignedIn && (
-                        <div className="home-tab__list-item-wrapper">
-                          <button className="home-tab__list-item">
+                      {storedProjects.map((project) => (
+                        <div key={project.id} className="home-tab__list-item-wrapper">
+                          <button
+                            className="home-tab__list-item"
+                            onClick={() => console.log('Open project:', project.id)}
+                          >
                             <div className="home-tab__list-item-name">
                               <div className="home-tab__list-item-thumbnail">
                                 <AudacityLogo />
                               </div>
-                              <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
+                              <div className="home-tab__list-item-title">{project.title}</div>
                             </div>
-                            <div className="home-tab__list-item-cloud-badge">
-                              <Icon name="cloud-filled" size={12} />
-                            </div>
-                            <div className="home-tab__list-item-modified">TODAY</div>
-                            <div className="home-tab__list-item-size">19 KB</div>
+                            {project.isCloudProject && (
+                              <div className="home-tab__list-item-cloud-badge">
+                                <Icon name="cloud-filled" size={12} />
+                              </div>
+                            )}
+                            {!project.isCloudProject && <div></div>}
+                            <div className="home-tab__list-item-modified">{formatDateText(project.dateModified)}</div>
+                            <div className="home-tab__list-item-size">-</div>
                           </button>
                           <button
                             className="home-tab__list-item-context-btn"
@@ -462,8 +444,8 @@ export function HomeTab({
                               setContextMenu({
                                 x: rect.right,
                                 y: rect.bottom,
-                                itemId: 'new-recent-cloud-list-0',
-                                isCloudItem: true,
+                                itemId: project.id,
+                                isCloudItem: project.isCloudProject,
                               });
                             }}
                             aria-label="More options"
@@ -471,123 +453,7 @@ export function HomeTab({
                             <Icon name="menu" size={16} />
                           </button>
                         </div>
-                      )}
-                      <div className="home-tab__list-item-wrapper">
-                        <button className="home-tab__list-item">
-                          <div className="home-tab__list-item-name">
-                            <div className="home-tab__list-item-thumbnail">
-                              <AudacityLogo />
-                            </div>
-                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                          </div>
-                          <div></div>
-                          <div className="home-tab__list-item-modified">TODAY</div>
-                          <div className="home-tab__list-item-size">19 KB</div>
-                        </button>
-                        <button
-                          className="home-tab__list-item-context-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setContextMenu({
-                              x: rect.right,
-                              y: rect.bottom,
-                              itemId: 'new-recent-local-list-0',
-                              isCloudItem: false,
-                            });
-                          }}
-                          aria-label="More options"
-                        >
-                          <Icon name="menu" size={16} />
-                        </button>
-                      </div>
-                      <div className="home-tab__list-item-wrapper">
-                        <button className="home-tab__list-item">
-                          <div className="home-tab__list-item-name">
-                            <div className="home-tab__list-item-thumbnail">
-                              <AudacityLogo />
-                            </div>
-                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                          </div>
-                          <div></div>
-                          <div className="home-tab__list-item-modified">TODAY</div>
-                          <div className="home-tab__list-item-size">19 KB</div>
-                        </button>
-                        <button
-                          className="home-tab__list-item-context-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setContextMenu({
-                              x: rect.right,
-                              y: rect.bottom,
-                              itemId: 'new-recent-local-list-1',
-                              isCloudItem: false,
-                            });
-                          }}
-                          aria-label="More options"
-                        >
-                          <Icon name="menu" size={16} />
-                        </button>
-                      </div>
-                      <div className="home-tab__list-item-wrapper">
-                        <button className="home-tab__list-item">
-                          <div className="home-tab__list-item-name">
-                            <div className="home-tab__list-item-thumbnail">
-                              <AudacityLogo />
-                            </div>
-                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                          </div>
-                          <div></div>
-                          <div className="home-tab__list-item-modified">TODAY</div>
-                          <div className="home-tab__list-item-size">19 KB</div>
-                        </button>
-                        <button
-                          className="home-tab__list-item-context-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setContextMenu({
-                              x: rect.right,
-                              y: rect.bottom,
-                              itemId: 'new-recent-local-list-2',
-                              isCloudItem: false,
-                            });
-                          }}
-                          aria-label="More options"
-                        >
-                          <Icon name="menu" size={16} />
-                        </button>
-                      </div>
-                      <div className="home-tab__list-item-wrapper">
-                        <button className="home-tab__list-item">
-                          <div className="home-tab__list-item-name">
-                            <div className="home-tab__list-item-thumbnail">
-                              <AudacityLogo />
-                            </div>
-                            <div className="home-tab__list-item-title">New Project 2025-10-21 10-57-03-23 03</div>
-                          </div>
-                          <div></div>
-                          <div className="home-tab__list-item-modified">TODAY</div>
-                          <div className="home-tab__list-item-size">19 KB</div>
-                        </button>
-                        <button
-                          className="home-tab__list-item-context-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setContextMenu({
-                              x: rect.right,
-                              y: rect.bottom,
-                              itemId: 'new-recent-local-list-3',
-                              isCloudItem: false,
-                            });
-                          }}
-                          aria-label="More options"
-                        >
-                          <Icon name="menu" size={16} />
-                        </button>
-                      </div>
+                      ))}
                       </div>
                     </div>
                   )}
@@ -1055,7 +921,7 @@ export function HomeTab({
           <ContextMenuItem
             label="Delete"
             onClick={() => {
-              console.log('Delete:', contextMenu.itemId);
+              handleDeleteProject(contextMenu.itemId);
               setContextMenu(null);
             }}
             onClose={() => setContextMenu(null)}

@@ -141,5 +141,6 @@ export * from './hooks';
  */
 export * from './utils/waveform';
 export * from './utils/spectrogram';
+export * from './utils/projectStorage';
 // Note: envelope utilities are available via direct import from '@audacity-ui/components/utils/envelope'
 // Not re-exported here to avoid naming conflicts with EnvelopePoint component
