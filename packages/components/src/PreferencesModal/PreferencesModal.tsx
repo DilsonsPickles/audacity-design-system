@@ -74,6 +74,10 @@ export interface PreferencesModalProps {
    * Zoom toggle preset 2 change handler
    */
   onZoomToggleLevel2Change?: (value: string) => void;
+  /**
+   * Reset warnings handler (for "Don't show again" checkboxes)
+   */
+  onResetWarnings?: () => void;
 }
 
 const menuItems: DialogSideNavItem<PreferencesPage>[] = [
@@ -243,6 +247,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   onZoomToggleLevel1Change,
   zoomToggleLevel2 = 'seconds',
   onZoomToggleLevel2Change,
+  onResetWarnings,
 }) => {
   const [selectedPage, setSelectedPage] = useState<PreferencesPage>(currentPage);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -342,7 +347,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
           aria-label={`${selectedPage} preferences`}
         >
           <div className="preferences-modal__scroll-container" tabIndex={-1}>
-            {selectedPage === 'general' && <GeneralPage />}
+            {selectedPage === 'general' && <GeneralPage onResetWarnings={onResetWarnings} />}
             {selectedPage === 'appearance' && <AppearancePage />}
             {selectedPage === 'audio-settings' && <AudioSettingsPage />}
             {selectedPage === 'playback-recording' && <PlaybackRecordingPage />}
@@ -413,7 +418,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
 };
 
 // General Page Content
-function GeneralPage() {
+function GeneralPage({ onResetWarnings }: { onResetWarnings?: () => void }) {
   const { preferences, updatePreference } = usePreferences();
 
   const languageOptions: DropdownOption[] = [
@@ -489,6 +494,23 @@ function GeneralPage() {
           Update checking requires network access. In order to protect your privacy,
           Audacity does not store any personal information. See our{' '}
           <a href="#" className="preferences-page__link">Privacy Policy</a> for more info.
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="preferences-page__section">
+        <div className="preferences-page__field preferences-page__field--large">
+          <label className="preferences-page__label">Warnings and dialogs</label>
+          <Button
+            variant="secondary"
+            onClick={onResetWarnings}
+          >
+            Reset warnings
+          </Button>
+          <span className="preferences-page__hint">
+            Reset all "Don't show again" checkboxes for warning dialogs
+          </span>
         </div>
       </div>
     </div>
