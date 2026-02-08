@@ -187,6 +187,16 @@
   width: 100%;
 }
 
+.preferences-page__button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preferences-page__button-group .button {
+  align-self: flex-start;
+}
+
 .preferences-page__checkboxes {
   display: flex;
   flex-direction: column;

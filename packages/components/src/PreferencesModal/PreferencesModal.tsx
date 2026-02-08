@@ -502,15 +502,17 @@ function GeneralPage({ onResetWarnings }: { onResetWarnings?: () => void }) {
       <div className="preferences-page__section">
         <div className="preferences-page__field preferences-page__field--large">
           <label className="preferences-page__label">Warnings and dialogs</label>
-          <Button
-            variant="secondary"
-            onClick={onResetWarnings}
-          >
-            Reset warnings
-          </Button>
-          <span className="preferences-page__hint">
-            Reset all "Don't show again" checkboxes for warning dialogs
-          </span>
+          <div className="preferences-page__button-group">
+            <Button
+              variant="secondary"
+              onClick={onResetWarnings}
+            >
+              Reset warnings
+            </Button>
+            <span className="preferences-page__hint">
+              Reset all "Don't show again" checkboxes for warning dialogs
+            </span>
+          </div>
         </div>
       </div>
     </div>
