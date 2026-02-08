@@ -2645,7 +2645,10 @@ function CanvasDemoContent() {
           <HomeTab
             key={homeTabKey}
             isSignedIn={isSignedIn}
-            projects={indexedDBProjects}
+            projects={indexedDBProjects.filter(p =>
+              // Only show projects that have been saved (have data or thumbnail)
+              (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
+            )}
             onCreateAccount={() => setIsCreateAccountOpen(true)}
             onSignIn={() => setIsShareDialogOpen(true)}
             onNewProject={async () => {
