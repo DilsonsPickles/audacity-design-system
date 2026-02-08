@@ -2028,6 +2028,39 @@ function CanvasDemoContent() {
     return state.timeSelection || state.clipDurationIndicator;
   }, [spectralSelection, state.timeSelection, state.clipDurationIndicator, state.tracks]);
 
+  // Handler for creating a new project
+  const createNewProject = React.useCallback(async () => {
+    const projectId = `project-${Date.now()}`;
+    console.log('Creating new project:', projectId);
+
+    const newProject = {
+      id: projectId,
+      title: `New Project ${new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      })}`,
+      dateCreated: Date.now(),
+      dateModified: Date.now(),
+      isCloudProject: false,
+      thumbnailUrl: undefined,
+    };
+
+    // Save to IndexedDB
+    await saveProject(newProject);
+    console.log('New project saved to IndexedDB:', projectId);
+
+    // Reset state to start fresh
+    dispatch({ type: 'RESET_STATE' });
+
+    setCurrentProjectId(projectId);
+    return projectId;
+  }, []);
+
   // Handler for saving project to computer
   const handleSaveToComputer = React.useCallback(async () => {
     console.log('Save to computer - currentProjectId:', currentProjectId);
@@ -2316,6 +2349,10 @@ function CanvasDemoContent() {
             const projects = await getProjects();
             setIndexedDBProjects(projects);
             console.log('Loaded projects from IndexedDB:', projects.length);
+          }
+          // Auto-create a new project if navigating to project tab with no active project
+          if (item === 'project' && !currentProjectId) {
+            await createNewProject();
           }
           if (item === 'debug') {
             setIsDebugPanelOpen(true);
@@ -2608,35 +2645,8 @@ function CanvasDemoContent() {
             projects={indexedDBProjects}
             onCreateAccount={() => setIsCreateAccountOpen(true)}
             onSignIn={() => setIsShareDialogOpen(true)}
-            onNewProject={async (projectId) => {
-              console.log('Opening new project:', projectId);
-
-              // Create a new project stub in IndexedDB
-              const newProject = {
-                id: projectId,
-                title: `New Project ${new Date().toLocaleString('en-US', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                })}`,
-                dateCreated: Date.now(),
-                dateModified: Date.now(),
-                isCloudProject: false,
-                thumbnailUrl: undefined,
-              };
-
-              // Save to IndexedDB
-              await saveProject(newProject);
-              console.log('New project saved to IndexedDB:', projectId);
-
-              // Reset state to start fresh
-              dispatch({ type: 'RESET_STATE' });
-
-              setCurrentProjectId(projectId);
+            onNewProject={async () => {
+              await createNewProject();
               setActiveMenuItem('project');
             }}
             onOpenProject={async (projectId) => {
