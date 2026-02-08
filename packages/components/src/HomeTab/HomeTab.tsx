@@ -432,10 +432,9 @@ export function HomeTab({
                               }
                             }}
                             onContextMenu={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
                               setContextMenu({
-                                x: rect.right,
-                                y: rect.bottom,
+                                x: e.clientX,
+                                y: e.clientY,
                                 itemId: project.id,
                                 isCloudItem: project.isCloudProject,
                               });
