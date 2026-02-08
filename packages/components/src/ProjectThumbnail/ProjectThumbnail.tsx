@@ -76,11 +76,20 @@ export function ProjectThumbnail({
     return `/${width}/${height}`;
   });
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (onContextMenu && !isNewProject) {
+      e.preventDefault();
+      e.stopPropagation();
+      onContextMenu(e);
+    }
+  };
+
   return (
     <div className={`project-thumbnail ${isNewProject ? 'project-thumbnail--new' : ''} ${className}`}>
       <button
         className="project-thumbnail__button"
         onClick={onClick}
+        onContextMenu={handleContextMenu}
         type="button"
       >
         <div className="project-thumbnail__image">
