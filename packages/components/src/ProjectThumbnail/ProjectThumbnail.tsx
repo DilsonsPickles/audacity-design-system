@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from '../Icon';
+import { ToolButton } from '../ToolButton';
 import './ProjectThumbnail.css';
 
 // Audacity logo SVG (grayscale headphones)
@@ -116,17 +117,18 @@ export function ProjectThumbnail({
             </div>
           )}
           {onContextMenu && !isNewProject && (
-            <button
+            <div
               className="project-thumbnail__context-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 onContextMenu(e);
               }}
-              type="button"
-              aria-label="More options"
             >
-              <Icon name="menu" size={16} />
-            </button>
+              <ToolButton
+                icon="menu"
+                onClick={() => {}}
+              />
+            </div>
           )}
         </div>
         <div className="project-thumbnail__info">
