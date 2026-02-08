@@ -2,8 +2,6 @@
 
 /* Button base styles */
 .tool-button {
-  width: 28px;
-  height: 28px;
   border: none;
   border-radius: 2px;
   background-color: var(--tool-btn-idle);
@@ -15,6 +13,17 @@
   position: relative;
   overflow: hidden;
   transition: background-color 0.1s ease;
+}
+
+/* Size variants */
+.tool-button--default {
+  width: 28px;
+  height: 28px;
+}
+
+.tool-button--small {
+  width: 20px;
+  height: 20px;
 }
 
 /* Icon styles */

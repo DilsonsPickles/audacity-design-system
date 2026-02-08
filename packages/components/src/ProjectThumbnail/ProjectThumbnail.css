@@ -117,17 +117,6 @@
   right: 8px;
 }
 
-.project-thumbnail__context-btn .tool-button {
-  width: 16px;
-  height: 16px;
-}
-
-.project-thumbnail__context-btn .tool-button__icon {
-  width: 12px;
-  height: 12px;
-  font-size: 12px;
-}
-
 .project-thumbnail__button:hover .project-thumbnail__image {
   opacity: 0.9;
 }

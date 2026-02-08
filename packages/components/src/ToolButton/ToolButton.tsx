@@ -9,6 +9,12 @@ export interface ToolButtonProps {
    */
   icon: IconName;
   /**
+   * Button size
+   * - small: 20x20px (icon 14px)
+   * - default: 28x28px (icon 16px)
+   */
+  size?: 'small' | 'default';
+  /**
    * Button state
    */
   state?: 'idle' | 'hover' | 'pressed' | 'disabled';
@@ -28,13 +34,15 @@ export interface ToolButtonProps {
 
 /**
  * ToolButton component matching Figma design specifications
- * - Size: 28x28px
+ * - Default size: 28x28px (icon 16px)
+ * - Small size: 20x20px (icon 14px)
  * - Border radius: 2px
  * - States: idle, hover, pressed, disabled
  * - Uses MusescoreIcon font for icons
  */
 export function ToolButton({
   icon,
+  size = 'default',
   state = 'idle',
   onClick,
   disabled = false,
@@ -83,9 +91,11 @@ export function ToolButton({
     }
   };
 
+  const iconSize = size === 'small' ? 14 : 16;
+
   return (
     <button
-      className={`tool-button tool-button--${currentState} ${className}`}
+      className={`tool-button tool-button--${size} tool-button--${currentState} ${className}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -95,7 +105,7 @@ export function ToolButton({
       type="button"
       style={style}
     >
-      <Icon name={icon} size={16} className="tool-button__icon" />
+      <Icon name={icon} size={iconSize} className="tool-button__icon" />
     </button>
   );
 }

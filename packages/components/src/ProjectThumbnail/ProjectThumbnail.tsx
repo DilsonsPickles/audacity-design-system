@@ -126,6 +126,7 @@ export function ProjectThumbnail({
             >
               <ToolButton
                 icon="menu"
+                size="small"
                 onClick={() => {}}
               />
             </div>
