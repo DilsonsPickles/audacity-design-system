@@ -2353,6 +2353,9 @@ function CanvasDemoContent() {
           // Auto-create a new project if navigating to project tab with no active project
           if (item === 'project' && !currentProjectId) {
             await createNewProject();
+            // Reload projects list so HomeTab will have the fresh project when user navigates back
+            const projects = await getProjects();
+            setIndexedDBProjects(projects);
           }
           if (item === 'debug') {
             setIsDebugPanelOpen(true);
@@ -2647,6 +2650,9 @@ function CanvasDemoContent() {
             onSignIn={() => setIsShareDialogOpen(true)}
             onNewProject={async () => {
               await createNewProject();
+              // Reload projects list
+              const projects = await getProjects();
+              setIndexedDBProjects(projects);
               setActiveMenuItem('project');
             }}
             onOpenProject={async (projectId) => {
