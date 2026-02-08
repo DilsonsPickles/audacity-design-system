@@ -1,5 +1,7 @@
 import React from 'react';
 import { DialogHeader } from '../DialogHeader';
+import { Button } from '../Button';
+import { Checkbox } from '../Checkbox';
 import { useTheme } from '../ThemeProvider';
 import './SaveProjectModal.css';
 
@@ -31,7 +33,7 @@ export function SaveProjectModal({
   const { theme } = useTheme();
 
   const style = {
-    '--save-modal-bg': theme.background.surface.elevated,
+    '--save-modal-bg': theme.background.surface.default,
     '--save-modal-border': theme.border.default,
     '--save-modal-shadow': '0px 10px 30px 0px rgba(0, 0, 0, 0.3)',
     '--save-modal-heading-text': theme.foreground.text.primary,
@@ -41,7 +43,7 @@ export function SaveProjectModal({
     '--save-modal-button-bg': theme.background.surface.subtle,
     '--save-modal-button-hover-bg': theme.background.surface.hover,
     '--save-modal-button-text': theme.foreground.text.primary,
-    '--save-modal-footer-bg': theme.background.surface.elevated,
+    '--save-modal-footer-bg': theme.background.surface.default,
     '--save-modal-footer-border': theme.border.default,
     '--save-modal-checkbox-bg': theme.background.surface.subtle,
     '--save-modal-checkbox-checked-bg': theme.border.focus,
@@ -74,12 +76,13 @@ export function SaveProjectModal({
                     Your project is backed up privately on audio.com. You can access your work from any device and collaborate on your project with others. Cloud saving is free for a limited number of projects.
                   </div>
                 </div>
-                <button
-                  className="save-project-modal__button"
+                <Button
+                  variant="secondary"
+                  size="default"
                   onClick={onSaveToCloud}
                 >
                   Save to cloud
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -98,12 +101,13 @@ export function SaveProjectModal({
                     Note: To export MP3 and WAV files, use File → Export Audio instead.
                   </div>
                 </div>
-                <button
-                  className="save-project-modal__button"
+                <Button
+                  variant="secondary"
+                  size="default"
                   onClick={onSaveToComputer}
                 >
                   Save to computer
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -111,15 +115,14 @@ export function SaveProjectModal({
 
         {/* Footer */}
         <div className="save-project-modal__footer">
-          <label className="save-project-modal__checkbox-label">
-            <input
-              type="checkbox"
-              className="save-project-modal__checkbox"
+          <div className="save-project-modal__checkbox-wrapper">
+            <Checkbox
               checked={dontShowAgain}
-              onChange={(e) => onDontShowAgainChange?.(e.target.checked)}
+              onChange={(checked) => onDontShowAgainChange?.(checked)}
+              aria-label="Don't show this again"
             />
             <span className="save-project-modal__checkbox-text">Don't show this again</span>
-          </label>
+          </div>
         </div>
       </div>
     </>
