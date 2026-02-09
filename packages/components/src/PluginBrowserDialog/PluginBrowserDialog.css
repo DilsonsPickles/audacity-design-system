@@ -48,23 +48,13 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 32px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
-/* Scrollbar */
+/* Hide default scrollbar */
 .plugin-browser-dialog__scroll-container::-webkit-scrollbar {
-  width: 16px;
-  background-color: #ebedf0;
-  border-left: 1px solid #d4d5d9;
-}
-
-.plugin-browser-dialog__scroll-container::-webkit-scrollbar-thumb {
-  background-color: rgba(20, 21, 26, 0.3);
-  border-radius: 8px;
-  border: 5.5px solid #ebedf0;
-}
-
-.plugin-browser-dialog__scroll-container::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(20, 21, 26, 0.4);
+  display: none;
 }
 
 /* Plugin Grid */

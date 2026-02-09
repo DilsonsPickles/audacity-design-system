@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { FilterChip } from '../FilterChip';
 import { PluginCard } from '../PluginCard';
+import { CustomScrollbar } from '../CustomScrollbar';
 import './PluginBrowserDialog.css';
 
 export type PluginCategory =
@@ -212,6 +213,7 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<PluginCategory>(currentCategory);
   const [pluginImages, setPluginImages] = useState<Record<string, string | undefined>>({});
   const [imagesLoading, setImagesLoading] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleCategoryChange = (category: PluginCategory) => {
     setSelectedCategory(category);
@@ -282,7 +284,7 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
 
       {/* Content Area */}
       <div className="plugin-browser-dialog__body">
-        <div className="plugin-browser-dialog__scroll-container">
+        <div ref={scrollContainerRef} className="plugin-browser-dialog__scroll-container">
           <div className="plugin-browser-dialog__grid">
             {filteredPlugins.map((plugin) => (
               <PluginCard
@@ -299,6 +301,13 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
             ))}
           </div>
         </div>
+        <CustomScrollbar
+          contentRef={scrollContainerRef}
+          orientation="vertical"
+          width={16}
+          backgroundColor="#ebedf0"
+          borderColor="#d4d5d9"
+        />
       </div>
 
       {/* Footer */}
