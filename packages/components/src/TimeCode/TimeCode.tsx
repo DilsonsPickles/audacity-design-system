@@ -592,36 +592,6 @@ function formatDDHHMMSS(seconds: number): TimeCodeSegment[] {
 }
 
 function formatHHMMSS(seconds: number): TimeCodeSegment[] {
-  const totalSeconds = Math.floor(seconds);
-
-  // Display as seconds (with commas) up to 999,999 seconds
-  if (totalSeconds < 1000000) {
-    const secondsStr = totalSeconds.toString();
-    const parts: TimeCodeSegment[] = [];
-    const groups = [];
-
-    // Add commas for thousands separators
-    for (let i = secondsStr.length - 1, group = ''; i >= 0; i--) {
-      group = secondsStr[i] + group;
-      if (group.length === 3 || i === 0) {
-        groups.unshift(group);
-        group = '';
-      }
-    }
-
-    groups.forEach((group, index) => {
-      parts.push({ value: group, type: 'unit', editable: true });
-      if (index < groups.length - 1) {
-        parts.push({ value: ',', type: 'separator' });
-      }
-    });
-
-    parts.push({ value: 's', type: 'label', unitType: 'seconds' });
-
-    return parts.length ? parts : [{ value: '0', type: 'unit', editable: true }, { value: 's', type: 'label', unitType: 'seconds' }];
-  }
-
-  // After 999,999 seconds, switch to hh:mm:ss format
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
