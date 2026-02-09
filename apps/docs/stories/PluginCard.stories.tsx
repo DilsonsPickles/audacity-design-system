@@ -15,16 +15,16 @@ type Story = StoryObj<typeof PluginCard>;
 
 export const Default: Story = {
   args: {
-    name: 'OpenVINO AI Tools',
-    description: 'AI-powered audio enhancement and noise reduction using OpenVINO™ toolkit.',
+    name: 'MuseFX',
+    description: 'An essential collection of mix effects.',
     onActionClick: () => console.log('Get plugin clicked'),
   },
 };
 
 export const WithImage: Story = {
   args: {
-    name: 'OpenVINO AI Tools',
-    description: 'AI-powered audio enhancement and noise reduction using OpenVINO™ toolkit.',
+    name: 'MuseFX',
+    description: 'An essential collection of mix effects.',
     imageUrl: 'https://via.placeholder.com/120',
     onActionClick: () => console.log('Get plugin clicked'),
   },
@@ -32,8 +32,8 @@ export const WithImage: Story = {
 
 export const WithVersionRequirement: Story = {
   args: {
-    name: 'OpenVINO AI Tools',
-    description: 'AI-powered audio enhancement and noise reduction using OpenVINO™ toolkit.',
+    name: 'Premium Plugin',
+    description: 'Advanced audio processing with version requirements.',
     requiresVersion: 'Audacity 3.4 or later',
     onActionClick: () => console.log('Get plugin clicked'),
   },
@@ -41,8 +41,8 @@ export const WithVersionRequirement: Story = {
 
 export const WithImageAndVersion: Story = {
   args: {
-    name: 'OpenVINO AI Tools',
-    description: 'AI-powered audio enhancement and noise reduction using OpenVINO™ toolkit.',
+    name: 'Premium Plugin',
+    description: 'Advanced audio processing with version requirements.',
     imageUrl: 'https://via.placeholder.com/120',
     requiresVersion: 'Audacity 3.4 or later',
     onActionClick: () => console.log('Get plugin clicked'),
@@ -72,8 +72,8 @@ export const LongDescription: Story = {
 
 export const Disabled: Story = {
   args: {
-    name: 'OpenVINO AI Tools',
-    description: 'AI-powered audio enhancement and noise reduction using OpenVINO™ toolkit.',
+    name: 'Unavailable Plugin',
+    description: 'This plugin is currently unavailable or requires a newer version.',
     requiresVersion: 'Audacity 3.7.4 or later',
     disabled: true,
     onActionClick: () => console.log('Get plugin clicked'),
@@ -84,9 +84,9 @@ export const MultipleCards: Story = {
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', maxWidth: '1200px' }}>
       <PluginCard
-        name="OpenVINO AI Tools"
-        description="AI-powered audio enhancement and noise reduction using OpenVINO™ toolkit."
-        onActionClick={() => console.log('Get OpenVINO')}
+        name="MuseFX"
+        description="An essential collection of mix effects."
+        onActionClick={() => console.log('Get MuseFX')}
       />
       <PluginCard
         name="Vocal Remover Pro"
@@ -107,11 +107,11 @@ export const MultipleCards: Story = {
         onActionClick={() => console.log('Get Mastering Suite')}
       />
       <PluginCard
-        name="OpenVINO AI Tools"
-        description="AI-powered audio processing (Disabled)"
+        name="Unavailable Plugin"
+        description="This plugin is currently unavailable (Disabled)"
         requiresVersion="Audacity 3.7.4 or later"
         disabled={true}
-        onActionClick={() => console.log('Get OpenVINO')}
+        onActionClick={() => console.log('Get unavailable plugin')}
       />
     </div>
   ),

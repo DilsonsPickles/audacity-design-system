@@ -71,13 +71,6 @@ const categories: { id: PluginCategory; label: string }[] = [
 // Mock plugin data - all plugins with their categories
 const allPlugins: BrowserPlugin[] = [
   {
-    id: 'openvino',
-    name: 'OpenVINO AI Tools',
-    description: 'AI-powered audio processing tools',
-    categories: ['voice-podcasting', 'sound-design-effects'],
-    requiresVersion: 'Audacity 3.7.4 or later',
-  },
-  {
     id: 'musefx',
     name: 'MuseFX',
     description: 'An essential collection of mix effects',
@@ -182,7 +175,6 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
                 description={plugin.description}
                 imageUrl={plugin.imageUrl}
                 requiresVersion={plugin.requiresVersion}
-                disabled={plugin.id === 'openvino'}
                 onActionClick={() => {
                   console.log(`Get plugin: ${plugin.name}`);
                   // In real implementation, would open MuseHub or external link
