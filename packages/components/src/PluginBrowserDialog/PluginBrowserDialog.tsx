@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { FilterChip } from '../FilterChip';
@@ -123,11 +123,35 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
   className = '',
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<PluginCategory>(currentCategory);
+  const [pluginImages, setPluginImages] = useState<Record<string, string | undefined>>({});
+  const [imagesLoading, setImagesLoading] = useState(true);
 
   const handleCategoryChange = (category: PluginCategory) => {
     setSelectedCategory(category);
     onCategoryChange?.(category);
   };
+
+  // Simulate API call to fetch plugin images
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setImagesLoading(true);
+    setPluginImages({});
+
+    // Simulate API delay (2 seconds)
+    const timer = setTimeout(() => {
+      const loadedImages: Record<string, string | undefined> = {};
+      // In a real implementation, this would fetch from MuseHub API
+      // For now, we'll just leave images undefined to show the placeholder
+      allPlugins.forEach((plugin) => {
+        loadedImages[plugin.id] = plugin.imageUrl;
+      });
+      setPluginImages(loadedImages);
+      setImagesLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   // Filter plugins based on selected category
   const filteredPlugins = useMemo(() => {
@@ -173,7 +197,7 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
                 key={plugin.id}
                 name={plugin.name}
                 description={plugin.description}
-                imageUrl={plugin.imageUrl}
+                imageUrl={imagesLoading ? undefined : pluginImages[plugin.id]}
                 requiresVersion={plugin.requiresVersion}
                 onActionClick={() => {
                   console.log(`Get plugin: ${plugin.name}`);
