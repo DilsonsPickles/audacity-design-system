@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '../Button';
+import { Icon } from '../Icon';
 import './PluginCard.css';
 
 export interface PluginCardProps {
@@ -57,7 +58,9 @@ export const PluginCard: React.FC<PluginCardProps> = ({
         {imageUrl ? (
           <img src={imageUrl} alt={name} className="plugin-card__image-img" />
         ) : (
-          <div className="plugin-card__image-placeholder" />
+          <div className="plugin-card__image-placeholder">
+            <Icon name="plugins" size={48} />
+          </div>
         )}
       </div>
       <div className="plugin-card__content">
