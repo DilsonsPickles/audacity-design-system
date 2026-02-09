@@ -182,6 +182,7 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
                 description={plugin.description}
                 imageUrl={plugin.imageUrl}
                 requiresVersion={plugin.requiresVersion}
+                disabled={plugin.id === 'openvino'}
                 onActionClick={() => {
                   console.log(`Get plugin: ${plugin.name}`);
                   // In real implementation, would open MuseHub or external link

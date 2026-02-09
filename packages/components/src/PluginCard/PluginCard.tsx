@@ -29,6 +29,10 @@ export interface PluginCardProps {
    */
   actionButtonText?: string;
   /**
+   * Whether the card is disabled
+   */
+  disabled?: boolean;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -44,10 +48,11 @@ export const PluginCard: React.FC<PluginCardProps> = ({
   requiresVersion,
   onActionClick,
   actionButtonText = 'Get it on MuseHub',
+  disabled = false,
   className = '',
 }) => {
   return (
-    <div className={`plugin-card ${className}`}>
+    <div className={`plugin-card ${disabled ? 'plugin-card--disabled' : ''} ${className}`}>
       <div className="plugin-card__image">
         {imageUrl ? (
           <img src={imageUrl} alt={name} className="plugin-card__image-img" />
@@ -64,7 +69,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({
           </p>
         )}
         <div className="plugin-card__actions">
-          <Button variant="primary" size="small" onClick={onActionClick}>
+          <Button variant="primary" size="small" onClick={onActionClick} disabled={disabled}>
             {actionButtonText}
           </Button>
         </div>

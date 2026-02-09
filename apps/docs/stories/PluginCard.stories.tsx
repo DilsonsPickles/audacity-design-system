@@ -70,6 +70,16 @@ export const LongDescription: Story = {
   },
 };
 
+export const Disabled: Story = {
+  args: {
+    name: 'OpenVINO AI Tools',
+    description: 'AI-powered audio enhancement and noise reduction using OpenVINO™ toolkit.',
+    requiresVersion: 'Audacity 3.7.4 or later',
+    disabled: true,
+    onActionClick: () => console.log('Get plugin clicked'),
+  },
+};
+
 export const MultipleCards: Story = {
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', maxWidth: '1200px' }}>
@@ -95,6 +105,13 @@ export const MultipleCards: Story = {
         description="Complete mastering toolset with dynamics, EQ, and limiting."
         imageUrl="https://via.placeholder.com/120"
         onActionClick={() => console.log('Get Mastering Suite')}
+      />
+      <PluginCard
+        name="OpenVINO AI Tools"
+        description="AI-powered audio processing (Disabled)"
+        requiresVersion="Audacity 3.7.4 or later"
+        disabled={true}
+        onActionClick={() => console.log('Get OpenVINO')}
       />
     </div>
   ),
