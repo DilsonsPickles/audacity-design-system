@@ -738,7 +738,8 @@ function formatSamples(seconds: number, sampleRate: number): TimeCodeSegment[] {
 
 function formatSeconds(seconds: number): TimeCodeSegment[] {
   const totalSeconds = Math.floor(seconds);
-  const secondsStr = totalSeconds.toString();
+  // Pad to at least 6 digits (000,000)
+  const secondsStr = totalSeconds.toString().padStart(6, '0');
 
   // Add commas for thousands separators
   const parts: TimeCodeSegment[] = [];
@@ -761,7 +762,7 @@ function formatSeconds(seconds: number): TimeCodeSegment[] {
 
   parts.push({ value: 'seconds', type: 'label', unitType: 'seconds' });
 
-  return parts.length ? parts : [{ value: '0', type: 'unit', editable: true }, { value: 'seconds', type: 'label', unitType: 'seconds' }];
+  return parts;
 }
 
 function formatSecondsMilliseconds(seconds: number): TimeCodeSegment[] {
