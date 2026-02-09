@@ -151,11 +151,11 @@ export const lightTheme: ThemeTokens = {
     },
 
     menu: {
-      background: '#FFFFFF',     // White menu background
+      background: '#F8F8F9',     // Context menu background (matches Figma)
       item: {
         idle: 'transparent',     // No background for items
-        hover: '#F2F3F5',        // Light gray on hover
-        pressed: '#EBEDF0',      // Darker when pressed
+        hover: '#E9E9ED',        // Context menu hover (matches Figma)
+        pressed: '#F0F0F3',      // Context menu pressed (matches Figma)
         active: '#DEEBFF',       // Blue tint for active item
       },
       separator: '#EBEDF0',      // Light gray separator

@@ -63,7 +63,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const triggerElementRef = useRef<HTMLElement | null>(null);
 
   const internalStyle = {
-    '--context-menu-bg': theme.background.surface.elevated,
+    '--context-menu-bg': theme.background.menu.background,
     '--context-menu-border': theme.border.default,
     '--context-menu-shadow': '0 4px 16px rgba(0, 0, 0, 0.4)',
     '--context-menu-divider-bg': theme.border.divider,
