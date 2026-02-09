@@ -231,8 +231,8 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
   className = '',
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<PluginCategory>(currentCategory);
-  const [pluginImages, setPluginImages] = useState<Record<string, string | undefined>>({});
-  const [imagesLoading, setImagesLoading] = useState(true);
+  const [plugins, setPlugins] = useState<BrowserPlugin[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleCategoryChange = (category: PluginCategory) => {
@@ -240,23 +240,19 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
     onCategoryChange?.(category);
   };
 
-  // Simulate API call to fetch plugin images
+  // Simulate API call to fetch plugins
   useEffect(() => {
     if (!isOpen) return;
 
-    setImagesLoading(true);
-    setPluginImages({});
+    setIsLoading(true);
+    setPlugins([]);
 
-    // Simulate API delay (2 seconds)
+    // Simulate API delay (3 seconds)
     const timer = setTimeout(() => {
-      const loadedImages: Record<string, string | undefined> = {};
       // In a real implementation, this would fetch from MuseHub API
-      allPlugins.forEach((plugin) => {
-        loadedImages[plugin.id] = plugin.imageUrl;
-      });
-      setPluginImages(loadedImages);
-      setImagesLoading(false);
-    }, 2000);
+      setPlugins(allPlugins);
+      setIsLoading(false);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [isOpen]);
@@ -264,10 +260,10 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
   // Filter plugins based on selected category
   const filteredPlugins = useMemo(() => {
     if (selectedCategory === 'all') {
-      return allPlugins;
+      return plugins;
     }
-    return allPlugins.filter((plugin) => plugin.categories.includes(selectedCategory));
-  }, [selectedCategory]);
+    return plugins.filter((plugin) => plugin.categories.includes(selectedCategory));
+  }, [selectedCategory, plugins]);
 
   if (!isOpen) return null;
 
@@ -299,21 +295,27 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
       {/* Content Area */}
       <div className="plugin-browser-dialog__body">
         <div ref={scrollContainerRef} className="plugin-browser-dialog__scroll-container">
-          <div className="plugin-browser-dialog__grid">
-            {filteredPlugins.map((plugin) => (
-              <PluginCard
-                key={plugin.id}
-                name={plugin.name}
-                description={plugin.description}
-                imageUrl={imagesLoading ? undefined : pluginImages[plugin.id]}
-                requiresVersion={plugin.requiresVersion}
-                onActionClick={() => {
-                  console.log(`Get plugin: ${plugin.name}`);
-                  // In real implementation, would open MuseHub or external link
-                }}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="plugin-browser-dialog__loading">
+              <p>Loading plugins...</p>
+            </div>
+          ) : (
+            <div className="plugin-browser-dialog__grid">
+              {filteredPlugins.map((plugin) => (
+                <PluginCard
+                  key={plugin.id}
+                  name={plugin.name}
+                  description={plugin.description}
+                  imageUrl={plugin.imageUrl}
+                  requiresVersion={plugin.requiresVersion}
+                  onActionClick={() => {
+                    console.log(`Get plugin: ${plugin.name}`);
+                    // In real implementation, would open MuseHub or external link
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
         <CustomScrollbar
           contentRef={scrollContainerRef}

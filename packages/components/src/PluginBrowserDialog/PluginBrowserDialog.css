@@ -57,6 +57,17 @@
   display: none;
 }
 
+/* Loading State */
+.plugin-browser-dialog__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #6c6c70;
+}
+
 /* Plugin Grid */
 .plugin-browser-dialog__grid {
   display: grid;
