@@ -70,36 +70,7 @@ const categories: { id: PluginCategory; label: string }[] = [
 
 // Mock plugin data - all plugins with their categories
 const allPlugins: BrowserPlugin[] = [
-  {
-    id: 'musefx',
-    name: 'MuseFX',
-    description: 'An essential collection of mix effects',
-    categories: ['mixing-mastering'],
-  },
-  {
-    id: 'borealis-le',
-    name: 'BOREALIS-LE',
-    description: 'FREE, Light Edition of BOREALIS',
-    categories: ['reverb-delay', 'sound-design-effects'],
-  },
-  {
-    id: 'shape-it',
-    name: 'Shape It',
-    description: 'Parametric 10 band EQ',
-    categories: ['mixing-mastering', 'tone-dynamics'],
-  },
-  {
-    id: 'place-it',
-    name: 'Place It',
-    description: '10 band parametric EQ for sound design',
-    categories: ['mixing-mastering', 'sound-design-effects'],
-  },
-  {
-    id: 'neutone-fx',
-    name: 'Neutone FX',
-    description: 'AI powered instruments and effects',
-    categories: ['sound-design-effects'],
-  },
+  // Voice & Podcasting
   {
     id: 'graillon-3',
     name: 'Graillon 3',
@@ -111,6 +82,122 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Inner Pitch 2',
     description: 'Creative pitch-shifting plugin',
     categories: ['voice-podcasting', 'sound-design-effects'],
+  },
+  {
+    id: 'voice-enhance',
+    name: 'Voice Enhance Pro',
+    description: 'Professional voice enhancement',
+    categories: ['voice-podcasting'],
+  },
+  // Mixing & Mastering
+  {
+    id: 'musefx',
+    name: 'MuseFX',
+    description: 'Essential mix effects collection',
+    categories: ['mixing-mastering'],
+  },
+  {
+    id: 'shape-it',
+    name: 'Shape It',
+    description: 'Parametric 10 band EQ',
+    categories: ['mixing-mastering', 'tone-dynamics'],
+  },
+  {
+    id: 'place-it',
+    name: 'Place It',
+    description: '10 band parametric EQ',
+    categories: ['mixing-mastering', 'sound-design-effects'],
+  },
+  // Reverb & Delay
+  {
+    id: 'borealis-le',
+    name: 'BOREALIS-LE',
+    description: 'FREE Light Edition of BOREALIS',
+    categories: ['reverb-delay', 'sound-design-effects'],
+  },
+  {
+    id: 'space-echo',
+    name: 'Space Echo',
+    description: 'Vintage delay and reverb',
+    categories: ['reverb-delay'],
+  },
+  // De-Esser
+  {
+    id: 'smooth-vocal',
+    name: 'Smooth Vocal',
+    description: 'Advanced de-essing tool',
+    categories: ['de-esser', 'voice-podcasting'],
+  },
+  {
+    id: 'clarity-plus',
+    name: 'Clarity Plus',
+    description: 'Intelligent sibilance control',
+    categories: ['de-esser'],
+  },
+  // Guitars & Amp
+  {
+    id: 'amp-studio',
+    name: 'Amp Studio',
+    description: 'Guitar amplifier simulation',
+    categories: ['guitars-amp-simulation'],
+  },
+  {
+    id: 'pedal-board',
+    name: 'Pedal Board',
+    description: 'Virtual guitar effects pedals',
+    categories: ['guitars-amp-simulation'],
+  },
+  // Sound Design
+  {
+    id: 'neutone-fx',
+    name: 'Neutone FX',
+    description: 'AI powered sound effects',
+    categories: ['sound-design-effects'],
+  },
+  {
+    id: 'spectrum-fx',
+    name: 'Spectrum FX',
+    description: 'Spectral sound design tools',
+    categories: ['sound-design-effects'],
+  },
+  // Tone & Dynamics
+  {
+    id: 'dynamic-master',
+    name: 'Dynamic Master',
+    description: 'Professional dynamics control',
+    categories: ['tone-dynamics', 'mixing-mastering'],
+  },
+  {
+    id: 'tone-shaper',
+    name: 'Tone Shaper',
+    description: 'Advanced tone sculpting',
+    categories: ['tone-dynamics'],
+  },
+  // Tape & Texture
+  {
+    id: 'vintage-tape',
+    name: 'Vintage Tape',
+    description: 'Authentic tape saturation',
+    categories: ['tape-texture'],
+  },
+  {
+    id: 'analog-warmth',
+    name: 'Analog Warmth',
+    description: 'Classic analog character',
+    categories: ['tape-texture'],
+  },
+  // Beats & Percussion
+  {
+    id: 'drum-enhancer',
+    name: 'Drum Enhancer',
+    description: 'Powerful drum processing',
+    categories: ['beats-percussion'],
+  },
+  {
+    id: 'beat-forge',
+    name: 'Beat Forge',
+    description: 'Percussion design toolkit',
+    categories: ['beats-percussion'],
   },
 ];
 
