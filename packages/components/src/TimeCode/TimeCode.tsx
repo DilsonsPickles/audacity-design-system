@@ -507,11 +507,11 @@ export function TimeCode({
               onClick={() => handleFormatSelect('samples')}
             />
             <ContextMenuItem
-              label="Seconds"
+              label="seconds"
               onClick={() => handleFormatSelect('seconds')}
             />
             <ContextMenuItem
-              label="Seconds + milliseconds"
+              label="seconds + milliseconds"
               onClick={() => handleFormatSelect('seconds+milliseconds')}
             />
             <ContextMenuItem
