@@ -229,9 +229,14 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
     const timer = setTimeout(() => {
       const loadedImages: Record<string, string | undefined> = {};
       // In a real implementation, this would fetch from MuseHub API
-      // For now, we'll just leave images undefined to show the placeholder
-      allPlugins.forEach((plugin) => {
-        loadedImages[plugin.id] = plugin.imageUrl;
+      // For demo purposes, set some placeholder images
+      allPlugins.forEach((plugin, index) => {
+        // Alternate between showing placeholder image and gradient
+        if (index % 3 === 0) {
+          loadedImages[plugin.id] = 'https://via.placeholder.com/120/667eea/ffffff?text=Plugin';
+        } else {
+          loadedImages[plugin.id] = plugin.imageUrl; // undefined, shows gradient
+        }
       });
       setPluginImages(loadedImages);
       setImagesLoading(false);
