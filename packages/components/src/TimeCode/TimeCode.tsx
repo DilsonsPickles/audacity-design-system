@@ -598,15 +598,10 @@ function formatHHMMSS(seconds: number): TimeCodeSegment[] {
 
   return [
     { value: pad(hours, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'h', type: 'label', unitType: 'hours' },
-    { value: ' ', type: 'separator' },
     { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'm', type: 'label', unitType: 'minutes' },
-    { value: ' ', type: 'separator' },
     { value: pad(secs, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 's', type: 'label', unitType: 'seconds' },
   ];
 }
@@ -619,17 +614,12 @@ function formatHHMMSSHundredths(seconds: number): TimeCodeSegment[] {
 
   return [
     { value: pad(hours, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'h', type: 'label', unitType: 'hours' },
-    { value: ' ', type: 'separator' },
     { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'm', type: 'label', unitType: 'minutes' },
-    { value: ' ', type: 'separator' },
     { value: pad(secs, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
     { value: '.', type: 'separator' },
     { value: pad(hundredths, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 's', type: 'label', unitType: 'seconds' },
   ];
 }
@@ -642,17 +632,12 @@ function formatHHMMSSMilliseconds(seconds: number): TimeCodeSegment[] {
 
   return [
     { value: pad(hours, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'h', type: 'label', unitType: 'hours' },
-    { value: ' ', type: 'separator' },
     { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'm', type: 'label', unitType: 'minutes' },
-    { value: ' ', type: 'separator' },
     { value: pad(secs, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
     { value: '.', type: 'separator' },
     { value: pad(milliseconds, 3), type: 'unit', maxLength: 3, max: 999, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 's', type: 'label', unitType: 'seconds' },
   ];
 }
@@ -665,19 +650,12 @@ function formatHHMMSSSamples(seconds: number, sampleRate: number): TimeCodeSegme
 
   return [
     { value: pad(hours, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'h', type: 'label', unitType: 'hours' },
-    { value: ' ', type: 'separator' },
     { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'm', type: 'label', unitType: 'minutes' },
-    { value: ' ', type: 'separator' },
     { value: pad(secs, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 's', type: 'label', unitType: 'seconds' },
-    { value: ' ', type: 'separator' },
     { value: pad(samples, 5), type: 'unit', maxLength: 5, max: sampleRate - 1, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'samples', type: 'label', unitType: 'samples' },
   ];
 }
@@ -690,19 +668,12 @@ function formatHHMMSSFrames(seconds: number, frameRate: number): TimeCodeSegment
 
   return [
     { value: pad(hours, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'h', type: 'label', unitType: 'hours' },
-    { value: ' ', type: 'separator' },
     { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'm', type: 'label', unitType: 'minutes' },
-    { value: ' ', type: 'separator' },
     { value: pad(secs, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 's', type: 'label', unitType: 'seconds' },
-    { value: ' ', type: 'separator' },
     { value: pad(frames, 2), type: 'unit', maxLength: 2, max: frameRate - 1, editable: true },
-    { value: ' ', type: 'separator' },
     { value: 'frames', type: 'label', unitType: 'frames' },
   ];
 }
