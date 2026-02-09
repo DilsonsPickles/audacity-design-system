@@ -67,6 +67,7 @@ export * from './PreferencePanel';
 export * from './ExportModal';
 export * from './PluginBrowserDialog';
 export * from './PluginCard';
+export * from './Spinner';
 export * from './AlertDialog';
 export * from './Tab';
 export * from './TabItem';

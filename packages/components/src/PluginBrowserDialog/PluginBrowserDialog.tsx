@@ -4,6 +4,7 @@ import { Button } from '../Button';
 import { FilterChip } from '../FilterChip';
 import { PluginCard } from '../PluginCard';
 import { CustomScrollbar } from '../CustomScrollbar';
+import { Spinner } from '../Spinner';
 import './PluginBrowserDialog.css';
 
 export type PluginCategory =
@@ -302,7 +303,7 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
         <div ref={scrollContainerRef} className="plugin-browser-dialog__scroll-container">
           {isLoading ? (
             <div className="plugin-browser-dialog__loading">
-              <p>Loading plugins...</p>
+              <Spinner size={48} />
             </div>
           ) : (
             <div className="plugin-browser-dialog__grid">
