@@ -121,7 +121,7 @@ const ICON_MAP: Record<IconName, string> = {
   lock: '\uF375',
   eye: '\uEF23',
   refresh: '\uF358',
-  check: '\uE876',
+  check: '\uEF31',
 };
 
 export interface IconProps {
