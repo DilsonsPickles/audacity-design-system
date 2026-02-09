@@ -1,0 +1,86 @@
+/* Plugin Card */
+.plugin-card {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  padding: 16px;
+  background-color: #ffffff;
+  border: 1px solid #d4d5d9;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.plugin-card:hover {
+  border-color: #b8bac1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.plugin-card__image {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.plugin-card__image-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.plugin-card__image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plugin-card__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.plugin-card__name {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #14151a;
+  margin: 0;
+}
+
+.plugin-card__description {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #6c6c70;
+  margin: 0;
+}
+
+.plugin-card__version {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  color: #d32f2f;
+  margin: 0;
+  margin-top: 4px;
+}
+
+.plugin-card__actions {
+  display: flex;
+  align-items: flex-start;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.plugin-card__actions button {
+  width: 100%;
+}

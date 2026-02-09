@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { FilterChip } from '../FilterChip';
+import { PluginCard } from '../PluginCard';
 import './PluginBrowserDialog.css';
 
 export type PluginCategory =
@@ -175,26 +176,17 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
         <div className="plugin-browser-dialog__scroll-container">
           <div className="plugin-browser-dialog__grid">
             {filteredPlugins.map((plugin) => (
-              <div key={plugin.id} className="plugin-card">
-                <div className="plugin-card__image">
-                  {/* Placeholder for plugin image */}
-                  <div className="plugin-card__image-placeholder" />
-                </div>
-                <div className="plugin-card__content">
-                  <h3 className="plugin-card__name">{plugin.name}</h3>
-                  <p className="plugin-card__description">{plugin.description}</p>
-                  {plugin.requiresVersion && (
-                    <p className="plugin-card__version">
-                      IMPORTANT: Requires {plugin.requiresVersion}
-                    </p>
-                  )}
-                  <div className="plugin-card__actions">
-                    <Button variant="primary" size="small">
-                      Get it on MuseHub
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <PluginCard
+                key={plugin.id}
+                name={plugin.name}
+                description={plugin.description}
+                imageUrl={plugin.imageUrl}
+                requiresVersion={plugin.requiresVersion}
+                onActionClick={() => {
+                  console.log(`Get plugin: ${plugin.name}`);
+                  // In real implementation, would open MuseHub or external link
+                }}
+              />
             ))}
           </div>
         </div>
