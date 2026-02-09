@@ -729,9 +729,9 @@ function formatSeconds(seconds: number): TimeCodeSegment[] {
     }
   });
 
-  parts.push({ value: 's', type: 'label', unitType: 'seconds' });
+  parts.push({ value: 'seconds', type: 'label', unitType: 'seconds' });
 
-  return parts.length ? parts : [{ value: '0', type: 'unit', editable: true }, { value: 's', type: 'label', unitType: 'seconds' }];
+  return parts.length ? parts : [{ value: '0', type: 'unit', editable: true }, { value: 'seconds', type: 'label', unitType: 'seconds' }];
 }
 
 function formatSecondsMilliseconds(seconds: number): TimeCodeSegment[] {
@@ -760,7 +760,7 @@ function formatSecondsMilliseconds(seconds: number): TimeCodeSegment[] {
 
   parts.push({ value: '.', type: 'separator' });
   parts.push({ value: pad(milliseconds, 3), type: 'unit', maxLength: 3, max: 999, editable: true });
-  parts.push({ value: 's', type: 'label', unitType: 'seconds' });
+  parts.push({ value: 'seconds', type: 'label', unitType: 'seconds' });
 
   return parts;
 }
