@@ -77,18 +77,21 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Graillon 3',
     description: 'Real-time vocal tuner',
     categories: ['voice-podcasting'],
+    imageUrl: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=300&h=300&fit=crop',
   },
   {
     id: 'inner-pitch-2',
     name: 'Inner Pitch 2',
     description: 'Creative pitch-shifting plugin',
     categories: ['voice-podcasting', 'sound-design-effects'],
+    imageUrl: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=300&h=300&fit=crop',
   },
   {
     id: 'voice-enhance',
     name: 'Voice Enhance Pro',
     description: 'Professional voice enhancement',
     categories: ['voice-podcasting'],
+    imageUrl: 'https://images.unsplash.com/photo-1589903308904-1010c2294adc?w=300&h=300&fit=crop',
   },
   // Mixing & Mastering
   {
@@ -96,18 +99,21 @@ const allPlugins: BrowserPlugin[] = [
     name: 'MuseFX',
     description: 'Essential mix effects collection',
     categories: ['mixing-mastering'],
+    imageUrl: 'https://images.unsplash.com/photo-1598653222000-6b7b7a552625?w=300&h=300&fit=crop',
   },
   {
     id: 'shape-it',
     name: 'Shape It',
     description: 'Parametric 10 band EQ',
     categories: ['mixing-mastering', 'tone-dynamics'],
+    imageUrl: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?w=300&h=300&fit=crop',
   },
   {
     id: 'place-it',
     name: 'Place It',
     description: '10 band parametric EQ',
     categories: ['mixing-mastering', 'sound-design-effects'],
+    imageUrl: 'https://images.unsplash.com/photo-1614149162883-504ce0ecad82?w=300&h=300&fit=crop',
   },
   // Reverb & Delay
   {
@@ -115,12 +121,14 @@ const allPlugins: BrowserPlugin[] = [
     name: 'BOREALIS-LE',
     description: 'FREE Light Edition of BOREALIS',
     categories: ['reverb-delay', 'sound-design-effects'],
+    imageUrl: 'https://images.unsplash.com/photo-1551715398-f3f6ddbe1f00?w=300&h=300&fit=crop',
   },
   {
     id: 'space-echo',
     name: 'Space Echo',
     description: 'Vintage delay and reverb',
     categories: ['reverb-delay'],
+    imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&h=300&fit=crop',
   },
   // De-Esser
   {
@@ -128,12 +136,14 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Smooth Vocal',
     description: 'Advanced de-essing tool',
     categories: ['de-esser', 'voice-podcasting'],
+    imageUrl: 'https://images.unsplash.com/photo-1590845947670-c009801ffa74?w=300&h=300&fit=crop',
   },
   {
     id: 'clarity-plus',
     name: 'Clarity Plus',
     description: 'Intelligent sibilance control',
     categories: ['de-esser'],
+    imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&h=300&fit=crop',
   },
   // Guitars & Amp
   {
@@ -141,12 +151,14 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Amp Studio',
     description: 'Guitar amplifier simulation',
     categories: ['guitars-amp-simulation'],
+    imageUrl: 'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?w=300&h=300&fit=crop',
   },
   {
     id: 'pedal-board',
     name: 'Pedal Board',
     description: 'Virtual guitar effects pedals',
     categories: ['guitars-amp-simulation'],
+    imageUrl: 'https://images.unsplash.com/photo-1606682116200-ab4f67753489?w=300&h=300&fit=crop',
   },
   // Sound Design
   {
@@ -154,12 +166,14 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Neutone FX',
     description: 'AI powered sound effects',
     categories: ['sound-design-effects'],
+    imageUrl: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=300&h=300&fit=crop',
   },
   {
     id: 'spectrum-fx',
     name: 'Spectrum FX',
     description: 'Spectral sound design tools',
     categories: ['sound-design-effects'],
+    imageUrl: 'https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=300&h=300&fit=crop',
   },
   // Tone & Dynamics
   {
@@ -167,12 +181,14 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Dynamic Master',
     description: 'Professional dynamics control',
     categories: ['tone-dynamics', 'mixing-mastering'],
+    imageUrl: 'https://images.unsplash.com/photo-1598887142487-3c854d7c3de8?w=300&h=300&fit=crop',
   },
   {
     id: 'tone-shaper',
     name: 'Tone Shaper',
     description: 'Advanced tone sculpting',
     categories: ['tone-dynamics'],
+    imageUrl: 'https://images.unsplash.com/photo-1563330232-57114bb0823c?w=300&h=300&fit=crop',
   },
   // Tape & Texture
   {
@@ -180,12 +196,14 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Vintage Tape',
     description: 'Authentic tape saturation',
     categories: ['tape-texture'],
+    imageUrl: 'https://images.unsplash.com/photo-1603473219299-1c2cb6b09c38?w=300&h=300&fit=crop',
   },
   {
     id: 'analog-warmth',
     name: 'Analog Warmth',
     description: 'Classic analog character',
     categories: ['tape-texture'],
+    imageUrl: 'https://images.unsplash.com/photo-1619983081563-430f63602796?w=300&h=300&fit=crop',
   },
   // Beats & Percussion
   {
@@ -193,12 +211,14 @@ const allPlugins: BrowserPlugin[] = [
     name: 'Drum Enhancer',
     description: 'Powerful drum processing',
     categories: ['beats-percussion'],
+    imageUrl: 'https://images.unsplash.com/photo-1571327073757-71d13c24de30?w=300&h=300&fit=crop',
   },
   {
     id: 'beat-forge',
     name: 'Beat Forge',
     description: 'Percussion design toolkit',
     categories: ['beats-percussion'],
+    imageUrl: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=300&fit=crop',
   },
 ];
 
@@ -231,14 +251,8 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
     const timer = setTimeout(() => {
       const loadedImages: Record<string, string | undefined> = {};
       // In a real implementation, this would fetch from MuseHub API
-      // For demo purposes, set some placeholder images
-      allPlugins.forEach((plugin, index) => {
-        // Alternate between showing placeholder image and gradient
-        if (index % 3 === 0) {
-          loadedImages[plugin.id] = 'https://via.placeholder.com/120/667eea/ffffff?text=Plugin';
-        } else {
-          loadedImages[plugin.id] = plugin.imageUrl; // undefined, shows gradient
-        }
+      allPlugins.forEach((plugin) => {
+        loadedImages[plugin.id] = plugin.imageUrl;
       });
       setPluginImages(loadedImages);
       setImagesLoading(false);
