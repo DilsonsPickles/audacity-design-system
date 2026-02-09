@@ -250,7 +250,12 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
     // Simulate API delay (3 seconds)
     const timer = setTimeout(() => {
       // In a real implementation, this would fetch from MuseHub API
-      setPlugins(allPlugins);
+      // Simulate some plugins not having images (every 4th plugin has no image)
+      const pluginsWithMixedImages = allPlugins.map((plugin, index) => ({
+        ...plugin,
+        imageUrl: index % 4 === 0 ? undefined : plugin.imageUrl,
+      }));
+      setPlugins(pluginsWithMixedImages);
       setIsLoading(false);
     }, 3000);
 
