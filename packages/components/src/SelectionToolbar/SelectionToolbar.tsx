@@ -34,10 +34,15 @@ export interface SelectionToolbarProps {
    */
   instructionText?: string;
   /**
-   * Timecode format to display
+   * Timecode format to display for selection start/end
    * @default 'hh:mm:ss+milliseconds'
    */
   format?: TimeCodeFormat;
+  /**
+   * Timecode format to display for duration
+   * @default 'hh:mm:ss+milliseconds'
+   */
+  durationFormat?: TimeCodeFormat;
   /**
    * Sample rate for sample-based formats
    * @default 44100
@@ -49,9 +54,13 @@ export interface SelectionToolbarProps {
    */
   frameRate?: number;
   /**
-   * Callback when format changes
+   * Callback when selection format changes
    */
   onFormatChange?: (format: TimeCodeFormat) => void;
+  /**
+   * Callback when duration format changes
+   */
+  onDurationFormatChange?: (format: TimeCodeFormat) => void;
   /**
    * Callback when selection start time changes via editing
    */
@@ -87,9 +96,11 @@ export function SelectionToolbar({
   status = 'Stopped',
   instructionText = 'Click and drag to select audio',
   format = 'hh:mm:ss+milliseconds',
+  durationFormat = 'hh:mm:ss+milliseconds',
   sampleRate = 44100,
   frameRate = 24,
   onFormatChange,
+  onDurationFormatChange,
   onSelectionStartChange,
   onSelectionEndChange,
   showCloudIndicator = false,
@@ -205,7 +216,6 @@ export function SelectionToolbar({
             sampleRate={sampleRate}
             frameRate={frameRate}
             onChange={onSelectionStartChange}
-            onFormatChange={onFormatChange}
             showFormatSelector={false}
           />
           <TimeCode
@@ -214,7 +224,8 @@ export function SelectionToolbar({
             sampleRate={sampleRate}
             frameRate={frameRate}
             onChange={onSelectionEndChange}
-            showFormatSelector={false}
+            onFormatChange={onFormatChange}
+            showFormatSelector={true}
           />
         </div>
 
@@ -224,10 +235,11 @@ export function SelectionToolbar({
             <div className="selection-toolbar__timecodes">
               <TimeCode
                 value={durationValue}
-                format={format}
+                format={durationFormat}
                 sampleRate={sampleRate}
                 frameRate={frameRate}
                 showFormatSelector={true}
+                onFormatChange={onDurationFormatChange}
               />
             </div>
           </>

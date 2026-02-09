@@ -176,6 +176,8 @@ function CanvasDemoContent() {
   const [indexedDBProjects, setIndexedDBProjects] = React.useState<any[]>([]);
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
+  const [selectionTimeCodeFormat, setSelectionTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
+  const [durationTimeCodeFormat, setDurationTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isSignedIn, setIsSignedIn] = React.useState(true);
   const [isCreateAccountOpen, setIsCreateAccountOpen] = React.useState(false);
@@ -292,7 +294,7 @@ function CanvasDemoContent() {
   // Debug panel state
   const [isDebugPanelOpen, setIsDebugPanelOpen] = React.useState(false);
   const [isCloudUploading, setIsCloudUploading] = React.useState(false);
-  const [showDuration, setShowDuration] = React.useState(false);
+  const [showDuration, setShowDuration] = React.useState(true);
   const [showProjectRate, setShowProjectRate] = React.useState(false);
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
@@ -3426,13 +3428,15 @@ function CanvasDemoContent() {
         <SelectionToolbar
           selectionStart={state.timeSelection?.startTime ?? null}
           selectionEnd={state.timeSelection?.endTime ?? null}
-          format={timeCodeFormat}
+          format={selectionTimeCodeFormat}
+          durationFormat={durationTimeCodeFormat}
           showCloudIndicator={isCloudProject || isCloudUploading}
           isCloudUploading={isCloudUploading}
           showDuration={showDuration}
           status={showFocusDebug ? 'Focused element' : undefined}
           instructionText={showFocusDebug ? focusedElement : undefined}
-          onFormatChange={setTimeCodeFormat}
+          onFormatChange={setSelectionTimeCodeFormat}
+          onDurationFormatChange={setDurationTimeCodeFormat}
           onSelectionStartChange={(newStart) => {
             // Create selection if it doesn't exist, otherwise update start time
             const endTime = state.timeSelection?.endTime ?? newStart;
