@@ -34,6 +34,16 @@ export interface ContextMenuItemProps {
   icon?: React.ReactNode;
 
   /**
+   * Whether the item is checked (shows checkmark)
+   */
+  checked?: boolean;
+
+  /**
+   * Keyboard shortcut to display on the right
+   */
+  shortcut?: string;
+
+  /**
    * Callback when submenu should close
    */
   onClose?: () => void;
@@ -50,6 +60,8 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   children,
   hasSubmenu = false,
   icon,
+  checked,
+  shortcut,
   onClose,
 }) => {
   const { theme } = useTheme();
@@ -224,8 +236,16 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
       style={style}
     >
       <div className="context-menu-item-content">
+        {checked !== undefined && (
+          <span className="context-menu-item-checkmark">
+            {checked && '✓'}
+          </span>
+        )}
         {icon && <span className="context-menu-item-icon">{icon}</span>}
         <span className="context-menu-item-label">{label}</span>
+        {shortcut && (
+          <span className="context-menu-item-shortcut">{shortcut}</span>
+        )}
         {(hasSubmenu || children) && (
           <span className="context-menu-item-arrow">▸</span>
         )}
