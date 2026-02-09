@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../ThemeProvider';
+import { Icon } from '../Icon';
 import './ContextMenuItem.css';
 
 export interface ContextMenuItemProps {
@@ -238,7 +239,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
       <div className="context-menu-item-content">
         {checked !== undefined && (
           <span className="context-menu-item-checkmark">
-            {checked && '✓'}
+            {checked && <Icon name="check" size={16} />}
           </span>
         )}
         {icon && <span className="context-menu-item-icon">{icon}</span>}

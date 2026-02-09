@@ -59,7 +59,8 @@ export type IconName =
   | 'list-view'
   | 'lock'
   | 'eye'
-  | 'refresh';
+  | 'refresh'
+  | 'check';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -120,6 +121,7 @@ const ICON_MAP: Record<IconName, string> = {
   lock: '\uF375',
   eye: '\uEF23',
   refresh: '\uF358',
+  check: '\uE5CA',
 };
 
 export interface IconProps {
