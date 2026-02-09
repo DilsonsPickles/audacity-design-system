@@ -60,12 +60,18 @@
 /* Loading State */
 .plugin-browser-dialog__loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 400px;
+  gap: 16px;
+}
+
+.plugin-browser-dialog__loading-text {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: #6c6c70;
+  margin: 0;
 }
 
 /* Plugin Grid */

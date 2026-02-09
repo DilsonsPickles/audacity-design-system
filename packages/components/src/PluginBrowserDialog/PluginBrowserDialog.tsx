@@ -304,6 +304,7 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
           {isLoading ? (
             <div className="plugin-browser-dialog__loading">
               <Spinner size={48} />
+              <p className="plugin-browser-dialog__loading-text">Loading...</p>
             </div>
           ) : (
             <div className="plugin-browser-dialog__grid">
