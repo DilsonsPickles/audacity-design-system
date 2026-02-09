@@ -480,50 +480,62 @@ export function TimeCode({
           >
             <ContextMenuItem
               label="dd:hh:mm:ss"
+              checked={format === 'dd:hh:mm:ss'}
               onClick={() => handleFormatSelect('dd:hh:mm:ss')}
             />
             <ContextMenuItem
               label="hh:mm:ss"
+              checked={format === 'hh:mm:ss'}
               onClick={() => handleFormatSelect('hh:mm:ss')}
             />
             <ContextMenuItem
               label="hh:mm:ss + hundredths"
+              checked={format === 'hh:mm:ss+hundredths'}
               onClick={() => handleFormatSelect('hh:mm:ss+hundredths')}
             />
             <ContextMenuItem
               label="hh:mm:ss + milliseconds"
+              checked={format === 'hh:mm:ss+milliseconds'}
               onClick={() => handleFormatSelect('hh:mm:ss+milliseconds')}
             />
             <ContextMenuItem
               label="hh:mm:ss + samples"
+              checked={format === 'hh:mm:ss+samples'}
               onClick={() => handleFormatSelect('hh:mm:ss+samples')}
             />
             <ContextMenuItem
               label="hh:mm:ss + frames (24fps)"
+              checked={format === 'hh:mm:ss+frames'}
               onClick={() => handleFormatSelect('hh:mm:ss+frames')}
             />
             <ContextMenuItem
               label="samples"
+              checked={format === 'samples'}
               onClick={() => handleFormatSelect('samples')}
             />
             <ContextMenuItem
               label="seconds"
+              checked={format === 'seconds'}
               onClick={() => handleFormatSelect('seconds')}
             />
             <ContextMenuItem
               label="seconds + milliseconds"
+              checked={format === 'seconds+milliseconds'}
               onClick={() => handleFormatSelect('seconds+milliseconds')}
             />
             <ContextMenuItem
               label="film frames (24fps)"
+              checked={format === 'film-frames'}
               onClick={() => handleFormatSelect('film-frames')}
             />
             <ContextMenuItem
               label="beats:bars"
+              checked={format === 'beats:bars'}
               onClick={() => handleFormatSelect('beats:bars')}
             />
             <ContextMenuItem
               label="Hz"
+              checked={format === 'Hz'}
               onClick={() => handleFormatSelect('Hz')}
             />
           </ContextMenu>
