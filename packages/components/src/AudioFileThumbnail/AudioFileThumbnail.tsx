@@ -160,8 +160,16 @@ export function AudioFileThumbnail({
   className = '',
   waveformSeed,
 }: AudioFileThumbnailProps) {
-  // Generate seed from title if not provided
-  const seed = waveformSeed ?? title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  // Generate seed from title if not provided - use better hash function
+  const seed = waveformSeed ?? (() => {
+    let hash = 0;
+    for (let i = 0; i < title.length; i++) {
+      const char = title.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+  })();
 
   return (
     <div className={`audio-file-thumbnail ${className}`}>
