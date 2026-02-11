@@ -63,6 +63,11 @@ const WaveformVisual = ({ seed = 0 }: { seed?: number }) => {
       return seedState / 233280;
     };
 
+    // Use seed to vary the fundamental characteristics of the waveform
+    const phaseOffset = (seed % 1000) / 100; // 0-10
+    const frequencyMod = 1 + ((seed % 500) / 1000); // 1.0-1.5
+    const amplitudeMod = 0.6 + ((seed % 400) / 1000); // 0.6-1.0
+
     const duration = 3;
     const samplesPerSecond = 50000;
     const sampleCount = Math.floor(duration * samplesPerSecond);
@@ -73,15 +78,16 @@ const WaveformVisual = ({ seed = 0 }: { seed?: number }) => {
 
       // Speech envelope with seeded variation
       const speechEnvelope =
-        Math.abs(Math.sin(t * Math.PI * 3 + seededRandom() * 0.5)) *
-        (0.3 + Math.abs(Math.sin(t * Math.PI * 0.5)) * 0.7) *
-        (0.5 + seededRandom() * 0.5);
+        Math.abs(Math.sin(t * Math.PI * 3 * frequencyMod + phaseOffset + seededRandom() * 0.5)) *
+        (0.3 + Math.abs(Math.sin(t * Math.PI * 0.5 * frequencyMod)) * 0.7) *
+        (0.5 + seededRandom() * 0.5) *
+        amplitudeMod;
 
       // High-frequency content with seed variation
       const voiceContent =
-        Math.sin(t * Math.PI * 200 + seededRandom() * 2) * 0.4 +
-        Math.sin(t * Math.PI * 500 + seededRandom() * 3) * 0.3 +
-        Math.sin(t * Math.PI * 1200 + seededRandom() * 5) * 0.2 +
+        Math.sin(t * Math.PI * 200 * frequencyMod + phaseOffset + seededRandom() * 2) * 0.4 +
+        Math.sin(t * Math.PI * 500 * frequencyMod + phaseOffset * 2 + seededRandom() * 3) * 0.3 +
+        Math.sin(t * Math.PI * 1200 * frequencyMod + phaseOffset * 3 + seededRandom() * 5) * 0.2 +
         (seededRandom() - 0.5) * 0.3;
 
       const value = voiceContent * speechEnvelope;
