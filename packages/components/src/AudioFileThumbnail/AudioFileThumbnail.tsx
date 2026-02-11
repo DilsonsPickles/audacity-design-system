@@ -55,17 +55,37 @@ const WaveformVisual = ({ seed = 0 }: { seed?: number }) => {
     canvas.width = width;
     canvas.height = height;
 
-    // Generate realistic speech waveform data (3 seconds)
-    // Use seed to create deterministic random patterns
-    const seededRandom = (index: number) => {
-      const x = Math.sin(seed + index) * 10000;
-      return x - Math.floor(x);
+    // Generate realistic speech waveform data with seeded randomness
+    // Create seeded random number generator
+    let seedState = seed;
+    const seededRandom = () => {
+      seedState = (seedState * 9301 + 49297) % 233280;
+      return seedState / 233280;
     };
 
-    const waveformData = generateSpeechWaveform(3, 50000);
-    // Apply seed-based variation to the waveform
-    for (let i = 0; i < waveformData.length; i++) {
-      waveformData[i] *= 0.7 + seededRandom(i) * 0.6; // Vary amplitude
+    const duration = 3;
+    const samplesPerSecond = 50000;
+    const sampleCount = Math.floor(duration * samplesPerSecond);
+    const waveformData: number[] = [];
+
+    for (let i = 0; i < sampleCount; i++) {
+      const t = i / sampleCount;
+
+      // Speech envelope with seeded variation
+      const speechEnvelope =
+        Math.abs(Math.sin(t * Math.PI * 3 + seededRandom() * 0.5)) *
+        (0.3 + Math.abs(Math.sin(t * Math.PI * 0.5)) * 0.7) *
+        (0.5 + seededRandom() * 0.5);
+
+      // High-frequency content with seed variation
+      const voiceContent =
+        Math.sin(t * Math.PI * 200 + seededRandom() * 2) * 0.4 +
+        Math.sin(t * Math.PI * 500 + seededRandom() * 3) * 0.3 +
+        Math.sin(t * Math.PI * 1200 + seededRandom() * 5) * 0.2 +
+        (seededRandom() - 0.5) * 0.3;
+
+      const value = voiceContent * speechEnvelope;
+      waveformData.push(Math.max(-1, Math.min(1, value)));
     }
 
     // Clear canvas
