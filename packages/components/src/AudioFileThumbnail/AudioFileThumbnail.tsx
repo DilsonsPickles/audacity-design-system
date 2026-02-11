@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Icon } from '../Icon';
+import { generateSpeechWaveform } from '../utils/waveform';
 import './AudioFileThumbnail.css';
 
 export interface AudioFileThumbnailProps {
@@ -33,40 +34,80 @@ export interface AudioFileThumbnailProps {
   className?: string;
 }
 
-// Simple waveform visualization - static pattern
+// Canvas-based waveform visualization matching project style
 const WaveformVisual = () => {
-  // Static waveform pattern for consistent appearance
-  const bars = [
-    0.4, 0.6, 0.8, 0.9, 0.7, 0.5, 0.6, 0.8, 0.95, 0.85, 0.7, 0.6, 0.5, 0.7, 0.9, 1.0, 0.95, 0.8, 0.6, 0.5,
-    0.6, 0.75, 0.85, 0.9, 0.8, 0.65, 0.5, 0.6, 0.8, 0.9, 0.85, 0.7, 0.55, 0.45, 0.6, 0.75, 0.8, 0.7, 0.5, 0.4
-  ];
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    const width = 280;
+    const height = 170;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Generate realistic speech waveform data (3 seconds)
+    const waveformData = generateSpeechWaveform(3, 50000);
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw waveform
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.lineWidth = 1;
+
+    const centerY = height / 2;
+    const samplesPerPixel = Math.floor(waveformData.length / width);
+
+    ctx.beginPath();
+    ctx.moveTo(0, centerY);
+
+    // Draw positive half
+    for (let x = 0; x < width; x++) {
+      const startIdx = x * samplesPerPixel;
+      const endIdx = startIdx + samplesPerPixel;
+
+      let max = 0;
+      for (let i = startIdx; i < endIdx && i < waveformData.length; i++) {
+        const value = Math.abs(waveformData[i]);
+        if (value > max) max = value;
+      }
+
+      const y = centerY - (max * (height / 2) * 0.9);
+      ctx.lineTo(x, y);
+    }
+
+    // Draw negative half
+    for (let x = width - 1; x >= 0; x--) {
+      const startIdx = x * samplesPerPixel;
+      const endIdx = startIdx + samplesPerPixel;
+
+      let max = 0;
+      for (let i = startIdx; i < endIdx && i < waveformData.length; i++) {
+        const value = Math.abs(waveformData[i]);
+        if (value > max) max = value;
+      }
+
+      const y = centerY + (max * (height / 2) * 0.9);
+      ctx.lineTo(x, y);
+    }
+
+    ctx.closePath();
+    ctx.fill();
+  }, []);
 
   return (
-    <svg
-      width="100%"
-      height="100%"
-      viewBox="0 0 280 170"
-      preserveAspectRatio="none"
+    <canvas
+      ref={canvasRef}
+      style={{ width: '100%', height: '100%' }}
       aria-hidden="true"
-    >
-      {bars.map((height, i) => {
-        const x = (i / bars.length) * 280;
-        const barHeight = height * 140;
-        const y = (170 - barHeight) / 2;
-
-        return (
-          <rect
-            key={i}
-            x={x}
-            y={y}
-            width={280 / bars.length - 1}
-            height={barHeight}
-            fill="#677CE4"
-            opacity={0.7}
-          />
-        );
-      })}
-    </svg>
+    />
   );
 };
 
