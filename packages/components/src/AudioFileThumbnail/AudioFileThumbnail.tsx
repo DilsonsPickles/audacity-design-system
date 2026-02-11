@@ -63,10 +63,11 @@ const WaveformVisual = ({ seed = 0 }: { seed?: number }) => {
       return seedState / 233280;
     };
 
-    // Use seed to vary the fundamental characteristics of the waveform
-    const phaseOffset = (seed % 1000) / 100; // 0-10
-    const frequencyMod = 1 + ((seed % 500) / 1000); // 1.0-1.5
-    const amplitudeMod = 0.6 + ((seed % 400) / 1000); // 0.6-1.0
+    // Use seed to vary the fundamental characteristics of the waveform DRAMATICALLY
+    const phaseOffset = (seed % 10000) / 100; // 0-100 (huge phase variation)
+    const frequencyMod = 0.5 + ((seed % 2000) / 1000); // 0.5-2.5x (very wide frequency range)
+    const amplitudeMod = 0.3 + ((seed % 700) / 1000); // 0.3-1.0 (big amplitude variation)
+    const densityMod = 1 + ((seed % 1500) / 1000); // 1.0-2.5x (syllable density variation)
 
     const duration = 3;
     const samplesPerSecond = 50000;
@@ -76,11 +77,11 @@ const WaveformVisual = ({ seed = 0 }: { seed?: number }) => {
     for (let i = 0; i < sampleCount; i++) {
       const t = i / sampleCount;
 
-      // Speech envelope with seeded variation
+      // Speech envelope with DRAMATIC seeded variation
       const speechEnvelope =
-        Math.abs(Math.sin(t * Math.PI * 3 * frequencyMod + phaseOffset + seededRandom() * 0.5)) *
-        (0.3 + Math.abs(Math.sin(t * Math.PI * 0.5 * frequencyMod)) * 0.7) *
-        (0.5 + seededRandom() * 0.5) *
+        Math.abs(Math.sin(t * Math.PI * 3 * frequencyMod * densityMod + phaseOffset + seededRandom() * 2)) *
+        (0.2 + Math.abs(Math.sin(t * Math.PI * 0.5 * frequencyMod)) * 0.8) *
+        (0.3 + seededRandom() * 0.7) *
         amplitudeMod;
 
       // High-frequency content with seed variation
