@@ -114,7 +114,7 @@ export function Dialog({
   noPadding = false,
   os = 'macos',
   style: externalStyle,
-  minHeight = 488,
+  minHeight,
 }: DialogProps) {
   const { theme } = useTheme();
   const dialogRef = useRef<HTMLDivElement>(null);

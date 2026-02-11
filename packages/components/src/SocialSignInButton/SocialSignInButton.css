@@ -8,7 +8,7 @@
   justify-content: center;
   gap: 8px;
   padding: 8px;
-  width: 190px;
+  width: 100%;
   background-color: var(--social-btn-bg);
   border: 1px solid var(--social-btn-border);
   border-radius: 4px;
