@@ -32,10 +32,14 @@ export interface AudioFileThumbnailProps {
    * Optional className for custom styling
    */
   className?: string;
+  /**
+   * Seed for unique waveform generation (use title hash or unique ID)
+   */
+  waveformSeed?: number;
 }
 
 // Canvas-based waveform visualization matching project style
-const WaveformVisual = () => {
+const WaveformVisual = ({ seed = 0 }: { seed?: number }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -52,7 +56,17 @@ const WaveformVisual = () => {
     canvas.height = height;
 
     // Generate realistic speech waveform data (3 seconds)
+    // Use seed to create deterministic random patterns
+    const seededRandom = (index: number) => {
+      const x = Math.sin(seed + index) * 10000;
+      return x - Math.floor(x);
+    };
+
     const waveformData = generateSpeechWaveform(3, 50000);
+    // Apply seed-based variation to the waveform
+    for (let i = 0; i < waveformData.length; i++) {
+      waveformData[i] *= 0.7 + seededRandom(i) * 0.6; // Vary amplitude
+    }
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -100,7 +114,7 @@ const WaveformVisual = () => {
 
     ctx.closePath();
     ctx.fill();
-  }, []);
+  }, [seed]);
 
   return (
     <canvas
@@ -124,7 +138,11 @@ export function AudioFileThumbnail({
   onClick,
   onContextMenu,
   className = '',
+  waveformSeed,
 }: AudioFileThumbnailProps) {
+  // Generate seed from title if not provided
+  const seed = waveformSeed ?? title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
   return (
     <div className={`audio-file-thumbnail ${className}`}>
       <button
@@ -133,7 +151,7 @@ export function AudioFileThumbnail({
         type="button"
       >
         <div className="audio-file-thumbnail__image">
-          <WaveformVisual />
+          <WaveformVisual seed={seed} />
           {isCloudFile && (
             <div className="audio-file-thumbnail__cloud-badge">
               <Icon name="cloud-filled" size={16} />
