@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
-import { FilterChip } from '../FilterChip';
 import { PluginCard } from '../PluginCard';
 import { CustomScrollbar } from '../CustomScrollbar';
 import { Spinner } from '../Spinner';
@@ -284,53 +283,58 @@ export const PluginBrowserDialog: React.FC<PluginBrowserDialogProps> = ({
       maximizable={true}
       closeOnClickOutside={false}
     >
-      {/* Filter Bar */}
-      <div className="plugin-browser-dialog__filters">
-        <div className="plugin-browser-dialog__categories">
-          {categories.map((category) => (
-            <FilterChip
-              key={category.id}
-              label={category.label}
-              selected={selectedCategory === category.id}
-              onClick={() => handleCategoryChange(category.id)}
-            />
-          ))}
+      <div className="plugin-browser-dialog__container">
+        {/* Sidebar Navigation */}
+        <div className="plugin-browser-dialog__sidebar">
+          <nav className="plugin-browser-dialog__nav">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                className={`plugin-browser-dialog__nav-item ${
+                  selectedCategory === category.id ? 'plugin-browser-dialog__nav-item--active' : ''
+                }`}
+                onClick={() => handleCategoryChange(category.id)}
+              >
+                {category.label}
+              </button>
+            ))}
+          </nav>
         </div>
-      </div>
 
-      {/* Content Area */}
-      <div className="plugin-browser-dialog__body">
-        <div ref={scrollContainerRef} className="plugin-browser-dialog__scroll-container">
-          {isLoading ? (
-            <div className="plugin-browser-dialog__loading">
-              <Spinner size={48} />
-              <p className="plugin-browser-dialog__loading-text">Loading effects...</p>
-            </div>
-          ) : (
-            <div className="plugin-browser-dialog__grid">
-              {filteredPlugins.map((plugin) => (
-                <PluginCard
-                  key={plugin.id}
-                  name={plugin.name}
-                  description={plugin.description}
-                  imageUrl={plugin.imageUrl}
-                  requiresVersion={plugin.requiresVersion}
-                  onActionClick={() => {
-                    console.log(`Get plugin: ${plugin.name}`);
-                    // In real implementation, would open MuseHub or external link
-                  }}
-                />
-              ))}
-            </div>
-          )}
+        {/* Content Area */}
+        <div className="plugin-browser-dialog__body">
+          <div ref={scrollContainerRef} className="plugin-browser-dialog__scroll-container">
+            {isLoading ? (
+              <div className="plugin-browser-dialog__loading">
+                <Spinner size={48} />
+                <p className="plugin-browser-dialog__loading-text">Loading effects...</p>
+              </div>
+            ) : (
+              <div className="plugin-browser-dialog__grid">
+                {filteredPlugins.map((plugin) => (
+                  <PluginCard
+                    key={plugin.id}
+                    name={plugin.name}
+                    description={plugin.description}
+                    imageUrl={plugin.imageUrl}
+                    requiresVersion={plugin.requiresVersion}
+                    onActionClick={() => {
+                      console.log(`Get plugin: ${plugin.name}`);
+                      // In real implementation, would open MuseHub or external link
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          <CustomScrollbar
+            contentRef={scrollContainerRef}
+            orientation="vertical"
+            width={16}
+            backgroundColor="#ebedf0"
+            borderColor="#d4d5d9"
+          />
         </div>
-        <CustomScrollbar
-          contentRef={scrollContainerRef}
-          orientation="vertical"
-          width={16}
-          backgroundColor="#ebedf0"
-          borderColor="#d4d5d9"
-        />
       </div>
 
       {/* Footer */}

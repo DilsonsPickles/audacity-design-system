@@ -4,6 +4,9 @@ import { Icon } from '../Icon';
 import { ProjectThumbnail } from '../ProjectThumbnail';
 import { AudioFileThumbnail } from '../AudioFileThumbnail';
 import { Button } from '../Button';
+import { Dropdown } from '../Dropdown';
+import { PluginCard } from '../PluginCard';
+import { CustomScrollbar } from '../CustomScrollbar';
 import { useTheme } from '../ThemeProvider';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
@@ -34,7 +37,7 @@ export function HomeTab({
   projects: externalProjects,
 }: HomeTabProps) {
   const { theme } = useTheme();
-  const [activeSidebarItem, setActiveSidebarItem] = React.useState<'my-accounts' | 'project' | 'learn'>('project');
+  const [activeSidebarItem, setActiveSidebarItem] = React.useState<'my-accounts' | 'project' | 'plugins' | 'learn'>('project');
   const [activeSection, setActiveSection] = React.useState<'cloud-projects' | 'new-recent' | 'cloud-audio'>('new-recent');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -43,6 +46,11 @@ export function HomeTab({
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; itemId: string; isCloudItem: boolean } | null>(null);
   const [storedProjects, setStoredProjects] = React.useState<StoredProject[]>([]);
+  const [pluginsSearchQuery, setPluginsSearchQuery] = React.useState('');
+  const [pluginsCategory, setPluginsCategory] = React.useState('all');
+  const [pluginsLoading, setPluginsLoading] = React.useState(false);
+  const [availablePlugins, setAvailablePlugins] = React.useState<any[]>([]);
+  const pluginsScrollRef = React.useRef<HTMLDivElement>(null);
   const itemsPerPage = 12;
 
   // Load projects from localStorage on mount (unless external projects provided)
@@ -277,6 +285,55 @@ export function HomeTab({
     return pages;
   };
 
+  // Plugin data
+  const allPluginsData = [
+    { id: 'graillon-3', name: 'Graillon 3', description: 'Real-time vocal tuner', category: 'generators', imageUrl: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=300&h=300&fit=crop' },
+    { id: 'inner-pitch-2', name: 'Inner Pitch 2', description: 'Creative pitch-shifting plugin', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=300&h=300&fit=crop' },
+    { id: 'voice-enhance', name: 'Voice Enhance Pro', description: 'Professional voice enhancement', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1589903308904-1010c2294adc?w=300&h=300&fit=crop' },
+    { id: 'musefx', name: 'MuseFX', description: 'Essential mix effects collection', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1598653222000-6b7b7a552625?w=300&h=300&fit=crop' },
+    { id: 'shape-it', name: 'Shape It', description: 'Parametric 10 band EQ', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?w=300&h=300&fit=crop' },
+    { id: 'place-it', name: 'Place It', description: '10 band parametric EQ', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1614149162883-504ce0ecad82?w=300&h=300&fit=crop' },
+    { id: 'borealis-le', name: 'BOREALIS-LE', description: 'FREE Light Edition of BOREALIS', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1551715398-f3f6ddbe1f00?w=300&h=300&fit=crop' },
+    { id: 'space-echo', name: 'Space Echo', description: 'Vintage delay and reverb', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&h=300&fit=crop' },
+    { id: 'smooth-vocal', name: 'Smooth Vocal', description: 'Advanced de-essing tool', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1590845947670-c009801ffa74?w=300&h=300&fit=crop' },
+    { id: 'clarity-plus', name: 'Clarity Plus', description: 'Intelligent sibilance control', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&h=300&fit=crop' },
+    { id: 'amp-studio', name: 'Amp Studio', description: 'Guitar amplifier simulation', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?w=300&h=300&fit=crop' },
+    { id: 'pedal-board', name: 'Pedal Board', description: 'Virtual guitar effects pedals', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1606682116200-ab4f67753489?w=300&h=300&fit=crop' },
+    { id: 'neutone-fx', name: 'Neutone FX', description: 'AI powered sound effects', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=300&h=300&fit=crop' },
+    { id: 'spectrum-fx', name: 'Spectrum FX', description: 'Spectral sound design tools', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=300&h=300&fit=crop' },
+    { id: 'dynamic-master', name: 'Dynamic Master', description: 'Professional dynamics control', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1598887142487-3c854d7c3de8?w=300&h=300&fit=crop' },
+    { id: 'tone-shaper', name: 'Tone Shaper', description: 'Advanced tone sculpting', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1563330232-57114bb0823c?w=300&h=300&fit=crop' },
+    { id: 'vintage-tape', name: 'Vintage Tape', description: 'Authentic tape saturation', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1603473219299-1c2cb6b09c38?w=300&h=300&fit=crop' },
+    { id: 'analog-warmth', name: 'Analog Warmth', description: 'Classic analog character', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1619983081563-430f63602796?w=300&h=300&fit=crop' },
+    { id: 'drum-enhancer', name: 'Drum Enhancer', description: 'Powerful drum processing', category: 'effects', imageUrl: 'https://images.unsplash.com/photo-1571327073757-71d13c24de30?w=300&h=300&fit=crop' },
+    { id: 'beat-forge', name: 'Beat Forge', description: 'Percussion design toolkit', category: 'generators', imageUrl: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=300&fit=crop' },
+    { id: 'tone-gen', name: 'Tone Generator', description: 'Multi-waveform tone generator', category: 'generators', imageUrl: undefined },
+    { id: 'noise-gen', name: 'Noise Generator', description: 'White, pink, and brown noise', category: 'generators', imageUrl: undefined },
+    { id: 'spectrum-analyzer', name: 'Spectrum Analyzer', description: 'Real-time frequency analysis', category: 'analyzers', imageUrl: undefined },
+    { id: 'phase-meter', name: 'Phase Meter', description: 'Stereo phase correlation', category: 'analyzers', imageUrl: undefined },
+  ];
+
+  // Load plugins on mount (simulate API call)
+  React.useEffect(() => {
+    if (activeSidebarItem === 'plugins' && availablePlugins.length === 0) {
+      setPluginsLoading(true);
+      setTimeout(() => {
+        setAvailablePlugins(allPluginsData);
+        setPluginsLoading(false);
+      }, 1500);
+    }
+  }, [activeSidebarItem]);
+
+  // Filter plugins based on search and category
+  const filteredPlugins = React.useMemo(() => {
+    return availablePlugins.filter((plugin) => {
+      const matchesCategory = pluginsCategory === 'all' || plugin.category === pluginsCategory;
+      const matchesSearch = plugin.name.toLowerCase().includes(pluginsSearchQuery.toLowerCase()) ||
+                           plugin.description.toLowerCase().includes(pluginsSearchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [availablePlugins, pluginsCategory, pluginsSearchQuery]);
+
   const style = {
     '--home-tab-bg': theme.background.surface.default,
     '--home-tab-sidebar-bg': theme.background.surface.default,
@@ -319,6 +376,13 @@ export function HomeTab({
         >
           <Icon name="menu" size={20} className="home-tab__sidebar-icon" />
           <span className="home-tab__sidebar-label">Project</span>
+        </button>
+        <button
+          className={`home-tab__sidebar-item ${activeSidebarItem === 'plugins' ? 'home-tab__sidebar-item--active' : ''}`}
+          onClick={() => setActiveSidebarItem('plugins')}
+        >
+          <Icon name="plugins" size={20} className="home-tab__sidebar-icon" />
+          <span className="home-tab__sidebar-label">Plugins</span>
         </button>
         <button
           className={`home-tab__sidebar-item ${activeSidebarItem === 'learn' ? 'home-tab__sidebar-item--active' : ''}`}
@@ -851,6 +915,69 @@ export function HomeTab({
                   )}
                 </div>
               )}
+
+            </>
+          )}
+
+          {/* Plugins page */}
+          {activeSidebarItem === 'plugins' && (
+            <>
+              {/* Header */}
+              <div className="home-tab__header">
+                <h1 className="home-tab__title">Plugins</h1>
+                <div className="home-tab__header-controls">
+                  <SearchField
+                    value={pluginsSearchQuery}
+                    onChange={setPluginsSearchQuery}
+                    placeholder="Search"
+                    width={200}
+                  />
+                  <Dropdown
+                    value={pluginsCategory}
+                    onChange={setPluginsCategory}
+                    options={[
+                      { value: 'all', label: 'All Categories' },
+                      { value: 'generators', label: 'Generators' },
+                      { value: 'effects', label: 'Effects' },
+                      { value: 'analyzers', label: 'Analyzers' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              <div className="home-tab__plugins-page">
+                <div className="home-tab__plugins-content">
+                  <div ref={pluginsScrollRef} className="home-tab__plugins-scroll">
+                    {pluginsLoading ? (
+                      <div className="home-tab__plugins-loading">
+                        <Spinner />
+                        <p className="home-tab__plugins-loading-text">Loading plugins...</p>
+                      </div>
+                    ) : (
+                      <div className="home-tab__plugins-grid">
+                        {filteredPlugins.map((plugin) => (
+                          <PluginCard
+                            key={plugin.id}
+                            name={plugin.name}
+                            description={plugin.description}
+                            imageUrl={plugin.imageUrl}
+                            onActionClick={() => {
+                              console.log(`Install plugin: ${plugin.name}`);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <CustomScrollbar
+                    contentRef={pluginsScrollRef}
+                    orientation="vertical"
+                    width={16}
+                    backgroundColor="#ebedf0"
+                    borderColor="#d4d5d9"
+                  />
+                </div>
+              </div>
             </>
           )}
 
