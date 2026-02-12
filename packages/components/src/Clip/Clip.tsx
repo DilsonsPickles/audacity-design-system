@@ -60,7 +60,7 @@ export interface ClipProps {
   /** Index of point being hovered (for hover visual feedback) */
   hoveredPointIndex?: number | null;
   /** Callback when clip header is clicked */
-  onHeaderClick?: (shiftKey: boolean) => void;
+  onHeaderClick?: (shiftKey: boolean, metaKey: boolean) => void;
   /** Callback when clip menu button is clicked */
   onMenuClick?: (x: number, y: number) => void;
   /** Callback when dragging left or right edge to trim clip */
@@ -225,7 +225,7 @@ export const Clip: React.FC<ClipProps> = ({
             pixelsPerSecond={pixelsPerSecond}
             onClick={(e) => {
               e.stopPropagation();
-              onHeaderClick?.(e.shiftKey);
+              onHeaderClick?.(e.shiftKey, e.metaKey || e.ctrlKey);
             }}
             onMenuClick={(e) => {
               e.stopPropagation();

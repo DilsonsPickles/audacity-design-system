@@ -136,6 +136,8 @@ export interface TracksState {
   recordingStartTime: number; // Timestamp when recording started
   recordingMeterLevel: number; // 0-100, current meter level during recording
   recordingPeakLevel: number; // 0-100, peak level during recording
+  // Track last selected clip for shift-click range selection
+  lastSelectedClip: { trackIndex: number; clipId: number } | null;
 }
 
 // Action types
@@ -158,6 +160,7 @@ export type TracksAction =
   | { type: 'UPDATE_CHANNEL_SPLIT_RATIO'; payload: { index: number; ratio: number } }
   | { type: 'UPDATE_TRACK_VIEW'; payload: { index: number; viewMode: 'waveform' | 'spectrogram' | 'split' } }
   | { type: 'SELECT_CLIP'; payload: { trackIndex: number; clipId: number } }
+  | { type: 'SELECT_CLIP_RANGE'; payload: { trackIndex: number; clipId: number } }
   | { type: 'SELECT_TRACK'; payload: number }
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
   | { type: 'UPDATE_CLIP'; payload: { trackIndex: number; clipId: number; updates: Partial<Clip> } }
@@ -197,6 +200,7 @@ const initialState: TracksState = {
   recordingStartTime: 0,
   recordingMeterLevel: 0,
   recordingPeakLevel: 0,
+  lastSelectedClip: null,
 };
 
 // Reducer
@@ -373,6 +377,82 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [], // Clear label selection when selecting clip
         clipDurationIndicator: newClipDurationIndicator,
+        lastSelectedClip: { trackIndex, clipId },
+      };
+    }
+
+    case 'SELECT_CLIP_RANGE': {
+      const { trackIndex, clipId } = action.payload;
+
+      // If no last selected clip, or last selected clip is on different track, behave like SELECT_CLIP
+      if (!state.lastSelectedClip || state.lastSelectedClip.trackIndex !== trackIndex) {
+        const newTracks = state.tracks.map((track, tIndex) => ({
+          ...track,
+          clips: track.clips.map(clip => ({
+            ...clip,
+            selected: tIndex === trackIndex && clip.id === clipId
+          }))
+        }));
+
+        return {
+          ...state,
+          tracks: newTracks,
+          selectedTrackIndices: [trackIndex],
+          focusedTrackIndex: trackIndex,
+          selectedLabelIds: [],
+          lastSelectedClip: { trackIndex, clipId },
+        };
+      }
+
+      // Get clips on the same track and sort by start time
+      const track = state.tracks[trackIndex];
+      const sortedClips = [...track.clips].sort((a, b) => a.start - b.start);
+
+      // Find indices of the last selected clip and the newly clicked clip
+      const lastClipIndex = sortedClips.findIndex(c => c.id === state.lastSelectedClip!.clipId);
+      const newClipIndex = sortedClips.findIndex(c => c.id === clipId);
+
+      if (lastClipIndex === -1 || newClipIndex === -1) {
+        // Fallback to single selection if clips not found
+        const newTracks = state.tracks.map((track, tIndex) => ({
+          ...track,
+          clips: track.clips.map(clip => ({
+            ...clip,
+            selected: tIndex === trackIndex && clip.id === clipId
+          }))
+        }));
+
+        return {
+          ...state,
+          tracks: newTracks,
+          selectedTrackIndices: [trackIndex],
+          focusedTrackIndex: trackIndex,
+          selectedLabelIds: [],
+          lastSelectedClip: { trackIndex, clipId },
+        };
+      }
+
+      // Select all clips between (inclusive) the last selected and newly clicked
+      const startIndex = Math.min(lastClipIndex, newClipIndex);
+      const endIndex = Math.max(lastClipIndex, newClipIndex);
+      const clipsToSelect = new Set(sortedClips.slice(startIndex, endIndex + 1).map(c => c.id));
+
+      const newTracks = state.tracks.map((track, tIndex) => ({
+        ...track,
+        clips: track.clips.map(clip => ({
+          ...clip,
+          selected: tIndex === trackIndex && clipsToSelect.has(clip.id)
+        }))
+      }));
+
+      return {
+        ...state,
+        tracks: newTracks,
+        selectedTrackIndices: [trackIndex],
+        focusedTrackIndex: trackIndex,
+        selectedLabelIds: [],
+        // Keep lastSelectedClip as the anchor for future range selections
+        lastSelectedClip: state.lastSelectedClip,
       };
     }
 
@@ -514,12 +594,17 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }
       }
 
+      // Determine if the clip was selected (not deselected)
+      const wasClipSelected = newTracks[trackIndex]?.clips.find(c => c.id === clipId)?.selected ?? false;
+
       return {
         ...state,
         tracks: newTracks,
         selectedTrackIndices: tracksWithSelection,
         selectedLabelIds: [], // Clear label selection when toggling clip
         timeSelection: newTimeSelection,
+        // Update lastSelectedClip only if the clip was selected (not deselected)
+        lastSelectedClip: wasClipSelected ? { trackIndex, clipId } : state.lastSelectedClip,
       };
     }
 
@@ -533,6 +618,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ...state,
         tracks: newTracks,
         clipDurationIndicator: null, // Clear duration indicator when deselecting
+        lastSelectedClip: null, // Clear range selection anchor when deselecting all
       };
     }
 

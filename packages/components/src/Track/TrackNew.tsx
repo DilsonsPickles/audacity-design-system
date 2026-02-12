@@ -100,7 +100,7 @@ export interface TrackProps {
   /**
    * Callback when a clip is clicked
    */
-  onClipClick?: (clipId: string | number, shiftKey?: boolean) => void;
+  onClipClick?: (clipId: string | number, shiftKey?: boolean, metaKey?: boolean) => void;
 
   /**
    * Callback when track background is clicked
@@ -379,12 +379,15 @@ export const TrackNew: React.FC<TrackProps> = ({
               return;
             }
 
-            // Toggle selection with Enter key
+            // Handle selection with Enter key
             if (e.key === 'Enter') {
               e.preventDefault();
               e.stopPropagation();
-              // Always pass true for shiftKey to trigger toggle behavior
-              onClipClick?.(clip.id, true);
+              // Pass actual modifier keys to support different selection modes:
+              // - Plain Enter: toggle selection (deselect if single clip selected)
+              // - Shift+Enter: range selection
+              // - Cmd/Ctrl+Enter: toggle in/out of multi-selection
+              onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);
               return;
             }
 
@@ -502,7 +505,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             hoveredPointIndex={clipHoveredPoints.get(clip.id) ?? null}
             envelopePointSizes={envelopePointSizes}
             isRecording={recordingClipId === clip.id}
-            onHeaderClick={(shiftKey) => onClipClick?.(clip.id, shiftKey)}
+            onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
             onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
             onTrimEdge={
               onClipTrimEdge

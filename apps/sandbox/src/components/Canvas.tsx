@@ -577,32 +577,48 @@ export function Canvas({
                 onClipMenuClick={(clipId, x, y, openedViaKeyboard) => {
                   onClipMenuClick?.(clipId as number, trackIndex, x, y, openedViaKeyboard);
                 }}
-                onClipClick={(clipId, shiftKey) => {
+                onClipClick={(clipId, shiftKey, metaKey) => {
                   // Don't change selection if we just finished dragging
                   if (didDragRef.current) {
                     didDragRef.current = false; // Reset immediately after blocking one click
                     return;
                   }
 
-
                   if (shiftKey) {
-                    // Shift+click: toggle selection (multi-select)
-                    // Note: TOGGLE_CLIP_SELECTION reducer handles updating selectedTrackIndices
+                    // Shift+click: range selection (select all clips between last selected and this one)
+                    dispatch({
+                      type: 'SELECT_CLIP_RANGE',
+                      payload: { trackIndex, clipId: clipId as number },
+                    });
+                  } else if (metaKey) {
+                    // Cmd/Ctrl+click: toggle selection (add/remove from multi-selection)
                     dispatch({
                       type: 'TOGGLE_CLIP_SELECTION',
                       payload: { trackIndex, clipId: clipId as number },
                     });
                   } else {
-                    // Regular click: exclusive selection
-                    dispatch({
-                      type: 'SELECT_CLIP',
-                      payload: { trackIndex, clipId: clipId as number },
+                    // Regular click/Enter: check if clip is already selected
+                    const clip = track.clips.find(c => c.id === clipId);
+                    const isSelected = clip?.selected || false;
+
+                    // Count total selected clips
+                    let totalSelectedClips = 0;
+                    tracks.forEach(t => {
+                      t.clips.forEach(c => {
+                        if (c.selected) totalSelectedClips++;
+                      });
                     });
-                    // Don't select track - waveform colors should only change with explicit track selection
-                    // dispatch({
-                    //   type: 'SELECT_TRACK',
-                    //   payload: trackIndex,
-                    // });
+
+                    // If this clip is the only selected clip, deselect it
+                    // Otherwise, exclusively select it
+                    if (isSelected && totalSelectedClips === 1) {
+                      dispatch({ type: 'DESELECT_ALL_CLIPS' });
+                    } else {
+                      dispatch({
+                        type: 'SELECT_CLIP',
+                        payload: { trackIndex, clipId: clipId as number },
+                      });
+                    }
                   }
                 }}
                 onClipTrimEdge={(clipId, edge) => {

@@ -1293,10 +1293,13 @@ function CanvasDemoContent() {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         const activeElement = document.activeElement as HTMLElement;
 
-        // Only handle if focus is on body, canvas, or label (for time selection shortcuts)
+        // Only handle if focus is on body, canvas, label, or clip header (for time selection shortcuts)
         // Labels need Shift+Arrow and Cmd+Shift+Arrow to work for time selection extend/reduce
+        // Clip headers should allow arrow keys to pass through for playhead movement
         const isLabelFocused = activeElement?.classList.contains('label-wrapper');
-        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS' && !isLabelFocused) {
+        const isClipHeaderFocused = activeElement?.getAttribute('role') === 'button' &&
+                                    activeElement?.getAttribute('aria-label')?.startsWith('Clip:');
+        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS' && !isLabelFocused && !isClipHeaderFocused) {
           return; // Let the focused element handle arrow keys
         }
 
@@ -1381,7 +1384,7 @@ function CanvasDemoContent() {
         selectionEdgesRef.current = null;
       }
 
-      // Toggle track selection with Enter key
+      // Handle clip and track selection with Enter key
       if (e.key === 'Enter') {
         // Don't interfere with interactive elements (buttons, inputs, etc.)
         // Also allow track headers (role="group") to handle their own Enter key
@@ -1401,6 +1404,54 @@ function CanvasDemoContent() {
           return;
         }
 
+        // Check if any clips are selected
+        const selectedClips: Array<{ trackIndex: number; clipId: number }> = [];
+        state.tracks.forEach((track, trackIndex) => {
+          track.clips.forEach(clip => {
+            if (clip.selected) {
+              selectedClips.push({ trackIndex, clipId: clip.id });
+            }
+          });
+        });
+
+        if (selectedClips.length > 0) {
+          // Clips are selected - handle clip selection
+          e.preventDefault();
+
+          // Get the first selected clip (or last selected for range anchor)
+          const firstSelectedClip = selectedClips[0];
+
+          if (e.shiftKey && state.lastSelectedClip) {
+            // Shift+Enter: Range selection from last selected clip to first selected clip
+            dispatch({
+              type: 'SELECT_CLIP_RANGE',
+              payload: { trackIndex: state.lastSelectedClip.trackIndex, clipId: state.lastSelectedClip.clipId },
+            });
+          } else if (e.metaKey || e.ctrlKey) {
+            // Cmd/Ctrl+Enter: Toggle the first selected clip
+            dispatch({
+              type: 'TOGGLE_CLIP_SELECTION',
+              payload: { trackIndex: firstSelectedClip.trackIndex, clipId: firstSelectedClip.clipId },
+            });
+          } else {
+            // Regular Enter: Toggle selection
+            // If only one clip is selected, deselect it
+            // If multiple clips are selected, exclusively select the first one
+            if (selectedClips.length === 1) {
+              // Deselect the only selected clip
+              dispatch({ type: 'DESELECT_ALL_CLIPS' });
+            } else {
+              // Multiple clips selected - exclusively select the first one
+              dispatch({
+                type: 'SELECT_CLIP',
+                payload: { trackIndex: firstSelectedClip.trackIndex, clipId: firstSelectedClip.clipId },
+              });
+            }
+          }
+          return;
+        }
+
+        // No clips selected - fall back to track selection
         if (state.focusedTrackIndex !== null) {
           e.preventDefault();
 
