@@ -70,12 +70,12 @@
   transition: background-color 0.15s ease;
 }
 
-.table__row:hover {
+.table__row:hover:not(.table__row--selected) {
   background-color: var(--table-row-hover-bg);
 }
 
 .table__row--selected {
-  background-color: var(--table-row-hover-bg);
+  background-color: var(--list-item-bg-active, rgba(103, 124, 228, 0.2));
 }
 
 .table__row--clickable {

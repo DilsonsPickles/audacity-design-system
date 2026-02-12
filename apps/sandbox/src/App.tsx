@@ -4,7 +4,7 @@ import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
@@ -297,6 +297,27 @@ function CanvasDemoContent() {
   const [controlPointStyle, setControlPointStyle] = React.useState<'musescore' | 'au4'>('au4');
   const [showMixer, setShowMixer] = React.useState(false);
   const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
+  const [isMacroManagerOpen, setIsMacroManagerOpen] = React.useState(false);
+  const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
+  const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
+
+  // Available commands for macros
+  const availableCommands: Command[] = React.useMemo(() => [
+    { id: 'amplify', name: 'Amplify', category: 'A' },
+    { id: 'aubandpass', name: 'AUBandpass', category: 'A' },
+    { id: 'audelay', name: 'AUDelay', category: 'A' },
+    { id: 'audistortion', name: 'AUDistortion', category: 'A' },
+    { id: 'audynamicsprocessor', name: 'AUDynamicsProcessor', category: 'A' },
+    { id: 'aufilter', name: 'AUFilter', category: 'A' },
+    { id: 'augraphiceq', name: 'AUGraphicEQ', category: 'A' },
+    { id: 'auhighshelffilter', name: 'AUHighShelfFilter', category: 'A' },
+    { id: 'auhipass', name: 'AUHipass', category: 'A' },
+    { id: 'aulowshelffilter', name: 'AULowShelfFilter', category: 'A' },
+    { id: 'aulowpass', name: 'AULowpass', category: 'A' },
+    { id: 'compareaudio', name: 'Compare Audio', category: 'C' },
+    { id: 'normalize', name: 'Normalize', category: 'N' },
+    { id: 'reverb', name: 'Reverb', category: 'R' },
+  ], []);
   const [audioSetupMenuAnchor, setAudioSetupMenuAnchor] = React.useState<{ x: number; y: number } | null>(null);
   const [selectedRecordingDevice, setSelectedRecordingDevice] = React.useState('MacBook Pro Microphone');
   const [selectedPlaybackDevice, setSelectedPlaybackDevice] = React.useState('Built-in Speakers');
@@ -2428,12 +2449,22 @@ function CanvasDemoContent() {
     },
   ];
 
+  const toolsMenuItems: MenuItem[] = [
+    {
+      label: 'Manage macros...',
+      onClick: () => {
+        setIsMacroManagerOpen(true);
+      }
+    },
+  ];
+
   const menuDefinitions = {
     File: fileMenuItems,
     Edit: editMenuItems,
     View: viewMenuItems,
     Effect: effectMenuItems,
     Generate: generateMenuItems,
+    Tools: toolsMenuItems,
   };
 
   return (
@@ -3927,6 +3958,47 @@ function CanvasDemoContent() {
       <PluginBrowserDialog
         isOpen={isPluginBrowserOpen}
         onClose={() => setIsPluginBrowserOpen(false)}
+        os={preferences.operatingSystem}
+      />
+
+      {/* Macro Manager Dialog */}
+      <MacroManager
+        isOpen={isMacroManagerOpen}
+        macros={macros}
+        selectedMacroId={selectedMacroId}
+        onClose={() => setIsMacroManagerOpen(false)}
+        onSelectMacro={(macroId) => setSelectedMacroId(macroId)}
+        onAddMacro={(name) => {
+          const newMacro = {
+            id: `macro-${Date.now()}`,
+            name,
+            steps: []
+          };
+          setMacros([...macros, newMacro]);
+          setSelectedMacroId(newMacro.id); // Auto-select the newly created macro
+        }}
+        onRenameMacro={(macroId, newName) => {
+          setMacros(macros.map(m => m.id === macroId ? { ...m, name: newName } : m));
+        }}
+        onDeleteMacro={(macroId) => {
+          setMacros(macros.filter(m => m.id !== macroId));
+          // If the deleted macro was selected, clear selection
+          if (selectedMacroId === macroId) {
+            setSelectedMacroId(undefined);
+          }
+        }}
+        onAddCommand={(macroId, command) => {
+          setMacros(macros.map(m => {
+            if (m.id === macroId) {
+              return {
+                ...m,
+                steps: [...m.steps, { command: command.name, parameters: '' }]
+              };
+            }
+            return m;
+          }));
+        }}
+        availableCommands={availableCommands}
         os={preferences.operatingSystem}
       />
 

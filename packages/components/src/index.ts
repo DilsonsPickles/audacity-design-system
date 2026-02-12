@@ -85,6 +85,8 @@ export * from './LabelEditorHeader';
 export * from './LabelEditorTableHeader';
 export * from './LabelEditorTableRow';
 export * from './PluginManagerDialog';
+export * from './MacroManager';
+export * from './SelectCommandDialog';
 
 /**
  * Audio Components

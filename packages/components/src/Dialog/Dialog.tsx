@@ -91,6 +91,12 @@ export interface DialogProps {
    * @default 488
    */
   minHeight?: number | string;
+  /**
+   * Use custom layout (no body wrapper, footer rendered as children)
+   * Use this for completely custom dialog layouts like two-column designs
+   * @default false
+   */
+  customLayout?: boolean;
 }
 
 /**
@@ -115,6 +121,7 @@ export function Dialog({
   os = 'macos',
   style: externalStyle,
   minHeight,
+  customLayout = false,
 }: DialogProps) {
   const { theme } = useTheme();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -402,12 +409,18 @@ export function Dialog({
         )}
 
         {/* Body */}
-        <div className={`dialog__body ${noPadding ? 'dialog__body--no-padding' : ''}`}>
-          {children}
-        </div>
-
-        {/* Footer - rendered as sibling to body, ignores body padding */}
-        {footer}
+        {customLayout ? (
+          // Custom layout - render children directly without wrapper
+          children
+        ) : (
+          <>
+            <div className={`dialog__body ${noPadding ? 'dialog__body--no-padding' : ''}`}>
+              {children}
+            </div>
+            {/* Footer - rendered as sibling to body, ignores body padding */}
+            {footer}
+          </>
+        )}
       </div>
     </div>
   );
