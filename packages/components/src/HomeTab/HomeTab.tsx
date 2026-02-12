@@ -374,8 +374,8 @@ export function HomeTab({
             setActiveSection('new-recent');
           }}
         >
-          <Icon name="menu" size={20} className="home-tab__sidebar-icon" />
-          <span className="home-tab__sidebar-label">Project</span>
+          <Icon name="waveform" size={20} className="home-tab__sidebar-icon" />
+          <span className="home-tab__sidebar-label">Projects</span>
         </button>
         <button
           className={`home-tab__sidebar-item ${activeSidebarItem === 'plugins' ? 'home-tab__sidebar-item--active' : ''}`}

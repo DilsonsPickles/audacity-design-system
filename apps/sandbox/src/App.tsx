@@ -181,6 +181,7 @@ function CanvasDemoContent() {
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isSignedIn, setIsSignedIn] = React.useState(true);
   const [isCreateAccountOpen, setIsCreateAccountOpen] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState<'signin' | 'create'>('create');
   const [isSyncingDialogOpen, setIsSyncingDialogOpen] = React.useState(false);
   const [isCloudProject, setIsCloudProject] = React.useState(false);
   const [projectName, setProjectName] = React.useState('');
@@ -744,6 +745,7 @@ function CanvasDemoContent() {
   const [clipboard, setClipboard] = React.useState<{
     clips: any[]; // Array of clips with trackIndex
     operation: 'copy' | 'cut';
+    timeSelection?: { startTime: number; endTime: number }; // Optional time range for partial clip copy
   } | null>(null);
 
   // Sync playhead position with TimeCode display
@@ -1510,11 +1512,41 @@ function CanvasDemoContent() {
         return;
       }
 
-      // Copy selected clips (Cmd+C / Ctrl+C)
+      // Copy selected clips or time selection (Cmd+C / Ctrl+C)
       if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
         e.preventDefault();
 
-        // Find all selected clips across all tracks
+        // Priority 1: Copy time selection if it exists
+        if (state.timeSelection) {
+          const { startTime, endTime } = state.timeSelection;
+
+          // Collect all clips that intersect with the time selection
+          const clipsInSelection: any[] = [];
+          state.tracks.forEach((track, trackIndex) => {
+            track.clips.forEach(clip => {
+              const clipEnd = clip.start + clip.duration;
+              // Check if clip intersects with selection
+              if (clip.start < endTime && clipEnd > startTime) {
+                clipsInSelection.push({ ...clip, trackIndex });
+              }
+            });
+          });
+
+          if (clipsInSelection.length > 0) {
+            setClipboard({
+              clips: clipsInSelection,
+              operation: 'copy',
+              timeSelection: { startTime, endTime }
+            });
+            const duration = (endTime - startTime).toFixed(2);
+            toast.success(`Copied ${duration}s of audio from ${clipsInSelection.length} clip${clipsInSelection.length > 1 ? 's' : ''}`);
+          } else {
+            toast.warning('No audio in time selection');
+          }
+          return;
+        }
+
+        // Priority 2: Copy selected clips
         const selectedClips: any[] = [];
         state.tracks.forEach((track, trackIndex) => {
           track.clips.forEach(clip => {
@@ -1527,6 +1559,8 @@ function CanvasDemoContent() {
         if (selectedClips.length > 0) {
           setClipboard({ clips: selectedClips, operation: 'copy' });
           toast.success(`Copied ${selectedClips.length} clip${selectedClips.length > 1 ? 's' : ''}`);
+        } else {
+          toast.warning('No selection to copy');
         }
         return;
       }
@@ -1580,9 +1614,39 @@ function CanvasDemoContent() {
 
         const pasteTime = state.playheadPosition;
 
-        // Calculate time offset based on the earliest clip start time
-        const earliestClipStart = Math.min(...clipboard.clips.map(c => c.start));
-        const timeOffset = pasteTime - earliestClipStart;
+        // Calculate time offset based on time selection or clip start times
+        let timeOffset: number;
+        let clipsToPaste = clipboard.clips;
+
+        if (clipboard.timeSelection) {
+          // Time selection paste: align selection start to playhead
+          timeOffset = pasteTime - clipboard.timeSelection.startTime;
+
+          // Trim clips to only include the time selection range
+          clipsToPaste = clipboard.clips.map(clipData => {
+            const clipEnd = clipData.start + clipData.duration;
+            const selStart = clipboard.timeSelection!.startTime;
+            const selEnd = clipboard.timeSelection!.endTime;
+
+            // Calculate intersection with time selection
+            const trimStart = Math.max(0, selStart - clipData.start);
+            const trimEnd = Math.max(0, clipEnd - selEnd);
+            const newDuration = clipData.duration - trimStart - trimEnd;
+
+            if (newDuration <= 0) return null; // Clip doesn't intersect selection
+
+            return {
+              ...clipData,
+              start: clipData.start + trimStart,
+              duration: newDuration,
+              // Note: In a real implementation, we'd also trim waveform data and adjust envelope points
+            };
+          }).filter(Boolean);
+        } else {
+          // Whole clip paste: use earliest clip start
+          const earliestClipStart = Math.min(...clipboard.clips.map(c => c.start));
+          timeOffset = pasteTime - earliestClipStart;
+        }
 
         // Calculate track offset to maintain relative positioning across tracks
         const minSourceTrackIndex = Math.min(...clipboard.clips.map(c => c.trackIndex));
@@ -1597,7 +1661,7 @@ function CanvasDemoContent() {
         });
 
         // Create new clips with updated positions and track assignments
-        const newClipsWithTracks = clipboard.clips
+        const newClipsWithTracks = clipsToPaste
           .map((clipData, index) => {
             const destTrackIndex = clipData.trackIndex + trackOffset;
 
@@ -2651,8 +2715,14 @@ function CanvasDemoContent() {
               // Only show projects that have been saved (have data or thumbnail)
               (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
             )}
-            onCreateAccount={() => setIsCreateAccountOpen(true)}
-            onSignIn={() => setIsShareDialogOpen(true)}
+            onCreateAccount={() => {
+              setAuthMode('create');
+              setIsCreateAccountOpen(true);
+            }}
+            onSignIn={() => {
+              setAuthMode('signin');
+              setIsCreateAccountOpen(true);
+            }}
             onNewProject={async () => {
               await createNewProject();
               // Reload projects list
@@ -3500,7 +3570,7 @@ function CanvasDemoContent() {
       {/* Share Audio Dialog */}
       <Dialog
         isOpen={isShareDialogOpen}
-        title="Save to audio.com"
+        title="Save Project to Cloud"
         os={preferences.operatingSystem}
         onClose={() => setIsShareDialogOpen(false)}
         width={400}
@@ -3588,7 +3658,7 @@ function CanvasDemoContent() {
       {/* Create Account Dialog */}
       <Dialog
         isOpen={isCreateAccountOpen}
-        title="Save to audio.com"
+        title={authMode === 'signin' ? 'Sign in to cloud' : 'Create cloud account'}
         os={preferences.operatingSystem}
         onClose={() => setIsCreateAccountOpen(false)}
         width={420}
@@ -3637,7 +3707,10 @@ function CanvasDemoContent() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ fontSize: '12px', lineHeight: '16px', margin: 0 }}>
-            Create a free cloud storage account to access your projects and audio from any device
+            {authMode === 'signin'
+              ? 'Sign in to save to the cloud'
+              : 'Create a free cloud storage account to access your projects and audio from any device'
+            }
           </p>
 
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -3691,6 +3764,14 @@ function CanvasDemoContent() {
             error={passwordError}
           />
 
+          {authMode === 'signin' && (
+            <div style={{ marginTop: '-8px' }}>
+              <TextLink onClick={() => toast.info('Forgot password clicked')}>
+                Forgot your password?
+              </TextLink>
+            </div>
+          )}
+
           {validationErrorMessage && (
             <div style={{
               fontSize: '12px',
@@ -3703,9 +3784,9 @@ function CanvasDemoContent() {
           )}
 
           <div style={{ display: 'flex', gap: '4px', fontSize: '12px', lineHeight: 'normal' }}>
-            <span>Already have an account?</span>
-            <TextLink onClick={() => toast.info('Sign in clicked')}>
-              Sign in here
+            <span>{authMode === 'signin' ? 'Need an account?' : 'Already have an account?'}</span>
+            <TextLink onClick={() => setAuthMode(authMode === 'signin' ? 'create' : 'signin')}>
+              {authMode === 'signin' ? 'Create cloud account' : 'Sign in here'}
             </TextLink>
           </div>
         </div>
@@ -3720,7 +3801,7 @@ function CanvasDemoContent() {
           setIsShareDialogOpen(false);
           setProjectName('');
         }}
-        title="Save to audio.com"
+        title="Save Project to Cloud"
         width={400}
         footer={
           <div style={{
