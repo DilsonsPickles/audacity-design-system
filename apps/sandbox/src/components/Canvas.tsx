@@ -150,6 +150,9 @@ export function Canvas({
   const spectralSelectionRAFRef = useRef<number | null>(null);
   const pendingSpectralSelectionRef = useRef<typeof spectralSelection>(null);
 
+  // Track if we just selected a clip on mouse down to prevent immediate deselection on click
+  const justSelectedOnMouseDownRef = useRef(false);
+
   // Clip dragging - extracted to custom hook
   const {
     clipDragStateRef,
@@ -294,6 +297,7 @@ export function Canvas({
     containerPropsOnMouseDown: containerProps.onMouseDown,
     clipDragStateRef,
     didDragRef,
+    justSelectedOnMouseDownRef,
     pixelsPerSecond,
     dispatch,
     setSpectralSelection,
@@ -581,6 +585,12 @@ export function Canvas({
                   // Don't change selection if we just finished dragging
                   if (didDragRef.current) {
                     didDragRef.current = false; // Reset immediately after blocking one click
+                    return;
+                  }
+
+                  // Don't deselect if we just selected this clip on mouse down
+                  if (justSelectedOnMouseDownRef.current) {
+                    justSelectedOnMouseDownRef.current = false; // Reset immediately after blocking one click
                     return;
                   }
 

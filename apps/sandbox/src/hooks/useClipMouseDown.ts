@@ -13,6 +13,7 @@ interface ClipMouseDownConfig {
   containerPropsOnMouseDown: ((e: React.MouseEvent<HTMLDivElement>) => void) | undefined;
   clipDragStateRef: MutableRefObject<any>;
   didDragRef: MutableRefObject<boolean>;
+  justSelectedOnMouseDownRef: MutableRefObject<boolean>;
   pixelsPerSecond: number;
   dispatch: (action: any) => void;
   setSpectralSelection: (selection: any) => void;
@@ -40,6 +41,7 @@ export function useClipMouseDown({
   containerPropsOnMouseDown,
   clipDragStateRef,
   didDragRef,
+  justSelectedOnMouseDownRef,
   pixelsPerSecond,
   dispatch,
   setSpectralSelection,
@@ -109,6 +111,9 @@ export function useClipMouseDown({
                 //   type: 'SELECT_TRACK',
                 //   payload: trackIndex,
                 // });
+
+                // Mark that we just selected on mouse down to prevent immediate deselection on click
+                justSelectedOnMouseDownRef.current = true;
 
                 // Only drag this one clip (state hasn't updated yet)
                 selectedClipsInitialPositions = [{
