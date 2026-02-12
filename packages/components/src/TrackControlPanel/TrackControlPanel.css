@@ -34,14 +34,32 @@
   position: relative;
 }
 
-/* Focus state - blue outline when whole track is focused (via click or keyboard) */
-.track-control-panel--focused {
-  outline: 2px solid var(--tcp-focus-color);
-  outline-offset: -2px;
+/* Focus state - blue border when whole track is focused (via click or keyboard) */
+/* Uses state-based focus (isFocused prop) instead of DOM focus, so it persists when window loses focus */
+/* Using ::before and ::after pseudo-elements to match Track and VerticalRulerPanel behavior */
+.track-control-panel--focused::before,
+.track-control-panel--focused::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--tcp-focus-color);
+  pointer-events: none;
+  z-index: 1000;
 }
 
-/* Keyboard focus on panel itself - absolutely positioned overlay with 2px black and 1px white strokes */
-.track-control-panel:focus-visible::after {
+.track-control-panel--focused::before {
+  top: -2px;
+}
+
+.track-control-panel--focused::after {
+  bottom: -2px;
+}
+
+/* Keyboard focus on panel itself - DISABLED to rely only on state-based focus */
+/* This was causing the focus indicator to disappear when window loses focus */
+/* .track-control-panel:focus-visible::after {
   content: '';
   position: absolute;
   top: 0;
@@ -53,7 +71,7 @@
   pointer-events: none;
   z-index: 1000;
   box-shadow: inset 0 0 0 1px white;
-}
+} */
 
 /* Height variants - only used when not inside a container that controls height */
 .track-control-panel--default {

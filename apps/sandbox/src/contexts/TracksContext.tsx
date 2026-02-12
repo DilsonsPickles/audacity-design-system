@@ -205,8 +205,17 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     case 'RESET_STATE':
       return initialState;
 
-    case 'SET_TRACKS':
-      return { ...state, tracks: action.payload };
+    case 'SET_TRACKS': {
+      const newFocusedTrackIndex = action.payload.length > 0 && state.focusedTrackIndex === null
+        ? 0
+        : state.focusedTrackIndex;
+      return {
+        ...state,
+        tracks: action.payload,
+        // Auto-focus first track when loading tracks, unless already focused
+        focusedTrackIndex: newFocusedTrackIndex,
+      };
+    }
 
     case 'ADD_TRACK': {
       const newTracks = [...state.tracks, action.payload];

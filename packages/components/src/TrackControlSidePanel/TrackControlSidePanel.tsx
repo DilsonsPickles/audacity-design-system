@@ -249,7 +249,10 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       >
         {childArray.map((child, index) => {
           const height = trackHeights[index] || 114; // Default to 114px
-          const isFocused = focusedTrackIndex === index;
+          // Use child's isFocused prop if provided, otherwise calculate from focusedTrackIndex
+          const isFocused = child.props.isFocused !== undefined
+            ? child.props.isFocused
+            : focusedTrackIndex === index;
           return (
             <ResizablePanel
               key={child.key || index}
@@ -261,7 +264,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             >
               {cloneElement(child, {
                 ...child.props,
-                isFocused,
+                // Only override isFocused if not already provided by parent
+                ...(child.props.isFocused === undefined && { isFocused }),
                 isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
                 onMenuClick: (event: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(index, event),
                 trackHeight: height,

@@ -219,13 +219,6 @@ function CanvasDemoContent() {
     }
   }, []); // Only run on mount
 
-  // Sync keyboardFocusedTrack with state.focusedTrackIndex
-  React.useEffect(() => {
-    if (state.focusedTrackIndex !== null) {
-      setKeyboardFocusedTrack(state.focusedTrackIndex);
-    }
-  }, [state.focusedTrackIndex]);
-
   // Mock plugin data
   const [plugins, setPlugins] = React.useState<Plugin[]>([
     { id: '1', name: 'Reverb', type: 'Nyquist', category: 'Effect', path: '/Library/Audio/Plug-Ins/Nyquist/reverb.ny', enabled: true },
@@ -695,9 +688,6 @@ function CanvasDemoContent() {
     audioManager.setLoopRegion(loopRegionStart, loopRegionEnd);
   }, [loopRegionEnabled, loopRegionStart, loopRegionEnd]);
 
-  // Track keyboard focus state - only one track can have keyboard focus at a time
-  const [keyboardFocusedTrack, setKeyboardFocusedTrack] = React.useState<number | null>(0);
-
   // Track the anchor point for range selection (Shift+Arrow)
   const [selectionAnchor, setSelectionAnchor] = React.useState<number | null>(null);
 
@@ -1121,8 +1111,7 @@ function CanvasDemoContent() {
 
   // Focus and select first track on initial load if there are tracks
   React.useEffect(() => {
-    if (state.tracks.length > 0 && keyboardFocusedTrack === null) {
-      setKeyboardFocusedTrack(0);
+    if (state.tracks.length > 0 && state.focusedTrackIndex === null) {
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
       dispatch({ type: 'SET_SELECTED_TRACKS', payload: [0] });
     }
@@ -1262,21 +1251,20 @@ function CanvasDemoContent() {
         e.preventDefault();
 
         // If there's a focused track, move focus up or down
-        if (keyboardFocusedTrack !== null) {
+        if (state.focusedTrackIndex !== null) {
           const delta = e.key === 'ArrowDown' ? 1 : -1;
-          const newIndex = keyboardFocusedTrack + delta;
+          const newIndex = state.focusedTrackIndex + delta;
 
           // Clamp to valid track indices
           if (newIndex >= 0 && newIndex < state.tracks.length) {
-            setKeyboardFocusedTrack(newIndex);
             dispatch({ type: 'SET_FOCUSED_TRACK', payload: newIndex });
 
             // If Shift is held, extend/contract selection
             if (e.shiftKey) {
               // Set anchor on first Shift+Arrow press
-              const anchor = selectionAnchor ?? keyboardFocusedTrack;
+              const anchor = selectionAnchor ?? state.focusedTrackIndex;
               if (selectionAnchor === null) {
-                setSelectionAnchor(keyboardFocusedTrack);
+                setSelectionAnchor(state.focusedTrackIndex);
               }
 
               // Calculate range selection from anchor to newIndex
@@ -1295,7 +1283,6 @@ function CanvasDemoContent() {
           }
         } else if (state.tracks.length > 0) {
           // If no track is focused, focus the first track
-          setKeyboardFocusedTrack(0);
           dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
           // Don't change selection - focus moves independently
         }
@@ -1414,19 +1401,19 @@ function CanvasDemoContent() {
           return;
         }
 
-        if (keyboardFocusedTrack !== null) {
+        if (state.focusedTrackIndex !== null) {
           e.preventDefault();
 
           // Check if the focused track is already selected
-          const isSelected = state.selectedTrackIndices.includes(keyboardFocusedTrack);
+          const isSelected = state.selectedTrackIndices.includes(state.focusedTrackIndex);
 
           if (isSelected) {
             // Remove from selection
-            const newSelection = state.selectedTrackIndices.filter(idx => idx !== keyboardFocusedTrack);
+            const newSelection = state.selectedTrackIndices.filter(idx => idx !== state.focusedTrackIndex);
             dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
           } else {
             // Add to selection
-            const newSelection = [...state.selectedTrackIndices, keyboardFocusedTrack];
+            const newSelection = [...state.selectedTrackIndices, state.focusedTrackIndex];
             dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
           }
         }
@@ -1606,7 +1593,7 @@ function CanvasDemoContent() {
         }
 
         // Paste at playhead position on the focused track
-        const targetTrackIndex = keyboardFocusedTrack ?? 0;
+        const targetTrackIndex = state.focusedTrackIndex ?? 0;
         if (targetTrackIndex < 0 || targetTrackIndex >= state.tracks.length) {
           toast.error('No valid track to paste to');
           return;
@@ -2013,7 +2000,7 @@ function CanvasDemoContent() {
     state.playheadPosition,
     state.selectedTrackIndices,
     state.timeSelection,
-    keyboardFocusedTrack,
+    state.focusedTrackIndex,
     controlPanelHasFocus,
     dispatch,
     isFlatNavigation
@@ -2890,7 +2877,7 @@ function CanvasDemoContent() {
             <TrackControlSidePanel
               trackHeights={state.tracks.map(t => t.height || 114)}
               trackViewModes={state.tracks.map(t => t.viewMode)}
-              focusedTrackIndex={keyboardFocusedTrack}
+              focusedTrackIndex={state.focusedTrackIndex}
               scrollRef={trackHeaderScrollRef}
               onScroll={handleTrackHeaderScroll}
               bufferSpace={(scrollContainerRef.current?.clientHeight || 0) * 0.5}
@@ -2966,7 +2953,7 @@ function CanvasDemoContent() {
                   pan={0}
                   isMuted={false}
                   isSolo={false}
-                  isFocused={keyboardFocusedTrack === index}
+                  isFocused={state.focusedTrackIndex === index}
                   // Meter props - show recording levels if recording, monitoring levels if selected and monitoring, playback levels if playing
                   meterLevel={
                     state.isRecording && state.recordingTrackIndex === index
@@ -3013,19 +3000,17 @@ function CanvasDemoContent() {
                   }}
                   tabIndex={isFlatNavigation ? 0 : (100 + index * 2)}
                   onFocusChange={(hasFocus) => {
-                    // When control panel gets focus, set both states
+                    // When control panel gets focus, set focus state
                     setControlPanelHasFocus(hasFocus ? index : null);
                     if (hasFocus) {
-                      setKeyboardFocusedTrack(index);
+                      dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
                     }
-                    // Don't clear keyboardFocusedTrack on blur - keep it pointing to last focused track
                   }}
                   onNavigateVertical={(direction) => {
                     const nextIndex = direction === 'up' ? index - 1 : index + 1;
                     if (nextIndex >= 0 && nextIndex < state.tracks.length) {
-                      // Update both keyboard focus states immediately with flushSync
+                      // Update focus state immediately with flushSync
                       flushSync(() => {
-                        setKeyboardFocusedTrack(nextIndex);
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
                       });
                       // Clear selection anchor since Shift is not held
@@ -3045,9 +3030,8 @@ function CanvasDemoContent() {
                   onNavigateVerticalWithShift={(direction) => {
                     const nextIndex = direction === 'up' ? index - 1 : index + 1;
                     if (nextIndex >= 0 && nextIndex < state.tracks.length) {
-                      // Update both keyboard focus states immediately with flushSync
+                      // Update focus state immediately with flushSync
                       flushSync(() => {
-                        setKeyboardFocusedTrack(nextIndex);
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
 
                         // Set anchor on first Shift+Arrow press
@@ -3115,7 +3099,7 @@ function CanvasDemoContent() {
                   trackHeight={trackHeight}
                   onClick={() => {
                     dispatch({ type: 'SELECT_TRACK', payload: index });
-                    setKeyboardFocusedTrack(index);
+                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
                     // Clear selection anchor on normal click
                     setSelectionAnchor(null);
                   }}
@@ -3380,7 +3364,7 @@ function CanvasDemoContent() {
                     pixelsPerSecond={pixelsPerSecond}
                     width={timelineWidth}
                     leftPadding={12}
-                    keyboardFocusedTrack={keyboardFocusedTrack}
+                    keyboardFocusedTrack={state.focusedTrackIndex}
                     showRmsInWaveform={showRmsInWaveform}
                     controlPointStyle={controlPointStyle}
                     viewportHeight={scrollContainerRef.current?.clientHeight || 0}
@@ -3400,9 +3384,6 @@ function CanvasDemoContent() {
                     onTrackFocusChange={(trackIndex, hasFocus) => {
                       if (hasFocus) {
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
-                        setKeyboardFocusedTrack(trackIndex);
-                      } else {
-                        setKeyboardFocusedTrack(null);
                       }
                       setControlPanelHasFocus(null);
                     }}
