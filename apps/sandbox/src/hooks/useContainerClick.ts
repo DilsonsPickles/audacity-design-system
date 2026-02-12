@@ -16,6 +16,7 @@ interface ContainerClickConfig {
   selectedTrackIndices: number[];
   selectionAnchor: number | null;
   setSelectionAnchor: (anchor: number | null) => void;
+  keyboardFocusedTrack?: number | null;
 }
 
 /**
@@ -40,6 +41,7 @@ export function useContainerClick({
   selectedTrackIndices,
   selectionAnchor,
   setSelectionAnchor,
+  keyboardFocusedTrack,
 }: ContainerClickConfig) {
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -47,12 +49,6 @@ export function useContainerClick({
     const wasJustDragging = selectionWasJustDragging();
     if (wasJustDragging && !e.shiftKey) {
       return; // Skip everything - focus was already set during the drag (unless Shift is held)
-    }
-
-    // Skip the containerProps onClick handler if Shift is held
-    // (it would change selection before our Shift+Click logic runs)
-    if (containerPropsOnClick && !e.shiftKey) {
-      containerPropsOnClick(e);
     }
 
     if (!containerRef.current) return;
@@ -79,9 +75,44 @@ export function useContainerClick({
     const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
 
     if (y > totalTracksHeight) {
-      // Clicked in empty space below tracks - maintain focus for vertical ruler
-      // Don't change anything - keep current focused track and selection
+      // Clicked in empty space below tracks - maintain focus and selection
+      console.log('[useContainerClick] Clicked in EMPTY SPACE below tracks');
+      console.log('[useContainerClick] keyboardFocusedTrack:', keyboardFocusedTrack);
+      console.log('[useContainerClick] selectedTrackIndices:', selectedTrackIndices);
+
+      // DON'T call containerPropsOnClick here - it would clear track selection
+      // Prevent default to avoid blurring the currently focused element
+      e.preventDefault();
+
+      // Determine which track to focus - use keyboardFocusedTrack if available,
+      // otherwise use the first selected track as fallback
+      const trackToFocus = keyboardFocusedTrack ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : null);
+      console.log('[useContainerClick] Track to focus:', trackToFocus);
+
+      if (trackToFocus !== null && trackToFocus !== undefined) {
+        // Keep the focused track focused
+        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackToFocus });
+        onTrackFocusChange?.(trackToFocus, true);
+        // Also maintain track selection - re-select the currently selected tracks
+        if (selectedTrackIndices.length > 0) {
+          dispatch({ type: 'SET_SELECTED_TRACKS', payload: selectedTrackIndices });
+        }
+
+        // Re-focus the track element to maintain keyboard focus
+        // Find the track element by data attribute and focus it
+        const trackElement = document.querySelector(`[data-track-index="${trackToFocus}"] .track`);
+        console.log('[useContainerClick] Found track element:', trackElement);
+        if (trackElement && trackElement instanceof HTMLElement) {
+          trackElement.focus();
+          console.log('[useContainerClick] Re-focused track element');
+        }
+      }
     } else if (clickedTrackIndex !== null) {
+      // Call containerProps onClick handler for track clicks (but skip if Shift is held)
+      // (it would change selection before our Shift+Click logic runs)
+      if (containerPropsOnClick && !e.shiftKey) {
+        containerPropsOnClick(e);
+      }
       console.log('[useContainerClick] Clicked track:', clickedTrackIndex, 'Shift:', e.shiftKey);
       console.log('[useContainerClick] Current selection:', selectedTrackIndices);
       console.log('[useContainerClick] Current anchor:', selectionAnchor);

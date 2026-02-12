@@ -107,7 +107,7 @@ export function Canvas({
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
-  const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode } = useTracksState();
+  const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode, focusedTrackIndex } = useTracksState();
   const { spectralSelection, setSpectralSelection } = useSpectralSelection();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -280,6 +280,7 @@ export function Canvas({
     selectedTrackIndices,
     selectionAnchor,
     setSelectionAnchor,
+    keyboardFocusedTrack,
   });
 
   // Clip and label mouse down handler - extracted to custom hook
@@ -333,7 +334,7 @@ export function Canvas({
         {tracks.map((track, trackIndex) => {
           const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
           const isSelected = selectedTrackIndices.includes(trackIndex);
-          const isFocused = keyboardFocusedTrack === trackIndex;
+          const isFocused = focusedTrackIndex === trackIndex;
 
           // Calculate y position for this track
           const yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);

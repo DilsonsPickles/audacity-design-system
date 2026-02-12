@@ -632,7 +632,12 @@ export const TrackNew: React.FC<TrackProps> = ({
           backgroundColor: getTrackBackgroundColor(),
           opacity: isMuted ? 0.5 : 1,
         }}
-        onClick={onTrackClick}
+        tabIndex={-1}
+        onClick={(e) => {
+          // Focus the track when clicking empty space
+          (e.currentTarget as HTMLDivElement).focus();
+          onTrackClick?.(e);
+        }}
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
