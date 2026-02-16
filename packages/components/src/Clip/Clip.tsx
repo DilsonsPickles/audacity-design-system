@@ -59,6 +59,8 @@ export interface ClipProps {
   hiddenPointIndices?: number[];
   /** Indices of points being hovered (for hover visual feedback, can be multiple during segment drag) */
   hoveredPointIndices?: number[];
+  /** Cursor position on envelope (for cursor follower dot) */
+  cursorPosition?: { time: number; db: number } | null;
   /** Callback when clip header is clicked */
   onHeaderClick?: (shiftKey: boolean, metaKey: boolean) => void;
   /** Callback when clip menu button is clicked */
@@ -115,6 +117,7 @@ export const Clip: React.FC<ClipProps> = ({
   pixelsPerSecond = 100,
   hiddenPointIndices = [],
   hoveredPointIndices = [],
+  cursorPosition = null,
   onHeaderClick,
   onMenuClick,
   onTrimEdge,
@@ -258,6 +261,7 @@ export const Clip: React.FC<ClipProps> = ({
         pixelsPerSecond={pixelsPerSecond}
         hiddenPointIndices={hiddenPointIndices}
         hoveredPointIndices={hoveredPointIndices}
+        cursorPosition={cursorPosition}
         inTimeSelection={inTimeSelection}
         clipStartTime={clipStartTime}
         timeSelectionRange={timeSelectionRange}

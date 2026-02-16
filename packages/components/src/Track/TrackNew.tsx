@@ -249,6 +249,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   const trackColor = getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipHoveredPoints, setClipHoveredPoints] = React.useState<Map<string | number, number[]>>(new Map());
+  const [clipCursorPositions, setClipCursorPositions] = React.useState<Map<string | number, { time: number; db: number } | null>>(new Map());
   const [hasKeyboardFocus, setHasKeyboardFocus] = React.useState(false);
   const [isDraggingDivider, setIsDraggingDivider] = React.useState(false);
   const [dividerHover, setDividerHover] = React.useState(false);
@@ -503,6 +504,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             pixelsPerSecond={pixelsPerSecond}
             hiddenPointIndices={clipHiddenPoints.get(clip.id) || []}
             hoveredPointIndices={clipHoveredPoints.get(clip.id) ?? []}
+            cursorPosition={clipCursorPositions.get(clip.id) || null}
             envelopePointSizes={envelopePointSizes}
             isRecording={recordingClipId === clip.id}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
@@ -549,6 +551,17 @@ export const TrackNew: React.FC<TrackProps> = ({
               const next = new Map(prev);
               if (hoveredIndices.length > 0) {
                 next.set(clip.id, hoveredIndices);
+              } else {
+                next.delete(clip.id);
+              }
+              return next;
+            });
+          }}
+          onCursorPositionChange={(position) => {
+            setClipCursorPositions((prev) => {
+              const next = new Map(prev);
+              if (position) {
+                next.set(clip.id, position);
               } else {
                 next.delete(clip.id);
               }

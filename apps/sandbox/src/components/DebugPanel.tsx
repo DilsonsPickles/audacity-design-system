@@ -9,6 +9,7 @@
  */
 
 import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@audacity-ui/components';
+import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey } from '@audacity-ui/core';
 
 export interface DebugPanelProps {
   isOpen: boolean;
@@ -61,8 +62,8 @@ export interface DebugPanelProps {
   onEnvelopeColorChange: (value: 'yellow-green' | 'bright-cyan' | 'hot-pink') => void;
 
   // Control point style
-  controlPointStyle: 'musescore' | 'au4';
-  onControlPointStyleChange: (value: 'musescore' | 'au4') => void;
+  controlPointStyle: EnvelopePointStyleKey;
+  onControlPointStyleChange: (value: EnvelopePointStyleKey) => void;
 
   // Mixer
   showMixer: boolean;
@@ -421,74 +422,56 @@ export function DebugPanel({
               </div>
             </div>
 
-            {/* Control point style options */}
-            <div>
-              <label style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '11px',
-                fontWeight: 600,
-                lineHeight: '14px',
-                color: '#14151a',
-                opacity: 0.7,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '8px',
-                display: 'block',
-              }}>
-                Control Point Style
-              </label>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                }}>
-                  <input
-                    type="radio"
-                    value="musescore"
-                    checked={controlPointStyle === 'musescore'}
-                    onChange={(e) => onControlPointStyleChange(e.target.value as 'musescore' | 'au4')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span style={{
+          </div>
+        </div>
+
+        {/* Control Point Style */}
+        <div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+          }}>
+            <label style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '12px',
+              fontWeight: 400,
+              lineHeight: '16px',
+              color: '#14151a',
+            }}>
+              Control Point Style
+            </label>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}>
+              {Object.entries(ENVELOPE_POINT_STYLES).map(([key, style]) => (
+                <label
+                  key={key}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
                     fontFamily: 'Inter, sans-serif',
                     fontSize: '12px',
                     fontWeight: 400,
                     lineHeight: '16px',
                     color: '#14151a',
-                  }}>
-                    MuseScore style (6px, 1.5px stroke)
-                  </span>
-                </label>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                }}>
+                    cursor: 'pointer',
+                  }}
+                >
                   <input
                     type="radio"
-                    value="au4"
-                    checked={controlPointStyle === 'au4'}
-                    onChange={(e) => onControlPointStyleChange(e.target.value as 'musescore' | 'au4')}
+                    name="controlPointStyle"
+                    value={key}
+                    checked={controlPointStyle === key}
+                    onChange={() => onControlPointStyleChange(key as EnvelopePointStyleKey)}
                     style={{ cursor: 'pointer' }}
                   />
-                  <span style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 400,
-                    lineHeight: '16px',
-                    color: '#14151a',
-                  }}>
-                    AU4 style (8px, 2px stroke)
-                  </span>
+                  <span>{style.name}</span>
                 </label>
-              </div>
+              ))}
             </div>
           </div>
         </div>

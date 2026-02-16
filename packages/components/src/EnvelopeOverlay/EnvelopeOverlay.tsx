@@ -24,12 +24,17 @@ export interface EnvelopeOverlayProps {
   hiddenPointIndices?: number[];
   /** Indices of hovered points (can be multiple during segment drag) */
   hoveredPointIndices?: number[];
+  /** Cursor position on envelope (for cursor follower dot) */
+  cursorPosition?: { time: number; db: number } | null;
   /** Point sizes */
   pointSizes?: {
     outerRadius: number;
     innerRadius: number;
     outerRadiusHover: number;
     innerRadiusHover: number;
+    showWhiteOutlineOnHover?: boolean;
+    showBlackCenterOnHover?: boolean;
+    showGreenCenterFillOnHover?: number;
   };
 }
 
@@ -50,6 +55,7 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
   pointCenterColor = '#000000',
   hiddenPointIndices = [],
   hoveredPointIndices = [],
+  cursorPosition = null,
   pointSizes = {
     outerRadius: 5,    // 10px diameter (AU4 style)
     innerRadius: 3,    // Creates 2px visual stroke/ring
@@ -149,7 +155,7 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
       <path
         d={generatePath()}
         stroke={lineColor}
-        strokeWidth={1.5}
+        strokeWidth={2}
         strokeLinecap="butt"
         strokeLinejoin="miter"
         fill="none"
@@ -160,37 +166,79 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
         const px = (point.time / duration) * width;
         const py = dbToYNonLinear(point.db, 0, height);
         const isHovered = hoveredPointIndices.includes(index);
+        // Use hover sizes if hovered, otherwise normal sizes
         const outerRadius = isHovered ? pointSizes.outerRadiusHover : pointSizes.outerRadius;
         const innerRadius = isHovered ? pointSizes.innerRadiusHover : pointSizes.innerRadius;
         const maskId = `point-mask-${index}`;
+        const ringThickness = 1;
 
         return (
           <g key={index} className={`envelope-point ${isHovered ? 'envelope-point--hovered' : ''}`}>
             {pointCenterColor === 'transparent' ? (
               <>
-                {/* Mask for donut shape */}
-                <defs>
-                  <mask id={maskId}>
-                    <circle cx={px} cy={py} r={outerRadius} fill="white" />
-                    <circle cx={px} cy={py} r={innerRadius} fill="black" />
-                  </mask>
-                </defs>
-                {/* Ring with transparent center using mask */}
-                <circle
-                  cx={px}
-                  cy={py}
-                  r={outerRadius}
-                  fill={pointColor}
-                  mask={`url(#${maskId})`}
-                />
-                {/* Light green filled center on hover with 2px gap */}
-                {isHovered && (
-                  <circle
-                    cx={px}
-                    cy={py}
-                    r={innerRadius - 2}
-                    fill={pointColor}
-                  />
+                {isHovered && (pointSizes.showWhiteOutlineOnHover || pointSizes.showBlackCenterOnHover || pointSizes.showGreenCenterFillOnHover) ? (
+                  <>
+                    {/* Hovered with special effects */}
+                    <defs>
+                      <mask id={maskId}>
+                        <circle cx={px} cy={py} r={outerRadius} fill="white" />
+                        <circle cx={px} cy={py} r={innerRadius} fill="black" />
+                      </mask>
+                    </defs>
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r={outerRadius}
+                      fill={pointColor}
+                      mask={`url(#${maskId})`}
+                    />
+                    {/* 1px white outline with 1px gap from green ring */}
+                    {pointSizes.showWhiteOutlineOnHover && (
+                      <circle
+                        cx={px}
+                        cy={py}
+                        r={outerRadius + 1.5}
+                        fill="none"
+                        stroke="#ffffff"
+                        strokeWidth={1}
+                      />
+                    )}
+                    {/* Black center dot (2px radius) */}
+                    {pointSizes.showBlackCenterOnHover && (
+                      <circle
+                        cx={px}
+                        cy={py}
+                        r={2}
+                        fill="#000000"
+                      />
+                    )}
+                    {/* Green center fill (optional) */}
+                    {pointSizes.showGreenCenterFillOnHover && (
+                      <circle
+                        cx={px}
+                        cy={py}
+                        r={pointSizes.showGreenCenterFillOnHover}
+                        fill={pointColor}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Normal: thin green ring with transparent center */}
+                    <defs>
+                      <mask id={maskId}>
+                        <circle cx={px} cy={py} r={outerRadius} fill="white" />
+                        <circle cx={px} cy={py} r={innerRadius} fill="black" />
+                      </mask>
+                    </defs>
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r={outerRadius}
+                      fill={pointColor}
+                      mask={`url(#${maskId})`}
+                    />
+                  </>
                 )}
               </>
             ) : (
@@ -214,6 +262,17 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
           </g>
         );
       })}
+
+      {/* Cursor follower dot (hidden when hovering over a point) */}
+      {cursorPosition && hoveredPointIndices.length === 0 && (
+        <circle
+          cx={(cursorPosition.time / duration) * width}
+          cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+          r={3}
+          fill={pointColor}
+          className="cursor-follower"
+        />
+      )}
     </svg>
   );
 };

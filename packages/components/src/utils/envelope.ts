@@ -176,7 +176,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
   if (points.length === 0) {
     // No control points - draw default line at 0dB
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
     ctx.beginPath();
@@ -190,7 +190,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
     if (visiblePoints.length === 0) {
       // All points are hidden - draw default line at 0dB
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
       ctx.beginPath();
@@ -203,7 +203,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
 
       // First segment: from clip start to first point
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'miter';
       ctx.beginPath();
@@ -223,7 +223,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
         const py2 = dbToYNonLinear(point2.db, y, height);
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.lineCap = 'butt';
         ctx.lineJoin = 'miter';
         ctx.beginPath();
@@ -239,7 +239,7 @@ export function renderEnvelopeLine(options: RenderEnvelopeLineOptions): void {
         const lastPy = dbToYNonLinear(lastPoint.db, y, height);
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.lineCap = 'butt';
         ctx.lineJoin = 'miter';
         ctx.beginPath();
@@ -282,6 +282,10 @@ export interface RenderEnvelopePointsOptions {
   outerRadiusHover?: number;
   /** Inner radius for hover state (default: 3) */
   innerRadiusHover?: number;
+  /** Show white outline on hover */
+  showWhiteOutlineOnHover?: boolean;
+  /** Show black center on hover */
+  showBlackCenterOnHover?: boolean;
 }
 
 /**
@@ -301,10 +305,12 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     centerColor = '#fff',
     hiddenPointIndices = [],
     hoveredPointIndices = [],
-    outerRadius: outerRadiusNormal = 4,
-    innerRadius: innerRadiusNormal = 2,
+    outerRadius: outerRadiusNormal = 3,
+    innerRadius: innerRadiusNormal = 1.5,
     outerRadiusHover: outerRadiusHoverValue = 5,
     innerRadiusHover: innerRadiusHoverValue = 3,
+    showWhiteOutlineOnHover = false,
+    showBlackCenterOnHover = false,
   } = options;
 
   points.forEach((point, index) => {
@@ -315,36 +321,67 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     const py = dbToYNonLinear(point.db, y, height);
 
     const isHovered = hoveredPointIndices.includes(index);
+
+    // Use hover sizes if hovered, otherwise normal sizes
     const outerRadius = isHovered ? outerRadiusHoverValue : outerRadiusNormal;
     const innerRadius = isHovered ? innerRadiusHoverValue : innerRadiusNormal;
 
+    // Ring thickness on hover (1px)
+    const ringThickness = 1;
+
     // Draw donut/ring shape
     if (centerColor === 'transparent') {
-      // Save canvas state
-      ctx.save();
+      if (isHovered && (showWhiteOutlineOnHover || showBlackCenterOnHover)) {
+        // Hovered state with white outline and/or black center
+        ctx.save();
 
-      // Draw outer circle
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cut out inner circle using destination-out
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Restore canvas state
-      ctx.restore();
-
-      // Add light green filled center on hover with 2px gap
-      if (isHovered) {
-        // Fill center with same color as ring, leaving 2px gap
+        // Draw green ring
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(px, py, innerRadius - 2, 0, Math.PI * 2);
+        ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Cut out inner circle using destination-out
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Draw 1px white outline with 1px gap from green ring
+        if (showWhiteOutlineOnHover) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(px, py, outerRadius + 1.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Draw black center dot (2px radius)
+        if (showBlackCenterOnHover) {
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(px, py, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // Normal state: thin green ring with transparent center
+        ctx.save();
+
+        // Draw outer circle
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cut out inner circle using destination-out
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
       }
     } else {
       // Draw filled circles (old behavior for non-transparent centers)

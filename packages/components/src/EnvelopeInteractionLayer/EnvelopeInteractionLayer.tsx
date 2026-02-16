@@ -19,6 +19,9 @@ export interface EnvelopeInteractionLayerProps {
   /** Called when hovered points change (for hover visual feedback, can be multiple during segment drag) */
   onHoveredPointsChange?: (pointIndices: number[]) => void;
 
+  /** Called when cursor position changes over the envelope line (for cursor follower dot) */
+  onCursorPositionChange?: (position: { time: number; db: number } | null) => void;
+
   /** Whether envelope editing is enabled */
   enabled?: boolean;
 
@@ -154,6 +157,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
   onEnvelopePointsChange,
   onHiddenPointsChange,
   onHoveredPointsChange,
+  onCursorPositionChange,
   enabled = true,
   width,
   height,
@@ -167,6 +171,8 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
   const [localHiddenIndices, setLocalHiddenIndices] = useState<number[]>([]);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; db: number } | null>(null);
   const [isNearEnvelope, setIsNearEnvelope] = useState(false);
+  const [isHoveringPoint, setIsHoveringPoint] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Helper function to check if mouse is near the envelope (within actual hit thresholds)
   const checkProximityToEnvelope = (mouseX: number, mouseY: number): boolean => {
@@ -229,6 +235,9 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
           hasMoved: false,
           hiddenIndices: [],
         };
+        setIsDragging(true);
+        // Clear cursor follower when dragging starts
+        onCursorPositionChange?.(null);
         return;
       }
     }
@@ -264,6 +273,9 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
         hasMoved: false,
         hiddenIndices: [],
       };
+      setIsDragging(true);
+      // Clear cursor follower when dragging starts
+      onCursorPositionChange?.(null);
     }
   };
 
@@ -467,6 +479,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
       onHiddenPointsChange?.([]);
       onHoveredPointsChange?.([]); // Clear hovered points
       setTooltip(null); // Hide tooltip on mouse up
+      setIsDragging(false); // Reset dragging state
       dragStateRef.current = null;
     };
 
@@ -509,14 +522,74 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
         }
       }
 
+      // Update hover state for cursor
+      setIsHoveringPoint(hoveredIndex !== null);
+
       onHoveredPointsChange(hoveredIndex !== null ? [hoveredIndex] : []);
+    }
+
+    // Calculate cursor position on envelope line (for cursor follower dot)
+    if (onCursorPositionChange && !dragStateRef.current) {
+      const segments = buildEnvelopeSegments(envelopePoints, width, height, duration);
+      let minDistance = Infinity;
+      let closestPoint: { time: number; db: number } | null = null;
+
+      for (const segment of segments) {
+        // Find the closest point on this segment to the mouse
+        const { x1, y1, x2, y2 } = segment;
+
+        const A = mouseX - x1;
+        const B = mouseY - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = lenSq !== 0 ? dot / lenSq : -1;
+
+        let xx, yy;
+
+        if (param < 0) {
+          xx = x1;
+          yy = y1;
+        } else if (param > 1) {
+          xx = x2;
+          yy = y2;
+        } else {
+          xx = x1 + param * C;
+          yy = y1 + param * D;
+        }
+
+        const dx = mouseX - xx;
+        const dy = mouseY - yy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          // Convert pixel position back to time/db
+          const time = (xx / width) * duration;
+          const db = yToDbNonLinear(yy, height);
+          closestPoint = { time, db };
+        }
+      }
+
+      // Only show cursor follower if within threshold
+      if (minDistance <= ENVELOPE_LINE_FAR_THRESHOLD && closestPoint) {
+        onCursorPositionChange(closestPoint);
+      } else {
+        onCursorPositionChange(null);
+      }
     }
   };
 
   const handleContainerMouseLeave = () => {
     setIsNearEnvelope(false);
+    setIsHoveringPoint(false);
     if (onHoveredPointsChange) {
       onHoveredPointsChange([]);
+    }
+    if (onCursorPositionChange) {
+      onCursorPositionChange(null);
     }
   };
 
@@ -552,7 +625,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
           top: y,
           width,
           height,
-          cursor: isNearEnvelope ? 'crosshair' : 'text',
+          cursor: isDragging ? 'grabbing' : (isHoveringPoint ? 'pointer' : (isNearEnvelope ? 'copy' : 'text')),
           pointerEvents: enabled ? 'auto' : 'none',
           zIndex: 3, // Above canvas (z-index: 2) and dark overlay (z-index: 1)
         }}

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
+import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import { usePreferences } from '@audacity-ui/components';
@@ -60,9 +61,9 @@ export interface CanvasProps {
   showRmsInWaveform?: boolean;
   /**
    * Control point style for envelope points
-   * @default 'au4'
+   * @default 'default'
    */
-  controlPointStyle?: 'musescore' | 'au4';
+  controlPointStyle?: EnvelopePointStyleKey;
   /**
    * Viewport height for calculating buffer space below last track
    * @default 0
@@ -99,7 +100,7 @@ export function Canvas({
   onTrackFocusChange,
   keyboardFocusedTrack = null,
   showRmsInWaveform = true,
-  controlPointStyle = 'au4',
+  controlPointStyle = 'default',
   viewportHeight = 0,
   recordingClipId = null,
   selectionAnchor = null,
@@ -118,24 +119,17 @@ export function Canvas({
   // Use theme token as default if not provided
   const bgColor = backgroundColor ?? theme.background.canvas.default;
 
-  // Calculate envelope control point sizes based on style
-  // MuseScore: 6px diameter (3px radius), 1.5px stroke → outer: 3px, inner: 1.5px
-  // AU4: 10px diameter (5px radius), 2px stroke → outer: 5px, inner: 3px
+  // Get envelope control point sizes from the selected profile
   const envelopePointSizes = React.useMemo(() => {
-    if (controlPointStyle === 'au4') {
-      return {
-        outerRadius: 5,
-        innerRadius: 3,
-        outerRadiusHover: 6,
-        innerRadiusHover: 4,
-      };
-    }
-    // musescore (default)
+    const profile = ENVELOPE_POINT_STYLES[controlPointStyle];
     return {
-      outerRadius: 3,
-      innerRadius: 1.5,
-      outerRadiusHover: 4,
-      innerRadiusHover: 2,
+      outerRadius: profile.outerRadius,
+      innerRadius: profile.innerRadius,
+      outerRadiusHover: profile.outerRadiusHover,
+      innerRadiusHover: profile.innerRadiusHover,
+      showWhiteOutlineOnHover: profile.showWhiteOutlineOnHover ?? false,
+      showBlackCenterOnHover: profile.showBlackCenterOnHover ?? false,
+      showGreenCenterFillOnHover: profile.showGreenCenterFillOnHover,
     };
   }, [controlPointStyle]);
 

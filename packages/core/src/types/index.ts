@@ -163,3 +163,6 @@ export interface ClipTheme {
   segmentHoverColor: string;
   segmentHoverOverlay: string;
 }
+
+// Re-export envelope point styles
+export * from './envelopePointStyles';
