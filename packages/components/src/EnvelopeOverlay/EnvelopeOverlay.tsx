@@ -63,6 +63,22 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
   // Calculate 0dB Y position
   const zeroDB_Y = dbToYNonLinear(0, 0, height);
 
+  // Helper function to calculate point on circle edge
+  const getCircleEdgePoint = (centerX: number, centerY: number, targetX: number, targetY: number, radius: number) => {
+    const dx = targetX - centerX;
+    const dy = targetY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance === 0) return { x: centerX, y: centerY };
+
+    // Calculate point on circle edge in direction of target
+    const ratio = radius / distance;
+    return {
+      x: centerX + dx * ratio,
+      y: centerY + dy * ratio,
+    };
+  };
+
   // Generate SVG path for envelope line
   const generatePath = (): string => {
     if (visiblePoints.length === 0) {
@@ -71,29 +87,38 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
     }
 
     const pathSegments: string[] = [];
+    const radius = pointSizes.outerRadius;
 
-    // First segment: from start to first point
+    // First segment: from start to first point (stop at circle edge)
     const firstY = dbToYNonLinear(visiblePoints[0].db, 0, height);
     const firstX = (visiblePoints[0].time / duration) * width;
+    const firstEdge = getCircleEdgePoint(firstX, firstY, 0, firstY, radius);
     pathSegments.push(`M 0,${firstY}`);
-    pathSegments.push(`L ${firstX},${firstY}`);
+    pathSegments.push(`L ${firstEdge.x},${firstEdge.y}`);
 
-    // Segments between points
+    // Segments between points (skip the circle interiors)
     for (let i = 0; i < visiblePoints.length - 1; i++) {
       const x1 = (visiblePoints[i].time / duration) * width;
       const y1 = dbToYNonLinear(visiblePoints[i].db, 0, height);
       const x2 = (visiblePoints[i + 1].time / duration) * width;
       const y2 = dbToYNonLinear(visiblePoints[i + 1].db, 0, height);
-      pathSegments.push(`M ${x1},${y1}`);
-      pathSegments.push(`L ${x2},${y2}`);
+
+      // Start from edge of first circle pointing towards second
+      const startEdge = getCircleEdgePoint(x1, y1, x2, y2, radius);
+      // End at edge of second circle pointing from first
+      const endEdge = getCircleEdgePoint(x2, y2, x1, y1, radius);
+
+      pathSegments.push(`M ${startEdge.x},${startEdge.y}`);
+      pathSegments.push(`L ${endEdge.x},${endEdge.y}`);
     }
 
-    // Last segment: from last point to end
+    // Last segment: from last point to end (start at circle edge)
     const lastPoint = visiblePoints[visiblePoints.length - 1];
     if (lastPoint.time < duration) {
       const lastX = (lastPoint.time / duration) * width;
       const lastY = dbToYNonLinear(lastPoint.db, 0, height);
-      pathSegments.push(`M ${lastX},${lastY}`);
+      const lastEdge = getCircleEdgePoint(lastX, lastY, width, lastY, radius);
+      pathSegments.push(`M ${lastEdge.x},${lastEdge.y}`);
       pathSegments.push(`L ${width},${lastY}`);
     }
 
@@ -137,23 +162,46 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
         const isHovered = hoveredPointIndex === index;
         const outerRadius = isHovered ? pointSizes.outerRadiusHover : pointSizes.outerRadius;
         const innerRadius = isHovered ? pointSizes.innerRadiusHover : pointSizes.innerRadius;
+        const maskId = `point-mask-${index}`;
 
         return (
           <g key={index} className={`envelope-point ${isHovered ? 'envelope-point--hovered' : ''}`}>
-            {/* Outer circle */}
-            <circle
-              cx={px}
-              cy={py}
-              r={outerRadius}
-              fill={pointColor}
-            />
-            {/* Inner circle */}
-            <circle
-              cx={px}
-              cy={py}
-              r={innerRadius}
-              fill={pointCenterColor}
-            />
+            {pointCenterColor === 'transparent' ? (
+              <>
+                {/* Mask for donut shape */}
+                <defs>
+                  <mask id={maskId}>
+                    <circle cx={px} cy={py} r={outerRadius} fill="white" />
+                    <circle cx={px} cy={py} r={innerRadius} fill="black" />
+                  </mask>
+                </defs>
+                {/* Ring with transparent center using mask */}
+                <circle
+                  cx={px}
+                  cy={py}
+                  r={outerRadius}
+                  fill={pointColor}
+                  mask={`url(#${maskId})`}
+                />
+              </>
+            ) : (
+              <>
+                {/* Outer circle */}
+                <circle
+                  cx={px}
+                  cy={py}
+                  r={outerRadius}
+                  fill={pointColor}
+                />
+                {/* Inner circle */}
+                <circle
+                  cx={px}
+                  cy={py}
+                  r={innerRadius}
+                  fill={pointCenterColor}
+                />
+              </>
+            )}
           </g>
         );
       })}

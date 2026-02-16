@@ -318,16 +318,38 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     const outerRadius = isHovered ? outerRadiusHoverValue : outerRadiusNormal;
     const innerRadius = isHovered ? innerRadiusHoverValue : innerRadiusNormal;
 
-    // Outer circle with color
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
-    ctx.fill();
+    // Draw donut/ring shape
+    if (centerColor === 'transparent') {
+      // Save canvas state
+      ctx.save();
 
-    // Inner circle with center color
-    ctx.fillStyle = centerColor;
-    ctx.beginPath();
-    ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
-    ctx.fill();
+      // Draw outer circle
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cut out inner circle using destination-out
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Restore canvas state
+      ctx.restore();
+    } else {
+      // Draw filled circles (old behavior for non-transparent centers)
+      // Outer circle with color
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner circle with center color
+      ctx.fillStyle = centerColor;
+      ctx.beginPath();
+      ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
   });
 }

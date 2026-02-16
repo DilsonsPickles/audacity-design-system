@@ -952,17 +952,22 @@ export const Track: React.FC<TrackProps> = ({
         const outerRadius = 5;
         const innerRadius = 3;
 
-        // Outer circle
+        // Draw donut/ring shape with transparent center
+        ctx.save();
+
+        // Draw outer circle
         ctx.fillStyle = envelopeLineColor;
         ctx.beginPath();
         ctx.arc(px, py, outerRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner white circle
-        ctx.fillStyle = '#fff';
+        // Cut out inner circle to create transparent center
+        ctx.globalCompositeOperation = 'destination-out';
         ctx.beginPath();
         ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.restore();
       });
     }
   }, [clips, height, trackIndex, spectrogramMode, splitView, envelopeMode, envelopeHiddenPointIndices, isSelected, isFocused, pixelsPerSecond, width, backgroundColor, channelSplitRatio, isHoveringDivider, channelResizeDrag]);

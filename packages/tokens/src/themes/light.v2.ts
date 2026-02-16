@@ -300,7 +300,7 @@ export const lightTheme: ThemeTokens = {
       line: '#b8ff00',           // Yellow-green envelope line
       lineHover: '#d4ff33',      // Lighter yellow-green on hover
       point: '#b8ff00',          // Yellow-green control point
-      pointCenter: '#fff',       // White center dot
+      pointCenter: 'transparent', // Transparent center (allows waveform to show through)
       fill: '#ffffff80',         // White fill 50% (pre-computed from rgba)
       fillIdle: '#ffffff99',     // White fill 60% when idle (pre-computed from rgba)
       hitZone: '#b8ff0026',      // Yellow-green hit zone 15% (pre-computed from rgba)
