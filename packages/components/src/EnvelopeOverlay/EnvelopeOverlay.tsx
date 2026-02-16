@@ -32,7 +32,18 @@ export interface EnvelopeOverlayProps {
     innerRadius: number;
     outerRadiusHover: number;
     innerRadiusHover: number;
+    dualRingHover?: {
+      innerRingOuter: number;
+      innerRingInner: number;
+      innerRingColor: string;
+      outerRingOuter: number;
+      outerRingInner: number;
+      outerRingColor: string;
+    };
+    hoverRingColor?: string;
+    hoverRingStrokeColor?: string;
     showWhiteOutlineOnHover?: boolean;
+    showBlackOutlineOnHover?: boolean;
     showBlackCenterOnHover?: boolean;
     showGreenCenterFillOnHover?: number;
   };
@@ -176,22 +187,59 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
           <g key={index} className={`envelope-point ${isHovered ? 'envelope-point--hovered' : ''}`}>
             {pointCenterColor === 'transparent' ? (
               <>
-                {isHovered && (pointSizes.showWhiteOutlineOnHover || pointSizes.showBlackCenterOnHover || pointSizes.showGreenCenterFillOnHover) ? (
+                {isHovered && (pointSizes.dualRingHover || pointSizes.showWhiteOutlineOnHover || pointSizes.showBlackOutlineOnHover || pointSizes.showBlackCenterOnHover || pointSizes.showGreenCenterFillOnHover) ? (
                   <>
                     {/* Hovered with special effects */}
-                    <defs>
-                      <mask id={maskId}>
-                        <circle cx={px} cy={py} r={outerRadius} fill="white" />
-                        <circle cx={px} cy={py} r={innerRadius} fill="black" />
-                      </mask>
-                    </defs>
-                    <circle
-                      cx={px}
-                      cy={py}
-                      r={outerRadius}
-                      fill={pointColor}
-                      mask={`url(#${maskId})`}
-                    />
+                    {pointSizes.dualRingHover ? (
+                      <>
+                        {/* Dual ring mode: white inner ring + black outer ring */}
+                        <defs>
+                          <mask id={`${maskId}-outer`}>
+                            <circle cx={px} cy={py} r={pointSizes.dualRingHover.outerRingOuter} fill="white" />
+                            <circle cx={px} cy={py} r={pointSizes.dualRingHover.outerRingInner} fill="black" />
+                          </mask>
+                          <mask id={`${maskId}-inner`}>
+                            <circle cx={px} cy={py} r={pointSizes.dualRingHover.innerRingOuter} fill="white" />
+                            <circle cx={px} cy={py} r={pointSizes.dualRingHover.innerRingInner} fill="black" />
+                          </mask>
+                        </defs>
+                        {/* Black outer ring */}
+                        <circle
+                          cx={px}
+                          cy={py}
+                          r={pointSizes.dualRingHover.outerRingOuter}
+                          fill={pointSizes.dualRingHover.outerRingColor}
+                          mask={`url(#${maskId}-outer)`}
+                        />
+                        {/* White inner ring */}
+                        <circle
+                          cx={px}
+                          cy={py}
+                          r={pointSizes.dualRingHover.innerRingOuter}
+                          fill={pointSizes.dualRingHover.innerRingColor}
+                          mask={`url(#${maskId}-inner)`}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {/* Single ring mode */}
+                        <defs>
+                          <mask id={maskId}>
+                            <circle cx={px} cy={py} r={outerRadius} fill="white" />
+                            <circle cx={px} cy={py} r={innerRadius} fill="black" />
+                          </mask>
+                        </defs>
+                        <circle
+                          cx={px}
+                          cy={py}
+                          r={outerRadius}
+                          fill={pointSizes.hoverRingColor || pointColor}
+                          stroke={pointSizes.hoverRingStrokeColor}
+                          strokeWidth={pointSizes.hoverRingStrokeColor ? 1 : 0}
+                          mask={`url(#${maskId})`}
+                        />
+                      </>
+                    )}
                     {/* 1px white outline with 1px gap from green ring */}
                     {pointSizes.showWhiteOutlineOnHover && (
                       <circle
@@ -200,6 +248,17 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                         r={outerRadius + 1.5}
                         fill="none"
                         stroke="#ffffff"
+                        strokeWidth={1}
+                      />
+                    )}
+                    {/* 1px black outline outside white outline */}
+                    {pointSizes.showBlackOutlineOnHover && (
+                      <circle
+                        cx={px}
+                        cy={py}
+                        r={outerRadius + 2.5}
+                        fill="none"
+                        stroke="#000000"
                         strokeWidth={1}
                       />
                     )}

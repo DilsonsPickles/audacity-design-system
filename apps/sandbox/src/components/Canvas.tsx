@@ -127,7 +127,11 @@ export function Canvas({
       innerRadius: profile.innerRadius,
       outerRadiusHover: profile.outerRadiusHover,
       innerRadiusHover: profile.innerRadiusHover,
+      dualRingHover: profile.dualRingHover,
+      hoverRingColor: profile.hoverRingColor,
+      hoverRingStrokeColor: profile.hoverRingStrokeColor,
       showWhiteOutlineOnHover: profile.showWhiteOutlineOnHover ?? false,
+      showBlackOutlineOnHover: profile.showBlackOutlineOnHover ?? false,
       showBlackCenterOnHover: profile.showBlackCenterOnHover ?? false,
       showGreenCenterFillOnHover: profile.showGreenCenterFillOnHover,
     };
