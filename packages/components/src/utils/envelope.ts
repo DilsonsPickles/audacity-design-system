@@ -335,8 +335,19 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
       ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Restore canvas state
+      // Restore canvas state and add white ring on hover
       ctx.restore();
+
+      // Add white filled ring on hover using stroke
+      if (isHovered) {
+        const ringWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = ringWidth;
+        ctx.beginPath();
+        // Draw at outerRadius + half the ring width so the stroke sits outside
+        ctx.arc(px, py, outerRadius + (ringWidth / 2), 0, Math.PI * 2);
+        ctx.stroke();
+      }
     } else {
       // Draw filled circles (old behavior for non-transparent centers)
       // Outer circle with color

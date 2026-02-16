@@ -183,6 +183,17 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                   fill={pointColor}
                   mask={`url(#${maskId})`}
                 />
+                {/* White filled ring on hover using stroke */}
+                {isHovered && (
+                  <circle
+                    cx={px}
+                    cy={py}
+                    r={outerRadius + 1}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                  />
+                )}
               </>
             ) : (
               <>
