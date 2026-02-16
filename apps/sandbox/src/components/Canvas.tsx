@@ -128,6 +128,7 @@ export function Canvas({
       outerRadiusHover: profile.outerRadiusHover,
       innerRadiusHover: profile.innerRadiusHover,
       dualRingHover: profile.dualRingHover,
+      solidCircle: profile.solidCircle,
       hoverRingColor: profile.hoverRingColor,
       hoverRingStrokeColor: profile.hoverRingStrokeColor,
       showWhiteOutlineOnHover: profile.showWhiteOutlineOnHover ?? false,

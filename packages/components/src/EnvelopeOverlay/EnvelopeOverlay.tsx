@@ -40,6 +40,16 @@ export interface EnvelopeOverlayProps {
       outerRingInner: number;
       outerRingColor: string;
     };
+    solidCircle?: {
+      fillColor: string;
+      strokeColor: string;
+      strokeWidth: number;
+      outerStrokeColor?: string;
+      outerStrokeWidth?: number;
+      radius: number;
+      radiusHover: number;
+      cursorFollowerRadius?: number;
+    };
     hoverRingColor?: string;
     hoverRingStrokeColor?: string;
     showWhiteOutlineOnHover?: boolean;
@@ -185,7 +195,31 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
 
         return (
           <g key={index} className={`envelope-point ${isHovered ? 'envelope-point--hovered' : ''}`}>
-            {pointCenterColor === 'transparent' ? (
+            {pointSizes.solidCircle ? (
+              <>
+                {/* Solid circle mode */}
+                {/* Outer white stroke (rendered first, underneath) */}
+                {pointSizes.solidCircle.outerStrokeColor && pointSizes.solidCircle.outerStrokeWidth && (
+                  <circle
+                    cx={px}
+                    cy={py}
+                    r={isHovered ? pointSizes.solidCircle.radiusHover : pointSizes.solidCircle.radius}
+                    fill="none"
+                    stroke={pointSizes.solidCircle.outerStrokeColor}
+                    strokeWidth={(pointSizes.solidCircle.strokeWidth || 0) + (pointSizes.solidCircle.outerStrokeWidth * 2)}
+                  />
+                )}
+                {/* Main circle with fill and black stroke */}
+                <circle
+                  cx={px}
+                  cy={py}
+                  r={isHovered ? pointSizes.solidCircle.radiusHover : pointSizes.solidCircle.radius}
+                  fill={pointSizes.solidCircle.fillColor}
+                  stroke={pointSizes.solidCircle.strokeColor}
+                  strokeWidth={pointSizes.solidCircle.strokeWidth}
+                />
+              </>
+            ) : pointCenterColor === 'transparent' ? (
               <>
                 {isHovered && (pointSizes.dualRingHover || pointSizes.showWhiteOutlineOnHover || pointSizes.showBlackOutlineOnHover || pointSizes.showBlackCenterOnHover || pointSizes.showGreenCenterFillOnHover) ? (
                   <>
@@ -327,7 +361,7 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
         <circle
           cx={(cursorPosition.time / duration) * width}
           cy={dbToYNonLinear(cursorPosition.db, 0, height)}
-          r={3}
+          r={pointSizes.solidCircle?.cursorFollowerRadius ?? 3}
           fill={pointColor}
           className="cursor-follower"
         />

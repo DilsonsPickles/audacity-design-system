@@ -43,6 +43,25 @@ export interface EnvelopePointStyle {
   showBlackCenterOnHover?: boolean;
   /** Show green center fill on hover (radius in px) */
   showGreenCenterFillOnHover?: number;
+  /** Solid circle configuration (no donut hole) */
+  solidCircle?: {
+    /** Fill color for the solid circle */
+    fillColor: string;
+    /** Stroke color for the outline */
+    strokeColor: string;
+    /** Stroke width in pixels */
+    strokeWidth: number;
+    /** Outer stroke color (optional, rendered outside the main stroke) */
+    outerStrokeColor?: string;
+    /** Outer stroke width in pixels (optional) */
+    outerStrokeWidth?: number;
+    /** Radius for normal state */
+    radius: number;
+    /** Radius for hover state */
+    radiusHover: number;
+    /** Cursor follower radius (optional, defaults to 3) */
+    cursorFollowerRadius?: number;
+  };
 }
 
 export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
@@ -71,6 +90,24 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
       outerRingColor: '#000000',
     },
     showGreenCenterFillOnHover: 3,  // 6px diameter (3px radius) green center dot
+  },
+  solidGreen: {
+    name: 'Solid Green',
+    outerRadius: 5,
+    innerRadius: 3,
+    outerRadiusHover: 6,
+    innerRadiusHover: 4,
+    lineWidth: 1.5,
+    solidCircle: {
+      fillColor: '#b8ff00',  // Yellow-green fill (same as envelope line)
+      strokeColor: '#000000',  // Black outline
+      strokeWidth: 1.5,
+      outerStrokeColor: '#ffffff',  // White outer stroke
+      outerStrokeWidth: 1,
+      radius: 4,  // 8px diameter normal
+      radiusHover: 5,  // 10px diameter hover
+      cursorFollowerRadius: 4,  // Larger cursor follower (8px diameter)
+    },
   },
 };
 
