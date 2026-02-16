@@ -127,6 +127,7 @@ export function Canvas({
       innerRadius: profile.innerRadius,
       outerRadiusHover: profile.outerRadiusHover,
       innerRadiusHover: profile.innerRadiusHover,
+      lineWidth: profile.lineWidth,
       dualRingHover: profile.dualRingHover,
       solidCircle: profile.solidCircle,
       hoverRingColor: profile.hoverRingColor,
@@ -135,6 +136,8 @@ export function Canvas({
       showBlackOutlineOnHover: profile.showBlackOutlineOnHover ?? false,
       showBlackCenterOnHover: profile.showBlackCenterOnHover ?? false,
       showGreenCenterFillOnHover: profile.showGreenCenterFillOnHover,
+      whiteCenterOnHover: profile.whiteCenterOnHover,
+      whiteCenter: profile.whiteCenter,
     };
   }, [controlPointStyle]);
 

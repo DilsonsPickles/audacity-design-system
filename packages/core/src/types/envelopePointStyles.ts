@@ -43,6 +43,24 @@ export interface EnvelopePointStyle {
   showBlackCenterOnHover?: boolean;
   /** Show green center fill on hover (radius in px) */
   showGreenCenterFillOnHover?: number;
+  /** White/black center configuration on hover */
+  whiteCenterOnHover?: {
+    /** Inner white circle radius */
+    innerRadius: number;
+    /** Outer white circle radius */
+    outerRadius: number;
+    /** Black circle radius (between white and green) */
+    blackRadius: number;
+  };
+  /** White/black center configuration (always visible, not just on hover) */
+  whiteCenter?: {
+    /** Inner white circle radius */
+    innerRadius: number;
+    /** Outer white circle radius */
+    outerRadius: number;
+    /** Black circle radius (between white and green) */
+    blackRadius: number;
+  };
   /** Solid circle configuration (no donut hole) */
   solidCircle?: {
     /** Fill color for the solid circle */
@@ -61,6 +79,19 @@ export interface EnvelopePointStyle {
     radiusHover: number;
     /** Cursor follower radius (optional, defaults to 3) */
     cursorFollowerRadius?: number;
+    /** Use dual-ring cursor follower (white inner + black outer, no fill) */
+    useDualRingCursorFollower?: boolean;
+    /** Break the envelope line at cursor follower position */
+    breakLineAtCursor?: boolean;
+    /** White center configuration on hover */
+    whiteCenterOnHover?: {
+      /** Inner white circle radius */
+      innerRadius: number;
+      /** Outer white circle radius */
+      outerRadius: number;
+      /** Black circle radius (between white and green) */
+      blackRadius: number;
+    };
   };
 }
 
@@ -71,7 +102,7 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
     innerRadius: 3,
     outerRadiusHover: 6,
     innerRadiusHover: 4,  // 2px ring on hover (same thickness)
-    lineWidth: 1.5,
+    lineWidth: 2,
     showGreenCenterFillOnHover: 3,  // 6px diameter (3px radius) solid green center
   },
   newProfile: {
@@ -80,7 +111,7 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
     innerRadius: 3,
     outerRadiusHover: 6,
     innerRadiusHover: 4,
-    lineWidth: 1.5,
+    lineWidth: 2,
     dualRingHover: {
       innerRingOuter: 5,  // White ring: 4-5px
       innerRingInner: 4,
@@ -97,7 +128,7 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
     innerRadius: 3,
     outerRadiusHover: 6,
     innerRadiusHover: 4,
-    lineWidth: 1.5,
+    lineWidth: 2,
     solidCircle: {
       fillColor: '#b8ff00',  // Yellow-green fill (same as envelope line)
       strokeColor: '#000000',  // Black outline
@@ -107,6 +138,52 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
       radius: 4,  // 8px diameter normal
       radiusHover: 5,  // 10px diameter hover
       cursorFollowerRadius: 4,  // Larger cursor follower (8px diameter)
+    },
+  },
+  solidGreenVariation: {
+    name: 'Solid Green Variation',
+    outerRadius: 5,
+    innerRadius: 3,
+    outerRadiusHover: 6,
+    innerRadiusHover: 4,
+    lineWidth: 2,
+    solidCircle: {
+      fillColor: '#b8ff00',  // Yellow-green fill (same as envelope line)
+      strokeColor: '#000000',  // Black outline
+      strokeWidth: 1.5,
+      outerStrokeColor: '#ffffff',  // White outer stroke
+      outerStrokeWidth: 1,
+      radius: 4,  // 8px diameter normal
+      radiusHover: 5,  // 10px diameter hover
+      cursorFollowerRadius: 6,  // Larger to match placed point size
+      useDualRingCursorFollower: true,  // Use white/black ring cursor (no fill)
+      breakLineAtCursor: false,  // Don't break line - let it show through transparent center
+    },
+  },
+  glowingGreen: {
+    name: 'Glowing Green',
+    outerRadius: 3.5,  // Idle: 7px outer diameter
+    innerRadius: 2,    // Idle: 4px inner diameter
+    outerRadiusHover: 4.5,  // Hover: 9px outer diameter
+    innerRadiusHover: 3,    // Hover: 6px inner diameter (becomes inner edge of green ring)
+    lineWidth: 1.5,
+    whiteCenterOnHover: {
+      innerRadius: 1,       // 2px diameter transparent center
+      outerRadius: 2,       // 4px diameter (white ring outer edge)
+      blackRadius: 3,       // 6px diameter (black ring outer edge, matches innerRadiusHover)
+    },
+  },
+  glowingGreenLarge: {
+    name: 'Glowing Green Large',
+    outerRadius: 4.5,  // Always: 9px outer diameter
+    innerRadius: 3,    // Always: 6px inner diameter
+    outerRadiusHover: 4.5,  // No change on hover
+    innerRadiusHover: 3,    // No change on hover
+    lineWidth: 1.5,
+    whiteCenter: {
+      innerRadius: 1,       // 2px diameter transparent center
+      outerRadius: 2,       // 4px diameter (white ring outer edge)
+      blackRadius: 3,       // 6px diameter (black ring outer edge)
     },
   },
 };

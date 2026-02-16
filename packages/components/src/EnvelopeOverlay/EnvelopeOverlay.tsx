@@ -32,6 +32,7 @@ export interface EnvelopeOverlayProps {
     innerRadius: number;
     outerRadiusHover: number;
     innerRadiusHover: number;
+    lineWidth?: number;
     dualRingHover?: {
       innerRingOuter: number;
       innerRingInner: number;
@@ -49,6 +50,13 @@ export interface EnvelopeOverlayProps {
       radius: number;
       radiusHover: number;
       cursorFollowerRadius?: number;
+      useDualRingCursorFollower?: boolean;
+      breakLineAtCursor?: boolean;
+      whiteCenterOnHover?: {
+        innerRadius: number;
+        outerRadius: number;
+        blackRadius: number;
+      };
     };
     hoverRingColor?: string;
     hoverRingStrokeColor?: string;
@@ -56,6 +64,16 @@ export interface EnvelopeOverlayProps {
     showBlackOutlineOnHover?: boolean;
     showBlackCenterOnHover?: boolean;
     showGreenCenterFillOnHover?: number;
+    whiteCenterOnHover?: {
+      innerRadius: number;
+      outerRadius: number;
+      blackRadius: number;
+    };
+    whiteCenter?: {
+      innerRadius: number;
+      outerRadius: number;
+      blackRadius: number;
+    };
   };
 }
 
@@ -114,7 +132,10 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
     }
 
     const pathSegments: string[] = [];
-    const radius = pointSizes.outerRadius;
+    // Use the correct radius based on rendering mode
+    const radius = pointSizes.solidCircle
+      ? (pointSizes.solidCircle.radius + pointSizes.solidCircle.strokeWidth + (pointSizes.solidCircle.outerStrokeWidth || 0))
+      : pointSizes.outerRadius;
 
     // First segment: from start to first point (stop at circle edge)
     const firstY = dbToYNonLinear(visiblePoints[0].db, 0, height);
@@ -141,7 +162,8 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
 
     // Last segment: from last point to end (start at circle edge)
     const lastPoint = visiblePoints[visiblePoints.length - 1];
-    if (lastPoint.time < duration) {
+    // Use a small epsilon for floating point comparison
+    if (lastPoint.time < duration - 0.001) {
       const lastX = (lastPoint.time / duration) * width;
       const lastY = dbToYNonLinear(lastPoint.db, 0, height);
       const lastEdge = getCircleEdgePoint(lastX, lastY, width, lastY, radius);
@@ -172,12 +194,55 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
         zIndex: 2, // Above canvas (z-index: 2) but below interaction layer (z-index: 3)
       }}
     >
+      <defs>
+        {/* Glow filter for control points */}
+        <filter id="glow-filter" x="-200%" y="-200%" width="400%" height="400%">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="glow-filter-hover" x="-200%" y="-200%" width="400%" height="400%">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Mask for breaking line at cursor position */}
+      {pointSizes.solidCircle?.breakLineAtCursor && cursorPosition && hoveredPointIndices.length === 0 && !hasBoundaryPoints && (
+        <defs>
+          <mask id="line-break-mask">
+            {/* Start with everything visible (white) */}
+            <rect x="0" y="0" width={width} height={height} fill="white" />
+            {/* Hide where the rings are: outer radius 6, inner radius 4 (transparent center < 4) */}
+            <circle
+              cx={(cursorPosition.time / duration) * width}
+              cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+              r={pointSizes.solidCircle.cursorFollowerRadius ?? 3}
+              fill="black"
+            />
+            {/* Show center area where there's no ring (radius < 4, but account for 2px line) */}
+            <circle
+              cx={(cursorPosition.time / duration) * width}
+              cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+              r={(pointSizes.solidCircle.cursorFollowerRadius ?? 3) - 2.5}
+              fill="white"
+            />
+          </mask>
+        </defs>
+      )}
+
       {/* Envelope line */}
       <path
         d={generatePath()}
         stroke={lineColor}
-        strokeWidth={2}
+        strokeWidth={pointSizes.lineWidth ?? 2}
         strokeLinecap="butt"
+        mask={pointSizes.solidCircle?.breakLineAtCursor && cursorPosition && hoveredPointIndices.length === 0 && !hasBoundaryPoints ? 'url(#line-break-mask)' : undefined}
         strokeLinejoin="miter"
         fill="none"
       />
@@ -209,7 +274,7 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                     strokeWidth={(pointSizes.solidCircle.strokeWidth || 0) + (pointSizes.solidCircle.outerStrokeWidth * 2)}
                   />
                 )}
-                {/* Main circle with fill and black stroke */}
+                {/* Main circle with fill and stroke */}
                 <circle
                   cx={px}
                   cy={py}
@@ -218,10 +283,35 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                   stroke={pointSizes.solidCircle.strokeColor}
                   strokeWidth={pointSizes.solidCircle.strokeWidth}
                 />
+                {/* White center configuration on hover (optional) */}
+                {isHovered && pointSizes.solidCircle.whiteCenterOnHover && (
+                  <>
+                    {/* Black circle (sits between white ring and green circle) */}
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r={pointSizes.solidCircle.whiteCenterOnHover.blackRadius}
+                      fill="#000000"
+                    />
+                    {/* White donut ring (4px outer, 2px inner) */}
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r={pointSizes.solidCircle.whiteCenterOnHover.outerRadius}
+                      fill="#ffffff"
+                    />
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r={pointSizes.solidCircle.whiteCenterOnHover.innerRadius}
+                      fill="#000000"
+                    />
+                  </>
+                )}
               </>
             ) : pointCenterColor === 'transparent' ? (
               <>
-                {isHovered && (pointSizes.dualRingHover || pointSizes.showWhiteOutlineOnHover || pointSizes.showBlackOutlineOnHover || pointSizes.showBlackCenterOnHover || pointSizes.showGreenCenterFillOnHover) ? (
+                {(isHovered && (pointSizes.dualRingHover || pointSizes.showWhiteOutlineOnHover || pointSizes.showBlackOutlineOnHover || pointSizes.showBlackCenterOnHover || pointSizes.showGreenCenterFillOnHover || pointSizes.whiteCenterOnHover)) || pointSizes.whiteCenter ? (
                   <>
                     {/* Hovered with special effects */}
                     {pointSizes.dualRingHover ? (
@@ -260,59 +350,48 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                         <defs>
                           <mask id={maskId}>
                             <circle cx={px} cy={py} r={outerRadius} fill="white" />
-                            <circle cx={px} cy={py} r={innerRadius} fill="black" />
+                            <circle cx={px} cy={py} r={(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter) ? (pointSizes.whiteCenterOnHover || pointSizes.whiteCenter)!.blackRadius : innerRadius} fill="black" />
                           </mask>
                         </defs>
                         <circle
                           cx={px}
                           cy={py}
                           r={outerRadius}
-                          fill={pointSizes.hoverRingColor || pointColor}
-                          stroke={pointSizes.hoverRingStrokeColor}
-                          strokeWidth={pointSizes.hoverRingStrokeColor ? 1 : 0}
+                          fill={pointColor}
                           mask={`url(#${maskId})`}
                         />
+                        {/* White/black rings inside green (if configured) */}
+                        {(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter) && (
+                          <>
+                            <defs>
+                              <mask id={`${maskId}-black`}>
+                                <circle cx={px} cy={py} r={(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter)!.blackRadius} fill="white" />
+                                <circle cx={px} cy={py} r={(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter)!.outerRadius} fill="black" />
+                              </mask>
+                              <mask id={`${maskId}-white`}>
+                                <circle cx={px} cy={py} r={(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter)!.outerRadius} fill="white" />
+                                <circle cx={px} cy={py} r={(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter)!.innerRadius} fill="black" />
+                              </mask>
+                            </defs>
+                            {/* Black ring */}
+                            <circle
+                              cx={px}
+                              cy={py}
+                              r={(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter)!.blackRadius}
+                              fill="#000000"
+                              mask={`url(#${maskId}-black)`}
+                            />
+                            {/* White ring */}
+                            <circle
+                              cx={px}
+                              cy={py}
+                              r={(pointSizes.whiteCenterOnHover || pointSizes.whiteCenter)!.outerRadius}
+                              fill="#ffffff"
+                              mask={`url(#${maskId}-white)`}
+                            />
+                          </>
+                        )}
                       </>
-                    )}
-                    {/* 1px white outline with 1px gap from green ring */}
-                    {pointSizes.showWhiteOutlineOnHover && (
-                      <circle
-                        cx={px}
-                        cy={py}
-                        r={outerRadius + 1.5}
-                        fill="none"
-                        stroke="#ffffff"
-                        strokeWidth={1}
-                      />
-                    )}
-                    {/* 1px black outline outside white outline */}
-                    {pointSizes.showBlackOutlineOnHover && (
-                      <circle
-                        cx={px}
-                        cy={py}
-                        r={outerRadius + 2.5}
-                        fill="none"
-                        stroke="#000000"
-                        strokeWidth={1}
-                      />
-                    )}
-                    {/* Black center dot (2px radius) */}
-                    {pointSizes.showBlackCenterOnHover && (
-                      <circle
-                        cx={px}
-                        cy={py}
-                        r={2}
-                        fill="#000000"
-                      />
-                    )}
-                    {/* Green center fill (optional) */}
-                    {pointSizes.showGreenCenterFillOnHover && (
-                      <circle
-                        cx={px}
-                        cy={py}
-                        r={pointSizes.showGreenCenterFillOnHover}
-                        fill={pointColor}
-                      />
                     )}
                   </>
                 ) : (
@@ -358,13 +437,69 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
 
       {/* Cursor follower dot (hidden when hovering over a point) */}
       {cursorPosition && hoveredPointIndices.length === 0 && (
-        <circle
-          cx={(cursorPosition.time / duration) * width}
-          cy={dbToYNonLinear(cursorPosition.db, 0, height)}
-          r={pointSizes.solidCircle?.cursorFollowerRadius ?? 3}
-          fill={pointColor}
-          className="cursor-follower"
-        />
+        <>
+          {pointSizes.solidCircle?.useDualRingCursorFollower ? (
+            <>
+              {/* Dual-ring cursor follower (white inner + black outer, no fill) */}
+              <defs>
+                <mask id="cursor-follower-outer-mask">
+                  <circle
+                    cx={(cursorPosition.time / duration) * width}
+                    cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+                    r={pointSizes.solidCircle.cursorFollowerRadius ?? 3}
+                    fill="white"
+                  />
+                  <circle
+                    cx={(cursorPosition.time / duration) * width}
+                    cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+                    r={(pointSizes.solidCircle.cursorFollowerRadius ?? 3) - 1}
+                    fill="black"
+                  />
+                </mask>
+                <mask id="cursor-follower-inner-mask">
+                  <circle
+                    cx={(cursorPosition.time / duration) * width}
+                    cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+                    r={(pointSizes.solidCircle.cursorFollowerRadius ?? 3) - 1}
+                    fill="white"
+                  />
+                  <circle
+                    cx={(cursorPosition.time / duration) * width}
+                    cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+                    r={(pointSizes.solidCircle.cursorFollowerRadius ?? 3) - 2}
+                    fill="black"
+                  />
+                </mask>
+              </defs>
+              {/* White outer ring */}
+              <circle
+                cx={(cursorPosition.time / duration) * width}
+                cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+                r={pointSizes.solidCircle.cursorFollowerRadius ?? 3}
+                fill="#ffffff"
+                mask="url(#cursor-follower-outer-mask)"
+                className="cursor-follower"
+              />
+              {/* Black inner ring */}
+              <circle
+                cx={(cursorPosition.time / duration) * width}
+                cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+                r={(pointSizes.solidCircle.cursorFollowerRadius ?? 3) - 1}
+                fill="#000000"
+                mask="url(#cursor-follower-inner-mask)"
+                className="cursor-follower"
+              />
+            </>
+          ) : (
+            <circle
+              cx={(cursorPosition.time / duration) * width}
+              cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+              r={pointSizes.solidCircle?.cursorFollowerRadius ?? 3}
+              fill={pointColor}
+              className="cursor-follower"
+            />
+          )}
+        </>
       )}
     </svg>
   );
