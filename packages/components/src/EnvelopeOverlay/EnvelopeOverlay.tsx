@@ -22,8 +22,8 @@ export interface EnvelopeOverlayProps {
   pointCenterColor?: string;
   /** Indices of hidden points (during drag) */
   hiddenPointIndices?: number[];
-  /** Index of hovered point */
-  hoveredPointIndex?: number | null;
+  /** Indices of hovered points (can be multiple during segment drag) */
+  hoveredPointIndices?: number[];
   /** Point sizes */
   pointSizes?: {
     outerRadius: number;
@@ -49,7 +49,7 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
   pointColor = '#ffffff',
   pointCenterColor = '#000000',
   hiddenPointIndices = [],
-  hoveredPointIndex = null,
+  hoveredPointIndices = [],
   pointSizes = {
     outerRadius: 5,    // 10px diameter (AU4 style)
     innerRadius: 3,    // Creates 2px visual stroke/ring
@@ -159,7 +159,7 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
       {showControlPoints && visiblePoints.map((point, index) => {
         const px = (point.time / duration) * width;
         const py = dbToYNonLinear(point.db, 0, height);
-        const isHovered = hoveredPointIndex === index;
+        const isHovered = hoveredPointIndices.includes(index);
         const outerRadius = isHovered ? pointSizes.outerRadiusHover : pointSizes.outerRadius;
         const innerRadius = isHovered ? pointSizes.innerRadiusHover : pointSizes.innerRadius;
         const maskId = `point-mask-${index}`;
@@ -183,15 +183,13 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                   fill={pointColor}
                   mask={`url(#${maskId})`}
                 />
-                {/* White filled ring on hover using stroke */}
+                {/* Light green filled center on hover with 2px gap */}
                 {isHovered && (
                   <circle
                     cx={px}
                     cy={py}
-                    r={outerRadius + 1}
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth={2}
+                    r={innerRadius - 2}
+                    fill={pointColor}
                   />
                 )}
               </>

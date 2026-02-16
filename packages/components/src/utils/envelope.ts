@@ -272,8 +272,8 @@ export interface RenderEnvelopePointsOptions {
   centerColor?: string;
   /** Indices of points to hide (for drag interactions) */
   hiddenPointIndices?: number[];
-  /** Index of point being hovered (for visual feedback) */
-  hoveredPointIndex?: number | null;
+  /** Indices of points being hovered (for visual feedback, can be multiple during segment drag) */
+  hoveredPointIndices?: number[];
   /** Outer radius for normal state (default: 4) */
   outerRadius?: number;
   /** Inner radius for normal state (default: 2) */
@@ -300,7 +300,7 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     color = 'red',
     centerColor = '#fff',
     hiddenPointIndices = [],
-    hoveredPointIndex,
+    hoveredPointIndices = [],
     outerRadius: outerRadiusNormal = 4,
     innerRadius: innerRadiusNormal = 2,
     outerRadiusHover: outerRadiusHoverValue = 5,
@@ -314,7 +314,7 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     const px = x + (point.time / duration) * width;
     const py = dbToYNonLinear(point.db, y, height);
 
-    const isHovered = hoveredPointIndex === index;
+    const isHovered = hoveredPointIndices.includes(index);
     const outerRadius = isHovered ? outerRadiusHoverValue : outerRadiusNormal;
     const innerRadius = isHovered ? innerRadiusHoverValue : innerRadiusNormal;
 
@@ -335,18 +335,16 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
       ctx.arc(px, py, innerRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Restore canvas state and add white ring on hover
+      // Restore canvas state
       ctx.restore();
 
-      // Add white filled ring on hover using stroke
+      // Add light green filled center on hover with 2px gap
       if (isHovered) {
-        const ringWidth = 2;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = ringWidth;
+        // Fill center with same color as ring, leaving 2px gap
+        ctx.fillStyle = color;
         ctx.beginPath();
-        // Draw at outerRadius + half the ring width so the stroke sits outside
-        ctx.arc(px, py, outerRadius + (ringWidth / 2), 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(px, py, innerRadius - 2, 0, Math.PI * 2);
+        ctx.fill();
       }
     } else {
       // Draw filled circles (old behavior for non-transparent centers)

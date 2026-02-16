@@ -61,8 +61,8 @@ export interface ClipBodyProps {
   timeSelectionColor?: string;
   /** Points to hide during drag (eating behavior) */
   hiddenPointIndices?: number[];
-  /** Index of point being hovered (for hover visual feedback) */
-  hoveredPointIndex?: number | null;
+  /** Indices of points being hovered (for hover visual feedback, can be multiple during segment drag) */
+  hoveredPointIndices?: number[];
   /** Whether clip is within a time selection (for vibrant color rendering) */
   inTimeSelection?: boolean;
   /** Time selection range (for calculating overlay position) */
@@ -109,7 +109,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   pixelsPerSecond = 100,
   timeSelectionColor = 'rgba(255, 255, 255, 0.3)',
   hiddenPointIndices = [],
-  hoveredPointIndex = null,
+  hoveredPointIndices = [],
   inTimeSelection = false,
   timeSelectionRange = null,
   envelopePointSizes,
@@ -852,7 +852,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           pointColor={theme.audio.envelope.point}
           pointCenterColor={theme.audio.envelope.pointCenter}
           hiddenPointIndices={hiddenPointIndices}
-          hoveredPointIndex={hoveredPointIndex}
+          hoveredPointIndices={hoveredPointIndices}
           pointSizes={envelopePointSizes}
         />
       )}

@@ -16,8 +16,8 @@ export interface EnvelopeInteractionLayerProps {
   /** Called when hidden points change during drag (for eating visualization) */
   onHiddenPointsChange?: (hiddenIndices: number[]) => void;
 
-  /** Called when hovered point changes (for hover visual feedback) */
-  onHoveredPointChange?: (pointIndex: number | null) => void;
+  /** Called when hovered points change (for hover visual feedback, can be multiple during segment drag) */
+  onHoveredPointsChange?: (pointIndices: number[]) => void;
 
   /** Whether envelope editing is enabled */
   enabled?: boolean;
@@ -153,7 +153,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
   envelopePoints,
   onEnvelopePointsChange,
   onHiddenPointsChange,
-  onHoveredPointChange,
+  onHoveredPointsChange,
   enabled = true,
   width,
   height,
@@ -361,6 +361,15 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
 
         if (dragState.segmentStartIndex !== undefined) {
           // Dragging existing segment with points
+          // Set both segment endpoints as hovered
+          if (onHoveredPointsChange) {
+            const hoveredIndices = [dragState.segmentStartIndex];
+            if (dragState.segmentEndIndex !== undefined && dragState.segmentStartIndex !== dragState.segmentEndIndex) {
+              hoveredIndices.push(dragState.segmentEndIndex);
+            }
+            onHoveredPointsChange(hoveredIndices);
+          }
+
           const newDb1 = Math.max(-60, Math.min(12, dragState.startDb1! + deltaDb));
           const newDb2 = Math.max(-60, Math.min(12, dragState.startDb2! + deltaDb));
 
@@ -456,6 +465,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
 
       setLocalHiddenIndices([]);
       onHiddenPointsChange?.([]);
+      onHoveredPointsChange?.([]); // Clear hovered points
       setTooltip(null); // Hide tooltip on mouse up
       dragStateRef.current = null;
     };
@@ -481,8 +491,8 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
     const nearEnvelope = checkProximityToEnvelope(mouseX, mouseY);
     setIsNearEnvelope(nearEnvelope);
 
-    // Check if hovering over a point
-    if (onHoveredPointChange) {
+    // Check if hovering over a point (only when not dragging)
+    if (onHoveredPointsChange && !dragStateRef.current) {
       let hoveredIndex: number | null = null;
       for (let i = 0; i < envelopePoints.length; i++) {
         const point = envelopePoints[i];
@@ -499,14 +509,14 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
         }
       }
 
-      onHoveredPointChange(hoveredIndex);
+      onHoveredPointsChange(hoveredIndex !== null ? [hoveredIndex] : []);
     }
   };
 
   const handleContainerMouseLeave = () => {
     setIsNearEnvelope(false);
-    if (onHoveredPointChange) {
-      onHoveredPointChange(null);
+    if (onHoveredPointsChange) {
+      onHoveredPointsChange([]);
     }
   };
 
