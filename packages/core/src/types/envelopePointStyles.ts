@@ -186,6 +186,19 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
       blackRadius: 3,       // 6px diameter (black ring outer edge)
     },
   },
+  defaultSolid: {
+    name: 'Default Solid',
+    outerRadius: 5,       // Idle: 10px diameter solid green
+    innerRadius: 0,       // Idle: solid (no inner hole)
+    outerRadiusHover: 5,  // Hover: 10px diameter outer (green ring outer edge)
+    innerRadiusHover: 3,  // Hover: 6px diameter (green ring inner edge)
+    lineWidth: 2,
+    whiteCenterOnHover: {
+      innerRadius: 0,     // White center is solid (no hole)
+      outerRadius: 2,     // White center is 4px diameter
+      blackRadius: 3,     // Black ring from 4px to 6px
+    },
+  },
 };
 
 export type EnvelopePointStyleKey = keyof typeof ENVELOPE_POINT_STYLES;
