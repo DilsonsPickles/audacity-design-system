@@ -11,6 +11,8 @@ import { useTheme } from '../ThemeProvider';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { getProjects, saveProject, deleteProject, type StoredProject } from '../utils/projectStorage';
+import { WaveformPreview } from '../WaveformPreview';
+import { generateSpeechWaveform } from '../utils/waveform';
 import './HomeTab.css';
 
 export interface HomeTabProps {
@@ -230,6 +232,16 @@ export function HomeTab({
   const audioStartIndex = (audioPage - 1) * itemsPerPage;
   const audioEndIndex = audioStartIndex + itemsPerPage;
   const currentAudioFiles = allAudioFiles.slice(audioStartIndex, audioEndIndex);
+
+  // Generate waveform data for current page only — keyed by page so it regenerates per page
+  const audioWaveforms = React.useMemo(() => {
+    return currentAudioFiles.map((f) => {
+      const [mins, secs] = f.duration.split(':').map(Number);
+      const duration = (mins || 0) * 60 + (secs || 0);
+      // Use low sample rate for speed — enough to look realistic in a list row
+      return generateSpeechWaveform(Math.max(1, duration), 500);
+    });
+  }, [audioPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset to page 1 when switching sections
   React.useEffect(() => {
@@ -503,11 +515,14 @@ export function HomeTab({
                         <div></div>
                         <div></div>
                       </button>
-                      <div className="home-tab__list-header">
-                        <div className="home-tab__list-header-cell">Name</div>
-                        <div className="home-tab__list-header-cell"></div>
-                        <div className="home-tab__list-header-cell">Modified</div>
-                        <div className="home-tab__list-header-cell">Size</div>
+                      <div className="home-tab__list-header-row">
+                        <div className="home-tab__list-header">
+                          <div className="home-tab__list-header-cell">Name</div>
+                          <div className="home-tab__list-header-cell"></div>
+                          <div className="home-tab__list-header-cell">Modified</div>
+                          <div className="home-tab__list-header-cell">Size</div>
+                        </div>
+                        <div className="home-tab__list-header-spacer" />
                       </div>
                       <div className="home-tab__list-items">
                       {storedProjects.map((project) => (
@@ -620,11 +635,14 @@ export function HomeTab({
                         </div>
                       ) : (
                     <div className="home-tab__projects-list">
-                      <div className="home-tab__list-header">
-                        <div className="home-tab__list-header-cell">Name</div>
-                        <div className="home-tab__list-header-cell"></div>
-                        <div className="home-tab__list-header-cell">Modified</div>
-                        <div className="home-tab__list-header-cell">Size</div>
+                      <div className="home-tab__list-header-row">
+                        <div className="home-tab__list-header">
+                          <div className="home-tab__list-header-cell">Name</div>
+                          <div className="home-tab__list-header-cell"></div>
+                          <div className="home-tab__list-header-cell">Modified</div>
+                          <div className="home-tab__list-header-cell">Size</div>
+                        </div>
+                        <div className="home-tab__list-header-spacer" />
                       </div>
                       <div className="home-tab__list-items">
                       {currentProjects.map((project) => (
@@ -773,59 +791,47 @@ export function HomeTab({
                         </div>
                       ) : (
                     <div className="home-tab__projects-list">
-                      <div className="home-tab__list-header">
-                        <div className="home-tab__list-header-cell">Name</div>
-                        <div className="home-tab__list-header-cell"></div>
-                        <div className="home-tab__list-header-cell">Modified</div>
-                        <div className="home-tab__list-header-cell">Size</div>
+                      <div className="home-tab__list-header-row home-tab__list-header-row--audio">
+                        <div className="home-tab__list-header home-tab__list-header--audio">
+                          <div className="home-tab__list-header-cell">Name</div>
+                          <div className="home-tab__list-header-cell"></div>
+                          <div className="home-tab__list-header-cell"></div>
+                          <div className="home-tab__list-header-cell">Modified</div>
+                          <div className="home-tab__list-header-cell">Duration</div>
+                          <div className="home-tab__list-header-cell">Size</div>
+                          <div className="home-tab__list-header-spacer" />
+                        </div>
                       </div>
                       <div className="home-tab__list-items">
                       {currentAudioFiles.map((audioFile, index) => {
-                        // Static waveform pattern
-                        const bars = [
-                          0.4, 0.6, 0.8, 0.9, 0.7, 0.5, 0.6, 0.8, 0.95, 0.85,
-                          0.7, 0.6, 0.5, 0.7, 0.9, 1.0, 0.95, 0.8, 0.6, 0.5
-                        ];
                         const itemId = `cloud-audio-${index}`;
 
                         return (
                           <div
                             key={`${audioFile.title}-${index}`}
-                            className="home-tab__list-item-wrapper"
+                            className="home-tab__list-item-wrapper home-tab__list-item-wrapper--audio"
                           >
                             <button
-                              className="home-tab__list-item"
+                              className="home-tab__list-item home-tab__list-item--audio"
                               onClick={() => {
                                 console.log('Open audio file:', itemId);
                               }}
                             >
-                              <div className="home-tab__list-item-name">
-                                <div className="home-tab__list-item-thumbnail">
-                                  <svg width="100%" height="100%" viewBox="0 0 64 48" preserveAspectRatio="none">
-                                    {bars.map((height, i) => {
-                                      const x = (i / bars.length) * 64;
-                                      const barHeight = height * 40;
-                                      const y = (48 - barHeight) / 2;
-                                      return (
-                                        <rect
-                                          key={i}
-                                          x={x}
-                                          y={y}
-                                          width={64 / bars.length - 0.5}
-                                          height={barHeight}
-                                          fill="#677CE4"
-                                          opacity={0.7}
-                                        />
-                                      );
-                                    })}
-                                  </svg>
-                                </div>
+                              <div className="home-tab__list-item-audio-name">
                                 <div className="home-tab__list-item-title">{audioFile.title}</div>
                               </div>
+                              <WaveformPreview
+                                samples={audioWaveforms[index] ?? []}
+                                color={theme.audio.clip.blue.waveform}
+                                width="100%"
+                                height={40}
+                                className="home-tab__list-item-waveform"
+                              />
                               <div className="home-tab__list-item-cloud-badge">
                                 <Icon name="cloud-filled" size={12} />
                               </div>
                               <div className="home-tab__list-item-modified">{audioFile.dateText}</div>
+                              <div className="home-tab__list-item-duration-col">{audioFile.duration}</div>
                               <div className="home-tab__list-item-size">{audioFile.size}</div>
                             </button>
                             <button

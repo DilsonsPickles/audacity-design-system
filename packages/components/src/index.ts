@@ -37,6 +37,7 @@ export * from './Dialog';
 export * from './DialogHeader';
 export * from './DialogSideNav/DialogSideNav';
 export * from './WelcomeDialog';
+export * from './WaveformPreview';
 export * from './SwipeyDots';
 export * from './Carousel';
 export * from './Dropdown';
