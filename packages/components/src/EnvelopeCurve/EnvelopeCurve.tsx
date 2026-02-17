@@ -35,6 +35,9 @@ export interface EnvelopeCurveProps {
   /** Envelope line color when hovered */
   lineColorHover?: string;
 
+  /** Draw line as dual stroke: 3px black underneath + 1px white on top */
+  dualStrokeLine?: boolean;
+
   /** Envelope point color */
   pointColor?: string;
 
@@ -119,6 +122,7 @@ export const EnvelopeCurve: React.FC<EnvelopeCurveProps> = ({
   pixelsPerSecond,
   lineColor = '#2ecc71',
   lineColorHover = '#ffaa00',
+  dualStrokeLine = false,
   pointColor = '#ffffff',
   pointColorHover = '#ffaa00',
   hoveredSegmentIndex = null,
@@ -153,26 +157,43 @@ export const EnvelopeCurve: React.FC<EnvelopeCurveProps> = ({
 
     if (points.length === 0) return;
 
+    // Build envelope line path
+    const buildLinePath = (startPx: number, endPx: number) => {
+      ctx.beginPath();
+      let isFirst = true;
+      for (let px = startPx; px <= endPx; px += 2) {
+        const time = startTime + (px / width) * duration;
+        const db = evaluateEnvelope(time, points);
+        const yPos = dbToYNonLinear(db, 0, height, minDb, maxDb);
+        if (isFirst) {
+          ctx.moveTo(px, yPos);
+          isFirst = false;
+        } else {
+          ctx.lineTo(px, yPos);
+        }
+      }
+    };
+
     // Draw envelope line
     const currentLineColor = hoveredSegmentIndex !== null ? lineColorHover : lineColor;
-    ctx.strokeStyle = currentLineColor;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
 
-    let isFirst = true;
-    for (let px = 0; px <= width; px += 2) {
-      const time = startTime + (px / width) * duration;
-      const db = evaluateEnvelope(time, points);
-      const yPos = dbToYNonLinear(db, 0, height, minDb, maxDb);
-
-      if (isFirst) {
-        ctx.moveTo(px, yPos);
-        isFirst = false;
-      } else {
-        ctx.lineTo(px, yPos);
-      }
+    if (dualStrokeLine) {
+      // Black shadow pass (3px)
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      buildLinePath(0, width);
+      ctx.stroke();
+      // White overlay pass (1px)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      buildLinePath(0, width);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = currentLineColor;
+      ctx.lineWidth = 2;
+      buildLinePath(0, width);
+      ctx.stroke();
     }
-    ctx.stroke();
 
     // Draw hovered segment highlight
     if (hoveredSegmentIndex !== null && points.length > 1) {
@@ -188,25 +209,24 @@ export const EnvelopeCurve: React.FC<EnvelopeCurveProps> = ({
         ctx.fillRect(startX, 0, endX - startX, height);
 
         // Redraw segment in hover color
-        ctx.strokeStyle = lineColorHover;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-
-        for (let px = startX; px <= endX; px += 2) {
-          const time = startTime + (px / width) * duration;
-          const db = evaluateEnvelope(time, points);
-          const yPos = dbToYNonLinear(db, 0, height, minDb, maxDb);
-
-          if (px === startX) {
-            ctx.moveTo(px, yPos);
-          } else {
-            ctx.lineTo(px, yPos);
-          }
+        if (dualStrokeLine) {
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3;
+          buildLinePath(startX, endX);
+          ctx.stroke();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1;
+          buildLinePath(startX, endX);
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = lineColorHover;
+          ctx.lineWidth = 2;
+          buildLinePath(startX, endX);
+          ctx.stroke();
         }
-        ctx.stroke();
       }
     }
-  }, [points, width, height, startTime, duration, pixelsPerSecond, lineColor, lineColorHover, hoveredSegmentIndex, minDb, maxDb]);
+  }, [points, width, height, startTime, duration, pixelsPerSecond, lineColor, lineColorHover, dualStrokeLine, hoveredSegmentIndex, minDb, maxDb]);
 
   return (
     <div

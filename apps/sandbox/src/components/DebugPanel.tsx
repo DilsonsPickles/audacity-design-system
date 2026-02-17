@@ -43,6 +43,7 @@ export interface DebugPanelProps {
 
   onGenerateTracks: () => void;
   onClearAllTracks: () => void;
+  onLoadColorTest: () => void;
 
   // Focus tracking
   showFocusDebug: boolean;
@@ -89,6 +90,7 @@ export function DebugPanel({
   onTrackCountChange,
   onGenerateTracks,
   onClearAllTracks,
+  onLoadColorTest,
   showFocusDebug,
   onShowFocusDebugChange,
   accessibilityProfileId,
@@ -630,6 +632,13 @@ export function DebugPanel({
                 onClick={onClearAllTracks}
               >
                 Clear All
+              </Button>
+              <Button
+                variant="secondary"
+                size="default"
+                onClick={onLoadColorTest}
+              >
+                All Colors
               </Button>
             </div>
           </div>

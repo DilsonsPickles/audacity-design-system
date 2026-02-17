@@ -61,14 +61,22 @@ export interface EnvelopePointStyle {
     /** Black circle radius (between white and green) */
     blackRadius: number;
   };
+  /** Override the automation line color (overrides theme value) */
+  lineColor?: string;
+  /** Draw the automation line as dual stroke: black outline + white overlay */
+  dualStrokeLine?: boolean;
   /** Solid circle configuration (no donut hole) */
   solidCircle?: {
     /** Fill color for the solid circle */
     fillColor: string;
     /** Stroke color for the outline */
     strokeColor: string;
+    /** Stroke color on hover (optional, overrides strokeColor) */
+    strokeColorHover?: string;
     /** Stroke width in pixels */
     strokeWidth: number;
+    /** Stroke width on hover (optional, overrides strokeWidth) */
+    strokeWidthHover?: number;
     /** Outer stroke color (optional, rendered outside the main stroke) */
     outerStrokeColor?: string;
     /** Outer stroke width in pixels (optional) */
@@ -197,6 +205,56 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
       innerRadius: 0,     // White center is solid (no hole)
       outerRadius: 2,     // White center is 4px diameter
       blackRadius: 3,     // Black ring from 4px to 6px
+    },
+  },
+  solidWhite: {
+    name: 'Solid White',
+    outerRadius: 5,
+    innerRadius: 0,
+    outerRadiusHover: 6,
+    innerRadiusHover: 0,
+    lineWidth: 2,
+    lineColor: '#ffffff',
+    solidCircle: {
+      fillColor: '#ffffff',
+      strokeColor: '#ffffff',
+      strokeWidth: 0,
+      strokeColorHover: '#000000',
+      strokeWidthHover: 1.5,
+      radius: 5,
+      radiusHover: 6,
+      cursorFollowerRadius: 5,
+      useDualRingCursorFollower: false,
+      breakLineAtCursor: false,
+      whiteCenterOnHover: {
+        innerRadius: 0,   // Solid (no hole)
+        outerRadius: 0,   // No white ring — just the black dot below
+        blackRadius: 2,   // Black center dot at 4px diameter
+      },
+    },
+  },
+  blackWhiteLine: {
+    name: 'Black White Line',
+    outerRadius: 5,
+    innerRadius: 0,
+    outerRadiusHover: 6,
+    innerRadiusHover: 0,
+    lineWidth: 1,         // White stroke is 1px; black shadow underneath is 3px
+    dualStrokeLine: true,
+    solidCircle: {
+      fillColor: '#ffffff',       // White fill
+      strokeColor: '#000000',     // Black outline
+      strokeWidth: 2,
+      radius: 4,                  // 8px diameter normal
+      radiusHover: 5,             // 10px diameter hover
+      cursorFollowerRadius: 4,
+      useDualRingCursorFollower: false,
+      breakLineAtCursor: false,
+      whiteCenterOnHover: {
+        innerRadius: 0,           // Solid white dot (no hole)
+        outerRadius: 2,           // White dot at 4px diameter
+        blackRadius: 5,           // Black fill covers to 10px (full radius), leaving white center
+      },
     },
   },
 };

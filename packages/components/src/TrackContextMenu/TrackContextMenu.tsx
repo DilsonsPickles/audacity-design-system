@@ -3,42 +3,20 @@ import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem/ContextMenuItem';
 import './TrackContextMenu.css';
 
+type ClipColor = 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
+
+const TRACK_COLORS: ClipColor[] = ['cyan', 'blue', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green', 'teal'];
+
 export interface TrackContextMenuProps {
-  /**
-   * Whether the menu is open
-   */
   isOpen: boolean;
-
-  /**
-   * Callback when menu should close
-   */
   onClose: () => void;
-
-  /**
-   * X position for the menu (in pixels)
-   */
   x: number;
-
-  /**
-   * Y position for the menu (in pixels)
-   */
   y: number;
-
-  /**
-   * Whether to auto-focus first item (when opened via keyboard)
-   */
   autoFocus?: boolean;
-
-  /**
-   * Callback for deleting the track
-   */
   onDelete?: () => void;
+  onColorChange?: (color: ClipColor) => void;
 }
 
-/**
- * TrackContextMenu - Context menu for audio tracks
- * Shows options for track manipulation like delete
- */
 export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   isOpen,
   onClose,
@@ -46,9 +24,26 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   y,
   autoFocus = false,
   onDelete,
+  onColorChange,
 }) => {
   return (
     <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} autoFocus={autoFocus} className="track-context-menu">
+      {/* Colour picker row */}
+      <div className="track-context-menu__colour-row" role="group" aria-label="Track colour">
+        <span className="track-context-menu__colour-label">Track colour</span>
+        <div className="track-context-menu__swatches">
+          {TRACK_COLORS.map((color) => (
+            <button
+              key={color}
+              className="track-context-menu__swatch"
+              style={{ backgroundColor: `var(--clip-${color}-body)` }}
+              title={color.charAt(0).toUpperCase() + color.slice(1)}
+              onClick={() => { onColorChange?.(color); onClose(); }}
+              aria-label={`Set track colour to ${color}`}
+            />
+          ))}
+        </div>
+      </div>
       {/* Delete track */}
       <ContextMenuItem
         label="Delete track"

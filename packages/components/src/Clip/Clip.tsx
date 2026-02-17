@@ -79,6 +79,8 @@ export interface ClipProps {
     innerRadius: number;
     outerRadiusHover: number;
     innerRadiusHover: number;
+    dualStrokeLine?: boolean;
+    [key: string]: unknown;
   };
   /** Whether this clip is currently being recorded (shows menu, removes right border radius) */
   isRecording?: boolean;

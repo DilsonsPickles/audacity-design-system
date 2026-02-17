@@ -185,6 +185,8 @@ export interface TrackProps {
     innerRadius: number;
     outerRadiusHover: number;
     innerRadiusHover: number;
+    dualStrokeLine?: boolean;
+    [key: string]: unknown;
   };
 
   /**

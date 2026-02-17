@@ -88,9 +88,19 @@ export interface TrackControlSidePanelProps {
   onTrackViewChange?: (trackIndex: number, viewMode: 'waveform' | 'spectrogram' | 'split') => void;
 
   /**
+   * Called when track colour changes
+   */
+  onTrackColorChange?: (trackIndex: number, color: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal') => void;
+
+  /**
    * Track view modes for each track
    */
   trackViewModes?: Array<'waveform' | 'spectrogram' | 'split' | undefined>;
+
+  /**
+   * Current colour for each track (from first clip)
+   */
+  trackColors?: Array<string | undefined>;
 
   /**
    * Additional CSS class
@@ -130,7 +140,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onMoveTrackUp,
   onMoveTrackDown,
   onTrackViewChange,
+  onTrackColorChange,
   trackViewModes = [],
+  trackColors = [],
   className = '',
   scrollRef,
   onScroll,
@@ -315,6 +327,34 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           return (
             <>
               <div className="context-menu-separator" />
+              {/* Track color submenu */}
+              <ContextMenuItem label="Track color" onClose={handleMenuClose}>
+                {(['cyan', 'blue', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green', 'teal'] as const).map((color) => {
+                  const isActive = trackColors[menuState.trackIndex] === color;
+                  return (
+                    <ContextMenuItem
+                      key={color}
+                      label={color.charAt(0).toUpperCase() + color.slice(1)}
+                      icon={
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{
+                            display: 'inline-block',
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            backgroundColor: `var(--clip-${color}-body)`,
+                            border: '1px solid rgba(0,0,0,0.2)',
+                            flexShrink: 0,
+                          }} />
+                          {isActive && <span style={{ fontSize: 12 }}>✓</span>}
+                        </span>
+                      }
+                      onClick={() => { onTrackColorChange?.(menuState.trackIndex, color); handleMenuClose(); }}
+                      onClose={handleMenuClose}
+                    />
+                  );
+                })}
+              </ContextMenuItem>
               <ContextMenuItem
                 label="Track view"
                 hasSubmenu={true}

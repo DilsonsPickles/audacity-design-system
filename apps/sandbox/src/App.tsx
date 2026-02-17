@@ -2781,6 +2781,8 @@ function CanvasDemoContent() {
           <HomeTab
             key={homeTabKey}
             isSignedIn={isSignedIn}
+            userName="Username"
+            userAvatarUrl="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop"
             projects={indexedDBProjects.filter(p =>
               // Only show projects that have been saved (have data or thumbnail)
               (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
@@ -2790,8 +2792,13 @@ function CanvasDemoContent() {
               setIsCreateAccountOpen(true);
             }}
             onSignIn={() => {
+              // Sign in - show dialog
               setAuthMode('signin');
               setIsCreateAccountOpen(true);
+            }}
+            onSignOut={() => {
+              // Sign out
+              setIsSignedIn(false);
             }}
             onNewProject={async () => {
               await createNewProject();
@@ -3005,6 +3012,16 @@ function CanvasDemoContent() {
               }}
               onTrackViewChange={(trackIndex, viewMode) => {
                 dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
+              }}
+              trackColors={state.tracks.map(t => t.clips[0]?.color)}
+              onTrackColorChange={(trackIndex, color) => {
+                const track = state.tracks[trackIndex];
+                track?.clips.forEach(clip => {
+                  dispatch({
+                    type: 'UPDATE_CLIP',
+                    payload: { trackIndex, clipId: clip.id, updates: { color } },
+                  });
+                });
               }}
             >
             {state.tracks.map((track, index) => {
@@ -4387,6 +4404,32 @@ function CanvasDemoContent() {
           dispatch({ type: 'SET_TRACKS', payload: [] });
           toast.info('Cleared all tracks');
         }}
+        onLoadColorTest={() => {
+          const colors = ['cyan', 'blue', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green', 'teal'] as const;
+          const colorTracks = colors.map((color, i) => ({
+            id: i + 1,
+            name: color.charAt(0).toUpperCase() + color.slice(1),
+            height: 114,
+            clips: [
+              {
+                id: i * 10 + 1,
+                name: color.charAt(0).toUpperCase() + color.slice(1),
+                start: 0.5,
+                duration: 5.0,
+                waveform: generateWaveform(5.0),
+                envelopePoints: [
+                  { time: 0.5, db: -3 },
+                  { time: 2.0, db: -12 },
+                  { time: 3.5, db: -1 },
+                  { time: 4.5, db: -6 },
+                ],
+                color,
+              },
+            ],
+          }));
+          dispatch({ type: 'SET_TRACKS', payload: colorTracks });
+          toast.success('Loaded all 9 clip colours');
+        }}
         showFocusDebug={showFocusDebug}
         onShowFocusDebugChange={setShowFocusDebug}
         accessibilityProfileId={activeProfile.id}
@@ -4509,6 +4552,22 @@ function CanvasDemoContent() {
               });
               setTrackContextMenu(null);
               toast.success('Track deleted');
+            }
+          }}
+          onColorChange={(color) => {
+            if (trackContextMenu) {
+              const track = state.tracks[trackContextMenu.trackIndex];
+              track?.clips.forEach(clip => {
+                dispatch({
+                  type: 'UPDATE_CLIP',
+                  payload: {
+                    trackIndex: trackContextMenu.trackIndex,
+                    clipId: clip.id,
+                    updates: { color },
+                  },
+                });
+              });
+              setTrackContextMenu(null);
             }
           }}
         />

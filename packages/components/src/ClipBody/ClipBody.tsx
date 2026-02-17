@@ -75,6 +75,8 @@ export interface ClipBodyProps {
     innerRadius: number;
     outerRadiusHover: number;
     innerRadiusHover: number;
+    dualStrokeLine?: boolean;
+    [key: string]: unknown;
   };
 }
 
@@ -851,7 +853,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           width={width || 0}
           height={envelopeHeight}
           yOffset={envelopeYOffset}
-          lineColor={theme.audio.envelope.line}
+          lineColor={(envelopePointSizes as any)?.lineColor ?? theme.audio.envelope.line}
           pointColor={theme.audio.envelope.point}
           pointCenterColor={theme.audio.envelope.pointCenter}
           hiddenPointIndices={hiddenPointIndices}

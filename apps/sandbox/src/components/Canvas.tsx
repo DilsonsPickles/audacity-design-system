@@ -138,6 +138,8 @@ export function Canvas({
       showGreenCenterFillOnHover: profile.showGreenCenterFillOnHover,
       whiteCenterOnHover: profile.whiteCenterOnHover,
       whiteCenter: profile.whiteCenter,
+      dualStrokeLine: profile.dualStrokeLine,
+      lineColor: profile.lineColor,
     };
   }, [controlPointStyle]);
 

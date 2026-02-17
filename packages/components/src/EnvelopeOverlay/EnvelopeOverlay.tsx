@@ -44,7 +44,9 @@ export interface EnvelopeOverlayProps {
     solidCircle?: {
       fillColor: string;
       strokeColor: string;
+      strokeColorHover?: string;
       strokeWidth: number;
+      strokeWidthHover?: number;
       outerStrokeColor?: string;
       outerStrokeWidth?: number;
       radius: number;
@@ -64,6 +66,8 @@ export interface EnvelopeOverlayProps {
     showBlackOutlineOnHover?: boolean;
     showBlackCenterOnHover?: boolean;
     showGreenCenterFillOnHover?: number;
+    /** Draw line as dual stroke: black outline + white overlay */
+    dualStrokeLine?: boolean;
     whiteCenterOnHover?: {
       innerRadius: number;
       outerRadius: number;
@@ -237,15 +241,38 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
       )}
 
       {/* Envelope line */}
-      <path
-        d={generatePath()}
-        stroke={lineColor}
-        strokeWidth={pointSizes.lineWidth ?? 2}
-        strokeLinecap="butt"
-        mask={pointSizes.solidCircle?.breakLineAtCursor && cursorPosition && hoveredPointIndices.length === 0 && !hasBoundaryPoints ? 'url(#line-break-mask)' : undefined}
-        strokeLinejoin="miter"
-        fill="none"
-      />
+      {pointSizes.dualStrokeLine ? (
+        <>
+          {/* Black shadow stroke (3px) */}
+          <path
+            d={generatePath()}
+            stroke="#000000"
+            strokeWidth={3}
+            strokeLinecap="butt"
+            strokeLinejoin="miter"
+            fill="none"
+          />
+          {/* White overlay stroke (1px) */}
+          <path
+            d={generatePath()}
+            stroke="#ffffff"
+            strokeWidth={1}
+            strokeLinecap="butt"
+            strokeLinejoin="miter"
+            fill="none"
+          />
+        </>
+      ) : (
+        <path
+          d={generatePath()}
+          stroke={lineColor}
+          strokeWidth={pointSizes.lineWidth ?? 2}
+          strokeLinecap="butt"
+          mask={pointSizes.solidCircle?.breakLineAtCursor && cursorPosition && hoveredPointIndices.length === 0 && !hasBoundaryPoints ? 'url(#line-break-mask)' : undefined}
+          strokeLinejoin="miter"
+          fill="none"
+        />
+      )}
 
       {/* Control points */}
       {showControlPoints && visiblePoints.map((point, index) => {
@@ -280,8 +307,8 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                   cy={py}
                   r={isHovered ? pointSizes.solidCircle.radiusHover : pointSizes.solidCircle.radius}
                   fill={pointSizes.solidCircle.fillColor}
-                  stroke={pointSizes.solidCircle.strokeColor}
-                  strokeWidth={pointSizes.solidCircle.strokeWidth}
+                  stroke={isHovered && pointSizes.solidCircle.strokeColorHover ? pointSizes.solidCircle.strokeColorHover : pointSizes.solidCircle.strokeColor}
+                  strokeWidth={isHovered && pointSizes.solidCircle.strokeWidthHover !== undefined ? pointSizes.solidCircle.strokeWidthHover : pointSizes.solidCircle.strokeWidth}
                 />
                 {/* White center configuration on hover (optional) */}
                 {isHovered && pointSizes.solidCircle.whiteCenterOnHover && (
@@ -490,11 +517,21 @@ export const EnvelopeOverlay: React.FC<EnvelopeOverlayProps> = ({
                 className="cursor-follower"
               />
             </>
+          ) : pointSizes.solidCircle ? (
+            <circle
+              cx={(cursorPosition.time / duration) * width}
+              cy={dbToYNonLinear(cursorPosition.db, 0, height)}
+              r={pointSizes.solidCircle.cursorFollowerRadius ?? 3}
+              fill={pointSizes.solidCircle.fillColor}
+              stroke={pointSizes.solidCircle.strokeColor}
+              strokeWidth={pointSizes.solidCircle.strokeWidth}
+              className="cursor-follower"
+            />
           ) : (
             <circle
               cx={(cursorPosition.time / duration) * width}
               cy={dbToYNonLinear(cursorPosition.db, 0, height)}
-              r={pointSizes.solidCircle?.cursorFollowerRadius ?? 3}
+              r={3}
               fill={pointColor}
               className="cursor-follower"
             />

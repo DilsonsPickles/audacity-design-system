@@ -15,8 +15,11 @@ import './HomeTab.css';
 
 export interface HomeTabProps {
   isSignedIn?: boolean;
+  userName?: string;
+  userAvatarUrl?: string;
   onCreateAccount?: () => void;
   onSignIn?: () => void;
+  onSignOut?: () => void;
   onNewProject?: (projectId: string) => void;
   onOpenProject?: (projectId: string) => void;
   onOpenOther?: () => void;
@@ -27,8 +30,11 @@ export interface HomeTabProps {
 
 export function HomeTab({
   isSignedIn = false,
+  userName,
+  userAvatarUrl,
   onCreateAccount,
   onSignIn,
+  onSignOut,
   onNewProject,
   onOpenProject,
   onOpenOther,
@@ -995,19 +1001,31 @@ export function HomeTab({
                     <h2 className="home-tab__accounts-section-title">Audio.com</h2>
                     <div className="home-tab__accounts-card">
                       <div className="home-tab__accounts-avatar">
-                        <Icon name="user" size={48} />
+                        {isSignedIn && userAvatarUrl ? (
+                          <img src={userAvatarUrl} alt={userName || 'User'} className="home-tab__accounts-avatar-image" />
+                        ) : (
+                          <Icon name="user" size={48} />
+                        )}
                       </div>
                       <div className="home-tab__accounts-content">
-                        <h3 className="home-tab__accounts-title">Not signed in</h3>
-                        <p className="home-tab__accounts-subtitle">Audio.com</p>
-                      </div>
-                      <div className="home-tab__accounts-actions">
-                        <Button variant="primary" size="default" onClick={onSignIn}>
-                          Sign in
-                        </Button>
-                        <Button variant="primary" size="default" onClick={onCreateAccount}>
-                          Create account
-                        </Button>
+                        <div className="home-tab__accounts-text">
+                          <h3 className="home-tab__accounts-title">{isSignedIn ? (userName || 'Username') : 'Not signed in'}</h3>
+                          <p className="home-tab__accounts-subtitle">Service name / URL</p>
+                        </div>
+                        <div className="home-tab__accounts-actions">
+                          <Button variant="primary" size="default" onClick={onSignIn}>
+                            Sign in
+                          </Button>
+                          {isSignedIn ? (
+                            <Button variant="secondary" size="default" onClick={onSignOut}>
+                              Sign out
+                            </Button>
+                          ) : (
+                            <Button variant="primary" size="default" onClick={onCreateAccount}>
+                              Create account
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
