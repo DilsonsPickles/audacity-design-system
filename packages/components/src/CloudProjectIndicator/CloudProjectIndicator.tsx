@@ -28,8 +28,8 @@ export function CloudProjectIndicator({
   isUploading = false,
   className = '',
 }: CloudProjectIndicatorProps) {
-  // F454 = cloud-filled, EF25 = cloud-outline (for uploading state)
-  const icon = isUploading ? '\uEF25' : '\uF454';
+  // EF25 = cloud-outline, F454 = cloud-filled (for uploading state)
+  const icon = isUploading ? '\uF454' : '\uEF25';
 
   return (
     <div className={`cloud-project-indicator ${className}`}>

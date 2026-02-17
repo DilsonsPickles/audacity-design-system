@@ -3651,7 +3651,7 @@ function CanvasDemoContent() {
       {/* Share Audio Dialog */}
       <Dialog
         isOpen={isShareDialogOpen}
-        title="Save Project to Cloud"
+        title="Share audio to Cloud"
         os={preferences.operatingSystem}
         onClose={() => setIsShareDialogOpen(false)}
         width={400}
@@ -3674,8 +3674,7 @@ function CanvasDemoContent() {
                 setIsSyncingDialogOpen(true);
 
                 // Show uploading progress toast (10 seconds)
-                const uploadToastId = toast.progress('Uploading project to audio.com...');
-                setIsCloudUploading(true); // Start showing upload icon
+                const uploadToastId = toast.progress('Uploading audio to cloud...');
 
                 // Simulate upload progress over 10 seconds
                 const totalDuration = 10000; // 10 seconds
@@ -3699,8 +3698,6 @@ function CanvasDemoContent() {
                     // Dismiss upload toast and show success
                     setTimeout(() => {
                       toast.dismiss(uploadToastId);
-                      setIsCloudUploading(false); // Stop showing upload icon
-                      setIsCloudProject(true); // Mark project as cloud project
                       toast.success(
                         'Success!',
                         'All saved changes will now update to the cloud. You can manage this file from your uploaded projects page on audio.com',
@@ -3716,7 +3713,7 @@ function CanvasDemoContent() {
                 // User needs to sign in, open Create Account dialog on top
                 setIsCreateAccountOpen(true);
               } else {
-                toast.error('Please enter a project name');
+                toast.error('Please enter a track title');
               }
             }}
             onSecondaryClick={() => {
@@ -3728,10 +3725,10 @@ function CanvasDemoContent() {
         }
       >
         <LabeledInput
-          label="Project name"
+          label="Track title"
           value={projectName}
           onChange={setProjectName}
-          placeholder="Enter project name"
+          placeholder="Enter track title"
           width="100%"
         />
       </Dialog>
@@ -3882,7 +3879,7 @@ function CanvasDemoContent() {
           setIsShareDialogOpen(false);
           setProjectName('');
         }}
-        title="Save Project to Cloud"
+        title="Share audio to Cloud"
         width={400}
         footer={
           <div style={{

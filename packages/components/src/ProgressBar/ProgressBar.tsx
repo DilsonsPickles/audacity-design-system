@@ -39,7 +39,7 @@ export function ProgressBar({
   const widthStyle = typeof width === 'number' ? `${width}px` : width;
 
   const style = {
-    '--progress-bar-bg': theme.background.surface.subtle,
+    '--progress-bar-bg': theme.background.control.slider.track,
     '--progress-bar-fill': theme.border.focus,
   } as React.CSSProperties;
 
