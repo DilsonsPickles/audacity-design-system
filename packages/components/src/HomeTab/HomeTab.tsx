@@ -187,40 +187,8 @@ export function HomeTab({
     );
   };
 
-  // Cloud projects data - Generate 250 projects for pagination testing
-  const projectTemplates = [
-    { title: 'Podcast Episode', dateText: 'TODAY', hasThumbnail: true, size: '19 KB' },
-    { title: 'Music Mix', dateText: 'YESTERDAY', hasThumbnail: true, size: '22 KB' },
-    { title: 'Interview Recording', dateText: '2 DAYS AGO', hasThumbnail: false, size: '18 KB' },
-    { title: 'Voice Over Session', dateText: '1 WEEK AGO', hasThumbnail: true, size: '20 KB' },
-    { title: 'Band Practice', dateText: '2 WEEKS AGO', hasThumbnail: true, size: '25 KB' },
-    { title: 'Audio Book Chapter', dateText: '1 MONTH AGO', hasThumbnail: false, size: '17 KB' },
-    { title: 'Documentary Narration', dateText: '1 MONTH AGO', hasThumbnail: true, size: '21 KB' },
-    { title: 'Song Demo', dateText: '2 MONTHS AGO', hasThumbnail: true, size: '23 KB' },
-    { title: 'Radio Commercial', dateText: '2 MONTHS AGO', hasThumbnail: false, size: '16 KB' },
-    { title: 'Live Concert Recording', dateText: '3 MONTHS AGO', hasThumbnail: true, size: '28 KB' },
-    { title: 'Meditation Guide', dateText: '3 MONTHS AGO', hasThumbnail: true, size: '19 KB' },
-    { title: 'Jingle Production', dateText: '4 MONTHS AGO', hasThumbnail: false, size: '15 KB' },
-    { title: 'Piano Composition', dateText: '4 MONTHS AGO', hasThumbnail: true, size: '24 KB' },
-    { title: 'Field Recording', dateText: '5 MONTHS AGO', hasThumbnail: true, size: '26 KB' },
-    { title: 'Voicemail Greeting', dateText: '5 MONTHS AGO', hasThumbnail: false, size: '14 KB' },
-    { title: 'Hip Hop Beat', dateText: '6 MONTHS AGO', hasThumbnail: true, size: '21 KB' },
-    { title: 'Jazz Improv', dateText: '6 MONTHS AGO', hasThumbnail: true, size: '27 KB' },
-    { title: 'Gaming Stream Audio', dateText: '7 MONTHS AGO', hasThumbnail: false, size: '18 KB' },
-    { title: 'Choir Practice', dateText: '8 MONTHS AGO', hasThumbnail: true, size: '23 KB' },
-    { title: 'Ambient Soundscape', dateText: '9 MONTHS AGO', hasThumbnail: true, size: '20 KB' },
-  ];
-
-  const allCloudProjects = Array.from({ length: 250 }, (_, i) => {
-    const template = projectTemplates[i % projectTemplates.length];
-    const number = Math.floor(i / projectTemplates.length) + 1;
-    return {
-      title: `${template.title} ${number > 1 ? number : ''}`.trim(),
-      dateText: template.dateText,
-      thumbnailUrl: template.hasThumbnail ? `https://picsum.photos/seed/project${i}/280/170` : undefined,
-      size: template.size,
-    };
-  });
+  // Cloud projects - filter real stored projects that have been saved to cloud
+  const allCloudProjects = storedProjects.filter(p => p.isCloudProject);
 
   const totalPages = Math.ceil(allCloudProjects.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -611,31 +579,38 @@ export function HomeTab({
                 <div className="home-tab__projects-scroll-container">
                   {isRefreshing ? (
                     <Spinner />
+                  ) : allCloudProjects.length === 0 ? (
+                    <div className="home-tab__empty-state">
+                      <div className="home-tab__empty-text">
+                        <div className="home-tab__empty-title">No cloud projects yet</div>
+                        <div className="home-tab__empty-description">
+                          Save a project to the cloud using File &rarr; Save project &rarr; Save to Cloud
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <>
                       {viewMode === 'grid' ? (
                         <div className="home-tab__projects-grid">
-                          {currentProjects.map((project, index) => {
-                            const itemId = `cloud-project-${index}`;
-                            return (
-                              <ProjectThumbnail
-                                key={`${project.title}-${index}`}
-                                title={project.title}
-                                dateText={project.dateText}
-                                thumbnailUrl={project.thumbnailUrl}
-                                isCloudProject
-                                onContextMenu={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setContextMenu({
-                                    x: rect.right,
-                                    y: rect.bottom,
-                                    itemId,
-                                    isCloudItem: true,
-                                  });
-                                }}
-                              />
-                            );
-                          })}
+                          {currentProjects.map((project) => (
+                            <ProjectThumbnail
+                              key={project.id}
+                              title={project.title}
+                              dateText={formatDateText(project.dateModified)}
+                              thumbnailUrl={project.thumbnailUrl}
+                              isCloudProject
+                              onClick={() => onOpenProject?.(project.id)}
+                              onContextMenu={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setContextMenu({
+                                  x: rect.right,
+                                  y: rect.bottom,
+                                  itemId: project.id,
+                                  isCloudItem: true,
+                                });
+                              }}
+                            />
+                          ))}
                         </div>
                       ) : (
                     <div className="home-tab__projects-list">
@@ -646,19 +621,14 @@ export function HomeTab({
                         <div className="home-tab__list-header-cell">Size</div>
                       </div>
                       <div className="home-tab__list-items">
-                      {currentProjects.map((project, index) => {
-                        const itemId = `cloud-project-${index}`;
-
-                        return (
+                      {currentProjects.map((project) => (
                           <div
-                            key={`${project.title}-${index}`}
+                            key={project.id}
                             className="home-tab__list-item-wrapper"
                           >
                             <button
                               className="home-tab__list-item"
-                              onClick={() => {
-                                console.log('Open project:', itemId);
-                              }}
+                              onClick={() => onOpenProject?.(project.id)}
                             >
                               <div className="home-tab__list-item-name">
                                 <div className="home-tab__list-item-thumbnail">
@@ -673,8 +643,8 @@ export function HomeTab({
                               <div className="home-tab__list-item-cloud-badge">
                                 <Icon name="cloud-filled" size={12} />
                               </div>
-                              <div className="home-tab__list-item-modified">{project.dateText}</div>
-                              <div className="home-tab__list-item-size">{project.size}</div>
+                              <div className="home-tab__list-item-modified">{formatDateText(project.dateModified)}</div>
+                              <div className="home-tab__list-item-size">-</div>
                             </button>
                             <button
                               className="home-tab__list-item-context-btn"
@@ -684,7 +654,7 @@ export function HomeTab({
                                 setContextMenu({
                                   x: rect.right,
                                   y: rect.bottom,
-                                  itemId,
+                                  itemId: project.id,
                                   isCloudItem: true,
                                 });
                               }}
@@ -693,8 +663,7 @@ export function HomeTab({
                               <Icon name="menu" size={16} />
                             </button>
                           </div>
-                        );
-                      })}
+                      ))}
                       </div>
                     </div>
                   )}

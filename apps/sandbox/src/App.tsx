@@ -185,6 +185,8 @@ function CanvasDemoContent() {
   const [authMode, setAuthMode] = React.useState<'signin' | 'create'>('create');
   const [isSyncingDialogOpen, setIsSyncingDialogOpen] = React.useState(false);
   const [isCloudProject, setIsCloudProject] = React.useState(false);
+  const [isSaveToCloudDialogOpen, setIsSaveToCloudDialogOpen] = React.useState(false);
+  const [cloudProjectName, setCloudProjectName] = React.useState('');
   const [projectName, setProjectName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -772,6 +774,18 @@ function CanvasDemoContent() {
     };
     loadProjects();
   }, []);
+
+  // Live-update the project title in IndexedDB + local state as the user types in the Save to Cloud dialog
+  React.useEffect(() => {
+    if (!isSaveToCloudDialogOpen || !currentProjectId || !cloudProjectName.trim()) return;
+    setIndexedDBProjects(prev =>
+      prev.map(p => p.id === currentProjectId ? { ...p, title: cloudProjectName } : p)
+    );
+    // Persist title to IndexedDB immediately so it shows on Home tab when navigating back
+    getProject(currentProjectId).then(proj => {
+      if (proj) saveProject({ ...proj, title: cloudProjectName });
+    });
+  }, [cloudProjectName, isSaveToCloudDialogOpen, currentProjectId]);
 
   // Initialize audio playback manager
   React.useEffect(() => {
@@ -2182,6 +2196,7 @@ function CanvasDemoContent() {
 
     // Reset state to start fresh
     dispatch({ type: 'RESET_STATE' });
+    setIsCloudProject(false);
 
     setCurrentProjectId(projectId);
     return projectId;
@@ -2812,6 +2827,9 @@ function CanvasDemoContent() {
               const project = await getProject(projectId);
               if (project) {
                 setCurrentProjectId(projectId);
+
+                // Restore cloud project status (project-specific)
+                setIsCloudProject(project.isCloudProject ?? false);
 
                 // Restore tracks state from project data if available
                 if (project.data?.tracks) {
@@ -3733,6 +3751,99 @@ function CanvasDemoContent() {
         />
       </Dialog>
 
+      {/* Save Project to Cloud Dialog */}
+      <Dialog
+        isOpen={isSaveToCloudDialogOpen}
+        title="Save project to Cloud"
+        os={preferences.operatingSystem}
+        onClose={() => setIsSaveToCloudDialogOpen(false)}
+        width={400}
+        minHeight={0}
+        headerContent={
+          <SignInActionBar
+            signedIn={isSignedIn}
+            userName="Alex Dawson"
+            onSignOut={() => setIsSignedIn(false)}
+          />
+        }
+        footer={
+          <DialogFooter
+            primaryText="Done"
+            secondaryText="Cancel"
+            onPrimaryClick={() => {
+              if (isSignedIn) {
+                setIsSaveToCloudDialogOpen(false);
+                setIsSyncingDialogOpen(true);
+                setIsCloudUploading(true);
+
+                const uploadToastId = toast.progress('Saving project to cloud...');
+
+                const totalDuration = 10000;
+                const updateInterval = 100;
+                let progress = 0;
+                const startTime = Date.now();
+
+                const interval = setInterval(() => {
+                  progress += 1;
+                  const elapsed = Date.now() - startTime;
+                  const remaining = Math.max(0, totalDuration - elapsed);
+                  const secondsRemaining = Math.ceil(remaining / 1000);
+                  const timeRemainingText = secondsRemaining === 1
+                    ? '1 second remaining'
+                    : `${secondsRemaining} seconds remaining`;
+
+                  toast.updateProgress(uploadToastId, progress, timeRemainingText);
+
+                  if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(async () => {
+                      toast.dismiss(uploadToastId);
+                      setIsCloudUploading(false);
+                      setIsCloudProject(true);
+                      // Persist cloud project status to IndexedDB so it survives project switching
+                      if (currentProjectId) {
+                        const proj = await getProject(currentProjectId);
+                        if (proj) {
+                          await saveProject({ ...proj, isCloudProject: true });
+                          // Reload so HomeTab cloud projects tab reflects the change
+                          const updated = await getProjects();
+                          setIndexedDBProjects(updated);
+                        }
+                      }
+                      toast.success(
+                        'Project saved to cloud!',
+                        'All saved changes will now sync to the cloud. You can access your project from any device.',
+                        [
+                          { label: 'View on audio.com', onClick: () => console.log('View on audio.com') }
+                        ],
+                        0
+                      );
+                    }, 200);
+                  }
+                }, updateInterval);
+              } else if (cloudProjectName.trim()) {
+                setIsCreateAccountOpen(true);
+              } else {
+                toast.error('Please enter a project name');
+              }
+            }}
+            onSecondaryClick={() => {
+              setIsSaveToCloudDialogOpen(false);
+              setCloudProjectName('');
+            }}
+            primaryDisabled={!cloudProjectName.trim()}
+          />
+        }
+      >
+        <LabeledInput
+          label="Project name"
+          value={cloudProjectName}
+          onChange={setCloudProjectName}
+          placeholder="Enter project name"
+          width="100%"
+        />
+      </Dialog>
+
       {/* Create Account Dialog */}
       <Dialog
         isOpen={isCreateAccountOpen}
@@ -3941,7 +4052,10 @@ function CanvasDemoContent() {
         onClose={() => setIsSaveProjectModalOpen(false)}
         onSaveToCloud={() => {
           setIsSaveProjectModalOpen(false);
-          setIsShareDialogOpen(true);
+          // Pre-fill with current project title
+          const currentTitle = indexedDBProjects.find(p => p.id === currentProjectId)?.title ?? '';
+          setCloudProjectName(currentTitle);
+          setIsSaveToCloudDialogOpen(true);
         }}
         onSaveToComputer={async () => {
           setIsSaveProjectModalOpen(false);

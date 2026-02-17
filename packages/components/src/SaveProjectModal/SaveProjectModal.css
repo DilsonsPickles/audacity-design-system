@@ -17,8 +17,8 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 480px;
-  max-width: 480px;
+  width: 640px;
+  max-width: 640px;
   background-color: var(--save-modal-bg);
   border: 1px solid var(--save-modal-border);
   border-radius: 8px;
