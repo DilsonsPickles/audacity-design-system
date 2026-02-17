@@ -23,6 +23,7 @@ export interface HomeTabProps {
   onNewProject?: (projectId: string) => void;
   onOpenProject?: (projectId: string) => void;
   onOpenOther?: () => void;
+  onDeleteProject?: (projectId: string) => void;
   onSearch?: (query: string) => void;
   className?: string;
   projects?: StoredProject[]; // Optional: override internal project loading
@@ -38,6 +39,7 @@ export function HomeTab({
   onNewProject,
   onOpenProject,
   onOpenOther,
+  onDeleteProject,
   onSearch,
   className = '',
   projects: externalProjects,
@@ -80,8 +82,12 @@ export function HomeTab({
   };
 
   const handleDeleteProject = (id: string) => {
-    deleteProject(id);
-    setStoredProjects(getProjects());
+    if (onDeleteProject) {
+      onDeleteProject(id);
+    } else {
+      deleteProject(id);
+      setStoredProjects(getProjects());
+    }
   };
 
   const handleCreateNewProject = () => {

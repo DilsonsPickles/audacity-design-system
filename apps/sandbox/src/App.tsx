@@ -6,7 +6,7 @@ import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
-import { saveProject, getProject, getProjects } from './utils/projectDatabase';
+import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
@@ -2799,8 +2799,8 @@ function CanvasDemoContent() {
             userName="Username"
             userAvatarUrl="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop"
             projects={indexedDBProjects.filter(p =>
-              // Only show projects that have been saved (have data or thumbnail)
-              (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
+              // Always show cloud projects; otherwise only show projects with data or thumbnail
+              p.isCloudProject || (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
             )}
             onCreateAccount={() => {
               setAuthMode('create');
@@ -2849,6 +2849,11 @@ function CanvasDemoContent() {
               }
             }}
             onOpenOther={() => console.log('Open other')}
+            onDeleteProject={async (projectId) => {
+              await deleteProject(projectId);
+              const updated = await getProjects();
+              setIndexedDBProjects(updated);
+            }}
           />
         </div>
       ) : (
