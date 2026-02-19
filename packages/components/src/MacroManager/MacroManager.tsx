@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Dialog } from '../Dialog';
+import { Footer } from '../Footer/Footer';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { Table } from '../Table/Table';
@@ -137,18 +138,18 @@ function NewMacroDialog({ isOpen, onClose, onCreate, os = 'macos' }: NewMacroDia
       onClose={handleCancel}
       os={os}
       width={400}
+      minHeight={0}
       footer={
-        <>
-          <Button variant="secondary" size="default" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button variant="primary" size="default" onClick={handleCreate} disabled={!macroName.trim()}>
-            Create
-          </Button>
-        </>
+        <Footer
+          primaryText="Create"
+          secondaryText="Cancel"
+          primaryDisabled={!macroName.trim()}
+          onPrimaryClick={handleCreate}
+          onSecondaryClick={handleCancel}
+        />
       }
     >
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <label htmlFor="macro-name-input" style={{ fontSize: '12px', fontWeight: 400 }}>
           Macro name
         </label>
@@ -207,18 +208,18 @@ function RenameMacroDialog({ isOpen, onClose, onRename, currentName, os = 'macos
       onClose={handleCancel}
       os={os}
       width={400}
+      minHeight={0}
       footer={
-        <>
-          <Button variant="secondary" size="default" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button variant="primary" size="default" onClick={handleRename} disabled={!macroName.trim() || macroName.trim() === currentName}>
-            Rename
-          </Button>
-        </>
+        <Footer
+          primaryText="Rename"
+          secondaryText="Cancel"
+          primaryDisabled={!macroName.trim() || macroName.trim() === currentName}
+          onPrimaryClick={handleRename}
+          onSecondaryClick={handleCancel}
+        />
       }
     >
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <label htmlFor="rename-macro-input" style={{ fontSize: '12px', fontWeight: 400 }}>
           Macro name
         </label>
