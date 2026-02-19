@@ -427,56 +427,6 @@ export function DebugPanel({
           </div>
         </div>
 
-        {/* Control Point Style */}
-        <div>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px',
-          }}>
-            <label style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '12px',
-              fontWeight: 400,
-              lineHeight: '16px',
-              color: '#14151a',
-            }}>
-              Control Point Style
-            </label>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}>
-              {Object.entries(ENVELOPE_POINT_STYLES).map(([key, style]) => (
-                <label
-                  key={key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 400,
-                    lineHeight: '16px',
-                    color: '#14151a',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="controlPointStyle"
-                    value={key}
-                    checked={controlPointStyle === key}
-                    onChange={() => onControlPointStyleChange(key as EnvelopePointStyleKey)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>{style.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
 
         {/* Accessibility Section */}
         <div>

@@ -104,156 +104,27 @@ export interface EnvelopePointStyle {
 }
 
 export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
-  default: {
-    name: 'Default',
-    outerRadius: 5,
-    innerRadius: 3,
-    outerRadiusHover: 6,
-    innerRadiusHover: 4,  // 2px ring on hover (same thickness)
-    lineWidth: 2,
-    showGreenCenterFillOnHover: 3,  // 6px diameter (3px radius) solid green center
-  },
-  newProfile: {
-    name: 'New Profile',
-    outerRadius: 5,
-    innerRadius: 3,
-    outerRadiusHover: 6,
-    innerRadiusHover: 4,
-    lineWidth: 2,
-    dualRingHover: {
-      innerRingOuter: 5,  // White ring: 4-5px
-      innerRingInner: 4,
-      innerRingColor: '#ffffff',
-      outerRingOuter: 6,  // Black ring: 5-6px
-      outerRingInner: 5,
-      outerRingColor: '#000000',
-    },
-    showGreenCenterFillOnHover: 3,  // 6px diameter (3px radius) green center dot
-  },
-  solidGreen: {
-    name: 'Solid Green',
-    outerRadius: 5,
-    innerRadius: 3,
-    outerRadiusHover: 6,
-    innerRadiusHover: 4,
-    lineWidth: 2,
-    solidCircle: {
-      fillColor: '#b8ff00',  // Yellow-green fill (same as envelope line)
-      strokeColor: '#000000',  // Black outline
-      strokeWidth: 1.5,
-      outerStrokeColor: '#ffffff',  // White outer stroke
-      outerStrokeWidth: 1,
-      radius: 4,  // 8px diameter normal
-      radiusHover: 5,  // 10px diameter hover
-      cursorFollowerRadius: 4,  // Larger cursor follower (8px diameter)
-    },
-  },
-  solidGreenVariation: {
-    name: 'Solid Green Variation',
-    outerRadius: 5,
-    innerRadius: 3,
-    outerRadiusHover: 6,
-    innerRadiusHover: 4,
-    lineWidth: 2,
-    solidCircle: {
-      fillColor: '#b8ff00',  // Yellow-green fill (same as envelope line)
-      strokeColor: '#000000',  // Black outline
-      strokeWidth: 1.5,
-      outerStrokeColor: '#ffffff',  // White outer stroke
-      outerStrokeWidth: 1,
-      radius: 4,  // 8px diameter normal
-      radiusHover: 5,  // 10px diameter hover
-      cursorFollowerRadius: 6,  // Larger to match placed point size
-      useDualRingCursorFollower: true,  // Use white/black ring cursor (no fill)
-      breakLineAtCursor: false,  // Don't break line - let it show through transparent center
-    },
-  },
-  glowingGreen: {
-    name: 'Glowing Green',
-    outerRadius: 3.5,  // Idle: 7px outer diameter
-    innerRadius: 2,    // Idle: 4px inner diameter
-    outerRadiusHover: 4.5,  // Hover: 9px outer diameter
-    innerRadiusHover: 3,    // Hover: 6px inner diameter (becomes inner edge of green ring)
-    lineWidth: 1.5,
-    whiteCenterOnHover: {
-      innerRadius: 1,       // 2px diameter transparent center
-      outerRadius: 2,       // 4px diameter (white ring outer edge)
-      blackRadius: 3,       // 6px diameter (black ring outer edge, matches innerRadiusHover)
-    },
-  },
-  glowingGreenLarge: {
-    name: 'Glowing Green Large',
-    outerRadius: 4.5,  // Always: 9px outer diameter
-    innerRadius: 3,    // Always: 6px inner diameter
-    outerRadiusHover: 4.5,  // No change on hover
-    innerRadiusHover: 3,    // No change on hover
-    lineWidth: 1.5,
-    whiteCenter: {
-      innerRadius: 1,       // 2px diameter transparent center
-      outerRadius: 2,       // 4px diameter (white ring outer edge)
-      blackRadius: 3,       // 6px diameter (black ring outer edge)
-    },
-  },
-  defaultSolid: {
-    name: 'Default Solid',
-    outerRadius: 5,       // Idle: 10px diameter solid green
-    innerRadius: 0,       // Idle: solid (no inner hole)
-    outerRadiusHover: 5,  // Hover: 10px diameter outer (green ring outer edge)
-    innerRadiusHover: 3,  // Hover: 6px diameter (green ring inner edge)
-    lineWidth: 2,
-    whiteCenterOnHover: {
-      innerRadius: 0,     // White center is solid (no hole)
-      outerRadius: 2,     // White center is 4px diameter
-      blackRadius: 3,     // Black ring from 4px to 6px
-    },
-  },
-  solidWhite: {
-    name: 'Solid White',
+  solidGreenSimple: {
+    name: 'Solid Green Simple',
     outerRadius: 5,
     innerRadius: 0,
     outerRadiusHover: 6,
     innerRadiusHover: 0,
     lineWidth: 2,
-    lineColor: '#ffffff',
+    lineColor: '#b8ff00',
     solidCircle: {
-      fillColor: '#ffffff',
-      strokeColor: '#ffffff',
+      fillColor: '#b8ff00',
+      strokeColor: '#b8ff00',
       strokeWidth: 0,
-      strokeColorHover: '#000000',
-      strokeWidthHover: 1.5,
-      radius: 5,
-      radiusHover: 6,
-      cursorFollowerRadius: 5,
+      radius: 4.5,       // 9px diameter idle
+      radiusHover: 5.5,  // 11px diameter hover
+      cursorFollowerRadius: 3.5,
       useDualRingCursorFollower: false,
       breakLineAtCursor: false,
       whiteCenterOnHover: {
-        innerRadius: 0,   // Solid (no hole)
-        outerRadius: 0,   // No white ring — just the black dot below
-        blackRadius: 2,   // Black center dot at 4px diameter
-      },
-    },
-  },
-  blackWhiteLine: {
-    name: 'Black White Line',
-    outerRadius: 5,
-    innerRadius: 0,
-    outerRadiusHover: 6,
-    innerRadiusHover: 0,
-    lineWidth: 1,         // White stroke is 1px; black shadow underneath is 3px
-    dualStrokeLine: true,
-    solidCircle: {
-      fillColor: '#ffffff',       // White fill
-      strokeColor: '#000000',     // Black outline
-      strokeWidth: 2,
-      radius: 4,                  // 8px diameter normal
-      radiusHover: 5,             // 10px diameter hover
-      cursorFollowerRadius: 4,
-      useDualRingCursorFollower: false,
-      breakLineAtCursor: false,
-      whiteCenterOnHover: {
-        innerRadius: 0,           // Solid white dot (no hole)
-        outerRadius: 2,           // White dot at 4px diameter
-        blackRadius: 5,           // Black fill covers to 10px (full radius), leaving white center
+        innerRadius: 0,   // White center is solid, 3px diameter
+        outerRadius: 1.5, // White fills to 3px diameter
+        blackRadius: 3.5, // Black fills to 7px diameter; white sits on top
       },
     },
   },

@@ -297,7 +297,7 @@ function CanvasDemoContent() {
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
   const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
-  const [controlPointStyle, setControlPointStyle] = React.useState<EnvelopePointStyleKey>('default');
+  const [controlPointStyle, setControlPointStyle] = React.useState<EnvelopePointStyleKey>('solidGreenSimple');
   const [showMixer, setShowMixer] = React.useState(false);
   const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
   const [isMacroManagerOpen, setIsMacroManagerOpen] = React.useState(false);
