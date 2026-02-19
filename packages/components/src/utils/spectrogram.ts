@@ -4,6 +4,9 @@
  */
 
 import { getFrequencyBandEnergy } from '@audacity-ui/core';
+import { normToFreq, type SpectrogramScale } from './spectrogramScales';
+
+export type { SpectrogramScale };
 
 /**
  * Spectrogram rendering options
@@ -17,6 +20,12 @@ export interface SpectrogramOptions {
   intensityMultiplier?: number;
   /** Skip every N pixel columns for performance (1 = render all, 2 = render every other, etc) */
   pixelSkip?: number;
+  /** Frequency scale to use for y-axis mapping */
+  scale?: SpectrogramScale;
+  /** Minimum frequency in Hz */
+  minFreq?: number;
+  /** Maximum frequency in Hz */
+  maxFreq?: number;
 }
 
 /**
@@ -68,6 +77,9 @@ export function renderMonoSpectrogram(
     fftWindowSize = 2048,
     intensityMultiplier = 1.5,
     pixelSkip = 1,
+    scale = 'mel',
+    minFreq = 10,
+    maxFreq = 22050,
   } = options;
 
   const samplesPerPixel = waveformData.length / width;
@@ -76,7 +88,6 @@ export function renderMonoSpectrogram(
     const sampleIndex = Math.floor(px * samplesPerPixel);
     if (sampleIndex >= waveformData.length) break;
 
-    // Get frequency band energies via FFT
     const bandEnergies = getFrequencyBandEnergy(
       waveformData,
       sampleIndex,
@@ -85,17 +96,21 @@ export function renderMonoSpectrogram(
     );
     const maxEnergy = Math.max(...bandEnergies, 0.0001);
 
-    // Draw each frequency band
-    for (let band = 0; band < frequencyBands; band++) {
-      const rawIntensity = bandEnergies[band] / maxEnergy;
+    // Draw each pixel row using the selected frequency scale
+    for (let py = 0; py < height; py++) {
+      // Map this pixel row to a normalised 0–1 position (0=bottom, 1=top)
+      const norm = 1 - py / height;
+      // Convert to Hz using the chosen scale
+      const hz = normToFreq(norm, minFreq, maxFreq, scale);
+      // Find which FFT band this frequency falls in
+      const band = Math.floor((hz / maxFreq) * frequencyBands);
+      const clampedBand = Math.max(0, Math.min(frequencyBands - 1, band));
+
+      const rawIntensity = bandEnergies[clampedBand] / maxEnergy;
       const intensity = Math.min(1, Math.sqrt(rawIntensity) * intensityMultiplier);
 
       ctx.fillStyle = getSpectrogramColor(intensity);
-      // Calculate start and end Y positions to ensure no gaps
-      const yStart = y + (1 - ((band + 1) / frequencyBands)) * height;
-      const yEnd = y + (1 - (band / frequencyBands)) * height;
-      const bandHeight = Math.ceil(yEnd - yStart); // Ceil to avoid gaps
-      ctx.fillRect(x + px, yStart, pixelSkip, bandHeight);
+      ctx.fillRect(x + px, y + py, pixelSkip, 1);
     }
   }
 }
@@ -128,6 +143,9 @@ export function renderStereoSpectrogram(
     fftWindowSize = 2048,
     intensityMultiplier = 1.5,
     pixelSkip = 1,
+    scale = 'mel',
+    minFreq = 10,
+    maxFreq = 22050,
   } = options;
 
   const lChannelHeight = height * channelSplitRatio;
@@ -139,23 +157,16 @@ export function renderStereoSpectrogram(
     const sampleIndex = Math.floor(px * samplesPerPixelL);
     if (sampleIndex >= waveformLeft.length) break;
 
-    const bandEnergies = getFrequencyBandEnergy(
-      waveformLeft,
-      sampleIndex,
-      fftWindowSize,
-      frequencyBands
-    );
+    const bandEnergies = getFrequencyBandEnergy(waveformLeft, sampleIndex, fftWindowSize, frequencyBands);
     const maxEnergy = Math.max(...bandEnergies, 0.0001);
 
-    for (let band = 0; band < frequencyBands; band++) {
-      const rawIntensity = bandEnergies[band] / maxEnergy;
-      const intensity = Math.min(1, Math.sqrt(rawIntensity) * intensityMultiplier);
-
+    for (let py = 0; py < lChannelHeight; py++) {
+      const norm = 1 - py / lChannelHeight;
+      const hz = normToFreq(norm, minFreq, maxFreq, scale);
+      const band = Math.max(0, Math.min(frequencyBands - 1, Math.floor((hz / maxFreq) * frequencyBands)));
+      const intensity = Math.min(1, Math.sqrt(bandEnergies[band] / maxEnergy) * intensityMultiplier);
       ctx.fillStyle = getSpectrogramColor(intensity);
-      const yStart = y + (1 - ((band + 1) / frequencyBands)) * lChannelHeight;
-      const yEnd = y + (1 - (band / frequencyBands)) * lChannelHeight;
-      const bandHeight = Math.ceil(yEnd - yStart);
-      ctx.fillRect(x + px, yStart, pixelSkip, bandHeight);
+      ctx.fillRect(x + px, y + py, pixelSkip, 1);
     }
   }
 
@@ -166,23 +177,16 @@ export function renderStereoSpectrogram(
     const sampleIndex = Math.floor(px * samplesPerPixelR);
     if (sampleIndex >= waveformRight.length) break;
 
-    const bandEnergies = getFrequencyBandEnergy(
-      waveformRight,
-      sampleIndex,
-      fftWindowSize,
-      frequencyBands
-    );
+    const bandEnergies = getFrequencyBandEnergy(waveformRight, sampleIndex, fftWindowSize, frequencyBands);
     const maxEnergy = Math.max(...bandEnergies, 0.0001);
 
-    for (let band = 0; band < frequencyBands; band++) {
-      const rawIntensity = bandEnergies[band] / maxEnergy;
-      const intensity = Math.min(1, Math.sqrt(rawIntensity) * intensityMultiplier);
-
+    for (let py = 0; py < rChannelHeight; py++) {
+      const norm = 1 - py / rChannelHeight;
+      const hz = normToFreq(norm, minFreq, maxFreq, scale);
+      const band = Math.max(0, Math.min(frequencyBands - 1, Math.floor((hz / maxFreq) * frequencyBands)));
+      const intensity = Math.min(1, Math.sqrt(bandEnergies[band] / maxEnergy) * intensityMultiplier);
       ctx.fillStyle = getSpectrogramColor(intensity);
-      const yStart = dividerY + (1 - ((band + 1) / frequencyBands)) * rChannelHeight;
-      const yEnd = dividerY + (1 - (band / frequencyBands)) * rChannelHeight;
-      const bandHeight = Math.ceil(yEnd - yStart);
-      ctx.fillRect(x + px, yStart, pixelSkip, bandHeight);
+      ctx.fillRect(x + px, dividerY + py, pixelSkip, 1);
     }
   }
 }

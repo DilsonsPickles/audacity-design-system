@@ -55,6 +55,12 @@
   background-color: var(--ruler-tick-secondary);
 }
 
+/* Minor tick labels (normal weight, secondary color) */
+.vertical-ruler__tick--minor .vertical-ruler__label {
+  font-weight: 400;
+  color: var(--ruler-text-secondary);
+}
+
 /* Label */
 .vertical-ruler__label {
   position: absolute;
@@ -80,9 +86,10 @@
   top: 0;
 }
 
-/* Last major tick label - align bottom of text with tick mark */
+/* Last tick label - pin bottom of text to tick mark so it stays inside container */
 .vertical-ruler__tick--last .vertical-ruler__label {
-  transform: translateY(0);
+  transform: none;
+  top: auto;
   bottom: 0;
 }
 

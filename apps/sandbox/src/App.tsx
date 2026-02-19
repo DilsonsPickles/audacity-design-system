@@ -6,6 +6,7 @@ import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
+import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
@@ -307,6 +308,8 @@ function CanvasDemoContent() {
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
   const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
   const [controlPointStyle, setControlPointStyle] = React.useState<EnvelopePointStyleKey>('solidGreenSimple');
+  const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
+  const [isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen] = React.useState(false);
   const [showMixer, setShowMixer] = React.useState(false);
   const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
   const [isMacroManagerOpen, setIsMacroManagerOpen] = React.useState(false);
@@ -3057,6 +3060,9 @@ function CanvasDemoContent() {
                   });
                 });
               }}
+              onSpectrogramSettings={() => {
+                setIsSpectrogramSettingsOpen(true);
+              }}
             >
             {state.tracks.map((track, index) => {
               // Determine track type from track name (temporary until we add trackType to state)
@@ -3525,6 +3531,7 @@ function CanvasDemoContent() {
                       setControlPanelHasFocus(null);
                     }}
                     onHeightChange={setCanvasHeight}
+                    spectrogramScale={spectrogramScale}
                   />
                 </ThemeProvider>
                 {/* Playhead stalk only (no icon) - extends to fill scrollable area */}
@@ -3604,6 +3611,7 @@ function CanvasDemoContent() {
                   headerHeight={0}
                   scrollY={scrollY}
                   cursorY={isOverTrack ? mouseCursorY : undefined}
+                  spectrogramScale={spectrogramScale}
                 />
               )}
             </div>
@@ -4630,6 +4638,8 @@ function CanvasDemoContent() {
         onControlPointStyleChange={setControlPointStyle}
         showMixer={showMixer}
         onShowMixerChange={setShowMixer}
+        spectrogramScale={spectrogramScale}
+        onSpectrogramScaleChange={setSpectrogramScale}
       />
 
       {/* Clip Context Menu */}
@@ -4723,6 +4733,54 @@ function CanvasDemoContent() {
         />
       )}
 
+      {/* Spectrogram Settings Dialog */}
+      <Dialog
+        isOpen={isSpectrogramSettingsOpen}
+        onClose={() => setIsSpectrogramSettingsOpen(false)}
+        title="Spectrogram Settings"
+        width={360}
+        minHeight={0}
+        os={preferences.operatingSystem}
+        footer={
+          <DialogFooter
+            rightContent={
+              <Button variant="primary" size="default" onClick={() => setIsSpectrogramSettingsOpen(false)}>
+                Close
+              </Button>
+            }
+          />
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {([
+            { value: 'linear', label: 'Linear', description: 'Evenly spaced frequency bands' },
+            { value: 'logarithmic', label: 'Logarithmic', description: 'Log scale, similar to musical intervals' },
+            { value: 'mel', label: 'Mel', description: 'Perceptual scale based on human pitch perception' },
+            { value: 'bark', label: 'Bark', description: 'Psychoacoustic scale (critical bands)' },
+            { value: 'erb', label: 'ERB', description: 'Equivalent Rectangular Bandwidth scale' },
+            { value: 'period', label: 'Period', description: 'Displays period (1/f) rather than frequency' },
+          ] as { value: SpectrogramScale; label: string; description: string }[]).map(({ value, label, description }) => (
+            <label key={value} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                value={value}
+                checked={spectrogramScale === value}
+                onChange={() => setSpectrogramScale(value)}
+                style={{ cursor: 'pointer', marginTop: '2px', flexShrink: 0 }}
+              />
+              <div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '18px' }}>
+                  {label}
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', lineHeight: '15px', opacity: 0.6 }}>
+                  {description}
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </Dialog>
+
       {/* Track Context Menu */}
       {trackContextMenu && (
         <TrackContextMenu
@@ -4756,6 +4814,9 @@ function CanvasDemoContent() {
               });
               setTrackContextMenu(null);
             }
+          }}
+          onSpectrogramSettings={() => {
+            setIsSpectrogramSettingsOpen(true);
           }}
         />
       )}

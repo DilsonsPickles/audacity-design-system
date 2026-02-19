@@ -122,6 +122,11 @@ export interface TrackControlSidePanelProps {
    * @default 0
    */
   bufferSpace?: number;
+
+  /**
+   * Called when "Spectrogram settings" is clicked in the track menu
+   */
+  onSpectrogramSettings?: (trackIndex: number) => void;
 }
 
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
@@ -141,6 +146,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onMoveTrackDown,
   onTrackViewChange,
   onTrackColorChange,
+  onSpectrogramSettings,
   trackViewModes = [],
   trackColors = [],
   className = '',
@@ -382,6 +388,16 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   }}
                 />
               </ContextMenuItem>
+              {onSpectrogramSettings && (
+                <ContextMenuItem
+                  label="Spectrogram settings..."
+                  onClick={() => {
+                    onSpectrogramSettings(menuState.trackIndex);
+                    handleMenuClose();
+                  }}
+                  onClose={handleMenuClose}
+                />
+              )}
             </>
           );
         })()}

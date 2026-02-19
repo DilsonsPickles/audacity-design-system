@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
-import { renderMonoSpectrogram, renderStereoSpectrogram } from '../utils/spectrogram';
+import { renderMonoSpectrogram, renderStereoSpectrogram, type SpectrogramScale } from '../utils/spectrogram';
+import { getScaleMinFreq } from '../utils/spectrogramScales';
 import { getEnvelopeGainAtTime, type EnvelopePointData } from '../utils/envelope';
+
 import { EnvelopeOverlay } from '../EnvelopeOverlay/EnvelopeOverlay';
 import { useTheme } from '../ThemeProvider';
 import './ClipBody.css';
+
+export type { SpectrogramScale };
 
 export type ClipBodyVariant = 'waveform' | 'spectrogram';
 export type ClipBodyChannelMode = 'mono' | 'stereo' | 'split-mono' | 'split-stereo';
@@ -78,6 +82,10 @@ export interface ClipBodyProps {
     dualStrokeLine?: boolean;
     [key: string]: unknown;
   };
+  /** Spectrogram frequency scale
+   * @default 'mel'
+   */
+  spectrogramScale?: SpectrogramScale;
 }
 
 /**
@@ -118,6 +126,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   inTimeSelection = false,
   timeSelectionRange = null,
   envelopePointSizes,
+  spectrogramScale = 'mel',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
@@ -200,6 +209,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           fftWindowSize: 64,
           intensityMultiplier: 1.5,
           pixelSkip: 4,
+          scale: spectrogramScale,
+          minFreq: getScaleMinFreq(spectrogramScale),
         };
 
         // Render L channel spectrogram (top quarter)
@@ -223,6 +234,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
           fftWindowSize: 64,
           intensityMultiplier: 1.5,
           pixelSkip: 4,
+          scale: spectrogramScale,
+          minFreq: getScaleMinFreq(spectrogramScale),
         });
       }
 
@@ -468,6 +481,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         fftWindowSize: 256, // Smaller FFT for faster computation
         intensityMultiplier: 1.5,
         pixelSkip: 4, // Render every 4th pixel for better performance
+        scale: spectrogramScale,
+        minFreq: getScaleMinFreq(spectrogramScale),
       };
 
       if (isStereo) {
@@ -791,7 +806,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     }
 
     // Envelope rendering moved to SVG overlay (see return JSX below)
-  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, theme]);
+  }, [waveformData, waveformLeft, waveformRight, width, height, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, theme, spectrogramScale]);
 
   const className = [
     'clip-body',

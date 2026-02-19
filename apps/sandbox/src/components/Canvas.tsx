@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
+import type { SpectrogramScale } from '@audacity-ui/components';
 import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
@@ -96,6 +97,11 @@ export interface CanvasProps {
    * @default 'beats-measures'
    */
   timeFormat?: 'minutes-seconds' | 'beats-measures';
+  /**
+   * Frequency scale for spectrogram rendering and ruler
+   * @default 'mel'
+   */
+  spectrogramScale?: SpectrogramScale;
 }
 
 /**
@@ -123,6 +129,7 @@ export function Canvas({
   bpm = 120,
   beatsPerMeasure = 4,
   timeFormat = 'beats-measures',
+  spectrogramScale = 'mel',
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -788,6 +795,7 @@ export function Canvas({
                   // The actual trimming happens in the mousemove handler
                 }}
                 envelopePointSizes={envelopePointSizes}
+                spectrogramScale={spectrogramScale}
                 channelSplitRatio={track.channelSplitRatio}
                 onChannelSplitRatioChange={(ratio) => {
                   dispatch({

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { ClipColor } from '../types/clip';
 import { ClipHeader } from '../ClipHeader/ClipHeader';
 import { ClipBody, ClipBodyVariant, ClipBodyChannelMode } from '../ClipBody/ClipBody';
+import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import type { EnvelopePointData } from '../utils/envelope';
 import './Clip.css';
 
@@ -84,6 +85,8 @@ export interface ClipProps {
   };
   /** Whether this clip is currently being recorded (shows menu, removes right border radius) */
   isRecording?: boolean;
+  /** Frequency scale for spectrogram rendering */
+  spectrogramScale?: SpectrogramScale;
 }
 
 /**
@@ -128,6 +131,7 @@ export const Clip: React.FC<ClipProps> = ({
   timeSelectionRange = null,
   envelopePointSizes,
   isRecording = false,
+  spectrogramScale,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
@@ -268,6 +272,7 @@ export const Clip: React.FC<ClipProps> = ({
         clipStartTime={clipStartTime}
         timeSelectionRange={timeSelectionRange}
         envelopePointSizes={envelopePointSizes}
+        spectrogramScale={spectrogramScale}
       />
 
       {/* Trim handles */}

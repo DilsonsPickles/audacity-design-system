@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clip } from '../Clip/Clip';
+import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
 import { CLIP_CONTENT_OFFSET } from '../constants';
@@ -201,6 +202,12 @@ export interface TrackProps {
    */
   onChannelSplitRatioChange?: (ratio: number) => void;
 
+  /**
+   * Frequency scale for spectrogram rendering
+   * @default 'mel'
+   */
+  spectrogramScale?: SpectrogramScale;
+
 }
 
 // Map track index to color
@@ -248,6 +255,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   envelopePointSizes,
   channelSplitRatio = 0.5,
   onChannelSplitRatioChange,
+  spectrogramScale,
 }) => {
   const trackColor = getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -496,6 +504,7 @@ export const TrackNew: React.FC<TrackProps> = ({
             hoveredPointIndices={clipHoveredPoints.get(clip.id) ?? []}
             cursorPosition={clipCursorPositions.get(clip.id) || null}
             envelopePointSizes={envelopePointSizes}
+            spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
             onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}

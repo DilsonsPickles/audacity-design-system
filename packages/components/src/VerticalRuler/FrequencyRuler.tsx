@@ -1,6 +1,9 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
+import { freqToY, getTicksForScale, type SpectrogramScale } from '../utils/spectrogramScales';
 import './VerticalRuler.css';
+
+export type { SpectrogramScale };
 
 export interface FrequencyRulerProps {
   /**
@@ -17,6 +20,11 @@ export interface FrequencyRulerProps {
    * @default 22050 (Nyquist for 44.1kHz)
    */
   maxFreq?: number;
+  /**
+   * Frequency scale to display
+   * @default 'mel'
+   */
+  scale?: SpectrogramScale;
   /**
    * Position of tick marks and labels
    * @default 'right'
@@ -38,16 +46,14 @@ export interface FrequencyRulerProps {
 }
 
 /**
- * FrequencyRuler component for displaying Mel frequency scale
- *
- * Displays a vertical ruler with frequency labels for spectrograms.
- * Uses Mel scale for perceptually uniform frequency perception.
- * Frequencies shown: 100Hz, 200Hz, 500Hz, 1kHz, 2kHz, 5kHz, 10kHz, 20kHz
+ * FrequencyRuler — vertical ruler for spectrogram views.
+ * Supports Linear, Logarithmic, Mel, Bark, ERB and Period scales.
  */
 export const FrequencyRuler: React.FC<FrequencyRulerProps> = ({
   height,
   minFreq = 10,
   maxFreq = 22050,
+  scale = 'mel',
   position = 'right',
   width = 80,
   className = '',
@@ -55,114 +61,33 @@ export const FrequencyRuler: React.FC<FrequencyRulerProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  // Common audio frequencies for labeling (major ticks)
-  // Starting from bottom (high freq) to top (low freq)
-  const majorFrequencies = [
-    { freq: 20000, label: '20k' },
-    { freq: 10000, label: '10k' },
-    { freq: 5000, label: '5k' },
-    { freq: 2000, label: '2k' },
-    { freq: 1000, label: '1k' },
-    { freq: 500, label: '500' },
-    { freq: 200, label: '200' },
-    { freq: 100, label: '100' },
-  ];
+  const MIN_LABEL_SPACING = 14;
 
-  // Minor tick frequencies (unlabeled, for reference)
-  const minorFrequencies = [
-    15000, 7000, 4000, 3000, 1500, 700, 400, 300, 150,
-    // Below 100 Hz
-    80, 60, 40, 20,
-  ];
+  // Build all ticks sorted top-to-bottom (ascending y)
+  const allTicks = getTicksForScale(scale)
+    .filter(t => t.value >= minFreq && t.value <= maxFreq)
+    .map(t => ({
+      ...t,
+      y: freqToY(t.value, minFreq, maxFreq, height, scale),
+      showLabel: true,
+    }))
+    .sort((a, b) => a.y - b.y);
 
-  // Convert frequency to Mel scale
-  const hzToMel = (hz: number): number => {
-    return 2595 * Math.log10(1 + hz / 700);
-  };
-
-  // Calculate Y position for each frequency using Mel scale
-  const freqToY = (freq: number): number => {
-    if (freq <= minFreq) return height;
-    if (freq >= maxFreq) return 0;
-
-    // Mel scale: converts Hz to perceptually uniform Mel units
-    const melMin = hzToMel(minFreq);
-    const melMax = hzToMel(maxFreq);
-    const melFreq = hzToMel(freq);
-
-    return height * (1 - (melFreq - melMin) / (melMax - melMin));
-  };
-
-  // Create major ticks (with labels)
-  let majorTicks = majorFrequencies
-    .filter(f => f.freq >= minFreq && f.freq <= maxFreq)
-    .map(f => ({
-      y: freqToY(f.freq),
-      label: f.label,
-      freq: f.freq,
-      isMajor: true,
-      showLabel: true, // Will be updated by collision detection
-    }));
-
-  // Responsive label collision detection
-  // Adaptively choose which labels to show based on available height
-  const MIN_LABEL_SPACING = 14; // pixels needed per label
-  const availableSpace = height;
-  const maxVisibleLabels = Math.max(2, Math.floor(availableSpace / MIN_LABEL_SPACING));
-
-  // Priority-based label selection: prioritize logarithmically spaced frequencies
-  // Priority order (highest to lowest): 1k, 10k, 100, 5k, 500, 2k, 200, 20k
-  const labelPriorities: Record<number, number> = {
-    1000: 1,   // 1kHz - reference frequency
-    10000: 2,  // 10kHz - high frequency reference
-    100: 3,    // 100Hz - low frequency reference
-    5000: 4,   // 5kHz - mid-high
-    500: 5,    // 500Hz - mid-low
-    2000: 6,   // 2kHz - mid
-    200: 7,    // 200Hz - low
-    20000: 8,  // 20kHz - very high
-  };
-
-  // Sort ticks by priority (lower number = higher priority)
-  majorTicks.sort((a, b) => {
-    const priorityA = labelPriorities[a.freq] ?? 999;
-    const priorityB = labelPriorities[b.freq] ?? 999;
-    return priorityA - priorityB;
-  });
-
-  // Greedily select labels that don't collide, starting with highest priority
-  const selectedLabels: typeof majorTicks = [];
-
-  for (const tick of majorTicks) {
-    // Check if this label would collide with any already-selected label
-    const wouldCollide = selectedLabels.some(selected =>
-      Math.abs(tick.y - selected.y) < MIN_LABEL_SPACING
-    );
-
-    if (!wouldCollide && selectedLabels.length < maxVisibleLabels) {
-      selectedLabels.push(tick);
-      tick.showLabel = true;
-    } else {
-      tick.showLabel = false;
-    }
+  // Greedy collision detection — majors take priority, then minors fill in
+  // Pass 1: assign majors
+  const placed: typeof allTicks = [];
+  for (const tick of allTicks.filter(t => t.isMajor)) {
+    const collides = placed.some(s => Math.abs(tick.y - s.y) < MIN_LABEL_SPACING);
+    tick.showLabel = !collides;
+    if (!collides) placed.push(tick);
   }
-
-  // Sort back by Y position for rendering (top to bottom)
-  majorTicks.sort((a, b) => a.y - b.y);
-
-  // Create minor ticks (without labels)
-  const minorTicks = minorFrequencies
-    .filter(f => f >= minFreq && f <= maxFreq)
-    .map(f => ({
-      y: freqToY(f),
-      label: '',
-      freq: f,
-      isMajor: false,
-      showLabel: false,
-    }));
-
-  // Combine and sort by frequency (high to low)
-  const allTicks = [...majorTicks, ...minorTicks].sort((a, b) => b.freq - a.freq);
+  // Pass 2: assign minors only where there's space (skip ticks with no label)
+  for (const tick of allTicks.filter(t => !t.isMajor)) {
+    if (!tick.label) { tick.showLabel = false; continue; }
+    const collides = placed.some(s => Math.abs(tick.y - s.y) < MIN_LABEL_SPACING);
+    tick.showLabel = !collides;
+    if (!collides) placed.push(tick);
+  }
 
   const style = {
     '--ruler-width': `${width}px`,
@@ -175,25 +100,28 @@ export const FrequencyRuler: React.FC<FrequencyRulerProps> = ({
     '--ruler-bg': theme.background.panel.ruler,
   } as React.CSSProperties;
 
+  // Find the last and first ticks that will show a label, for edge clamping
+  const labelledTicks = allTicks.filter(t => t.showLabel);
+  const firstLabelledY = labelledTicks.length > 0 ? labelledTicks[0].y : -1;
+  const lastLabelledY  = labelledTicks.length > 0 ? labelledTicks[labelledTicks.length - 1].y : -1;
+
   return (
     <div
       className={`vertical-ruler vertical-ruler--${position} ${className}`}
       style={style}
     >
       <div className="vertical-ruler__ticks">
-        {allTicks.map((tick, index) => (
+        {allTicks.map((tick) => (
           <div
-            key={tick.freq}
+            key={`${tick.value}-${tick.label}`}
             className={`vertical-ruler__tick ${
               tick.isMajor ? 'vertical-ruler__tick--major' : 'vertical-ruler__tick--minor'
-            }`}
+            } ${tick.y === firstLabelledY ? 'vertical-ruler__tick--first' : ''
+            } ${tick.y === lastLabelledY  ? 'vertical-ruler__tick--last'  : ''}`}
             style={{ top: `${tick.y}px` }}
           >
-            {/* Tick mark */}
             <div className="vertical-ruler__tick-mark" />
-
-            {/* Label (only for major ticks that aren't hidden by collision detection) */}
-            {tick.isMajor && tick.showLabel && (
+            {tick.showLabel && (
               <div className="vertical-ruler__label">
                 {tick.label}
               </div>
@@ -202,7 +130,6 @@ export const FrequencyRuler: React.FC<FrequencyRulerProps> = ({
         ))}
       </div>
 
-      {/* Optional header overlay */}
       {(headerHeight ?? 0) > 0 && (
         <div
           className="vertical-ruler__header"

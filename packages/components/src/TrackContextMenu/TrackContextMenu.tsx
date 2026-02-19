@@ -15,6 +15,7 @@ export interface TrackContextMenuProps {
   autoFocus?: boolean;
   onDelete?: () => void;
   onColorChange?: (color: ClipColor) => void;
+  onSpectrogramSettings?: () => void;
 }
 
 export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
@@ -25,6 +26,7 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   autoFocus = false,
   onDelete,
   onColorChange,
+  onSpectrogramSettings,
 }) => {
   return (
     <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} autoFocus={autoFocus} className="track-context-menu">
@@ -44,6 +46,14 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
           ))}
         </div>
       </div>
+      {/* Spectrogram settings */}
+      {onSpectrogramSettings && (
+        <ContextMenuItem
+          label="Spectrogram settings..."
+          onClick={() => { onSpectrogramSettings(); onClose(); }}
+          onClose={onClose}
+        />
+      )}
       {/* Delete track */}
       <ContextMenuItem
         label="Delete track"

@@ -9,6 +9,7 @@
  */
 
 import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@audacity-ui/components';
+import type { SpectrogramScale } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 
 export interface DebugPanelProps {
@@ -69,6 +70,10 @@ export interface DebugPanelProps {
   // Mixer
   showMixer: boolean;
   onShowMixerChange: (value: boolean) => void;
+
+  // Spectrogram scale
+  spectrogramScale: SpectrogramScale;
+  onSpectrogramScaleChange: (value: SpectrogramScale) => void;
 }
 
 export function DebugPanel({
@@ -104,6 +109,8 @@ export function DebugPanel({
   onControlPointStyleChange: _onControlPointStyleChange,
   showMixer,
   onShowMixerChange,
+  spectrogramScale,
+  onSpectrogramScaleChange,
 }: DebugPanelProps) {
   return (
     <Dialog
@@ -514,6 +521,43 @@ export function DebugPanel({
             checked={showMixer}
             onChange={onShowMixerChange}
           />
+        </div>
+
+        {/* Spectrogram Scale Section */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Spectrogram Scale
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {(['linear', 'logarithmic', 'mel', 'bark', 'erb', 'period'] as SpectrogramScale[]).map((scale) => (
+              <label key={scale} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  value={scale}
+                  checked={spectrogramScale === scale}
+                  onChange={() => onSpectrogramScaleChange(scale)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  lineHeight: '16px',
+                  color: '#14151a',
+                  textTransform: 'capitalize',
+                }}>
+                  {scale.charAt(0).toUpperCase() + scale.slice(1)}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* Track & Clip Controls Section */}

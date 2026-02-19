@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { VerticalRuler } from './VerticalRuler';
 import { FrequencyRuler } from './FrequencyRuler';
+import type { SpectrogramScale } from './FrequencyRuler';
+import { getScaleMinFreq } from '../utils/spectrogramScales';
 import { useTheme } from '../ThemeProvider';
 import './VerticalRulerPanel.css';
 
@@ -58,6 +60,11 @@ export interface VerticalRulerPanelProps {
    * Additional CSS class name
    */
   className?: string;
+  /**
+   * Frequency scale for spectrogram ruler
+   * @default 'mel'
+   */
+  spectrogramScale?: SpectrogramScale;
 }
 
 /**
@@ -74,6 +81,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
   scrollY = 0,
   cursorY,
   className = '',
+  spectrogramScale,
 }) => {
   const { theme } = useTheme();
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -153,8 +161,9 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                     <div className="vertical-ruler-panel__split">
                       <FrequencyRuler
                         height={topHeight}
-                        minFreq={10}
+                        minFreq={getScaleMinFreq(spectrogramScale ?? 'mel')}
                         maxFreq={22050}
+                        scale={spectrogramScale}
                         position="right"
                         width={width}
                         headerHeight={0}
@@ -177,8 +186,9 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 // Spectrogram mode - frequency ruler
                 <FrequencyRuler
                   height={track.height - (track.height > 44 ? 20 : 0)}
-                  minFreq={10}
+                  minFreq={getScaleMinFreq(spectrogramScale ?? 'mel')}
                   maxFreq={22050}
+                  scale={spectrogramScale}
                   position="right"
                   width={width}
                   headerHeight={0}
