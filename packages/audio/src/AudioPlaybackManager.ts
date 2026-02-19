@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import audioBufferToWav from 'audiobuffer-to-wav';
 
 /**
  * Audio playback manager using Tone.js
@@ -498,6 +499,85 @@ export class AudioPlaybackManager {
   /**
    * Enable or disable looping
    */
+  /**
+   * Mixdown all clips from the given tracks into a single stereo WAV blob.
+   * Applies envelope automation per clip using native OfflineAudioContext.
+   */
+  async mixdown(tracks: any[]): Promise<{ blob: Blob; duration: number; waveformData: number[] }> {
+    await Tone.start();
+
+    let totalDuration = 0;
+    for (const track of tracks) {
+      for (const clip of track.clips ?? []) {
+        const end = clip.start + clip.duration;
+        if (end > totalDuration) totalDuration = end;
+      }
+    }
+
+    if (totalDuration === 0) throw new Error('No audio clips to mix down');
+    totalDuration += 0.1;
+
+    const sampleRate = Tone.context.sampleRate;
+    const offlineCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
+
+    for (const track of tracks) {
+      for (const clip of track.clips ?? []) {
+        const audioBuffer = this.audioBuffers.get(String(clip.id));
+        if (!audioBuffer) continue;
+
+        const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
+        const offlineBuffer = offlineCtx.createBuffer(numChannels, audioBuffer.length, audioBuffer.sampleRate);
+        for (let ch = 0; ch < numChannels; ch++) {
+          offlineBuffer.copyToChannel(audioBuffer.getChannelData(ch), ch);
+        }
+
+        const source = offlineCtx.createBufferSource();
+        source.buffer = offlineBuffer;
+
+        const gainNode = offlineCtx.createGain();
+        gainNode.gain.setValueAtTime(1, 0);
+
+        if (clip.envelopePoints?.length > 0) {
+          const points: { time: number; value: number }[] = clip.envelopePoints;
+          gainNode.gain.setValueAtTime(points[0]?.value ?? 1, clip.start);
+          for (const pt of points) {
+            gainNode.gain.linearRampToValueAtTime(pt.value, clip.start + pt.time);
+          }
+        }
+
+        source.connect(gainNode);
+        gainNode.connect(offlineCtx.destination);
+        source.start(clip.start, 0, clip.duration);
+      }
+    }
+
+    const rawBuffer = await offlineCtx.startRendering();
+
+    const wavArrayBuffer = audioBufferToWav(rawBuffer);
+    const blob = new Blob([wavArrayBuffer], { type: 'audio/wav' });
+
+    // Downsample to signed min/max pairs for WaveformPreview (interleaved: max, min, max, min...)
+    // Use ~100 pixels per second so silence gaps are preserved at any duration
+    const channelData = rawBuffer.getChannelData(0);
+    const targetPixels = Math.max(500, Math.ceil(totalDuration * 100));
+    const blockSize = Math.floor(channelData.length / targetPixels);
+    const waveformData: number[] = [];
+    for (let i = 0; i < targetPixels; i++) {
+      let min = 0;
+      let max = 0;
+      for (let j = 0; j < blockSize; j++) {
+        const s = channelData[i * blockSize + j] ?? 0;
+        if (s > max) max = s;
+        if (s < min) min = s;
+      }
+      // Push max then min so WaveformPreview gets signed values
+      waveformData.push(max);
+      waveformData.push(min);
+    }
+
+    return { blob, duration: totalDuration, waveformData };
+  }
+
   setLoopEnabled(enabled: boolean): void {
     this.loopEnabled = enabled;
     const transport = Tone.getTransport();

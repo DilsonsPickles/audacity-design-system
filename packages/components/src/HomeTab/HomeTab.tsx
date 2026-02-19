@@ -15,6 +15,16 @@ import { WaveformPreview } from '../WaveformPreview';
 import { generateSpeechWaveform } from '../utils/waveform';
 import './HomeTab.css';
 
+export interface CloudAudioFile {
+  id: string;
+  title: string;
+  dateText: string;
+  duration: string;
+  size: string;
+  blobUrl?: string;
+  waveformData?: number[];
+}
+
 export interface HomeTabProps {
   isSignedIn?: boolean;
   userName?: string;
@@ -28,7 +38,9 @@ export interface HomeTabProps {
   onDeleteProject?: (projectId: string) => void;
   onSearch?: (query: string) => void;
   className?: string;
-  projects?: StoredProject[]; // Optional: override internal project loading
+  projects?: StoredProject[];
+  audioFiles?: CloudAudioFile[];
+  onDeleteAudioFile?: (id: string) => void;
 }
 
 export function HomeTab({
@@ -45,6 +57,8 @@ export function HomeTab({
   onSearch,
   className = '',
   projects: externalProjects,
+  audioFiles: externalAudioFiles,
+  onDeleteAudioFile,
 }: HomeTabProps) {
   const { theme } = useTheme();
   const [activeSidebarItem, setActiveSidebarItem] = React.useState<'my-accounts' | 'project' | 'plugins' | 'learn'>('project');
@@ -54,7 +68,7 @@ export function HomeTab({
   const [audioPage, setAudioPage] = React.useState(1);
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; itemId: string; isCloudItem: boolean } | null>(null);
+  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; itemId: string; isCloudItem: boolean; itemType?: 'project' | 'audio' } | null>(null);
   const [storedProjects, setStoredProjects] = React.useState<StoredProject[]>([]);
   const [pluginsSearchQuery, setPluginsSearchQuery] = React.useState('');
   const [pluginsCategory, setPluginsCategory] = React.useState('all');
@@ -203,45 +217,22 @@ export function HomeTab({
   const endIndex = startIndex + itemsPerPage;
   const currentProjects = allCloudProjects.slice(startIndex, endIndex);
 
-  // Cloud audio files data - Generate 200 audio files for pagination testing
-  const audioTemplates = [
-    { title: 'Vocal Recording', dateText: 'TODAY', duration: '3:24', size: '8.2 MB' },
-    { title: 'Guitar Solo', dateText: 'YESTERDAY', duration: '2:15', size: '5.4 MB' },
-    { title: 'Bass Line', dateText: '2 DAYS AGO', duration: '4:01', size: '9.7 MB' },
-    { title: 'Drum Loop', dateText: '1 WEEK AGO', duration: '1:30', size: '3.6 MB' },
-    { title: 'Piano Melody', dateText: '2 WEEKS AGO', duration: '5:12', size: '12.5 MB' },
-    { title: 'Synth Pad', dateText: '1 MONTH AGO', duration: '3:45', size: '9.0 MB' },
-    { title: 'Sound Effect', dateText: '1 MONTH AGO', duration: '0:08', size: '0.3 MB' },
-    { title: 'Backing Track', dateText: '2 MONTHS AGO', duration: '4:30', size: '10.8 MB' },
-    { title: 'Vocal Harmony', dateText: '2 MONTHS AGO', duration: '2:54', size: '7.0 MB' },
-    { title: 'Field Recording', dateText: '3 MONTHS AGO', duration: '6:20', size: '15.2 MB' },
-  ];
-
-  const allAudioFiles = Array.from({ length: 200 }, (_, i) => {
-    const template = audioTemplates[i % audioTemplates.length];
-    const number = Math.floor(i / audioTemplates.length) + 1;
-    return {
-      title: `${template.title} ${number > 1 ? number : ''}`.trim(),
-      dateText: template.dateText,
-      duration: template.duration,
-      size: template.size,
-    };
-  });
+  const allAudioFiles: CloudAudioFile[] = externalAudioFiles ?? [];
 
   const audioTotalPages = Math.ceil(allAudioFiles.length / itemsPerPage);
   const audioStartIndex = (audioPage - 1) * itemsPerPage;
   const audioEndIndex = audioStartIndex + itemsPerPage;
   const currentAudioFiles = allAudioFiles.slice(audioStartIndex, audioEndIndex);
 
-  // Generate waveform data for current page only — keyed by page so it regenerates per page
+  // Use real waveform data if available, otherwise generate a placeholder
   const audioWaveforms = React.useMemo(() => {
     return currentAudioFiles.map((f) => {
+      if (f.waveformData && f.waveformData.length > 0) return f.waveformData;
       const [mins, secs] = f.duration.split(':').map(Number);
       const duration = (mins || 0) * 60 + (secs || 0);
-      // Use low sample rate for speed — enough to look realistic in a list row
       return generateSpeechWaveform(Math.max(1, duration), 500);
     });
-  }, [audioPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentAudioFiles]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset to page 1 when switching sections
   React.useEffect(() => {
@@ -770,10 +761,9 @@ export function HomeTab({
                       {viewMode === 'grid' ? (
                         <div className="home-tab__projects-grid">
                           {currentAudioFiles.map((audioFile, index) => {
-                            const itemId = `cloud-audio-${index}`;
                             return (
                               <AudioFileThumbnail
-                                key={`${audioFile.title}-${index}`}
+                                key={audioFile.id}
                                 title={audioFile.title}
                                 dateText={audioFile.dateText}
                                 duration={audioFile.duration}
@@ -783,8 +773,9 @@ export function HomeTab({
                                   setContextMenu({
                                     x: rect.right,
                                     y: rect.bottom,
-                                    itemId,
+                                    itemId: audioFile.id,
                                     isCloudItem: true,
+                                    itemType: 'audio',
                                   });
                                 }}
                               />
@@ -806,17 +797,15 @@ export function HomeTab({
                       </div>
                       <div className="home-tab__list-items">
                       {currentAudioFiles.map((audioFile, index) => {
-                        const itemId = `cloud-audio-${index}`;
-
                         return (
                           <div
-                            key={`${audioFile.title}-${index}`}
+                            key={audioFile.id}
                             className="home-tab__list-item-wrapper home-tab__list-item-wrapper--audio"
                           >
                             <button
                               className="home-tab__list-item home-tab__list-item--audio"
                               onClick={() => {
-                                console.log('Open audio file:', itemId);
+                                console.log('Open audio file:', audioFile.id);
                               }}
                             >
                               <div className="home-tab__list-item-audio-name">
@@ -844,8 +833,9 @@ export function HomeTab({
                                 setContextMenu({
                                   x: rect.right,
                                   y: rect.bottom,
-                                  itemId,
+                                  itemId: audioFile.id,
                                   isCloudItem: true,
+                                  itemType: 'audio',
                                 });
                               }}
                               aria-label="More options"
@@ -1105,7 +1095,11 @@ export function HomeTab({
           <ContextMenuItem
             label="Delete"
             onClick={() => {
-              handleDeleteProject(contextMenu.itemId);
+              if (contextMenu.itemType === 'audio') {
+                onDeleteAudioFile?.(contextMenu.itemId);
+              } else {
+                handleDeleteProject(contextMenu.itemId);
+              }
               setContextMenu(null);
             }}
             onClose={() => setContextMenu(null)}

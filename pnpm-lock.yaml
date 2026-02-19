@@ -134,6 +134,9 @@ importers:
       '@audacity-ui/core':
         specifier: workspace:*
         version: link:../../packages/core
+      audiobuffer-to-wav:
+        specifier: ^1.0.0
+        version: 1.0.0
       dexie:
         specifier: ^4.3.0
         version: 4.3.0
@@ -171,6 +174,9 @@ importers:
 
   packages/audio:
     dependencies:
+      audiobuffer-to-wav:
+        specifier: ^1.0.0
+        version: 1.0.0
       tone:
         specifier: ^15.1.22
         version: 15.1.22
@@ -1930,6 +1936,9 @@ packages:
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
+
+  audiobuffer-to-wav@1.0.0:
+    resolution: {integrity: sha512-CAoir4NRrAzAgYo20tEMiKZR84coE8bq/L+H2kwAaULVY4+0xySsEVtNT5raqpzmH6y0pqzY6EmoViLd9W8F/w==}
 
   automation-events@7.1.13:
     resolution: {integrity: sha512-1Hay5TQPzxsskSqPTH3YXyzE9Iirz82zZDse2vr3+kOR7Sc7om17qIEPsESchlNX0EgKxANwR40i2g/O3GM1Tw==}
@@ -5429,6 +5438,8 @@ snapshots:
   async-function@1.0.0: {}
 
   asynckit@0.4.0: {}
+
+  audiobuffer-to-wav@1.0.0: {}
 
   automation-events@7.1.13:
     dependencies:

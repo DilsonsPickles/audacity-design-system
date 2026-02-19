@@ -9,7 +9,7 @@
  */
 
 import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@audacity-ui/components';
-import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey } from '@audacity-ui/core';
+import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 
 export interface DebugPanelProps {
   isOpen: boolean;
@@ -100,8 +100,8 @@ export function DebugPanel({
   onCutModeChange,
   envelopeColor,
   onEnvelopeColorChange,
-  controlPointStyle,
-  onControlPointStyleChange,
+  controlPointStyle: _controlPointStyle,
+  onControlPointStyleChange: _onControlPointStyleChange,
   showMixer,
   onShowMixerChange,
 }: DebugPanelProps) {

@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import audioBufferToWav from 'audiobuffer-to-wav';
 
 /**
  * Audio playback manager using Tone.js
@@ -254,6 +255,101 @@ export class AudioPlaybackManager {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+  }
+
+  /**
+   * Get all stored audio buffers (clip id -> AudioBuffer)
+   */
+  getAudioBuffers(): Map<string, AudioBuffer> {
+    return this.audioBuffers;
+  }
+
+  /**
+   * Mixdown all clips from the given tracks into a single stereo WAV blob.
+   * Applies envelope automation (gain curve) per clip.
+   * Returns a Blob (audio/wav) and the duration in seconds.
+   */
+  async mixdown(tracks: any[]): Promise<{ blob: Blob; duration: number; waveformData: number[] }> {
+    await Tone.start();
+
+    // Calculate total duration from all clips
+    let totalDuration = 0;
+    for (const track of tracks) {
+      for (const clip of track.clips) {
+        const clipEnd = clip.start + clip.duration;
+        if (clipEnd > totalDuration) totalDuration = clipEnd;
+      }
+    }
+
+    if (totalDuration === 0) {
+      throw new Error('No audio clips to mix down');
+    }
+
+    // Add a small tail
+    totalDuration += 0.1;
+
+    // Use native OfflineAudioContext for reliable mixdown
+    const sampleRate = Tone.context.sampleRate;
+    const offlineCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
+
+    for (const track of tracks) {
+      for (const clip of track.clips) {
+        const audioBuffer = this.audioBuffers.get(String(clip.id));
+        if (!audioBuffer) continue;
+
+        // Re-create the buffer in the offline context's sample rate
+        const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
+        const offlineBuffer = offlineCtx.createBuffer(
+          numChannels,
+          audioBuffer.length,
+          audioBuffer.sampleRate
+        );
+        for (let ch = 0; ch < numChannels; ch++) {
+          offlineBuffer.copyToChannel(audioBuffer.getChannelData(ch), ch);
+        }
+
+        const source = offlineCtx.createBufferSource();
+        source.buffer = offlineBuffer;
+
+        // Apply envelope automation via a gain node
+        const gainNode = offlineCtx.createGain();
+        gainNode.gain.setValueAtTime(1, 0);
+
+        if (clip.envelopePoints && clip.envelopePoints.length > 0) {
+          const points: { time: number; value: number }[] = clip.envelopePoints;
+          gainNode.gain.setValueAtTime(points[0]?.value ?? 1, clip.start);
+          for (const pt of points) {
+            gainNode.gain.linearRampToValueAtTime(pt.value, clip.start + pt.time);
+          }
+        }
+
+        source.connect(gainNode);
+        gainNode.connect(offlineCtx.destination);
+        source.start(clip.start, 0, clip.duration);
+      }
+    }
+
+    const rawBuffer = await offlineCtx.startRendering();
+
+    // Encode to WAV
+    const wavArrayBuffer = audioBufferToWav(rawBuffer);
+    const blob = new Blob([wavArrayBuffer], { type: 'audio/wav' });
+
+    // Generate waveform preview data (downsampled)
+    const channelData = rawBuffer.getChannelData(0);
+    const targetSamples = 500;
+    const blockSize = Math.floor(channelData.length / targetSamples);
+    const waveformData: number[] = [];
+    for (let i = 0; i < targetSamples; i++) {
+      let max = 0;
+      for (let j = 0; j < blockSize; j++) {
+        const abs = Math.abs(channelData[i * blockSize + j] ?? 0);
+        if (abs > max) max = abs;
+      }
+      waveformData.push(max);
+    }
+
+    return { blob, duration: totalDuration, waveformData };
   }
 
   /**

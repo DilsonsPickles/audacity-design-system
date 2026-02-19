@@ -188,6 +188,15 @@ function CanvasDemoContent() {
   const [isSaveToCloudDialogOpen, setIsSaveToCloudDialogOpen] = React.useState(false);
   const [cloudProjectName, setCloudProjectName] = React.useState('');
   const [projectName, setProjectName] = React.useState('');
+  const [cloudAudioFiles, setCloudAudioFiles] = React.useState<Array<{
+    id: string;
+    title: string;
+    dateText: string;
+    duration: string;
+    size: string;
+    blobUrl: string;
+    waveformData: number[];
+  }>>([]);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [emailError, setEmailError] = React.useState(false);
@@ -2802,6 +2811,8 @@ function CanvasDemoContent() {
               // Always show uploading/cloud projects; otherwise only show projects with data or thumbnail
               p.isUploading || p.isCloudProject || (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
             )}
+            audioFiles={cloudAudioFiles}
+            onDeleteAudioFile={(id) => setCloudAudioFiles(prev => prev.filter(f => f.id !== id))}
             onCreateAccount={() => {
               setAuthMode('create');
               setIsCreateAccountOpen(true);
@@ -3692,46 +3703,63 @@ function CanvasDemoContent() {
             secondaryText="Cancel"
             onPrimaryClick={() => {
               if (isSignedIn) {
-                // User is signed in, close share dialog, show syncing dialog, and start upload
+                const title = projectName.trim();
                 setIsShareDialogOpen(false);
                 setIsSyncingDialogOpen(true);
 
-                // Show uploading progress toast (10 seconds)
-                const uploadToastId = toast.progress('Uploading audio to cloud...');
+                const mixdownToastId = toast.progress('Mixing down audio...');
 
-                // Simulate upload progress over 10 seconds
-                const totalDuration = 10000; // 10 seconds
-                const updateInterval = 100; // Update every 100ms
-                let progress = 0;
-                const startTime = Date.now();
+                (async () => {
+                  try {
+                    // Run the actual mixdown
+                    const { blob, duration, waveformData } = await audioManagerRef.current.mixdown(state.tracks);
 
-                const interval = setInterval(() => {
-                  progress += 1;
-                  const elapsed = Date.now() - startTime;
-                  const remaining = Math.max(0, totalDuration - elapsed);
-                  const secondsRemaining = Math.ceil(remaining / 1000);
-                  const timeRemainingText = secondsRemaining === 1
-                    ? '1 second remaining'
-                    : `${secondsRemaining} seconds remaining`;
+                    toast.updateProgress(mixdownToastId, 50, 'Uploading to cloud...');
 
-                  toast.updateProgress(uploadToastId, progress, timeRemainingText);
+                    // Simulate upload delay (replace with real upload in production)
+                    await new Promise(resolve => setTimeout(resolve, 1500));
 
-                  if (progress >= 100) {
-                    clearInterval(interval);
-                    // Dismiss upload toast and show success
+                    toast.updateProgress(mixdownToastId, 100, 'Done');
+
+                    // Format duration as mm:ss
+                    const mins = Math.floor(duration / 60);
+                    const secs = Math.floor(duration % 60);
+                    const durationStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+                    // Format file size
+                    const sizeKB = blob.size / 1024;
+                    const sizeStr = sizeKB > 1024
+                      ? `${(sizeKB / 1024).toFixed(1)} MB`
+                      : `${Math.round(sizeKB)} KB`;
+
+                    // Create a blob URL for local playback
+                    const blobUrl = URL.createObjectURL(blob);
+
+                    // Add to cloud audio files list
+                    setCloudAudioFiles(prev => [{
+                      id: `audio-${Date.now()}`,
+                      title,
+                      dateText: 'TODAY',
+                      duration: durationStr,
+                      size: sizeStr,
+                      blobUrl,
+                      waveformData,
+                    }, ...prev]);
+
                     setTimeout(() => {
-                      toast.dismiss(uploadToastId);
+                      toast.dismiss(mixdownToastId);
                       toast.success(
-                        'Success!',
-                        'All saved changes will now update to the cloud. You can manage this file from your uploaded projects page on audio.com',
-                        [
-                          { label: 'View on audio.com', onClick: () => console.log('View on audio.com') }
-                        ],
-                        0 // No auto-dismiss
+                        'Audio shared to cloud!',
+                        'Your mixdown is available in Cloud audio files.',
+                        [{ label: 'View on audio.com', onClick: () => console.log('View on audio.com') }],
+                        0
                       );
                     }, 200);
+                  } catch (err) {
+                    toast.dismiss(mixdownToastId);
+                    toast.error(`Mixdown failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
                   }
-                }, updateInterval);
+                })();
               } else if (projectName.trim()) {
                 // User needs to sign in, open Create Account dialog on top
                 setIsCreateAccountOpen(true);
@@ -4077,7 +4105,7 @@ function CanvasDemoContent() {
             lineHeight: '16px',
             color: 'var(--text-txt-primary, #14151a)'
           }}>
-            Syncing your project
+            Uploading audio to cloud
           </div>
           <div style={{
             fontFamily: 'Inter, sans-serif',
@@ -4086,7 +4114,7 @@ function CanvasDemoContent() {
             lineHeight: '16px',
             color: 'var(--text-txt-primary, #14151a)'
           }}>
-            The project will sync in the background while you work. You can check the sync status in the bottom right corner of Audacity at any time.
+            Your audio is being mixed down and uploaded to the cloud. You can check the upload status in the bottom right corner of Audacity at any time.
           </div>
         </div>
       </Dialog>
