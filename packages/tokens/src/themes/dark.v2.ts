@@ -527,9 +527,9 @@ export const darkTheme: ThemeTokens = {
       secondary: '#8B8C96',      // Muted tick marks (minor ticks)
     },
     grid: {
-      measure: '#3B3E4B',        // Grid line at 0.0
-      major: '#3B3E4B',          // Major grid lines
-      minor: '#2F323C',          // Minor grid lines
+      measure: '#3B3E4B',        // Grid line at measure boundaries
+      major: '#3B3E4B',          // Major grid lines (bars / major time intervals)
+      minor: '#323543',          // Minor grid lines (beats / division lines)
     },
   },
 

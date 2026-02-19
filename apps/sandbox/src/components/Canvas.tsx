@@ -81,6 +81,21 @@ export interface CanvasProps {
    * Setter for selection anchor
    */
   setSelectionAnchor?: (anchor: number | null) => void;
+  /**
+   * Beats per minute for beat/measure grid lines
+   * @default 120
+   */
+  bpm?: number;
+  /**
+   * Beats per measure for grid lines
+   * @default 4
+   */
+  beatsPerMeasure?: number;
+  /**
+   * Time format — controls whether grid lines use beats/measures or minutes/seconds
+   * @default 'beats-measures'
+   */
+  timeFormat?: 'minutes-seconds' | 'beats-measures';
 }
 
 /**
@@ -105,6 +120,9 @@ export function Canvas({
   recordingClipId = null,
   selectionAnchor = null,
   setSelectionAnchor,
+  bpm = 120,
+  beatsPerMeasure = 4,
+  timeFormat = 'beats-measures',
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -311,8 +329,95 @@ export function Canvas({
     CLIP_HEADER_HEIGHT,
   });
 
+  // Calculate grid line positions — major (bar/measure or major interval) + minor (beat or minor interval)
+  const { gridLines, measureBands } = React.useMemo(() => {
+    const lines: Array<{ x: number; isMajor: boolean }> = [];
+    const bands: Array<{ x: number; w: number }> = [];
+    const totalSeconds = width / pixelsPerSecond;
+
+    if (timeFormat === 'beats-measures') {
+      const secondsPerBeat = 60 / bpm;
+      const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+      const totalBeats = Math.ceil(totalSeconds / secondsPerBeat) + beatsPerMeasure;
+      for (let beat = 0; beat <= totalBeats; beat++) {
+        const x = CLIP_CONTENT_OFFSET + beat * secondsPerBeat * pixelsPerSecond;
+        if (x > width) break;
+        lines.push({ x, isMajor: beat % beatsPerMeasure === 0 });
+      }
+      // Alternating measure bands — every other measure gets a darker background
+      const measureWidth = secondsPerMeasure * pixelsPerSecond;
+      const totalMeasures = Math.ceil(totalSeconds / secondsPerMeasure) + 1;
+      for (let m = 0; m < totalMeasures; m++) {
+        if (m % 2 !== 0) continue; // even indices only (0-indexed), so measures 1,3,5,7… in 1-indexed
+        const x = CLIP_CONTENT_OFFSET + m * measureWidth;
+        if (x > width) break;
+        bands.push({ x, w: measureWidth });
+      }
+    } else {
+      // minutes-seconds: use the exact same thresholds as TimelineRuler
+      let majorInterval: number;
+      if (pixelsPerSecond < 20) {
+        majorInterval = 10;
+      } else if (pixelsPerSecond < 50) {
+        majorInterval = 5;
+      } else if (pixelsPerSecond < 100) {
+        majorInterval = 2;
+      } else if (pixelsPerSecond < 200) {
+        majorInterval = 1;
+      } else {
+        majorInterval = 0.5;
+      }
+      const minorInterval = majorInterval / 5;
+      let t = 0;
+      while (t <= totalSeconds + minorInterval) {
+        const roundedT = Math.round(t / minorInterval) * minorInterval;
+        const x = CLIP_CONTENT_OFFSET + roundedT * pixelsPerSecond;
+        if (x > width) break;
+        const isMajor = Math.abs(roundedT % majorInterval) < 0.001;
+        lines.push({ x, isMajor });
+        t = Math.round((t + minorInterval) * 1000) / 1000;
+      }
+    }
+    return { gridLines: lines, measureBands: bands };
+  }, [bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width]);
+
   return (
     <div className="canvas-container" style={{ backgroundColor: bgColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible', cursor: 'text' }}>
+      {/* Beat/measure grid — rendered first so tracks appear on top */}
+      {(gridLines.length > 0 || measureBands.length > 0) && (
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: `${width}px`,
+            height: `${tracksHeight + viewportHeight}px`,
+            pointerEvents: 'none',
+          }}
+        >
+          {measureBands.map(({ x, w }) => (
+            <rect
+              key={x}
+              x={x}
+              y={0}
+              width={w}
+              height={tracksHeight + viewportHeight}
+              fill="#252837"
+            />
+          ))}
+          {gridLines.map(({ x, isMajor }) => (
+            <line
+              key={x}
+              x1={x}
+              y1={0}
+              x2={x}
+              y2={tracksHeight + viewportHeight}
+              stroke={isMajor ? theme.stroke.grid.major : theme.stroke.grid.minor}
+              strokeWidth={1}
+            />
+          ))}
+        </svg>
+      )}
       <div
         ref={containerRef}
         onMouseDown={(e) => {
@@ -434,7 +539,7 @@ export function Canvas({
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}
-                backgroundColor={bgColor}
+
                 timeSelection={timeSelection && (timeSelection.renderOnCanvas !== false) ? timeSelection : null}
                 isTimeSelectionDragging={selection.selection.isDragging}
                 clipStyle={preferences.clipStyle}
@@ -753,8 +858,6 @@ export function Canvas({
           );
         })}
 
-        {/* Time Selection: track backgrounds change to #647684, clips use their own time selection colors */}
-
         {/* Spectral Selection Overlay */}
         <SpectralSelectionOverlay
           spectralSelection={spectralSelection}
@@ -768,6 +871,7 @@ export function Canvas({
           isCreating={selection.selection.isCreating}
         />
       </div>
+
     </div>
   );
 }

@@ -3505,6 +3505,9 @@ function CanvasDemoContent() {
                     recordingClipId={recordingClipId}
                     selectionAnchor={selectionAnchor}
                     setSelectionAnchor={setSelectionAnchor}
+                    bpm={bpm}
+                    beatsPerMeasure={beatsPerMeasure}
+                    timeFormat={timelineFormat}
                     onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
                       setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
                     }}

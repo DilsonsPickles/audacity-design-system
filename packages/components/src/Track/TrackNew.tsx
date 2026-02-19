@@ -93,7 +93,7 @@ export interface TrackProps {
 
   /**
    * Background color for track
-   * @default '#212433'
+   * @default 'rgba(255,255,255,0.05)'
    */
   backgroundColor?: string;
 
@@ -200,6 +200,7 @@ export interface TrackProps {
    * Callback when split view ratio changes (user drags divider)
    */
   onChannelSplitRatioChange?: (ratio: number) => void;
+
 }
 
 // Map track index to color
@@ -227,7 +228,7 @@ export const TrackNew: React.FC<TrackProps> = ({
   isLabelTrack = false,
   pixelsPerSecond = 100,
   width,
-  backgroundColor = '#212433',
+  backgroundColor = 'rgba(255,255,255,0.05)',
   onClipClick,
   onTrackClick,
   onEnvelopePointsChange,
@@ -297,20 +298,7 @@ export const TrackNew: React.FC<TrackProps> = ({
     };
   }, [isDraggingDivider, onChannelSplitRatioChange, height]);
 
-  // Calculate background color with white overlay based on selection state
-  // Idle (not selected, not focused): 8% white
-  // Focused only (not selected): 8% white
-  // Selected: 16% white
-  const getTrackBackgroundColor = () => {
-    const baseColor = backgroundColor;
-    if (isSelected) {
-      // 16% white overlay
-      return `color-mix(in srgb, ${baseColor} 84%, white 16%)`;
-    } else {
-      // 8% white overlay (applies to both idle and focused-only states)
-      return `color-mix(in srgb, ${baseColor} 92%, white 8%)`;
-    }
-  };
+  const getTrackBackgroundColor = () => isSelected ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.05)';
 
   // Calculate clip dimensions and positions
   const renderClips = () => {
