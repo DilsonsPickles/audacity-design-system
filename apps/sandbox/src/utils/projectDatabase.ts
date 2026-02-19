@@ -12,6 +12,7 @@ export interface StoredProject {
   dateModified: number;
   thumbnailUrl?: string;
   isCloudProject: boolean;
+  isUploading?: boolean;
   data?: {
     tracks: any[]; // Use any to avoid type conflicts between core and local Track types
     playheadPosition: number;

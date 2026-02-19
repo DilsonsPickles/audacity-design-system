@@ -2799,8 +2799,8 @@ function CanvasDemoContent() {
             userName="Username"
             userAvatarUrl="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop"
             projects={indexedDBProjects.filter(p =>
-              // Always show cloud projects; otherwise only show projects with data or thumbnail
-              p.isCloudProject || (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
+              // Always show uploading/cloud projects; otherwise only show projects with data or thumbnail
+              p.isUploading || p.isCloudProject || (p.data?.tracks && p.data.tracks.length > 0) || p.thumbnailUrl
             )}
             onCreateAccount={() => {
               setAuthMode('create');
@@ -2831,16 +2831,16 @@ function CanvasDemoContent() {
                 // Restore cloud project status (project-specific)
                 setIsCloudProject(project.isCloudProject ?? false);
 
-                // Restore tracks state from project data if available
+                // Restore tracks state from project data, or reset to empty if none
                 if (project.data?.tracks) {
                   console.log('Restoring tracks:', project.data.tracks.length);
                   dispatch({ type: 'SET_TRACKS', payload: project.data.tracks });
+                } else {
+                  dispatch({ type: 'SET_TRACKS', payload: [] });
                 }
 
-                // Restore playhead position if available
-                if (project.data?.playheadPosition !== undefined) {
-                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: project.data.playheadPosition });
-                }
+                // Always start playhead at 0 on project open
+                dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
 
                 setActiveMenuItem('project');
                 toast.success('Project loaded');
@@ -3781,7 +3781,47 @@ function CanvasDemoContent() {
                 setIsSyncingDialogOpen(true);
                 setIsCloudUploading(true);
 
-                const uploadToastId = toast.progress('Saving project to cloud...');
+                // Optimistically add project to list immediately with isUploading state + thumbnail
+                if (currentProjectId) {
+                  (async () => {
+                    // Capture thumbnail now while we're still on the project view
+                    let thumbnailUrl: string | undefined;
+                    if (scrollContainerRef.current) {
+                      try {
+                        const domtoimage = (await import('dom-to-image-more')).default;
+                        thumbnailUrl = await domtoimage.toJpeg(scrollContainerRef.current, {
+                          quality: 0.8,
+                          bgcolor: '#F5F5F7',
+                          width: 448,
+                          height: 252,
+                          style: { transform: 'scale(1)', transformOrigin: 'top left' },
+                        });
+                      } catch {
+                        // Continue without thumbnail
+                      }
+                    }
+                    const proj = await getProject(currentProjectId);
+                    const projectData = { tracks: state.tracks, playheadPosition: 0 };
+                    if (proj) {
+                      await saveProject({ ...proj, title: cloudProjectName.trim() || proj.title, isUploading: true, thumbnailUrl: thumbnailUrl ?? proj.thumbnailUrl, data: projectData });
+                    } else {
+                      await saveProject({
+                        id: currentProjectId,
+                        title: cloudProjectName.trim() || 'Untitled Project',
+                        dateCreated: Date.now(),
+                        dateModified: Date.now(),
+                        isCloudProject: false,
+                        isUploading: true,
+                        thumbnailUrl,
+                        data: projectData,
+                      });
+                    }
+                    const updated = await getProjects();
+                    setIndexedDBProjects(updated);
+                  })();
+                }
+
+                const uploadToastId = toast.progress('Uploading audio to cloud...');
 
                 const totalDuration = 10000;
                 const updateInterval = 100;
@@ -3809,7 +3849,7 @@ function CanvasDemoContent() {
                       if (currentProjectId) {
                         const proj = await getProject(currentProjectId);
                         if (proj) {
-                          await saveProject({ ...proj, isCloudProject: true });
+                          await saveProject({ ...proj, isCloudProject: true, isUploading: false, data: proj.data ?? { tracks: state.tracks, playheadPosition: 0 } });
                           // Reload so HomeTab cloud projects tab reflects the change
                           const updated = await getProjects();
                           setIndexedDBProjects(updated);

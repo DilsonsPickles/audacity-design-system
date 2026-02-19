@@ -481,6 +481,7 @@ export function HomeTab({
                             dateText={formatDateText(project.dateModified)}
                             thumbnailUrl={project.thumbnailUrl}
                             isCloudProject={project.isCloudProject}
+                            isUploading={project.isUploading}
                             onClick={() => {
                               console.log('Open project:', project.id);
                               if (onOpenProject) {
@@ -542,12 +543,12 @@ export function HomeTab({
                               </div>
                               <div className="home-tab__list-item-title">{project.title}</div>
                             </div>
-                            {project.isCloudProject && (
-                              <div className="home-tab__list-item-cloud-badge">
-                                <Icon name="cloud-filled" size={12} />
+                            {(project.isCloudProject || project.isUploading) && (
+                              <div className={`home-tab__list-item-cloud-badge${project.isUploading ? ' home-tab__list-item-cloud-badge--uploading' : ''}`}>
+                                <Icon name={project.isUploading ? 'cloud' : 'cloud-filled'} size={12} />
                               </div>
                             )}
-                            {!project.isCloudProject && <div></div>}
+                            {!project.isCloudProject && !project.isUploading && <div></div>}
                             <div className="home-tab__list-item-modified">{formatDateText(project.dateModified)}</div>
                             <div className="home-tab__list-item-size">-</div>
                           </button>
@@ -620,6 +621,7 @@ export function HomeTab({
                               dateText={formatDateText(project.dateModified)}
                               thumbnailUrl={project.thumbnailUrl}
                               isCloudProject
+                              isUploading={project.isUploading}
                               onClick={() => onOpenProject?.(project.id)}
                               onContextMenu={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();

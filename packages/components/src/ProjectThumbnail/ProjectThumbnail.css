@@ -111,6 +111,9 @@
   color: var(--foreground-icon-inverse, #F4F5F9);
 }
 
+.project-thumbnail__cloud-badge--uploading {
+}
+
 .project-thumbnail__context-btn {
   position: absolute;
   top: 8px;

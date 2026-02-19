@@ -10,6 +10,7 @@ export interface StoredProject {
   dateModified: number;
   thumbnailUrl?: string;
   isCloudProject: boolean;
+  isUploading?: boolean;
   data?: any; // Project-specific data (tracks, clips, etc.)
 }
 

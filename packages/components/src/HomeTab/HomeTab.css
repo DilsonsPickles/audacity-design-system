@@ -508,6 +508,9 @@
   justify-self: center;
 }
 
+.home-tab__list-item-cloud-badge--uploading {
+}
+
 /* Metadata columns — consistent secondary style */
 .home-tab__list-item-modified,
 .home-tab__list-item-duration-col,

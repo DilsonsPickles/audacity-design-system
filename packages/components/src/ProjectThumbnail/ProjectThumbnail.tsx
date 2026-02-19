@@ -36,6 +36,10 @@ export interface ProjectThumbnailProps {
    */
   isCloudProject?: boolean;
   /**
+   * Whether the project is currently uploading to the cloud (shows upload icon)
+   */
+  isUploading?: boolean;
+  /**
    * Click handler
    */
   onClick?: () => void;
@@ -62,6 +66,7 @@ export function ProjectThumbnail({
   thumbnailUrl,
   isNewProject = false,
   isCloudProject = false,
+  isUploading = false,
   onClick,
   onContextMenu,
   className = '',
@@ -120,9 +125,9 @@ export function ProjectThumbnail({
               <AudacityLogo />
             </div>
           )}
-          {isCloudProject && !isNewProject && (
-            <div className="project-thumbnail__cloud-badge">
-              <Icon name="cloud-filled" size={16} />
+          {(isCloudProject || isUploading) && !isNewProject && (
+            <div className={`project-thumbnail__cloud-badge ${isUploading ? 'project-thumbnail__cloud-badge--uploading' : ''}`}>
+              <Icon name={isUploading ? 'cloud' : 'cloud-filled'} size={16} />
             </div>
           )}
           {onContextMenu && !isNewProject && (
