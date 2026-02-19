@@ -387,17 +387,20 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                     onTrackViewChange?.(menuState.trackIndex, 'split');
                   }}
                 />
+                {onSpectrogramSettings && (
+                  <>
+                    <div className="context-menu-separator" />
+                    <ContextMenuItem
+                      label="Spectrogram settings..."
+                      onClick={() => {
+                        onSpectrogramSettings(menuState.trackIndex);
+                        handleMenuClose();
+                      }}
+                      onClose={handleMenuClose}
+                    />
+                  </>
+                )}
               </ContextMenuItem>
-              {onSpectrogramSettings && (
-                <ContextMenuItem
-                  label="Spectrogram settings..."
-                  onClick={() => {
-                    onSpectrogramSettings(menuState.trackIndex);
-                    handleMenuClose();
-                  }}
-                  onClose={handleMenuClose}
-                />
-              )}
             </>
           );
         })()}
