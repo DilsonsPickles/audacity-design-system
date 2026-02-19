@@ -530,7 +530,11 @@ export function HomeTab({
                           >
                             <div className="home-tab__list-item-name">
                               <div className="home-tab__list-item-thumbnail">
-                                <AudacityLogo />
+                                {project.thumbnailUrl ? (
+                                  <img src={project.thumbnailUrl} alt={project.title} />
+                                ) : (
+                                  <AudacityLogo />
+                                )}
                               </div>
                               <div className="home-tab__list-item-title">{project.title}</div>
                             </div>
@@ -986,17 +990,24 @@ export function HomeTab({
                           <p className="home-tab__accounts-subtitle">Service name / URL</p>
                         </div>
                         <div className="home-tab__accounts-actions">
-                          <Button variant="primary" size="default" onClick={onSignIn}>
-                            Sign in
-                          </Button>
                           {isSignedIn ? (
-                            <Button variant="secondary" size="default" onClick={onSignOut}>
-                              Sign out
-                            </Button>
+                            <>
+                              <Button variant="primary" size="default" onClick={() => window.open('https://audio.com', '_blank')}>
+                                Manage account
+                              </Button>
+                              <Button variant="secondary" size="default" onClick={onSignOut}>
+                                Sign out
+                              </Button>
+                            </>
                           ) : (
-                            <Button variant="primary" size="default" onClick={onCreateAccount}>
-                              Create account
-                            </Button>
+                            <>
+                              <Button variant="primary" size="default" onClick={onSignIn}>
+                                Sign in
+                              </Button>
+                              <Button variant="primary" size="default" onClick={onCreateAccount}>
+                                Create account
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
