@@ -3314,8 +3314,7 @@ function CanvasDemoContent() {
           {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
             const trackIndex = effectsPanel.trackIndex;
             const currentTrackEffects = state.tracks[trackIndex]?.effects || [];
-            const allTrackEffectsEnabled = currentTrackEffects.length > 0 && currentTrackEffects.every(e => e.enabled);
-            const allMasterEffectsEnabled = state.masterEffects.length > 0 && state.masterEffects.every(e => e.enabled);
+            const trackEffectsEnabled = state.tracks[trackIndex]?.effectsEnabled ?? true;
 
             return (
               <EffectsPanel
@@ -3324,7 +3323,7 @@ function CanvasDemoContent() {
                 trackSection={{
                   trackName: state.tracks[trackIndex]?.name || 'Track',
                   effects: currentTrackEffects,
-                  allEnabled: allTrackEffectsEnabled,
+                  allEnabled: trackEffectsEnabled,
                   onToggleAll: (enabled) => {
                     dispatch({ type: 'TOGGLE_ALL_TRACK_EFFECTS', payload: { trackIndex, enabled } });
                   },
@@ -3369,7 +3368,7 @@ function CanvasDemoContent() {
                 }}
               masterSection={{
                 effects: state.masterEffects,
-                allEnabled: allMasterEffectsEnabled,
+                allEnabled: state.masterEffectsEnabled,
                 onToggleAll: (enabled) => {
                   dispatch({ type: 'TOGGLE_ALL_MASTER_EFFECTS', payload: enabled });
                 },
@@ -5082,6 +5081,7 @@ function CanvasDemoContent() {
             ] : i === 2 ? [
               { id: 't2-1', name: 'Chorus', enabled: true },
             ] : [],
+            effectsEnabled: true, // Master toggle for track effects
           }));
           dispatch({ type: 'SET_TRACKS', payload: newTracks });
 

@@ -54,6 +54,7 @@ export interface Track {
   clips: Clip[];
   labels?: Label[];
   effects?: Effect[]; // Track-specific effects chain
+  effectsEnabled?: boolean; // Master toggle for all track effects (independent of individual effect states)
 }
 
 interface TimeSelection {
@@ -148,6 +149,8 @@ export interface TracksState {
   lastSelectedClip: { trackIndex: number; clipId: number } | null;
   // Master effects chain (applied to all tracks)
   masterEffects: Effect[];
+  // Master toggle for all master effects (independent of individual effect states)
+  masterEffectsEnabled: boolean;
 }
 
 // Action types
@@ -224,6 +227,7 @@ const initialState: TracksState = {
   recordingPeakLevel: 0,
   lastSelectedClip: null,
   masterEffects: [],
+  masterEffectsEnabled: true,
 };
 
 // Reducer
@@ -950,10 +954,9 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     case 'TOGGLE_ALL_TRACK_EFFECTS': {
       const { trackIndex, enabled } = action.payload;
       const newTracks = [...state.tracks];
-      const effects = newTracks[trackIndex].effects || [];
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
-        effects: effects.map(effect => ({ ...effect, enabled })),
+        effectsEnabled: enabled,
       };
       return { ...state, tracks: newTracks };
     }
@@ -997,10 +1000,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     case 'TOGGLE_ALL_MASTER_EFFECTS': {
       return {
         ...state,
-        masterEffects: state.masterEffects.map(effect => ({
-          ...effect,
-          enabled: action.payload,
-        })),
+        masterEffectsEnabled: action.payload,
       };
     }
 
