@@ -65,6 +65,11 @@ export interface EffectDialogProps {
    * Additional CSS class
    */
   className?: string;
+
+  /**
+   * Whether to hide the footer (for real-time effects)
+   */
+  hideFooter?: boolean;
 }
 
 /**
@@ -84,6 +89,7 @@ export const EffectDialog: React.FC<EffectDialogProps> = ({
   width = 600,
   height = 500,
   className = '',
+  hideFooter = false,
 }) => {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -132,16 +138,18 @@ export const EffectDialog: React.FC<EffectDialogProps> = ({
         </div>
 
         {/* Footer */}
-        <EffectDialogFooter
-          onApply={() => {
-            onOk?.();
-            onClose();
-          }}
-          onCancel={onClose}
-          onPreview={onPreview}
-          isPreviewing={isPreviewing}
-          leftSlot={presetsSlot}
-        />
+        {!hideFooter && (
+          <EffectDialogFooter
+            onApply={() => {
+              onOk?.();
+              onClose();
+            }}
+            onCancel={onClose}
+            onPreview={onPreview}
+            isPreviewing={isPreviewing}
+            leftSlot={presetsSlot}
+          />
+        )}
       </div>
     </>
   );

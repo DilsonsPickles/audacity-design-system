@@ -4,13 +4,14 @@ import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenu, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenu, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, ReverbEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey, EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
+import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineContext';
 import { DebugPanel } from './components/DebugPanel';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
 import { TokenReview } from './pages/TokenReview';
@@ -166,6 +167,7 @@ function CanvasDemoContent() {
   const { theme: baseTheme } = useTheme();
   const { state, dispatch } = useTracks();
   const { spectralSelection } = useSpectralSelection();
+  const audioEngine = useAudioEngine();
   const { activeProfile, profiles, setProfile } = useAccessibilityProfile();
   const { preferences, updatePreference } = usePreferences();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
@@ -1052,6 +1054,23 @@ function CanvasDemoContent() {
     trackIndex?: number; // undefined means master effect
     effectIndex: number;
   } | null>(null);
+
+  // Initialize reverb effect when dialog opens
+  React.useEffect(() => {
+    if (effectDialog && effectDialog.effectName === 'Reverb') {
+      const effectId = effectDialog.trackIndex !== undefined
+        ? `track-${effectDialog.trackIndex}-effect-${effectDialog.effectIndex}`
+        : `master-effect-${effectDialog.effectIndex}`;
+
+      // Create reverb instance (will be reused if already exists)
+      audioEngine.getReverbEffect(effectId);
+    }
+  }, [effectDialog, audioEngine]);
+
+  // Update effect chains whenever effects change
+  React.useEffect(() => {
+    audioEngine.updateEffectChains(state.tracks, state.masterEffects);
+  }, [state.tracks, state.masterEffects, audioEngine]);
 
   // Effect selector menu state
   const [effectSelectorMenu, setEffectSelectorMenu] = React.useState<{
@@ -4190,8 +4209,24 @@ function CanvasDemoContent() {
             onPreview={() => {
               toast.info(`Previewing ${effectDialog.effectName}`);
             }}
+            hideFooter={effectDialog.effectName === 'Reverb'}
           >
-            <AmplifyEffect />
+            {effectDialog.effectName === 'Reverb' && (() => {
+              // Generate effect ID from track/master and effect index
+              const effectId = effectDialog.trackIndex !== undefined
+                ? `track-${effectDialog.trackIndex}-effect-${effectDialog.effectIndex}`
+                : `master-effect-${effectDialog.effectIndex}`;
+
+              return (
+                <ReverbEffect
+                  onChange={(params) => {
+                    audioEngine.updateReverbParams(effectId, params);
+                  }}
+                />
+              );
+            })()}
+            {effectDialog.effectName === 'Compressor' && <AmplifyEffect />}
+            {effectDialog.effectName === 'Limiter' && <AmplifyEffect />}
           </EffectDialog>
         );
       })()}
@@ -5507,11 +5542,13 @@ function ThemedApp() {
   return (
     <ThemeProvider theme={currentTheme}>
       <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
-        <TracksProvider initialTracks={[]}>
-          <SpectralSelectionProvider>
-            <CanvasDemoContent />
-          </SpectralSelectionProvider>
-        </TracksProvider>
+        <AudioEngineProvider>
+          <TracksProvider initialTracks={[]}>
+            <SpectralSelectionProvider>
+              <CanvasDemoContent />
+            </SpectralSelectionProvider>
+          </TracksProvider>
+        </AudioEngineProvider>
       </AccessibilityProfileProvider>
     </ThemeProvider>
   );

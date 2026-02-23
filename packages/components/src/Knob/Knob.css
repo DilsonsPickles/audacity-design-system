@@ -1,6 +1,6 @@
-/* PanKnob - Starting fresh */
+/* Knob - Generic rotary knob control */
 
-.pan-knob {
+.knob {
   position: relative;
   width: 30px;
   height: 30px;
@@ -15,14 +15,19 @@
 }
 
 /* Focus state */
-.pan-knob:focus {
-  outline: 2px solid var(--pan-knob-focus);
+.knob:focus {
+  outline: 2px solid var(--knob-focus);
   outline-offset: 2px;
   border-radius: 50%;
 }
 
+/* Dragging state */
+.knob--dragging {
+  cursor: ns-resize;
+}
+
 /* Gauge - 30px circle, starts at 225deg (180 + 45) with 270deg arc */
-.pan-knob__gauge {
+.knob__gauge {
   position: absolute;
   top: 0;
   left: 0;
@@ -31,14 +36,14 @@
   border-radius: 50%;
   background: conic-gradient(
     from 225deg,
-    var(--pan-knob-gauge) 0deg,
-    var(--pan-knob-gauge) 270deg,
+    var(--knob-gauge) 0deg,
+    var(--knob-gauge) 270deg,
     transparent 270deg
   );
 }
 
-/* Value sweep - shows pan amount in accent color */
-.pan-knob__value-sweep {
+/* Value sweep - shows amount in accent color */
+.knob__value-sweep {
   position: absolute;
   top: 0;
   left: 0;
@@ -49,7 +54,7 @@
 }
 
 /* Knob group - rotates as one unit */
-.pan-knob__knob-group {
+.knob__knob-group {
   position: absolute;
   top: 0;
   left: 0;
@@ -58,8 +63,8 @@
   transition: transform 0.1s ease;
 }
 
-/* Dial border - 24px circle centered filled with #808185 */
-.pan-knob__dial-border {
+/* Dial border - 24px circle centered filled with border color */
+.knob__dial-border {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -67,11 +72,11 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: var(--pan-knob-dial-border);
+  background-color: var(--knob-dial-border);
 }
 
-/* Dial - 20px circle centered filled with #F8F8F9 */
-.pan-knob__dial {
+/* Dial - 20px circle centered filled with face color */
+.knob__dial {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -79,17 +84,17 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background-color: var(--pan-knob-dial-bg);
+  background-color: var(--knob-dial-bg);
 }
 
 /* Indicator - 2px x 6px bar, centered horizontally, 2px from top */
-.pan-knob__indicator {
+.knob__indicator {
   position: absolute;
   top: 2px;
   left: 50%;
   transform: translateX(-50%);
   width: 2px;
   height: 6px;
-  background-color: var(--pan-knob-indicator);
+  background-color: var(--knob-indicator);
   border-radius: 1px;
 }

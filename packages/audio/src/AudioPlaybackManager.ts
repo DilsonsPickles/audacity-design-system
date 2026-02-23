@@ -11,6 +11,8 @@ export class AudioPlaybackManager {
   private audioBuffers: Map<string, AudioBuffer> = new Map();
   private meters: Map<number, Tone.Meter> = new Map(); // Track index -> Meter
   private trackGains: Map<number, Tone.Gain> = new Map(); // Track index -> Gain node
+  private trackEffectChains: Map<number, Tone.ToneAudioNode[]> = new Map(); // Track index -> Effect chain
+  private masterEffectChain: Tone.ToneAudioNode[] = []; // Master effects applied to all tracks
   private frozenMeterLevels: Map<number, number> = new Map(); // Frozen levels for pause
   private isPlaying: boolean = false;
   private isPaused: boolean = false;
@@ -130,6 +132,20 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Set the effect chain for a specific track
+   */
+  setTrackEffectChain(trackIndex: number, effects: Tone.ToneAudioNode[]): void {
+    this.trackEffectChains.set(trackIndex, effects);
+  }
+
+  /**
+   * Set the master effect chain applied to all tracks
+   */
+  setMasterEffectChain(effects: Tone.ToneAudioNode[]): void {
+    this.masterEffectChain = effects;
+  }
+
+  /**
    * Load and schedule all clips for playback
    * Handles clips with deleted regions by creating multiple player instances per clip
    */
@@ -150,9 +166,29 @@ export class AudioPlaybackManager {
     // Create gain nodes and meters for each track
     tracks.forEach((track, trackIndex) => {
       if (track.type !== 'label') {
-        const gain = new Tone.Gain(1).toDestination();
+        const gain = new Tone.Gain(1);
         const meter = new Tone.Meter();
-        gain.connect(meter);
+
+        // Connect through effect chain
+        let lastNode: Tone.ToneAudioNode = gain;
+
+        // Apply track-specific effects
+        const trackEffects = this.trackEffectChains.get(trackIndex) || [];
+        trackEffects.forEach(effect => {
+          lastNode.connect(effect);
+          lastNode = effect;
+        });
+
+        // Apply master effects (to all tracks)
+        this.masterEffectChain.forEach(effect => {
+          lastNode.connect(effect);
+          lastNode = effect;
+        });
+
+        // Connect to meter and destination
+        lastNode.connect(meter);
+        lastNode.toDestination();
+
         this.trackGains.set(trackIndex, gain);
         this.meters.set(trackIndex, meter);
       }

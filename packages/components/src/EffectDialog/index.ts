@@ -6,3 +6,5 @@ export { EffectHeader } from './EffectHeader';
 export type { EffectHeaderProps } from './EffectHeader';
 export { AmplifyEffect } from './effects/AmplifyEffect';
 export type { AmplifyEffectProps } from './effects/AmplifyEffect';
+export { ReverbEffect } from './effects/ReverbEffect';
+export type { ReverbEffectProps } from './effects/ReverbEffect';
