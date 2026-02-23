@@ -4,6 +4,7 @@ import { ToggleButton } from '../ToggleButton';
 import { useTheme } from '../ThemeProvider';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
+import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import './EffectSlot.css';
 
 export interface EffectSlotProps {
@@ -36,6 +37,11 @@ export interface EffectSlotProps {
    * Called when remove effect is clicked
    */
   onRemoveEffect?: () => void;
+
+  /**
+   * Called when a different effect is selected from the menu
+   */
+  onReplaceEffect?: (effectName: string) => void;
 
   /**
    * Whether this slot is being dragged
@@ -89,6 +95,7 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
   onSelectEffect,
   onShowSettings,
   onRemoveEffect,
+  onReplaceEffect,
   isDragging = false,
   onDragStart,
   onDragOver,
@@ -189,19 +196,24 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
             setMenuOpen(false);
           }}
         />
-        <ContextMenuItem label="Audacity" hasSubmenu>
-          <ContextMenuItem label="Amplify" onClick={() => console.log('Amplify')} />
-          <ContextMenuItem label="Echo" onClick={() => console.log('Echo')} />
-          <ContextMenuItem label="Normalize" onClick={() => console.log('Normalize')} />
-        </ContextMenuItem>
-        <ContextMenuItem label="AudioUnit" hasSubmenu>
-          <ContextMenuItem label="AU Reverb" onClick={() => console.log('AU Reverb')} />
-          <ContextMenuItem label="AU Delay" onClick={() => console.log('AU Delay')} />
-        </ContextMenuItem>
-        <ContextMenuItem label="VST3" hasSubmenu>
-          <ContextMenuItem label="VST Compressor" onClick={() => console.log('VST Compressor')} />
-          <ContextMenuItem label="VST EQ" onClick={() => console.log('VST EQ')} />
-        </ContextMenuItem>
+        <ContextMenuItem isDivider />
+        {Object.entries(EFFECT_REGISTRY).map(([categoryName, effectDefs]) => (
+          <ContextMenuItem
+            key={categoryName}
+            label={categoryName}
+          >
+            {effectDefs.map((effectDef) => (
+              <ContextMenuItem
+                key={effectDef.id}
+                label={effectDef.name}
+                onClick={() => {
+                  onReplaceEffect?.(effectDef.name);
+                  setMenuOpen(false);
+                }}
+              />
+            ))}
+          </ContextMenuItem>
+        ))}
       </ContextMenu>
     </div>
   );

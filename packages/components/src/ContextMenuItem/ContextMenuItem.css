@@ -86,3 +86,10 @@
   left: auto;
   right: 100%;
 }
+
+.context-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background-color: var(--context-menu-divider-color);
+  cursor: default;
+}

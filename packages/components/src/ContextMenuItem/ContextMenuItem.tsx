@@ -7,7 +7,7 @@ export interface ContextMenuItemProps {
   /**
    * Label text for the menu item
    */
-  label: string;
+  label?: string;
 
   /**
    * Click handler for the menu item
@@ -48,6 +48,11 @@ export interface ContextMenuItemProps {
    * Callback when submenu should close
    */
   onClose?: () => void;
+
+  /**
+   * Whether this item is a divider
+   */
+  isDivider?: boolean;
 }
 
 /**
@@ -64,6 +69,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   checked,
   shortcut,
   onClose,
+  isDivider = false,
 }) => {
   const { theme } = useTheme();
   const [submenuOpen, setSubmenuOpen] = useState(false);
@@ -76,7 +82,13 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     '--context-menu-submenu-bg': theme.background.menu.background,
     '--context-menu-submenu-border': theme.border.default,
     '--context-menu-submenu-shadow': '0 2px 8px rgba(0, 0, 0, 0.3)',
+    '--context-menu-divider-color': theme.border.default,
   } as React.CSSProperties;
+
+  // Render divider
+  if (isDivider) {
+    return <div className="context-menu-divider" style={style} role="separator" />;
+  }
 
   const handleClick = (e: React.MouseEvent) => {
     if (disabled) return;
