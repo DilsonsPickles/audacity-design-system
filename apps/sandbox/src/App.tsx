@@ -3506,9 +3506,6 @@ function CanvasDemoContent() {
                     });
                   }
                 });
-
-                const count = trackIndices.length;
-                toast.success(`${count} ${count === 1 ? 'track' : 'tracks'} duplicated`);
               }}
               onMoveTrackUp={(trackIndex) => {
                 console.log('Move track up:', trackIndex);
