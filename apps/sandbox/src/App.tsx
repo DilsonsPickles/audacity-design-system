@@ -4,7 +4,7 @@ import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command, SELECT_DEFAULT_PARAMETERS } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
@@ -4678,18 +4678,8 @@ function CanvasDemoContent() {
             if (m.id === macroId) {
               return {
                 ...m,
-                steps: [...m.steps, { command: command.name, parameters: command.name === 'Select' ? SELECT_DEFAULT_PARAMETERS : '' }]
+                steps: [...m.steps, { command: command.name, parameters: '' }]
               };
-            }
-            return m;
-          }));
-        }}
-        onEditStep={(macroId, stepIndex, parameters) => {
-          setMacros(macros.map(m => {
-            if (m.id === macroId) {
-              const steps = [...m.steps];
-              steps[stepIndex] = { ...steps[stepIndex], parameters };
-              return { ...m, steps };
             }
             return m;
           }));
@@ -5291,45 +5281,6 @@ function CanvasDemoContent() {
               });
               setTrackContextMenu(null);
               toast.success('Track deleted');
-            }
-          }}
-          onDuplicate={() => {
-            if (trackContextMenu) {
-              // Get all selected tracks, or just the clicked track if none selected
-              const trackIndices = state.selectedTrackIndices.includes(trackContextMenu.trackIndex)
-                ? state.selectedTrackIndices
-                : [trackContextMenu.trackIndex];
-
-              // Calculate next IDs to avoid conflicts
-              let nextClipId = Math.max(...state.tracks.flatMap(t => t.clips.map(c => c.id)), 0) + 1;
-              let nextTrackId = Math.max(...state.tracks.map(t => t.id), 0) + 1;
-
-              // Duplicate each selected track
-              trackIndices.forEach((trackIndex) => {
-                const originalTrack = state.tracks[trackIndex];
-                if (originalTrack) {
-                  // Create duplicate track with new IDs
-                  const duplicatedTrack = {
-                    ...originalTrack,
-                    id: nextTrackId++,
-                    name: `${originalTrack.name} (copy)`,
-                    clips: originalTrack.clips.map(clip => ({
-                      ...clip,
-                      id: nextClipId++,
-                    })),
-                  };
-
-                  // Add track to the end
-                  dispatch({
-                    type: 'ADD_TRACK',
-                    payload: duplicatedTrack,
-                  });
-                }
-              });
-
-              setTrackContextMenu(null);
-              const count = trackIndices.length;
-              toast.success(`${count} ${count === 1 ? 'track' : 'tracks'} duplicated`);
             }
           }}
           onColorChange={(color) => {
