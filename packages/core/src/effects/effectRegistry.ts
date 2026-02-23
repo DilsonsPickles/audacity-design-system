@@ -3,7 +3,7 @@
  * Central registry of all available audio effects in Audacity
  */
 
-export type EffectCategory = 'Audacity' | 'AudioUnit' | 'VST3';
+export type EffectCategory = 'Audacity';
 
 export interface EffectDefinition {
   id: string;
@@ -18,20 +18,9 @@ export interface EffectDefinition {
  */
 export const EFFECT_REGISTRY: Record<EffectCategory, EffectDefinition[]> = {
   Audacity: [
-    { id: 'reverb', name: 'Reverb', category: 'Audacity' },
     { id: 'compressor', name: 'Compressor', category: 'Audacity' },
-    { id: 'eq', name: 'EQ', category: 'Audacity' },
-    { id: 'delay', name: 'Delay', category: 'Audacity' },
-  ],
-  AudioUnit: [
-    { id: 'chorus', name: 'Chorus', category: 'AudioUnit' },
-    { id: 'limiter', name: 'Limiter', category: 'AudioUnit' },
-    { id: 'distortion', name: 'Distortion', category: 'AudioUnit' },
-  ],
-  VST3: [
-    { id: 'phaser', name: 'Phaser', category: 'VST3' },
-    { id: 'flanger', name: 'Flanger', category: 'VST3' },
-    { id: 'tremolo', name: 'Tremolo', category: 'VST3' },
+    { id: 'limiter', name: 'Limiter', category: 'Audacity' },
+    { id: 'reverb', name: 'Reverb', category: 'Audacity' },
   ],
 };
 
