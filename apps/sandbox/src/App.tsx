@@ -5,7 +5,7 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
 import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenu, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
-import { type EnvelopePointStyleKey } from '@audacity-ui/core';
+import { type EnvelopePointStyleKey, EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
@@ -5427,26 +5427,6 @@ function CanvasDemoContent() {
 
       {/* Effect Selector Menu */}
       {effectSelectorMenu && (() => {
-        // Grouped effects by category
-        const effectGroups = {
-          'Audacity': [
-            'Reverb',
-            'Compressor',
-            'EQ',
-            'Delay',
-          ],
-          'AudioUnit': [
-            'Chorus',
-            'Limiter',
-            'Distortion',
-          ],
-          'VST3': [
-            'Phaser',
-            'Flanger',
-            'Tremolo',
-          ],
-        };
-
         const addEffect = (effectName: string) => {
           const isMaster = effectSelectorMenu.trackIndex === undefined;
 
@@ -5482,16 +5462,16 @@ function CanvasDemoContent() {
             y={effectSelectorMenu.y}
             onClose={() => setEffectSelectorMenu(null)}
           >
-            {Object.entries(effectGroups).map(([groupName, effects]) => (
+            {Object.entries(EFFECT_REGISTRY).map(([categoryName, effectDefs]) => (
               <ContextMenuItem
-                key={groupName}
-                label={groupName}
+                key={categoryName}
+                label={categoryName}
               >
-                {effects.map((effectName) => (
+                {effectDefs.map((effectDef) => (
                   <ContextMenuItem
-                    key={effectName}
-                    label={effectName}
-                    onClick={() => addEffect(effectName)}
+                    key={effectDef.id}
+                    label={effectDef.name}
+                    onClick={() => addEffect(effectDef.name)}
                   />
                 ))}
               </ContextMenuItem>

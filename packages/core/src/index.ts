@@ -14,3 +14,6 @@ export * from './utils/audio';
 // Export accessibility profiles
 export * from './accessibility/types';
 export * from './accessibility/profiles';
+
+// Export effect registry
+export * from './effects/effectRegistry';
