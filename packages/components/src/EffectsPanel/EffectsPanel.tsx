@@ -44,7 +44,7 @@ export interface EffectsTrackSectionProps {
   /** Called when effects are reordered */
   onEffectsReorder?: (fromIndex: number, toIndex: number) => void;
   /** Called when "Add effect" is clicked */
-  onAddEffect?: () => void;
+  onAddEffect?: (event: React.MouseEvent) => void;
   /** Called when track context menu is clicked */
   onContextMenu?: (event: React.MouseEvent) => void;
   /** Called when effect is removed */
@@ -65,7 +65,7 @@ export interface EffectsMasterSectionProps {
   /** Called when effects are reordered */
   onEffectsReorder?: (fromIndex: number, toIndex: number) => void;
   /** Called when "Add master effect" is clicked */
-  onAddEffect?: () => void;
+  onAddEffect?: (event: React.MouseEvent) => void;
   /** Called when master context menu is clicked */
   onContextMenu?: (event: React.MouseEvent) => void;
   /** Called when effect is removed */
@@ -367,7 +367,7 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps & { isNavigatingInP
         <Button
           variant="secondary"
           size="default"
-          onClick={onAddEffect}
+          onClick={(e) => e && onAddEffect?.(e)}
           className="effects-panel__add-button"
         >
           Add effect
@@ -620,7 +620,7 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps & { isNavigatingI
         <Button
           variant="secondary"
           size="default"
-          onClick={onAddEffect}
+          onClick={(e) => e && onAddEffect?.(e)}
           className="effects-panel__add-button"
         >
           Add master effect

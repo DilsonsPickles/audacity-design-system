@@ -4,7 +4,7 @@ import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenu, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
@@ -1051,6 +1051,14 @@ function CanvasDemoContent() {
     effectName: string;
     trackIndex?: number; // undefined means master effect
     effectIndex: number;
+  } | null>(null);
+
+  // Effect selector menu state
+  const [effectSelectorMenu, setEffectSelectorMenu] = React.useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    trackIndex?: number; // undefined means master effect
   } | null>(null);
 
   // Update effects panel when track selection changes
@@ -3349,14 +3357,15 @@ function CanvasDemoContent() {
                       payload: { trackIndex, fromIndex, toIndex }
                     });
                   },
-                  onAddEffect: () => {
-                    const newEffect = {
-                      id: `t${trackIndex}-${currentTrackEffects.length + 1}`,
-                      name: `New Effect ${currentTrackEffects.length + 1}`,
-                      enabled: true,
-                    };
-                    dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
-                    toast.success('Effect added');
+                  onAddEffect: (e) => {
+                    const button = e.currentTarget;
+                    const rect = button.getBoundingClientRect();
+                    setEffectSelectorMenu({
+                      isOpen: true,
+                      x: rect.left,
+                      y: rect.bottom + 4,
+                      trackIndex,
+                    });
                   },
                   onContextMenu: (_e) => {
                     toast.info('Track effects context menu');
@@ -3394,14 +3403,15 @@ function CanvasDemoContent() {
                     payload: { fromIndex, toIndex }
                   });
                 },
-                onAddEffect: () => {
-                  const newEffect = {
-                    id: `m${state.masterEffects.length + 1}`,
-                    name: `New Master Effect ${state.masterEffects.length + 1}`,
-                    enabled: true,
-                  };
-                  dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
-                  toast.success('Master effect added');
+                onAddEffect: (e) => {
+                  const button = e.currentTarget;
+                  const rect = button.getBoundingClientRect();
+                  setEffectSelectorMenu({
+                    isOpen: true,
+                    x: rect.left,
+                    y: rect.bottom + 4,
+                    trackIndex: undefined, // master effect
+                  });
                 },
                 onContextMenu: (_e) => {
                   toast.info('Master effects context menu');
@@ -5414,6 +5424,66 @@ function CanvasDemoContent() {
           }}
         />
       )}
+
+      {/* Effect Selector Menu */}
+      {effectSelectorMenu && (() => {
+        // List of available effects
+        const availableEffects = [
+          'Reverb',
+          'Compressor',
+          'EQ',
+          'Delay',
+          'Chorus',
+          'Limiter',
+          'Distortion',
+          'Phaser',
+          'Flanger',
+          'Tremolo',
+        ];
+
+        return (
+          <ContextMenu
+            isOpen={effectSelectorMenu.isOpen}
+            x={effectSelectorMenu.x}
+            y={effectSelectorMenu.y}
+            onClose={() => setEffectSelectorMenu(null)}
+          >
+            {availableEffects.map((effectName) => (
+              <ContextMenuItem
+                key={effectName}
+                label={effectName}
+                onClick={() => {
+                  const isMaster = effectSelectorMenu.trackIndex === undefined;
+
+                  if (isMaster) {
+                    // Add to master effects
+                    const newEffect: Effect = {
+                      id: `m${state.masterEffects.length + 1}`,
+                      name: effectName,
+                      enabled: true,
+                    };
+                    dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
+                    toast.success(`Added ${effectName} to master`);
+                  } else {
+                    // Add to track effects
+                    const trackIndex = effectSelectorMenu.trackIndex!;
+                    const currentEffects = state.tracks[trackIndex]?.effects || [];
+                    const newEffect: Effect = {
+                      id: `t${trackIndex}-${currentEffects.length + 1}`,
+                      name: effectName,
+                      enabled: true,
+                    };
+                    dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
+                    toast.success(`Added ${effectName} to ${state.tracks[trackIndex]?.name}`);
+                  }
+
+                  setEffectSelectorMenu(null);
+                }}
+              />
+            ))}
+          </ContextMenu>
+        );
+      })()}
 
       {/* Time Selection Context Menu - Temporarily disabled */}
     </div>
