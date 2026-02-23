@@ -73,6 +73,11 @@ export interface TrackControlSidePanelProps {
   onDeleteTrack?: (trackIndex: number) => void;
 
   /**
+   * Called when a track should be duplicated
+   */
+  onDuplicateTrack?: (trackIndex: number) => void;
+
+  /**
    * Called when a track should move up
    */
   onMoveTrackUp?: (trackIndex: number) => void;
@@ -142,6 +147,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onAddTrackType,
   showMidiOption = false,
   onDeleteTrack,
+  onDuplicateTrack,
   onMoveTrackUp,
   onMoveTrackDown,
   onTrackViewChange,
@@ -304,6 +310,13 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           label="Delete"
           onClick={() => {
             onDeleteTrack?.(menuState.trackIndex);
+            handleMenuClose();
+          }}
+        />
+        <ContextMenuItem
+          label="Duplicate"
+          onClick={() => {
+            onDuplicateTrack?.(menuState.trackIndex);
             handleMenuClose();
           }}
         />

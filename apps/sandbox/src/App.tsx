@@ -4,7 +4,7 @@ import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, MenuItem, CustomScrollbar, MacroManager, Command, SELECT_DEFAULT_PARAMETERS } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
@@ -318,7 +318,7 @@ function CanvasDemoContent() {
 
   // Available commands for macros
   const availableCommands: Command[] = React.useMemo(() => [
-    { id: 'amplify', name: 'Amplify', category: 'A' },
+    // A
     { id: 'aubandpass', name: 'AUBandpass', category: 'A' },
     { id: 'audelay', name: 'AUDelay', category: 'A' },
     { id: 'audistortion', name: 'AUDistortion', category: 'A' },
@@ -329,9 +329,444 @@ function CanvasDemoContent() {
     { id: 'auhipass', name: 'AUHipass', category: 'A' },
     { id: 'aulowshelffilter', name: 'AULowShelfFilter', category: 'A' },
     { id: 'aulowpass', name: 'AULowpass', category: 'A' },
-    { id: 'compareaudio', name: 'Compare Audio', category: 'C' },
+    { id: 'aumatrixreverb', name: 'AUMatrixReverb', category: 'A' },
+    { id: 'aumultiband-compressor', name: 'AUMultibandCompressor', category: 'A' },
+    { id: 'aunbandeq', name: 'AUNBandEQ', category: 'A' },
+    { id: 'aunetsend', name: 'AUNetSend', category: 'A' },
+    { id: 'aunewpitch', name: 'AUNewPitch', category: 'A' },
+    { id: 'auparametriceq', name: 'AUParametricEQ', category: 'A' },
+    { id: 'aupeaklimiter', name: 'AUPeakLimiter', category: 'A' },
+    { id: 'aupitch', name: 'AUPitch', category: 'A' },
+    { id: 'aureverb2', name: 'AUReverb2', category: 'A' },
+    { id: 'aurogerbeep', name: 'AURogerBeep', category: 'A' },
+    { id: 'auroundtripaac', name: 'AURoundTripAAC', category: 'A' },
+    { id: 'ausampledelay', name: 'AUSampleDelay', category: 'A' },
+    { id: 'ausoundfield-panner', name: 'AUSoundFieldPanner', category: 'A' },
+    { id: 'ausoundisolation', name: 'AUSoundIsolation', category: 'A' },
+    { id: 'auspatialmixer', name: 'AUSpatialMixer', category: 'A' },
+    { id: 'ausphericalheadpanner', name: 'AUSphericalHeadPanner', category: 'A' },
+    { id: 'auvectorpanner', name: 'AUVectorPanner', category: 'A' },
+    { id: 'about-audacity', name: 'About Audacity', category: 'A' },
+    { id: 'add-label-at-playback-position', name: 'Add Label at Playback Position', category: 'A' },
+    { id: 'add-label-at-selection', name: 'Add Label at Selection', category: 'A' },
+    { id: 'add-realtime-effects', name: 'Add Realtime Effects', category: 'A' },
+    { id: 'adjustable-fade', name: 'Adjustable Fade', category: 'A' },
+    { id: 'align-end-to-end', name: 'Align End to End (Align_EndToEnd)', category: 'A' },
+    { id: 'align-together', name: 'Align Together (Align_Together)', category: 'A' },
+    { id: 'amplify', name: 'Amplify', category: 'A' },
+    { id: 'audio-setup-toolbar', name: 'Audio Setup Toolbar', category: 'A' },
+    { id: 'auto-duck', name: 'Auto Duck', category: 'A' },
+    // B
+    { id: 'borealis-le', name: 'BOREALIS-LE', category: 'B' },
+    { id: 'bass-and-treble', name: 'Bass and Treble', category: 'B' },
+    { id: 'beat-finder', name: 'Beat Finder', category: 'B' },
+    { id: 'beats-and-measures', name: 'Beats and Measures', category: 'B' },
+    // C
+    { id: 'change-pitch', name: 'Change Pitch', category: 'C' },
+    { id: 'change-speed-and-pitch', name: 'Change Speed and Pitch', category: 'C' },
+    { id: 'change-tempo', name: 'Change Tempo', category: 'C' },
+    { id: 'chirp', name: 'Chirp', category: 'C' },
+    { id: 'chorus', name: 'Chorus', category: 'C' },
+    { id: 'classic-filters', name: 'Classic Filters', category: 'C' },
+    { id: 'clear-log', name: 'Clear Log', category: 'C' },
+    { id: 'clear-loop', name: 'Clear Loop (ClearPlayRegion)', category: 'C' },
+    { id: 'click-removal', name: 'Click Removal', category: 'C' },
+    { id: 'clip-fix', name: 'Clip Fix', category: 'C' },
+    { id: 'collapse-all-tracks', name: 'Collapse All Tracks', category: 'C' },
+    { id: 'comment', name: 'Comment', category: 'C' },
+    { id: 'compare-audio', name: 'Compare Audio', category: 'C' },
+    { id: 'compress', name: 'Compress', category: 'C' },
+    { id: 'compressor', name: 'Compressor', category: 'C' },
+    { id: 'continuous-scrolling', name: 'Continuous scrolling', category: 'C' },
+    { id: 'copy', name: 'Copy', category: 'C' },
+    { id: 'crossfade-clips', name: 'Crossfade Clips', category: 'C' },
+    { id: 'crossfade-tracks', name: 'Crossfade Tracks', category: 'C' },
+    { id: 'cursor-left', name: 'Cursor Left', category: 'C' },
+    { id: 'cursor-long-jump-left', name: 'Cursor Long Jump Left', category: 'C' },
+    { id: 'cursor-long-jump-right', name: 'Cursor Long Jump Right', category: 'C' },
+    { id: 'cursor-right', name: 'Cursor Right', category: 'C' },
+    { id: 'cursor-short-jump-left', name: 'Cursor Short Jump Left', category: 'C' },
+    { id: 'cursor-short-jump-right', name: 'Cursor Short Jump Right', category: 'C' },
+    { id: 'cursor-to-next-clip-boundary', name: 'Cursor to Next Clip Boundary', category: 'C' },
+    { id: 'cursor-to-prev-clip-boundary', name: 'Cursor to Prev Clip Boundary', category: 'C' },
+    { id: 'cursor-to-project-end', name: 'Cursor to Project End', category: 'C' },
+    { id: 'cursor-to-project-start', name: 'Cursor to Project Start', category: 'C' },
+    { id: 'cursor-to-selection-end', name: 'Cursor to Selection End', category: 'C' },
+    { id: 'cursor-to-selection-start', name: 'Cursor to Selection Start', category: 'C' },
+    { id: 'cursor-to-track-end', name: 'Cursor to Track End', category: 'C' },
+    { id: 'cursor-to-track-start', name: 'Cursor to Track Start', category: 'C' },
+    { id: 'cut', name: 'Cut', category: 'C' },
+    { id: 'cut-and-leave-gap', name: 'Cut and leave gap', category: 'C' },
+    { id: 'cut-by-label', name: 'Cut by label', category: 'C' },
+    { id: 'cut-by-labels-and-leave-gap', name: 'Cut by labels and leave gap', category: 'C' },
+    { id: 'cut-copy-paste-toolbar', name: 'Cut/Copy/Paste Toolbar', category: 'C' },
+    // D
+    { id: 'dtmf-tones', name: 'DTMF Tones', category: 'D' },
+    { id: 'de-ess', name: 'De-Ess', category: 'D' },
+    { id: 'decrease-gain-on-focused-track', name: 'Decrease Gain on Focused Track', category: 'D' },
+    { id: 'decrease-playback-speed', name: 'Decrease Playback Speed', category: 'D' },
+    { id: 'decrease-playback-volume', name: 'Decrease Playback Volume', category: 'D' },
+    { id: 'decrease-recording-volume', name: 'Decrease Recording Volume', category: 'D' },
+    { id: 'delay', name: 'Delay', category: 'D' },
+    { id: 'delete', name: 'Delete', category: 'D' },
+    { id: 'delete-focused-track', name: 'Delete Focused Track', category: 'D' },
+    { id: 'delete-key', name: 'Delete Key', category: 'D' },
+    { id: 'delete-key2', name: 'Delete Key2', category: 'D' },
+    { id: 'delete-and-leave-gap', name: 'Delete and leave gap', category: 'D' },
+    { id: 'delete-by-label', name: 'Delete by label', category: 'D' },
+    { id: 'delete-by-labels-and-leave-gap', name: 'Delete by labels and leave gap', category: 'D' },
+    { id: 'detach-at-silences', name: 'Detach at Silences', category: 'D' },
+    { id: 'device-toolbar', name: 'Device Toolbar', category: 'D' },
+    { id: 'distortion', name: 'Distortion', category: 'D' },
+    { id: 'drag', name: 'Drag', category: 'D' },
+    { id: 'draw-tool', name: 'Draw Tool', category: 'D' },
+    { id: 'duplicate', name: 'Duplicate', category: 'D' },
+    // E
+    { id: 'echo', name: 'Echo', category: 'E' },
+    { id: 'edit-toolbar', name: 'Edit Toolbar', category: 'E' },
+    { id: 'enable-full-screen', name: 'Enable Full Screen', category: 'E' },
+    { id: 'enable-looping', name: 'Enable Looping (TogglePlayRegion)', category: 'E' },
+    { id: 'enable-audible-input-monitoring', name: 'Enable audible input monitoring', category: 'E' },
+    { id: 'enable-sound-activated-recording', name: 'Enable sound activated recording', category: 'E' },
+    { id: 'end-to-cursor-selection-start', name: 'End to Cursor/Selection Start', category: 'E' },
+    { id: 'end-to-selection-end', name: 'End to Selection End', category: 'E' },
+    { id: 'envelope-tool', name: 'Envelope Tool', category: 'E' },
+    { id: 'expand-collapsed-tracks', name: 'Expand Collapsed Tracks', category: 'E' },
+    { id: 'export-as-flac', name: 'Export as FLAC', category: 'E' },
+    { id: 'export-as-mp3', name: 'Export as MP3', category: 'E' },
+    { id: 'export-as-ogg', name: 'Export as OGG', category: 'E' },
+    { id: 'export-as-wav', name: 'Export as WAV', category: 'E' },
+    { id: 'export2', name: 'Export2', category: 'E' },
+    { id: 'extra-menus', name: 'Extra Menus (ShowExtraMenus)', category: 'E' },
+    // F
+    { id: 'fade-ends', name: 'Fade Ends (Macro_FadeEnds)', category: 'F' },
+    { id: 'fade-in', name: 'Fade In', category: 'F' },
+    { id: 'fade-out', name: 'Fade Out', category: 'F' },
+    { id: 'filter-curve-eq', name: 'Filter Curve EQ', category: 'F' },
+    { id: 'filterstep', name: 'Filterstep', category: 'F' },
+    { id: 'find-clipping', name: 'Find Clipping', category: 'F' },
+    { id: 'fit-to-height', name: 'Fit to Height', category: 'F' },
+    { id: 'fit-to-width', name: 'Fit to Width (FitInWindow)', category: 'F' },
+    // G
+    { id: 'get-info', name: 'Get Info', category: 'G' },
+    { id: 'get-preference', name: 'Get Preference', category: 'G' },
+    { id: 'graphic-eq', name: 'Graphic EQ', category: 'G' },
+    // H
+    { id: 'hrtf-panner', name: 'HRTFPanner', category: 'H' },
+    { id: 'harmonic-enhancer', name: 'Harmonic Enhancer', category: 'H' },
+    { id: 'harmonise', name: 'Harmonise', category: 'H' },
+    { id: 'hear-other-tracks-during-recording', name: 'Hear other tracks during recording', category: 'H' },
+    { id: 'help', name: 'Help', category: 'H' },
+    { id: 'high-pass-filter', name: 'High-Pass Filter', category: 'H' },
+    { id: 'history', name: 'History (UndoHistory)', category: 'H' },
+    // I
+    { id: 'i-heart-ny', name: 'I Heart NY', category: 'I' },
+    { id: 'import2', name: 'Import2', category: 'I' },
+    { id: 'in-all-tracks', name: 'In All Tracks (SelAllTracks)', category: 'I' },
+    { id: 'increase-gain-on-focused-track', name: 'Increase Gain on Focused Track', category: 'I' },
+    { id: 'increase-playback-speed', name: 'Increase Playback Speed', category: 'I' },
+    { id: 'increase-playback-volume', name: 'Increase Playback Volume', category: 'I' },
+    { id: 'increase-recording-volume', name: 'Increase Recording Volume', category: 'I' },
+    { id: 'invert', name: 'Invert', category: 'I' },
+    // J
+    { id: 'join', name: 'Join', category: 'J' },
+    // K
+    { id: 'keep-tracks-synchronized', name: 'Keep tracks synchronized (Sync-Lock)', category: 'K' },
+    // L
+    { id: 'label-copy', name: 'Label Copy (CopyLabels)', category: 'L' },
+    { id: 'label-editor', name: 'Label Editor', category: 'L' },
+    { id: 'label-join', name: 'Label Join (JoinLabels)', category: 'L' },
+    { id: 'label-silence', name: 'Label Silence (SilenceLabels)', category: 'L' },
+    { id: 'label-sounds', name: 'Label Sounds', category: 'L' },
+    { id: 'label-split', name: 'Label Split (SplitLabels)', category: 'L' },
+    { id: 'label-track', name: 'Label Track (NewLabelTrack)', category: 'L' },
+    { id: 'legacy-compressor', name: 'Legacy Compressor', category: 'L' },
+    { id: 'legacy-limiter', name: 'Legacy Limiter', category: 'L' },
+    { id: 'limiter', name: 'Limiter', category: 'L' },
+    { id: 'long-seek-left-during-playback', name: 'Long Seek Left During Playback', category: 'L' },
+    { id: 'long-seek-right-during-playback', name: 'Long Seek Right During Playback', category: 'L' },
+    { id: 'loudness-normalization', name: 'Loudness Normalization', category: 'L' },
+    { id: 'low-pass-filter', name: 'Low-Pass Filter', category: 'L' },
+    // M
+    { id: 'mp3-conversion', name: 'MP3 Conversion (Macro_MP3Conversion)', category: 'M' },
+    { id: 'macro-manager', name: 'Macro Manager', category: 'M' },
+    { id: 'manual', name: 'Manual', category: 'M' },
+    { id: 'master', name: 'Master', category: 'M' },
+    { id: 'measure-rms', name: 'Measure RMS', category: 'M' },
+    { id: 'melodyne', name: 'Melodyne', category: 'M' },
+    { id: 'message', name: 'Message', category: 'M' },
+    { id: 'metadata-editor', name: 'Metadata Editor', category: 'M' },
+    { id: 'minutes-and-seconds', name: 'Minutes and Seconds', category: 'M' },
+    { id: 'mix-stereo-down-to-mono', name: 'Mix Stereo Down to Mono', category: 'M' },
+    { id: 'mix-and-render', name: 'Mix and Render', category: 'M' },
+    { id: 'mix-and-render-to-new-track', name: 'Mix and Render to New Track', category: 'M' },
+    { id: 'mixer', name: 'Mixer (MixerBoard)', category: 'M' },
+    { id: 'mono-track', name: 'Mono Track (NewMonoTrack)', category: 'M' },
+    { id: 'move-backward-through-active-windows', name: 'Move Backward Through Active Windows', category: 'M' },
+    { id: 'move-backward-from-toolbars-to-tracks', name: 'Move Backward from Toolbars to Tracks', category: 'M' },
+    { id: 'move-focus-to-first-track', name: 'Move Focus to First Track', category: 'M' },
+    { id: 'move-focus-to-last-track', name: 'Move Focus to Last Track', category: 'M' },
+    { id: 'move-focus-to-next-track', name: 'Move Focus to Next Track', category: 'M' },
+    { id: 'move-focus-to-next-and-select', name: 'Move Focus to Next and Select', category: 'M' },
+    { id: 'move-focus-to-previous-track', name: 'Move Focus to Previous Track', category: 'M' },
+    { id: 'move-focus-to-previous-and-select', name: 'Move Focus to Previous and Select', category: 'M' },
+    { id: 'move-focused-track-down', name: 'Move Focused Track Down', category: 'M' },
+    { id: 'move-focused-track-up', name: 'Move Focused Track Up', category: 'M' },
+    { id: 'move-focused-track-to-bottom', name: 'Move Focused Track to Bottom', category: 'M' },
+    { id: 'move-focused-track-to-top', name: 'Move Focused Track to Top', category: 'M' },
+    { id: 'move-forward-through-active-windows', name: 'Move Forward Through Active Windows', category: 'M' },
+    { id: 'move-forward-from-toolbars-to-tracks', name: 'Move Forward from Toolbars to Tracks', category: 'M' },
+    { id: 'move-selection-with-tracks', name: 'Move Selection with Tracks', category: 'M' },
+    { id: 'move-to-next-label', name: 'Move to Next Label', category: 'M' },
+    { id: 'move-to-previous-label', name: 'Move to Previous Label', category: 'M' },
+    { id: 'multi-tool', name: 'Multi Tool', category: 'M' },
+    { id: 'mute-all-tracks', name: 'Mute All Tracks', category: 'M' },
+    { id: 'mute-tracks', name: 'Mute Tracks', category: 'M' },
+    { id: 'mute-unmute-focused-track', name: 'Mute/Unmute Focused Track', category: 'M' },
+    // N
+    { id: 'new', name: 'New', category: 'N' },
+    { id: 'next-higher-peak-frequency', name: 'Next Higher Peak Frequency', category: 'N' },
+    { id: 'next-lower-peak-frequency', name: 'Next Lower Peak Frequency', category: 'N' },
+    { id: 'next-tool', name: 'Next Tool', category: 'N' },
+    { id: 'noise', name: 'Noise', category: 'N' },
+    { id: 'noise-gate', name: 'Noise Gate', category: 'N' },
+    { id: 'noise-reduction', name: 'Noise Reduction', category: 'N' },
     { id: 'normalize', name: 'Normalize', category: 'N' },
+    { id: 'notch-filter', name: 'Notch Filter', category: 'N' },
+    { id: 'nyquist-plugin-installer', name: 'Nyquist Plugin Installer', category: 'N' },
+    { id: 'nyquist-prompt', name: 'Nyquist Prompt', category: 'N' },
+    // O
+    { id: 'open-project2', name: 'Open Project2', category: 'O' },
+    // P
+    { id: 'pan-center', name: 'Pan Center', category: 'P' },
+    { id: 'pan-left', name: 'Pan Left', category: 'P' },
+    { id: 'pan-left-on-focused-track', name: 'Pan Left on Focused Track', category: 'P' },
+    { id: 'pan-right', name: 'Pan Right', category: 'P' },
+    { id: 'pan-right-on-focused-track', name: 'Pan Right on Focused Track', category: 'P' },
+    { id: 'paste', name: 'Paste', category: 'P' },
+    { id: 'paste-text-to-new-label', name: 'Paste Text to New Label', category: 'P' },
+    { id: 'pauls-macron', name: "Paul's Macron (Macro_Paul'sMacron)", category: 'P' },
+    { id: 'paulstretch', name: 'Paulstretch', category: 'P' },
+    { id: 'pause', name: 'Pause', category: 'P' },
+    { id: 'phaser', name: 'Phaser', category: 'P' },
+    { id: 'pitch-down', name: 'Pitch Down', category: 'P' },
+    { id: 'pitch-up', name: 'Pitch Up', category: 'P' },
+    { id: 'pitchfix', name: 'PitchFix', category: 'P' },
+    { id: 'play-after-selection-end', name: 'Play After Selection End', category: 'P' },
+    { id: 'play-after-selection-start', name: 'Play After Selection Start', category: 'P' },
+    { id: 'play-before-selection-end', name: 'Play Before Selection End', category: 'P' },
+    { id: 'play-before-selection-start', name: 'Play Before Selection Start', category: 'P' },
+    { id: 'play-before-and-after-selection-end', name: 'Play Before and After Selection End', category: 'P' },
+    { id: 'play-before-and-after-selection-start', name: 'Play Before and After Selection Start', category: 'P' },
+    { id: 'play-cut-preview', name: 'Play Cut Preview', category: 'P' },
+    { id: 'play-cut-preview-at-speed', name: 'Play Cut Preview-at-Speed', category: 'P' },
+    { id: 'play-once', name: 'Play Once', category: 'P' },
+    { id: 'play-once-stop', name: 'Play Once/Stop', category: 'P' },
+    { id: 'play-one-second', name: 'Play One Second', category: 'P' },
+    { id: 'play-to-selection', name: 'Play to Selection', category: 'P' },
+    { id: 'play-at-speed', name: 'Play-at-Speed (PlayAtSpeedLooped)', category: 'P' },
+    { id: 'play-at-speed-once', name: 'Play-at-Speed Once', category: 'P' },
+    { id: 'play-at-speed-toolbar', name: 'Play-at-Speed Toolbar', category: 'P' },
+    { id: 'play-stop', name: 'Play/Stop (DefaultPlayStop)', category: 'P' },
+    { id: 'play-stop-and-set-cursor', name: 'Play/Stop and Set Cursor', category: 'P' },
+    { id: 'playback-meter-toolbar', name: 'Playback Meter Toolbar', category: 'P' },
+    { id: 'pluck', name: 'Pluck', category: 'P' },
+    { id: 'plugin-manager', name: 'Plugin Manager', category: 'P' },
+    { id: 'plugin-manager-manage-analyzers', name: 'Plugin Manager (ManageAnalyzers)', category: 'P' },
+    { id: 'plugin-manager-manage-generators', name: 'Plugin Manager (ManageGenerators)', category: 'P' },
+    { id: 'preferences', name: 'Preferences', category: 'P' },
+    { id: 'previous-clip-boundary-to-cursor', name: 'Previous Clip Boundary to Cursor', category: 'P' },
+    { id: 'previous-tool', name: 'Previous Tool', category: 'P' },
+    { id: 'pro-eq', name: 'Pro EQ', category: 'P' },
+    { id: 'punch-and-roll-record', name: 'Punch and Roll Record', category: 'P' },
+    // Q
+    { id: 'quick-help', name: 'Quick Help', category: 'Q' },
+    { id: 'quit-audacity', name: 'Quit Audacity', category: 'Q' },
+    // R
+    { id: 'rx-10-breath-control', name: 'RX 10 Breath Control', category: 'R' },
+    { id: 'rx-10-connect', name: 'RX 10 Connect', category: 'R' },
+    { id: 'rx-10-de-click', name: 'RX 10 De-click', category: 'R' },
+    { id: 'rx-10-de-clip', name: 'RX 10 De-clip', category: 'R' },
+    { id: 'rx-10-de-crackle', name: 'RX 10 De-crackle', category: 'R' },
+    { id: 'rx-10-de-ess', name: 'RX 10 De-ess', category: 'R' },
+    { id: 'rx-10-de-hum', name: 'RX 10 De-hum', category: 'R' },
+    { id: 'rx-10-de-plosive', name: 'RX 10 De-plosive', category: 'R' },
+    { id: 'rx-10-de-reverb', name: 'RX 10 De-reverb', category: 'R' },
+    { id: 'rx-10-guitar-de-noise', name: 'RX 10 Guitar De-noise', category: 'R' },
+    { id: 'record', name: 'Record (Record1stChoice)', category: 'R' },
+    { id: 'record-new-track', name: 'Record New Track (Record2ndChoice)', category: 'R' },
+    { id: 'recording-meter-toolbar', name: 'Recording Meter Toolbar', category: 'R' },
+    { id: 'redo', name: 'Redo', category: 'R' },
+    { id: 'regular-interval-labels', name: 'Regular Interval Labels', category: 'R' },
+    { id: 'remove-tracks', name: 'Remove Tracks', category: 'R' },
+    { id: 'render-pitch-and-speed', name: 'Render Pitch and Speed', category: 'R' },
+    { id: 'repair', name: 'Repair', category: 'R' },
+    { id: 'repeat', name: 'Repeat', category: 'R' },
+    { id: 'repeat-last-analyzer', name: 'Repeat Last Analyzer', category: 'R' },
+    { id: 'repeat-last-effect', name: 'Repeat Last Effect', category: 'R' },
+    { id: 'repeat-last-generator', name: 'Repeat Last Generator', category: 'R' },
+    { id: 'repeat-last-tool', name: 'Repeat Last Tool', category: 'R' },
+    { id: 'rescan-audio-devices', name: 'Rescan Audio Devices', category: 'R' },
+    { id: 'reset-configuration', name: 'Reset Configuration', category: 'R' },
+    { id: 'reset-toolbars', name: 'Reset Toolbars', category: 'R' },
+    { id: 'retrieve-selection', name: 'Retrieve Selection', category: 'R' },
     { id: 'reverb', name: 'Reverb', category: 'R' },
+    { id: 'reverse', name: 'Reverse', category: 'R' },
+    { id: 'rhythm-track', name: 'Rhythm Track', category: 'R' },
+    { id: 'risset-drum', name: 'Risset Drum', category: 'R' },
+    { id: 'rotary', name: 'Rotary', category: 'R' },
+    // S
+    { id: 'sample-data-export', name: 'Sample Data Export', category: 'S' },
+    { id: 'sample-data-import', name: 'Sample Data Import', category: 'S' },
+    { id: 'save-copy', name: 'Save Copy', category: 'S' },
+    { id: 'save-log', name: 'Save Log', category: 'S' },
+    { id: 'save-project', name: 'Save Project', category: 'S' },
+    { id: 'save-project2', name: 'Save Project2', category: 'S' },
+    { id: 'scrub', name: 'Scrub', category: 'S' },
+    { id: 'scrub-backwards', name: 'Scrub Backwards (KeyboardScrubBackwards)', category: 'S' },
+    { id: 'scrub-forwards', name: 'Scrub Forwards (KeyboardScrubForwards)', category: 'S' },
+    { id: 'scrub-ruler', name: 'Scrub Ruler (ToggleScrubRuler)', category: 'S' },
+    { id: 'seek', name: 'Seek', category: 'S' },
+    { id: 'select', name: 'Select', category: 'S' },
+    { id: 'select-all', name: 'Select All', category: 'S' },
+    { id: 'select-cursor-to-stored', name: 'Select Cursor to Stored', category: 'S' },
+    { id: 'select-cursor-to-track-end', name: 'Select Cursor to Track End', category: 'S' },
+    { id: 'select-frequencies', name: 'Select Frequencies', category: 'S' },
+    { id: 'select-next-clip', name: 'Select Next Clip', category: 'S' },
+    { id: 'select-none', name: 'Select None', category: 'S' },
+    { id: 'select-previous-clip', name: 'Select Previous Clip', category: 'S' },
+    { id: 'select-sync-locked', name: 'Select Sync-Locked', category: 'S' },
+    { id: 'select-time', name: 'Select Time', category: 'S' },
+    { id: 'select-track-start-to-cursor', name: 'Select Track Start to Cursor', category: 'S' },
+    { id: 'select-track-start-to-end', name: 'Select Track Start to End', category: 'S' },
+    { id: 'select-tracks', name: 'Select Tracks', category: 'S' },
+    { id: 'select-zero-crossing', name: 'Select Zero Crossing', category: 'S' },
+    { id: 'selection-contract-left', name: 'Selection Contract Left', category: 'S' },
+    { id: 'selection-contract-right', name: 'Selection Contract Right', category: 'S' },
+    { id: 'selection-extend-left', name: 'Selection Extend Left', category: 'S' },
+    { id: 'selection-extend-right', name: 'Selection Extend Right', category: 'S' },
+    { id: 'selection-tool', name: 'Selection Tool', category: 'S' },
+    { id: 'selection-toolbar', name: 'Selection Toolbar', category: 'S' },
+    { id: 'selection-to-end', name: 'Selection to End', category: 'S' },
+    { id: 'selection-to-start', name: 'Selection to Start', category: 'S' },
+    { id: 'set-or-extend-left-selection', name: 'Set (or Extend) Left Selection', category: 'S' },
+    { id: 'set-or-extend-right-selection', name: 'Set (or Extend) Right Selection', category: 'S' },
+    { id: 'set-clip', name: 'Set Clip', category: 'S' },
+    { id: 'set-envelope', name: 'Set Envelope', category: 'S' },
+    { id: 'set-label', name: 'Set Label', category: 'S' },
+    { id: 'set-loop-in', name: 'Set Loop In (SetPlayRegionIn)', category: 'S' },
+    { id: 'set-loop-out', name: 'Set Loop Out (SetPlayRegionOut)', category: 'S' },
+    { id: 'set-loop-to-selection', name: 'Set Loop to Selection', category: 'S' },
+    { id: 'set-preference', name: 'Set Preference', category: 'S' },
+    { id: 'set-project', name: 'Set Project', category: 'S' },
+    { id: 'set-selection-left-at-play-position', name: 'Set Selection Left at Play Position', category: 'S' },
+    { id: 'set-selection-right-at-play-position', name: 'Set Selection Right at Play Position', category: 'S' },
+    { id: 'set-track', name: 'Set Track', category: 'S' },
+    { id: 'set-track-audio', name: 'Set Track Audio', category: 'S' },
+    { id: 'set-track-status', name: 'Set Track Status', category: 'S' },
+    { id: 'set-track-visuals', name: 'Set Track Visuals', category: 'S' },
+    { id: 'share-audio-toolbar', name: 'Share Audio Toolbar', category: 'S' },
+    { id: 'shelf-filter', name: 'Shelf Filter', category: 'S' },
+    { id: 'short-seek-left-during-playback', name: 'Short Seek Left During Playback', category: 'S' },
+    { id: 'short-seek-right-during-playback', name: 'Short Seek Right During Playback', category: 'S' },
+    { id: 'show-clipping-in-waveform', name: 'Show Clipping in Waveform', category: 'S' },
+    { id: 'show-rms-in-waveform', name: 'Show RMS in Waveform', category: 'S' },
+    { id: 'silence', name: 'Silence', category: 'S' },
+    { id: 'silence-audio', name: 'Silence Audio', category: 'S' },
+    { id: 'simple-eq', name: 'Simple EQ', category: 'S' },
+    { id: 'skip-to-selection-end', name: 'Skip to Selection End', category: 'S' },
+    { id: 'skip-to-selection-start', name: 'Skip to Selection Start', category: 'S' },
+    { id: 'sliding-stretch', name: 'Sliding Stretch', category: 'S' },
+    { id: 'snap-to-nearest', name: 'Snap-To Nearest', category: 'S' },
+    { id: 'snap-to-off', name: 'Snap-To Off', category: 'S' },
+    { id: 'snap-to-prior', name: 'Snap-To Prior', category: 'S' },
+    { id: 'snapping-toolbar', name: 'Snapping Toolbar', category: 'S' },
+    { id: 'solo-unsolo-focused-track', name: 'Solo/Unsolo Focused Track', category: 'S' },
+    { id: 'sort-by-name', name: 'Sort by Name', category: 'S' },
+    { id: 'sort-by-time', name: 'Sort by Time', category: 'S' },
+    { id: 'spectral-delete', name: 'Spectral Delete', category: 'S' },
+    { id: 'spectral-edit-multi-tool', name: 'Spectral Edit Multi Tool', category: 'S' },
+    { id: 'spectral-edit-parametric-eq', name: 'Spectral Edit Parametric EQ', category: 'S' },
+    { id: 'spectral-edit-shelves', name: 'Spectral Edit Shelves', category: 'S' },
+    { id: 'spectral-selection-toolbar', name: 'Spectral Selection Toolbar', category: 'S' },
+    { id: 'split', name: 'Split', category: 'S' },
+    { id: 'split-new', name: 'Split New', category: 'S' },
+    { id: 'start-to-cursor-selection-start', name: 'Start to Cursor/Selection Start', category: 'S' },
+    { id: 'start-to-selection-end', name: 'Start to Selection End', category: 'S' },
+    { id: 'start-to-zero', name: 'Start to Zero (Align_StartToZero)', category: 'S' },
+    { id: 'stereo-to-mono', name: 'Stereo To Mono', category: 'S' },
+    { id: 'stereo-track', name: 'Stereo Track (NewStereoTrack)', category: 'S' },
+    { id: 'stop', name: 'Stop', category: 'S' },
+    { id: 'store-cursor-position', name: 'Store Cursor Position', category: 'S' },
+    { id: 'store-selection', name: 'Store Selection', category: 'S' },
+    { id: 'studio-fade-out', name: 'Studio Fade Out', category: 'S' },
+    // T
+    { id: 'tal-reverb-4-plugin', name: 'TAL Reverb 4 Plugin', category: 'T' },
+    { id: 'tdr-nova', name: 'TDR Nova', category: 'T' },
+    { id: 'tape-saturation-limiter', name: 'Tape Saturation Limiter', category: 'T' },
+    { id: 'time-shift-left', name: 'Time Shift Left', category: 'T' },
+    { id: 'time-shift-right', name: 'Time Shift Right', category: 'T' },
+    { id: 'time-signature-toolbar', name: 'Time Signature Toolbar', category: 'T' },
+    { id: 'time-toolbar', name: 'Time Toolbar', category: 'T' },
+    { id: 'time-track', name: 'Time Track (NewTimeTrack)', category: 'T' },
+    { id: 'toggle-focused-track', name: 'Toggle Focused Track', category: 'T' },
+    { id: 'toggle-spectral-selection', name: 'Toggle Spectral Selection', category: 'T' },
+    { id: 'tone', name: 'Tone', category: 'T' },
+    { id: 'tools-toolbar', name: 'Tools Toolbar', category: 'T' },
+    { id: 'transport-toolbar', name: 'Transport Toolbar', category: 'T' },
+    { id: 'tremolo', name: 'Tremolo', category: 'T' },
+    { id: 'trim-audio', name: 'Trim Audio', category: 'T' },
+    { id: 'truncate-silence', name: 'Truncate Silence', category: 'T' },
+    { id: 'typing-creates-new-labels', name: 'Typing Creates New Labels', category: 'T' },
+    // U
+    { id: 'undo', name: 'Undo', category: 'U' },
+    { id: 'unmute-all-tracks', name: 'Unmute All Tracks', category: 'U' },
+    { id: 'unmute-tracks', name: 'Unmute Tracks', category: 'U' },
+    { id: 'update-cloud-audio-preview', name: 'Update Cloud Audio Preview', category: 'U' },
+    // V
+    { id: 'vocoder', name: 'Vocoder', category: 'V' },
+    // W
+    { id: 'wahwah', name: 'Wahwah', category: 'W' },
+    // Z
+    { id: 'zoom-in', name: 'Zoom In', category: 'Z' },
+    { id: 'zoom-normal', name: 'Zoom Normal', category: 'Z' },
+    { id: 'zoom-out', name: 'Zoom Out', category: 'Z' },
+    { id: 'zoom-toggle', name: 'Zoom Toggle', category: 'Z' },
+    { id: 'zoom-to-selection', name: 'Zoom to Selection', category: 'Z' },
+    // k
+    { id: 'khs-3-band-eq', name: 'kHs 3-Band EQ', category: 'k' },
+    { id: 'khs-bitcrush', name: 'kHs Bitcrush', category: 'k' },
+    { id: 'khs-channel-mixer', name: 'kHs Channel Mixer', category: 'k' },
+    { id: 'khs-chorus', name: 'kHs Chorus', category: 'k' },
+    { id: 'khs-comb-filter', name: 'kHs Comb Filter', category: 'k' },
+    { id: 'khs-compressor', name: 'kHs Compressor', category: 'k' },
+    { id: 'khs-delay', name: 'kHs Delay', category: 'k' },
+    { id: 'khs-distortion', name: 'kHs Distortion', category: 'k' },
+    { id: 'khs-dual-delay', name: 'kHs Dual Delay', category: 'k' },
+    { id: 'khs-dynamics', name: 'kHs Dynamics', category: 'k' },
+    { id: 'khs-ensemble', name: 'kHs Ensemble', category: 'k' },
+    { id: 'khs-filter', name: 'kHs Filter', category: 'k' },
+    { id: 'khs-flanger', name: 'kHs Flanger', category: 'k' },
+    { id: 'khs-formant-filter', name: 'kHs Formant Filter', category: 'k' },
+    { id: 'khs-frequency-shifter', name: 'kHs Frequency Shifter', category: 'k' },
+    { id: 'khs-gain', name: 'kHs Gain', category: 'k' },
+    { id: 'khs-gate', name: 'kHs Gate', category: 'k' },
+    { id: 'khs-haas', name: 'kHs Haas', category: 'k' },
+    { id: 'khs-ladder-filter', name: 'kHs Ladder Filter', category: 'k' },
+    { id: 'khs-limiter', name: 'kHs Limiter', category: 'k' },
+    { id: 'khs-nonlinear-filter', name: 'kHs Nonlinear Filter', category: 'k' },
+    { id: 'khs-phase-distortion', name: 'kHs Phase Distortion', category: 'k' },
+    { id: 'khs-phaser', name: 'kHs Phaser', category: 'k' },
+    { id: 'khs-pitch-shifter', name: 'kHs Pitch Shifter', category: 'k' },
+    { id: 'khs-resonator', name: 'kHs Resonator', category: 'k' },
+    { id: 'khs-reverb', name: 'kHs Reverb', category: 'k' },
+    { id: 'khs-reverser', name: 'kHs Reverser', category: 'k' },
+    { id: 'khs-ring-mod', name: 'kHs Ring Mod', category: 'k' },
+    { id: 'khs-shaper', name: 'kHs Shaper', category: 'k' },
+    { id: 'khs-stereo', name: 'kHs Stereo', category: 'k' },
+    { id: 'khs-tape-stop', name: 'kHs Tape Stop', category: 'k' },
+    { id: 'khs-trance-gate', name: 'kHs Trance Gate', category: 'k' },
+    { id: 'khs-transient-shaper', name: 'kHs Transient Shaper', category: 'k' },
   ], []);
   const [audioSetupMenuAnchor, setAudioSetupMenuAnchor] = React.useState<{ x: number; y: number } | null>(null);
   const [selectedRecordingDevice, setSelectedRecordingDevice] = React.useState('MacBook Pro Microphone');
@@ -3039,6 +3474,42 @@ function CanvasDemoContent() {
                   payload: trackIndex,
                 });
               }}
+              onDuplicateTrack={(trackIndex) => {
+                // Get all selected tracks, or just the clicked track if none selected
+                const trackIndices = state.selectedTrackIndices.includes(trackIndex)
+                  ? state.selectedTrackIndices
+                  : [trackIndex];
+
+                // Calculate next IDs to avoid conflicts
+                let nextClipId = Math.max(...state.tracks.flatMap(t => t.clips.map(c => c.id)), 0) + 1;
+                let nextTrackId = Math.max(...state.tracks.map(t => t.id), 0) + 1;
+
+                // Duplicate each selected track
+                trackIndices.forEach((idx) => {
+                  const originalTrack = state.tracks[idx];
+                  if (originalTrack) {
+                    // Create duplicate track with new IDs
+                    const duplicatedTrack = {
+                      ...originalTrack,
+                      id: nextTrackId++,
+                      name: `${originalTrack.name} (copy)`,
+                      clips: originalTrack.clips.map(clip => ({
+                        ...clip,
+                        id: nextClipId++,
+                      })),
+                    };
+
+                    // Add track to the end
+                    dispatch({
+                      type: 'ADD_TRACK',
+                      payload: duplicatedTrack,
+                    });
+                  }
+                });
+
+                const count = trackIndices.length;
+                toast.success(`${count} ${count === 1 ? 'track' : 'tracks'} duplicated`);
+              }}
               onMoveTrackUp={(trackIndex) => {
                 console.log('Move track up:', trackIndex);
                 // TODO: Implement move track up
@@ -4185,7 +4656,9 @@ function CanvasDemoContent() {
           const newMacro = {
             id: `macro-${Date.now()}`,
             name,
-            steps: []
+            steps: [
+              { command: 'END', parameters: '' },
+            ]
           };
           setMacros([...macros, newMacro]);
           setSelectedMacroId(newMacro.id); // Auto-select the newly created macro
@@ -4205,8 +4678,29 @@ function CanvasDemoContent() {
             if (m.id === macroId) {
               return {
                 ...m,
-                steps: [...m.steps, { command: command.name, parameters: '' }]
+                steps: [...m.steps, { command: command.name, parameters: command.name === 'Select' ? SELECT_DEFAULT_PARAMETERS : '' }]
               };
+            }
+            return m;
+          }));
+        }}
+        onEditStep={(macroId, stepIndex, parameters) => {
+          setMacros(macros.map(m => {
+            if (m.id === macroId) {
+              const steps = [...m.steps];
+              steps[stepIndex] = { ...steps[stepIndex], parameters };
+              return { ...m, steps };
+            }
+            return m;
+          }));
+        }}
+        onMoveStep={(macroId, fromIndex, toIndex) => {
+          setMacros(macros.map(m => {
+            if (m.id === macroId) {
+              const steps = [...m.steps];
+              const [moved] = steps.splice(fromIndex, 1);
+              steps.splice(toIndex, 0, moved);
+              return { ...m, steps };
             }
             return m;
           }));
@@ -4797,6 +5291,45 @@ function CanvasDemoContent() {
               });
               setTrackContextMenu(null);
               toast.success('Track deleted');
+            }
+          }}
+          onDuplicate={() => {
+            if (trackContextMenu) {
+              // Get all selected tracks, or just the clicked track if none selected
+              const trackIndices = state.selectedTrackIndices.includes(trackContextMenu.trackIndex)
+                ? state.selectedTrackIndices
+                : [trackContextMenu.trackIndex];
+
+              // Calculate next IDs to avoid conflicts
+              let nextClipId = Math.max(...state.tracks.flatMap(t => t.clips.map(c => c.id)), 0) + 1;
+              let nextTrackId = Math.max(...state.tracks.map(t => t.id), 0) + 1;
+
+              // Duplicate each selected track
+              trackIndices.forEach((trackIndex) => {
+                const originalTrack = state.tracks[trackIndex];
+                if (originalTrack) {
+                  // Create duplicate track with new IDs
+                  const duplicatedTrack = {
+                    ...originalTrack,
+                    id: nextTrackId++,
+                    name: `${originalTrack.name} (copy)`,
+                    clips: originalTrack.clips.map(clip => ({
+                      ...clip,
+                      id: nextClipId++,
+                    })),
+                  };
+
+                  // Add track to the end
+                  dispatch({
+                    type: 'ADD_TRACK',
+                    payload: duplicatedTrack,
+                  });
+                }
+              });
+
+              setTrackContextMenu(null);
+              const count = trackIndices.length;
+              toast.success(`${count} ${count === 1 ? 'track' : 'tracks'} duplicated`);
             }
           }}
           onColorChange={(color) => {
