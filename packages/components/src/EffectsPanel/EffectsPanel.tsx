@@ -49,6 +49,8 @@ export interface EffectsTrackSectionProps {
   onContextMenu?: (event: React.MouseEvent) => void;
   /** Called when effect is removed */
   onRemoveEffect?: (effectIndex: number) => void;
+  /** Called when effect is replaced with a different effect */
+  onReplaceEffect?: (effectIndex: number, effectName: string) => void;
 }
 
 export interface EffectsMasterSectionProps {
@@ -70,6 +72,8 @@ export interface EffectsMasterSectionProps {
   onContextMenu?: (event: React.MouseEvent) => void;
   /** Called when effect is removed */
   onRemoveEffect?: (effectIndex: number) => void;
+  /** Called when effect is replaced with a different effect */
+  onReplaceEffect?: (effectIndex: number, effectName: string) => void;
 }
 
 export interface EffectsPanelProps {
@@ -139,6 +143,7 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps & { isNavigatingInP
   onAddEffect,
   onContextMenu,
   onRemoveEffect,
+  onReplaceEffect,
   isNavigatingInPanel = false,
 }) => {
   const { theme } = useTheme();
@@ -354,6 +359,7 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps & { isNavigatingInP
               onToggle={(enabled) => onEffectToggle?.(index, enabled)}
               onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
               onRemoveEffect={() => onRemoveEffect?.(index)}
+              onReplaceEffect={(effectName) => onReplaceEffect?.(index, effectName)}
               onDragStart={handleDragStart(index)}
               onDragOver={handleDragOver(index)}
               onDragEnd={handleDragEnd}
@@ -390,6 +396,7 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps & { isNavigatingI
   onAddEffect,
   onContextMenu,
   onRemoveEffect,
+  onReplaceEffect,
   isNavigatingInPanel = false,
 }) => {
   const { theme } = useTheme();
@@ -606,6 +613,7 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps & { isNavigatingI
               onToggle={(enabled) => onEffectToggle?.(index, enabled)}
               onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
               onRemoveEffect={() => onRemoveEffect?.(index)}
+              onReplaceEffect={(effectName) => onReplaceEffect?.(index, effectName)}
               onDragStart={handleDragStart(index)}
               onDragOver={handleDragOver(index)}
               onDragEnd={handleDragEnd}

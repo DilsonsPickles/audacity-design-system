@@ -206,6 +206,7 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
               <ContextMenuItem
                 key={effectDef.id}
                 label={effectDef.name}
+                checked={effectDef.name === effectName}
                 onClick={() => {
                   onReplaceEffect?.(effectDef.name);
                   setMenuOpen(false);

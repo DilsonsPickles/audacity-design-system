@@ -3374,6 +3374,13 @@ function CanvasDemoContent() {
                     dispatch({ type: 'REMOVE_TRACK_EFFECT', payload: { trackIndex, effectIndex: index } });
                     toast.success('Effect removed');
                   },
+                  onReplaceEffect: (index, effectName) => {
+                    dispatch({
+                      type: 'UPDATE_TRACK_EFFECT',
+                      payload: { trackIndex, effectIndex: index, updates: { name: effectName } }
+                    });
+                    toast.success(`Effect changed to ${effectName}`);
+                  },
                 }}
               masterSection={{
                 effects: state.masterEffects,
@@ -3419,6 +3426,13 @@ function CanvasDemoContent() {
                 onRemoveEffect: (index) => {
                   dispatch({ type: 'REMOVE_MASTER_EFFECT', payload: index });
                   toast.success('Master effect removed');
+                },
+                onReplaceEffect: (index, effectName) => {
+                  dispatch({
+                    type: 'UPDATE_MASTER_EFFECT',
+                    payload: { effectIndex: index, updates: { name: effectName } }
+                  });
+                  toast.success(`Effect changed to ${effectName}`);
                 },
               }}
               onClose={() => setEffectsPanel(null)}
