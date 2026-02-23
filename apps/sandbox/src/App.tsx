@@ -1042,38 +1042,7 @@ function CanvasDemoContent() {
     width: number;
   } | null>(null);
 
-  // Track effects - stored per track index
-  const [trackEffectsMap, setTrackEffectsMap] = React.useState<Map<number, Effect[]>>(
-    new Map([
-      [0, [
-        { id: 't0-1', name: 'Reverb', enabled: true },
-        { id: 't0-2', name: 'Compressor', enabled: true },
-      ]],
-      [1, [
-        { id: 't1-1', name: 'EQ', enabled: true },
-        { id: 't1-2', name: 'Delay', enabled: false },
-      ]],
-      [2, [
-        { id: 't2-1', name: 'Chorus', enabled: true },
-      ]],
-    ])
-  );
-
-  // Sample master effects (temporary - in real app this would come from project state)
-  const [masterEffects, setMasterEffects] = React.useState<Effect[]>([
-    { id: 'm1', name: 'Limiter', enabled: true },
-    { id: 'm2', name: 'Mastering EQ', enabled: true },
-  ]);
-
-  // Master toggle states for effect stacks (independent of individual effect states)
-  const [trackEffectStackEnabled, setTrackEffectStackEnabled] = React.useState<Map<number, boolean>>(
-    new Map([
-      [0, true],
-      [1, true],
-      [2, true],
-    ])
-  );
-  const [masterEffectStackEnabled, setMasterEffectStackEnabled] = React.useState(true);
+  // Effects now stored in TracksContext (state.tracks[].effects and state.masterEffects)
 
   // Effect dialog state
   const [effectDialog, setEffectDialog] = React.useState<{
@@ -3344,7 +3313,9 @@ function CanvasDemoContent() {
           {/* Effects Panel - Hidden on export tab */}
           {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
             const trackIndex = effectsPanel.trackIndex;
-            const currentTrackEffects = trackEffectsMap.get(trackIndex) || [];
+            const currentTrackEffects = state.tracks[trackIndex]?.effects || [];
+            const allTrackEffectsEnabled = currentTrackEffects.length > 0 && currentTrackEffects.every(e => e.enabled);
+            const allMasterEffectsEnabled = state.masterEffects.length > 0 && state.masterEffects.every(e => e.enabled);
 
             return (
               <EffectsPanel
@@ -3353,23 +3324,15 @@ function CanvasDemoContent() {
                 trackSection={{
                   trackName: state.tracks[trackIndex]?.name || 'Track',
                   effects: currentTrackEffects,
-                  allEnabled: trackEffectStackEnabled.get(trackIndex) ?? true,
+                  allEnabled: allTrackEffectsEnabled,
                   onToggleAll: (enabled) => {
-                    // Update master toggle state
-                    const newStackMap = new Map(trackEffectStackEnabled);
-                    newStackMap.set(trackIndex, enabled);
-                    setTrackEffectStackEnabled(newStackMap);
-                    // Update all effect enabled states
-                    const newMap = new Map(trackEffectsMap);
-                    newMap.set(trackIndex, currentTrackEffects.map(e => ({ ...e, enabled })));
-                    setTrackEffectsMap(newMap);
+                    dispatch({ type: 'TOGGLE_ALL_TRACK_EFFECTS', payload: { trackIndex, enabled } });
                   },
                   onEffectToggle: (index, enabled) => {
-                    const newEffects = [...currentTrackEffects];
-                    newEffects[index] = { ...newEffects[index], enabled };
-                    const newMap = new Map(trackEffectsMap);
-                    newMap.set(trackIndex, newEffects);
-                    setTrackEffectsMap(newMap);
+                    dispatch({
+                      type: 'UPDATE_TRACK_EFFECT',
+                      payload: { trackIndex, effectIndex: index, updates: { enabled } }
+                    });
                   },
                   onEffectChange: (index, _effectId) => {
                     const effect = currentTrackEffects[index];
@@ -3382,13 +3345,10 @@ function CanvasDemoContent() {
                     });
                   },
                   onEffectsReorder: (fromIndex, toIndex) => {
-                    const newEffects = [...currentTrackEffects];
-                    const [movedEffect] = newEffects.splice(fromIndex, 1);
-                    newEffects.splice(toIndex, 0, movedEffect);
-                    const newMap = new Map(trackEffectsMap);
-                    newMap.set(trackIndex, newEffects);
-                    setTrackEffectsMap(newMap);
-                    console.log('Reordered effect:', movedEffect);
+                    dispatch({
+                      type: 'REORDER_TRACK_EFFECTS',
+                      payload: { trackIndex, fromIndex, toIndex }
+                    });
                   },
                   onAddEffect: () => {
                     const newEffect = {
@@ -3396,39 +3356,31 @@ function CanvasDemoContent() {
                       name: `New Effect ${currentTrackEffects.length + 1}`,
                       enabled: true,
                     };
-                    const newMap = new Map(trackEffectsMap);
-                    newMap.set(trackIndex, [...currentTrackEffects, newEffect]);
-                    setTrackEffectsMap(newMap);
+                    dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
                     toast.success('Effect added');
                   },
                   onContextMenu: (_e) => {
                     toast.info('Track effects context menu');
                   },
                   onRemoveEffect: (index) => {
-                    const newEffects = [...currentTrackEffects];
-                    newEffects.splice(index, 1);
-                    const newMap = new Map(trackEffectsMap);
-                    newMap.set(trackIndex, newEffects);
-                    setTrackEffectsMap(newMap);
+                    dispatch({ type: 'REMOVE_TRACK_EFFECT', payload: { trackIndex, effectIndex: index } });
                     toast.success('Effect removed');
                   },
                 }}
               masterSection={{
-                effects: masterEffects,
-                allEnabled: masterEffectStackEnabled,
+                effects: state.masterEffects,
+                allEnabled: allMasterEffectsEnabled,
                 onToggleAll: (enabled) => {
-                  // Update master toggle state
-                  setMasterEffectStackEnabled(enabled);
-                  // Update all effect enabled states
-                  setMasterEffects(masterEffects.map(e => ({ ...e, enabled })));
+                  dispatch({ type: 'TOGGLE_ALL_MASTER_EFFECTS', payload: enabled });
                 },
                 onEffectToggle: (index, enabled) => {
-                  const newEffects = [...masterEffects];
-                  newEffects[index] = { ...newEffects[index], enabled };
-                  setMasterEffects(newEffects);
+                  dispatch({
+                    type: 'UPDATE_MASTER_EFFECT',
+                    payload: { effectIndex: index, updates: { enabled } }
+                  });
                 },
                 onEffectChange: (index, _effectId) => {
-                  const effect = masterEffects[index];
+                  const effect = state.masterEffects[index];
                   setEffectDialog({
                     isOpen: true,
                     effectId: effect.id,
@@ -3438,28 +3390,25 @@ function CanvasDemoContent() {
                   });
                 },
                 onEffectsReorder: (fromIndex, toIndex) => {
-                  const newEffects = [...masterEffects];
-                  const [movedEffect] = newEffects.splice(fromIndex, 1);
-                  newEffects.splice(toIndex, 0, movedEffect);
-                  setMasterEffects(newEffects);
-                  console.log('Reordered master effect:', movedEffect);
+                  dispatch({
+                    type: 'REORDER_MASTER_EFFECTS',
+                    payload: { fromIndex, toIndex }
+                  });
                 },
                 onAddEffect: () => {
                   const newEffect = {
-                    id: `m${masterEffects.length + 1}`,
-                    name: `New Master Effect ${masterEffects.length + 1}`,
+                    id: `m${state.masterEffects.length + 1}`,
+                    name: `New Master Effect ${state.masterEffects.length + 1}`,
                     enabled: true,
                   };
-                  setMasterEffects([...masterEffects, newEffect]);
+                  dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
                   toast.success('Master effect added');
                 },
                 onContextMenu: (_e) => {
                   toast.info('Master effects context menu');
                 },
                 onRemoveEffect: (index) => {
-                  const newEffects = [...masterEffects];
-                  newEffects.splice(index, 1);
-                  setMasterEffects(newEffects);
+                  dispatch({ type: 'REMOVE_MASTER_EFFECT', payload: index });
                   toast.success('Master effect removed');
                 },
               }}
@@ -4170,30 +4119,59 @@ function CanvasDemoContent() {
       />
 
       {/* Effect Dialog */}
-      {effectDialog && (
-        <EffectDialog
-          effectName={effectDialog.effectName}
-          isOpen={effectDialog.isOpen}
-          onClose={() => setEffectDialog(null)}
-          headerSlot={
-            <EffectHeader
-              presetName="Default preset"
-              onSavePreset={() => toast.info('Save preset')}
-              onUndo={() => toast.info('Undo')}
-              onDeletePreset={() => toast.info('Delete preset')}
-              onMoreOptions={() => toast.info('More options')}
-            />
-          }
-          onOk={() => {
-            toast.success(`Applied ${effectDialog.effectName}`);
-          }}
-          onPreview={() => {
-            toast.info(`Previewing ${effectDialog.effectName}`);
-          }}
-        >
-          <AmplifyEffect />
-        </EffectDialog>
-      )}
+      {effectDialog && (() => {
+        // Get the current effect's enabled state from global state
+        const effect = effectDialog.trackIndex !== undefined
+          ? state.tracks[effectDialog.trackIndex]?.effects?.[effectDialog.effectIndex]
+          : state.masterEffects[effectDialog.effectIndex];
+
+        return (
+          <EffectDialog
+            effectName={effectDialog.effectName}
+            isOpen={effectDialog.isOpen}
+            onClose={() => setEffectDialog(null)}
+            headerSlot={
+              <EffectHeader
+                automationEnabled={effect?.enabled ?? true}
+                onToggleAutomation={(enabled) => {
+                  // Update the effect's enabled state in global state
+                  if (effectDialog.trackIndex !== undefined) {
+                    dispatch({
+                      type: 'UPDATE_TRACK_EFFECT',
+                      payload: {
+                        trackIndex: effectDialog.trackIndex,
+                        effectIndex: effectDialog.effectIndex,
+                        updates: { enabled }
+                      }
+                    });
+                  } else {
+                    dispatch({
+                      type: 'UPDATE_MASTER_EFFECT',
+                      payload: {
+                        effectIndex: effectDialog.effectIndex,
+                        updates: { enabled }
+                      }
+                    });
+                  }
+                }}
+                presetName="Default preset"
+                onSavePreset={() => toast.info('Save preset')}
+                onUndo={() => toast.info('Undo')}
+                onDeletePreset={() => toast.info('Delete preset')}
+                onMoreOptions={() => toast.info('More options')}
+              />
+            }
+            onOk={() => {
+              toast.success(`Applied ${effectDialog.effectName}`);
+            }}
+            onPreview={() => {
+              toast.info(`Previewing ${effectDialog.effectName}`);
+            }}
+          >
+            <AmplifyEffect />
+          </EffectDialog>
+        );
+      })()}
 
       {/* Share Audio Dialog */}
       <Dialog
@@ -5095,8 +5073,22 @@ function CanvasDemoContent() {
                 envelopePoints: [],
               },
             ],
+            effects: i === 0 ? [
+              { id: 't0-1', name: 'Reverb', enabled: true },
+              { id: 't0-2', name: 'Compressor', enabled: true },
+            ] : i === 1 ? [
+              { id: 't1-1', name: 'EQ', enabled: true },
+              { id: 't1-2', name: 'Delay', enabled: false },
+            ] : i === 2 ? [
+              { id: 't2-1', name: 'Chorus', enabled: true },
+            ] : [],
           }));
           dispatch({ type: 'SET_TRACKS', payload: newTracks });
+
+          // Initialize master effects
+          dispatch({ type: 'ADD_MASTER_EFFECT', payload: { id: 'm1', name: 'Limiter', enabled: true } });
+          dispatch({ type: 'ADD_MASTER_EFFECT', payload: { id: 'm2', name: 'Mastering EQ', enabled: true } });
+
           toast.success('Generated tracks successfully');
         }}
         onClearAllTracks={() => {

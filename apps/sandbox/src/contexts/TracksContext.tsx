@@ -37,6 +37,13 @@ interface Clip {
   color?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
 }
 
+export interface Effect {
+  id: string;
+  name: string;
+  enabled: boolean;
+  parameters?: Record<string, any>; // Effect-specific parameters
+}
+
 export interface Track {
   id: number;
   name: string;
@@ -46,6 +53,7 @@ export interface Track {
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
   clips: Clip[];
   labels?: Label[];
+  effects?: Effect[]; // Track-specific effects chain
 }
 
 interface TimeSelection {
@@ -138,6 +146,8 @@ export interface TracksState {
   recordingPeakLevel: number; // 0-100, peak level during recording
   // Track last selected clip for shift-click range selection
   lastSelectedClip: { trackIndex: number; clipId: number } | null;
+  // Master effects chain (applied to all tracks)
+  masterEffects: Effect[];
 }
 
 // Action types
@@ -178,7 +188,19 @@ export type TracksAction =
   | { type: 'SET_CUT_MODE'; payload: CutMode }
   | { type: 'START_RECORDING'; payload: { trackIndex: number } }
   | { type: 'STOP_RECORDING' }
-  | { type: 'UPDATE_RECORDING_METERS'; payload: { level: number; peak: number } };
+  | { type: 'UPDATE_RECORDING_METERS'; payload: { level: number; peak: number } }
+  // Track effects actions
+  | { type: 'ADD_TRACK_EFFECT'; payload: { trackIndex: number; effect: Effect } }
+  | { type: 'UPDATE_TRACK_EFFECT'; payload: { trackIndex: number; effectIndex: number; updates: Partial<Effect> } }
+  | { type: 'REMOVE_TRACK_EFFECT'; payload: { trackIndex: number; effectIndex: number } }
+  | { type: 'REORDER_TRACK_EFFECTS'; payload: { trackIndex: number; fromIndex: number; toIndex: number } }
+  | { type: 'TOGGLE_ALL_TRACK_EFFECTS'; payload: { trackIndex: number; enabled: boolean } }
+  // Master effects actions
+  | { type: 'ADD_MASTER_EFFECT'; payload: Effect }
+  | { type: 'UPDATE_MASTER_EFFECT'; payload: { effectIndex: number; updates: Partial<Effect> } }
+  | { type: 'REMOVE_MASTER_EFFECT'; payload: number }
+  | { type: 'REORDER_MASTER_EFFECTS'; payload: { fromIndex: number; toIndex: number } }
+  | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean };
 
 // Initial state
 const initialState: TracksState = {
@@ -201,6 +223,7 @@ const initialState: TracksState = {
   recordingMeterLevel: 0,
   recordingPeakLevel: 0,
   lastSelectedClip: null,
+  masterEffects: [],
 };
 
 // Reducer
@@ -873,6 +896,111 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ...state,
         selectedLabelIds: newSelectedLabelIds,
         timeSelection: newTimeSelection,
+      };
+    }
+
+    // Track effects actions
+    case 'ADD_TRACK_EFFECT': {
+      const { trackIndex, effect } = action.payload;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        effects: [...(newTracks[trackIndex].effects || []), effect],
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_TRACK_EFFECT': {
+      const { trackIndex, effectIndex, updates } = action.payload;
+      const newTracks = [...state.tracks];
+      const effects = newTracks[trackIndex].effects || [];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        effects: effects.map((effect, idx) =>
+          idx === effectIndex ? { ...effect, ...updates } : effect
+        ),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'REMOVE_TRACK_EFFECT': {
+      const { trackIndex, effectIndex } = action.payload;
+      const newTracks = [...state.tracks];
+      const effects = newTracks[trackIndex].effects || [];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        effects: effects.filter((_, idx) => idx !== effectIndex),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'REORDER_TRACK_EFFECTS': {
+      const { trackIndex, fromIndex, toIndex } = action.payload;
+      const newTracks = [...state.tracks];
+      const effects = [...(newTracks[trackIndex].effects || [])];
+      const [movedEffect] = effects.splice(fromIndex, 1);
+      effects.splice(toIndex, 0, movedEffect);
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        effects,
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'TOGGLE_ALL_TRACK_EFFECTS': {
+      const { trackIndex, enabled } = action.payload;
+      const newTracks = [...state.tracks];
+      const effects = newTracks[trackIndex].effects || [];
+      newTracks[trackIndex] = {
+        ...newTracks[trackIndex],
+        effects: effects.map(effect => ({ ...effect, enabled })),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    // Master effects actions
+    case 'ADD_MASTER_EFFECT': {
+      return {
+        ...state,
+        masterEffects: [...state.masterEffects, action.payload],
+      };
+    }
+
+    case 'UPDATE_MASTER_EFFECT': {
+      const { effectIndex, updates } = action.payload;
+      return {
+        ...state,
+        masterEffects: state.masterEffects.map((effect, idx) =>
+          idx === effectIndex ? { ...effect, ...updates } : effect
+        ),
+      };
+    }
+
+    case 'REMOVE_MASTER_EFFECT': {
+      return {
+        ...state,
+        masterEffects: state.masterEffects.filter((_, idx) => idx !== action.payload),
+      };
+    }
+
+    case 'REORDER_MASTER_EFFECTS': {
+      const { fromIndex, toIndex } = action.payload;
+      const newMasterEffects = [...state.masterEffects];
+      const [movedEffect] = newMasterEffects.splice(fromIndex, 1);
+      newMasterEffects.splice(toIndex, 0, movedEffect);
+      return {
+        ...state,
+        masterEffects: newMasterEffects,
+      };
+    }
+
+    case 'TOGGLE_ALL_MASTER_EFFECTS': {
+      return {
+        ...state,
+        masterEffects: state.masterEffects.map(effect => ({
+          ...effect,
+          enabled: action.payload,
+        })),
       };
     }
 

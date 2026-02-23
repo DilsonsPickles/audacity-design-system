@@ -333,32 +333,34 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps & { isNavigatingInP
         onContextMenu={onContextMenu}
       />
 
-      {/* Effect stack */}
-      <div
-        ref={effectStackRef}
-        className="effects-panel__effect-stack"
-        tabIndex={isNavigatingInPanel ? 0 : -1}
-        onKeyDown={handleEffectStackKeyDown}
-        onFocus={handleEffectStackFocus}
-        onBlur={handleEffectStackBlur}
-        role="group"
-        aria-label="Effect stack"
-      >
-        {effects.map((effect, index) => (
-          <EffectSlot
-            key={effect.id}
-            effectName={effect?.name || 'Effect name'}
-            enabled={effect?.enabled ?? true}
-            isDragging={draggedIndex === index}
-            onToggle={(enabled) => onEffectToggle?.(index, enabled)}
-            onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
-            onRemoveEffect={() => onRemoveEffect?.(index)}
-            onDragStart={handleDragStart(index)}
-            onDragOver={handleDragOver(index)}
-            onDragEnd={handleDragEnd}
-          />
-        ))}
-      </div>
+      {/* Effect stack - only show if there are effects */}
+      {effects.length > 0 && (
+        <div
+          ref={effectStackRef}
+          className="effects-panel__effect-stack"
+          tabIndex={isNavigatingInPanel ? 0 : -1}
+          onKeyDown={handleEffectStackKeyDown}
+          onFocus={handleEffectStackFocus}
+          onBlur={handleEffectStackBlur}
+          role="group"
+          aria-label="Effect stack"
+        >
+          {effects.map((effect, index) => (
+            <EffectSlot
+              key={effect.id}
+              effectName={effect?.name || 'Effect name'}
+              enabled={effect?.enabled ?? true}
+              isDragging={draggedIndex === index}
+              onToggle={(enabled) => onEffectToggle?.(index, enabled)}
+              onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
+              onRemoveEffect={() => onRemoveEffect?.(index)}
+              onDragStart={handleDragStart(index)}
+              onDragOver={handleDragOver(index)}
+              onDragEnd={handleDragEnd}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Add effect button */}
       <div className="effects-panel__add-button-container">
@@ -583,33 +585,35 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps & { isNavigatingI
         isMaster
       />
 
-      {/* Effect stack */}
-      <div
-        ref={effectStackRef}
-        className="effects-panel__effect-stack"
-        tabIndex={isNavigatingInPanel ? 0 : -1}
-        onKeyDown={handleEffectStackKeyDown}
-        onFocus={handleEffectStackFocus}
-        onBlur={handleEffectStackBlur}
-        role="group"
-        aria-label="Master effect stack"
-      >
-        {effects.map((effect, index) => (
-          <EffectSlot
-            key={effect.id}
-            effectName={effect?.name || 'Master effect name'}
-            enabled={effect?.enabled ?? true}
-            isDragging={draggedIndex === index}
-            onToggle={(enabled) => onEffectToggle?.(index, enabled)}
-            onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
-            onRemoveEffect={() => onRemoveEffect?.(index)}
-            onDragStart={handleDragStart(index)}
-            onDragOver={handleDragOver(index)}
-            onDragEnd={handleDragEnd}
-            activeColor={theme.accent.secondary}
-          />
-        ))}
-      </div>
+      {/* Effect stack - only show if there are effects */}
+      {effects.length > 0 && (
+        <div
+          ref={effectStackRef}
+          className="effects-panel__effect-stack"
+          tabIndex={isNavigatingInPanel ? 0 : -1}
+          onKeyDown={handleEffectStackKeyDown}
+          onFocus={handleEffectStackFocus}
+          onBlur={handleEffectStackBlur}
+          role="group"
+          aria-label="Master effect stack"
+        >
+          {effects.map((effect, index) => (
+            <EffectSlot
+              key={effect.id}
+              effectName={effect?.name || 'Master effect name'}
+              enabled={effect?.enabled ?? true}
+              isDragging={draggedIndex === index}
+              onToggle={(enabled) => onEffectToggle?.(index, enabled)}
+              onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
+              onRemoveEffect={() => onRemoveEffect?.(index)}
+              onDragStart={handleDragStart(index)}
+              onDragOver={handleDragOver(index)}
+              onDragEnd={handleDragEnd}
+              activeColor={theme.accent.secondary}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Add master effect button */}
       <div className="effects-panel__add-button-container">
