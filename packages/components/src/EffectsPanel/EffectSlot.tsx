@@ -135,7 +135,12 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
       onDragEnd={onDragEnd}
     >
       {/* Drag handle */}
-      <div className="effect-slot__drag-handle">
+      <div
+        className="effect-slot__drag-handle"
+        tabIndex={-1}
+        role="button"
+        aria-label="Drag to reorder effect"
+      >
         <Icon name="gripper" size={16} />
       </div>
 

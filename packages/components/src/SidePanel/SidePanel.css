@@ -4,7 +4,7 @@
   flex-direction: column;
   background: #222222;
   border-right: 1px solid #D4D5D9;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .side-panel--right {
@@ -17,7 +17,7 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 /* Custom scrollbar */

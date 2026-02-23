@@ -83,15 +83,6 @@ export const EffectsStackHeader: React.FC<EffectsStackHeaderProps> = ({
           {name}
         </div>
       </div>
-
-      {/* Context menu button */}
-      <GhostButton
-        icon="menu"
-        size="small"
-        onClick={onContextMenu}
-        ariaLabel="More options"
-        className="effects-stack-header__menu-button"
-      />
     </div>
   );
 };

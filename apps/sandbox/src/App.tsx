@@ -1684,6 +1684,40 @@ function CanvasDemoContent() {
         }
       }
 
+      // "E" key to toggle effects panel
+      if (e.key === 'e' || e.key === 'E') {
+        const target = e.target as HTMLElement;
+        // Only skip if in a text input field
+        const isTextInput = target.tagName === 'INPUT' ||
+                            target.tagName === 'TEXTAREA' ||
+                            target.getAttribute('role') === 'textbox' ||
+                            target.getAttribute('contenteditable') === 'true';
+
+        if (!isTextInput) {
+          e.preventDefault();
+          setEffectsPanel(prev => {
+            if (prev) {
+              // Toggle existing panel
+              return { ...prev, isOpen: !prev.isOpen };
+            } else {
+              // Create new panel for the first selected track, or track 0 if none selected
+              const trackIndex = state.selectedTrackIndices.length > 0
+                ? state.selectedTrackIndices[0]
+                : 0;
+              return {
+                isOpen: true,
+                trackIndex,
+                left: 0,
+                top: 0,
+                height: 600,
+                width: 240,
+              };
+            }
+          });
+          return;
+        }
+      }
+
       // F6 key navigation for flat navigation mode - skip through major blocks
       if (e.key === 'F6' && isFlatNavigation) {
         e.preventDefault();
@@ -3306,7 +3340,7 @@ function CanvasDemoContent() {
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flex: 1, overflow: 'visible' }}>
           {/* Effects Panel - Hidden on export tab */}
           {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
             const trackIndex = effectsPanel.trackIndex;
@@ -5401,7 +5435,7 @@ function ThemedApp() {
 
   return (
     <ThemeProvider theme={currentTheme}>
-      <AccessibilityProfileProvider initialProfileId="wcag-flat">
+      <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
         <TracksProvider initialTracks={[]}>
           <SpectralSelectionProvider>
             <CanvasDemoContent />

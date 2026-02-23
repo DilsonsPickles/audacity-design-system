@@ -26,10 +26,17 @@
   flex-shrink: 0;
   cursor: grab;
   color: var(--es-drag-handle-color);
+  border-radius: 2px;
+  outline: none;
 }
 
 .effect-slot__drag-handle:active {
   cursor: grabbing;
+}
+
+.effect-slot__drag-handle:focus-visible {
+  outline: 2px solid var(--es-focus-border);
+  outline-offset: 1px;
 }
 
 /* Content Container */
@@ -39,7 +46,7 @@
   gap: 4px;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Toggle Button */
@@ -57,6 +64,7 @@
   flex-shrink: 0;
   color: var(--es-toggle-icon-color);
   transition: background-color 0.15s;
+  outline: none;
 }
 
 .effect-slot__toggle:hover {
@@ -70,7 +78,7 @@
 
 .effect-slot__toggle:focus-visible {
   outline: 2px solid var(--es-focus-border);
-  outline-offset: 0;
+  outline-offset: 1px;
 }
 
 /* Effect Name Field */
@@ -87,6 +95,7 @@
   cursor: pointer;
   transition: border-color 0.15s;
   text-align: left;
+  outline: none;
 }
 
 .effect-slot__name-field:hover {
@@ -94,9 +103,9 @@
 }
 
 .effect-slot__name-field:focus-visible {
+  border-color: transparent;
   outline: 2px solid var(--es-focus-border);
-  outline-offset: 0;
-  border-color: var(--es-focus-border);
+  outline-offset: 1px;
 }
 
 .effect-slot__name-text {
@@ -127,6 +136,7 @@
   flex-shrink: 0;
   color: var(--es-drag-handle-color);
   transition: border-color 0.15s;
+  outline: none;
 }
 
 .effect-slot__settings-button:hover {
@@ -134,7 +144,7 @@
 }
 
 .effect-slot__settings-button:focus-visible {
+  border-color: transparent;
   outline: 2px solid var(--es-focus-border);
-  outline-offset: 0;
-  border-color: var(--es-focus-border);
+  outline-offset: 1px;
 }

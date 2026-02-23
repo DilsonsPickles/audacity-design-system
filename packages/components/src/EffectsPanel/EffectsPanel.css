@@ -9,6 +9,20 @@
   background: var(--ep-bg);
   border-right: 1px solid var(--ep-header-border);
   height: 100%;
+  overflow: visible;
+}
+
+/* Focus outline for the entire panel when tabbed to */
+.effects-panel__focusable-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  outline: none;
+}
+
+.effects-panel__focusable-container:focus-visible {
+  outline: 2px solid var(--ep-focus-border);
+  outline-offset: -2px;
 }
 
 /* Content container - resizable sections */
@@ -17,7 +31,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Overlay mode styling */
@@ -28,7 +42,7 @@
   border: 1px solid var(--ep-header-border);
   border-right: none;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 /* Header */
@@ -80,13 +94,13 @@
 .effects-panel__track-section {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .effects-panel__master-section {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Vertical resize handle */
@@ -184,8 +198,14 @@
   background: var(--ep-stack-bg);
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
   min-height: 0;
+  outline: none;
+}
+
+.effects-panel__effect-stack:focus-visible {
+  outline: 2px solid var(--ep-focus-border);
+  outline-offset: -2px;
 }
 
 /* Effect Slot */

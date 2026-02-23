@@ -3,6 +3,7 @@ import { SidePanel } from '../SidePanel';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { useTheme } from '../ThemeProvider';
+import { useTabGroup } from '../hooks/useTabGroup';
 import { EffectsPanelHeader } from './EffectsPanelHeader';
 import { EffectsStackHeader } from './EffectsStackHeader';
 import { EffectSlot } from './EffectSlot';
@@ -127,7 +128,7 @@ const EffectSlotWrapper: React.FC<EffectSlotProps> = ({
 /**
  * Track Effects Section
  */
-const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
+const TrackEffectsSection: React.FC<EffectsTrackSectionProps & { isNavigatingInPanel?: boolean }> = ({
   trackName,
   effects,
   allEnabled,
@@ -138,9 +139,12 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
   onAddEffect,
   onContextMenu,
   onRemoveEffect,
+  isNavigatingInPanel = false,
 }) => {
   const { theme } = useTheme();
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
+  const [isNavigatingInEffectStack, setIsNavigatingInEffectStack] = React.useState(false);
+  const effectStackRef = React.useRef<HTMLDivElement>(null);
 
   const handleDragStart = (index: number) => (e: React.DragEvent) => {
     setDraggedIndex(index);
@@ -160,6 +164,165 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
     setDraggedIndex(null);
   };
 
+  // Handle keyboard navigation for effect stack
+  const handleEffectStackKeyDown = (e: React.KeyboardEvent) => {
+    if (!effectStackRef.current) return;
+
+    const isStackFocused = document.activeElement === effectStackRef.current;
+
+    // When focused on stack itself (not navigating inside)
+    if (!isNavigatingInEffectStack && isStackFocused) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Enter the stack - first set the state, then focus will be set by useEffect
+        setIsNavigatingInEffectStack(true);
+
+        // Use setTimeout to ensure the useEffect runs first and sets tabIndex to 0
+        setTimeout(() => {
+          // First, try to find the drag handle in the first effect slot
+          const firstSlot = effectStackRef.current?.querySelector('.effect-slot');
+          const dragHandle = firstSlot?.querySelector<HTMLElement>('.effect-slot__drag-handle');
+
+          if (dragHandle) {
+            dragHandle.focus();
+          } else {
+            // Fallback to first button if drag handle not found
+            const focusableElements = effectStackRef.current?.querySelectorAll<HTMLElement>(
+              'button, input, select'
+            );
+            if (focusableElements && focusableElements.length > 0) {
+              focusableElements[0].focus();
+            }
+          }
+        }, 0);
+        return;
+      }
+    }
+    // When navigating inside the stack
+    else if (isNavigatingInEffectStack) {
+      // Arrow key navigation - move between effects like a grid
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const currentSlot = (document.activeElement as HTMLElement).closest('.effect-slot');
+        const allSlots = effectStackRef.current.querySelectorAll('.effect-slot');
+        const slotIndex = Array.from(allSlots).indexOf(currentSlot as Element);
+
+        if (slotIndex === -1) return;
+
+        // Move to the same button position in the adjacent effect
+        let targetSlotIndex = e.key === 'ArrowDown' ? slotIndex + 1 : slotIndex - 1;
+
+        // Wrap around: if going down past the end, go to first; if going up before start, go to last
+        if (targetSlotIndex >= allSlots.length) {
+          targetSlotIndex = 0;
+        } else if (targetSlotIndex < 0) {
+          targetSlotIndex = allSlots.length - 1;
+        }
+
+        const targetSlot = allSlots[targetSlotIndex];
+        const targetButtons = targetSlot.querySelectorAll<HTMLElement>(
+          'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        );
+
+        // Find the button at the same position within the slot
+        const buttonsInCurrentSlot = currentSlot?.querySelectorAll<HTMLElement>(
+          'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        );
+        const buttonIndexInSlot = buttonsInCurrentSlot ?
+          Array.from(buttonsInCurrentSlot).indexOf(document.activeElement as HTMLElement) : 0;
+
+        // Focus the same button position in the target slot, or the first button if it doesn't exist
+        if (targetButtons[buttonIndexInSlot]) {
+          targetButtons[buttonIndexInSlot].focus();
+        } else if (targetButtons.length > 0) {
+          targetButtons[0].focus();
+        }
+
+        return;
+      }
+
+      // Arrow Left/Right navigates between buttons within an effect
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const currentSlot = (document.activeElement as HTMLElement).closest('.effect-slot');
+        if (!currentSlot) return;
+
+        const buttonsInSlot = currentSlot.querySelectorAll<HTMLElement>(
+          'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        );
+        const buttonArray = Array.from(buttonsInSlot);
+        const currentIndex = buttonArray.indexOf(document.activeElement as HTMLElement);
+
+        if (currentIndex === -1) return;
+
+        let newIndex = e.key === 'ArrowRight' ? currentIndex + 1 : currentIndex - 1;
+
+        // Wrap around: if going right past the end, go to first; if going left before start, go to last
+        if (newIndex >= buttonArray.length) {
+          newIndex = 0;
+        } else if (newIndex < 0) {
+          newIndex = buttonArray.length - 1;
+        }
+
+        buttonArray[newIndex].focus();
+
+        return;
+      }
+
+      // Tab exits the effect stack and moves to next element
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Exit the stack
+        setIsNavigatingInEffectStack(false);
+
+        // Find the "Add effect" button after this stack
+        const parentSection = effectStackRef.current.closest('.effects-panel__track-section, .effects-panel__master-section');
+        const addButton = parentSection?.querySelector<HTMLElement>('.effects-panel__add-button');
+        if (addButton) {
+          addButton.focus();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        // Exit the stack - return focus to stack itself
+        setIsNavigatingInEffectStack(false);
+        effectStackRef.current.focus();
+        return;
+      }
+    }
+  };
+
+  const handleEffectStackFocus = () => {
+    // When stack receives focus from outside, ensure we're not in navigation mode
+    if (document.activeElement === effectStackRef.current) {
+      setIsNavigatingInEffectStack(false);
+    }
+  };
+
+  const handleEffectStackBlur = (e: React.FocusEvent) => {
+    // If focus is leaving the stack entirely, reset navigation state
+    if (!effectStackRef.current?.contains(e.relatedTarget as Node)) {
+      setIsNavigatingInEffectStack(false);
+    }
+  };
+
+  // Dynamically set tabIndex on focusable elements inside effect stack
+  React.useEffect(() => {
+    if (!effectStackRef.current) return;
+
+    const focusableElements = effectStackRef.current.querySelectorAll<HTMLElement>(
+      'button, input, select, [role="button"]'
+    );
+
+    focusableElements.forEach((element) => {
+      element.tabIndex = isNavigatingInEffectStack ? 0 : -1;
+    });
+  }, [isNavigatingInEffectStack, effects]);
+
   return (
     <div className="effects-panel__track-section">
       {/* Header */}
@@ -171,7 +334,16 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
       />
 
       {/* Effect stack */}
-      <div className="effects-panel__effect-stack">
+      <div
+        ref={effectStackRef}
+        className="effects-panel__effect-stack"
+        tabIndex={isNavigatingInPanel ? 0 : -1}
+        onKeyDown={handleEffectStackKeyDown}
+        onFocus={handleEffectStackFocus}
+        onBlur={handleEffectStackBlur}
+        role="group"
+        aria-label="Effect stack"
+      >
         {effects.map((effect, index) => (
           <EffectSlot
             key={effect.id}
@@ -206,7 +378,7 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
 /**
  * Master Effects Section
  */
-const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
+const MasterEffectsSection: React.FC<EffectsMasterSectionProps & { isNavigatingInPanel?: boolean }> = ({
   effects,
   allEnabled,
   onToggleAll,
@@ -216,9 +388,12 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
   onAddEffect,
   onContextMenu,
   onRemoveEffect,
+  isNavigatingInPanel = false,
 }) => {
   const { theme } = useTheme();
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
+  const [isNavigatingInEffectStack, setIsNavigatingInEffectStack] = React.useState(false);
+  const effectStackRef = React.useRef<HTMLDivElement>(null);
 
   const handleDragStart = (index: number) => (e: React.DragEvent) => {
     setDraggedIndex(index);
@@ -238,6 +413,165 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
     setDraggedIndex(null);
   };
 
+  // Handle keyboard navigation for effect stack
+  const handleEffectStackKeyDown = (e: React.KeyboardEvent) => {
+    if (!effectStackRef.current) return;
+
+    const isStackFocused = document.activeElement === effectStackRef.current;
+
+    // When focused on stack itself (not navigating inside)
+    if (!isNavigatingInEffectStack && isStackFocused) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Enter the stack - first set the state, then focus will be set by useEffect
+        setIsNavigatingInEffectStack(true);
+
+        // Use setTimeout to ensure the useEffect runs first and sets tabIndex to 0
+        setTimeout(() => {
+          // First, try to find the drag handle in the first effect slot
+          const firstSlot = effectStackRef.current?.querySelector('.effect-slot');
+          const dragHandle = firstSlot?.querySelector<HTMLElement>('.effect-slot__drag-handle');
+
+          if (dragHandle) {
+            dragHandle.focus();
+          } else {
+            // Fallback to first button if drag handle not found
+            const focusableElements = effectStackRef.current?.querySelectorAll<HTMLElement>(
+              'button, input, select'
+            );
+            if (focusableElements && focusableElements.length > 0) {
+              focusableElements[0].focus();
+            }
+          }
+        }, 0);
+        return;
+      }
+    }
+    // When navigating inside the stack
+    else if (isNavigatingInEffectStack) {
+      // Arrow key navigation - move between effects like a grid
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const currentSlot = (document.activeElement as HTMLElement).closest('.effect-slot');
+        const allSlots = effectStackRef.current.querySelectorAll('.effect-slot');
+        const slotIndex = Array.from(allSlots).indexOf(currentSlot as Element);
+
+        if (slotIndex === -1) return;
+
+        // Move to the same button position in the adjacent effect
+        let targetSlotIndex = e.key === 'ArrowDown' ? slotIndex + 1 : slotIndex - 1;
+
+        // Wrap around: if going down past the end, go to first; if going up before start, go to last
+        if (targetSlotIndex >= allSlots.length) {
+          targetSlotIndex = 0;
+        } else if (targetSlotIndex < 0) {
+          targetSlotIndex = allSlots.length - 1;
+        }
+
+        const targetSlot = allSlots[targetSlotIndex];
+        const targetButtons = targetSlot.querySelectorAll<HTMLElement>(
+          'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        );
+
+        // Find the button at the same position within the slot
+        const buttonsInCurrentSlot = currentSlot?.querySelectorAll<HTMLElement>(
+          'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        );
+        const buttonIndexInSlot = buttonsInCurrentSlot ?
+          Array.from(buttonsInCurrentSlot).indexOf(document.activeElement as HTMLElement) : 0;
+
+        // Focus the same button position in the target slot, or the first button if it doesn't exist
+        if (targetButtons[buttonIndexInSlot]) {
+          targetButtons[buttonIndexInSlot].focus();
+        } else if (targetButtons.length > 0) {
+          targetButtons[0].focus();
+        }
+
+        return;
+      }
+
+      // Arrow Left/Right navigates between buttons within an effect
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const currentSlot = (document.activeElement as HTMLElement).closest('.effect-slot');
+        if (!currentSlot) return;
+
+        const buttonsInSlot = currentSlot.querySelectorAll<HTMLElement>(
+          'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        );
+        const buttonArray = Array.from(buttonsInSlot);
+        const currentIndex = buttonArray.indexOf(document.activeElement as HTMLElement);
+
+        if (currentIndex === -1) return;
+
+        let newIndex = e.key === 'ArrowRight' ? currentIndex + 1 : currentIndex - 1;
+
+        // Wrap around: if going right past the end, go to first; if going left before start, go to last
+        if (newIndex >= buttonArray.length) {
+          newIndex = 0;
+        } else if (newIndex < 0) {
+          newIndex = buttonArray.length - 1;
+        }
+
+        buttonArray[newIndex].focus();
+
+        return;
+      }
+
+      // Tab exits the effect stack and moves to next element
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Exit the stack
+        setIsNavigatingInEffectStack(false);
+
+        // Find the "Add effect" button after this stack
+        const parentSection = effectStackRef.current.closest('.effects-panel__track-section, .effects-panel__master-section');
+        const addButton = parentSection?.querySelector<HTMLElement>('.effects-panel__add-button');
+        if (addButton) {
+          addButton.focus();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        // Exit the stack - return focus to stack itself
+        setIsNavigatingInEffectStack(false);
+        effectStackRef.current.focus();
+        return;
+      }
+    }
+  };
+
+  const handleEffectStackFocus = () => {
+    // When stack receives focus from outside, ensure we're not in navigation mode
+    if (document.activeElement === effectStackRef.current) {
+      setIsNavigatingInEffectStack(false);
+    }
+  };
+
+  const handleEffectStackBlur = (e: React.FocusEvent) => {
+    // If focus is leaving the stack entirely, reset navigation state
+    if (!effectStackRef.current?.contains(e.relatedTarget as Node)) {
+      setIsNavigatingInEffectStack(false);
+    }
+  };
+
+  // Dynamically set tabIndex on focusable elements inside effect stack
+  React.useEffect(() => {
+    if (!effectStackRef.current) return;
+
+    const focusableElements = effectStackRef.current.querySelectorAll<HTMLElement>(
+      'button, input, select, [role="button"]'
+    );
+
+    focusableElements.forEach((element) => {
+      element.tabIndex = isNavigatingInEffectStack ? 0 : -1;
+    });
+  }, [isNavigatingInEffectStack, effects]);
+
   return (
     <div className="effects-panel__master-section">
       {/* Header */}
@@ -250,7 +584,16 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
       />
 
       {/* Effect stack */}
-      <div className="effects-panel__effect-stack">
+      <div
+        ref={effectStackRef}
+        className="effects-panel__effect-stack"
+        tabIndex={isNavigatingInPanel ? 0 : -1}
+        onKeyDown={handleEffectStackKeyDown}
+        onFocus={handleEffectStackFocus}
+        onBlur={handleEffectStackBlur}
+        role="group"
+        aria-label="Master effect stack"
+      >
         {effects.map((effect, index) => (
           <EffectSlot
             key={effect.id}
@@ -306,7 +649,20 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
   const { theme } = useTheme();
   const [masterSectionHeight, setMasterSectionHeight] = React.useState(230); // Default master section height
   const [isResizingVertical, setIsResizingVertical] = React.useState(false);
+  const [isNavigatingInside, setIsNavigatingInside] = React.useState(false);
   const contentRef = React.useRef<HTMLDivElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const itemRefsArray = React.useRef<(HTMLElement | null)[]>([null]);
+
+  // Use tab group for proper integration with app-wide tab navigation
+  // Use baseTabIndex of 6 to appear after transport toolbar (0) but before canvas (101+) and other 0-index elements
+  const tabGroup = useTabGroup({
+    groupId: 'effects-panel',
+    itemIndex: 0,  // Panel is a single item in the tab group
+    totalItems: 1,
+    itemRefs: itemRefsArray,
+    baseTabIndex: 6,  // Appear after transport toolbar but before canvas content and Add Track button
+  });
 
   const style = {
     '--ep-bg': theme.background.surface.default,
@@ -361,6 +717,130 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
     };
   }, [isResizingVertical]);
 
+  // Handle keyboard navigation - integrate with tab group and add Enter/Escape/Tab handling
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!panelRef.current) return;
+
+    const isPanelFocused = document.activeElement === panelRef.current;
+
+    // When focused on panel itself (not navigating inside)
+    if (!isNavigatingInside && isPanelFocused) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent Enter from triggering other shortcuts
+        // Enter the panel - first set the state, then focus will be set by useEffect
+        setIsNavigatingInside(true);
+
+        // Use setTimeout to ensure the useEffect runs first and sets tabIndex to 0
+        setTimeout(() => {
+          const focusableElements = panelRef.current?.querySelectorAll<HTMLElement>(
+            'button, input, select, [tabindex="0"]'
+          );
+          if (focusableElements && focusableElements.length > 0) {
+            focusableElements[0].focus();
+          }
+        }, 0);
+        return;
+      }
+    }
+    // When navigating inside the panel
+    else if (isNavigatingInside) {
+      // Handle Tab key for wrapping
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const focusableElements = panelRef.current.querySelectorAll<HTMLElement>(
+          'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        );
+        const focusableArray = Array.from(focusableElements);
+        const currentIndex = focusableArray.indexOf(document.activeElement as HTMLElement);
+
+        if (e.shiftKey) {
+          // Shift+Tab - move backward
+          if (currentIndex <= 0) {
+            // Wrap to last element
+            focusableArray[focusableArray.length - 1]?.focus();
+          } else {
+            focusableArray[currentIndex - 1]?.focus();
+          }
+        } else {
+          // Tab - move forward
+          if (currentIndex >= focusableArray.length - 1) {
+            // Wrap to first element
+            focusableArray[0]?.focus();
+          } else {
+            focusableArray[currentIndex + 1]?.focus();
+          }
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        // Exit the panel - return focus to panel itself
+        setIsNavigatingInside(false);
+        panelRef.current.focus();
+        return;
+      }
+    }
+
+    // Let the tab group handle other keyboard events (arrows, etc.)
+    tabGroup.onKeyDown?.(e);
+  };
+
+  const handleFocus = (e: React.FocusEvent) => {
+    // When panel container receives focus from outside, ensure we're not in navigation mode
+    if (document.activeElement === panelRef.current) {
+      setIsNavigatingInside(false);
+    }
+    // Don't automatically set isNavigatingInside when a child gets focus
+    // Only Enter key should enter navigation mode
+    // Call tab group's focus handler
+    tabGroup.onFocus?.(e);
+  };
+
+  const handleBlur = (e: React.FocusEvent) => {
+    // If focus is leaving the panel entirely, reset navigation state
+    if (!panelRef.current?.contains(e.relatedTarget as Node)) {
+      setIsNavigatingInside(false);
+    }
+    // Call tab group's blur handler
+    tabGroup.onBlur?.(e);
+  };
+
+  // Manage tabIndex on all focusable elements inside the panel
+  // When NOT navigating inside, all children should be removed from tab order
+  React.useEffect(() => {
+    if (!panelRef.current) return;
+
+    const focusableElements = panelRef.current.querySelectorAll<HTMLElement>(
+      'button, input, select, [role="button"], [tabindex="0"]'
+    );
+
+    focusableElements.forEach((element) => {
+      // Skip the panel container itself
+      if (element === panelRef.current) return;
+
+      // Skip effect stack containers themselves - they need to remain focusable
+      if (element.classList.contains('effects-panel__effect-stack')) return;
+
+      // Skip elements inside effect stacks - they have their own tabIndex management
+      const isInsideEffectStack = element.closest('.effects-panel__effect-stack');
+      if (isInsideEffectStack) return;
+
+      // When navigating inside, restore tabIndex to 0 (or leave as-is if already set)
+      // When not navigating inside, remove from tab order
+      if (isNavigatingInside) {
+        // Only set to 0 if it's currently -1 (was removed from tab order)
+        if (element.tabIndex === -1) {
+          element.tabIndex = 0;
+        }
+      } else {
+        // Remove all children from tab order when not navigating inside
+        element.tabIndex = -1;
+      }
+    });
+  }, [isNavigatingInside, trackSection, masterSection]);
+
   // Don't render if not open
   if (!isOpen) return null;
 
@@ -377,7 +857,7 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
         {/* Track Effects Section */}
         {trackSection && (
           <div className="effects-panel__track-section" style={{ flex: 1, minHeight: 0 }}>
-            <TrackEffectsSection {...trackSection} />
+            <TrackEffectsSection {...trackSection} isNavigatingInPanel={isNavigatingInside} />
           </div>
         )}
 
@@ -392,18 +872,26 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
         {/* Master Effects Section */}
         {masterSection && (
           <div className="effects-panel__master-section" style={{ height: masterSectionHeight, minHeight: 140, flexShrink: 0 }}>
-            <MasterEffectsSection {...masterSection} />
+            <MasterEffectsSection {...masterSection} isNavigatingInPanel={isNavigatingInside} />
           </div>
         )}
       </div>
     </>
   );
 
+  // Set the panel ref in the refs array for tab group
+  React.useEffect(() => {
+    if (panelRef.current) {
+      itemRefsArray.current[0] = panelRef.current;
+    }
+  }, []);
+
   // Overlay mode - absolute positioned panel
   if (mode === 'overlay') {
     return (
       <div
-        className={`effects-panel effects-panel--overlay ${className}`}
+        ref={panelRef}
+        className={`effects-panel effects-panel--overlay effects-panel__focusable-container ${className}`}
         style={{
           ...style,
           position: 'absolute',
@@ -413,6 +901,12 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
           height: height ? `${height}px` : 'auto',
           zIndex: 1000,
         }}
+        tabIndex={tabGroup.tabIndex}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        role="region"
+        aria-label="Effects panel"
       >
         {content}
       </div>
@@ -431,7 +925,18 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
       className={`effects-panel ${className}`}
       style={style}
     >
-      {content}
+      <div
+        ref={panelRef}
+        tabIndex={tabGroup.tabIndex}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        role="region"
+        aria-label="Effects panel"
+        className="effects-panel__focusable-container"
+      >
+        {content}
+      </div>
     </SidePanel>
   );
 };
