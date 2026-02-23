@@ -4684,17 +4684,6 @@ function CanvasDemoContent() {
             return m;
           }));
         }}
-        onMoveStep={(macroId, fromIndex, toIndex) => {
-          setMacros(macros.map(m => {
-            if (m.id === macroId) {
-              const steps = [...m.steps];
-              const [moved] = steps.splice(fromIndex, 1);
-              steps.splice(toIndex, 0, moved);
-              return { ...m, steps };
-            }
-            return m;
-          }));
-        }}
         availableCommands={availableCommands}
         os={preferences.operatingSystem}
       />
