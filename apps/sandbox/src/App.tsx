@@ -5427,19 +5427,53 @@ function CanvasDemoContent() {
 
       {/* Effect Selector Menu */}
       {effectSelectorMenu && (() => {
-        // List of available effects
-        const availableEffects = [
-          'Reverb',
-          'Compressor',
-          'EQ',
-          'Delay',
-          'Chorus',
-          'Limiter',
-          'Distortion',
-          'Phaser',
-          'Flanger',
-          'Tremolo',
-        ];
+        // Grouped effects by category
+        const effectGroups = {
+          'Audacity': [
+            'Reverb',
+            'Compressor',
+            'EQ',
+            'Delay',
+          ],
+          'AudioUnit': [
+            'Chorus',
+            'Limiter',
+            'Distortion',
+          ],
+          'VST3': [
+            'Phaser',
+            'Flanger',
+            'Tremolo',
+          ],
+        };
+
+        const addEffect = (effectName: string) => {
+          const isMaster = effectSelectorMenu.trackIndex === undefined;
+
+          if (isMaster) {
+            // Add to master effects
+            const newEffect: Effect = {
+              id: `m${state.masterEffects.length + 1}`,
+              name: effectName,
+              enabled: true,
+            };
+            dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
+            toast.success(`Added ${effectName} to master`);
+          } else {
+            // Add to track effects
+            const trackIndex = effectSelectorMenu.trackIndex!;
+            const currentEffects = state.tracks[trackIndex]?.effects || [];
+            const newEffect: Effect = {
+              id: `t${trackIndex}-${currentEffects.length + 1}`,
+              name: effectName,
+              enabled: true,
+            };
+            dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
+            toast.success(`Added ${effectName} to ${state.tracks[trackIndex]?.name}`);
+          }
+
+          setEffectSelectorMenu(null);
+        };
 
         return (
           <ContextMenu
@@ -5448,38 +5482,19 @@ function CanvasDemoContent() {
             y={effectSelectorMenu.y}
             onClose={() => setEffectSelectorMenu(null)}
           >
-            {availableEffects.map((effectName) => (
+            {Object.entries(effectGroups).map(([groupName, effects]) => (
               <ContextMenuItem
-                key={effectName}
-                label={effectName}
-                onClick={() => {
-                  const isMaster = effectSelectorMenu.trackIndex === undefined;
-
-                  if (isMaster) {
-                    // Add to master effects
-                    const newEffect: Effect = {
-                      id: `m${state.masterEffects.length + 1}`,
-                      name: effectName,
-                      enabled: true,
-                    };
-                    dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
-                    toast.success(`Added ${effectName} to master`);
-                  } else {
-                    // Add to track effects
-                    const trackIndex = effectSelectorMenu.trackIndex!;
-                    const currentEffects = state.tracks[trackIndex]?.effects || [];
-                    const newEffect: Effect = {
-                      id: `t${trackIndex}-${currentEffects.length + 1}`,
-                      name: effectName,
-                      enabled: true,
-                    };
-                    dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
-                    toast.success(`Added ${effectName} to ${state.tracks[trackIndex]?.name}`);
-                  }
-
-                  setEffectSelectorMenu(null);
-                }}
-              />
+                key={groupName}
+                label={groupName}
+              >
+                {effects.map((effectName) => (
+                  <ContextMenuItem
+                    key={effectName}
+                    label={effectName}
+                    onClick={() => addEffect(effectName)}
+                  />
+                ))}
+              </ContextMenuItem>
             ))}
           </ContextMenu>
         );
