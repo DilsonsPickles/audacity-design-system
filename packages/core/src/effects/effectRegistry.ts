@@ -3,12 +3,15 @@
  * Central registry of all available audio effects in Audacity
  */
 
-export type EffectCategory = 'Audacity';
+export type EffectCategory = 'Audacity' | 'DAWson';
+
+export type EffectProvider = 'Audacity' | 'DAWson';
 
 export interface EffectDefinition {
   id: string;
   name: string;
   category: EffectCategory;
+  provider: EffectProvider;
   description?: string;
   // Future: Add parameter schemas, presets, etc.
 }
@@ -18,9 +21,15 @@ export interface EffectDefinition {
  */
 export const EFFECT_REGISTRY: Record<EffectCategory, EffectDefinition[]> = {
   Audacity: [
-    { id: 'compressor', name: 'Compressor', category: 'Audacity' },
-    { id: 'limiter', name: 'Limiter', category: 'Audacity' },
-    { id: 'reverb', name: 'Reverb', category: 'Audacity' },
+    { id: 'compressor', name: 'Compressor', category: 'Audacity', provider: 'Audacity' },
+    { id: 'limiter', name: 'Limiter', category: 'Audacity', provider: 'Audacity' },
+    { id: 'reverb', name: 'Reverb', category: 'Audacity', provider: 'Audacity' },
+  ],
+  DAWson: [
+    { id: 'dawson-delay', name: 'Delay', category: 'DAWson', provider: 'DAWson' },
+    { id: 'dawson-chorus', name: 'Chorus', category: 'DAWson', provider: 'DAWson' },
+    { id: 'dawson-eq', name: '3-Band EQ', category: 'DAWson', provider: 'DAWson' },
+    { id: 'dawson-phaser', name: 'Phaser', category: 'DAWson', provider: 'DAWson' },
   ],
 };
 

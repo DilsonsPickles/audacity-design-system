@@ -4,7 +4,7 @@ import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenu, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, AmplifyEffect, ReverbEffect, MenuItem, CustomScrollbar, MacroManager, Command } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenu, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, MenuItem, CustomScrollbar, MacroManager, Command, VSTEffectOptionsDialog } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey, EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
@@ -220,6 +220,7 @@ function CanvasDemoContent() {
   const [alertDialogOpen, setAlertDialogOpen] = React.useState(false);
   const [alertDialogTitle, setAlertDialogTitle] = React.useState('');
   const [alertDialogMessage, setAlertDialogMessage] = React.useState('');
+  const [isVSTOptionsDialogOpen, setIsVSTOptionsDialogOpen] = React.useState(false);
 
   // Save dontShowSaveModalAgain to localStorage when it changes
   React.useEffect(() => {
@@ -1054,6 +1055,17 @@ function CanvasDemoContent() {
     trackIndex?: number; // undefined means master effect
     effectIndex: number;
   } | null>(null);
+
+  // Effect dialog context menu state
+  const [effectContextMenu, setEffectContextMenu] = React.useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+  });
 
   // Initialize reverb effect when dialog opens
   React.useEffect(() => {
@@ -4200,7 +4212,14 @@ function CanvasDemoContent() {
                 onSavePreset={() => toast.info('Save preset')}
                 onUndo={() => toast.info('Undo')}
                 onDeletePreset={() => toast.info('Delete preset')}
-                onMoreOptions={() => toast.info('More options')}
+                onMoreOptions={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setEffectContextMenu({
+                    isOpen: true,
+                    x: rect.right,
+                    y: rect.bottom,
+                  });
+                }}
               />
             }
             onOk={() => {
@@ -4228,6 +4247,56 @@ function CanvasDemoContent() {
             {effectDialog.effectName === 'Compressor' && <AmplifyEffect />}
             {effectDialog.effectName === 'Limiter' && <AmplifyEffect />}
           </EffectDialog>
+        );
+      })()}
+
+      {/* Effect Dialog Context Menu */}
+      {effectDialog && (() => {
+        // Look up the effect in the registry to determine if it's 3rd party
+        const allEffects = Object.values(EFFECT_REGISTRY).flat();
+        const effectDef = allEffects.find(e => e.name === effectDialog.effectName);
+        const isThirdParty = effectDef?.provider !== 'Audacity';
+
+        console.log('Effect Dialog:', {
+          effectName: effectDialog.effectName,
+          effectDef,
+          provider: effectDef?.provider,
+          isThirdParty
+        });
+
+        return (
+          <EffectDialogContextMenu
+            isOpen={effectContextMenu.isOpen}
+            x={effectContextMenu.x}
+            y={effectContextMenu.y}
+            onClose={() => setEffectContextMenu({ ...effectContextMenu, isOpen: false })}
+            onSavePreset={() => {
+              toast.success('Preset saved');
+              console.log('Save preset clicked');
+            }}
+            onDeletePreset={() => {
+              toast.info('Delete preset clicked');
+              console.log('Delete preset clicked');
+            }}
+            canDelete={false}
+            factoryPresets={['Default', 'Heavy', 'Light', 'Room', 'Hall', 'Cathedral']}
+            onSelectFactoryPreset={(preset) => {
+              toast.info(`Factory preset selected: ${preset}`);
+              console.log('Factory preset selected:', preset);
+            }}
+            onImport={() => {
+              toast.info('Import clicked');
+              console.log('Import clicked');
+            }}
+            onExport={() => {
+              toast.info('Export clicked');
+              console.log('Export clicked');
+            }}
+            onOptions={() => {
+              setIsVSTOptionsDialogOpen(true);
+            }}
+            isThirdParty={isThirdParty}
+          />
         );
       })()}
 
@@ -5083,6 +5152,16 @@ function CanvasDemoContent() {
         onChange={setPlugins}
         onClose={() => setIsPluginManagerOpen(false)}
         os={preferences.operatingSystem}
+      />
+
+      {/* VST Effect Options Dialog */}
+      <VSTEffectOptionsDialog
+        isOpen={isVSTOptionsDialogOpen}
+        onClose={() => setIsVSTOptionsDialogOpen(false)}
+        onConfirm={(bufferSize, latencyCompensation) => {
+          console.log('VST Options confirmed:', { bufferSize, latencyCompensation });
+          toast.success('VST options saved');
+        }}
       />
 
       {/* Alert Dialog */}

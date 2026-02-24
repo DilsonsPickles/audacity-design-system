@@ -89,6 +89,7 @@ export * from './LabelEditorTableRow';
 export * from './PluginManagerDialog';
 export * from './MacroManager';
 export * from './SelectCommandDialog';
+export * from './VSTEffectOptionsDialog';
 
 /**
  * Audio Components
