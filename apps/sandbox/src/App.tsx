@@ -1,166 +1,32 @@
 import React from 'react';
-import { flushSync } from 'react-dom';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { Canvas } from './components/Canvas';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, TimeCode, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenu, ContextMenuItem, SaveProjectModal, HomeTab, PreferencesModal, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, TrackType, WelcomeDialog, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, PluginBrowserDialog, AlertDialog, VerticalRulerPanel, EffectsPanel, Effect, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, MenuItem, CustomScrollbar, MacroManager, Command, VSTEffectOptionsDialog } from '@audacity-ui/components';
-import { type EnvelopePointStyleKey, EFFECT_REGISTRY } from '@audacity-ui/core';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin } from '@audacity-ui/components';
+import { type EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineContext';
-import { DebugPanel } from './components/DebugPanel';
-import { getAudioPlaybackManager } from '@audacity-ui/audio';
+import { AppContextMenus } from './components/AppContextMenus';
+import { AppDialogs } from './components/AppDialogs';
+import { TransportToolbar } from './components/TransportToolbar';
+import { EditorLayout } from './components/EditorLayout';
 import { TokenReview } from './pages/TokenReview';
 import { SpectralRulerDemo } from './pages/SpectralRulerDemo';
 import { RecordingManager } from './utils/RecordingManager';
-import { availableCommands } from './data/commands';
-
-// Generate noise waveform data with headroom
-function generateWaveform(durationSeconds: number, sampleRate: number = 48000): number[] {
-  const totalSamples = Math.floor(durationSeconds * sampleRate);
-  const waveform: number[] = [];
-
-  // Create speech-like or bird song pattern with varying amplitude bursts
-  const burstDuration = 0.1; // 100ms bursts
-  const gapDuration = 0.05; // 50ms gaps
-  const burstSamples = Math.floor(burstDuration * sampleRate);
-  const gapSamples = Math.floor(gapDuration * sampleRate);
-  const cycleLength = burstSamples + gapSamples;
-
-  for (let i = 0; i < totalSamples; i++) {
-    const t = i / sampleRate;
-    const cyclePos = i % cycleLength;
-    const isInBurst = cyclePos < burstSamples;
-
-    if (isInBurst) {
-      // During burst: mix of frequencies with amplitude envelope
-      const burstProgress = cyclePos / burstSamples;
-      const envelope = Math.sin(burstProgress * Math.PI); // Attack-decay envelope
-
-      // Mix fundamental and harmonics (simulating formants with more detail)
-      const fundamental = Math.sin(2 * Math.PI * 200 * t); // 200 Hz base (fundamental)
-      const harmonic2 = Math.sin(2 * Math.PI * 400 * t) * 0.4; // First harmonic
-      const harmonic3 = Math.sin(2 * Math.PI * 800 * t) * 0.3; // Second harmonic
-      const formant1 = Math.sin(2 * Math.PI * 1200 * t) * 0.5; // First formant
-      const formant2 = Math.sin(2 * Math.PI * 2400 * t) * 0.4; // Second formant
-      const formant3 = Math.sin(2 * Math.PI * 3600 * t) * 0.3; // Third formant
-      const highFreq = Math.sin(2 * Math.PI * 5000 * t) * 0.2; // High frequency content
-      const sibilant = Math.sin(2 * Math.PI * 8000 * t) * 0.15; // Sibilant-like
-      const noise = (Math.random() * 2 - 1) * 0.15; // Broadband noise
-
-      const sample = (fundamental + harmonic2 + harmonic3 + formant1 +
-                     formant2 + formant3 + highFreq + sibilant + noise) * envelope * 0.35;
-      waveform.push(sample);
-    } else {
-      // During gap: low amplitude noise (background)
-      waveform.push((Math.random() * 2 - 1) * 0.03);
-    }
-  }
-
-  return waveform;
-}
-
-// Generate RMS waveform data - smoother, lower amplitude than peak waveform (currently unused)
-// function generateRmsWaveform(peakWaveform: number[], windowSize: number = 2048): number[] {
-//   const rmsWaveform: number[] = [];
-//   const halfWindow = Math.floor(windowSize / 2);
-
-//   for (let i = 0; i < peakWaveform.length; i++) {
-//     // Calculate RMS over a window centered at current sample
-//     let sumSquares = 0;
-//     let count = 0;
-
-//     const start = Math.max(0, i - halfWindow);
-//     const end = Math.min(peakWaveform.length, i + halfWindow);
-
-//     for (let j = start; j < end; j++) {
-//       sumSquares += peakWaveform[j] * peakWaveform[j];
-//       count++;
-//     }
-
-//     // RMS = sqrt(mean(squares))
-//     const rms = Math.sqrt(sumSquares / count);
-
-//     // Preserve sign from original sample (RMS is always positive, but we want signed for display)
-//     const sign = peakWaveform[i] >= 0 ? 1 : -1;
-//     rmsWaveform.push(rms * sign);
-//   }
-
-//   return rmsWaveform;
-// }
-
-// Generate waveforms for clips (peak + RMS) - currently unused
-// const clip1Waveform = generateWaveform(4.0);
-// const clip1RmsWaveform = generateRmsWaveform(clip1Waveform);
-
-// const clip2Waveform = generateWaveform(4.0);
-// const clip2RmsWaveform = generateRmsWaveform(clip2Waveform);
-
-// const clip3Waveform = generateWaveform(4.0);
-// const clip3RmsWaveform = generateRmsWaveform(clip3Waveform);
-
-// Sample track data (currently unused)
-// const sampleTracks = [
-//   {
-//     id: 1,
-//     name: 'Track 1',
-//     height: 114,
-//     viewMode: 'split' as const,
-//     channelSplitRatio: 0.5,
-//     clips: [
-//       {
-//         id: 1,
-//         name: 'Cyan Clip',
-//         start: 0.5,
-//         duration: 4.0,
-//         waveform: clip1Waveform,
-//         waveformRms: clip1RmsWaveform,
-//         envelopePoints: [],
-//         color: 'cyan' as const,
-//       },
-//     ],
-//   },
-//   {
-//     id: 2,
-//     name: 'Track 2',
-//     height: 114,
-//     channelSplitRatio: 0.5,
-//     clips: [
-//       {
-//         id: 2,
-//         name: 'Blue Clip',
-//         start: 0.5,
-//         duration: 4.0,
-//         waveform: clip2Waveform,
-//         waveformRms: clip2RmsWaveform,
-//         envelopePoints: [],
-//         color: 'blue' as const,
-//       },
-//     ],
-//   },
-//   {
-//     id: 3,
-//     name: 'Track 3',
-//     height: 114,
-//     channelSplitRatio: 0.5,
-//     clips: [
-//       {
-//         id: 3,
-//         name: 'Violet Clip',
-//         start: 0.5,
-//         duration: 4.0,
-//         waveform: clip3Waveform,
-//         waveformRms: clip3RmsWaveform,
-//         envelopePoints: [],
-//         color: 'violet' as const,
-//       },
-//     ],
-//   },
-// ];
+import { createMenuDefinitions } from './data/menuDefinitions';
+import { createInitialPlugins } from './data/plugins';
+import { useZoomControls } from './hooks/useZoomControls';
+import { usePlaybackControls } from './hooks/usePlaybackControls';
+import { useRecording } from './hooks/useRecording';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useProjectManagement } from './hooks/useProjectManagement';
+import { useDialogState } from './hooks/useDialogState';
+import { useContextMenuState } from './hooks/useContextMenuState';
+import { useLoopRegion } from './hooks/useLoopRegion';
 
 type Workspace = 'classic' | 'spectral-editing';
 
@@ -183,13 +49,28 @@ function CanvasDemoContent() {
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [selectionTimeCodeFormat, setSelectionTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [durationTimeCodeFormat, setDurationTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
-  const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
+  // Dialog state (consolidated)
+  const {
+    isShareDialogOpen, setIsShareDialogOpen,
+    isCreateAccountOpen, setIsCreateAccountOpen,
+    isSyncingDialogOpen, setIsSyncingDialogOpen,
+    isSaveToCloudDialogOpen, setIsSaveToCloudDialogOpen,
+    isSaveProjectModalOpen, setIsSaveProjectModalOpen,
+    isPreferencesModalOpen, setIsPreferencesModalOpen,
+    isExportModalOpen, setIsExportModalOpen,
+    isLabelEditorOpen, setIsLabelEditorOpen,
+    isPluginManagerOpen, setIsPluginManagerOpen,
+    alertDialogOpen, setAlertDialogOpen,
+    isVSTOptionsDialogOpen, setIsVSTOptionsDialogOpen,
+    isDebugPanelOpen, setIsDebugPanelOpen,
+    isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen,
+    isPluginBrowserOpen, setIsPluginBrowserOpen,
+    isMacroManagerOpen, setIsMacroManagerOpen,
+  } = useDialogState();
+
   const [isSignedIn, setIsSignedIn] = React.useState(true);
-  const [isCreateAccountOpen, setIsCreateAccountOpen] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<'signin' | 'create'>('create');
-  const [isSyncingDialogOpen, setIsSyncingDialogOpen] = React.useState(false);
   const [isCloudProject, setIsCloudProject] = React.useState(false);
-  const [isSaveToCloudDialogOpen, setIsSaveToCloudDialogOpen] = React.useState(false);
   const [cloudProjectName, setCloudProjectName] = React.useState('');
   const [projectName, setProjectName] = React.useState('');
   const [cloudAudioFiles, setCloudAudioFiles] = React.useState<Array<{
@@ -207,21 +88,13 @@ function CanvasDemoContent() {
   const [passwordError, setPasswordError] = React.useState(false);
   const [validationErrorMessage, setValidationErrorMessage] = React.useState('');
   const [dontShowSyncAgain, setDontShowSyncAgain] = React.useState(false);
-  const [isSaveProjectModalOpen, setIsSaveProjectModalOpen] = React.useState(false);
   const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = React.useState(() => {
-    // Load from localStorage on mount
     const saved = localStorage.getItem('dontShowSaveModalAgain');
     return saved === 'true';
   });
-  const [isPreferencesModalOpen, setIsPreferencesModalOpen] = React.useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
   const [initialExportType, setInitialExportType] = React.useState<string>('full-project');
-  const [isLabelEditorOpen, setIsLabelEditorOpen] = React.useState(false);
-  const [isPluginManagerOpen, setIsPluginManagerOpen] = React.useState(false);
-  const [alertDialogOpen, setAlertDialogOpen] = React.useState(false);
   const [alertDialogTitle, setAlertDialogTitle] = React.useState('');
   const [alertDialogMessage, setAlertDialogMessage] = React.useState('');
-  const [isVSTOptionsDialogOpen, setIsVSTOptionsDialogOpen] = React.useState(false);
   const [showVendorUI, setShowVendorUI] = React.useState(true);
 
   // Save dontShowSaveModalAgain to localStorage when it changes
@@ -238,21 +111,7 @@ function CanvasDemoContent() {
   }, []); // Only run on mount
 
   // Convert EFFECT_REGISTRY to Plugin[] format for PluginManagerDialog
-  const [plugins, setPlugins] = React.useState<Plugin[]>(() => {
-    const allEffects = Object.values(EFFECT_REGISTRY).flat();
-    return allEffects.map((effect, index) => ({
-      id: effect.id,
-      name: effect.name,
-      type: effect.provider === 'Audacity' ? 'Internal effect' : 'VST3',
-      category: 'Effect',
-      path: effect.provider === 'Audacity'
-        ? `/Applications/Audacity.app/Contents/PlugIns/${effect.id.toLowerCase()}`
-        : `/Library/Audio/Plug-Ins/VST3/DAWson/${effect.name}.vst3`,
-      enabled: true,
-    }));
-  });
-  // Debug panel state
-  const [isDebugPanelOpen, setIsDebugPanelOpen] = React.useState(false);
+  const [plugins, setPlugins] = React.useState<Plugin[]>(createInitialPlugins);
   const [isCloudUploading, setIsCloudUploading] = React.useState(false);
   const [showDuration, setShowDuration] = React.useState(true);
   const [showProjectRate, setShowProjectRate] = React.useState(false);
@@ -262,10 +121,7 @@ function CanvasDemoContent() {
   const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
   const [controlPointStyle, setControlPointStyle] = React.useState<EnvelopePointStyleKey>('solidGreenSimple');
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
-  const [isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen] = React.useState(false);
   const [showMixer, setShowMixer] = React.useState(false);
-  const [isPluginBrowserOpen, setIsPluginBrowserOpen] = React.useState(false);
-  const [isMacroManagerOpen, setIsMacroManagerOpen] = React.useState(false);
   const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
   const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
 
@@ -274,195 +130,6 @@ function CanvasDemoContent() {
   const [selectedPlaybackDevice, setSelectedPlaybackDevice] = React.useState('Built-in Speakers');
   const [availableAudioInputs, setAvailableAudioInputs] = React.useState<MediaDeviceInfo[]>([]);
   const [availableAudioOutputs, setAvailableAudioOutputs] = React.useState<MediaDeviceInfo[]>([]);
-  const [recordingClipId, setRecordingClipId] = React.useState<number | null>(null);
-
-  // Zoom state
-  const [pixelsPerSecond, setPixelsPerSecond] = React.useState(100);
-
-  // Calculate project length (end of last clip across all tracks)
-  const projectLength = React.useMemo(() => {
-    let maxEndTime = 0;
-    state.tracks.forEach(track => {
-      track.clips.forEach(clip => {
-        const clipEndTime = clip.start + clip.duration;
-        if (clipEndTime > maxEndTime) {
-          maxEndTime = clipEndTime;
-        }
-      });
-    });
-    return maxEndTime;
-  }, [state.tracks]);
-
-  // Calculate timeline width based on project content
-  const LEFT_PADDING = 12; // pixels
-  const MIN_VIEWPORT_WIDTH = 5000; // Minimum starting width
-  const MAX_CANVAS_WIDTH = 32000; // Browser canvas limit safety
-
-  // Timeline duration: project length + 50% buffer, with minimum
-  const timelineDuration = Math.max(10, projectLength * 1.5);
-
-  // Calculate width in pixels
-  const calculatedWidth = Math.ceil(timelineDuration * pixelsPerSecond) + LEFT_PADDING;
-
-  // Apply constraints: min viewport width, max canvas width
-  const timelineWidth = Math.max(
-    MIN_VIEWPORT_WIDTH,
-    Math.min(calculatedWidth, MAX_CANVAS_WIDTH)
-  );
-
-  // Calculate max pixels per second to stay under canvas limit
-  const maxPixelsPerSecond = Math.floor((MAX_CANVAS_WIDTH - LEFT_PADDING) / timelineDuration);
-
-  // Zoom functions
-  const zoomIn = () => {
-    setPixelsPerSecond(prev => Math.min(prev * 1.5, maxPixelsPerSecond));
-  };
-
-  const zoomOut = () => {
-    setPixelsPerSecond(prev => Math.max(prev / 1.5, 10)); // Min zoom: 10 pixels/second
-  };
-
-  // Convert zoom level name to pixels per second
-  const zoomLevelToPixelsPerSecond = (level: string): number => {
-    switch (level) {
-      case 'fit-to-width':
-        // Calculate pixels per second to fit entire timeline in viewport
-        // This would need the container width - using a reasonable default
-        return 50; // Placeholder - should calculate based on container width
-      case 'zoom-to-selection':
-        // Would need selection info - fallback to current zoom
-        return pixelsPerSecond;
-      case 'zoom-default':
-        return 100; // Default zoom level
-      case 'minutes':
-        return 20; // ~3 seconds per 60 pixels
-      case 'seconds':
-        return 100; // 1 second = 100 pixels
-      case '5ths-of-seconds':
-        return 200; // 0.2 seconds = 40 pixels
-      case '10ths-of-seconds':
-        return 300; // 0.1 seconds = 30 pixels
-      case '20ths-of-seconds':
-        return 400; // 0.05 seconds = 20 pixels
-      case '50ths-of-seconds':
-        return 600; // 0.02 seconds = 12 pixels
-      case '100ths-of-seconds':
-        return 1000; // 0.01 seconds = 10 pixels
-      case '500ths-of-seconds':
-        return 2000; // 0.002 seconds = 4 pixels
-      case 'milliseconds':
-        return 3000; // Very zoomed in
-      case 'samples':
-        return 4000; // Sample-level view
-      case '4-pixels-per-sample':
-        return 8000; // 4 pixels per sample (at 44.1kHz)
-      case 'max-zoom':
-        return maxPixelsPerSecond; // Maximum zoom
-      default:
-        return 100; // Fallback to default
-    }
-  };
-
-  const zoomToggle = () => {
-    // Toggle between the two predefined zoom levels
-    // Convert level names to pixel values
-    const level1Pixels = zoomLevelToPixelsPerSecond(zoomToggleLevel1);
-    const level2Pixels = zoomLevelToPixelsPerSecond(zoomToggleLevel2);
-
-    // If both levels are the same, do nothing
-    if (level1Pixels === level2Pixels) {
-      return;
-    }
-
-    // If current zoom is closer to level 1, switch to level 2, otherwise switch to level 1
-    const distanceToLevel1 = Math.abs(pixelsPerSecond - level1Pixels);
-    const distanceToLevel2 = Math.abs(pixelsPerSecond - level2Pixels);
-
-    if (distanceToLevel1 < distanceToLevel2) {
-      setPixelsPerSecond(level2Pixels);
-    } else {
-      setPixelsPerSecond(level1Pixels);
-    }
-  };
-
-  const zoomToSelection = () => {
-    if (!state.timeSelection) {
-      toast.warning('No Selection', 'Please select a time range first');
-      return;
-    }
-
-    const selectionDuration = state.timeSelection.endTime - state.timeSelection.startTime;
-
-    // Calculate pixels per second to fit the selection in the viewport (100% width)
-    const viewportWidth = scrollContainerRef.current?.clientWidth || 800;
-    const newPixelsPerSecond = Math.floor(viewportWidth / selectionDuration);
-
-    // Apply zoom level constraints
-    const constrainedZoom = Math.max(10, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
-    setPixelsPerSecond(constrainedZoom);
-
-    // Scroll to show the selection at the left edge
-    const scrollPosition = state.timeSelection.startTime * constrainedZoom;
-
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = Math.max(0, scrollPosition);
-    }
-  };
-
-  const zoomToFitProject = () => {
-    // Find the earliest start time and latest end time across all clips
-    let projectStart = Infinity;
-    let projectEnd = 0;
-
-    state.tracks.forEach(track => {
-      track.clips.forEach(clip => {
-        const clipStart = clip.start;
-        const clipEnd = clip.start + clip.duration;
-        projectStart = Math.min(projectStart, clipStart);
-        projectEnd = Math.max(projectEnd, clipEnd);
-      });
-    });
-
-    // If no clips found, show a message
-    if (projectStart === Infinity || projectEnd === 0) {
-      toast.warning('No Audio', 'Project has no audio clips to display');
-      return;
-    }
-
-    const projectDuration = projectEnd - projectStart;
-
-    console.log('Zoom to Fit:', {
-      projectStart,
-      projectEnd,
-      projectDuration,
-      viewportWidth: scrollContainerRef.current?.clientWidth,
-    });
-
-    // Calculate pixels per second to fit the entire project in the viewport
-    // Use full viewport width
-    const viewportWidth = scrollContainerRef.current?.clientWidth || 800;
-    const newPixelsPerSecond = viewportWidth / projectDuration;
-
-    console.log('Calculated zoom:', {
-      newPixelsPerSecond,
-      min: 10,
-      max: maxPixelsPerSecond,
-    });
-
-    // Apply zoom level constraints
-    const constrainedZoom = Math.max(10, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
-    setPixelsPerSecond(constrainedZoom);
-
-    // Scroll to the start of the project
-    const scrollPosition = projectStart * constrainedZoom;
-
-    console.log('Scroll position:', scrollPosition);
-
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = scrollPosition;
-    }
-  };
-
   // Create a modified theme with the selected envelope color
   const theme = React.useMemo(() => {
     const envelopeColors = {
@@ -507,63 +174,18 @@ function CanvasDemoContent() {
   const [bpm] = React.useState(120);
   const [beatsPerMeasure] = React.useState(4);
 
-  // Clip context menu state
-  const [clipContextMenu, setClipContextMenu] = React.useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-    clipId: number;
-    trackIndex: number;
-    openedViaKeyboard?: boolean;
-  } | null>(null);
-
-  // Track context menu state
-  const [trackContextMenu, setTrackContextMenu] = React.useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-    trackIndex: number;
-    openedViaKeyboard?: boolean;
-  } | null>(null);
-
-  // Timeline ruler context menu state
-  const [timelineRulerContextMenu, setTimelineRulerContextMenu] = React.useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-  } | null>(null);
-
-  // Effects panel state
-  const [effectsPanel, setEffectsPanel] = React.useState<{
-    isOpen: boolean;
-    trackIndex: number;
-    left: number;
-    top: number;
-    height: number;
-    width: number;
-  } | null>(null);
-
-  // Effects now stored in TracksContext (state.tracks[].effects and state.masterEffects)
-
-  // Effect dialog state
-  const [effectDialog, setEffectDialog] = React.useState<{
-    isOpen: boolean;
-    effectId: string;
-    effectName: string;
-    trackIndex?: number; // undefined means master effect
-    effectIndex: number;
-  } | null>(null);
-
-  // Effect dialog context menu state
-  const [effectContextMenu, setEffectContextMenu] = React.useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-  }>({
-    isOpen: false,
-    x: 0,
-    y: 0,
-  });
+  // Context menu state (consolidated)
+  const {
+    clipContextMenu, setClipContextMenu,
+    trackContextMenu, setTrackContextMenu,
+    timelineRulerContextMenu, setTimelineRulerContextMenu,
+    effectsPanel, setEffectsPanel,
+    effectDialog, setEffectDialog,
+    effectContextMenu, setEffectContextMenu,
+    effectSelectorMenu, setEffectSelectorMenu,
+    timeSelectionContextMenu: _timeSelectionContextMenu, setTimeSelectionContextMenu,
+    contextMenuClosedTimeRef,
+  } = useContextMenuState();
 
   // Initialize reverb effect when dialog opens
   React.useEffect(() => {
@@ -582,14 +204,6 @@ function CanvasDemoContent() {
     audioEngine.updateEffectChains(state.tracks, state.masterEffects);
   }, [state.tracks, state.masterEffects, audioEngine]);
 
-  // Effect selector menu state
-  const [effectSelectorMenu, setEffectSelectorMenu] = React.useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-    trackIndex?: number; // undefined means master effect
-  } | null>(null);
-
   // Update effects panel when track selection changes
   React.useEffect(() => {
     if (effectsPanel?.isOpen && state.selectedTrackIndices.length > 0) {
@@ -603,40 +217,6 @@ function CanvasDemoContent() {
     }
   }, [state.selectedTrackIndices, effectsPanel]);
 
-  // Time selection context menu state
-  const [timeSelectionContextMenu, setTimeSelectionContextMenu] = React.useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-  } | null>(null);
-
-  // Ref to prevent menu from re-opening immediately after closing
-  const contextMenuClosedTimeRef = React.useRef<number>(0);
-
-  // Ref to track the menu element so we can exclude it from click-outside detection
-  const timeSelectionMenuRef = React.useRef<HTMLDivElement>(null);
-
-  // Close time selection context menu when clicking anywhere (except right-click or on the menu itself)
-  const handleGlobalMouseDown = React.useCallback((e: MouseEvent) => {
-    // Close menu on left-click (button 0) or middle-click (button 1)
-    // Don't close on right-click (button 2) as that might open the menu
-    // Don't close if clicking on the menu itself (let the menu handle its own clicks)
-    if (e.button !== 2 && timeSelectionContextMenu) {
-      const target = e.target as Node;
-      const menuElement = timeSelectionMenuRef.current;
-
-      // If clicking outside the menu, close it
-      if (menuElement && !menuElement.contains(target)) {
-        contextMenuClosedTimeRef.current = Date.now();
-        setTimeSelectionContextMenu(null);
-      }
-    }
-  }, [timeSelectionContextMenu]);
-
-  React.useEffect(() => {
-    document.addEventListener('mousedown', handleGlobalMouseDown);
-    return () => document.removeEventListener('mousedown', handleGlobalMouseDown);
-  }, [handleGlobalMouseDown]);
 
   // Update display while playing - master toggle for auto-scroll
   const [updateDisplayWhilePlaying, setUpdateDisplayWhilePlaying] = React.useState(true);
@@ -651,20 +231,6 @@ function CanvasDemoContent() {
   const [zoomToggleLevel1, setZoomToggleLevel1] = React.useState('zoom-default');
   const [zoomToggleLevel2, setZoomToggleLevel2] = React.useState('5ths-of-seconds');
 
-  // Loop region state - defines looping boundaries for playback
-  const [loopRegionEnabled, setLoopRegionEnabled] = React.useState(false);
-  const [loopRegionStart, setLoopRegionStart] = React.useState<number | null>(null);
-  const [loopRegionEnd, setLoopRegionEnd] = React.useState<number | null>(null);
-  const [loopRegionInteracting, setLoopRegionInteracting] = React.useState(false);
-  const [loopRegionHovering, setLoopRegionHovering] = React.useState(false);
-
-  // Sync loop region with AudioPlaybackManager
-  React.useEffect(() => {
-    const audioManager = audioManagerRef.current;
-    audioManager.setLoopEnabled(loopRegionEnabled);
-    audioManager.setLoopRegion(loopRegionStart, loopRegionEnd);
-  }, [loopRegionEnabled, loopRegionStart, loopRegionEnd]);
-
   // Track the anchor point for range selection (Shift+Arrow)
   const [selectionAnchor, setSelectionAnchor] = React.useState<number | null>(null);
 
@@ -672,7 +238,7 @@ function CanvasDemoContent() {
   const [controlPanelHasFocus, setControlPanelHasFocus] = React.useState<number | null>(null);
 
   // Track canvas height for playhead stalk
-  const [canvasHeight, setCanvasHeight] = React.useState(1000);
+  const [canvasHeight, setCanvasHeight] = React.useState(0);
 
   // Track mouse cursor position in timeline (in seconds)
   const [mouseCursorPosition, setMouseCursorPosition] = React.useState<number | undefined>(undefined);
@@ -683,24 +249,22 @@ function CanvasDemoContent() {
   // Track whether mouse is over a track (not gap between tracks)
   const [isOverTrack, setIsOverTrack] = React.useState(false);
 
-  const canvasContainerRef = React.useRef<HTMLDivElement>(null);
-  const timelineRulerRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const trackHeaderScrollRef = React.useRef<HTMLDivElement>(null);
-  const isScrollingSyncRef = React.useRef(false);
+  const isScrollingSyncRef = React.useRef<'header' | 'canvas' | null>(null);
   const isProgrammaticScrollRef = React.useRef(false);
 
-  // Audio playback state
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const audioManagerRef = React.useRef(getAudioPlaybackManager());
-
-  // Track meter levels during playback (trackIndex -> level 0-100)
-  const [trackMeterLevels, setTrackMeterLevels] = React.useState<Map<number, number>>(new Map());
-
-  // Recording state
-  const recordingManagerRef = React.useRef<RecordingManager | null>(null);
-  const [isMicMonitoring, setIsMicMonitoring] = React.useState(false);
-  const [_micWaveformData, setMicWaveformData] = React.useState<number[]>([]);
+  // Zoom controls
+  const {
+    pixelsPerSecond, setPixelsPerSecond: _setPixelsPerSecond,
+    zoomIn, zoomOut, zoomToSelection, zoomToFitProject, zoomToggle,
+    timelineWidth, timelineDuration,
+  } = useZoomControls({
+    state: { tracks: state.tracks, timeSelection: state.timeSelection },
+    scrollContainerRef,
+    zoomToggleLevel1,
+    zoomToggleLevel2,
+  });
 
   // Track the anchor point for time selection (the fixed end while extending)
   const selectionAnchorRef = React.useRef<number | null>(null);
@@ -714,6 +278,48 @@ function CanvasDemoContent() {
     operation: 'copy' | 'cut';
     timeSelection?: { startTime: number; endTime: number }; // Optional time range for partial clip copy
   } | null>(null);
+
+  // Playback controls
+  const recordingManagerRef = React.useRef<RecordingManager | null>(null);
+  const {
+    isPlaying, setIsPlaying, handlePlay, handleStop,
+    audioManagerRef, trackMeterLevels, setTrackMeterLevels: _setTrackMeterLevels,
+  } = usePlaybackControls({
+    state, dispatch, recordingManagerRef, scrollContainerRef,
+    pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead, isProgrammaticScrollRef,
+  });
+
+  // Recording
+  const {
+    handleRecord, isMicMonitoring, recordingClipId,
+  } = useRecording({
+    state, dispatch, audioManagerRef, recordingManagerRef,
+  });
+
+  // Loop region
+  const {
+    loopRegionEnabled, setLoopRegionEnabled,
+    loopRegionStart, setLoopRegionStart,
+    loopRegionEnd, setLoopRegionEnd,
+    loopRegionInteracting, setLoopRegionInteracting,
+    loopRegionHovering, setLoopRegionHovering,
+    toggleLoopRegion: _toggleLoopRegion,
+  } = useLoopRegion({
+    audioManagerRef,
+    timeSelection: state.timeSelection,
+    bpm,
+    beatsPerMeasure,
+  });
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    state, dispatch, handlePlay,
+    selectionAnchor, setSelectionAnchor,
+    selectionAnchorRef, selectionEdgesRef,
+    effectsPanel, setEffectsPanel,
+    clipboard, setClipboard,
+    isFlatNavigation, controlPanelHasFocus,
+  });
 
   // Sync playhead position with TimeCode display
   const currentTime = state.playheadPosition;
@@ -740,118 +346,6 @@ function CanvasDemoContent() {
     });
   }, [cloudProjectName, isSaveToCloudDialogOpen, currentProjectId]);
 
-  // Initialize audio playback manager
-  React.useEffect(() => {
-    const audioManager = audioManagerRef.current;
-
-    // Initialize Tone.js
-    audioManager.initialize();
-
-    // Set up position update callback to sync playhead with audio
-    audioManager.setPositionUpdateCallback((position) => {
-      dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: position });
-    });
-
-    // Set up meter update callback to display playback levels
-    audioManager.setMeterUpdateCallback((trackIndex, level) => {
-      setTrackMeterLevels(prev => {
-        const next = new Map(prev);
-        next.set(trackIndex, level);
-        return next;
-      });
-    });
-
-    // Cleanup on unmount
-    return () => {
-      audioManager.cleanup();
-    };
-  }, [dispatch]);
-
-  // Reload clips for playback whenever tracks change (but not during playback/recording)
-  React.useEffect(() => {
-    if (!isPlaying && !state.isRecording) {
-      const audioManager = audioManagerRef.current;
-      audioManager.loadClips(state.tracks, state.playheadPosition);
-    }
-  }, [state.tracks, isPlaying, state.isRecording, state.playheadPosition]);
-
-  // Handle play/pause transport controls
-  const handlePlay = async () => {
-    const audioManager = audioManagerRef.current;
-
-    // Use audio manager's state as source of truth, not React state
-    if (audioManager.getIsPlaying()) {
-      audioManager.pause();
-      setIsPlaying(false);
-    } else {
-      // Check if resuming from pause
-      const isPaused = audioManager.getIsPaused();
-
-      if (!isPaused) {
-        // Load clips for:
-        // - First play
-        // - Resume after stop
-        audioManager.loadClips(state.tracks, state.playheadPosition);
-        // Start playback from current playhead position
-        await audioManager.play(state.playheadPosition);
-      } else {
-        // Resuming from pause - use the actual paused position from audio manager
-        const resumePosition = audioManager.getPausedPosition() ?? state.playheadPosition;
-        audioManager.loadClips(state.tracks, resumePosition);
-        await audioManager.play(resumePosition);
-      }
-
-      setIsPlaying(true);
-    }
-  };
-
-  const handleStop = async () => {
-    // Stop recording if active
-    if (state.isRecording && recordingManagerRef.current) {
-      await recordingManagerRef.current.stopRecording();
-      dispatch({ type: 'STOP_RECORDING' });
-    }
-
-    // Stop playback
-    const audioManager = audioManagerRef.current;
-    audioManager.stop();
-    setIsPlaying(false);
-    setTrackMeterLevels(new Map()); // Reset all meter levels to 0
-  };
-
-  // Start mic monitoring automatically when component mounts
-  React.useEffect(() => {
-    const startAutoMonitoring = async () => {
-      try {
-        // Create recording manager for monitoring
-        recordingManagerRef.current = new RecordingManager({
-          onMeterUpdate: (level, peak) => {
-            // Only update if we have a focused track
-            if (state.focusedTrackIndex !== null) {
-              dispatch({
-                type: 'UPDATE_RECORDING_METERS',
-                payload: { level, peak }
-              });
-            }
-          },
-          onPlayheadUpdate: () => {}, // Not used during monitoring
-          onRecordingComplete: () => {}, // Not used during monitoring
-          onWaveformUpdate: (waveformData) => {
-            setMicWaveformData(waveformData);
-          },
-        });
-
-        await recordingManagerRef.current.startMonitoring();
-        setIsMicMonitoring(true);
-      } catch (error) {
-        // Mic access denied or not available - silently fail
-        console.log('Microphone monitoring not available:', error);
-      }
-    };
-
-    startAutoMonitoring();
-  }, []); // Run once on mount
-
   // Load available audio devices when audio setup menu opens
   React.useEffect(() => {
     if (audioSetupMenuAnchor) {
@@ -872,231 +366,6 @@ function CanvasDemoContent() {
       });
     }
   }, [audioSetupMenuAnchor]);
-
-  // Handle recording
-  const handleRecord = async () => {
-    if (state.isRecording) {
-      // Stop recording (but keep monitoring active)
-      if (recordingManagerRef.current) {
-        await recordingManagerRef.current.stopRecording();
-      }
-      dispatch({ type: 'STOP_RECORDING' });
-    } else {
-      // Start recording - find a track to record into
-      let trackIndex = state.focusedTrackIndex;
-
-      // If no track is focused, use the first non-label track
-      if (trackIndex === null) {
-        trackIndex = state.tracks.findIndex(t =>
-          !t.name.toLowerCase().includes('label')
-        );
-      }
-
-      // If still no track found, we need at least one audio track
-      if (trackIndex === -1) {
-        toast.error('Please add an audio track before recording');
-        return;
-      }
-
-      // Start recording
-      dispatch({ type: 'START_RECORDING', payload: { trackIndex } });
-
-      // Capture trackIndex and playhead position for callback closure
-      const recordingTrackIndex = trackIndex;
-      const recordingStartPosition = state.playheadPosition;
-
-      // Create an empty clip immediately for recording
-      const clipId = Date.now();
-      setRecordingClipId(clipId);
-      dispatch({
-        type: 'ADD_CLIP',
-        payload: {
-          trackIndex: recordingTrackIndex,
-          clip: {
-            id: clipId,
-            name: 'Recording',
-            start: recordingStartPosition,
-            duration: 0, // Will be updated when recording completes
-            waveform: [],
-            envelopePoints: [],
-            color: 'cyan' as const,
-          },
-        },
-      });
-
-      // If monitoring manager exists, dispose it first
-      if (recordingManagerRef.current) {
-        recordingManagerRef.current.dispose();
-      }
-
-      // Create a new recording manager with proper callbacks
-      recordingManagerRef.current = new RecordingManager({
-        onMeterUpdate: (level, peak) => {
-          dispatch({
-            type: 'UPDATE_RECORDING_METERS',
-            payload: { level, peak }
-          });
-        },
-        onPlayheadUpdate: (position) => {
-          dispatch({
-            type: 'SET_PLAYHEAD_POSITION',
-            payload: position
-          });
-
-          // Update the clip duration as we record
-          const elapsedDuration = position - recordingStartPosition;
-          dispatch({
-            type: 'UPDATE_CLIP',
-            payload: {
-              trackIndex: recordingTrackIndex,
-              clipId: clipId,
-              updates: {
-                duration: elapsedDuration,
-              },
-            },
-          });
-        },
-        onRecordingComplete: (audioBuffer) => {
-          // Generate waveform from audio buffer
-          const channelData = audioBuffer.getChannelData(0);
-          const waveform = Array.from(channelData);
-
-          // Generate RMS waveform
-          const waveformRms = generateRmsWaveform(waveform);
-
-          // Update the existing clip with waveform data
-          const clipDuration = audioBuffer.duration;
-
-          // Add audio buffer to playback manager
-          const audioManager = audioManagerRef.current;
-          audioManager.addClipBuffer(clipId, audioBuffer);
-
-          dispatch({
-            type: 'UPDATE_CLIP',
-            payload: {
-              trackIndex: recordingTrackIndex,
-              clipId: clipId,
-              updates: {
-                duration: clipDuration,
-                waveform,
-                waveformRms,
-              },
-            },
-          });
-
-          // Clear recording clip ID
-          setRecordingClipId(null);
-
-          // Restart monitoring after recording completes
-          const restartMonitoring = async () => {
-            try {
-              recordingManagerRef.current = new RecordingManager({
-                onMeterUpdate: (level, peak) => {
-                  if (state.focusedTrackIndex !== null) {
-                    dispatch({
-                      type: 'UPDATE_RECORDING_METERS',
-                      payload: { level, peak }
-                    });
-                  }
-                },
-                onPlayheadUpdate: () => {},
-                onRecordingComplete: () => {},
-                onWaveformUpdate: (waveformData) => {
-                  setMicWaveformData(waveformData);
-                },
-              });
-
-              await recordingManagerRef.current.startMonitoring();
-              setIsMicMonitoring(true);
-            } catch (error) {
-              console.log('Failed to restart monitoring:', error);
-            }
-          };
-
-          restartMonitoring();
-        },
-        onWaveformUpdate: (waveformData) => {
-          setMicWaveformData(waveformData);
-        },
-        onRecordingWaveformUpdate: (waveformData, waveformRms, sampleRate) => {
-          // Calculate duration from sample count and sample rate
-          const duration = waveformData.length / sampleRate;
-
-          // Send waveform, RMS, and calculated duration
-          dispatch({
-            type: 'UPDATE_CLIP',
-            payload: {
-              trackIndex: recordingTrackIndex,
-              clipId: clipId,
-              updates: {
-                waveform: waveformData,
-                waveformRms: waveformRms,
-                duration: duration,
-              },
-            },
-          });
-        },
-      });
-
-      await recordingManagerRef.current.startRecording(recordingStartPosition);
-    }
-  };
-
-  // Cleanup recording manager on unmount
-  React.useEffect(() => {
-    return () => {
-      if (recordingManagerRef.current) {
-        recordingManagerRef.current.dispose();
-      }
-    };
-  }, []);
-
-  // Auto-scroll to keep playhead in view during playback
-  React.useEffect(() => {
-    // Only auto-scroll if playing and "Update display while playing" is enabled
-    if (!isPlaying || !updateDisplayWhilePlaying || !scrollContainerRef.current) return;
-
-    const playheadPixelPosition = state.playheadPosition * pixelsPerSecond;
-    const containerWidth = scrollContainerRef.current.clientWidth;
-    const currentScrollX = scrollContainerRef.current.scrollLeft;
-
-    if (pinnedPlayHead) {
-      // Pinned playhead mode: keep playhead at center, scroll canvas continuously
-      const centerPosition = containerWidth / 2;
-      const targetScrollX = Math.max(0, playheadPixelPosition - centerPosition);
-
-      // Only scroll if playhead has moved past center and scroll position needs updating
-      if (playheadPixelPosition > centerPosition && Math.abs(currentScrollX - targetScrollX) > 1) {
-        isProgrammaticScrollRef.current = true;
-        scrollContainerRef.current.scrollLeft = targetScrollX;
-        requestAnimationFrame(() => {
-          isProgrammaticScrollRef.current = false;
-        });
-      }
-    } else {
-      // Page turn mode: playhead moves across screen, jumps when off screen
-      // Check if playhead is off screen to the right
-      if (playheadPixelPosition > currentScrollX + containerWidth) {
-        // Page turn: scroll forward by one viewport width
-        const newScrollX = currentScrollX + containerWidth;
-        isProgrammaticScrollRef.current = true;
-        scrollContainerRef.current.scrollLeft = newScrollX;
-        requestAnimationFrame(() => {
-          isProgrammaticScrollRef.current = false;
-        });
-      }
-      // Check if playhead is off screen to the left
-      else if (playheadPixelPosition < currentScrollX) {
-        // Scroll to position playhead at 1/4 from the left edge
-        const newScrollX = Math.max(0, playheadPixelPosition - containerWidth / 4);
-        isProgrammaticScrollRef.current = true;
-        scrollContainerRef.current.scrollLeft = newScrollX;
-        requestAnimationFrame(() => {
-          isProgrammaticScrollRef.current = false;
-        });
-      }
-    }
-  }, [state.playheadPosition, isPlaying, pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead]);
 
   // Focus and select first track on initial load if there are tracks
   React.useEffect(() => {
@@ -1151,949 +420,19 @@ function CanvasDemoContent() {
     };
   }, [showFocusDebug]);
 
-  // Keyboard handler for deleting selected clips and focused tracks, and moving playhead
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle these keys if not in an input field
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      // Escape to clear time selection
-      if (e.key === 'Escape') {
-        if (state.timeSelection) {
-          e.preventDefault();
-          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-          // Clear the selection anchor and edges refs
-          selectionAnchorRef.current = null;
-          selectionEdgesRef.current = null;
-          return;
-        }
-      }
-
-      // Spacebar for play/pause (unless on an interactive element that uses spacebar)
-      if (e.key === ' ') {
-        const target = e.target as HTMLElement;
-        const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
-        const hasRole = target.getAttribute('role');
-        const isInteractive = interactiveElements.includes(target.tagName) ||
-                              hasRole === 'button' ||
-                              hasRole === 'checkbox' ||
-                              hasRole === 'menuitem' ||
-                              hasRole === 'menuitemcheckbox' ||
-                              hasRole === 'menuitemradio';
-
-        if (!isInteractive) {
-          e.preventDefault(); // Prevent page scroll
-          handlePlay();
-          return;
-        }
-      }
-
-      // "E" key to toggle effects panel
-      if (e.key === 'e' || e.key === 'E') {
-        const target = e.target as HTMLElement;
-        // Only skip if in a text input field
-        const isTextInput = target.tagName === 'INPUT' ||
-                            target.tagName === 'TEXTAREA' ||
-                            target.getAttribute('role') === 'textbox' ||
-                            target.getAttribute('contenteditable') === 'true';
-
-        if (!isTextInput) {
-          e.preventDefault();
-          setEffectsPanel(prev => {
-            if (prev) {
-              // Toggle existing panel
-              return { ...prev, isOpen: !prev.isOpen };
-            } else {
-              // Create new panel for the first selected track, or track 0 if none selected
-              const trackIndex = state.selectedTrackIndices.length > 0
-                ? state.selectedTrackIndices[0]
-                : 0;
-              return {
-                isOpen: true,
-                trackIndex,
-                left: 0,
-                top: 0,
-                height: 600,
-                width: 240,
-              };
-            }
-          });
-          return;
-        }
-      }
-
-      // F6 key navigation for flat navigation mode - skip through major blocks
-      if (e.key === 'F6' && isFlatNavigation) {
-        e.preventDefault();
-
-        // Define major blocks in order
-        const majorBlocks = [
-          () => document.querySelector('[aria-label="File"]') as HTMLElement,  // File menu
-          () => document.querySelector('[aria-label="Home"]') as HTMLElement,  // Home tab
-          () => document.querySelector('[aria-label="Play"]') as HTMLElement,  // Play button
-          () => document.querySelector('[aria-label="Add Track"]') as HTMLElement,  // Add new track
-          () => document.querySelector('[aria-label*="track controls"]') as HTMLElement,  // Track 1 header
-        ];
-
-        // Find current focused element
-        const currentElement = document.activeElement as HTMLElement;
-        let currentBlockIndex = -1;
-
-        // Determine which block we're currently in
-        for (let i = 0; i < majorBlocks.length; i++) {
-          const blockElement = majorBlocks[i]();
-          if (blockElement && (blockElement === currentElement || blockElement.contains(currentElement))) {
-            currentBlockIndex = i;
-            break;
-          }
-        }
-
-        // Move to next block (or first if we're not in any block)
-        const nextBlockIndex = e.shiftKey
-          ? (currentBlockIndex <= 0 ? majorBlocks.length - 1 : currentBlockIndex - 1)
-          : (currentBlockIndex + 1) % majorBlocks.length;
-
-        const nextBlock = majorBlocks[nextBlockIndex]();
-        if (nextBlock) {
-          nextBlock.focus();
-        }
-        return;
-      }
-
-      // Move track focus with up/down arrow keys
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        // Don't handle if focus is on a track header (it handles its own navigation)
-        const target = e.target as HTMLElement;
-        const hasGroupRole = target.getAttribute('role') === 'group';
-        if (hasGroupRole) {
-          return; // Let TrackControlPanel handle the navigation
-        }
-
-        e.preventDefault();
-
-        // If there's a focused track, move focus up or down
-        if (state.focusedTrackIndex !== null) {
-          const delta = e.key === 'ArrowDown' ? 1 : -1;
-          const newIndex = state.focusedTrackIndex + delta;
-
-          // Clamp to valid track indices
-          if (newIndex >= 0 && newIndex < state.tracks.length) {
-            dispatch({ type: 'SET_FOCUSED_TRACK', payload: newIndex });
-
-            // If Shift is held, extend/contract selection
-            if (e.shiftKey) {
-              // Set anchor on first Shift+Arrow press
-              const anchor = selectionAnchor ?? state.focusedTrackIndex;
-              if (selectionAnchor === null) {
-                setSelectionAnchor(state.focusedTrackIndex);
-              }
-
-              // Calculate range selection from anchor to newIndex
-              const start = Math.min(anchor, newIndex);
-              const end = Math.max(anchor, newIndex);
-              const newSelection: number[] = [];
-              for (let i = start; i <= end; i++) {
-                newSelection.push(i);
-              }
-              dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-            } else {
-              // Clear anchor when Shift is not held
-              setSelectionAnchor(null);
-            }
-            // Don't change selection if Shift is not held - focus moves independently
-          }
-        } else if (state.tracks.length > 0) {
-          // If no track is focused, focus the first track
-          dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
-          // Don't change selection - focus moves independently
-        }
-        return;
-      }
-
-      // Left/Right arrow keys for playhead movement and time selection manipulation
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        const activeElement = document.activeElement as HTMLElement;
-
-        // Only handle if focus is on body, canvas, label, or clip header (for time selection shortcuts)
-        // Labels need Shift+Arrow and Cmd+Shift+Arrow to work for time selection extend/reduce
-        // Clip headers should allow arrow keys to pass through for playhead movement
-        const isLabelFocused = activeElement?.classList.contains('label-wrapper');
-        const isClipHeaderFocused = activeElement?.getAttribute('role') === 'button' &&
-                                    activeElement?.getAttribute('aria-label')?.startsWith('Clip:');
-        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS' && !isLabelFocused && !isClipHeaderFocused) {
-          return; // Let the focused element handle arrow keys
-        }
-
-        const moveAmount = 0.1; // Move by 0.1 seconds
-
-        // Handle time selection manipulation with Shift or Cmd+Shift (only if selection exists)
-        if (state.timeSelection && (e.shiftKey || e.metaKey)) {
-          e.preventDefault();
-
-          // Initialize ref with current selection if not set
-          if (!selectionEdgesRef.current) {
-            selectionEdgesRef.current = {
-              startTime: state.timeSelection.startTime,
-              endTime: state.timeSelection.endTime,
-            };
-          }
-
-          if (e.shiftKey && e.metaKey) {
-          // REDUCE mode (Cmd+Shift): Trim inward
-          if (e.key === 'ArrowLeft') {
-            // Cmd+Shift+Left: Move RIGHT edge LEFT (trim from right)
-            const newEndTime = Math.max(
-              selectionEdgesRef.current.startTime + 0.1, // Min selection size
-              selectionEdgesRef.current.endTime - moveAmount
-            );
-            selectionEdgesRef.current.endTime = newEndTime;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                startTime: selectionEdgesRef.current.startTime,
-                endTime: newEndTime,
-              },
-            });
-          } else {
-            // Cmd+Shift+Right: Move LEFT edge RIGHT (trim from left)
-            const newStartTime = Math.min(
-              selectionEdgesRef.current.endTime - 0.1, // Min selection size
-              selectionEdgesRef.current.startTime + moveAmount
-            );
-            selectionEdgesRef.current.startTime = newStartTime;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                startTime: newStartTime,
-                endTime: selectionEdgesRef.current.endTime,
-              },
-            });
-          }
-        } else if (e.shiftKey) {
-          // EXTEND mode (Shift): Expand outward
-          if (e.key === 'ArrowLeft') {
-            // Shift+Left: Move LEFT edge LEFT (expand leftward)
-            const newStartTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
-            selectionEdgesRef.current.startTime = newStartTime;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                startTime: newStartTime,
-                endTime: selectionEdgesRef.current.endTime,
-              },
-            });
-          } else {
-            // Shift+Right: Move RIGHT edge RIGHT (expand rightward)
-            const newEndTime = selectionEdgesRef.current.endTime + moveAmount;
-            selectionEdgesRef.current.endTime = newEndTime;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                startTime: selectionEdgesRef.current.startTime,
-                endTime: newEndTime,
-              },
-            });
-          }
-        }
-      }
-      return;
-    }
-
-      // Clear the selection edges ref when not actively resizing
-      // This ensures fresh state for next time
-      if (selectionEdgesRef.current) {
-        selectionEdgesRef.current = null;
-      }
-
-      // Handle clip and track selection with Enter key
-      if (e.key === 'Enter') {
-        // Don't interfere with interactive elements (buttons, inputs, etc.)
-        // Also allow track headers (role="group") to handle their own Enter key
-        const target = e.target as HTMLElement;
-        const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
-        const hasRole = target.getAttribute('role');
-        const isInteractive = interactiveElements.includes(target.tagName) ||
-                              hasRole === 'button' ||
-                              hasRole === 'checkbox' ||
-                              hasRole === 'menuitem' ||
-                              hasRole === 'menuitemcheckbox' ||
-                              hasRole === 'menuitemradio' ||
-                              hasRole === 'group'; // Track headers handle their own Enter key
-
-        if (isInteractive) {
-          // Let the interactive element handle the Enter key
-          return;
-        }
-
-        // Check if any clips are selected
-        const selectedClips: Array<{ trackIndex: number; clipId: number }> = [];
-        state.tracks.forEach((track, trackIndex) => {
-          track.clips.forEach(clip => {
-            if (clip.selected) {
-              selectedClips.push({ trackIndex, clipId: clip.id });
-            }
-          });
-        });
-
-        if (selectedClips.length > 0) {
-          // Clips are selected - handle clip selection
-          e.preventDefault();
-
-          // Get the first selected clip (or last selected for range anchor)
-          const firstSelectedClip = selectedClips[0];
-
-          if (e.shiftKey && state.lastSelectedClip) {
-            // Shift+Enter: Range selection from last selected clip to first selected clip
-            dispatch({
-              type: 'SELECT_CLIP_RANGE',
-              payload: { trackIndex: state.lastSelectedClip.trackIndex, clipId: state.lastSelectedClip.clipId },
-            });
-          } else if (e.metaKey || e.ctrlKey) {
-            // Cmd/Ctrl+Enter: Toggle the first selected clip
-            dispatch({
-              type: 'TOGGLE_CLIP_SELECTION',
-              payload: { trackIndex: firstSelectedClip.trackIndex, clipId: firstSelectedClip.clipId },
-            });
-          } else {
-            // Regular Enter: Toggle selection
-            // If only one clip is selected, deselect it
-            // If multiple clips are selected, exclusively select the first one
-            if (selectedClips.length === 1) {
-              // Deselect the only selected clip
-              dispatch({ type: 'DESELECT_ALL_CLIPS' });
-            } else {
-              // Multiple clips selected - exclusively select the first one
-              dispatch({
-                type: 'SELECT_CLIP',
-                payload: { trackIndex: firstSelectedClip.trackIndex, clipId: firstSelectedClip.clipId },
-              });
-            }
-          }
-          return;
-        }
-
-        // No clips selected - fall back to track selection
-        if (state.focusedTrackIndex !== null) {
-          e.preventDefault();
-
-          // Check if the focused track is already selected
-          const isSelected = state.selectedTrackIndices.includes(state.focusedTrackIndex);
-
-          if (isSelected) {
-            // Remove from selection
-            const newSelection = state.selectedTrackIndices.filter(idx => idx !== state.focusedTrackIndex);
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-          } else {
-            // Add to selection
-            const newSelection = [...state.selectedTrackIndices, state.focusedTrackIndex];
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-          }
-        }
-        return;
-      }
-
-      // Move playhead with comma and period keys for larger jumps (or create time selection with Shift)
-      // Note: When shift is held, browser sends '<' for shift+comma and '>' for shift+period
-      if (e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>') {
-        e.preventDefault();
-        const moveAmount = 1.0; // Move by 1 second (larger jumps than arrow keys)
-        // Handle both , and < (shift+comma), . and > (shift+period)
-        const delta = (e.key === '.' || e.key === '>') ? moveAmount : -moveAmount;
-
-        if (e.shiftKey || e.key === '<' || e.key === '>') {
-          // Create or extend time selection
-          const newPlayheadPosition = Math.max(0, state.playheadPosition + delta);
-
-          if (selectionAnchorRef.current === null) {
-            // Start a new selection - set anchor to current playhead position
-            selectionAnchorRef.current = state.playheadPosition;
-
-            // Deselect all clips when making a time selection
-            dispatch({ type: 'DESELECT_ALL_CLIPS' });
-
-            // Auto-select all tracks when creating a new time selection
-            if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
-              const allTrackIndices = state.tracks.map((_, idx) => idx);
-              dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-            }
-          }
-
-          // Create selection between anchor and new playhead position
-          const newSelection = {
-            startTime: Math.min(selectionAnchorRef.current, newPlayheadPosition),
-            endTime: Math.max(selectionAnchorRef.current, newPlayheadPosition),
-          };
-          dispatch({
-            type: 'SET_TIME_SELECTION',
-            payload: newSelection,
-          });
-
-          // Always update playhead position
-          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
-        } else {
-          // Normal playhead movement (no shift) - clear the selection anchor
-          selectionAnchorRef.current = null;
-          const newPosition = Math.max(0, state.playheadPosition + delta);
-          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
-        }
-        return;
-      }
-
-      // Ctrl+K: Delete selected time range
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-
-        if (state.timeSelection) {
-          const { startTime, endTime } = state.timeSelection;
-
-          // Ensure we have tracks selected - if not, select all tracks
-          if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
-            const allTrackIndices = state.tracks.map((_, idx) => idx);
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-          }
-
-          // Dispatch DELETE_TIME_RANGE action
-          dispatch({
-            type: 'DELETE_TIME_RANGE',
-            payload: { startTime, endTime },
-          });
-
-          // Clear time selection after deletion
-          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-          // Clear selection anchor so next Shift+. starts fresh
-          selectionAnchorRef.current = null;
-          selectionEdgesRef.current = null;
-
-          toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
-        } else {
-          toast.warning('No time selection - create a time selection first (Shift+, and Shift+. or Shift+click and drag)');
-        }
-        return;
-      }
-
-      // Copy selected clips or time selection (Cmd+C / Ctrl+C)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
-        e.preventDefault();
-
-        // Priority 1: Copy time selection if it exists
-        if (state.timeSelection) {
-          const { startTime, endTime } = state.timeSelection;
-
-          // Collect all clips that intersect with the time selection
-          const clipsInSelection: any[] = [];
-          state.tracks.forEach((track, trackIndex) => {
-            track.clips.forEach(clip => {
-              const clipEnd = clip.start + clip.duration;
-              // Check if clip intersects with selection
-              if (clip.start < endTime && clipEnd > startTime) {
-                clipsInSelection.push({ ...clip, trackIndex });
-              }
-            });
-          });
-
-          if (clipsInSelection.length > 0) {
-            setClipboard({
-              clips: clipsInSelection,
-              operation: 'copy',
-              timeSelection: { startTime, endTime }
-            });
-            const duration = (endTime - startTime).toFixed(2);
-            toast.success(`Copied ${duration}s of audio from ${clipsInSelection.length} clip${clipsInSelection.length > 1 ? 's' : ''}`);
-          } else {
-            toast.warning('No audio in time selection');
-          }
-          return;
-        }
-
-        // Priority 2: Copy selected clips
-        const selectedClips: any[] = [];
-        state.tracks.forEach((track, trackIndex) => {
-          track.clips.forEach(clip => {
-            if (clip.selected) {
-              selectedClips.push({ ...clip, trackIndex });
-            }
-          });
-        });
-
-        if (selectedClips.length > 0) {
-          setClipboard({ clips: selectedClips, operation: 'copy' });
-          toast.success(`Copied ${selectedClips.length} clip${selectedClips.length > 1 ? 's' : ''}`);
-        } else {
-          toast.warning('No selection to copy');
-        }
-        return;
-      }
-
-      // Cut selected clips (Cmd+X / Ctrl+X)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'x') {
-        e.preventDefault();
-
-        // Find all selected clips across all tracks
-        const selectedClips: any[] = [];
-        state.tracks.forEach((track, trackIndex) => {
-          track.clips.forEach(clip => {
-            if (clip.selected) {
-              selectedClips.push({ ...clip, trackIndex });
-            }
-          });
-        });
-
-        if (selectedClips.length > 0) {
-          setClipboard({ clips: selectedClips, operation: 'cut' });
-
-          // Immediately remove the cut clips from tracks
-          const tracksAfterCut = state.tracks.map((track, tIndex) => ({
-            ...track,
-            clips: track.clips.filter(clip =>
-              !selectedClips.some(cutClip => cutClip.id === clip.id && cutClip.trackIndex === tIndex)
-            ),
-          }));
-
-          dispatch({ type: 'SET_TRACKS', payload: tracksAfterCut });
-          toast.success(`Cut ${selectedClips.length} clip${selectedClips.length > 1 ? 's' : ''}`);
-        }
-        return;
-      }
-
-      // Paste clips (Cmd+V / Ctrl+V)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
-        e.preventDefault();
-
-        if (!clipboard || clipboard.clips.length === 0) {
-          toast.warning('Nothing to paste');
-          return;
-        }
-
-        // Paste at playhead position on the focused track
-        const targetTrackIndex = state.focusedTrackIndex ?? 0;
-        if (targetTrackIndex < 0 || targetTrackIndex >= state.tracks.length) {
-          toast.error('No valid track to paste to');
-          return;
-        }
-
-        const pasteTime = state.playheadPosition;
-
-        // Calculate time offset based on time selection or clip start times
-        let timeOffset: number;
-        let clipsToPaste = clipboard.clips;
-
-        if (clipboard.timeSelection) {
-          // Time selection paste: align selection start to playhead
-          timeOffset = pasteTime - clipboard.timeSelection.startTime;
-
-          // Trim clips to only include the time selection range
-          clipsToPaste = clipboard.clips.map(clipData => {
-            const clipEnd = clipData.start + clipData.duration;
-            const selStart = clipboard.timeSelection!.startTime;
-            const selEnd = clipboard.timeSelection!.endTime;
-
-            // Calculate intersection with time selection
-            const trimStart = Math.max(0, selStart - clipData.start);
-            const trimEnd = Math.max(0, clipEnd - selEnd);
-            const newDuration = clipData.duration - trimStart - trimEnd;
-
-            if (newDuration <= 0) return null; // Clip doesn't intersect selection
-
-            return {
-              ...clipData,
-              start: clipData.start + trimStart,
-              duration: newDuration,
-              // Note: In a real implementation, we'd also trim waveform data and adjust envelope points
-            };
-          }).filter(Boolean);
-        } else {
-          // Whole clip paste: use earliest clip start
-          const earliestClipStart = Math.min(...clipboard.clips.map(c => c.start));
-          timeOffset = pasteTime - earliestClipStart;
-        }
-
-        // Calculate track offset to maintain relative positioning across tracks
-        const minSourceTrackIndex = Math.min(...clipboard.clips.map(c => c.trackIndex));
-        const trackOffset = targetTrackIndex - minSourceTrackIndex;
-
-        // Generate new clip IDs
-        let maxClipId = 0;
-        state.tracks.forEach(track => {
-          track.clips.forEach(clip => {
-            maxClipId = Math.max(maxClipId, clip.id);
-          });
-        });
-
-        // Create new clips with updated positions and track assignments
-        const newClipsWithTracks = clipsToPaste
-          .map((clipData, index) => {
-            const destTrackIndex = clipData.trackIndex + trackOffset;
-
-            // Skip clips that would paste outside available tracks
-            if (destTrackIndex < 0 || destTrackIndex >= state.tracks.length) {
-              return null;
-            }
-
-            return {
-              clip: {
-                ...clipData,
-                id: maxClipId + index + 1,
-                start: clipData.start + timeOffset,
-                selected: true,
-              },
-              destTrackIndex,
-            };
-          })
-          .filter((item): item is { clip: any; destTrackIndex: number } => item !== null);
-
-        // Group clips by destination track
-        const clipsByTrack = new Map<number, any[]>();
-        newClipsWithTracks.forEach(({ clip, destTrackIndex }) => {
-          if (!clipsByTrack.has(destTrackIndex)) {
-            clipsByTrack.set(destTrackIndex, []);
-          }
-          clipsByTrack.get(destTrackIndex)!.push(clip);
-        });
-
-        // Add clips to their respective tracks
-        const updatedTracks = state.tracks.map((track, index) => {
-          const clipsForThisTrack = clipsByTrack.get(index) || [];
-          return {
-            ...track,
-            clips: [
-              ...track.clips.map(c => ({ ...c, selected: false })),
-              ...clipsForThisTrack,
-            ],
-          };
-        });
-
-        dispatch({ type: 'SET_TRACKS', payload: updatedTracks });
-
-        // Note: Clipboard is NOT cleared after paste, allowing multiple pastes for both cut and copy
-        const totalPasted = newClipsWithTracks.length;
-        const tracksAffected = clipsByTrack.size;
-        const message = tracksAffected > 1
-          ? `Pasted ${totalPasted} clip${totalPasted > 1 ? 's' : ''} across ${tracksAffected} tracks`
-          : `Pasted ${totalPasted} clip${totalPasted > 1 ? 's' : ''}`;
-        toast.success(message);
-        return;
-      }
-
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-
-        // Priority 1: If there are selected labels, delete them
-        if (state.selectedLabelIds.length > 0) {
-          // Check if we should also delete time (all tracks selected + time selection exists)
-          const allTracksSelected = state.selectedTrackIndices.length === state.tracks.length;
-          const hasTimeSelection = state.timeSelection !== null;
-          const shouldDeleteTime = allTracksSelected && hasTimeSelection;
-
-          // If deleting with time selection, also delete point labels within the region's time range
-          if (shouldDeleteTime && state.timeSelection) {
-            const { startTime, endTime } = state.timeSelection;
-
-            // For each track that has a selected label
-            state.selectedLabelIds.forEach(labelId => {
-              const [trackIndexStr, labelIdStr] = labelId.split('-');
-              const trackIndex = parseInt(trackIndexStr, 10);
-              const labelIdNum = parseInt(labelIdStr, 10);
-              const track = state.tracks[trackIndex];
-
-              if (track && track.labels) {
-                // Filter out:
-                // 1. The selected label itself
-                // 2. Any point labels that fall within the time range
-                const updatedLabels = track.labels.filter(l => {
-                  // Keep if it's not the selected label
-                  if (l.id === labelIdNum) return false;
-
-                  // If it's a point label and falls within the time range, remove it
-                  if (l.startTime === l.endTime && l.startTime >= startTime && l.startTime <= endTime) {
-                    return false;
-                  }
-
-                  return true;
-                });
-
-                dispatch({
-                  type: 'UPDATE_TRACK',
-                  payload: {
-                    index: trackIndex,
-                    track: { labels: updatedLabels }
-                  }
-                });
-              }
-            });
-          } else {
-            // Normal label deletion (no time range deletion)
-            state.selectedLabelIds.forEach(labelId => {
-              const [trackIndexStr, labelIdStr] = labelId.split('-');
-              const trackIndex = parseInt(trackIndexStr, 10);
-              const labelIdNum = parseInt(labelIdStr, 10);
-
-              const track = state.tracks[trackIndex];
-              if (track && track.labels) {
-                const labelIndex = track.labels.findIndex(l => l.id === labelIdNum);
-                if (labelIndex !== -1) {
-                  const updatedLabels = [...track.labels];
-                  updatedLabels.splice(labelIndex, 1);
-
-                  dispatch({
-                    type: 'UPDATE_TRACK',
-                    payload: {
-                      index: trackIndex,
-                      track: { labels: updatedLabels }
-                    }
-                  });
-                }
-              }
-            });
-          }
-
-          // Clear label selection after deletion
-          dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
-
-          // If conditions met, also delete time range across all tracks
-          if (shouldDeleteTime && state.timeSelection) {
-            const { startTime, endTime } = state.timeSelection;
-            const deletionDuration = endTime - startTime;
-
-            // Use DELETE_TIME_RANGE to respect cut mode
-            dispatch({
-              type: 'DELETE_TIME_RANGE',
-              payload: { startTime, endTime },
-            });
-            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-            // Clear selection anchor so next Shift+. starts fresh
-            selectionAnchorRef.current = null;
-            selectionEdgesRef.current = null;
-
-            // Adjust playhead position based on cut mode
-            if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
-              // In ripple mode, if playhead is after the deletion, shift it left
-              const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
-              dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
-            }
-
-            const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
-            toast.success(`${cutModeLabel}: Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
-          } else {
-            // Clear time selection even when not deleting time
-            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-            // Clear selection anchor so next Shift+. starts fresh
-            selectionAnchorRef.current = null;
-            selectionEdgesRef.current = null;
-            toast.info(`Deleted ${state.selectedLabelIds.length} label(s)`);
-          }
-          return;
-        }
-
-        // Priority 2: If there's a time selection, perform cut operation (BEFORE checking clips)
-        if (state.timeSelection) {
-
-          const { startTime, endTime } = state.timeSelection;
-          const deletionDuration = endTime - startTime;
-
-
-          // Dispatch DELETE_TIME_RANGE action (respects cut mode: split/ripple)
-          dispatch({
-            type: 'DELETE_TIME_RANGE',
-            payload: { startTime, endTime },
-          });
-
-          // Clear time selection after deletion
-          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-          // Clear selection anchor so next Shift+. starts fresh
-          selectionAnchorRef.current = null;
-          selectionEdgesRef.current = null;
-
-          // Adjust playhead position based on cut mode
-          if (state.cutMode === 'ripple' && state.playheadPosition > startTime) {
-            // In ripple mode, if playhead is after the deletion, shift it left
-            const newPlayheadPosition = Math.max(startTime, state.playheadPosition - deletionDuration);
-            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
-          }
-
-          const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
-          toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
-          return;
-        }
-
-        // Priority 3: Delete focused clip and/or selected clips
-        // Check if a clip has keyboard focus
-        let focusedClipInfo: { clipId: string | number; trackIndex: number } | null = null;
-        const activeElement = document.activeElement;
-        if (activeElement) {
-          const clipIdStr = activeElement.getAttribute('data-clip-id');
-          const trackIndexStr = activeElement.getAttribute('data-track-index');
-          if (clipIdStr !== null && trackIndexStr !== null) {
-            // Try to parse as number, fallback to string
-            const clipId = !isNaN(Number(clipIdStr)) ? Number(clipIdStr) : clipIdStr;
-            focusedClipInfo = {
-              clipId: clipId,
-              trackIndex: parseInt(trackIndexStr, 10),
-            };
-          }
-        }
-
-        // Collect all clips to delete (union of focused + selected)
-        const clipsToDelete: Array<{ trackIndex: number; clipId: string | number }> = [];
-
-        // Add focused clip if present
-        if (focusedClipInfo) {
-          clipsToDelete.push(focusedClipInfo);
-        }
-
-        // Add all selected clips
-        state.tracks.forEach((track, trackIndex) => {
-          track.clips.forEach((clip) => {
-            if (clip.selected) {
-              // Avoid duplicates (if focused clip is also selected)
-              const isDuplicate = clipsToDelete.some(
-                item => item.clipId === clip.id && item.trackIndex === trackIndex
-              );
-              if (!isDuplicate) {
-                clipsToDelete.push({ trackIndex, clipId: clip.id });
-              }
-            }
-          });
-        });
-
-
-        // Delete all clips in the union
-        if (clipsToDelete.length > 0) {
-          // Before deleting, determine where to move focus
-          let shouldMoveFocus = false;
-          let focusTrackIndex = 0;
-          let focusClipIndex = 0;
-
-          if (focusedClipInfo) {
-            // Find the current clip index in its track
-            const track = state.tracks[focusedClipInfo.trackIndex];
-            const clipIndex = track.clips.findIndex(c => c.id === focusedClipInfo.clipId);
-
-            if (clipIndex !== -1) {
-              shouldMoveFocus = true;
-              focusTrackIndex = focusedClipInfo.trackIndex;
-
-              // Try to focus next clip, or previous if last, or do nothing if only clip
-              const remainingClips = track.clips.filter(
-                c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo.trackIndex)
-              );
-
-              if (remainingClips.length > 0) {
-                // Find next clip that won't be deleted
-                let nextClipIndex = clipIndex;
-                for (let i = clipIndex + 1; i < track.clips.length; i++) {
-                  const clip = track.clips[i];
-                  const willBeDeleted = clipsToDelete.some(
-                    item => item.clipId === clip.id && item.trackIndex === focusedClipInfo.trackIndex
-                  );
-                  if (!willBeDeleted) {
-                    nextClipIndex = i;
-                    break;
-                  }
-                }
-
-                // If no next clip found, try previous
-                if (nextClipIndex === clipIndex) {
-                  for (let i = clipIndex - 1; i >= 0; i--) {
-                    const clip = track.clips[i];
-                    const willBeDeleted = clipsToDelete.some(
-                      item => item.clipId === clip.id && item.trackIndex === focusedClipInfo.trackIndex
-                    );
-                    if (!willBeDeleted) {
-                      nextClipIndex = i;
-                      break;
-                    }
-                  }
-                }
-
-                focusClipIndex = Math.max(0, nextClipIndex - clipsToDelete.filter(
-                  item => item.trackIndex === focusedClipInfo.trackIndex
-                ).length);
-              } else {
-                shouldMoveFocus = false; // No clips left in track
-              }
-            }
-          }
-
-          // Delete all clips
-          clipsToDelete.forEach(({ trackIndex, clipId }) => {
-            dispatch({
-              type: 'DELETE_CLIP',
-              payload: { trackIndex, clipId: typeof clipId === 'string' ? Number(clipId) : clipId },
-            });
-          });
-
-          // Move focus to next clip after deletion completes
-          if (shouldMoveFocus) {
-            setTimeout(() => {
-              const trackElements = document.querySelectorAll('[data-track-index]');
-              const targetTrack = Array.from(trackElements).find(
-                el => el.getAttribute('data-track-index') === String(focusTrackIndex)
-              );
-              if (targetTrack) {
-                const clipElements = targetTrack.parentElement?.querySelectorAll('[role="button"]');
-                if (clipElements && clipElements[focusClipIndex]) {
-                  (clipElements[focusClipIndex] as HTMLElement).focus();
-                }
-              }
-            }, 50);
-          }
-
-          return;
-        }
-
-        // Priority 4: If there are selected tracks (and no labels/clips/time selected), delete the tracks
-        // Only delete the tracks if they were selected via the track header (not via clip selection)
-        if (state.selectedTrackIndices.length > 0) {
-          // Double-check no clips are selected in any track
-          const anyClipsSelected = state.tracks.some(track =>
-            track.clips.some(clip => clip.selected)
-          );
-
-          if (!anyClipsSelected) {
-            const count = state.selectedTrackIndices.length;
-            dispatch({
-              type: 'DELETE_TRACKS',
-              payload: state.selectedTrackIndices,
-            });
-            toast.info(`${count} track${count > 1 ? 's' : ''} deleted`);
-          }
-          return;
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [
-    state.tracks,
-    state.focusedTrackIndex,
-    state.playheadPosition,
-    state.selectedTrackIndices,
-    state.timeSelection,
-    state.focusedTrackIndex,
-    controlPanelHasFocus,
-    dispatch,
-    isFlatNavigation
-  ]);
-
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const scrollTop = e.currentTarget.scrollTop;
 
-    // Always update scrollX state to keep timeline ruler in sync
     setScrollX(scrollLeft);
     setScrollY(scrollTop);
 
-    // Sync vertical scroll with track headers
-    if (trackHeaderScrollRef.current && !isScrollingSyncRef.current) {
-      isScrollingSyncRef.current = true;
+    // Sync vertical scroll with track headers (skip if this was triggered by sync)
+    if (trackHeaderScrollRef.current && isScrollingSyncRef.current !== 'canvas') {
+      isScrollingSyncRef.current = 'header';
       trackHeaderScrollRef.current.scrollTop = scrollTop;
       requestAnimationFrame(() => {
-        isScrollingSyncRef.current = false;
+        if (isScrollingSyncRef.current === 'header') isScrollingSyncRef.current = null;
       });
     }
   };
@@ -2101,12 +440,12 @@ function CanvasDemoContent() {
   const handleTrackHeaderScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop;
 
-    // Sync vertical scroll with canvas
-    if (scrollContainerRef.current && !isScrollingSyncRef.current) {
-      isScrollingSyncRef.current = true;
+    // Sync vertical scroll with canvas (skip if this was triggered by sync)
+    if (scrollContainerRef.current && isScrollingSyncRef.current !== 'header') {
+      isScrollingSyncRef.current = 'canvas';
       scrollContainerRef.current.scrollTop = scrollTop;
       requestAnimationFrame(() => {
-        isScrollingSyncRef.current = false;
+        if (isScrollingSyncRef.current === 'canvas') isScrollingSyncRef.current = null;
       });
     }
   };
@@ -2155,320 +494,124 @@ function CanvasDemoContent() {
     return state.timeSelection || state.clipDurationIndicator;
   }, [spectralSelection, state.timeSelection, state.clipDurationIndicator, state.tracks]);
 
-  // Handler for creating a new project
-  const createNewProject = React.useCallback(async () => {
-    const projectId = `project-${Date.now()}`;
-    console.log('Creating new project:', projectId);
+  // Project management
+  const { createNewProject, handleSaveToComputer } = useProjectManagement({
+    dispatch, currentProjectId, state, scrollContainerRef,
+    setIsCloudProject, setCurrentProjectId,
+  });
 
-    const newProject = {
-      id: projectId,
-      title: `New Project ${new Date().toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      })}`,
-      dateCreated: Date.now(),
-      dateModified: Date.now(),
-      isCloudProject: false,
-      thumbnailUrl: undefined,
-    };
-
-    // Save to IndexedDB
-    await saveProject(newProject);
-    console.log('New project saved to IndexedDB:', projectId);
-
-    // Reset state to start fresh
-    dispatch({ type: 'RESET_STATE' });
-    setIsCloudProject(false);
-
-    setCurrentProjectId(projectId);
-    return projectId;
-  }, []);
-
-  // Handler for saving project to computer
-  const handleSaveToComputer = React.useCallback(async () => {
-    console.log('Save to computer - currentProjectId:', currentProjectId);
-
-    if (!currentProjectId) {
-      console.error('No current project ID');
-      toast.error('No project open');
+  // Generate tone handler
+  const handleGenerateTone = async () => {
+    if (state.selectedTrackIndices.length === 0) {
+      toast.error('Please select a track first');
       return;
     }
 
-    try {
-      // Get current project from IndexedDB
-      const project = await getProject(currentProjectId);
-      console.log('Retrieved project from IndexedDB:', project);
-      if (!project) {
-        console.error('Project not found for ID:', currentProjectId);
-        toast.error('Project not found');
-        return;
-      }
+    const audioManager = audioManagerRef.current;
 
-      // Capture canvas screenshot for thumbnail
-      let thumbnailUrl: string | undefined;
-      if (scrollContainerRef.current) {
-        console.log('Attempting to capture screenshot...');
-        try {
-          // Use dom-to-image-more (better CSS support than html2canvas)
-          const domtoimage = (await import('dom-to-image-more')).default;
+    for (const trackIndex of state.selectedTrackIndices) {
+      const newClipId = Date.now() + trackIndex;
+      const duration = 4.0;
+      const startTime = state.playheadPosition;
+      const track = state.tracks[trackIndex];
+      const isStereo = track.channelSplitRatio !== undefined;
+      const { buffer, waveformData } = await audioManager.generateTone(duration, 8000, 'sawtooth', isStereo);
 
-          // Capture as data URL directly (224x126 aspect ratio)
-          const dataUrl = await domtoimage.toJpeg(scrollContainerRef.current, {
-            quality: 0.8,
-            bgcolor: '#F5F5F7',
-            width: 448, // 2x for retina
-            height: 252, // 2x for retina
-            style: {
-              transform: 'scale(1)',
-              transformOrigin: 'top left',
-            },
-          });
+      audioManager.addClipBuffer(newClipId, buffer);
 
-          thumbnailUrl = dataUrl;
-          console.log('Screenshot captured');
-        } catch (error) {
-          console.error('Error capturing screenshot:', error);
-          // Continue without thumbnail
-        }
-      }
-
-      // Serialize tracks state with full clip data including waveforms
-      const projectData = {
-        tracks: state.tracks,
-        playheadPosition: state.playheadPosition,
+      const newClip = isStereo && typeof waveformData === 'object' && 'left' in waveformData ? {
+        id: newClipId,
+        name: 'Tone',
+        start: startTime,
+        duration: duration,
+        waveformLeft: waveformData.left,
+        waveformRight: waveformData.right,
+        waveformLeftRms: generateRmsWaveform(waveformData.left),
+        waveformRightRms: generateRmsWaveform(waveformData.right),
+        envelopePoints: [],
+      } : {
+        id: newClipId,
+        name: 'Tone',
+        start: startTime,
+        duration: duration,
+        waveform: Array.isArray(waveformData) ? waveformData : [],
+        waveformRms: Array.isArray(waveformData) ? generateRmsWaveform(waveformData) : [],
+        envelopePoints: [],
       };
 
-      console.log('Saving project to IndexedDB...');
-      await saveProject({
-        ...project,
-        data: projectData,
-        thumbnailUrl,
+      dispatch({
+        type: 'ADD_CLIP',
+        payload: { trackIndex, clip: newClip },
       });
-
-      console.log('Project saved successfully');
-      toast.success('Project saved');
-    } catch (error) {
-      console.error('Error saving project:', error);
-      toast.error('Failed to save project');
     }
-  }, [currentProjectId, state.tracks, state.playheadPosition]);
 
-  // Define menu items for File menu
-  const fileMenuItems: MenuItem[] = [
-    {
-      label: 'Save Project',
-      shortcut: 'Ctrl+S',
-      onClick: () => {
-        // If it's already a cloud project, show syncing toast
-        if (isCloudProject) {
-          const syncToastId = toast.syncing('Syncing to audio.com...');
-
-          // Simulate syncing progress over 3 seconds
-          const totalDuration = 3000;
-          const updateInterval = 100;
-          let progress = 0;
-          const startTime = Date.now();
-
-          const interval = setInterval(() => {
-            progress = Math.min(100, Math.floor((Date.now() - startTime) / totalDuration * 100));
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, totalDuration - elapsed);
-            const secondsRemaining = Math.ceil(remaining / 1000);
-            const timeRemainingText = secondsRemaining === 1
-              ? '1 second remaining'
-              : `${secondsRemaining} seconds remaining`;
-
-            toast.updateProgress(syncToastId, progress, timeRemainingText);
-
-            if (progress >= 100) {
-              clearInterval(interval);
-              setTimeout(() => {
-                toast.dismiss(syncToastId);
-              }, 200);
-            }
-          }, updateInterval);
-        } else {
-          // Show the save project modal for non-cloud projects (if not suppressed)
-          if (!dontShowSaveModalAgain) {
-            setIsSaveProjectModalOpen(true);
-          } else {
-            // Skip modal and save directly to computer
-            handleSaveToComputer();
-          }
-        }
-      }
-    },
-  ];
-
-  // Define menu items for Edit menu
-  const editMenuItems: MenuItem[] = [
-    {
-      label: 'Edit Labels...',
-      shortcut: 'Ctrl+B',
-      onClick: () => {
-        setIsLabelEditorOpen(true);
-      }
-    },
-    {
-      label: 'Preferences',
-      shortcut: 'Ctrl+,',
-      onClick: () => {
-        setIsPreferencesModalOpen(true);
-      }
-    },
-  ];
-
-  // Define menu items for View menu
-  const viewMenuItems: MenuItem[] = [
-    {
-      label: 'Show effects',
-      checked: effectsPanel?.isOpen ?? false,
-      onClick: () => {
-        if (effectsPanel?.isOpen) {
-          // Close effects panel
-          setEffectsPanel(null);
-        } else {
-          // Open effects panel for the first selected track, or track 0 if none selected
-          const trackIndex = state.selectedTrackIndices.length > 0
-            ? state.selectedTrackIndices[0]
-            : 0;
-          setEffectsPanel({
-            isOpen: true,
-            trackIndex,
-            left: 0,
-            top: 0,
-            height: 600,
-            width: 240,
-          });
-        }
-      }
-    },
-    {
-      label: 'Show RMS in waveform',
-      checked: showRmsInWaveform,
-      onClick: () => {
-        setShowRmsInWaveform(!showRmsInWaveform);
-      }
-    },
-    {
-      label: 'Show vertical rulers',
-      checked: showVerticalRulers,
-      onClick: () => {
-        setShowVerticalRulers(!showVerticalRulers);
-      }
-    },
-  ];
-
-  // Define menu items for Effect menu
-  const effectMenuItems: MenuItem[] = [
-    {
-      label: 'Manage Plugins...',
-      onClick: () => {
-        setIsPluginManagerOpen(true);
-      }
-    },
-  ];
-
-  // Define menu items for Generate menu
-  const generateMenuItems: MenuItem[] = [
-    {
-      label: 'Tone...',
-      onClick: async () => {
-        // Check if a track is selected
-        if (state.selectedTrackIndices.length === 0) {
-          toast.error('Please select a track first');
-          return;
-        }
-
-        // Generate a 4-second tone on the selected track(s)
-        const audioManager = audioManagerRef.current;
-
-        for (const trackIndex of state.selectedTrackIndices) {
-          // Generate a tone using Tone.js and create a clip
-          const newClipId = Date.now() + trackIndex;
-          const duration = 4.0; // 4 seconds
-          const startTime = state.playheadPosition;
-
-          // Check if track is stereo (has channelSplitRatio defined)
-          const track = state.tracks[trackIndex];
-          const isStereo = track.channelSplitRatio !== undefined;
-
-          // Generate actual audio using Tone.js
-          const { buffer, waveformData } = await audioManager.generateTone(duration, 8000, 'sawtooth', isStereo);
-
-          // Store the audio buffer for playback
-          audioManager.addClipBuffer(newClipId, buffer);
-
-          // Generate RMS waveforms (imported at top of file)
-
-          const newClip = isStereo && typeof waveformData === 'object' && 'left' in waveformData ? {
-            id: newClipId,
-            name: 'Tone',
-            start: startTime,
-            duration: duration,
-            waveformLeft: waveformData.left,
-            waveformRight: waveformData.right,
-            waveformLeftRms: generateRmsWaveform(waveformData.left),
-            waveformRightRms: generateRmsWaveform(waveformData.right),
-            envelopePoints: [],
-          } : {
-            id: newClipId,
-            name: 'Tone',
-            start: startTime,
-            duration: duration,
-            waveform: Array.isArray(waveformData) ? waveformData : [],
-            waveformRms: Array.isArray(waveformData) ? generateRmsWaveform(waveformData) : [],
-            envelopePoints: [],
-          };
-
-          console.log('[Generate Tone] Created clip:', {
-            id: newClip.id,
-            isStereo,
-            hasWaveformRms: !!(newClip as any).waveformRms,
-            hasWaveformLeftRms: !!(newClip as any).waveformLeftRms,
-            hasWaveformRightRms: !!(newClip as any).waveformRightRms,
-            waveformRmsLength: (newClip as any).waveformRms?.length,
-            waveformLeftRmsLength: (newClip as any).waveformLeftRms?.length,
-            waveformRightRmsLength: (newClip as any).waveformRightRms?.length,
-          });
-
-          // Add clip to track
-          dispatch({
-            type: 'ADD_CLIP',
-            payload: { trackIndex, clip: newClip },
-          });
-        }
-
-        // Reload clips for playback
-        audioManager.loadClips(state.tracks);
-
-        toast.success('Generated 4-second tone');
-      }
-    },
-  ];
-
-  const toolsMenuItems: MenuItem[] = [
-    {
-      label: 'Manage macros...',
-      onClick: () => {
-        setIsMacroManagerOpen(true);
-      }
-    },
-  ];
-
-  const menuDefinitions = {
-    File: fileMenuItems,
-    Edit: editMenuItems,
-    View: viewMenuItems,
-    Effect: effectMenuItems,
-    Generate: generateMenuItems,
-    Tools: toolsMenuItems,
+    audioManager.loadClips(state.tracks);
+    toast.success('Generated 4-second tone');
   };
+
+  // Sync toast handler for cloud save
+  const handleSyncToast = () => {
+    const syncToastId = toast.syncing('Syncing to audio.com...');
+    const totalDuration = 3000;
+    const updateInterval = 100;
+    let progress = 0;
+    const startTime = Date.now();
+
+    const interval = setInterval(() => {
+      progress = Math.min(100, Math.floor((Date.now() - startTime) / totalDuration * 100));
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, totalDuration - elapsed);
+      const secondsRemaining = Math.ceil(remaining / 1000);
+      const timeRemainingText = secondsRemaining === 1
+        ? '1 second remaining'
+        : `${secondsRemaining} seconds remaining`;
+
+      toast.updateProgress(syncToastId, progress, timeRemainingText);
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          toast.dismiss(syncToastId);
+        }, 200);
+      }
+    }, updateInterval);
+  };
+
+  const menuDefinitions = createMenuDefinitions({
+    isCloudProject,
+    dontShowSaveModalAgain,
+    onSyncToast: handleSyncToast,
+    onShowSaveProjectModal: () => setIsSaveProjectModalOpen(true),
+    onSaveToComputer: handleSaveToComputer,
+    onOpenLabelEditor: () => setIsLabelEditorOpen(true),
+    onOpenPreferences: () => setIsPreferencesModalOpen(true),
+    effectsPanelOpen: effectsPanel?.isOpen ?? false,
+    showRmsInWaveform,
+    showVerticalRulers,
+    selectedTrackIndices: state.selectedTrackIndices,
+    onToggleEffectsPanel: () => {
+      if (effectsPanel?.isOpen) {
+        setEffectsPanel(null);
+      } else {
+        const trackIndex = state.selectedTrackIndices.length > 0
+          ? state.selectedTrackIndices[0]
+          : 0;
+        setEffectsPanel({
+          isOpen: true,
+          trackIndex,
+          left: 0,
+          top: 0,
+          height: 600,
+          width: 240,
+        });
+      }
+    },
+    onToggleRmsInWaveform: () => setShowRmsInWaveform(!showRmsInWaveform),
+    onToggleVerticalRulers: () => setShowVerticalRulers(!showVerticalRulers),
+    onOpenPluginManager: () => setIsPluginManagerOpen(true),
+    onGenerateTone: handleGenerateTone,
+    onOpenMacroManager: () => setIsMacroManagerOpen(true),
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
@@ -2572,211 +715,52 @@ function CanvasDemoContent() {
           ) : null
         }
       />
-      {activeMenuItem !== 'home' && (
-        <Toolbar startTabIndex={5} tabGroupId="tool-toolbar">
-          {/* Transport controls */}
-          {activeMenuItem === 'export' ? (
-            // Export tab: Play, stop, loop + export buttons
-            <>
-              <ToolbarButtonGroup gap={2}>
-                <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
-                <TransportButton icon="stop" onClick={handleStop} />
-                <TransportButton
-                  icon="loop"
-                  active={loopRegionEnabled}
-                  onClick={() => {
-                    if (!loopRegionEnabled) {
-                      // Enabling loop
-                      if (loopRegionStart === null || loopRegionEnd === null) {
-                        // No existing loop region - create one
-                        if (state.timeSelection) {
-                          // Use time selection if available
-                          setLoopRegionStart(state.timeSelection.startTime);
-                          setLoopRegionEnd(state.timeSelection.endTime);
-                        } else {
-                          // Create default 4-measure loop region
-                          const secondsPerBeat = 60 / bpm;
-                          const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-                          const loopDuration = secondsPerMeasure * 4; // 4 measures
-                          setLoopRegionStart(0);
-                          setLoopRegionEnd(loopDuration);
-                        }
-                      }
-                      // If loop region already exists, just enable it without changing start/end
-                    }
-                    // Toggle enabled state (doesn't clear the loop region)
-                    setLoopRegionEnabled(!loopRegionEnabled);
-                  }}
-                />
-              </ToolbarButtonGroup>
-
-              <ToolbarDivider />
-
-              <ToolbarButtonGroup gap={8}>
-                <Button
-                  variant="secondary"
-                  size="default"
-                  icon={'\uEF25'}
-                  onClick={() => setIsShareDialogOpen(true)}
-                >
-                  Share on audio.com
-                </Button>
-              </ToolbarButtonGroup>
-
-              <ToolbarDivider />
-
-              <ToolbarButtonGroup gap={8}>
-                <Button
-                  variant="secondary"
-                  size="default"
-                  icon={'\uEF24'}
-                  onClick={() => {
-                    setInitialExportType('full-project');
-                    setIsExportModalOpen(true);
-                  }}
-                >
-                  Export audio
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="default"
-                  icon={'\uEF1F'}
-                  onClick={() => {
-                    // Validate loop region exists before opening export modal
-                    if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
-                      setAlertDialogTitle('No loop region');
-                      setAlertDialogMessage('Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.');
-                      setAlertDialogOpen(true);
-                      return;
-                    }
-                    setInitialExportType('loop-region');
-                    setIsExportModalOpen(true);
-                  }}
-                >
-                  Export loop region
-                </Button>
-              </ToolbarButtonGroup>
-            </>
-          ) : (
-            // Project tab: Show all transport controls
-            <>
-              <ToolbarButtonGroup gap={2}>
-                <TransportButton icon={isPlaying ? "pause" : "play"} onClick={handlePlay} />
-                <TransportButton icon="stop" onClick={handleStop} />
-                <TransportButton
-                  icon="record"
-                  active={state.isRecording}
-                  disabled={isPlaying}
-                  onClick={handleRecord}
-                />
-                <TransportButton icon="skip-back" disabled={isPlaying} />
-                <TransportButton icon="skip-forward" disabled={isPlaying} />
-                <TransportButton
-                  icon="loop"
-                  active={loopRegionEnabled}
-                  onClick={() => {
-                    if (!loopRegionEnabled) {
-                      // Enabling loop
-                      if (loopRegionStart === null || loopRegionEnd === null) {
-                        // No existing loop region - create one
-                        if (state.timeSelection) {
-                          // Use time selection if available
-                          setLoopRegionStart(state.timeSelection.startTime);
-                          setLoopRegionEnd(state.timeSelection.endTime);
-                        } else {
-                          // Create default 4-measure loop region
-                          const secondsPerBeat = 60 / bpm;
-                          const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-                          const loopDuration = secondsPerMeasure * 4; // 4 measures
-                          setLoopRegionStart(0);
-                          setLoopRegionEnd(loopDuration);
-                        }
-                      }
-                      // If loop region already exists, just enable it without changing start/end
-                    }
-                    setLoopRegionEnabled(!loopRegionEnabled);
-                  }}
-                />
-              </ToolbarButtonGroup>
-
-              {workspace === 'classic' && (
-                <>
-                  <ToolbarDivider />
-
-                  <ToolbarButtonGroup gap={2}>
-                    <ToggleToolButton
-                      icon="automation"
-                      isActive={state.envelopeMode}
-                      onClick={handleToggleEnvelope}
-                    />
-                  </ToolbarButtonGroup>
-
-                  <ToolbarButtonGroup gap={2}>
-                    <ToolButton icon="zoom-in" onClick={zoomIn} />
-                    <ToolButton icon="zoom-out" onClick={zoomOut} />
-                    <ToolButton icon="zoom-to-selection" onClick={zoomToSelection} />
-                    <ToolButton icon="zoom-to-fit" onClick={zoomToFitProject} />
-                    <ToolButton icon="zoom-toggle" onClick={zoomToggle} />
-                  </ToolbarButtonGroup>
-
-                  <ToolbarButtonGroup gap={2}>
-                    <ToolButton
-                      icon="cut"
-                      onClick={() => toast.info('Cut', 'Selected audio has been cut to clipboard', undefined, 6000)}
-                    />
-                    <ToolButton
-                      icon="copy"
-                      onClick={() => toast.info('Copy', 'Selected audio has been copied to clipboard', undefined, 6000)}
-                    />
-                    <ToolButton
-                      icon="paste"
-                      onClick={() => toast.info('Paste', 'Audio has been pasted from clipboard', undefined, 6000)}
-                    />
-                  </ToolbarButtonGroup>
-
-                  <ToolbarButtonGroup gap={2}>
-                    <ToolButton icon="trim" />
-                    <ToolButton icon="silence" />
-                  </ToolbarButtonGroup>
-                </>
-              )}
-
-              {workspace === 'spectral-editing' && (
-                <>
-                  <ToolbarButtonGroup gap={2}>
-                    <ToolButton icon="zoom-in" onClick={zoomIn} />
-                    <ToolButton icon="zoom-out" onClick={zoomOut} />
-                    <ToolButton icon="zoom-toggle" onClick={zoomToggle} />
-                  </ToolbarButtonGroup>
-
-                  <ToolbarButtonGroup gap={2}>
-                    <ToggleToolButton
-                      icon="waveform"
-                      isActive={state.spectrogramMode}
-                      onClick={handleToggleSpectrogram}
-                    />
-                  </ToolbarButtonGroup>
-                </>
-              )}
-
-              <ToolbarDivider />
-
-              {/* TimeCode display */}
-              <ToolbarButtonGroup gap={2}>
-                <TimeCode
-                  value={currentTime}
-                  format={timeCodeFormat}
-                  onChange={(newTime) => {
-                    // When user edits TimeCode, update the playhead position
-                    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime });
-                  }}
-                  onFormatChange={setTimeCodeFormat}
-                />
-              </ToolbarButtonGroup>
-            </>
-          )}
-        </Toolbar>
-      )}
+      <TransportToolbar
+        activeMenuItem={activeMenuItem}
+        workspace={workspace}
+        isPlaying={isPlaying}
+        isRecording={state.isRecording}
+        onPlay={handlePlay}
+        onStop={handleStop}
+        onRecord={handleRecord}
+        loopRegionEnabled={loopRegionEnabled}
+        loopRegionStart={loopRegionStart}
+        loopRegionEnd={loopRegionEnd}
+        setLoopRegionEnabled={setLoopRegionEnabled}
+        setLoopRegionStart={setLoopRegionStart}
+        setLoopRegionEnd={setLoopRegionEnd}
+        timeSelection={state.timeSelection}
+        bpm={bpm}
+        beatsPerMeasure={beatsPerMeasure}
+        envelopeMode={state.envelopeMode}
+        spectrogramMode={state.spectrogramMode}
+        onToggleEnvelope={handleToggleEnvelope}
+        onToggleSpectrogram={handleToggleSpectrogram}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onZoomToSelection={zoomToSelection}
+        onZoomToFitProject={zoomToFitProject}
+        onZoomToggle={zoomToggle}
+        currentTime={currentTime}
+        timeCodeFormat={timeCodeFormat}
+        onTimeCodeChange={(newTime) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime })}
+        onTimeCodeFormatChange={setTimeCodeFormat}
+        onShareClick={() => setIsShareDialogOpen(true)}
+        onExportAudioClick={() => {
+          setInitialExportType('full-project');
+          setIsExportModalOpen(true);
+        }}
+        onExportLoopRegionClick={() => {
+          if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
+            setAlertDialogTitle('No loop region');
+            setAlertDialogMessage('Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.');
+            setAlertDialogOpen(true);
+            return;
+          }
+          setInitialExportType('loop-region');
+          setIsExportModalOpen(true);
+        }}
+      />
 
       {activeMenuItem === 'home' ? (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -2846,780 +830,71 @@ function CanvasDemoContent() {
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', flex: 1, overflow: 'visible' }}>
-          {/* Effects Panel - Hidden on export tab */}
-          {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
-            const trackIndex = effectsPanel.trackIndex;
-            const currentTrackEffects = state.tracks[trackIndex]?.effects || [];
-            const trackEffectsEnabled = state.tracks[trackIndex]?.effectsEnabled ?? true;
-
-            return (
-              <EffectsPanel
-                isOpen={effectsPanel.isOpen}
-                mode="sidebar"
-                trackSection={{
-                  trackName: state.tracks[trackIndex]?.name || 'Track',
-                  effects: currentTrackEffects,
-                  allEnabled: trackEffectsEnabled,
-                  onToggleAll: (enabled) => {
-                    dispatch({ type: 'TOGGLE_ALL_TRACK_EFFECTS', payload: { trackIndex, enabled } });
-                  },
-                  onEffectToggle: (index, enabled) => {
-                    dispatch({
-                      type: 'UPDATE_TRACK_EFFECT',
-                      payload: { trackIndex, effectIndex: index, updates: { enabled } }
-                    });
-                  },
-                  onEffectChange: (index, _effectId) => {
-                    const effect = currentTrackEffects[index];
-                    setEffectDialog({
-                      isOpen: true,
-                      effectId: effect.id,
-                      effectName: effect.name,
-                      trackIndex,
-                      effectIndex: index,
-                    });
-                  },
-                  onEffectsReorder: (fromIndex, toIndex) => {
-                    dispatch({
-                      type: 'REORDER_TRACK_EFFECTS',
-                      payload: { trackIndex, fromIndex, toIndex }
-                    });
-                  },
-                  onAddEffect: (e) => {
-                    const button = e.currentTarget;
-                    const rect = button.getBoundingClientRect();
-                    setEffectSelectorMenu({
-                      isOpen: true,
-                      x: rect.left,
-                      y: rect.bottom + 4,
-                      trackIndex,
-                    });
-                  },
-                  onContextMenu: (_e) => {
-                    toast.info('Track effects context menu');
-                  },
-                  onRemoveEffect: (index) => {
-                    dispatch({ type: 'REMOVE_TRACK_EFFECT', payload: { trackIndex, effectIndex: index } });
-                    toast.success('Effect removed');
-                  },
-                  onReplaceEffect: (index, effectName) => {
-                    dispatch({
-                      type: 'UPDATE_TRACK_EFFECT',
-                      payload: { trackIndex, effectIndex: index, updates: { name: effectName } }
-                    });
-                    toast.success(`Effect changed to ${effectName}`);
-                  },
-                }}
-              masterSection={{
-                effects: state.masterEffects,
-                allEnabled: state.masterEffectsEnabled,
-                onToggleAll: (enabled) => {
-                  dispatch({ type: 'TOGGLE_ALL_MASTER_EFFECTS', payload: enabled });
-                },
-                onEffectToggle: (index, enabled) => {
-                  dispatch({
-                    type: 'UPDATE_MASTER_EFFECT',
-                    payload: { effectIndex: index, updates: { enabled } }
-                  });
-                },
-                onEffectChange: (index, _effectId) => {
-                  const effect = state.masterEffects[index];
-                  setEffectDialog({
-                    isOpen: true,
-                    effectId: effect.id,
-                    effectName: effect.name,
-                    trackIndex: undefined, // master effect
-                    effectIndex: index,
-                  });
-                },
-                onEffectsReorder: (fromIndex, toIndex) => {
-                  dispatch({
-                    type: 'REORDER_MASTER_EFFECTS',
-                    payload: { fromIndex, toIndex }
-                  });
-                },
-                onAddEffect: (e) => {
-                  const button = e.currentTarget;
-                  const rect = button.getBoundingClientRect();
-                  setEffectSelectorMenu({
-                    isOpen: true,
-                    x: rect.left,
-                    y: rect.bottom + 4,
-                    trackIndex: undefined, // master effect
-                  });
-                },
-                onContextMenu: (_e) => {
-                  toast.info('Master effects context menu');
-                },
-                onRemoveEffect: (index) => {
-                  dispatch({ type: 'REMOVE_MASTER_EFFECT', payload: index });
-                  toast.success('Master effect removed');
-                },
-                onReplaceEffect: (index, effectName) => {
-                  dispatch({
-                    type: 'UPDATE_MASTER_EFFECT',
-                    payload: { effectIndex: index, updates: { name: effectName } }
-                  });
-                  toast.success(`Effect changed to ${effectName}`);
-                },
-              }}
-              onClose={() => setEffectsPanel(null)}
-            />
-          );
-        })()}
-
-          {/* Track Control Side Panel - Hidden on export tab */}
-          {activeMenuItem !== 'export' && (
-            <TrackControlSidePanel
-              trackHeights={state.tracks.map(t => t.height || 114)}
-              trackViewModes={state.tracks.map(t => t.viewMode)}
-              focusedTrackIndex={state.focusedTrackIndex}
-              scrollRef={trackHeaderScrollRef}
-              onScroll={handleTrackHeaderScroll}
-              bufferSpace={(scrollContainerRef.current?.clientHeight || 0) * 0.5}
-              onTrackResize={(trackIndex, height) => {
-                dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
-              }}
-              onAddTrackType={(type: TrackType) => {
-                let trackName = `Track ${state.tracks.length + 1}`;
-                if (type === 'label') {
-                  trackName = `Label ${state.tracks.length + 1}`;
-                } else if (type === 'stereo') {
-                  trackName = `Stereo ${state.tracks.length + 1}`;
-                } else if (type === 'mono') {
-                  trackName = `Mono ${state.tracks.length + 1}`;
-                }
-
-                const newTrack = {
-                  id: state.tracks.length + 1,
-                  name: trackName,
-                  type: (type === 'label' ? 'label' : 'audio') as 'audio' | 'label',
-                  height: type === 'label' ? 76 : 114,
-                  ...(type === 'stereo' ? { channelSplitRatio: 0.5 } : {}),
-                  clips: [],
-                };
-                dispatch({ type: 'ADD_TRACK', payload: newTrack });
-                toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} track added`);
-              }}
-              showMidiOption={false}
-              onDeleteTrack={(trackIndex) => {
-                dispatch({
-                  type: 'DELETE_TRACK',
-                  payload: trackIndex,
-                });
-              }}
-              onDuplicateTrack={(trackIndex) => {
-                // Get all selected tracks, or just the clicked track if none selected
-                const trackIndices = state.selectedTrackIndices.includes(trackIndex)
-                  ? state.selectedTrackIndices
-                  : [trackIndex];
-
-                // Calculate next IDs to avoid conflicts
-                let nextClipId = Math.max(...state.tracks.flatMap(t => t.clips.map(c => c.id)), 0) + 1;
-                let nextTrackId = Math.max(...state.tracks.map(t => t.id), 0) + 1;
-
-                // Duplicate each selected track
-                trackIndices.forEach((idx) => {
-                  const originalTrack = state.tracks[idx];
-                  if (originalTrack) {
-                    // Create duplicate track with new IDs
-                    const duplicatedTrack = {
-                      ...originalTrack,
-                      id: nextTrackId++,
-                      name: `${originalTrack.name} (copy)`,
-                      clips: originalTrack.clips.map(clip => ({
-                        ...clip,
-                        id: nextClipId++,
-                      })),
-                    };
-
-                    // Add track to the end
-                    dispatch({
-                      type: 'ADD_TRACK',
-                      payload: duplicatedTrack,
-                    });
-                  }
-                });
-              }}
-              onMoveTrackUp={(trackIndex) => {
-                console.log('Move track up:', trackIndex);
-                // TODO: Implement move track up
-              }}
-              onMoveTrackDown={(trackIndex) => {
-                console.log('Move track down:', trackIndex);
-                // TODO: Implement move track down
-              }}
-              onTrackViewChange={(trackIndex, viewMode) => {
-                dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
-              }}
-              trackColors={state.tracks.map(t => t.clips[0]?.color)}
-              onTrackColorChange={(trackIndex, color) => {
-                const track = state.tracks[trackIndex];
-                track?.clips.forEach(clip => {
-                  dispatch({
-                    type: 'UPDATE_CLIP',
-                    payload: { trackIndex, clipId: clip.id, updates: { color } },
-                  });
-                });
-              }}
-              onSpectrogramSettings={() => {
-                setIsSpectrogramSettingsOpen(true);
-              }}
-            >
-            {state.tracks.map((track, index) => {
-              // Determine track type from track name (temporary until we add trackType to state)
-              let trackType: 'mono' | 'stereo' | 'label' = 'mono';
-              if (track.name.toLowerCase().includes('label')) {
-                trackType = 'label';
-              } else if (track.name.toLowerCase().includes('stereo')) {
-                trackType = 'stereo';
-              }
-
-              // Determine height state based on track height
-              const trackHeight = track.height || 114;
-              let heightState: 'default' | 'truncated' | 'collapsed';
-              if (trackHeight <= 44) {
-                heightState = 'collapsed';
-              } else if (trackHeight <= 82) {
-                heightState = 'truncated';
-              } else {
-                heightState = 'default';
-              }
-
-              return (
-                <TrackControlPanel
-                  key={track.id}
-                  trackName={track.name}
-                  trackType={trackType}
-                  volume={75}
-                  pan={0}
-                  isMuted={false}
-                  isSolo={false}
-                  isFocused={state.focusedTrackIndex === index}
-                  // Meter props - show recording levels if recording, monitoring levels if selected and monitoring, playback levels if playing
-                  meterLevel={
-                    state.isRecording && state.recordingTrackIndex === index
-                      ? state.recordingMeterLevel
-                      : isMicMonitoring && state.selectedTrackIndices.includes(index)
-                        ? state.recordingMeterLevel
-                        : isPlaying
-                          ? trackMeterLevels.get(index) || 0
-                          : 0
-                  }
-                  meterLevelLeft={
-                    state.isRecording && state.recordingTrackIndex === index
-                      ? state.recordingMeterLevel
-                      : isMicMonitoring && state.selectedTrackIndices.includes(index)
-                        ? state.recordingMeterLevel
-                        : isPlaying
-                          ? trackMeterLevels.get(index) || 0
-                          : 0
-                  }
-                  meterLevelRight={
-                    state.isRecording && state.recordingTrackIndex === index
-                      ? state.recordingMeterLevel
-                      : isMicMonitoring && state.selectedTrackIndices.includes(index)
-                        ? state.recordingMeterLevel
-                        : isPlaying
-                          ? trackMeterLevels.get(index) || 0
-                          : 0
-                  }
-                  meterClipped={state.recordingPeakLevel > 100}
-                  meterStyle="default"
-                  onMuteToggle={() => {}}
-                  onSoloToggle={() => {}}
-                  onEffectsClick={() => {
-                    // Toggle effects panel for this track
-                    const isCurrentlyOpen = effectsPanel?.isOpen && effectsPanel.trackIndex === index;
-                    setEffectsPanel(isCurrentlyOpen ? null : {
-                      isOpen: true,
-                      trackIndex: index,
-                      left: 0,
-                      top: 0,
-                      height: 0,
-                      width: 0,
-                    });
-                  }}
-                  tabIndex={isFlatNavigation ? 0 : (100 + index * 2)}
-                  onFocusChange={(hasFocus) => {
-                    // When control panel gets focus, set focus state
-                    setControlPanelHasFocus(hasFocus ? index : null);
-                    if (hasFocus) {
-                      dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
-                    }
-                  }}
-                  onNavigateVertical={(direction) => {
-                    const nextIndex = direction === 'up' ? index - 1 : index + 1;
-                    if (nextIndex >= 0 && nextIndex < state.tracks.length) {
-                      // Update focus state immediately with flushSync
-                      flushSync(() => {
-                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                      });
-                      // Clear selection anchor since Shift is not held
-                      setSelectionAnchor(null);
-                      // Find the next/previous track control panel and focus it
-                      const panels = document.querySelectorAll('[aria-label*="track controls"]');
-                      if (panels[nextIndex]) {
-                        (panels[nextIndex] as HTMLElement).focus();
-                        // Scroll the track into view
-                        (panels[nextIndex] as HTMLElement).scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'nearest',
-                        });
-                      }
-                    }
-                  }}
-                  onNavigateVerticalWithShift={(direction) => {
-                    const nextIndex = direction === 'up' ? index - 1 : index + 1;
-                    if (nextIndex >= 0 && nextIndex < state.tracks.length) {
-                      // Update focus state immediately with flushSync
-                      flushSync(() => {
-                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-
-                        // Set anchor on first Shift+Arrow press
-                        const anchor = selectionAnchor ?? index;
-                        if (selectionAnchor === null) {
-                          setSelectionAnchor(index);
-                        }
-
-                        // Calculate range selection from anchor to nextIndex
-                        const start = Math.min(anchor, nextIndex);
-                        const end = Math.max(anchor, nextIndex);
-                        const newSelection: number[] = [];
-                        for (let i = start; i <= end; i++) {
-                          newSelection.push(i);
-                        }
-                        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                      });
-
-                      // Find the next/previous track control panel and focus it
-                      const panels = document.querySelectorAll('[aria-label*="track controls"]');
-                      if (panels[nextIndex]) {
-                        (panels[nextIndex] as HTMLElement).focus();
-                        // Scroll the track into view
-                        (panels[nextIndex] as HTMLElement).scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'nearest',
-                        });
-                      }
-                    }
-                  }}
-                  onAddLabelClick={() => {
-                    // Generate a unique label ID across all tracks
-                    const allLabels = state.tracks.flatMap(t => t.labels || []);
-                    const nextLabelId = allLabels.length > 0
-                      ? Math.max(...allLabels.map(l => l.id)) + 1
-                      : 1;
-
-                    const newLabel = {
-                      id: nextLabelId,
-                      trackIndex: index,
-                      text: '',
-                      startTime: state.timeSelection?.startTime ?? state.playheadPosition,
-                      endTime: state.timeSelection?.endTime ?? state.playheadPosition,
-                    };
-
-                    dispatch({
-                      type: 'ADD_LABEL',
-                      payload: { trackIndex: index, label: newLabel }
-                    });
-                    toast.success('Label added at playhead');
-                  }}
-                  onMenuClick={(e) => {
-                    const button = e.currentTarget;
-                    const rect = button.getBoundingClientRect();
-                    setTrackContextMenu({
-                      isOpen: true,
-                      x: rect.right - 20,
-                      y: rect.top + 10,
-                      trackIndex: index,
-                      openedViaKeyboard: true, // Always true since this is triggered by Shift+F10
-                    });
-                  }}
-                  state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
-                  height={heightState}
-                  trackHeight={trackHeight}
-                  onClick={() => {
-                    dispatch({ type: 'SELECT_TRACK', payload: index });
-                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
-                    // Clear selection anchor on normal click
-                    setSelectionAnchor(null);
-                  }}
-                  onToggleSelection={() => {
-                    // Cmd/Ctrl+Click: Toggle track selection
-                    const isSelected = state.selectedTrackIndices.includes(index);
-                    if (isSelected) {
-                      // Remove from selection
-                      const newSelection = state.selectedTrackIndices.filter(i => i !== index);
-                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                    } else {
-                      // Add to selection
-                      const newSelection = [...state.selectedTrackIndices, index];
-                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                    }
-                  }}
-                  onRangeSelection={() => {
-                    // Shift+Click: Select range using anchor-based selection
-                    // Use the first selected track as anchor if no anchor is set
-                    const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : index);
-                    if (selectionAnchor === null) {
-                      setSelectionAnchor(anchor);
-                    }
-
-                    // Calculate range selection from anchor to clicked track
-                    const start = Math.min(anchor, index);
-                    const end = Math.max(anchor, index);
-                    const newSelection: number[] = [];
-                    for (let i = start; i <= end; i++) {
-                      newSelection.push(i);
-                    }
-                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  }}
-                  onTabOut={() => {
-                    // Find the first clip in THIS track specifically
-                    const trackElement = document.querySelector(`[data-track-index="${index}"]`);
-                    if (trackElement) {
-                      const firstClip = trackElement.querySelector(`[data-first-clip="true"]`) as HTMLElement;
-                      if (firstClip) {
-                        firstClip.focus();
-                      }
-                    }
-                  }}
-                />
-              );
-            })}
-          </TrackControlSidePanel>
-          )}
-
-          {/* Timeline Ruler + Canvas Area */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Timeline Ruler Row (with fixed vertical ruler header) */}
-            <div style={{ display: 'flex', flexDirection: 'row', flexShrink: 0 }}>
-              {/* Timeline Ruler - Fixed at top */}
-              <div
-                ref={canvasContainerRef}
-                style={{ position: 'relative', flex: 1, overflow: 'hidden' }}
-              >
-              <div
-                ref={timelineRulerRef}
-                style={{ width: '100%', position: 'relative' }}
-                onMouseMove={(e) => {
-                  if (timelineRulerRef.current) {
-                    const rect = timelineRulerRef.current.getBoundingClientRect();
-                    const x = e.clientX - rect.left + scrollX; // Add scrollX to convert viewport to canvas space
-                    const CLIP_CONTENT_OFFSET = 12; // Match the constant from components
-                    const timePosition = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
-                    setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
-                  }
-                }}
-                onMouseLeave={() => {
-                  setMouseCursorPosition(undefined);
-                }}
-                onClick={async (e) => {
-                  // Only handle click if "Click ruler to start playback" is enabled
-                  if (!clickRulerToStartPlayback || !timelineRulerRef.current) return;
-
-                  const rect = timelineRulerRef.current.getBoundingClientRect();
-                  const x = e.clientX - rect.left + scrollX; // Add scrollX since click is in viewport space
-                  const CLIP_CONTENT_OFFSET = 12;
-                  const clickedTime = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
-
-                  // Only proceed if clicked in valid time range
-                  if (clickedTime >= 0) {
-                    // Set playhead position to clicked time
-                    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: clickedTime });
-
-                    // Start playback from this position
-                    const audioManager = audioManagerRef.current;
-
-                    // Stop if currently playing
-                    if (audioManager.getIsPlaying()) {
-                      audioManager.stop();
-                      setIsPlaying(false);
-                    }
-
-                    // Load clips and start playback from clicked position
-                    audioManager.loadClips(state.tracks, clickedTime);
-                    await audioManager.play(clickedTime);
-                    setIsPlaying(true);
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setTimelineRulerContextMenu({
-                    isOpen: true,
-                    x: e.clientX,
-                    y: e.clientY,
-                  });
-                }}
-              >
-                <TimelineRuler
-                  pixelsPerSecond={pixelsPerSecond}
-                  scrollX={scrollX}
-                  totalDuration={timelineDuration}
-                  width={timelineWidth}
-                  height={40}
-                  timeSelection={rulerTimeSelection}
-                  spectralSelection={spectralSelection}
-                  selectionColor="rgba(112, 181, 255, 0.5)"
-                  cursorPosition={mouseCursorPosition}
-                  timeFormat={timelineFormat}
-                  bpm={bpm}
-                  beatsPerMeasure={beatsPerMeasure}
-                  loopRegionEnabled={loopRegionEnabled}
-                  loopRegionStart={loopRegionStart}
-                  loopRegionEnd={loopRegionEnd}
-                  onLoopRegionChange={(start, end) => {
-                    setLoopRegionStart(start);
-                    setLoopRegionEnd(end);
-                  }}
-                  onLoopRegionInteracting={setLoopRegionInteracting}
-                  onLoopRegionEnabledToggle={() => setLoopRegionEnabled(!loopRegionEnabled)}
-                  onLoopRegionHoverChange={setLoopRegionHovering}
-                />
-                {/* Loop region stalks in ruler (visible on hover or during interaction, only when enabled) */}
-                {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
-                  <>
-                    {/* Start stalk */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${12 + loopRegionStart * pixelsPerSecond}px`,
-                        top: 0,
-                        width: '2px',
-                        height: '40px',
-                        backgroundColor: loopRegionEnabled
-                          ? theme.audio.timeline.loopRegionBorder
-                          : theme.audio.timeline.loopRegionBorderInactive,
-                        pointerEvents: 'none',
-                        zIndex: 100,
-                      }}
-                    />
-                    {/* End stalk */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${12 + loopRegionEnd * pixelsPerSecond}px`,
-                        top: 0,
-                        width: '2px',
-                        height: '40px',
-                        backgroundColor: loopRegionEnabled
-                          ? theme.audio.timeline.loopRegionBorder
-                          : theme.audio.timeline.loopRegionBorderInactive,
-                        pointerEvents: 'none',
-                        zIndex: 100,
-                      }}
-                    />
-                  </>
-                )}
-                {/* Playhead icon only in ruler */}
-                <PlayheadCursor
-                  position={state.playheadPosition}
-                  pixelsPerSecond={pixelsPerSecond}
-                  height={0}
-                  showTopIcon={true}
-                  iconTopOffset={24}
-                  scrollX={scrollX}
-                  onPositionChange={(newPosition) => {
-                    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
-                    // Also update Transport position if paused (so resume continues from new position)
-                    const audioManager = audioManagerRef.current;
-                    if (audioManager.getIsPaused()) {
-                      audioManager.seek(newPosition);
-                    }
-                  }}
-                  minPosition={0} // Allow playhead stalk to touch the 12px gap area
-                />
-              </div>
-            </div>
-
-            {/* Fixed Vertical Ruler Header (next to timeline ruler) */}
-              {showVerticalRulers && (
-                <div style={{
-                  width: '64px',
-                  height: '40px', // Match timeline ruler height
-                  flexShrink: 0,
-                  backgroundColor: baseTheme.background.surface.elevated,
-                  borderLeft: `1px solid ${baseTheme.border.default}`,
-                  borderBottom: `1px solid ${baseTheme.border.default}`,
-                }} />
-              )}
-            </div>
-
-            {/* Canvas + Scrollable Vertical Rulers Row */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
-              {/* Canvas wrapper for custom scrollbars */}
-              <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
-                {/* Scrollable Canvas area */}
-                <div
-                  ref={scrollContainerRef}
-                  onScroll={handleScroll}
-                  className="canvas-scroll-container"
-                  tabIndex={-1}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    overflow: 'scroll',
-                    backgroundColor: theme.background.canvas.default,
-                    cursor: 'text',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                  } as React.CSSProperties}
-              onMouseMove={(e) => {
-                if (scrollContainerRef.current) {
-                  const rect = scrollContainerRef.current.getBoundingClientRect();
-                  const x = e.clientX - rect.left + scrollX;
-                  const y = e.clientY - rect.top + scrollY;
-                  const CLIP_CONTENT_OFFSET = 12;
-                  const timePosition = (x - CLIP_CONTENT_OFFSET) / 100;
-                  setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
-                  setMouseCursorY(y >= 0 ? y : undefined);
-
-                  // Check if mouse is over a track (not a gap or spacer)
-                  const TRACK_GAP = 2;
-                  const CLIP_HEADER_HEIGHT = 20;
-                  let overTrack = false;
-                  let currentY = 0;
-
-                  for (const track of state.tracks) {
-                    const trackHeight = track.height || 114;
-                    // Check if within track bounds, but not in the 20px spacer
-                    if (y >= currentY + CLIP_HEADER_HEIGHT && y < currentY + trackHeight) {
-                      overTrack = true;
-                      break;
-                    }
-                    currentY += trackHeight + TRACK_GAP;
-                  }
-
-                  setIsOverTrack(overTrack);
-                }
-              }}
-              onMouseLeave={() => {
-                setMouseCursorPosition(undefined);
-                setMouseCursorY(undefined);
-                setIsOverTrack(false);
-              }}
-            >
-              <div style={{ minWidth: `${timelineWidth}px`, minHeight: `${canvasHeight}px`, position: 'relative', cursor: 'text' }}>
-                <ThemeProvider theme={theme}>
-                  <Canvas
-                    pixelsPerSecond={pixelsPerSecond}
-                    width={timelineWidth}
-                    leftPadding={12}
-                    keyboardFocusedTrack={state.focusedTrackIndex}
-                    showRmsInWaveform={showRmsInWaveform}
-                    controlPointStyle={controlPointStyle}
-                    viewportHeight={scrollContainerRef.current?.clientHeight || 0}
-                    recordingClipId={recordingClipId}
-                    selectionAnchor={selectionAnchor}
-                    setSelectionAnchor={setSelectionAnchor}
-                    bpm={bpm}
-                    beatsPerMeasure={beatsPerMeasure}
-                    timeFormat={timelineFormat}
-                    onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
-                      setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
-                    }}
-                    onTimeSelectionMenuClick={(x, y) => {
-                      // Prevent menu from opening within 300ms of being closed
-                      const timeSinceClosed = Date.now() - contextMenuClosedTimeRef.current;
-                      if (timeSinceClosed > 300) {
-                        setTimeSelectionContextMenu({ isOpen: true, x, y });
-                      }
-                    }}
-                    onTrackFocusChange={(trackIndex, hasFocus) => {
-                      if (hasFocus) {
-                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
-                      }
-                      setControlPanelHasFocus(null);
-                    }}
-                    onHeightChange={setCanvasHeight}
-                    spectrogramScale={spectrogramScale}
-                  />
-                </ThemeProvider>
-                {/* Playhead stalk only (no icon) - extends to fill scrollable area */}
-                <PlayheadCursor
-                  position={state.playheadPosition}
-                  pixelsPerSecond={pixelsPerSecond}
-                  height={Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}
-                  showTopIcon={false}
-                />
-                {/* Loop region stalks - extend down through all tracks (visible on hover or during interaction, only when enabled) */}
-                {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
-                  <>
-                    {/* Start stalk */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${12 + loopRegionStart * pixelsPerSecond}px`,
-                        top: 0,
-                        width: '2px',
-                        height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
-                        backgroundColor: loopRegionEnabled
-                          ? theme.audio.timeline.loopRegionBorder
-                          : theme.audio.timeline.loopRegionBorderInactive,
-                        pointerEvents: 'none',
-                        zIndex: 100,
-                      }}
-                    />
-                    {/* End stalk */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${12 + loopRegionEnd * pixelsPerSecond}px`,
-                        top: 0,
-                        width: '2px',
-                        height: `${Math.max(canvasHeight, scrollContainerRef.current?.clientHeight || 1000)}px`,
-                        backgroundColor: loopRegionEnabled
-                          ? theme.audio.timeline.loopRegionBorder
-                          : theme.audio.timeline.loopRegionBorderInactive,
-                        pointerEvents: 'none',
-                        zIndex: 100,
-                      }}
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-
-              {/* Custom Scrollbars */}
-              <CustomScrollbar
-                contentRef={scrollContainerRef}
-                orientation="horizontal"
-                height={20}
-                className="custom-scrollbar--canvas-horizontal"
-              />
-              <CustomScrollbar
-                contentRef={scrollContainerRef}
-                orientation="vertical"
-                width={20}
-                className="custom-scrollbar--canvas-vertical"
-              />
-            </div>
-
-              {/* Vertical Amplitude Rulers */}
-              {showVerticalRulers && (
-                <VerticalRulerPanel
-                  tracks={state.tracks.map((track, index) => ({
-                    id: track.id.toString(),
-                    height: track.height || 114,
-                    selected: state.selectedTrackIndices.includes(index),
-                    focused: state.focusedTrackIndex === index,
-                    stereo: track.channelSplitRatio !== undefined,
-                    viewMode: track.viewMode,
-                    trackType: track.type,
-                    channelSplitRatio: track.channelSplitRatio,
-                  }))}
-                  width={64}
-                  headerHeight={0}
-                  scrollY={scrollY}
-                  cursorY={isOverTrack ? mouseCursorY : undefined}
-                  spectrogramScale={spectrogramScale}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        <EditorLayout
+          state={state}
+          dispatch={dispatch}
+          activeMenuItem={activeMenuItem}
+          effectsPanel={effectsPanel}
+          setEffectsPanel={setEffectsPanel}
+          setEffectDialog={setEffectDialog}
+          setEffectSelectorMenu={setEffectSelectorMenu}
+          scrollX={scrollX}
+          scrollY={scrollY}
+          onScroll={handleScroll}
+          onTrackHeaderScroll={handleTrackHeaderScroll}
+          scrollContainerRef={scrollContainerRef}
+          trackHeaderScrollRef={trackHeaderScrollRef}
+          pixelsPerSecond={pixelsPerSecond}
+          timelineWidth={timelineWidth}
+          timelineDuration={timelineDuration}
+          timelineFormat={timelineFormat}
+          bpm={bpm}
+          beatsPerMeasure={beatsPerMeasure}
+          showRmsInWaveform={showRmsInWaveform}
+          controlPointStyle={controlPointStyle}
+          spectrogramScale={spectrogramScale}
+          showVerticalRulers={showVerticalRulers}
+          setIsSpectrogramSettingsOpen={setIsSpectrogramSettingsOpen}
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
+          trackMeterLevels={trackMeterLevels}
+          isMicMonitoring={isMicMonitoring}
+          recordingClipId={recordingClipId}
+          selectionAnchor={selectionAnchor}
+          setSelectionAnchor={setSelectionAnchor}
+          controlPanelHasFocus={controlPanelHasFocus}
+          setControlPanelHasFocus={setControlPanelHasFocus}
+          mouseCursorPosition={mouseCursorPosition}
+          setMouseCursorPosition={setMouseCursorPosition}
+          mouseCursorY={mouseCursorY}
+          setMouseCursorY={setMouseCursorY}
+          isOverTrack={isOverTrack}
+          setIsOverTrack={setIsOverTrack}
+          loopRegionEnabled={loopRegionEnabled}
+          setLoopRegionEnabled={setLoopRegionEnabled}
+          loopRegionStart={loopRegionStart}
+          setLoopRegionStart={setLoopRegionStart}
+          loopRegionEnd={loopRegionEnd}
+          setLoopRegionEnd={setLoopRegionEnd}
+          loopRegionInteracting={loopRegionInteracting}
+          setLoopRegionInteracting={setLoopRegionInteracting}
+          loopRegionHovering={loopRegionHovering}
+          setLoopRegionHovering={setLoopRegionHovering}
+          setClipContextMenu={setClipContextMenu}
+          setTimeSelectionContextMenu={setTimeSelectionContextMenu}
+          setTrackContextMenu={setTrackContextMenu}
+          setTimelineRulerContextMenu={setTimelineRulerContextMenu}
+          contextMenuClosedTimeRef={contextMenuClosedTimeRef}
+          audioManagerRef={audioManagerRef}
+          rulerTimeSelection={rulerTimeSelection}
+          spectralSelection={spectralSelection}
+          theme={theme}
+          baseTheme={baseTheme}
+          canvasHeight={canvasHeight}
+          setCanvasHeight={setCanvasHeight}
+          clickRulerToStartPlayback={clickRulerToStartPlayback}
+          isFlatNavigation={isFlatNavigation}
+        />
       )}
 
       {/* Selection Toolbar - Hidden in Home view */}
@@ -3664,1452 +939,158 @@ function CanvasDemoContent() {
       {/* Toast Container */}
       <ToastContainer />
 
-      {/* Welcome Dialog */}
-      <WelcomeDialog
-        isOpen={welcomeDialog.isOpen}
-        onClose={welcomeDialog.onClose}
-      />
-
-      {/* Effect Dialog */}
-      {effectDialog && (() => {
-        // Get the current effect's enabled state from global state
-        const effect = effectDialog.trackIndex !== undefined
-          ? state.tracks[effectDialog.trackIndex]?.effects?.[effectDialog.effectIndex]
-          : state.masterEffects[effectDialog.effectIndex];
-
-        return (
-          <EffectDialog
-            effectName={effectDialog.effectName}
-            isOpen={effectDialog.isOpen}
-            onClose={() => setEffectDialog(null)}
-            headerSlot={
-              <EffectHeader
-                automationEnabled={effect?.enabled ?? true}
-                onToggleAutomation={(enabled) => {
-                  // Update the effect's enabled state in global state
-                  if (effectDialog.trackIndex !== undefined) {
-                    dispatch({
-                      type: 'UPDATE_TRACK_EFFECT',
-                      payload: {
-                        trackIndex: effectDialog.trackIndex,
-                        effectIndex: effectDialog.effectIndex,
-                        updates: { enabled }
-                      }
-                    });
-                  } else {
-                    dispatch({
-                      type: 'UPDATE_MASTER_EFFECT',
-                      payload: {
-                        effectIndex: effectDialog.effectIndex,
-                        updates: { enabled }
-                      }
-                    });
-                  }
-                }}
-                presetName="Default preset"
-                onSavePreset={() => toast.info('Save preset')}
-                onUndo={() => toast.info('Undo')}
-                onDeletePreset={() => toast.info('Delete preset')}
-                onMoreOptions={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setEffectContextMenu({
-                    isOpen: true,
-                    x: rect.right,
-                    y: rect.bottom,
-                  });
-                }}
-              />
-            }
-            onOk={() => {
-              toast.success(`Applied ${effectDialog.effectName}`);
-            }}
-            onPreview={() => {
-              toast.info(`Previewing ${effectDialog.effectName}`);
-            }}
-            hideFooter={effectDialog.effectName === 'Reverb'}
-          >
-            {effectDialog.effectName === 'Reverb' && (() => {
-              // Generate effect ID from track/master and effect index
-              const effectId = effectDialog.trackIndex !== undefined
-                ? `track-${effectDialog.trackIndex}-effect-${effectDialog.effectIndex}`
-                : `master-effect-${effectDialog.effectIndex}`;
-
-              return (
-                <ReverbEffect
-                  onChange={(params) => {
-                    audioEngine.updateReverbParams(effectId, params);
-                  }}
-                />
-              );
-            })()}
-            {effectDialog.effectName === 'Compressor' && <AmplifyEffect />}
-            {effectDialog.effectName === 'Limiter' && <AmplifyEffect />}
-          </EffectDialog>
-        );
-      })()}
-
-      {/* Effect Dialog Context Menu */}
-      {effectDialog && (() => {
-        // Look up the effect in the registry to determine if it's 3rd party
-        const allEffects = Object.values(EFFECT_REGISTRY).flat();
-        const effectDef = allEffects.find(e => e.name === effectDialog.effectName);
-        const isThirdParty = effectDef?.provider !== 'Audacity';
-
-        console.log('Effect Dialog:', {
-          effectName: effectDialog.effectName,
-          effectDef,
-          provider: effectDef?.provider,
-          isThirdParty
-        });
-
-        return (
-          <EffectDialogContextMenu
-            isOpen={effectContextMenu.isOpen}
-            x={effectContextMenu.x}
-            y={effectContextMenu.y}
-            onClose={() => setEffectContextMenu({ ...effectContextMenu, isOpen: false })}
-            onSavePreset={() => {
-              toast.success('Preset saved');
-              console.log('Save preset clicked');
-            }}
-            onDeletePreset={() => {
-              toast.info('Delete preset clicked');
-              console.log('Delete preset clicked');
-            }}
-            canDelete={false}
-            factoryPresets={['Default', 'Heavy', 'Light', 'Room', 'Hall', 'Cathedral']}
-            onSelectFactoryPreset={(preset) => {
-              toast.info(`Factory preset selected: ${preset}`);
-              console.log('Factory preset selected:', preset);
-            }}
-            onImport={() => {
-              toast.info('Import clicked');
-              console.log('Import clicked');
-            }}
-            onExport={() => {
-              toast.info('Export clicked');
-              console.log('Export clicked');
-            }}
-            onShowVendorUI={() => {
-              setShowVendorUI(!showVendorUI);
-              toast.info(showVendorUI ? 'Vendor UI hidden' : 'Vendor UI shown');
-            }}
-            showVendorUI={showVendorUI}
-            onOptions={() => {
-              setIsVSTOptionsDialogOpen(true);
-            }}
-            isThirdParty={isThirdParty}
-          />
-        );
-      })()}
-
-      {/* Share Audio Dialog */}
-      <Dialog
-        isOpen={isShareDialogOpen}
-        title="Share audio to Cloud"
-        os={preferences.operatingSystem}
-        onClose={() => setIsShareDialogOpen(false)}
-        width={400}
-        minHeight={0}
-        headerContent={
-          <SignInActionBar
-            signedIn={isSignedIn}
-            userName="Alex Dawson"
-            onSignOut={() => setIsSignedIn(false)}
-          />
-        }
-        footer={
-          <DialogFooter
-            primaryText="Done"
-            secondaryText="Cancel"
-            onPrimaryClick={() => {
-              if (isSignedIn) {
-                const title = projectName.trim();
-                setIsShareDialogOpen(false);
-                setIsSyncingDialogOpen(true);
-
-                const mixdownToastId = toast.progress('Mixing down audio...');
-
-                (async () => {
-                  try {
-                    // Run the actual mixdown
-                    const { blob, duration, waveformData } = await audioManagerRef.current.mixdown(state.tracks);
-
-                    toast.updateProgress(mixdownToastId, 50, 'Uploading to cloud...');
-
-                    // Simulate upload delay (replace with real upload in production)
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-
-                    toast.updateProgress(mixdownToastId, 100, 'Done');
-
-                    // Format duration as mm:ss
-                    const mins = Math.floor(duration / 60);
-                    const secs = Math.floor(duration % 60);
-                    const durationStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-
-                    // Format file size
-                    const sizeKB = blob.size / 1024;
-                    const sizeStr = sizeKB > 1024
-                      ? `${(sizeKB / 1024).toFixed(1)} MB`
-                      : `${Math.round(sizeKB)} KB`;
-
-                    // Create a blob URL for local playback
-                    const blobUrl = URL.createObjectURL(blob);
-
-                    // Add to cloud audio files list
-                    setCloudAudioFiles(prev => [{
-                      id: `audio-${Date.now()}`,
-                      title,
-                      dateText: 'TODAY',
-                      duration: durationStr,
-                      size: sizeStr,
-                      blobUrl,
-                      waveformData,
-                    }, ...prev]);
-
-                    setTimeout(() => {
-                      toast.dismiss(mixdownToastId);
-                      toast.success(
-                        'Audio shared to cloud!',
-                        'Your mixdown is available in Cloud audio files.',
-                        [{ label: 'View on audio.com', onClick: () => console.log('View on audio.com') }],
-                        0
-                      );
-                    }, 200);
-                  } catch (err) {
-                    toast.dismiss(mixdownToastId);
-                    toast.error(`Mixdown failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                  }
-                })();
-              } else if (projectName.trim()) {
-                // User needs to sign in, open Create Account dialog on top
-                setIsCreateAccountOpen(true);
-              } else {
-                toast.error('Please enter a track title');
-              }
-            }}
-            onSecondaryClick={() => {
-              setIsShareDialogOpen(false);
-              setProjectName('');
-            }}
-            primaryDisabled={!projectName.trim()}
-          />
-        }
-      >
-        <LabeledInput
-          label="Track title"
-          value={projectName}
-          onChange={setProjectName}
-          placeholder="Enter track title"
-          width="100%"
-        />
-      </Dialog>
-
-      {/* Save Project to Cloud Dialog */}
-      <Dialog
-        isOpen={isSaveToCloudDialogOpen}
-        title="Save project to Cloud"
-        os={preferences.operatingSystem}
-        onClose={() => setIsSaveToCloudDialogOpen(false)}
-        width={400}
-        minHeight={0}
-        headerContent={
-          <SignInActionBar
-            signedIn={isSignedIn}
-            userName="Alex Dawson"
-            onSignOut={() => setIsSignedIn(false)}
-          />
-        }
-        footer={
-          <DialogFooter
-            primaryText="Done"
-            secondaryText="Cancel"
-            onPrimaryClick={() => {
-              if (isSignedIn) {
-                setIsSaveToCloudDialogOpen(false);
-                setIsSyncingDialogOpen(true);
-                setIsCloudUploading(true);
-
-                // Optimistically add project to list immediately with isUploading state + thumbnail
-                if (currentProjectId) {
-                  (async () => {
-                    // Capture thumbnail now while we're still on the project view
-                    let thumbnailUrl: string | undefined;
-                    if (scrollContainerRef.current) {
-                      try {
-                        const domtoimage = (await import('dom-to-image-more')).default;
-                        thumbnailUrl = await domtoimage.toJpeg(scrollContainerRef.current, {
-                          quality: 0.8,
-                          bgcolor: '#F5F5F7',
-                          width: 448,
-                          height: 252,
-                          style: { transform: 'scale(1)', transformOrigin: 'top left' },
-                        });
-                      } catch {
-                        // Continue without thumbnail
-                      }
-                    }
-                    const proj = await getProject(currentProjectId);
-                    const projectData = { tracks: state.tracks, playheadPosition: 0 };
-                    if (proj) {
-                      await saveProject({ ...proj, title: cloudProjectName.trim() || proj.title, isUploading: true, thumbnailUrl: thumbnailUrl ?? proj.thumbnailUrl, data: projectData });
-                    } else {
-                      await saveProject({
-                        id: currentProjectId,
-                        title: cloudProjectName.trim() || 'Untitled Project',
-                        dateCreated: Date.now(),
-                        dateModified: Date.now(),
-                        isCloudProject: false,
-                        isUploading: true,
-                        thumbnailUrl,
-                        data: projectData,
-                      });
-                    }
-                    const updated = await getProjects();
-                    setIndexedDBProjects(updated);
-                  })();
-                }
-
-                const uploadToastId = toast.progress('Uploading audio to cloud...');
-
-                const totalDuration = 10000;
-                const updateInterval = 100;
-                let progress = 0;
-                const startTime = Date.now();
-
-                const interval = setInterval(() => {
-                  progress += 1;
-                  const elapsed = Date.now() - startTime;
-                  const remaining = Math.max(0, totalDuration - elapsed);
-                  const secondsRemaining = Math.ceil(remaining / 1000);
-                  const timeRemainingText = secondsRemaining === 1
-                    ? '1 second remaining'
-                    : `${secondsRemaining} seconds remaining`;
-
-                  toast.updateProgress(uploadToastId, progress, timeRemainingText);
-
-                  if (progress >= 100) {
-                    clearInterval(interval);
-                    setTimeout(async () => {
-                      toast.dismiss(uploadToastId);
-                      setIsCloudUploading(false);
-                      setIsCloudProject(true);
-                      // Persist cloud project status to IndexedDB so it survives project switching
-                      if (currentProjectId) {
-                        const proj = await getProject(currentProjectId);
-                        if (proj) {
-                          await saveProject({ ...proj, isCloudProject: true, isUploading: false, data: proj.data ?? { tracks: state.tracks, playheadPosition: 0 } });
-                          // Reload so HomeTab cloud projects tab reflects the change
-                          const updated = await getProjects();
-                          setIndexedDBProjects(updated);
-                        }
-                      }
-                      toast.success(
-                        'Project saved to cloud!',
-                        'All saved changes will now sync to the cloud. You can access your project from any device.',
-                        [
-                          { label: 'View on audio.com', onClick: () => console.log('View on audio.com') }
-                        ],
-                        0
-                      );
-                    }, 200);
-                  }
-                }, updateInterval);
-              } else if (cloudProjectName.trim()) {
-                setIsCreateAccountOpen(true);
-              } else {
-                toast.error('Please enter a project name');
-              }
-            }}
-            onSecondaryClick={() => {
-              setIsSaveToCloudDialogOpen(false);
-              setCloudProjectName('');
-            }}
-            primaryDisabled={!cloudProjectName.trim()}
-          />
-        }
-      >
-        <LabeledInput
-          label="Project name"
-          value={cloudProjectName}
-          onChange={setCloudProjectName}
-          placeholder="Enter project name"
-          width="100%"
-        />
-      </Dialog>
-
-      {/* Create Account Dialog */}
-      <Dialog
-        isOpen={isCreateAccountOpen}
-        title={authMode === 'signin' ? 'Sign in to cloud' : 'Create cloud account'}
-        os={preferences.operatingSystem}
-        onClose={() => setIsCreateAccountOpen(false)}
-        width={420}
-        footer={
-          <DialogFooter
-            primaryText="Continue"
-            secondaryText="Cancel"
-            onPrimaryClick={() => {
-              // Validate fields are filled
-              const hasEmailError = !email.trim();
-              const hasPasswordError = !password.trim();
-
-              setEmailError(hasEmailError);
-              setPasswordError(hasPasswordError);
-
-              if (hasEmailError || hasPasswordError) {
-                toast.error('Please fill in all fields');
-                return;
-              }
-
-              // Check for correct credentials
-              if (email === 'admin' && password === 'password') {
-                setIsCreateAccountOpen(false);
-                setIsSignedIn(true);
-                setEmail('');
-                setPassword('');
-                setEmailError(false);
-                setPasswordError(false);
-                setValidationErrorMessage('');
-              } else {
-                setEmailError(true);
-                setPasswordError(true);
-                setValidationErrorMessage('Incorrect email or password. Please try again');
-              }
-            }}
-            onSecondaryClick={() => {
-              setIsCreateAccountOpen(false);
-              setEmail('');
-              setPassword('');
-              setEmailError(false);
-              setPasswordError(false);
-              setValidationErrorMessage('');
-            }}
-          />
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <p style={{ fontSize: '12px', lineHeight: '16px', margin: 0 }}>
-            {authMode === 'signin'
-              ? 'Sign in to save to the cloud'
-              : 'Create a free cloud storage account to access your projects and audio from any device'
-            }
-          </p>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <SocialSignInButton
-              provider="google"
-              onClick={() => {
-                setIsCreateAccountOpen(false);
-                setIsSignedIn(true);
-                setEmail('');
-                setPassword('');
-              }}
-            />
-            <SocialSignInButton
-              provider="facebook"
-              onClick={() => {
-                setIsCreateAccountOpen(false);
-                setIsSignedIn(true);
-                setEmail('');
-                setPassword('');
-              }}
-            />
-          </div>
-
-          <LabeledFormDivider label="Or use email and password" />
-
-          <LabeledInput
-            label="Email"
-            value={email}
-            onChange={(value) => {
-              setEmail(value);
-              setEmailError(false);
-              setValidationErrorMessage('');
-            }}
-            placeholder="Enter email"
-            width="100%"
-            type="email"
-            error={emailError}
-          />
-
-          <LabeledInput
-            label="Password"
-            value={password}
-            onChange={(value) => {
-              setPassword(value);
-              setPasswordError(false);
-              setValidationErrorMessage('');
-            }}
-            placeholder="Enter password"
-            width="100%"
-            type="password"
-            error={passwordError}
-          />
-
-          {authMode === 'signin' && (
-            <div style={{ marginTop: '-8px' }}>
-              <TextLink onClick={() => toast.info('Forgot password clicked')}>
-                Forgot your password?
-              </TextLink>
-            </div>
-          )}
-
-          {validationErrorMessage && (
-            <div style={{
-              fontSize: '12px',
-              lineHeight: 'normal',
-              color: '#c41e3a',
-              marginTop: '-8px'
-            }}>
-              {validationErrorMessage}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '4px', fontSize: '12px', lineHeight: 'normal' }}>
-            <span>{authMode === 'signin' ? 'Need an account?' : 'Already have an account?'}</span>
-            <TextLink onClick={() => setAuthMode(authMode === 'signin' ? 'create' : 'signin')}>
-              {authMode === 'signin' ? 'Create cloud account' : 'Sign in here'}
-            </TextLink>
-          </div>
-        </div>
-      </Dialog>
-
-      {/* Syncing Your Project Dialog */}
-      <Dialog
-        isOpen={isSyncingDialogOpen}
-        os={preferences.operatingSystem}
-        onClose={() => {
-          setIsSyncingDialogOpen(false);
-          setIsShareDialogOpen(false);
-          setProjectName('');
-        }}
-        title="Share audio to Cloud"
-        width={400}
-        footer={
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '8px',
-            width: '100%',
-            boxSizing: 'border-box',
-            backgroundColor: 'var(--background-surface-bg-surface-primary-idle, #f8f8f9)',
-            borderTop: '1px solid var(--stroke-main-stroke-primary, #d4d5d9)',
-            flexShrink: 0
-          }}>
-            <LabeledCheckbox
-              label="Don't show this again"
-              checked={dontShowSyncAgain}
-              onChange={setDontShowSyncAgain}
-            />
-
-            {/* OK Button */}
-            <Button
-              variant="primary"
-              size="default"
-              onClick={() => {
-                setIsSyncingDialogOpen(false);
-                setProjectName('');
-              }}
-            >
-              OK
-            </Button>
-          </div>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 'var(--font-size-body-bold, 12px)',
-            fontWeight: 600,
-            lineHeight: '16px',
-            color: 'var(--text-txt-primary, #14151a)'
-          }}>
-            Uploading audio to cloud
-          </div>
-          <div style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 'var(--font-size-body, 12px)',
-            fontWeight: 400,
-            lineHeight: '16px',
-            color: 'var(--text-txt-primary, #14151a)'
-          }}>
-            Your audio is being mixed down and uploaded to the cloud. You can check the upload status in the bottom right corner of Audacity at any time.
-          </div>
-        </div>
-      </Dialog>
-
-      {/* Save Project Modal */}
-      <SaveProjectModal
-        isOpen={isSaveProjectModalOpen}
-        onClose={() => setIsSaveProjectModalOpen(false)}
-        onSaveToCloud={() => {
-          setIsSaveProjectModalOpen(false);
-          // Pre-fill with current project title
-          const currentTitle = indexedDBProjects.find(p => p.id === currentProjectId)?.title ?? '';
-          setCloudProjectName(currentTitle);
-          setIsSaveToCloudDialogOpen(true);
-        }}
-        onSaveToComputer={async () => {
-          setIsSaveProjectModalOpen(false);
-          await handleSaveToComputer();
-        }}
-        dontShowAgain={dontShowSaveModalAgain}
-        onDontShowAgainChange={setDontShowSaveModalAgain}
-        cloudImageUrl="/saveToCloud.png"
-        computerImageUrl="/saveToComputer.png"
-        os={preferences.operatingSystem}
-      />
-
-      {/* Preferences Modal */}
-      <PreferencesModal
-        isOpen={isPreferencesModalOpen}
-        onClose={() => setIsPreferencesModalOpen(false)}
-        os={preferences.operatingSystem}
-        zoomToggleLevel1={zoomToggleLevel1}
-        onZoomToggleLevel1Change={setZoomToggleLevel1}
-        zoomToggleLevel2={zoomToggleLevel2}
-        onZoomToggleLevel2Change={setZoomToggleLevel2}
-        onResetWarnings={() => {
-          setDontShowSaveModalAgain(false);
-          toast.success('Warning dialogs reset');
-        }}
-      />
-
-      {/* Plugin Browser Dialog */}
-      <PluginBrowserDialog
-        isOpen={isPluginBrowserOpen}
-        onClose={() => setIsPluginBrowserOpen(false)}
-        os={preferences.operatingSystem}
-      />
-
-      {/* Macro Manager Dialog */}
-      <MacroManager
-        isOpen={isMacroManagerOpen}
-        macros={macros}
-        selectedMacroId={selectedMacroId}
-        onClose={() => setIsMacroManagerOpen(false)}
-        onSelectMacro={(macroId) => setSelectedMacroId(macroId)}
-        onAddMacro={(name) => {
-          const newMacro = {
-            id: `macro-${Date.now()}`,
-            name,
-            steps: [
-              { command: 'END', parameters: '' },
-            ]
-          };
-          setMacros([...macros, newMacro]);
-          setSelectedMacroId(newMacro.id); // Auto-select the newly created macro
-        }}
-        onRenameMacro={(macroId, newName) => {
-          setMacros(macros.map(m => m.id === macroId ? { ...m, name: newName } : m));
-        }}
-        onDeleteMacro={(macroId) => {
-          setMacros(macros.filter(m => m.id !== macroId));
-          // If the deleted macro was selected, clear selection
-          if (selectedMacroId === macroId) {
-            setSelectedMacroId(undefined);
-          }
-        }}
-        onAddCommand={(macroId, command) => {
-          setMacros(macros.map(m => {
-            if (m.id === macroId) {
-              return {
-                ...m,
-                steps: [...m.steps, { command: command.name, parameters: '' }]
-              };
-            }
-            return m;
-          }));
-        }}
-        availableCommands={availableCommands}
-        os={preferences.operatingSystem}
-      />
-
-      {/* Audio Setup Context Menu */}
-      {audioSetupMenuAnchor && (
-        <div
-          style={{
-            position: 'fixed',
-            top: audioSetupMenuAnchor.y,
-            left: audioSetupMenuAnchor.x,
-            zIndex: 10000,
-            minWidth: '220px',
-          }}
-          onMouseLeave={() => setAudioSetupMenuAnchor(null)}
-        >
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid #d0d0d0',
-              borderRadius: '4px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-              padding: '4px 0',
-            }}
-          >
-            <ContextMenuItem
-              label="Host"
-              hasSubmenu
-              onClick={() => {}}
-            />
-            <ContextMenuItem
-              label={`Playback device: ${selectedPlaybackDevice}`}
-              hasSubmenu
-              onClick={() => {}}
-            >
-              {availableAudioOutputs.map((device) => (
-                <ContextMenuItem
-                  key={device.deviceId}
-                  label={device.label || 'Unknown Device'}
-                  icon={selectedPlaybackDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
-                  onClick={async () => {
-                    setSelectedPlaybackDevice(device.label || 'Unknown Device');
-                    setAudioSetupMenuAnchor(null);
-
-                    // Actually route audio to the selected device
-                    try {
-                      const audioManager = audioManagerRef.current;
-                      await audioManager.setAudioOutputDevice(device.deviceId);
-                      toast.success(`Playback device: ${device.label || 'Unknown Device'}`);
-                    } catch (error) {
-                      toast.error('Failed to set playback device. Your browser may not support this feature.');
-                    }
-                  }}
-                />
-              ))}
-            </ContextMenuItem>
-            <ContextMenuItem
-              label={`Recording device: ${selectedRecordingDevice}`}
-              hasSubmenu
-              onClick={() => {}}
-            >
-              {availableAudioInputs.map((device) => (
-                <ContextMenuItem
-                  key={device.deviceId}
-                  label={device.label || 'Unknown Device'}
-                  icon={selectedRecordingDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
-                  onClick={() => {
-                    setSelectedRecordingDevice(device.label || 'Unknown Device');
-                    setAudioSetupMenuAnchor(null);
-                    toast.success(`Recording device: ${device.label || 'Unknown Device'}`);
-                  }}
-                />
-              ))}
-            </ContextMenuItem>
-            <ContextMenuItem
-              label="Recording channels"
-              hasSubmenu
-              onClick={() => {}}
-            />
-            <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
-            <ContextMenuItem
-              label="Rescan audio devices"
-              onClick={() => {
-                toast.info('Rescanning audio devices...');
-                setAudioSetupMenuAnchor(null);
-              }}
-            />
-            <ContextMenuItem
-              label="Audio settings"
-              onClick={() => {
-                setAudioSetupMenuAnchor(null);
-                toast.info('Opening audio settings...');
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Export Modal */}
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        onExport={(settings: ExportSettings) => {
-          console.log('Export settings:', settings);
-          toast.success(settings.exportType === 'loop-region' ? 'Exporting loop region!' : 'Export started!');
-        }}
-        onEditMetadata={() => {
-          toast.info('Edit metadata clicked');
-        }}
-        os={preferences.operatingSystem}
-        initialExportType={initialExportType}
-        hasLoopRegion={loopRegionEnabled && loopRegionStart !== null && loopRegionEnd !== null}
-        tracks={state.tracks.map(track => ({ id: track.id, name: track.name }))}
-        onValidationError={(title, message) => {
-          setAlertDialogTitle(title);
-          setAlertDialogMessage(message);
-          setAlertDialogOpen(true);
-        }}
-      />
-
-      {/* Label Editor */}
-      <LabelEditor
-        isOpen={isLabelEditorOpen}
-        labels={state.tracks.flatMap((track) =>
-          (track.labels || []).map(label => ({ ...label, id: String(label.id) }))
-        )}
-        tracks={[
-          ...state.tracks
-            .map((track, index) => ({ track, index }))
-            .filter(({ track }) => track.clips.length === 0) // Only label tracks (no clips)
-            .map(({ track, index }) => ({
-              value: index.toString(),
-              label: track.name,
-            })),
-          // Add "New Label Track..." option
-          { value: '__NEW__', label: 'New Label Track...' },
-        ]}
-        playheadPosition={state.playheadPosition}
-        onChange={(updatedLabels) => {
-          // Group labels by track, converting string IDs back to numbers
-          const labelsByTrack = new Map<number, typeof updatedLabels>();
-          updatedLabels.forEach(label => {
-            if (!labelsByTrack.has(label.trackIndex)) {
-              labelsByTrack.set(label.trackIndex, []);
-            }
-            labelsByTrack.get(label.trackIndex)!.push(label);
-          });
-
-          // Update each existing track with its labels
-          // Note: If a label points to a non-existent track (e.g., one being created),
-          // it will be handled on the next render when that track exists
-          state.tracks.forEach((_track, trackIndex) => {
-            if (labelsByTrack.has(trackIndex)) {
-              const newLabels = labelsByTrack.get(trackIndex)!.map(label => ({
-                ...label,
-                id: parseInt(label.id, 10),
-              }));
-              dispatch({
-                type: 'UPDATE_TRACK',
-                payload: {
-                  index: trackIndex,
-                  track: { labels: newLabels }
-                }
-              });
-            }
-          });
-        }}
-        onClose={() => setIsLabelEditorOpen(false)}
-        onImport={() => toast.info('Import labels')}
-        onExport={() => toast.info('Export labels')}
-        onAddLabel={async () => {
-          console.log('onAddLabel called');
-          // Find first label track
-          const labelTrackIndex = state.tracks.findIndex(t => t.clips.length === 0);
-          console.log('labelTrackIndex:', labelTrackIndex);
-
-          if (labelTrackIndex === -1) {
-            // No label tracks exist - create one
-            const trackName = window.prompt('Enter label track name:', 'Label Track');
-            if (!trackName) return;
-
-            const newTrackIndex = state.tracks.length;
-            const maxId = Math.max(...state.tracks.map(t => t.id), 0);
-            const newTrackId = maxId + 1;
-
-            const newTrack = {
-              id: newTrackId,
-              name: trackName,
-              type: 'label' as const,
-              height: 76,
-              clips: [],
-              labels: [],
-            };
-
-            // Create track first
-            dispatch({
-              type: 'ADD_TRACK',
-              payload: newTrack,
-            });
-
-            // Then add label to the new track
-            const newLabel = {
-              id: Date.now(),
-              trackIndex: newTrackIndex,
-              text: '',
-              startTime: state.timeSelection?.startTime ?? state.playheadPosition,
-              endTime: state.timeSelection?.endTime ?? state.playheadPosition,
-            };
-
-            dispatch({
-              type: 'ADD_LABEL',
-              payload: {
-                trackIndex: newTrackIndex,
-                label: newLabel,
-              },
-            });
-
-            toast.success(`Created label track: ${trackName}`);
-          } else {
-            // Label track exists, add label to it
-            const newLabel = {
-              id: Date.now(),
-              trackIndex: labelTrackIndex,
-              text: '',
-              startTime: state.timeSelection?.startTime ?? state.playheadPosition,
-              endTime: state.timeSelection?.endTime ?? state.playheadPosition,
-            };
-
-            dispatch({
-              type: 'ADD_LABEL',
-              payload: {
-                trackIndex: labelTrackIndex,
-                label: newLabel,
-              },
-            });
-          }
-        }}
-        onNewTrackRequest={async (labelId) => {
-          // Prompt user for track name
-          const trackName = window.prompt('Enter label track name:', 'Label Track');
-
-          if (!trackName) {
-            return null; // User cancelled
-          }
-
-          // Calculate the new track's index (where it will be added)
-          const newTrackIndex = state.tracks.length;
-
-          // Find next available track ID
-          const maxId = Math.max(...state.tracks.map(t => t.id), 0);
-          const newTrackId = maxId + 1;
-
-          // If labelId is empty, we're just creating a new empty track
-          if (!labelId) {
-            const newTrack = {
-              id: newTrackId,
-              name: trackName,
-              type: 'label' as const,
-              height: 76,
-              clips: [],
-              labels: [],
-            };
-
-            dispatch({
-              type: 'ADD_TRACK',
-              payload: newTrack,
-            });
-
-            toast.success(`Created label track: ${trackName}`);
-            return newTrackIndex;
-          }
-
-          // Find the label that needs to be moved
-          let sourceTrackIndex = -1;
-          let labelToMove: any = null;
-
-          state.tracks.forEach((track, trackIndex) => {
-            const label = track.labels?.find(l => l.id === parseInt(labelId, 10));
-            if (label) {
-              sourceTrackIndex = trackIndex;
-              labelToMove = label;
-            }
-          });
-
-          if (!labelToMove || sourceTrackIndex === -1) {
-            toast.error('Label not found');
-            return null;
-          }
-
-          // Create new label track WITH the label already in it
-          const newTrack = {
-            id: newTrackId,
-            name: trackName,
-            type: 'label' as const,
-            height: 76,
-            clips: [],
-            labels: [{ ...labelToMove, trackIndex: newTrackIndex }],
-          };
-
-          // Remove label from source track
-          const sourceTrack = state.tracks[sourceTrackIndex];
-          const updatedSourceLabels = sourceTrack.labels?.filter(l => l.id !== labelToMove.id) || [];
-
-          // Dispatch both operations
-          dispatch({
-            type: 'UPDATE_TRACK',
-            payload: {
-              index: sourceTrackIndex,
-              track: { labels: updatedSourceLabels }
-            }
-          });
-
-          dispatch({
-            type: 'ADD_TRACK',
-            payload: newTrack,
-          });
-
-          toast.success(`Created label track: ${trackName}`);
-
-          // Return the new track's index
-          return newTrackIndex;
-        }}
-        os={preferences.operatingSystem}
-      />
-
-      {/* Plugin Manager Dialog */}
-      <PluginManagerDialog
-        isOpen={isPluginManagerOpen}
-        plugins={plugins}
-        onChange={setPlugins}
-        onClose={() => setIsPluginManagerOpen(false)}
-        os={preferences.operatingSystem}
-      />
-
-      {/* VST Effect Options Dialog */}
-      <VSTEffectOptionsDialog
-        isOpen={isVSTOptionsDialogOpen}
-        onClose={() => setIsVSTOptionsDialogOpen(false)}
-        onConfirm={(bufferSize, latencyCompensation) => {
-          console.log('VST Options confirmed:', { bufferSize, latencyCompensation });
-          toast.success('VST options saved');
-        }}
-      />
-
-      {/* Alert Dialog */}
-      <AlertDialog
-        isOpen={alertDialogOpen}
-        onClose={() => setAlertDialogOpen(false)}
-        title={alertDialogTitle}
-        message={alertDialogMessage}
-        os={preferences.operatingSystem}
-      />
-
-      {/* Debug Panel */}
-      <DebugPanel
-        isOpen={isDebugPanelOpen}
-        onClose={() => {
-          setIsDebugPanelOpen(false);
-          setActiveMenuItem('project');
-        }}
+      <AppDialogs
+        dialogs={{
+          isShareDialogOpen, setIsShareDialogOpen,
+          isCreateAccountOpen, setIsCreateAccountOpen,
+          isSyncingDialogOpen, setIsSyncingDialogOpen,
+          isSaveToCloudDialogOpen, setIsSaveToCloudDialogOpen,
+          isSaveProjectModalOpen, setIsSaveProjectModalOpen,
+          isPreferencesModalOpen, setIsPreferencesModalOpen,
+          isExportModalOpen, setIsExportModalOpen,
+          isLabelEditorOpen, setIsLabelEditorOpen,
+          isPluginManagerOpen, setIsPluginManagerOpen,
+          alertDialogOpen, setAlertDialogOpen,
+          isVSTOptionsDialogOpen, setIsVSTOptionsDialogOpen,
+          isDebugPanelOpen, setIsDebugPanelOpen,
+          isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen,
+          isPluginBrowserOpen, setIsPluginBrowserOpen,
+          isMacroManagerOpen, setIsMacroManagerOpen,
+        } as any}
+        welcomeDialog={welcomeDialog}
+        audioEngine={audioEngine}
+        effectDialog={effectDialog}
+        setEffectDialog={setEffectDialog}
+        effectContextMenu={effectContextMenu}
+        setEffectContextMenu={setEffectContextMenu}
+        tracks={state.tracks}
+        masterEffects={state.masterEffects}
+        dispatch={dispatch}
         isSignedIn={isSignedIn}
-        onSignedInChange={setIsSignedIn}
+        setIsSignedIn={setIsSignedIn}
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        emailError={emailError}
+        setEmailError={setEmailError}
+        passwordError={passwordError}
+        setPasswordError={setPasswordError}
+        validationErrorMessage={validationErrorMessage}
+        setValidationErrorMessage={setValidationErrorMessage}
         isCloudProject={isCloudProject}
-        onCloudProjectChange={setIsCloudProject}
+        setIsCloudProject={setIsCloudProject}
         isCloudUploading={isCloudUploading}
-        onCloudUploadingChange={setIsCloudUploading}
-        showDuration={showDuration}
-        onShowDurationChange={setShowDuration}
-        showProjectRate={showProjectRate}
-        onShowProjectRateChange={setShowProjectRate}
-        operatingSystem={preferences.operatingSystem}
-        onOperatingSystemChange={(os) => updatePreference('operatingSystem', os)}
-        trackCount={debugTrackCount}
-        onTrackCountChange={setDebugTrackCount}
-        onGenerateTracks={() => {
-          // Generate tracks based on debugTrackCount
-          const newTracks = Array.from({ length: debugTrackCount }, (_, i) => ({
-            id: i + 1,
-            name: `Track ${i + 1}`,
-            height: 114,
-            clips: [
-              {
-                id: i * 10 + 1,
-                name: `Clip ${i + 1}`,
-                start: Math.random() * 3,
-                duration: 2 + Math.random() * 3,
-                waveform: generateWaveform(2 + Math.random() * 3),
-                envelopePoints: [],
-              },
-            ],
-            effects: i === 0 ? [
-              { id: 't0-1', name: 'Reverb', enabled: true },
-              { id: 't0-2', name: 'Compressor', enabled: true },
-            ] : i === 1 ? [
-              { id: 't1-1', name: 'EQ', enabled: true },
-              { id: 't1-2', name: 'Delay', enabled: false },
-            ] : i === 2 ? [
-              { id: 't2-1', name: 'Chorus', enabled: true },
-            ] : [],
-            effectsEnabled: true, // Master toggle for track effects
-          }));
-          dispatch({ type: 'SET_TRACKS', payload: newTracks });
-
-          // Initialize master effects
-          dispatch({ type: 'ADD_MASTER_EFFECT', payload: { id: 'm1', name: 'Limiter', enabled: true } });
-          dispatch({ type: 'ADD_MASTER_EFFECT', payload: { id: 'm2', name: 'Mastering EQ', enabled: true } });
-
-          toast.success('Generated tracks successfully');
-        }}
-        onClearAllTracks={() => {
-          dispatch({ type: 'SET_TRACKS', payload: [] });
-          toast.info('Cleared all tracks');
-        }}
-        onLoadColorTest={() => {
-          const colors = ['cyan', 'blue', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green', 'teal'] as const;
-          const colorTracks = colors.map((color, i) => ({
-            id: i + 1,
-            name: color.charAt(0).toUpperCase() + color.slice(1),
-            height: 114,
-            clips: [
-              {
-                id: i * 10 + 1,
-                name: color.charAt(0).toUpperCase() + color.slice(1),
-                start: 0.5,
-                duration: 5.0,
-                waveform: generateWaveform(5.0),
-                envelopePoints: [
-                  { time: 0.5, db: -3 },
-                  { time: 2.0, db: -12 },
-                  { time: 3.5, db: -1 },
-                  { time: 4.5, db: -6 },
-                ],
-                color,
-              },
-            ],
-          }));
-          dispatch({ type: 'SET_TRACKS', payload: colorTracks });
-          toast.success('Loaded all 9 clip colours');
-        }}
+        setIsCloudUploading={setIsCloudUploading}
+        cloudProjectName={cloudProjectName}
+        setCloudProjectName={setCloudProjectName}
+        currentProjectId={currentProjectId}
+        dontShowSyncAgain={dontShowSyncAgain}
+        setDontShowSyncAgain={setDontShowSyncAgain}
+        dontShowSaveModalAgain={dontShowSaveModalAgain}
+        setDontShowSaveModalAgain={setDontShowSaveModalAgain}
+        indexedDBProjects={indexedDBProjects}
+        setIndexedDBProjects={setIndexedDBProjects}
+        projectName={projectName}
+        setProjectName={setProjectName}
+        cloudAudioFiles={cloudAudioFiles}
+        setCloudAudioFiles={setCloudAudioFiles}
+        showVendorUI={showVendorUI}
+        setShowVendorUI={setShowVendorUI}
+        audioSetupMenuAnchor={audioSetupMenuAnchor}
+        setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}
+        selectedRecordingDevice={selectedRecordingDevice}
+        setSelectedRecordingDevice={setSelectedRecordingDevice}
+        selectedPlaybackDevice={selectedPlaybackDevice}
+        setSelectedPlaybackDevice={setSelectedPlaybackDevice}
+        availableAudioInputs={availableAudioInputs}
+        availableAudioOutputs={availableAudioOutputs}
+        audioManagerRef={audioManagerRef}
+        macros={macros}
+        setMacros={setMacros}
+        selectedMacroId={selectedMacroId}
+        setSelectedMacroId={setSelectedMacroId}
+        plugins={plugins}
+        setPlugins={setPlugins}
+        initialExportType={initialExportType}
+        loopRegionEnabled={loopRegionEnabled}
+        loopRegionStart={loopRegionStart}
+        loopRegionEnd={loopRegionEnd}
+        alertDialogTitle={alertDialogTitle}
+        setAlertDialogTitle={setAlertDialogTitle}
+        alertDialogMessage={alertDialogMessage}
+        setAlertDialogMessage={setAlertDialogMessage}
+        zoomToggleLevel1={zoomToggleLevel1}
+        setZoomToggleLevel1={setZoomToggleLevel1}
+        zoomToggleLevel2={zoomToggleLevel2}
+        setZoomToggleLevel2={setZoomToggleLevel2}
+        scrollContainerRef={scrollContainerRef}
+        handleSaveToComputer={handleSaveToComputer}
+        os={preferences.operatingSystem}
+        updatePreference={updatePreference}
+        debugTrackCount={debugTrackCount}
+        setDebugTrackCount={setDebugTrackCount}
         showFocusDebug={showFocusDebug}
-        onShowFocusDebugChange={setShowFocusDebug}
-        accessibilityProfileId={activeProfile.id}
-        accessibilityProfiles={profiles.map(p => ({ id: p.id, name: p.name, description: p.description }))}
-        onAccessibilityProfileChange={setProfile}
-        cutMode={state.cutMode}
-        onCutModeChange={(mode) => dispatch({ type: 'SET_CUT_MODE', payload: mode })}
+        setShowFocusDebug={setShowFocusDebug}
+        showDuration={showDuration}
+        setShowDuration={setShowDuration}
+        showProjectRate={showProjectRate}
+        setShowProjectRate={setShowProjectRate}
+        activeProfile={activeProfile}
+        profiles={profiles}
+        setProfile={setProfile}
         envelopeColor={envelopeColor}
-        onEnvelopeColorChange={setEnvelopeColor}
+        setEnvelopeColor={setEnvelopeColor}
         controlPointStyle={controlPointStyle}
-        onControlPointStyleChange={setControlPointStyle}
+        setControlPointStyle={setControlPointStyle}
         showMixer={showMixer}
-        onShowMixerChange={setShowMixer}
+        setShowMixer={setShowMixer}
         spectrogramScale={spectrogramScale}
-        onSpectrogramScaleChange={setSpectrogramScale}
+        setSpectrogramScale={setSpectrogramScale}
+        setActiveMenuItem={setActiveMenuItem}
+        state={state}
       />
 
-      {/* Clip Context Menu */}
-      {clipContextMenu && (
-        <ClipContextMenu
-          isOpen={clipContextMenu.isOpen}
-          x={clipContextMenu.x}
-          y={clipContextMenu.y}
-          autoFocus={clipContextMenu.openedViaKeyboard}
-          onClose={() => setClipContextMenu(null)}
-          onRename={() => {
-            toast.info('Rename clip - not yet implemented');
-            setClipContextMenu(null);
-          }}
-          onColorChange={(color) => {
-            toast.info(`Change clip color to ${color} - not yet implemented`);
-            setClipContextMenu(null);
-          }}
-          onCut={() => {
-            if (clipContextMenu) {
-              // Find the clip to cut
-              const track = state.tracks[clipContextMenu.trackIndex];
-              const clip = track?.clips.find(c => c.id === clipContextMenu.clipId);
-
-              if (clip) {
-                setClipboard({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut' });
-
-                // Immediately remove the clip from the track
-                dispatch({
-                  type: 'DELETE_CLIP',
-                  payload: {
-                    trackIndex: clipContextMenu.trackIndex,
-                    clipId: clipContextMenu.clipId,
-                  },
-                });
-
-                toast.success('Cut clip');
-              }
-              setClipContextMenu(null);
-            }
-          }}
-          onCopy={() => {
-            if (clipContextMenu) {
-              // Find the clip to copy
-              const track = state.tracks[clipContextMenu.trackIndex];
-              const clip = track?.clips.find(c => c.id === clipContextMenu.clipId);
-
-              if (clip) {
-                setClipboard({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
-                toast.success('Copied clip');
-              }
-              setClipContextMenu(null);
-            }
-          }}
-          onDuplicate={() => {
-            toast.info('Duplicate clip - not yet implemented');
-            setClipContextMenu(null);
-          }}
-          onDelete={() => {
-            if (clipContextMenu) {
-              dispatch({
-                type: 'DELETE_CLIP',
-                payload: {
-                  trackIndex: clipContextMenu.trackIndex,
-                  clipId: clipContextMenu.clipId,
-                },
-              });
-              setClipContextMenu(null);
-            }
-          }}
-          onSplit={() => {
-            toast.info('Split clip - not yet implemented');
-            setClipContextMenu(null);
-          }}
-          onExport={() => {
-            toast.info('Export clip - not yet implemented');
-            setClipContextMenu(null);
-          }}
-          stretchWithTempo={false}
-          onToggleStretchWithTempo={() => {
-            toast.info('Toggle stretch with tempo - not yet implemented');
-          }}
-          onOpenPitchSpeedDialog={() => {
-            toast.info('Open pitch and speed dialog - not yet implemented');
-            setClipContextMenu(null);
-          }}
-          onRenderPitchSpeed={() => {
-            toast.info('Render pitch and speed - not yet implemented');
-            setClipContextMenu(null);
-          }}
-        />
-      )}
-
-      {/* Spectrogram Settings Dialog */}
-      <Dialog
-        isOpen={isSpectrogramSettingsOpen}
-        onClose={() => setIsSpectrogramSettingsOpen(false)}
-        title="Spectrogram Settings"
-        width={360}
-        minHeight={0}
+      <AppContextMenus
+        clipContextMenu={clipContextMenu}
+        setClipContextMenu={setClipContextMenu}
+        trackContextMenu={trackContextMenu}
+        setTrackContextMenu={setTrackContextMenu}
+        timelineRulerContextMenu={timelineRulerContextMenu}
+        setTimelineRulerContextMenu={setTimelineRulerContextMenu}
+        effectSelectorMenu={effectSelectorMenu}
+        setEffectSelectorMenu={setEffectSelectorMenu}
+        isSpectrogramSettingsOpen={isSpectrogramSettingsOpen}
+        setIsSpectrogramSettingsOpen={setIsSpectrogramSettingsOpen}
+        spectrogramScale={spectrogramScale}
+        setSpectrogramScale={setSpectrogramScale}
+        tracks={state.tracks}
+        masterEffects={state.masterEffects}
+        dispatch={dispatch}
+        timelineFormat={timelineFormat}
+        setTimelineFormat={setTimelineFormat}
+        updateDisplayWhilePlaying={updateDisplayWhilePlaying}
+        setUpdateDisplayWhilePlaying={setUpdateDisplayWhilePlaying}
+        pinnedPlayHead={pinnedPlayHead}
+        setPinnedPlayHead={setPinnedPlayHead}
+        clickRulerToStartPlayback={clickRulerToStartPlayback}
+        setClickRulerToStartPlayback={setClickRulerToStartPlayback}
+        showVerticalRulers={showVerticalRulers}
+        setShowVerticalRulers={setShowVerticalRulers}
+        loopRegionEnabled={loopRegionEnabled}
+        setLoopRegionEnabled={setLoopRegionEnabled}
+        loopRegionStart={loopRegionStart}
+        setLoopRegionStart={setLoopRegionStart}
+        loopRegionEnd={loopRegionEnd}
+        setLoopRegionEnd={setLoopRegionEnd}
+        timeSelection={state.timeSelection}
+        bpm={bpm}
+        beatsPerMeasure={beatsPerMeasure}
+        onClipboardSet={setClipboard}
         os={preferences.operatingSystem}
-        footer={
-          <DialogFooter
-            rightContent={
-              <Button variant="primary" size="default" onClick={() => setIsSpectrogramSettingsOpen(false)}>
-                Close
-              </Button>
-            }
-          />
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {([
-            { value: 'linear', label: 'Linear', description: 'Evenly spaced frequency bands' },
-            { value: 'logarithmic', label: 'Logarithmic', description: 'Log scale, similar to musical intervals' },
-            { value: 'mel', label: 'Mel', description: 'Perceptual scale based on human pitch perception' },
-            { value: 'bark', label: 'Bark', description: 'Psychoacoustic scale (critical bands)' },
-            { value: 'erb', label: 'ERB', description: 'Equivalent Rectangular Bandwidth scale' },
-            { value: 'period', label: 'Period', description: 'Displays period (1/f) rather than frequency' },
-          ] as { value: SpectrogramScale; label: string; description: string }[]).map(({ value, label, description }) => (
-            <label key={value} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                value={value}
-                checked={spectrogramScale === value}
-                onChange={() => setSpectrogramScale(value)}
-                style={{ cursor: 'pointer', marginTop: '2px', flexShrink: 0 }}
-              />
-              <div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '18px' }}>
-                  {label}
-                </div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', lineHeight: '15px', opacity: 0.6 }}>
-                  {description}
-                </div>
-              </div>
-            </label>
-          ))}
-        </div>
-      </Dialog>
-
-      {/* Track Context Menu */}
-      {trackContextMenu && (
-        <TrackContextMenu
-          isOpen={trackContextMenu.isOpen}
-          x={trackContextMenu.x}
-          y={trackContextMenu.y}
-          autoFocus={trackContextMenu.openedViaKeyboard}
-          onClose={() => setTrackContextMenu(null)}
-          onDelete={() => {
-            if (trackContextMenu) {
-              dispatch({
-                type: 'DELETE_TRACK',
-                payload: trackContextMenu.trackIndex,
-              });
-              setTrackContextMenu(null);
-              toast.success('Track deleted');
-            }
-          }}
-          onColorChange={(color) => {
-            if (trackContextMenu) {
-              const track = state.tracks[trackContextMenu.trackIndex];
-              track?.clips.forEach(clip => {
-                dispatch({
-                  type: 'UPDATE_CLIP',
-                  payload: {
-                    trackIndex: trackContextMenu.trackIndex,
-                    clipId: clip.id,
-                    updates: { color },
-                  },
-                });
-              });
-              setTrackContextMenu(null);
-            }
-          }}
-          onSpectrogramSettings={() => {
-            setIsSpectrogramSettingsOpen(true);
-          }}
-        />
-      )}
-
-      {/* Timeline Ruler Context Menu */}
-      {timelineRulerContextMenu && (
-        <TimelineRulerContextMenu
-          isOpen={timelineRulerContextMenu.isOpen}
-          x={timelineRulerContextMenu.x}
-          y={timelineRulerContextMenu.y}
-          onClose={() => setTimelineRulerContextMenu(null)}
-          timeFormat={timelineFormat}
-          onTimeFormatChange={(format) => {
-            setTimelineFormat(format);
-            toast.info(`Time format changed to: ${format}`);
-            setTimelineRulerContextMenu(null);
-          }}
-          updateDisplayWhilePlaying={updateDisplayWhilePlaying}
-          onToggleUpdateDisplay={() => {
-            setUpdateDisplayWhilePlaying(!updateDisplayWhilePlaying);
-            toast.info(`Update display while playing ${!updateDisplayWhilePlaying ? 'enabled' : 'disabled'}`);
-            setTimelineRulerContextMenu(null);
-          }}
-          pinnedPlayHead={pinnedPlayHead}
-          onTogglePinnedPlayHead={() => {
-            setPinnedPlayHead(!pinnedPlayHead);
-            toast.info(`Pinned play head ${!pinnedPlayHead ? 'enabled' : 'disabled'}`);
-            setTimelineRulerContextMenu(null);
-          }}
-          clickRulerToStartPlayback={clickRulerToStartPlayback}
-          onToggleClickRulerToStartPlayback={() => {
-            setClickRulerToStartPlayback(!clickRulerToStartPlayback);
-            toast.info(`Click ruler to start playback ${!clickRulerToStartPlayback ? 'enabled' : 'disabled'}`);
-            setTimelineRulerContextMenu(null);
-          }}
-          loopRegionEnabled={loopRegionEnabled}
-          onToggleLoopRegion={() => {
-            if (!loopRegionEnabled) {
-              // Enabling loop
-              if (loopRegionStart === null || loopRegionEnd === null) {
-                // No existing loop region - create one
-                if (state.timeSelection) {
-                  // Use time selection if available
-                  setLoopRegionStart(state.timeSelection.startTime);
-                  setLoopRegionEnd(state.timeSelection.endTime);
-                } else {
-                  // Create default 4-measure loop region
-                  const secondsPerBeat = 60 / bpm;
-                  const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-                  const loopDuration = secondsPerMeasure * 4;
-                  setLoopRegionStart(0);
-                  setLoopRegionEnd(loopDuration);
-                }
-              }
-            }
-            setLoopRegionEnabled(!loopRegionEnabled);
-            toast.info(`Loop region ${!loopRegionEnabled ? 'enabled' : 'disabled'}`);
-            setTimelineRulerContextMenu(null);
-          }}
-          onClearLoopRegion={() => {
-            setLoopRegionStart(null);
-            setLoopRegionEnd(null);
-            setLoopRegionEnabled(false);
-            toast.info('Loop region cleared');
-            setTimelineRulerContextMenu(null);
-          }}
-          onSetLoopRegionToSelection={() => {
-            if (state.timeSelection) {
-              setLoopRegionStart(state.timeSelection.startTime);
-              setLoopRegionEnd(state.timeSelection.endTime);
-              setLoopRegionEnabled(true);
-              toast.info('Loop region set to selection');
-            } else {
-              toast.info('No time selection to set loop region from');
-            }
-            setTimelineRulerContextMenu(null);
-          }}
-          onSetSelectionToLoop={() => {
-            if (loopRegionStart !== null && loopRegionEnd !== null) {
-              dispatch({
-                type: 'SET_TIME_SELECTION',
-                payload: { startTime: loopRegionStart, endTime: loopRegionEnd },
-              });
-              toast.info('Selection set to loop region');
-            } else {
-              toast.info('No loop region to set selection from');
-            }
-            setTimelineRulerContextMenu(null);
-          }}
-          creatingLoopSelectsAudio={false}
-          onToggleCreatingLoopSelectsAudio={() => {
-            toast.info('Creating loop selects audio - toggled');
-            setTimelineRulerContextMenu(null);
-          }}
-          showVerticalRulers={showVerticalRulers}
-          onToggleVerticalRulers={() => {
-            setShowVerticalRulers(!showVerticalRulers);
-            setTimelineRulerContextMenu(null);
-          }}
-        />
-      )}
-
-      {/* Effect Selector Menu */}
-      {effectSelectorMenu && (() => {
-        const addEffect = (effectName: string) => {
-          const isMaster = effectSelectorMenu.trackIndex === undefined;
-
-          if (isMaster) {
-            // Add to master effects
-            const newEffect: Effect = {
-              id: `m${state.masterEffects.length + 1}`,
-              name: effectName,
-              enabled: true,
-            };
-            dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
-            toast.success(`Added ${effectName} to master`);
-          } else {
-            // Add to track effects
-            const trackIndex = effectSelectorMenu.trackIndex!;
-            const currentEffects = state.tracks[trackIndex]?.effects || [];
-            const newEffect: Effect = {
-              id: `t${trackIndex}-${currentEffects.length + 1}`,
-              name: effectName,
-              enabled: true,
-            };
-            dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
-            toast.success(`Added ${effectName} to ${state.tracks[trackIndex]?.name}`);
-          }
-
-          setEffectSelectorMenu(null);
-        };
-
-        return (
-          <ContextMenu
-            isOpen={effectSelectorMenu.isOpen}
-            x={effectSelectorMenu.x}
-            y={effectSelectorMenu.y}
-            onClose={() => setEffectSelectorMenu(null)}
-          >
-            {Object.entries(EFFECT_REGISTRY).map(([categoryName, effectDefs]) => (
-              <ContextMenuItem
-                key={categoryName}
-                label={categoryName}
-              >
-                {effectDefs.map((effectDef) => (
-                  <ContextMenuItem
-                    key={effectDef.id}
-                    label={effectDef.name}
-                    onClick={() => addEffect(effectDef.name)}
-                  />
-                ))}
-              </ContextMenuItem>
-            ))}
-          </ContextMenu>
-        );
-      })()}
+      />
 
       {/* Time Selection Context Menu - Temporarily disabled */}
     </div>

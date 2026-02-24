@@ -213,10 +213,9 @@ export function Canvas({
     clipContentOffset: CLIP_CONTENT_OFFSET,
   });
 
-  // Calculate total height based on all tracks + 2px gaps (top + between tracks) + buffer space below
+  // Calculate total height based on all tracks + 2px gaps (top + between tracks)
   const tracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
-  const bufferSpace = viewportHeight * 0.5; // 50% of viewport height for buffer below last track
-  const totalHeight = tracksHeight + bufferSpace;
+  const totalHeight = tracksHeight;
 
   // Notify parent when height changes
   useEffect(() => {
@@ -389,7 +388,7 @@ export function Canvas({
   }, [bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width]);
 
   return (
-    <div className="canvas-container" style={{ backgroundColor: bgColor, minHeight: `${totalHeight}px`, height: '100%', overflow: 'visible', cursor: 'text' }}>
+    <div className="canvas-container" style={{ backgroundColor: bgColor, height: `${totalHeight}px`, overflow: 'clip', overflowClipMargin: '2px', cursor: 'text' } as React.CSSProperties}>
       {/* Beat/measure grid — rendered first so tracks appear on top */}
       {(gridLines.length > 0 || measureBands.length > 0) && (
         <svg
@@ -449,7 +448,7 @@ export function Canvas({
           lastMouseButtonRef.current = 0;
         }}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
-        style={{ ...containerProps.style, minHeight: `${totalHeight}px`, height: '100%', userSelect: 'none', cursor: 'text' } as React.CSSProperties}
+        style={{ ...containerProps.style, height: `${totalHeight}px`, userSelect: 'none', cursor: 'text' } as React.CSSProperties}
       >
         {tracks.map((track, trackIndex) => {
           const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;

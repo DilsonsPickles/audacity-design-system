@@ -6,74 +6,7 @@
   background: #1a1a1a;
 }
 
-/* Toolbar */
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 48px;
-  padding: 0 16px;
-  background: #2a2a2a;
-  border-bottom: 1px solid #3a3a3a;
-  gap: 16px;
-}
-
-.toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.toolbar-left h1 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.toolbar-left .version {
-  font-size: 11px;
-  color: #888;
-  background: #3a3a3a;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.toolbar-center {
-  display: flex;
-  gap: 4px;
-}
-
-.tool-button {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #3a3a3a;
-  color: #fff;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: background 0.15s;
-}
-
-.tool-button:hover {
-  background: #4a4a4a;
-}
-
-.tool-button.play {
-  background: #0066ff;
-}
-
-.tool-button.play:hover {
-  background: #0052cc;
-}
-
-.toolbar-right {
-  display: flex;
-  gap: 12px;
-}
+/* Legacy toolbar classes removed - using component library Toolbar instead */
 
 .toggle {
   display: flex;
@@ -196,8 +129,9 @@
   margin-left: 4px;
 }
 
-/* Hide native scrollbars but keep scrolling functionality */
+/* Hide native scrollbars and disable overscroll bounce */
 .canvas-scroll-container {
+  overscroll-behavior: none;
   scrollbar-width: none !important; /* Firefox */
   -ms-overflow-style: none !important; /* IE and Edge */
   scrollbar-color: transparent transparent !important; /* Firefox - make scrollbar transparent */

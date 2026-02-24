@@ -34,6 +34,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: none;
   background: var(--tcsp-list-bg);
   padding: 2px 0 0 12px;
   display: flex;
