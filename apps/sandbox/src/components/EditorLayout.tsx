@@ -787,7 +787,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 <PlayheadCursor
                   position={state.playheadPosition}
                   pixelsPerSecond={pixelsPerSecond}
-                  height={canvasHeight + scrollBuffer}
+                  height={Math.max(canvasHeight + scrollBuffer, viewportH)}
                   showTopIcon={false}
                 />
                 {/* Loop region stalks */}
@@ -799,7 +799,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                         left: `${12 + loopRegionStart * pixelsPerSecond}px`,
                         top: 0,
                         width: '2px',
-                        height: `${canvasHeight + scrollBuffer}px`,
+                        height: `${Math.max(canvasHeight + scrollBuffer, viewportH)}px`,
                         backgroundColor: loopRegionEnabled
                           ? theme.audio.timeline.loopRegionBorder
                           : theme.audio.timeline.loopRegionBorderInactive,
@@ -813,7 +813,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                         left: `${12 + loopRegionEnd * pixelsPerSecond}px`,
                         top: 0,
                         width: '2px',
-                        height: `${canvasHeight + scrollBuffer}px`,
+                        height: `${Math.max(canvasHeight + scrollBuffer, viewportH)}px`,
                         backgroundColor: loopRegionEnabled
                           ? theme.audio.timeline.loopRegionBorder
                           : theme.audio.timeline.loopRegionBorderInactive,
