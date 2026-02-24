@@ -221,6 +221,7 @@ function CanvasDemoContent() {
   const [alertDialogTitle, setAlertDialogTitle] = React.useState('');
   const [alertDialogMessage, setAlertDialogMessage] = React.useState('');
   const [isVSTOptionsDialogOpen, setIsVSTOptionsDialogOpen] = React.useState(false);
+  const [showVendorUI, setShowVendorUI] = React.useState(true);
 
   // Save dontShowSaveModalAgain to localStorage when it changes
   React.useEffect(() => {
@@ -4292,6 +4293,11 @@ function CanvasDemoContent() {
               toast.info('Export clicked');
               console.log('Export clicked');
             }}
+            onShowVendorUI={() => {
+              setShowVendorUI(!showVendorUI);
+              toast.info(showVendorUI ? 'Vendor UI hidden' : 'Vendor UI shown');
+            }}
+            showVendorUI={showVendorUI}
             onOptions={() => {
               setIsVSTOptionsDialogOpen(true);
             }}

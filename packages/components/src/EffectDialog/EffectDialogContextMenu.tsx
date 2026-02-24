@@ -64,7 +64,18 @@ export interface EffectDialogContextMenuProps {
   onOptions?: () => void;
 
   /**
-   * Whether this is a 3rd party effect (enables Options menu item)
+   * Called when "Show vendor UI" is toggled
+   */
+  onShowVendorUI?: () => void;
+
+  /**
+   * Whether vendor UI is currently shown (for checkbox state)
+   * @default false
+   */
+  showVendorUI?: boolean;
+
+  /**
+   * Whether this is a 3rd party effect (enables Options and Show vendor UI menu items)
    * @default false
    */
   isThirdParty?: boolean;
@@ -87,6 +98,8 @@ export const EffectDialogContextMenu: React.FC<EffectDialogContextMenuProps> = (
   onImport,
   onExport,
   onOptions,
+  onShowVendorUI,
+  showVendorUI = false,
   isThirdParty = false,
 }) => {
   const handleSavePreset = () => {
@@ -114,6 +127,11 @@ export const EffectDialogContextMenu: React.FC<EffectDialogContextMenuProps> = (
   const handleOptions = () => {
     onOptions?.();
     onClose();
+  };
+
+  const handleShowVendorUI = () => {
+    onShowVendorUI?.();
+    // Don't close the menu for checkbox toggle
   };
 
   const handleFactoryPresetSelect = (preset: string) => {
@@ -181,6 +199,15 @@ export const EffectDialogContextMenu: React.FC<EffectDialogContextMenuProps> = (
 
       {/* Divider before Options */}
       <ContextMenuItem isDivider />
+
+      {/* Show vendor UI (only enabled for 3rd party effects) */}
+      <ContextMenuItem
+        label="Show vendor UI"
+        onClick={handleShowVendorUI}
+        disabled={!isThirdParty}
+        checked={showVendorUI}
+        onClose={onClose}
+      />
 
       {/* Options... (only enabled for 3rd party effects) */}
       <ContextMenuItem
