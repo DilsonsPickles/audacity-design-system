@@ -120,7 +120,7 @@ export interface AppDialogsProps {
   handleSaveToComputer: () => Promise<void>;
 
   // OS preference
-  os: 'mac' | 'windows';
+  os: 'windows' | 'macos';
   updatePreference: (key: string, value: any) => void;
 
   // Debug panel
@@ -166,7 +166,7 @@ export function AppDialogs(props: AppDialogsProps) {
     dontShowSaveModalAgain, setDontShowSaveModalAgain,
     indexedDBProjects, setIndexedDBProjects,
     projectName, setProjectName,
-    cloudAudioFiles, setCloudAudioFiles,
+    cloudAudioFiles: _cloudAudioFiles, setCloudAudioFiles,
     showVendorUI, setShowVendorUI,
     audioSetupMenuAnchor, setAudioSetupMenuAnchor,
     selectedRecordingDevice, setSelectedRecordingDevice,

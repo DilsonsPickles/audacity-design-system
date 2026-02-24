@@ -54,7 +54,7 @@ export interface AppContextMenusProps {
   onClipboardSet: (clipboard: { clips: any[]; operation: 'copy' | 'cut'; timeSelection?: { startTime: number; endTime: number } } | null) => void;
 
   // OS preference
-  os: 'mac' | 'windows';
+  os: 'windows' | 'macos';
 }
 
 export function AppContextMenus({

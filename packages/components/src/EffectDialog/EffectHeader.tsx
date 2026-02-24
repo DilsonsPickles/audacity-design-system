@@ -64,7 +64,7 @@ export interface EffectHeaderProps {
   /**
    * Called when more options is clicked
    */
-  onMoreOptions?: () => void;
+  onMoreOptions?: (e: React.MouseEvent) => void;
 
   /**
    * Additional CSS class

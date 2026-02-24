@@ -2,37 +2,22 @@ import React, { createContext, useContext, useRef, useEffect } from 'react';
 import * as Tone from 'tone';
 import { getAudioPlaybackManager } from '@audacity-ui/audio';
 
+// Use any for Tone types that may not be exported in all versions
+type ToneReverb = any;
+type ToneAudioNode = any;
+
 interface AudioEngineContextValue {
-  /**
-   * Get or create a Tone.Reverb instance for a specific effect
-   */
-  getReverbEffect: (effectId: string) => Tone.Reverb;
-
-  /**
-   * Update reverb parameters
-   */
+  getReverbEffect: (effectId: string) => ToneReverb;
   updateReverbParams: (effectId: string, params: { decay?: number; preDelay?: number; wet?: number }) => void;
-
-  /**
-   * Remove an effect instance
-   */
   removeEffect: (effectId: string) => void;
-
-  /**
-   * Start audio context (required for playback)
-   */
   startAudio: () => Promise<void>;
-
-  /**
-   * Update effect chains for playback (called when effects change)
-   */
   updateEffectChains: (tracks: any[], masterEffects: any[]) => void;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextValue | null>(null);
 
 export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const reverbEffectsRef = useRef<Map<string, Tone.Reverb>>(new Map());
+  const reverbEffectsRef = useRef<Map<string, ToneReverb>>(new Map());
 
   // Cleanup all effects on unmount
   useEffect(() => {
@@ -45,12 +30,12 @@ export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
   }, []);
 
-  const getReverbEffect = (effectId: string): Tone.Reverb => {
+  const getReverbEffect = (effectId: string): ToneReverb => {
     let reverb = reverbEffectsRef.current.get(effectId);
 
     if (!reverb) {
       // Create new Reverb instance with default parameters
-      reverb = new Tone.Reverb({
+      reverb = new (Tone as any).Reverb({
         decay: 1.5,
         preDelay: 0.01,
         wet: 1
@@ -108,7 +93,7 @@ export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const playbackManager = getAudioPlaybackManager();
 
     // Update master effect chain
-    const masterChain: Tone.ToneAudioNode[] = [];
+    const masterChain: ToneAudioNode[] = [];
     masterEffects.forEach((effect, index) => {
       if (effect.enabled && effect.name === 'Reverb') {
         const effectId = `master-effect-${index}`;
@@ -120,7 +105,7 @@ export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     // Update track effect chains
     tracks.forEach((track, trackIndex) => {
-      const trackChain: Tone.ToneAudioNode[] = [];
+      const trackChain: ToneAudioNode[] = [];
       (track.effects || []).forEach((effect: any, effectIndex: number) => {
         if (effect.enabled && effect.name === 'Reverb') {
           const effectId = `track-${trackIndex}-effect-${effectIndex}`;
