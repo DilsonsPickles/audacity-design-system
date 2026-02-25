@@ -590,6 +590,13 @@ export function Canvas({
                   const clip = track.clips.find(c => c.id === clipId);
                   if (clip) {
                     const newStartTime = Math.max(0, clip.start + deltaSeconds);
+                    // Select the clip being moved
+                    if (!clip.selected) {
+                      dispatch({
+                        type: 'SELECT_CLIP',
+                        payload: { trackIndex, clipId: clipId as number },
+                      });
+                    }
                     dispatch({
                       type: 'MOVE_CLIP',
                       payload: {
@@ -611,6 +618,14 @@ export function Canvas({
 
                   // Check if target track exists
                   if (targetTrackIndex < 0 || targetTrackIndex >= tracks.length) return;
+
+                  // Select the clip being moved
+                  if (!clip.selected) {
+                    dispatch({
+                      type: 'SELECT_CLIP',
+                      payload: { trackIndex, clipId: clipId as number },
+                    });
+                  }
 
                   // Move the clip to the target track
                   dispatch({
