@@ -15,6 +15,8 @@ export interface TrackRulerConfig {
   selected?: boolean;
   /** Whether track has focus */
   focused?: boolean;
+  /** Whether the track container in the canvas has keyboard focus */
+  containerFocused?: boolean;
   /** Whether track is stereo (shows two rulers) */
   stereo?: boolean;
   /** Track type */
@@ -138,7 +140,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               className={`vertical-ruler-panel__track ${
                 track.focused ? 'vertical-ruler-panel__track--focused' : ''
               }`}
-              style={{ height: `${track.height}px` }}
+              style={{ height: `${track.height}px`, ...(track.containerFocused ? { '--panel-track-selected-border': 'red' } as React.CSSProperties : {}) }}
             >
               {/* 20px spacer to align with clip header recess (hidden for label tracks and when track is too small) */}
               {track.trackType !== 'label' && track.height > 44 && (

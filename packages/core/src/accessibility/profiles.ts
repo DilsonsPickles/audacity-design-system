@@ -49,6 +49,27 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
         wrap: true,
       },
 
+      // Project toolbar center content (Audio setup, Share, Get effects)
+      'project-toolbar-actions': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
+      // Project toolbar right content (Workspace, Undo/Redo)
+      'project-toolbar-workspace': {
+        tabindex: 'roving',
+        arrows: true,
+        wrap: true,
+      },
+
+      // Add track button
+      'add-track': {
+        tabindex: 'roving',
+        arrows: false,
+        wrap: false,
+      },
+
       // Effects panel (left sidebar with track and master effects)
       'effects-panel': {
         tabindex: 'roving',
@@ -176,14 +197,19 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       },
     },
 
-    // Tab jumps between these groups in order
-    tabGroupOrder: [
-      'transport-toolbar',
-      'tool-toolbar',
-      'preferences-sidebar',
-      'preferences-content',
-      'dialog-footer',
-    ],
+    // Single source of truth for tab ordering.
+    // Each group ID maps to its numeric tabIndex value.
+    tabOrder: {
+      'file-menu':                 1,
+      'project-toolbar':           2,
+      'project-toolbar-actions':   3,
+      'project-toolbar-workspace': 4,
+      'tool-toolbar':              5,
+      'effects-panel':             6,
+      'add-track':                99,
+      'tracks':                  100, // base — containers get +0,+3,+6; panels get +1,+4,+7; clips get +2,+5,+8
+      'selection-toolbar':        200,
+    },
 
     // Keyboard shortcuts configuration
     keyboardShortcuts: {
@@ -237,6 +263,24 @@ export const WCAG_FLAT_PROFILE: AccessibilityProfile = {
       },
 
       'project-toolbar': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'project-toolbar-actions': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'project-toolbar-workspace': {
+        tabindex: 'sequential',
+        arrows: false,
+        wrap: false,
+      },
+
+      'add-track': {
         tabindex: 'sequential',
         arrows: false,
         wrap: false,
@@ -345,8 +389,8 @@ export const WCAG_FLAT_PROFILE: AccessibilityProfile = {
       },
     },
 
-    // No special tab group order - just DOM order
-    tabGroupOrder: null,
+    // Empty — flat mode uses tabIndex 0 for everything
+    tabOrder: {},
 
     // Keyboard shortcuts configuration - all disabled for exploration
     keyboardShortcuts: {

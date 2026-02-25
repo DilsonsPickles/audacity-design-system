@@ -46,6 +46,10 @@ export interface ResizablePanelProps {
    * Whether to add top margin (for first item spacing)
    */
   isFirstPanel?: boolean;
+  /**
+   * Additional inline styles for the container
+   */
+  style?: React.CSSProperties;
 }
 
 export const ResizablePanel: React.FC<ResizablePanelProps> = ({
@@ -60,6 +64,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   onResizeEnd,
   className = '',
   isFirstPanel = false,
+  style: externalStyle,
 }) => {
   const [height, setHeight] = useState(initialHeight);
   const [isResizing, setIsResizing] = useState(false);
@@ -157,6 +162,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       style={{
         position: 'relative',
         height: `${height}px`,
+        ...externalStyle,
       }}
     >
       <div

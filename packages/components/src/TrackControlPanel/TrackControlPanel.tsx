@@ -37,6 +37,8 @@ export interface TrackControlPanelProps {
   onNavigateVertical?: (direction: 'up' | 'down') => void;
   onNavigateVerticalWithShift?: (direction: 'up' | 'down') => void; // Shift+Arrow for range selection
   onTabOut?: () => void;
+  /** Whether the track container (in the canvas) currently has keyboard focus */
+  containerFocused?: boolean;
   // Meter props (for mono tracks, use meterLevel; for stereo, use meterLevelLeft/meterLevelRight)
   meterLevel?: number; // 0-100 - current meter level (mono)
   meterLevelLeft?: number; // 0-100 - left channel meter level (stereo)
@@ -81,6 +83,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onNavigateVertical,
   onNavigateVerticalWithShift,
   onTabOut,
+  containerFocused = false,
   meterLevel = 0,
   meterLevelLeft,
   meterLevelRight,
@@ -190,19 +193,15 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       return;
     }
 
-    // Handle up/down navigation when panel itself is focused
-    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && isPanelFocused) {
+    // Handle Shift+Up/Down for range selection when panel itself is focused
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && isPanelFocused && e.shiftKey) {
       e.preventDefault();
       const direction = e.key === 'ArrowUp' ? 'up' : 'down';
-
-      // If Shift is held, extend selection (range selection)
-      if (e.shiftKey) {
-        onNavigateVerticalWithShift?.(direction);
-      } else {
-        onNavigateVertical?.(direction);
-      }
+      onNavigateVerticalWithShift?.(direction);
       return;
     }
+
+    // Plain ArrowUp/Down at panel level falls through to enter children (same as ArrowLeft/Right)
 
     // Handle arrow keys for internal navigation (all four directions)
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
@@ -263,7 +262,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     '--tcp-bg-active': theme.background.surface.default,
     '--tcp-text-primary': theme.foreground.text.primary,
     '--tcp-icon-default': theme.foreground.icon.primary,
-    '--tcp-focus-color': theme.border.focus,
+    '--tcp-focus-color': containerFocused ? 'red' : theme.border.focus,
   } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent) => {

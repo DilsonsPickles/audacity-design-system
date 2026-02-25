@@ -1,7 +1,7 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, useTabOrder } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
@@ -56,6 +56,10 @@ export interface EditorLayoutProps {
   controlPanelHasFocus: number | null;
   setControlPanelHasFocus: React.Dispatch<React.SetStateAction<number | null>>;
 
+  // Track container focus (which track has its .track container focused, if any)
+  containerFocusedTrack: number | null;
+  setContainerFocusedTrack: React.Dispatch<React.SetStateAction<number | null>>;
+
   // Mouse cursor
   mouseCursorPosition: number | undefined;
   setMouseCursorPosition: React.Dispatch<React.SetStateAction<number | undefined>>;
@@ -105,6 +109,13 @@ export interface EditorLayoutProps {
   isFlatNavigation: boolean;
 }
 
+const STYLE_FLEX_ROW_OVERFLOW: React.CSSProperties = { display: 'flex', flex: 1, overflow: 'hidden' };
+const STYLE_FLEX_COL_OVERFLOW: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' };
+const STYLE_ROW_NO_SHRINK: React.CSSProperties = { display: 'flex', flexDirection: 'row' as const, flexShrink: 0 };
+const STYLE_RELATIVE_FLEX_OVERFLOW: React.CSSProperties = { position: 'relative', flex: 1, overflow: 'hidden' };
+const STYLE_FULL_WIDTH_RELATIVE: React.CSSProperties = { width: '100%', position: 'relative' };
+const STYLE_FLEX_ROW_OVERFLOW_HIDDEN: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'row' as const, overflow: 'hidden' };
+
 export function EditorLayout(props: EditorLayoutProps) {
   const {
     state, dispatch, activeMenuItem,
@@ -115,6 +126,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     showRmsInWaveform, controlPointStyle, spectrogramScale, showVerticalRulers, setIsSpectrogramSettingsOpen,
     isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
     selectionAnchor, setSelectionAnchor, controlPanelHasFocus: _controlPanelHasFocus, setControlPanelHasFocus,
+    containerFocusedTrack, setContainerFocusedTrack,
     mouseCursorPosition, setMouseCursorPosition, mouseCursorY, setMouseCursorY, isOverTrack, setIsOverTrack,
     loopRegionEnabled, setLoopRegionEnabled, loopRegionStart, setLoopRegionStart, loopRegionEnd, setLoopRegionEnd,
     loopRegionInteracting, setLoopRegionInteracting, loopRegionHovering, setLoopRegionHovering,
@@ -127,13 +139,14 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
+  const trackBase = useTabOrder('tracks');
 
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
   const scrollBuffer = viewportH > 0 && canvasHeight > viewportH ? Math.round(viewportH * 0.4) : 0;
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+    <div style={STYLE_FLEX_ROW_OVERFLOW}>
       {/* Effects Panel - Hidden on export tab */}
       {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
         const trackIndex = effectsPanel.trackIndex;
@@ -375,6 +388,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 isMuted={false}
                 isSolo={false}
                 isFocused={state.focusedTrackIndex === index}
+                containerFocused={containerFocusedTrack === index}
                 meterLevel={
                   state.isRecording && state.recordingTrackIndex === index
                     ? state.recordingMeterLevel
@@ -417,7 +431,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     width: 0,
                   });
                 }}
-                tabIndex={isFlatNavigation ? 0 : (100 + index * 2)}
+                tabIndex={isFlatNavigation ? 0 : (trackBase + 1 + index * 3)}
                 onFocusChange={(hasFocus) => {
                   setControlPanelHasFocus(hasFocus ? index : null);
                   if (hasFocus) {
@@ -550,17 +564,17 @@ export function EditorLayout(props: EditorLayoutProps) {
       )}
 
       {/* Timeline Ruler + Canvas Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={STYLE_FLEX_COL_OVERFLOW}>
         {/* Timeline Ruler Row (with fixed vertical ruler header) */}
-        <div style={{ display: 'flex', flexDirection: 'row', flexShrink: 0 }}>
+        <div style={STYLE_ROW_NO_SHRINK}>
           {/* Timeline Ruler - Fixed at top */}
           <div
             ref={canvasContainerRef}
-            style={{ position: 'relative', flex: 1, overflow: 'hidden' }}
+            style={STYLE_RELATIVE_FLEX_OVERFLOW}
           >
             <div
               ref={timelineRulerRef}
-              style={{ width: '100%', position: 'relative' }}
+              style={STYLE_FULL_WIDTH_RELATIVE}
               onMouseMove={(e) => {
                 if (timelineRulerRef.current) {
                   const rect = timelineRulerRef.current.getBoundingClientRect();
@@ -696,9 +710,9 @@ export function EditorLayout(props: EditorLayoutProps) {
         </div>
 
         {/* Canvas + Scrollable Vertical Rulers Row */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+        <div style={STYLE_FLEX_ROW_OVERFLOW_HIDDEN}>
           {/* Canvas wrapper for custom scrollbars */}
-          <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+          <div style={STYLE_RELATIVE_FLEX_OVERFLOW}>
             {/* Scrollable Canvas area */}
             <div
               ref={scrollContainerRef}
@@ -779,6 +793,9 @@ export function EditorLayout(props: EditorLayoutProps) {
                       }
                       setControlPanelHasFocus(null);
                     }}
+                    onTrackContainerFocusChange={(trackIndex, hasFocus) => {
+                      setContainerFocusedTrack(hasFocus ? trackIndex : null);
+                    }}
                     onHeightChange={setCanvasHeight}
                     spectrogramScale={spectrogramScale}
                   />
@@ -849,6 +866,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 height: track.height || 114,
                 selected: state.selectedTrackIndices.includes(index),
                 focused: state.focusedTrackIndex === index,
+                containerFocused: containerFocusedTrack === index,
                 stereo: track.channelSplitRatio !== undefined,
                 viewMode: track.viewMode,
                 trackType: track.type,

@@ -14,8 +14,10 @@ import { AppContextMenus } from './components/AppContextMenus';
 import { AppDialogs } from './components/AppDialogs';
 import { TransportToolbar } from './components/TransportToolbar';
 import { EditorLayout } from './components/EditorLayout';
-import { TokenReview } from './pages/TokenReview';
-import { SpectralRulerDemo } from './pages/SpectralRulerDemo';
+const TokenReview = React.lazy(() =>
+  import('./pages/TokenReview').then(m => ({ default: m.TokenReview }))
+);
+const SpectralRulerDemo = React.lazy(() => import('./pages/SpectralRulerDemo'));
 import { RecordingManager } from './utils/RecordingManager';
 import { createMenuDefinitions } from './data/menuDefinitions';
 import { createInitialPlugins } from './data/plugins';
@@ -236,6 +238,9 @@ function CanvasDemoContent() {
 
   // Track whether the control panel specifically has focus (for the inset outline)
   const [controlPanelHasFocus, setControlPanelHasFocus] = React.useState<number | null>(null);
+
+  // Track whether the track container (.track div) has keyboard focus
+  const [containerFocusedTrack, setContainerFocusedTrack] = React.useState<number | null>(null);
 
   // Track canvas height for playhead stalk
   const [canvasHeight, setCanvasHeight] = React.useState(0);
@@ -645,7 +650,7 @@ function CanvasDemoContent() {
         showDebugMenu={true}
         centerContent={
           activeMenuItem !== 'export' ? (
-            <ToolbarGroup ariaLabel="Toolbar options" startTabIndex={3}>
+            <ToolbarGroup ariaLabel="Toolbar options" tabGroupId="project-toolbar-actions">
               {showMixer && <GhostButton icon="mixer" label="Mixer" />}
               <GhostButton
                 icon="cog"
@@ -672,7 +677,7 @@ function CanvasDemoContent() {
           activeMenuItem !== 'export' ? (
             <>
               <span style={{ fontSize: '13px', color: '#3d3e42', marginRight: '8px' }}>Workspace</span>
-              <ToolbarGroup ariaLabel="Workspace controls" startTabIndex={4}>
+              <ToolbarGroup ariaLabel="Workspace controls" tabGroupId="project-toolbar-workspace">
                 <select
                   style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
                   value={workspace}
@@ -708,8 +713,8 @@ function CanvasDemoContent() {
                   <option value="classic">Classic</option>
                   <option value="spectral-editing">Spectral editing</option>
                 </select>
-                <GhostButton icon="undo" />
-                <GhostButton icon="redo" />
+                <GhostButton icon="undo" ariaLabel="Undo" />
+                <GhostButton icon="redo" ariaLabel="Redo" />
               </ToolbarGroup>
             </>
           ) : null
@@ -864,6 +869,8 @@ function CanvasDemoContent() {
           setSelectionAnchor={setSelectionAnchor}
           controlPanelHasFocus={controlPanelHasFocus}
           setControlPanelHasFocus={setControlPanelHasFocus}
+          containerFocusedTrack={containerFocusedTrack}
+          setContainerFocusedTrack={setContainerFocusedTrack}
           mouseCursorPosition={mouseCursorPosition}
           setMouseCursorPosition={setMouseCursorPosition}
           mouseCursorY={mouseCursorY}
@@ -1124,17 +1131,23 @@ export default function App() {
 
   // Show token review page if ?page=tokens
   if (page === 'tokens') {
-    return <TokenReview />;
+    return (
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <TokenReview />
+      </React.Suspense>
+    );
   }
 
   // Show spectral ruler demo if ?page=spectral-ruler
   if (page === 'spectral-ruler') {
     return (
-      <PreferencesProvider>
-        <ThemeProvider>
-          <SpectralRulerDemo />
-        </ThemeProvider>
-      </PreferencesProvider>
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <PreferencesProvider>
+          <ThemeProvider>
+            <SpectralRulerDemo />
+          </ThemeProvider>
+        </PreferencesProvider>
+      </React.Suspense>
     );
   }
 

@@ -7,7 +7,7 @@ import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { AddTrackFlyout, TrackType } from '../AddTrackFlyout';
 import type { TrackControlPanelProps } from '../TrackControlPanel';
-import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { useTabOrder } from '../hooks/useTabOrder';
 import { useTheme } from '../ThemeProvider';
 import './TrackControlSidePanel.css';
 
@@ -174,9 +174,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   const addButtonRef = React.useRef<HTMLDivElement>(null);
   const addButtonElementRef = React.useRef<HTMLButtonElement>(null);
 
-  const { activeProfile } = useAccessibilityProfile();
-  const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
-  const addButtonTabIndex = isFlatNavigation ? 0 : 99;
+  const addButtonTabIndex = useTabOrder('add-track');
 
   const style = {
     '--tcsp-bg': theme.background.surface.elevated,
@@ -277,12 +275,14 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           const isFocused = child.props.isFocused !== undefined
             ? child.props.isFocused
             : focusedTrackIndex === index;
+          const isContainerFocused = (child.props as any).containerFocused || false;
           return (
             <ResizablePanel
               key={child.key || index}
               initialHeight={height}
               minHeight={44}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
+              style={isContainerFocused ? { '--tcsp-focus-outline': 'red' } as React.CSSProperties : undefined}
               isFirstPanel={index === 0}
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
             >

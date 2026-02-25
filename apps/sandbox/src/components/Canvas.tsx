@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTheme } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
@@ -51,6 +51,10 @@ export interface CanvasProps {
    * Index of track that currently has keyboard focus (for showing focus borders)
    */
   keyboardFocusedTrack?: number | null;
+  /**
+   * Callback when the track container itself gains/loses keyboard focus
+   */
+  onTrackContainerFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
   /**
    * Callback when canvas height changes
    */
@@ -119,6 +123,7 @@ export function Canvas({
   onClipMenuClick,
   onTimeSelectionMenuClick,
   onTrackFocusChange,
+  onTrackContainerFocusChange,
   keyboardFocusedTrack = null,
   showRmsInWaveform = true,
   controlPointStyle = 'default',
@@ -140,6 +145,7 @@ export function Canvas({
   const lastMouseButtonRef = useRef<number>(0);
   const { activeProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
+  const trackBase = useTabOrder('tracks');
 
   // Use theme token as default if not provided
   const bgColor = backgroundColor ?? theme.background.canvas.default;
@@ -544,13 +550,27 @@ export function Canvas({
                 isLabelTrack={track.type === 'label'}
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
-                tabIndex={isFlatNavigation ? 0 : (101 + trackIndex * 2)}
+                tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 3)}
+                trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 3)}
+                onTrackNavigateVertical={(direction) => {
+                  const targetIndex = trackIndex + direction;
+                  if (targetIndex < 0 || targetIndex >= tracks.length) return;
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
+                  setTimeout(() => {
+                    const target = document.querySelector(
+                      `.track-wrapper[data-track-index="${targetIndex}"] .track`
+                    ) as HTMLElement;
+                    target?.focus();
+                    target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  }, 0);
+                }}
 
                 timeSelection={timeSelection && (timeSelection.renderOnCanvas !== false) ? timeSelection : null}
                 isTimeSelectionDragging={selection.selection.isDragging}
                 clipStyle={preferences.clipStyle}
                 recordingClipId={recordingClipId}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
+                onContainerFocusChange={(hasFocus) => onTrackContainerFocusChange?.(trackIndex, hasFocus)}
                 onClipMove={(clipId, deltaSeconds) => {
                   // Find the clip to get its current position
                   const clip = track.clips.find(c => c.id === clipId);

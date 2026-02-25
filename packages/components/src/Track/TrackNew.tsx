@@ -211,6 +211,24 @@ export interface TrackProps {
    */
   spectrogramScale?: SpectrogramScale;
 
+  /**
+   * Tab index for the track container div (the .track element)
+   * When set, the container becomes a tab stop before the panel and clips.
+   */
+  trackTabIndex?: number;
+
+  /**
+   * Callback when ArrowUp/Down is pressed while the track container itself is focused.
+   * Direction: 1 = down, -1 = up.
+   */
+  onTrackNavigateVertical?: (direction: 1 | -1) => void;
+
+  /**
+   * Callback when the track container itself gains or loses keyboard focus.
+   * Fires true only when the .track div itself is focused, not child clips.
+   */
+  onContainerFocusChange?: (hasFocus: boolean) => void;
+
 }
 
 // Map track index to color
@@ -259,12 +277,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   channelSplitRatio = 0.5,
   onChannelSplitRatioChange,
   spectrogramScale,
+  trackTabIndex,
+  onTrackNavigateVertical,
+  onContainerFocusChange,
 }) => {
   const trackColor = getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipHoveredPoints, setClipHoveredPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipCursorPositions, setClipCursorPositions] = React.useState<Map<string | number, { time: number; db: number } | null>>(new Map());
   const [hasKeyboardFocus, setHasKeyboardFocus] = React.useState(false);
+  const [isContainerFocused, setIsContainerFocused] = React.useState(false);
   const [isDraggingDivider, setIsDraggingDivider] = React.useState(false);
   const [dividerHover, setDividerHover] = React.useState(false);
   const trackRef = React.useRef<HTMLDivElement>(null);
@@ -570,6 +592,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // Focus entered somewhere within the track (could be a clip or label)
     setHasKeyboardFocus(true);
     onFocusChange?.(true);
+
+    // Notify if the container itself (not a child) received focus
+    const containerHasFocus = e.target === trackRef.current;
+    setIsContainerFocused(containerHasFocus);
+    onContainerFocusChange?.(containerHasFocus);
   };
 
   // Handle focus leaving the track — tabIndex reset delegated to useContainerTabGroup
@@ -583,7 +610,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // Only notify blur if focus is moving completely outside the track
     if (!relatedTarget || !trackElement.contains(relatedTarget)) {
       setHasKeyboardFocus(false);
+      setIsContainerFocused(false);
       onFocusChange?.(false);
+      onContainerFocusChange?.(false);
+    } else {
+      // Focus moved to a child — container no longer directly focused
+      if (e.target === trackRef.current) {
+        setIsContainerFocused(false);
+        onContainerFocusChange?.(false);
+      }
     }
   };
 
@@ -620,7 +655,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   };
 
   return (
-    <div className={className} data-track-index={trackIndex}>
+    <div className={className} data-track-index={trackIndex} style={isContainerFocused ? { '--track-focus-color': 'red' } as React.CSSProperties : undefined}>
       <div
         ref={trackRef}
         className={`track ${isSelected ? 'track--selected' : ''} ${isMuted ? 'track--muted' : ''}`}
@@ -631,13 +666,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           backgroundColor: getTrackBackgroundColor(),
           opacity: isMuted ? 0.5 : 1,
         }}
-        tabIndex={-1}
+        tabIndex={trackTabIndex ?? -1}
         onClick={(e) => {
           // Focus the track when clicking empty space
           (e.currentTarget as HTMLDivElement).focus();
           onTrackClick?.(e);
         }}
-        onKeyDown={clipNavKeyDown}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          // If the track container itself is focused (not a child clip), handle vertical navigation
+          if (e.currentTarget === document.activeElement) {
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+              e.preventDefault();
+              onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1);
+            }
+            return; // Don't run clip navigation when container itself is focused
+          }
+          // Delegate to clip navigation hook for child elements
+          clipNavKeyDown(e);
+        }}
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
