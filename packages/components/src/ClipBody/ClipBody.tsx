@@ -9,6 +9,9 @@ import { EnvelopeOverlay } from '../EnvelopeOverlay/EnvelopeOverlay';
 import { useTheme } from '../ThemeProvider';
 import './ClipBody.css';
 
+const EMPTY_NUMBER_ARRAY: number[] = [];
+const EMPTY_ENVELOPE_ARRAY: EnvelopePointData[] = [];
+
 export type { SpectrogramScale };
 
 export type ClipBodyVariant = 'waveform' | 'spectrogram';
@@ -120,8 +123,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   clipFullDuration,
   pixelsPerSecond = 100,
   timeSelectionColor = 'rgba(255, 255, 255, 0.3)',
-  hiddenPointIndices = [],
-  hoveredPointIndices = [],
+  hiddenPointIndices = EMPTY_NUMBER_ARRAY,
+  hoveredPointIndices = EMPTY_NUMBER_ARRAY,
   cursorPosition = null,
   inTimeSelection = false,
   timeSelectionRange = null,
@@ -863,7 +866,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       {/* SVG-based envelope overlay */}
       {showEnvelope && (
         <EnvelopeOverlay
-          points={envelope || []}
+          points={envelope ?? EMPTY_ENVELOPE_ARRAY}
           duration={clipDuration}
           width={width || 0}
           height={envelopeHeight}

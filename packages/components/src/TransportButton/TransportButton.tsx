@@ -25,6 +25,10 @@ export interface TransportButtonProps {
    */
   active?: boolean;
   /**
+   * Accessible label for the button (required for icon-only buttons)
+   */
+  ariaLabel?: string;
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -43,6 +47,7 @@ export function TransportButton({
   onClick,
   disabled = false,
   active = false,
+  ariaLabel,
   className = '',
 }: TransportButtonProps) {
   const { theme } = useTheme();
@@ -99,6 +104,7 @@ export function TransportButton({
       disabled={disabled}
       type="button"
       style={style}
+      aria-label={ariaLabel}
     >
       <Icon name={icon} size={14} className="transport-button__icon" />
     </button>

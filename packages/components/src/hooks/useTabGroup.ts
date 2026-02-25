@@ -55,7 +55,8 @@ export interface UseTabGroupOptions {
   resetKey?: string | number;
 
   /**
-   * Base tabIndex for the active item in roving mode (default: 0)
+   * Base tabIndex for the active item in roving mode.
+   * When omitted, auto-resolved from the active profile's tabOrder[groupId].
    */
   baseTabIndex?: number;
 }
@@ -110,10 +111,13 @@ export function useTabGroup({
   activeIndexRef: providedActiveIndexRef,
   activeIndex: providedActiveIndex,
   resetKey,
-  baseTabIndex = 0,
+  baseTabIndex: baseTabIndexProp,
 }: UseTabGroupOptions): UseTabGroupReturn {
   const { activeProfile } = useAccessibilityProfile();
   const groupConfig = activeProfile.config.tabGroups[groupId];
+
+  // Auto-resolve baseTabIndex from profile when not explicitly provided
+  const baseTabIndex = baseTabIndexProp ?? activeProfile.config.tabOrder?.[groupId] ?? 0;
 
   // Track active index for roving tabindex
   // Use provided ref if available, otherwise create a local one

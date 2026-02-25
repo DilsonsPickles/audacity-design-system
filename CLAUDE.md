@@ -292,6 +292,8 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 **Core Packages:**
 - `packages/core/src/types/index.ts` - All TypeScript interfaces
 - `packages/core/src/accessibility/` - Accessibility utilities (tab groups, profiles)
+- `packages/components/src/hooks/useTabGroup.ts` - Per-item roving tabindex hook (ProjectToolbar, EffectsPanel)
+- `packages/components/src/hooks/useContainerTabGroup.ts` - Container-level roving tabindex hook (Toolbar, SelectionToolbar, TrackNew clips)
 - `packages/tokens/src/index.ts` - Theme definitions and tokens
 - `packages/components/src/` - Full component library (100+ components)
 
@@ -310,6 +312,8 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - `docs/automation-overlay-states.md` - 6 automation overlay states
 - `docs/clip-styling-states.md` - 10 clip styling states
 - `docs/label-interactions.md` - Label selection, deletion, and track expansion behavior
+- `docs/accessibility-architecture.md` - Roving tabindex hooks, tab group system, keyboard navigation patterns
+- `docs/keyboard-handlers-map.md` - Complete keyboard handler location reference
 
 ## Build System
 

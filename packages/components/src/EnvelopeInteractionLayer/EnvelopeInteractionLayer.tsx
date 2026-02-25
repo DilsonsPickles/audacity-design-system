@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Tooltip } from '../Tooltip/Tooltip';
 
+const EMPTY_NUMBER_ARRAY: number[] = [];
+
 export interface EnvelopePoint {
   time: number;
   db: number;
@@ -152,7 +154,7 @@ function distanceToLineSegment(
  * This component provides a transparent interaction layer for envelope editing.
  * It can be positioned over any envelope visualization (clip or lane).
  */
-export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> = ({
+const EnvelopeInteractionLayerComponent: React.FC<EnvelopeInteractionLayerProps> = ({
   envelopePoints,
   onEnvelopePointsChange,
   onHiddenPointsChange,
@@ -164,7 +166,7 @@ export const EnvelopeInteractionLayer: React.FC<EnvelopeInteractionLayerProps> =
   duration,
   x = 0,
   y = 0,
-  hiddenPointIndices = [],
+  hiddenPointIndices = EMPTY_NUMBER_ARRAY,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<DragState | null>(null);
@@ -721,5 +723,7 @@ function findSegmentIndices(
 
   return { segmentStartIndex: -1, segmentEndIndex: -1 };
 }
+
+export const EnvelopeInteractionLayer = React.memo(EnvelopeInteractionLayerComponent);
 
 export default EnvelopeInteractionLayer;

@@ -21,6 +21,10 @@ export interface ToggleToolButtonProps {
    */
   disabled?: boolean;
   /**
+   * Accessible label for the button (required for icon-only buttons)
+   */
+  ariaLabel?: string;
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -39,6 +43,7 @@ export function ToggleToolButton({
   isActive = false,
   onClick,
   disabled = false,
+  ariaLabel,
   className = '',
 }: ToggleToolButtonProps) {
   const { theme } = useTheme();
@@ -91,6 +96,7 @@ export function ToggleToolButton({
       disabled={disabled}
       type="button"
       aria-pressed={isActive}
+      aria-label={ariaLabel}
       style={style}
     >
       <Icon name={icon} size={16} color={iconColor} />

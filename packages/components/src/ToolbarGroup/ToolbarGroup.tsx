@@ -16,9 +16,14 @@ export interface ToolbarGroupProps {
    */
   className?: string;
   /**
-   * Starting tabIndex for the first element in the group (default: 0)
+   * Starting tabIndex for the first element in the group.
+   * When omitted, resolved from the active profile's tabOrder[tabGroupId].
    */
   startTabIndex?: number;
+  /**
+   * Tab group ID for resolving startTabIndex from the active profile
+   */
+  tabGroupId?: string;
 }
 
 /**
@@ -31,10 +36,14 @@ export function ToolbarGroup({
   children,
   ariaLabel,
   className = '',
-  startTabIndex = 0,
+  startTabIndex: startTabIndexProp,
+  tabGroupId,
 }: ToolbarGroupProps) {
   const groupRef = useRef<HTMLDivElement>(null);
   const { activeProfile } = useAccessibilityProfile();
+
+  // Resolve startTabIndex from profile when not explicitly passed
+  const startTabIndex = startTabIndexProp ?? (tabGroupId ? activeProfile.config.tabOrder?.[tabGroupId] ?? 0 : 0);
 
   // Check if we're in flat navigation mode
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';

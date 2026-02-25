@@ -123,9 +123,12 @@ export interface AccessibilityProfileConfig {
   };
 
   /**
-   * Order in which tab groups are visited (null for DOM order)
+   * Maps tab group IDs to their numeric tabIndex values.
+   * In hierarchical mode, each group gets a unique positive tabIndex so Tab
+   * visits them in the specified order.  In sequential (flat) mode this
+   * record is typically empty — every element uses tabIndex 0.
    */
-  tabGroupOrder: string[] | null;
+  tabOrder: Record<string, number>;
 
   /**
    * Keyboard shortcuts configuration

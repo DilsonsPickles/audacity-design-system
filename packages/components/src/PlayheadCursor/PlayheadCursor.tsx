@@ -49,7 +49,7 @@ export interface PlayheadCursorProps {
  * - 2px black strokes on either side
  * - Optional playhead icon at top (for timeline ruler)
  */
-export function PlayheadCursor({
+function PlayheadCursorComponent({
   position,
   pixelsPerSecond,
   height,
@@ -201,3 +201,5 @@ export function PlayheadCursor({
     </div>
   );
 }
+
+export const PlayheadCursor = React.memo(PlayheadCursorComponent);

@@ -10,6 +10,7 @@ import React from 'react';
 import './ApplicationHeader.css';
 import { Menu, MenuItem } from '../Menu';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { useTabOrder } from '../hooks/useTabOrder';
 import { useTheme } from '../ThemeProvider';
 
 const AudacityLogo = () => (
@@ -120,7 +121,8 @@ export function ApplicationHeader({
 
   // Check if we're in flat navigation mode
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
-  const menuTabIndex = isFlatNavigation ? 0 : 1;
+  // Resolve menu tabIndex from profile
+  const menuTabIndex = useTabOrder('file-menu');
 
   const handleMenuClick = (item: string, event: React.MouseEvent<HTMLButtonElement>) => {
     // If menu has definitions, open dropdown

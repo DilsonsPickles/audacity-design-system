@@ -80,7 +80,6 @@ export function ProjectToolbar({
     itemRefs: leftGroupRef,
     activeIndex: activeTabIndex,
     onItemActivate: setActiveTabIndex,
-    baseTabIndex: 2,
   });
 
   const projectTab = useTabGroup({
@@ -90,7 +89,6 @@ export function ProjectToolbar({
     itemRefs: leftGroupRef,
     activeIndex: activeTabIndex,
     onItemActivate: setActiveTabIndex,
-    baseTabIndex: 2,
   });
 
   const exportTab = useTabGroup({
@@ -100,7 +98,6 @@ export function ProjectToolbar({
     itemRefs: leftGroupRef,
     activeIndex: activeTabIndex,
     onItemActivate: setActiveTabIndex,
-    baseTabIndex: 2,
   });
 
   const debugTab = useTabGroup({
@@ -110,7 +107,6 @@ export function ProjectToolbar({
     itemRefs: leftGroupRef,
     activeIndex: activeTabIndex,
     onItemActivate: setActiveTabIndex,
-    baseTabIndex: 2,
   });
 
   return (

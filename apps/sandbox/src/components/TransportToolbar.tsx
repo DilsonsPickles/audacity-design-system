@@ -82,14 +82,15 @@ export function TransportToolbar({
   if (activeMenuItem === 'home') return null;
 
   return (
-    <Toolbar startTabIndex={5} tabGroupId="tool-toolbar">
+    <Toolbar tabGroupId="tool-toolbar">
       {activeMenuItem === 'export' ? (
         <>
           <ToolbarButtonGroup gap={2}>
-            <TransportButton icon={isPlaying ? "pause" : "play"} onClick={onPlay} />
-            <TransportButton icon="stop" onClick={onStop} />
+            <TransportButton icon={isPlaying ? "pause" : "play"} ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />
+            <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />
             <TransportButton
               icon="loop"
+              ariaLabel="Loop"
               active={loopRegionEnabled}
               onClick={handleToggleLoop}
             />
@@ -132,18 +133,20 @@ export function TransportToolbar({
       ) : (
         <>
           <ToolbarButtonGroup gap={2}>
-            <TransportButton icon={isPlaying ? "pause" : "play"} onClick={onPlay} />
-            <TransportButton icon="stop" onClick={onStop} />
+            <TransportButton icon={isPlaying ? "pause" : "play"} ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />
+            <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />
             <TransportButton
               icon="record"
+              ariaLabel="Record"
               active={isRecording}
               disabled={isPlaying}
               onClick={onRecord}
             />
-            <TransportButton icon="skip-back" disabled={isPlaying} />
-            <TransportButton icon="skip-forward" disabled={isPlaying} />
+            <TransportButton icon="skip-back" ariaLabel="Step backward" disabled={isPlaying} />
+            <TransportButton icon="skip-forward" ariaLabel="Step forward" disabled={isPlaying} />
             <TransportButton
               icon="loop"
+              ariaLabel="Loop"
               active={loopRegionEnabled}
               onClick={handleToggleLoop}
             />
@@ -156,37 +159,41 @@ export function TransportToolbar({
               <ToolbarButtonGroup gap={2}>
                 <ToggleToolButton
                   icon="automation"
+                  ariaLabel="Automation"
                   isActive={envelopeMode}
                   onClick={onToggleEnvelope}
                 />
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" onClick={onZoomIn} />
-                <ToolButton icon="zoom-out" onClick={onZoomOut} />
-                <ToolButton icon="zoom-to-selection" onClick={onZoomToSelection} />
-                <ToolButton icon="zoom-to-fit" onClick={onZoomToFitProject} />
-                <ToolButton icon="zoom-toggle" onClick={onZoomToggle} />
+                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
+                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
+                <ToolButton icon="zoom-to-selection" ariaLabel="Fit selection" onClick={onZoomToSelection} />
+                <ToolButton icon="zoom-to-fit" ariaLabel="Fit project" onClick={onZoomToFitProject} />
+                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
                 <ToolButton
                   icon="cut"
+                  ariaLabel="Cut"
                   onClick={() => toast.info('Cut', 'Selected audio has been cut to clipboard', undefined, 6000)}
                 />
                 <ToolButton
                   icon="copy"
+                  ariaLabel="Copy"
                   onClick={() => toast.info('Copy', 'Selected audio has been copied to clipboard', undefined, 6000)}
                 />
                 <ToolButton
                   icon="paste"
+                  ariaLabel="Paste"
                   onClick={() => toast.info('Paste', 'Audio has been pasted from clipboard', undefined, 6000)}
                 />
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="trim" />
-                <ToolButton icon="silence" />
+                <ToolButton icon="trim" ariaLabel="Trim" />
+                <ToolButton icon="silence" ariaLabel="Silence" />
               </ToolbarButtonGroup>
             </>
           )}
@@ -194,14 +201,15 @@ export function TransportToolbar({
           {workspace === 'spectral-editing' && (
             <>
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" onClick={onZoomIn} />
-                <ToolButton icon="zoom-out" onClick={onZoomOut} />
-                <ToolButton icon="zoom-toggle" onClick={onZoomToggle} />
+                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
+                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
+                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
                 <ToggleToolButton
                   icon="waveform"
+                  ariaLabel="Waveform"
                   isActive={spectrogramMode}
                   onClick={onToggleSpectrogram}
                 />

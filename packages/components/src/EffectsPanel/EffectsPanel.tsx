@@ -667,13 +667,12 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
   const itemRefsArray = React.useRef<(HTMLElement | null)[]>([null]);
 
   // Use tab group for proper integration with app-wide tab navigation
-  // Use baseTabIndex of 6 to appear after transport toolbar (0) but before canvas (101+) and other 0-index elements
+  // baseTabIndex auto-resolved from profile's tabOrder['effects-panel']
   const tabGroup = useTabGroup({
     groupId: 'effects-panel',
     itemIndex: 0,  // Panel is a single item in the tab group
     totalItems: 1,
     itemRefs: itemRefsArray,
-    baseTabIndex: 6,  // Appear after transport toolbar but before canvas content and Add Track button
   });
 
   const style = {

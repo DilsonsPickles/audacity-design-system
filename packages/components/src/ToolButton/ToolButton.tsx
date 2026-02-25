@@ -27,6 +27,10 @@ export interface ToolButtonProps {
    */
   disabled?: boolean;
   /**
+   * Accessible label for the button (required for icon-only buttons)
+   */
+  ariaLabel?: string;
+  /**
    * Optional className for custom styling
    */
   className?: string;
@@ -46,6 +50,7 @@ export function ToolButton({
   state = 'idle',
   onClick,
   disabled = false,
+  ariaLabel,
   className = '',
 }: ToolButtonProps) {
   const { theme } = useTheme();
@@ -104,6 +109,7 @@ export function ToolButton({
       disabled={disabled}
       type="button"
       style={style}
+      aria-label={ariaLabel}
     >
       <Icon name={icon} size={iconSize} className="tool-button__icon" />
     </button>

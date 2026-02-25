@@ -6,6 +6,8 @@ import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import type { EnvelopePointData } from '../utils/envelope';
 import './Clip.css';
 
+const EMPTY_NUMBER_ARRAY: number[] = [];
+
 export type ClipState = 'default' | 'headerHover';
 
 const MIN_CLIP_HEIGHT = 44; // Minimum height before header is hidden
@@ -97,7 +99,7 @@ export interface ClipProps {
  *
  * When height ≤ 44px, enters "truncated" mode where header is hidden until hover.
  */
-export const Clip: React.FC<ClipProps> = ({
+const ClipComponent: React.FC<ClipProps> = ({
   color = 'blue',
   selected = false,
   state = 'default',
@@ -120,8 +122,8 @@ export const Clip: React.FC<ClipProps> = ({
   clipTrimStart = 0,
   clipFullDuration,
   pixelsPerSecond = 100,
-  hiddenPointIndices = [],
-  hoveredPointIndices = [],
+  hiddenPointIndices = EMPTY_NUMBER_ARRAY,
+  hoveredPointIndices = EMPTY_NUMBER_ARRAY,
   cursorPosition = null,
   onHeaderClick,
   onMenuClick,
@@ -309,5 +311,7 @@ export const Clip: React.FC<ClipProps> = ({
     </div>
   );
 };
+
+export const Clip = React.memo(ClipComponent);
 
 export default Clip;
