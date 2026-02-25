@@ -221,7 +221,7 @@ export interface TrackProps {
    * Callback when ArrowUp/Down is pressed while the track container itself is focused.
    * Direction: 1 = down, -1 = up.
    */
-  onTrackNavigateVertical?: (direction: 1 | -1) => void;
+  onTrackNavigateVertical?: (direction: 1 | -1, shiftKey?: boolean) => void;
 
   /**
    * Callback when the track container itself gains or loses keyboard focus.
@@ -676,10 +676,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         onKeyDown={(e: React.KeyboardEvent) => {
           // If the track container itself is focused (not a child clip), handle vertical navigation
           if (e.currentTarget === document.activeElement) {
-            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey) {
               e.preventDefault();
               e.stopPropagation(); // Prevent global useKeyboardShortcuts from also handling this
-              onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1);
+              onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey);
             }
             return; // Don't run clip navigation when container itself is focused
           }

@@ -455,36 +455,6 @@ export function EditorLayout(props: EditorLayoutProps) {
                     }
                   }
                 }}
-                onNavigateVerticalWithShift={(direction) => {
-                  const nextIndex = direction === 'up' ? index - 1 : index + 1;
-                  if (nextIndex >= 0 && nextIndex < state.tracks.length) {
-                    flushSync(() => {
-                      dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-
-                      const anchor = selectionAnchor ?? index;
-                      if (selectionAnchor === null) {
-                        setSelectionAnchor(index);
-                      }
-
-                      const start = Math.min(anchor, nextIndex);
-                      const end = Math.max(anchor, nextIndex);
-                      const newSelection: number[] = [];
-                      for (let i = start; i <= end; i++) {
-                        newSelection.push(i);
-                      }
-                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                    });
-
-                    const panels = document.querySelectorAll('[aria-label*="track controls"]');
-                    if (panels[nextIndex]) {
-                      (panels[nextIndex] as HTMLElement).focus();
-                      (panels[nextIndex] as HTMLElement).scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'nearest',
-                      });
-                    }
-                  }
-                }}
                 onAddLabelClick={() => {
                   const allLabels = state.tracks.flatMap((t: any) => t.labels || []);
                   const nextLabelId = allLabels.length > 0

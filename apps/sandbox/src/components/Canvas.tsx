@@ -552,10 +552,24 @@ export function Canvas({
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 3)}
                 trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 3)}
-                onTrackNavigateVertical={(direction) => {
+                onTrackNavigateVertical={(direction, shiftKey) => {
                   const targetIndex = trackIndex + direction;
                   if (targetIndex < 0 || targetIndex >= tracks.length) return;
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
+
+                  if (shiftKey) {
+                    // Extend/contract track selection
+                    const anchor = selectionAnchor ?? trackIndex;
+                    if (selectionAnchor === null && setSelectionAnchor) {
+                      setSelectionAnchor(trackIndex);
+                    }
+                    const start = Math.min(anchor, targetIndex);
+                    const end = Math.max(anchor, targetIndex);
+                    const newSelection: number[] = [];
+                    for (let i = start; i <= end; i++) newSelection.push(i);
+                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                  }
+
                   setTimeout(() => {
                     const target = document.querySelector(
                       `.track-wrapper[data-track-index="${targetIndex}"] .track`

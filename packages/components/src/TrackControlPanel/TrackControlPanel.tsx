@@ -35,7 +35,6 @@ export interface TrackControlPanelProps {
   tabIndex?: number;
   onFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down') => void;
-  onNavigateVerticalWithShift?: (direction: 'up' | 'down') => void; // Shift+Arrow for range selection
   onTabOut?: () => void;
   /** Whether the track container (in the canvas) currently has keyboard focus */
   containerFocused?: boolean;
@@ -81,7 +80,6 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   tabIndex,
   onFocusChange,
   onNavigateVertical,
-  onNavigateVerticalWithShift,
   onTabOut,
   containerFocused = false,
   meterLevel = 0,
@@ -190,14 +188,6 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
     // Only handle arrow keys for navigation
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') {
-      return;
-    }
-
-    // Handle Shift+Up/Down for range selection when panel itself is focused
-    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && isPanelFocused && e.shiftKey) {
-      e.preventDefault();
-      const direction = e.key === 'ArrowUp' ? 'up' : 'down';
-      onNavigateVerticalWithShift?.(direction);
       return;
     }
 
