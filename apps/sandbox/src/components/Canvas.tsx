@@ -751,6 +751,8 @@ export function Canvas({
                       type: 'TOGGLE_CLIP_SELECTION',
                       payload: { trackIndex, clipId: clipId as number },
                     });
+                    // Move track focus outline to this track
+                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
                   } else {
                     // Regular click/Enter: check if clip is already selected
                     const clip = track.clips.find(c => c.id === clipId);
