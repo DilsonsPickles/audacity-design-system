@@ -224,6 +224,12 @@ export interface TrackProps {
   onTrackNavigateVertical?: (direction: 1 | -1, shiftKey?: boolean) => void;
 
   /**
+   * Callback when Cmd+ArrowUp/Down is pressed on the track container to reorder the track.
+   * Direction: 1 = move down, -1 = move up.
+   */
+  onTrackReorder?: (direction: 1 | -1) => void;
+
+  /**
    * Callback when the track container itself gains or loses keyboard focus.
    * Fires true only when the .track div itself is focused, not child clips.
    */
@@ -279,6 +285,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   spectrogramScale,
   trackTabIndex,
   onTrackNavigateVertical,
+  onTrackReorder,
   onContainerFocusChange,
 }) => {
   const trackColor = getTrackColor(trackIndex, clipStyle);
@@ -613,7 +620,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       setHasKeyboardFocus(false);
       setIsContainerFocused(false);
       onFocusChange?.(false);
-      onContainerFocusChange?.(false);
+      // Don't clear container focus if moving to another track container (e.g. during reorder)
+      const movingToTrackContainer = relatedTarget?.classList.contains('track');
+      if (!movingToTrackContainer) {
+        onContainerFocusChange?.(false);
+      }
     } else {
       // Focus moved to a child — container no longer directly focused
       if (e.target === trackRef.current) {
@@ -676,9 +687,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         onKeyDown={(e: React.KeyboardEvent) => {
           // If the track container itself is focused (not a child clip), handle vertical navigation
           if (e.currentTarget === document.activeElement) {
-            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey) {
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+              // Cmd+Arrow: reorder track
               e.preventDefault();
-              e.stopPropagation(); // Prevent global useKeyboardShortcuts from also handling this
+              e.stopPropagation();
+              onTrackReorder?.(e.key === 'ArrowDown' ? 1 : -1);
+            } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey) {
+              // Plain or Shift+Arrow: navigate between tracks
+              e.preventDefault();
+              e.stopPropagation();
               onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey);
             }
             return; // Don't run clip navigation when container itself is focused

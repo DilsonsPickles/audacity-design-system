@@ -765,6 +765,9 @@ export function EditorLayout(props: EditorLayoutProps) {
                     }}
                     onTrackContainerFocusChange={(trackIndex, hasFocus) => {
                       setContainerFocusedTrack(hasFocus ? trackIndex : null);
+                      if (hasFocus) {
+                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+                      }
                     }}
                     onHeightChange={setCanvasHeight}
                     spectrogramScale={spectrogramScale}

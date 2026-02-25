@@ -203,7 +203,8 @@ export type TracksAction =
   | { type: 'UPDATE_MASTER_EFFECT'; payload: { effectIndex: number; updates: Partial<Effect> } }
   | { type: 'REMOVE_MASTER_EFFECT'; payload: number }
   | { type: 'REORDER_MASTER_EFFECTS'; payload: { fromIndex: number; toIndex: number } }
-  | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean };
+  | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean }
+  | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } };
 
 // Initial state
 const initialState: TracksState = {
@@ -1001,6 +1002,37 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       return {
         ...state,
         masterEffectsEnabled: action.payload,
+      };
+    }
+
+    case 'MOVE_TRACK': {
+      const { fromIndex, toIndex } = action.payload;
+      if (toIndex < 0 || toIndex >= state.tracks.length) return state;
+      const TRACK_COLORS = ['blue', 'violet', 'magenta'] as const;
+      // Stamp current index-based colors onto clips before reordering
+      const newTracks = state.tracks.map((track, i) => {
+        const hasExplicitColors = track.clips.every((c: any) => c.color);
+        if (hasExplicitColors) return track;
+        const color = TRACK_COLORS[i % TRACK_COLORS.length];
+        return {
+          ...track,
+          clips: track.clips.map(c => ({ ...c, color: (c as any).color || color })),
+        };
+      });
+      const [moved] = newTracks.splice(fromIndex, 1);
+      newTracks.splice(toIndex, 0, moved);
+      // Remap selected track indices to follow the reorder
+      const newSelected = state.selectedTrackIndices.map(i => {
+        if (i === fromIndex) return toIndex;
+        if (fromIndex < toIndex && i > fromIndex && i <= toIndex) return i - 1;
+        if (fromIndex > toIndex && i >= toIndex && i < fromIndex) return i + 1;
+        return i;
+      });
+      return {
+        ...state,
+        tracks: newTracks,
+        focusedTrackIndex: toIndex,
+        selectedTrackIndices: newSelected,
       };
     }
 

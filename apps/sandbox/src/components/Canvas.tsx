@@ -578,6 +578,23 @@ export function Canvas({
                     target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                   }, 0);
                 }}
+                onTrackReorder={(direction) => {
+                  const targetIndex = trackIndex + direction;
+                  if (targetIndex < 0 || targetIndex >= tracks.length) return;
+                  // Pre-set container focus on the target index so panel/ruler stay red
+                  onTrackContainerFocusChange?.(targetIndex, true);
+                  dispatch({
+                    type: 'MOVE_TRACK',
+                    payload: { fromIndex: trackIndex, toIndex: targetIndex },
+                  });
+                  setTimeout(() => {
+                    const target = document.querySelector(
+                      `.track-wrapper[data-track-index="${targetIndex}"] .track`
+                    ) as HTMLElement;
+                    target?.focus();
+                    target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  }, 0);
+                }}
 
                 timeSelection={timeSelection && (timeSelection.renderOnCanvas !== false) ? timeSelection : null}
                 isTimeSelectionDragging={selection.selection.isDragging}
