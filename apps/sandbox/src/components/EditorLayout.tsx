@@ -787,10 +787,10 @@ export function EditorLayout(props: EditorLayoutProps) {
                         setTimeSelectionContextMenu({ isOpen: true, x, y });
                       }
                     }}
-                    onTrackFocusChange={(trackIndex, hasFocus) => {
-                      if (hasFocus) {
-                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
-                      }
+                    onTrackFocusChange={(_trackIndex, _hasFocus) => {
+                      // Don't dispatch SET_FOCUSED_TRACK here — clip vertical navigation
+                      // moves focus between tracks without moving the track focus outline.
+                      // Track clicks and container arrow navigation handle SET_FOCUSED_TRACK directly.
                       setControlPanelHasFocus(null);
                     }}
                     onTrackContainerFocusChange={(trackIndex, hasFocus) => {

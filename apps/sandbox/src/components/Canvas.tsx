@@ -621,27 +621,23 @@ export function Canvas({
                   }, 0);
                 }}
                 onClipNavigateVertical={(_clipId, direction) => {
-                  // Calculate target track index
-                  const targetTrackIndex = trackIndex + direction;
-
-                  // Check if target track exists
-                  if (targetTrackIndex < 0 || targetTrackIndex >= tracks.length) return;
-
-                  // Focus the first clip on the target track and scroll into view
-                  setTimeout(() => {
-                    const targetTrack = document.querySelector(`[data-track-index="${targetTrackIndex}"]`);
-                    if (targetTrack) {
-                      const firstClip = targetTrack.querySelector('[role="button"]') as HTMLElement;
+                  // Search tracks in the given direction, wrapping around
+                  const trackCount = tracks.length;
+                  for (let i = 1; i <= trackCount; i++) {
+                    const candidateIndex = ((trackIndex + direction * i) % trackCount + trackCount) % trackCount;
+                    const candidateTrack = document.querySelector(`[data-track-index="${candidateIndex}"]`);
+                    if (candidateTrack) {
+                      const firstClip = candidateTrack.querySelector('[role="button"]') as HTMLElement;
                       if (firstClip) {
-                        firstClip.focus();
-                        // Scroll the track into view
-                        targetTrack.scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'nearest',
-                        });
+                        setTimeout(() => {
+                          firstClip.focus();
+                          candidateTrack.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 0);
+                        return;
                       }
                     }
-                  }, 0);
+                  }
+                  // No track with clips found — don't move focus
                 }}
                 onClipTrim={(clipId, edge, deltaSeconds) => {
                   // Find the clip to get its current state

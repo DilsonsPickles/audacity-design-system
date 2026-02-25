@@ -475,6 +475,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // Navigate vertically between tracks with arrow up/down (without Cmd or Shift)
             if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
               e.preventDefault();
+              e.stopPropagation(); // Prevent global useKeyboardShortcuts from also handling this
               const direction = e.key === 'ArrowDown' ? 1 : -1;
               onClipNavigateVertical?.(clip.id, direction);
               return;
@@ -677,6 +678,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           if (e.currentTarget === document.activeElement) {
             if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
               e.preventDefault();
+              e.stopPropagation(); // Prevent global useKeyboardShortcuts from also handling this
               onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1);
             }
             return; // Don't run clip navigation when container itself is focused
