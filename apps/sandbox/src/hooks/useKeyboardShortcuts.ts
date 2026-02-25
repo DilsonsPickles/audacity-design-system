@@ -180,11 +180,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
       // Move track focus with up/down arrow keys
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        // Don't handle if focus is on a track header (it handles its own navigation)
+        // Don't handle if focus is inside any tab group (toolbar, menubar, track header, etc.)
+        // These containers handle their own arrow key navigation.
         const target = e.target as HTMLElement;
-        const hasGroupRole = target.getAttribute('role') === 'group';
-        if (hasGroupRole) {
-          return; // Let TrackControlPanel handle the navigation
+        if (target.closest('[role="toolbar"], [role="group"], [role="menubar"]')) {
+          return;
         }
 
         e.preventDefault();

@@ -204,8 +204,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       return;
     }
 
-    // Only handle left/right for internal navigation
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+    // Handle arrow keys for internal navigation (all four directions)
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
       return;
     }
 
@@ -217,11 +217,12 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     if (focusableElements.length === 0) return;
 
     const currentIndex = Array.from(focusableElements).indexOf(currentElement as HTMLElement);
+    const isForward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
 
     // If the panel itself is focused (currentIndex === -1)
     if (currentIndex === -1) {
       e.preventDefault();
-      if (e.key === 'ArrowRight') {
+      if (isForward) {
         // Go to first element
         (focusableElements[0] as HTMLElement).focus();
       } else {
@@ -233,7 +234,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
     e.preventDefault();
 
-    if (e.key === 'ArrowRight') {
+    if (isForward) {
       // Move to next element
       const nextIndex = currentIndex + 1;
       if (nextIndex >= focusableElements.length) {

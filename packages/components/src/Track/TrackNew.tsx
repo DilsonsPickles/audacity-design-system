@@ -4,7 +4,10 @@ import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
 import { CLIP_CONTENT_OFFSET } from '../constants';
+import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import './Track.css';
+
+const EMPTY_NUMBER_ARRAY: number[] = [];
 
 export interface TrackClip {
   id: string | number;
@@ -222,7 +225,7 @@ function getTrackColor(trackIndex: number, clipStyle: 'classic' | 'colourful' = 
 /**
  * Track component - renders a single audio track with clips using Clip components
  */
-export const TrackNew: React.FC<TrackProps> = ({
+const TrackNewComponent: React.FC<TrackProps> = ({
   clips,
   height = 114,
   trackIndex,
@@ -265,6 +268,19 @@ export const TrackNew: React.FC<TrackProps> = ({
   const [isDraggingDivider, setIsDraggingDivider] = React.useState(false);
   const [dividerHover, setDividerHover] = React.useState(false);
   const trackRef = React.useRef<HTMLDivElement>(null);
+
+  // Container-level roving tabindex for clip navigation (ArrowLeft/Right)
+  const { onKeyDown: clipNavKeyDown, onBlur: clipNavBlur, initTabIndices: initClipTabIndices } = useContainerTabGroup({
+    containerRef: trackRef,
+    groupId: `track-${trackIndex}-clips`,
+    selector: '[role="button"]',
+    startTabIndex: tabIndex,
+  });
+
+  // Re-init clip tab indices when clips change
+  React.useEffect(() => {
+    initClipTabIndices();
+  }, [clips, initClipTabIndices]);
 
   // Handle divider drag
   React.useEffect(() => {
@@ -442,36 +458,7 @@ export const TrackNew: React.FC<TrackProps> = ({
               return;
             }
 
-            // Navigate between clips with arrow left/right (without Cmd or Shift) - cycles through all clips
-            if (e.key === 'ArrowRight' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-              e.preventDefault();
-              // Cycle to next clip, wrapping to first if at end
-              const nextIndex = (clipIndex + 1) % clips.length;
-              const clipElements = e.currentTarget.parentElement?.querySelectorAll('[role="button"]');
-              if (clipElements) {
-                const nextClip = clipElements[nextIndex] as HTMLElement;
-                if (nextClip) {
-                  nextClip.tabIndex = tabIndex !== undefined ? tabIndex : 0;
-                  nextClip.focus({ preventScroll: true });
-                  // Reset current clip tabIndex
-                  (e.currentTarget as HTMLElement).tabIndex = -1;
-                }
-              }
-            } else if (e.key === 'ArrowLeft' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-              e.preventDefault();
-              // Cycle to previous clip, wrapping to last if at beginning
-              const prevIndex = (clipIndex - 1 + clips.length) % clips.length;
-              const clipElements = e.currentTarget.parentElement?.querySelectorAll('[role="button"]');
-              if (clipElements) {
-                const prevClip = clipElements[prevIndex] as HTMLElement;
-                if (prevClip) {
-                  prevClip.tabIndex = tabIndex !== undefined ? tabIndex : 0;
-                  prevClip.focus({ preventScroll: true });
-                  // Reset current clip tabIndex
-                  (e.currentTarget as HTMLElement).tabIndex = -1;
-                }
-              }
-            }
+            // ArrowLeft/Right without modifiers: handled by useContainerTabGroup on the track container
           }}
         >
           <Clip
@@ -500,9 +487,9 @@ export const TrackNew: React.FC<TrackProps> = ({
             clipTrimStart={(clip as any).trimStart || 0}
             clipFullDuration={(clip as any).fullDuration}
             pixelsPerSecond={pixelsPerSecond}
-            hiddenPointIndices={clipHiddenPoints.get(clip.id) || []}
-            hoveredPointIndices={clipHoveredPoints.get(clip.id) ?? []}
-            cursorPosition={clipCursorPositions.get(clip.id) || null}
+            hiddenPointIndices={clipHiddenPoints.get(clip.id) ?? EMPTY_NUMBER_ARRAY}
+            hoveredPointIndices={clipHoveredPoints.get(clip.id) ?? EMPTY_NUMBER_ARRAY}
+            cursorPosition={clipCursorPositions.get(clip.id) ?? null}
             envelopePointSizes={envelopePointSizes}
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
@@ -585,19 +572,16 @@ export const TrackNew: React.FC<TrackProps> = ({
     onFocusChange?.(true);
   };
 
-  // Reset tabIndex to first clip when focus leaves the track
+  // Handle focus leaving the track — tabIndex reset delegated to useContainerTabGroup
   const handleTrackBlur = (e: React.FocusEvent) => {
+    // Let the hook handle tabIndex reset
+    clipNavBlur(e);
+
     const relatedTarget = e.relatedTarget as HTMLElement | null;
     const trackElement = e.currentTarget;
 
     // Only notify blur if focus is moving completely outside the track
     if (!relatedTarget || !trackElement.contains(relatedTarget)) {
-      // Reset tabIndex: first clip gets tabIndex, all others get -1
-      const clipElements = trackElement.querySelectorAll('[role="button"]');
-      clipElements.forEach((clipEl, index) => {
-        (clipEl as HTMLElement).tabIndex = (index === 0 && tabIndex !== undefined) ? tabIndex : -1;
-      });
-      // Remove keyboard focus indicator
       setHasKeyboardFocus(false);
       onFocusChange?.(false);
     }
@@ -653,6 +637,7 @@ export const TrackNew: React.FC<TrackProps> = ({
           (e.currentTarget as HTMLDivElement).focus();
           onTrackClick?.(e);
         }}
+        onKeyDown={clipNavKeyDown}
         onFocus={handleTrackFocus}
         onBlur={handleTrackBlur}
       >
@@ -707,5 +692,7 @@ export const TrackNew: React.FC<TrackProps> = ({
     </div>
   );
 };
+
+export const TrackNew = React.memo(TrackNewComponent);
 
 export default TrackNew;

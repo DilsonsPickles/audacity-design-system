@@ -9,4 +9,6 @@ export * from './useSpectralSelection';
 export * from './useAudioSelection';
 export * from './useFocusTrap';
 export * from './useTabGroup';
+export * from './useContainerTabGroup';
+export * from './useTabOrder';
 export * from './useLabelKeyboardHandling';
