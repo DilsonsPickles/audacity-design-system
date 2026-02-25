@@ -267,20 +267,31 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       return { ...state, tracks: newTracks };
     }
 
-    case 'DELETE_TRACK':
+    case 'DELETE_TRACK': {
+      const newTracks = state.tracks.filter((_, index) => index !== action.payload);
+      const newFocused = newTracks.length === 0
+        ? null
+        : Math.min(action.payload, newTracks.length - 1);
       return {
         ...state,
-        tracks: state.tracks.filter((_, index) => index !== action.payload),
+        tracks: newTracks,
+        focusedTrackIndex: newFocused,
+        selectedTrackIndices: newFocused !== null ? [newFocused] : [],
       };
+    }
 
     case 'DELETE_TRACKS': {
-      // Delete multiple tracks by filtering out the specified indices
       const indicesToDelete = new Set(action.payload);
+      const remainingTracks = state.tracks.filter((_, index) => !indicesToDelete.has(index));
+      const lowestDeleted = Math.min(...action.payload);
+      const newFocused = remainingTracks.length === 0
+        ? null
+        : Math.min(lowestDeleted, remainingTracks.length - 1);
       return {
         ...state,
-        tracks: state.tracks.filter((_, index) => !indicesToDelete.has(index)),
-        selectedTrackIndices: [],
-        focusedTrackIndex: null,
+        tracks: remainingTracks,
+        selectedTrackIndices: newFocused !== null ? [newFocused] : [],
+        focusedTrackIndex: newFocused,
       };
     }
 
