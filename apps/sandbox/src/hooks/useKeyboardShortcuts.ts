@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import { toast, scrollIntoViewIfNeeded } from '@audacity-ui/components';
 
@@ -68,6 +68,19 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     controlPanelHasFocus,
   } = options;
 
+  // Track whether the user is navigating via keyboard or mouse.
+  // Keyboard actions (Tab, Arrow, Enter) set this to true.
+  // Mouse clicks set it to false.
+  // Used to decide whether to move focus after clip deletion.
+  const isKeyboardNavigatingRef = useRef(false);
+
+  useEffect(() => {
+    const handleMouseDown = () => { isKeyboardNavigatingRef.current = false; };
+    // Use capture phase so this fires before any React handler can stopPropagation
+    document.addEventListener('mousedown', handleMouseDown, true);
+    return () => document.removeEventListener('mousedown', handleMouseDown, true);
+  }, []);
+
   // Scroll the canvas so the playhead stays visible after a position change
   const scrollPlayheadIntoView = () => {
     requestAnimationFrame(() => {
@@ -81,6 +94,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Navigation keys indicate keyboard navigation mode.
+      // Non-navigation keys (Delete, Space, etc.) don't change the mode.
+      const navKeys = ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Home', 'End'];
+      if (navKeys.includes(e.key)) {
+        isKeyboardNavigatingRef.current = true;
+      }
+
       // Only handle these keys if not in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
@@ -98,17 +118,20 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
       }
 
-      // Spacebar for play/pause (unless on an interactive element that uses spacebar)
+      // Spacebar for play/pause (unless on a real interactive element that uses spacebar)
       if (e.key === ' ') {
         const target = e.target as HTMLElement;
+        const isClip = target.hasAttribute('data-clip-id');
+        const isTrackContainer = target.classList.contains('track');
         const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
         const hasRole = target.getAttribute('role');
-        const isInteractive = interactiveElements.includes(target.tagName) ||
+        const isInteractive = !isClip && !isTrackContainer && (
+                              interactiveElements.includes(target.tagName) ||
                               hasRole === 'button' ||
                               hasRole === 'checkbox' ||
                               hasRole === 'menuitem' ||
                               hasRole === 'menuitemcheckbox' ||
-                              hasRole === 'menuitemradio';
+                              hasRole === 'menuitemradio');
 
         if (!isInteractive) {
           e.preventDefault(); // Prevent page scroll
@@ -847,19 +870,20 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
 
         // Priority 3: Delete focused clip and/or selected clips
-        // Check if a clip has keyboard focus
+        // Only track focused clip for focus-after-delete when using keyboard navigation
         let focusedClipInfo: { clipId: string | number; trackIndex: number } | null = null;
-        const activeElement = document.activeElement;
-        if (activeElement) {
-          const clipIdStr = activeElement.getAttribute('data-clip-id');
-          const trackIndexStr = activeElement.getAttribute('data-track-index');
-          if (clipIdStr !== null && trackIndexStr !== null) {
-            // Try to parse as number, fallback to string
-            const clipId = !isNaN(Number(clipIdStr)) ? Number(clipIdStr) : clipIdStr;
-            focusedClipInfo = {
-              clipId: clipId,
-              trackIndex: parseInt(trackIndexStr, 10),
-            };
+        if (isKeyboardNavigatingRef.current) {
+          const activeElement = document.activeElement;
+          if (activeElement) {
+            const clipIdStr = activeElement.getAttribute('data-clip-id');
+            const trackIndexStr = activeElement.getAttribute('data-track-index');
+            if (clipIdStr !== null && trackIndexStr !== null) {
+              const clipId = !isNaN(Number(clipIdStr)) ? Number(clipIdStr) : clipIdStr;
+              focusedClipInfo = {
+                clipId: clipId,
+                trackIndex: parseInt(trackIndexStr, 10),
+              };
+            }
           }
         }
 

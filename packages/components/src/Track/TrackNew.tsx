@@ -422,6 +422,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
           aria-label={`${clip.name} clip`}
+          onMouseDown={(e) => {
+            // Prevent browser from focusing the clip wrapper on click.
+            // Keyboard focus should only come from Tab/Arrow navigation.
+            e.preventDefault();
+          }}
           onFocus={(e) => scrollIntoViewIfNeeded(e.currentTarget as HTMLElement)}
           onKeyDown={(e) => {
             // Delete key: let it bubble to App.tsx handler, but DON'T stop propagation
@@ -688,8 +693,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         }}
         tabIndex={trackTabIndex ?? -1}
         onClick={(e) => {
-          // Focus the track when clicking empty space
-          (e.currentTarget as HTMLDivElement).focus();
+          // Only focus the track when clicking empty space, not clip headers
+          const target = e.target as HTMLElement;
+          if (!target.closest('[data-clip-id]')) {
+            (e.currentTarget as HTMLDivElement).focus();
+          }
           onTrackClick?.(e);
         }}
         onKeyDown={(e: React.KeyboardEvent) => {

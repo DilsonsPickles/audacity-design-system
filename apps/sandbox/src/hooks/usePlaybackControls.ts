@@ -92,22 +92,10 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       audioManager.pause();
       setIsPlaying(false);
     } else {
-      // Check if resuming from pause
-      const isPaused = audioManager.getIsPaused();
-
-      if (!isPaused) {
-        // Load clips for:
-        // - First play
-        // - Resume after stop
-        audioManager.loadClips(state.tracks, state.playheadPosition);
-        // Start playback from current playhead position
-        await audioManager.play(state.playheadPosition);
-      } else {
-        // Resuming from pause - use the actual paused position from audio manager
-        const resumePosition = audioManager.getPausedPosition() ?? state.playheadPosition;
-        audioManager.loadClips(state.tracks, resumePosition);
-        await audioManager.play(resumePosition);
-      }
+      // Always use the current playhead position (which the user may have
+      // repositioned via ,/. keys or clicking the timeline)
+      audioManager.loadClips(state.tracks, state.playheadPosition);
+      await audioManager.play(state.playheadPosition);
 
       setIsPlaying(true);
     }

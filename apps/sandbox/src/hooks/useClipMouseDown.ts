@@ -91,9 +91,9 @@ export function useClipMouseDown({
           if (x >= clipX && x <= clipX + clipWidth &&
               y >= clipHeaderY && y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
 
-            // Only clear selections and start drag if NOT shift-clicking
-            // (Shift-click is handled by onClipClick for multi-select)
-            if (!e.shiftKey) {
+            // Only clear selections and start drag if NOT shift/cmd-clicking
+            // (Shift-click and Cmd-click are handled by onClipClick for multi-select)
+            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
               // If clicking on an unselected clip, select it exclusively first
               // and only include this clip in the drag
               let selectedClipsInitialPositions;
