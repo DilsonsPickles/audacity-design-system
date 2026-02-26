@@ -599,6 +599,7 @@ export function Canvas({
                 timeSelection={timeSelection && (timeSelection.renderOnCanvas !== false) ? timeSelection : null}
                 isTimeSelectionDragging={selection.selection.isDragging}
                 clipStyle={preferences.clipStyle}
+                color={track.color}
                 recordingClipId={recordingClipId}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onContainerFocusChange={(hasFocus) => onTrackContainerFocusChange?.(trackIndex, hasFocus)}

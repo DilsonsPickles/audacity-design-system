@@ -48,6 +48,7 @@ export interface Track {
   id: number;
   name: string;
   type?: 'audio' | 'label'; // Track type: audio (default) or label
+  color?: typeof TRACK_COLOR_PALETTE[number]; // Assigned at creation, persists across reorder
   height?: number;
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
@@ -56,6 +57,11 @@ export interface Track {
   effects?: Effect[]; // Track-specific effects chain
   effectsEnabled?: boolean; // Master toggle for all track effects (independent of individual effect states)
 }
+
+/** Expanded color palette for tracks — each new track cycles through these */
+export const TRACK_COLOR_PALETTE = [
+  'blue', 'violet', 'magenta', 'teal', 'cyan', 'green', 'orange', 'red', 'yellow',
+] as const;
 
 interface TimeSelection {
   startTime: number;
@@ -151,6 +157,8 @@ export interface TracksState {
   masterEffects: Effect[];
   // Master toggle for all master effects (independent of individual effect states)
   masterEffectsEnabled: boolean;
+  // Counter for cycling through TRACK_COLOR_PALETTE on each new track
+  nextTrackColorIndex: number;
 }
 
 // Action types
@@ -229,6 +237,7 @@ const initialState: TracksState = {
   lastSelectedClip: null,
   masterEffects: [],
   masterEffectsEnabled: true,
+  nextTrackColorIndex: 0,
 };
 
 // Reducer
@@ -241,20 +250,32 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       const newFocusedTrackIndex = action.payload.length > 0 && state.focusedTrackIndex === null
         ? 0
         : state.focusedTrackIndex;
+      // Assign colors to tracks that don't have one
+      let colorIdx = 0;
+      const coloredTracks = action.payload.map((track) => {
+        if (track.color) return track;
+        const color = TRACK_COLOR_PALETTE[colorIdx % TRACK_COLOR_PALETTE.length];
+        colorIdx++;
+        return { ...track, color };
+      });
       return {
         ...state,
-        tracks: action.payload,
+        tracks: coloredTracks,
+        nextTrackColorIndex: colorIdx,
         // Auto-focus first track when loading tracks, unless already focused
         focusedTrackIndex: newFocusedTrackIndex,
       };
     }
 
     case 'ADD_TRACK': {
-      const newTracks = [...state.tracks, action.payload];
+      const track = action.payload;
+      const color = track.color ?? TRACK_COLOR_PALETTE[state.nextTrackColorIndex % TRACK_COLOR_PALETTE.length];
+      const newTracks = [...state.tracks, { ...track, color }];
       return {
         ...state,
         tracks: newTracks,
-        focusedTrackIndex: newTracks.length - 1, // Auto-focus the newly added track
+        focusedTrackIndex: newTracks.length - 1,
+        nextTrackColorIndex: track.color ? state.nextTrackColorIndex : state.nextTrackColorIndex + 1,
       };
     }
 
@@ -587,10 +608,13 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'ADD_CLIP': {
       const { trackIndex, clip } = action.payload;
+      const track = state.tracks[trackIndex];
+      // Default clip color to the track's color
+      const coloredClip = clip.color ? clip : { ...clip, color: track.color };
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
-        clips: [...newTracks[trackIndex].clips, clip],
+        clips: [...newTracks[trackIndex].clips, coloredClip],
       };
       return { ...state, tracks: newTracks };
     }

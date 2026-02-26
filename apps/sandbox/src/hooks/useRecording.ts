@@ -117,7 +117,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
             duration: 0, // Will be updated when recording completes
             waveform: [],
             envelopePoints: [],
-            color: 'cyan' as const,
+            color: (state.tracks[recordingTrackIndex]?.color as any) || 'cyan',
           },
         },
       });

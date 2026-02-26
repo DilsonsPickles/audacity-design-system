@@ -178,6 +178,12 @@ export interface TrackProps {
   clipStyle?: 'classic' | 'colourful';
 
   /**
+   * Explicit track color — overrides the default trackIndex-based color cycle.
+   * Assigned at track creation time so color persists across reorder.
+   */
+  color?: string;
+
+  /**
    * ID of the clip currently being recorded (to show recording state)
    */
   recordingClipId?: string | number | null;
@@ -239,7 +245,7 @@ export interface TrackProps {
 }
 
 // Map track index to color
-const TRACK_COLORS = ['blue', 'violet', 'magenta'] as const;
+const TRACK_COLORS = ['blue', 'violet', 'magenta', 'teal', 'cyan', 'green', 'orange', 'red', 'yellow'] as const;
 function getTrackColor(trackIndex: number, clipStyle: 'classic' | 'colourful' = 'colourful') {
   if (clipStyle === 'classic') {
     return 'classic' as const;
@@ -279,6 +285,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   timeSelection,
   isTimeSelectionDragging = false,
   clipStyle = 'colourful',
+  color,
   recordingClipId = null,
   envelopePointSizes,
   channelSplitRatio = 0.5,
@@ -289,7 +296,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onTrackReorder,
   onContainerFocusChange,
 }) => {
-  const trackColor = getTrackColor(trackIndex, clipStyle);
+  const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipHoveredPoints, setClipHoveredPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipCursorPositions, setClipCursorPositions] = React.useState<Map<string | number, { time: number; db: number } | null>>(new Map());
