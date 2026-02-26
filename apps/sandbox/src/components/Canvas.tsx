@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@audacity-ui/components';
+import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme, scrollIntoViewIfNeeded } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
@@ -623,6 +623,13 @@ export function Canvas({
                         newStartTime,
                       },
                     });
+                    // Scroll clip into view after React renders the new position
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => {
+                        const clipEl = document.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
+                        if (clipEl) scrollIntoViewIfNeeded(clipEl);
+                      });
+                    });
                   }
                 }}
                 onClipMoveToTrack={(clipId, direction) => {
@@ -655,16 +662,16 @@ export function Canvas({
                     },
                   });
 
-                  // Focus the clip on the new track after a brief delay
-                  setTimeout(() => {
-                    const targetTrack = document.querySelector(`[data-track-index="${targetTrackIndex}"]`);
-                    if (targetTrack) {
-                      const movedClip = targetTrack.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
+                  // Focus the clip on the new track and scroll into view
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      const movedClip = document.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
                       if (movedClip) {
-                        movedClip.focus();
+                        movedClip.focus({ preventScroll: true });
+                        scrollIntoViewIfNeeded(movedClip);
                       }
-                    }
-                  }, 0);
+                    });
+                  });
                 }}
                 onClipNavigateVertical={(clipId, direction) => {
                   // Find the source clip's start time
