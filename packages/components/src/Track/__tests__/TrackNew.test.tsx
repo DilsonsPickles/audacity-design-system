@@ -178,3 +178,17 @@ describe('track container keyboard', () => {
     expect(onTrackNavigateVertical).toHaveBeenCalledWith(1, false);
   });
 });
+
+// ---------- 6. Escape from clip to track ----------
+
+describe('escape from clip', () => {
+  it('Escape on clip moves focus to track container', () => {
+    const { clip, track } = renderTrack({ trackTabIndex: 0 });
+
+    const el = clip(1);
+    act(() => { el.focus(); });
+    fireEvent.keyDown(el, { key: 'Escape' });
+
+    expect(document.activeElement).toBe(track());
+  });
+});

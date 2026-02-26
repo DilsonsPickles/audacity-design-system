@@ -437,6 +437,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           }}
           onFocus={(e) => scrollIntoViewIfNeeded(e.currentTarget as HTMLElement)}
           onKeyDown={(e) => {
+            // Escape: move focus back to the track container
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              trackRef.current?.focus();
+              return;
+            }
+
             // Delete key: let it bubble to App.tsx handler, but DON'T stop propagation
             // The App.tsx handler will read data-clip-id and data-track-index from this element
             if (e.key === 'Delete' || e.key === 'Backspace') {
