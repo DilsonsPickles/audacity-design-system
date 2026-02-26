@@ -430,11 +430,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
           aria-label={`${clip.name} clip`}
-          onMouseDown={(e) => {
-            // Stop propagation so the .track's mouseDown (which calls preventDefault)
-            // doesn't block the browser from focusing this clip wrapper.
+          onMouseDown={() => {
+            // Clip receives DOM focus naturally via its tabIndex.
             // :focus:not(:focus-visible) CSS suppresses the outline on mouse clicks.
-            e.stopPropagation();
+            // Do NOT stopPropagation — Canvas.tsx needs mouseDown to bubble for clip dragging.
           }}
           onFocus={(e) => scrollIntoViewIfNeeded(e.currentTarget as HTMLElement)}
           onKeyDown={(e) => {

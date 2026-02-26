@@ -45,6 +45,84 @@ pnpm build
 pnpm lint
 ```
 
+## Testing
+
+### Commands
+```bash
+# Run all tests across the monorepo
+pnpm test
+
+# Watch mode (re-runs on file changes)
+pnpm test:watch
+
+# Coverage report
+pnpm test:coverage
+
+# Run tests for a single package
+cd packages/components && pnpm test
+```
+
+### Stack
+- **Vitest 4** — test runner (configured in each package's `vitest.config.ts`)
+- **jsdom** — browser environment for component tests
+- **@testing-library/react 16** — React 19 rendering and queries
+- **@testing-library/jest-dom** — DOM assertion matchers (imported in setup file)
+- **Canvas mock** — `packages/components/src/__tests__/setup.ts` stubs `HTMLCanvasElement.getContext`
+
+### Test File Locations
+```
+packages/components/src/
+  __tests__/setup.ts                           # Global setup (canvas mock, jest-dom)
+  utils/__tests__/envelope.test.ts             # Envelope utility functions
+  utils/__tests__/spectrogramScales.test.ts    # Spectrogram scale utilities
+  Track/__tests__/TrackNew.test.tsx            # TrackNew interaction tests
+```
+
+### Writing Component Tests
+
+**Required providers** — Components using hooks (`useContainerTabGroup`, `useTheme`, etc.) need context wrappers:
+```tsx
+import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
+import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
+
+function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider>
+      <AccessibilityProfileProvider>
+        {children}
+      </AccessibilityProfileProvider>
+    </ThemeProvider>
+  );
+}
+```
+
+**Scoped queries** — Always query from the `container` returned by `render()`, not from `document`. React 19 + jsdom does not reliably clean up between tests, so `document.querySelector` can return stale elements from previous renders:
+```tsx
+// GOOD — scoped to this render
+const { container } = render(<Providers><MyComponent /></Providers>);
+const el = container.querySelector('[data-clip-id="1"]');
+
+// BAD — can find elements from previous tests
+const el = document.querySelector('[data-clip-id="1"]');
+```
+
+**Explicit cleanup** — Add `afterEach(cleanup)` at the top of every test file:
+```tsx
+import { cleanup } from '@testing-library/react';
+import { afterEach } from 'vitest';
+afterEach(cleanup);
+```
+
+**Focus events** — Use `act(() => { element.focus(); })` for focus/blur, not `fireEvent.focus()`. React 19 processes native `focusin`/`focusout` events; `fireEvent.focus` dispatches a non-bubbling `focus` event that React's delegation may miss.
+
+**Keyboard events** — Use `fireEvent.keyDown(element, { key, metaKey, shiftKey })` for keyboard interactions. Works correctly with React 19 event delegation when the target element is within a properly scoped render.
+
+**Conventions:**
+- Place tests in `__tests__/` directories adjacent to the code they test
+- Use `fireEvent` (not `userEvent`) for direct control over modifier keys (`metaKey`, `shiftKey`, `ctrlKey`)
+- Query elements by `data-*` attributes or ARIA roles, not CSS classes
+- Each test should be independent — no shared mutable state between tests
+
 ## Architecture
 
 ### Monorepo Structure
