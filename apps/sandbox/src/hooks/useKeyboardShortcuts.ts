@@ -580,11 +580,52 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Cut selected clips (Cmd+X / Ctrl+X)
+      // Cut selected clips or time selection (Cmd+X / Ctrl+X)
       if ((e.metaKey || e.ctrlKey) && e.key === 'x') {
         e.preventDefault();
 
-        // Find all selected clips across all tracks
+        // Priority 1: Cut time selection if it exists (skip clip-derived selections)
+        if (state.timeSelection && state.timeSelection.renderOnCanvas !== false) {
+          const { startTime, endTime } = state.timeSelection;
+
+          // Collect clips that intersect with the time selection on selected tracks
+          const selectedTracks = state.selectedTrackIndices;
+          const clipsInSelection: any[] = [];
+          state.tracks.forEach((track, trackIndex) => {
+            if (selectedTracks.length > 0 && !selectedTracks.includes(trackIndex)) return;
+            track.clips.forEach(clip => {
+              const clipEnd = clip.start + clip.duration;
+              if (clip.start < endTime && clipEnd > startTime) {
+                clipsInSelection.push({ ...clip, trackIndex });
+              }
+            });
+          });
+
+          if (clipsInSelection.length > 0) {
+            setClipboard({
+              clips: clipsInSelection,
+              operation: 'cut',
+              timeSelection: { startTime, endTime }
+            });
+
+            // Remove the cut clips from tracks
+            const cutClipIds = new Set(clipsInSelection.map((c: any) => c.id));
+            const tracksAfterCut = state.tracks.map(track => ({
+              ...track,
+              clips: track.clips.filter(clip => !cutClipIds.has(clip.id)),
+            }));
+
+            dispatch({ type: 'SET_TRACKS', payload: tracksAfterCut });
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            const duration = (endTime - startTime).toFixed(2);
+            toast.success(`Cut ${duration}s of audio from ${clipsInSelection.length} clip${clipsInSelection.length > 1 ? 's' : ''}`);
+          } else {
+            toast.warning('No audio in time selection');
+          }
+          return;
+        }
+
+        // Priority 2: Cut selected clips
         const selectedClips: any[] = [];
         state.tracks.forEach((track, trackIndex) => {
           track.clips.forEach(clip => {
