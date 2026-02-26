@@ -236,6 +236,16 @@ export interface TrackProps {
    */
   onContainerFocusChange?: (hasFocus: boolean) => void;
 
+  /**
+   * Callback when Tab is pressed on the track container to enter the panel controls.
+   */
+  onEnterPanel?: () => void;
+
+  /**
+   * Callback when Enter is pressed on the track container to select the track.
+   */
+  onContainerSelect?: () => void;
+
 }
 
 // Map track index to color
@@ -288,6 +298,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onTrackNavigateVertical,
   onTrackReorder,
   onContainerFocusChange,
+  onEnterPanel,
+  onContainerSelect,
 }) => {
   const trackColor = getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -493,6 +505,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.stopPropagation(); // Prevent global useKeyboardShortcuts from also handling this
               const direction = e.key === 'ArrowDown' ? 1 : -1;
               onClipNavigateVertical?.(clip.id, direction);
+              return;
+            }
+
+            // Shift+Tab: go to panel controls
+            if (e.key === 'Tab' && e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              onEnterPanel?.();
               return;
             }
 
@@ -705,6 +725,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.preventDefault();
               e.stopPropagation();
               onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey);
+            } else if (e.key === 'Enter') {
+              // Enter: select the track
+              e.preventDefault();
+              e.stopPropagation();
+              onContainerSelect?.();
+            } else if (e.key === 'Tab' && !e.shiftKey) {
+              // Tab: enter panel controls
+              e.preventDefault();
+              e.stopPropagation();
+              onEnterPanel?.();
             }
             return; // Don't run clip navigation when container itself is focused
           }

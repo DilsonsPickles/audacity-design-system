@@ -36,6 +36,8 @@ export interface TrackControlPanelProps {
   onFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down') => void;
   onTabOut?: () => void;
+  /** Callback when Escape is pressed to return focus to the track container */
+  onEscapeOut?: () => void;
   /** Whether the track container (in the canvas) currently has keyboard focus */
   containerFocused?: boolean;
   // Meter props (for mono tracks, use meterLevel; for stereo, use meterLevelLeft/meterLevelRight)
@@ -81,6 +83,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onFocusChange,
   onNavigateVertical,
   onTabOut,
+  onEscapeOut,
   containerFocused = false,
   meterLevel = 0,
   meterLevelLeft,
@@ -171,18 +174,24 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       return;
     }
 
-    // Handle Escape key to return focus to panel itself
+    // Handle Escape key to return focus to the track container
     if (e.key === 'Escape' && !isPanelFocused) {
       e.preventDefault();
-      panelElement.focus();
+      onEscapeOut?.();
       return;
     }
 
     // Handle Tab key to navigate out to clips
     if (e.key === 'Tab' && !e.shiftKey && !isPanelFocused) {
-      // If Tab is pressed on any nested element (not the panel itself), navigate out to clips
       e.preventDefault();
       onTabOut?.();
+      return;
+    }
+
+    // Handle Shift+Tab to return to the track container
+    if (e.key === 'Tab' && e.shiftKey && !isPanelFocused) {
+      e.preventDefault();
+      onEscapeOut?.();
       return;
     }
 
@@ -224,23 +233,13 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     e.preventDefault();
 
     if (isForward) {
-      // Move to next element
-      const nextIndex = currentIndex + 1;
-      if (nextIndex >= focusableElements.length) {
-        // After last element, focus back to panel itself
-        panelElement.focus();
-      } else {
-        (focusableElements[nextIndex] as HTMLElement).focus();
-      }
+      // Move to next element, wrap to first
+      const nextIndex = (currentIndex + 1) % focusableElements.length;
+      (focusableElements[nextIndex] as HTMLElement).focus();
     } else {
-      // Move to previous element
-      const nextIndex = currentIndex - 1;
-      if (nextIndex < 0) {
-        // Before first element, focus back to panel itself
-        panelElement.focus();
-      } else {
-        (focusableElements[nextIndex] as HTMLElement).focus();
-      }
+      // Move to previous element, wrap to last
+      const nextIndex = (currentIndex - 1 + focusableElements.length) % focusableElements.length;
+      (focusableElements[nextIndex] as HTMLElement).focus();
     }
   };
 

@@ -56,6 +56,10 @@ export interface CanvasProps {
    */
   onTrackContainerFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
   /**
+   * Callback when Shift is pressed on the track container to enter panel controls
+   */
+  onEnterTrackPanel?: (trackIndex: number) => void;
+  /**
    * Callback when canvas height changes
    */
   onHeightChange?: (height: number) => void;
@@ -124,6 +128,7 @@ export function Canvas({
   onTimeSelectionMenuClick,
   onTrackFocusChange,
   onTrackContainerFocusChange,
+  onEnterTrackPanel,
   keyboardFocusedTrack = null,
   showRmsInWaveform = true,
   controlPointStyle = 'default',
@@ -550,8 +555,8 @@ export function Canvas({
                 isLabelTrack={track.type === 'label'}
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
-                tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 3)}
-                trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 3)}
+                tabIndex={isFlatNavigation ? 0 : (trackBase + 1 + trackIndex * 2)}
+                trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 2)}
                 onTrackNavigateVertical={(direction, shiftKey) => {
                   const targetIndex = trackIndex + direction;
                   if (targetIndex < 0 || targetIndex >= tracks.length) return;
@@ -602,6 +607,11 @@ export function Canvas({
                 recordingClipId={recordingClipId}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onContainerFocusChange={(hasFocus) => onTrackContainerFocusChange?.(trackIndex, hasFocus)}
+                onEnterPanel={() => onEnterTrackPanel?.(trackIndex)}
+                onContainerSelect={() => {
+                  dispatch({ type: 'DESELECT_ALL_CLIPS' });
+                  dispatch({ type: 'SELECT_TRACK', payload: trackIndex });
+                }}
                 onClipMove={(clipId, deltaSeconds) => {
                   // Find the clip to get its current position
                   const clip = track.clips.find(c => c.id === clipId);

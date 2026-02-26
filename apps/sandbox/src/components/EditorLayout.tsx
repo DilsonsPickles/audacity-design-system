@@ -1,7 +1,7 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, useTabOrder } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
@@ -134,12 +134,11 @@ export function EditorLayout(props: EditorLayoutProps) {
     contextMenuClosedTimeRef,
     audioManagerRef, rulerTimeSelection, spectralSelection,
     theme, baseTheme, canvasHeight, setCanvasHeight,
-    clickRulerToStartPlayback, isFlatNavigation,
+    clickRulerToStartPlayback, isFlatNavigation: _isFlatNavigation,
   } = props;
 
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
-  const trackBase = useTabOrder('tracks');
 
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
@@ -431,7 +430,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     width: 0,
                   });
                 }}
-                tabIndex={isFlatNavigation ? 0 : (trackBase + 1 + index * 3)}
+                tabIndex={-1}
                 onFocusChange={(hasFocus) => {
                   setControlPanelHasFocus(hasFocus ? index : null);
                   if (hasFocus) {
@@ -454,6 +453,13 @@ export function EditorLayout(props: EditorLayoutProps) {
                       });
                     }
                   }
+                }}
+                onEscapeOut={() => {
+                  // Return focus to the track container
+                  const trackContainer = document.querySelector(
+                    `.track-wrapper[data-track-index="${index}"] .track`
+                  ) as HTMLElement;
+                  trackContainer?.focus();
                 }}
                 onAddLabelClick={() => {
                   const allLabels = state.tracks.flatMap((t: any) => t.labels || []);
@@ -767,6 +773,16 @@ export function EditorLayout(props: EditorLayoutProps) {
                       setContainerFocusedTrack(hasFocus ? trackIndex : null);
                       if (hasFocus) {
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+                      }
+                    }}
+                    onEnterTrackPanel={(trackIndex) => {
+                      // Focus the first button (track icon) in the corresponding panel
+                      const panels = document.querySelectorAll('[aria-label*="track controls"]');
+                      if (panels[trackIndex]) {
+                        const firstButton = panels[trackIndex].querySelector('button') as HTMLElement;
+                        if (firstButton) {
+                          firstButton.focus();
+                        }
                       }
                     }}
                     onHeightChange={setCanvasHeight}
