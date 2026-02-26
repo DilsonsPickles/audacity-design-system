@@ -529,13 +529,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
         e.preventDefault();
 
-        // Priority 1: Copy time selection if it exists
-        if (state.timeSelection) {
+        // Priority 1: Copy time selection if it exists (skip clip-derived selections)
+        if (state.timeSelection && state.timeSelection.renderOnCanvas !== false) {
           const { startTime, endTime } = state.timeSelection;
 
-          // Collect all clips that intersect with the time selection
+          // Collect clips that intersect with the time selection on selected tracks
+          const selectedTracks = state.selectedTrackIndices;
           const clipsInSelection: any[] = [];
           state.tracks.forEach((track, trackIndex) => {
+            if (selectedTracks.length > 0 && !selectedTracks.includes(trackIndex)) return;
             track.clips.forEach(clip => {
               const clipEnd = clip.start + clip.duration;
               // Check if clip intersects with selection
