@@ -68,6 +68,23 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     controlPanelHasFocus,
   } = options;
 
+  // Scroll the canvas so the playhead stays visible after a position change
+  const scrollPlayheadIntoView = () => {
+    // Wait for React to render the new playhead position
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const container = document.querySelector('.canvas-scroll-container') as HTMLElement;
+        const playhead = container?.querySelector('.playhead-cursor') as HTMLElement;
+        if (!container || !playhead) return;
+        const phRect = playhead.getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+        if (phRect.left < cRect.left || phRect.right > cRect.right) {
+          playhead.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      });
+    });
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle these keys if not in an input field
@@ -448,11 +465,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
           // Always update playhead position
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
+          scrollPlayheadIntoView();
         } else {
           // Normal playhead movement (no shift) - clear the selection anchor
           selectionAnchorRef.current = null;
           const newPosition = Math.max(0, state.playheadPosition + delta);
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+          scrollPlayheadIntoView();
         }
         return;
       }
