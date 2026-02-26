@@ -431,26 +431,27 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
           aria-label={`${clip.name} clip`}
-          onMouseDown={() => {
+          onMouseDown={(e) => {
             // Clip receives DOM focus naturally via its tabIndex.
-            // :focus:not(:focus-visible) CSS suppresses the outline on mouse clicks.
+            // Mark as mouse-focused so CSS suppresses the outline (data-focus-mouse attr).
             // Do NOT stopPropagation — Canvas.tsx needs mouseDown to bubble for clip dragging.
             clipFocusFromMouseRef.current = true;
+            (e.currentTarget as HTMLElement).setAttribute('data-focus-mouse', '');
           }}
           onClick={(e) => {
-            // Handle Shift/Cmd clicks on the clip body (header clicks are handled by ClipHeader's onClick)
-            // ClipHeader's onClick calls e.stopPropagation(), so this only fires for body clicks
-            if (e.shiftKey || e.metaKey || e.ctrlKey) {
-              e.stopPropagation();
-              onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);
-            }
+            // Handle clicks on the clip body — header clicks are handled by ClipHeader's onClick
+            // which calls e.stopPropagation(), so this only fires for body clicks.
+            e.stopPropagation();
+            onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);
           }}
           onFocus={(e) => {
-            // Only scroll into view for keyboard-driven focus, not mouse clicks
             if (clipFocusFromMouseRef.current) {
+              // Mouse-driven focus: don't scroll, keep data-focus-mouse attr for CSS
               clipFocusFromMouseRef.current = false;
               return;
             }
+            // Keyboard-driven focus: clear mouse attr so outline shows, and scroll into view
+            (e.currentTarget as HTMLElement).removeAttribute('data-focus-mouse');
             scrollIntoViewIfNeeded(e.currentTarget as HTMLElement);
           }}
           onKeyDown={(e) => {

@@ -28,7 +28,9 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
 
-/* Suppress focus outline on mouse clicks — keyboard Tab/Arrow still shows it */
-[data-clip-id]:focus:not(:focus-visible) {
+/* Suppress focus outline on mouse clicks — only show for keyboard navigation.
+   Uses data-focus-mouse attribute (set by TrackNew on mouseDown) instead of
+   :focus-visible, which flips on any keypress including bare Shift. */
+[data-clip-id][data-focus-mouse]:focus {
   outline: none;
 }
