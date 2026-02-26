@@ -126,6 +126,7 @@ export function applySplitCut(
           start: endTime, // Clip now starts where the deletion ends
           duration: newDuration,
           trimStart: newTrimStart,
+          fullDuration: clip.fullDuration || clip.duration,
           envelopePoints: clip.envelopePoints
             .map(p => ({ ...p, time: p.time - overlapDuration }))
             .filter(p => p.time >= 0),
@@ -140,6 +141,7 @@ export function applySplitCut(
         return [{
           ...clip,
           duration: newDuration,
+          fullDuration: clip.fullDuration || clip.duration,
           envelopePoints: clip.envelopePoints.filter(p => p.time < relativeStart),
         }];
       }

@@ -307,6 +307,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const trackRef = React.useRef<HTMLDivElement>(null);
   const focusFromMouseRef = React.useRef(false);
   const clipFocusFromMouseRef = React.useRef(false);
+  const mouseDownPosRef = React.useRef<{ x: number; y: number } | null>(null);
 
   // Container-level roving tabindex for clip navigation (ArrowLeft/Right)
   const { onKeyDown: clipNavKeyDown, onBlur: clipNavBlur, onClickCapture: clipNavClickCapture, initTabIndices: initClipTabIndices } = useContainerTabGroup({
@@ -384,9 +385,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
       const isStereo = Boolean(clip.waveformLeft || clip.waveformRight);
 
-      // Calculate full duration: trimStart + current duration gives us the full audio length
+      // Use stored fullDuration if available (set by split cut), otherwise calculate it
       const trimStart = (clip as any).trimStart || 0;
-      const fullDuration = trimStart + clip.duration;
+      const fullDuration = (clip as any).fullDuration || (trimStart + clip.duration);
 
       if (!waveformData && !isStereo) {
         // Generate mono waveform using FULL duration
@@ -436,13 +437,26 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // Mark as mouse-focused so CSS suppresses the outline (data-focus-mouse attr).
             // Do NOT stopPropagation — Canvas.tsx needs mouseDown to bubble for clip dragging.
             clipFocusFromMouseRef.current = true;
+            mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
             (e.currentTarget as HTMLElement).setAttribute('data-focus-mouse', '');
           }}
           onClick={(e) => {
             // Handle clicks on the clip body — header clicks are handled by ClipHeader's onClick
             // which calls e.stopPropagation(), so this only fires for body clicks.
-            e.stopPropagation();
-            onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);
+            // Skip clip selection if the user dragged (e.g. time selection).
+            const downPos = mouseDownPosRef.current;
+            mouseDownPosRef.current = null;
+            if (downPos) {
+              const dx = e.clientX - downPos.x;
+              const dy = e.clientY - downPos.y;
+              if (dx * dx + dy * dy > 9) return; // >3px = drag, not click
+            }
+            // Body clicks place the cursor (handled by time selection system),
+            // not select the clip. Only Shift/Cmd body clicks trigger clip selection.
+            if (e.shiftKey || e.metaKey || e.ctrlKey) {
+              e.stopPropagation();
+              onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);
+            }
           }}
           onFocus={(e) => {
             if (clipFocusFromMouseRef.current) {

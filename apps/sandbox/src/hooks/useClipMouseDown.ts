@@ -154,9 +154,14 @@ export function useClipMouseDown({
                 selectedClipsInitialPositions,
               };
               didDragRef.current = false; // Reset drag flag
+
+              // Only block propagation for header clicks (drag initiation)
+              e.stopPropagation();
+              return;
             }
 
-            e.stopPropagation();
+            // Body clicks: pass through to time selection handler
+            containerPropsOnMouseDown?.(e);
             return;
           }
         }

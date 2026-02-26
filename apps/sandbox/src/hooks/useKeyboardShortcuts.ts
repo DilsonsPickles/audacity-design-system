@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import { toast, scrollIntoViewIfNeeded } from '@audacity-ui/components';
+import { applySplitCut } from '../utils/cutOperations';
 
 export interface EffectsPanelState {
   isOpen: boolean;
@@ -608,12 +609,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               timeSelection: { startTime, endTime }
             });
 
-            // Remove the cut clips from tracks
-            const cutClipIds = new Set(clipsInSelection.map((c: any) => c.id));
-            const tracksAfterCut = state.tracks.map(track => ({
-              ...track,
-              clips: track.clips.filter(clip => !cutClipIds.has(clip.id)),
-            }));
+            // Use split cut to trim partially-overlapping clips instead of deleting them
+            const tracksAfterCut = applySplitCut(
+              state.tracks,
+              startTime,
+              endTime,
+              selectedTracks.length > 0 ? selectedTracks : state.tracks.map((_, i) => i)
+            );
 
             dispatch({ type: 'SET_TRACKS', payload: tracksAfterCut });
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
