@@ -353,9 +353,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
   const getTrackBackgroundColor = () => isSelected ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.05)';
 
+  // Sort clips by start time so tab order follows timeline position
+  const sortedClips = React.useMemo(
+    () => [...clips].sort((a, b) => a.start - b.start),
+    [clips],
+  );
+
   // Calculate clip dimensions and positions
   const renderClips = () => {
-    return clips.map((clip, clipIndex) => {
+    return sortedClips.map((clip, clipIndex) => {
       const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
       const isFirstClip = clipIndex === 0;
@@ -415,6 +421,23 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
           aria-label={`${clip.name} clip`}
+          onFocus={(e) => {
+            // Scroll if the clip is not fully visible in the viewport
+            const el = e.currentTarget as HTMLElement;
+            const scrollParent = el.closest('.canvas-scroll-container') as HTMLElement;
+            if (scrollParent) {
+              const clipRect = el.getBoundingClientRect();
+              const containerRect = scrollParent.getBoundingClientRect();
+              const fullyVisible =
+                clipRect.left >= containerRect.left &&
+                clipRect.right <= containerRect.right &&
+                clipRect.top >= containerRect.top &&
+                clipRect.bottom <= containerRect.bottom;
+              if (!fullyVisible) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }
+            }
+          }}
           onKeyDown={(e) => {
             // Delete key: let it bubble to App.tsx handler, but DON'T stop propagation
             // The App.tsx handler will read data-clip-id and data-track-index from this element

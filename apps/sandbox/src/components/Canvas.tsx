@@ -666,18 +666,37 @@ export function Canvas({
                     }
                   }, 0);
                 }}
-                onClipNavigateVertical={(_clipId, direction) => {
+                onClipNavigateVertical={(clipId, direction) => {
+                  // Find the source clip's start time
+                  const sourceClip = track.clips.find(c => c.id === clipId);
+                  const sourceStart = sourceClip?.start ?? 0;
+
                   // Search tracks in the given direction, wrapping around
                   const trackCount = tracks.length;
                   for (let i = 1; i <= trackCount; i++) {
                     const candidateIndex = ((trackIndex + direction * i) % trackCount + trackCount) % trackCount;
+                    const candidateTrackData = tracks[candidateIndex];
+                    if (candidateTrackData.clips.length === 0) continue;
+
+                    // Find the clip closest in start time
+                    let closestClip = candidateTrackData.clips[0];
+                    let closestDist = Math.abs(closestClip.start - sourceStart);
+                    for (const c of candidateTrackData.clips) {
+                      const dist = Math.abs(c.start - sourceStart);
+                      if (dist < closestDist) {
+                        closestClip = c;
+                        closestDist = dist;
+                      }
+                    }
+
+                    // Focus the closest clip element
                     const candidateTrack = document.querySelector(`[data-track-index="${candidateIndex}"]`);
                     if (candidateTrack) {
-                      const firstClip = candidateTrack.querySelector('[role="button"]') as HTMLElement;
-                      if (firstClip) {
+                      const clipEl = candidateTrack.querySelector(`[data-clip-id="${closestClip.id}"]`) as HTMLElement;
+                      if (clipEl) {
                         setTimeout(() => {
-                          firstClip.focus();
-                          candidateTrack.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                          clipEl.focus();
+                          clipEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                         }, 0);
                         return;
                       }

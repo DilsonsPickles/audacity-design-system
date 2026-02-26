@@ -152,7 +152,7 @@ export function useContainerTabGroup({
       }
 
       focusingRef.current = true;
-      focusables[nextIndex].focus();
+      focusables[nextIndex].focus({ preventScroll: true });
       focusingRef.current = false;
     },
     [containerRef, selector, filter, useArrows, wrap, isRoving, startTabIndex],
