@@ -892,55 +892,65 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           // Before deleting, determine where to move focus
           let shouldMoveFocus = false;
           let focusTrackIndex = 0;
-          let focusClipIndex = 0;
+          let focusClipId: number | null = null;
 
           if (focusedClipInfo) {
-            // Find the current clip index in its track
             const track = state.tracks[focusedClipInfo.trackIndex];
-            const clipIndex = track.clips.findIndex(c => c.id === focusedClipInfo.clipId);
+            const deletedClip = track.clips.find(c => c.id === focusedClipInfo.clipId);
 
-            if (clipIndex !== -1) {
-              shouldMoveFocus = true;
+            if (deletedClip) {
               focusTrackIndex = focusedClipInfo.trackIndex;
 
-              // Try to focus next clip, or previous if last, or do nothing if only clip
+              // Find nearest remaining clip by start time
               const remainingClips = track.clips.filter(
                 c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo.trackIndex)
               );
 
               if (remainingClips.length > 0) {
-                // Find next clip that won't be deleted
-                let nextClipIndex = clipIndex;
-                for (let i = clipIndex + 1; i < track.clips.length; i++) {
-                  const clip = track.clips[i];
-                  const willBeDeleted = clipsToDelete.some(
-                    item => item.clipId === clip.id && item.trackIndex === focusedClipInfo.trackIndex
-                  );
-                  if (!willBeDeleted) {
-                    nextClipIndex = i;
-                    break;
+                shouldMoveFocus = true;
+                let nearest = remainingClips[0];
+                let nearestDist = Math.abs(nearest.start - deletedClip.start);
+                for (const c of remainingClips) {
+                  const dist = Math.abs(c.start - deletedClip.start);
+                  if (dist < nearestDist) {
+                    nearest = c;
+                    nearestDist = dist;
                   }
                 }
-
-                // If no next clip found, try previous
-                if (nextClipIndex === clipIndex) {
-                  for (let i = clipIndex - 1; i >= 0; i--) {
-                    const clip = track.clips[i];
-                    const willBeDeleted = clipsToDelete.some(
-                      item => item.clipId === clip.id && item.trackIndex === focusedClipInfo.trackIndex
+                focusClipId = nearest.id;
+              } else {
+                // No clips left on this track — find nearest clip on the next available track
+                const trackCount = state.tracks.length;
+                for (let offset = 1; offset < trackCount; offset++) {
+                  // Check next track first, then previous, alternating outward
+                  const candidates = [
+                    focusedClipInfo.trackIndex + offset,
+                    focusedClipInfo.trackIndex - offset,
+                  ];
+                  for (const ti of candidates) {
+                    if (ti < 0 || ti >= trackCount) continue;
+                    const otherRemaining = state.tracks[ti].clips.filter(
+                      c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === ti)
                     );
-                    if (!willBeDeleted) {
-                      nextClipIndex = i;
+                    if (otherRemaining.length > 0) {
+                      // Pick the closest clip by start time on this track
+                      let nearest = otherRemaining[0];
+                      let nearestDist = Math.abs(nearest.start - deletedClip.start);
+                      for (const c of otherRemaining) {
+                        const dist = Math.abs(c.start - deletedClip.start);
+                        if (dist < nearestDist) {
+                          nearest = c;
+                          nearestDist = dist;
+                        }
+                      }
+                      focusTrackIndex = ti;
+                      focusClipId = nearest.id;
+                      shouldMoveFocus = true;
                       break;
                     }
                   }
+                  if (shouldMoveFocus) break;
                 }
-
-                focusClipIndex = Math.max(0, nextClipIndex - clipsToDelete.filter(
-                  item => item.trackIndex === focusedClipInfo.trackIndex
-                ).length);
-              } else {
-                shouldMoveFocus = false; // No clips left in track
               }
             }
           }
@@ -953,20 +963,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             });
           });
 
-          // Move focus to next clip after deletion completes
-          if (shouldMoveFocus) {
+          // Move focus to nearest clip after deletion completes
+          if (shouldMoveFocus && focusClipId !== null) {
             setTimeout(() => {
-              const trackElements = document.querySelectorAll('[data-track-index]');
-              const targetTrack = Array.from(trackElements).find(
-                el => el.getAttribute('data-track-index') === String(focusTrackIndex)
-              );
-              if (targetTrack) {
-                const clipElements = targetTrack.parentElement?.querySelectorAll('[role="button"]');
-                if (clipElements && clipElements[focusClipIndex]) {
-                  const clipEl = clipElements[focusClipIndex] as HTMLElement;
-                  clipEl.focus({ preventScroll: true });
-                  scrollIntoViewIfNeeded(clipEl);
-                }
+              const clipEl = document.querySelector(
+                `[data-track-index="${focusTrackIndex}"] [data-clip-id="${focusClipId}"]`
+              ) as HTMLElement;
+              if (clipEl) {
+                clipEl.focus({ preventScroll: true });
+                scrollIntoViewIfNeeded(clipEl);
               }
             }, 50);
           }
