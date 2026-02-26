@@ -87,13 +87,19 @@ export function useClipMouseDown({
           const clipWidth = clip.duration * pixelsPerSecond;
           const clipHeaderY = currentY;
 
-          // Check if click is on clip header
+          // Check if click is anywhere on the clip (header or body)
           if (x >= clipX && x <= clipX + clipWidth &&
-              y >= clipHeaderY && y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
+              y >= clipHeaderY && y < clipHeaderY + trackHeight) {
 
-            // Only clear selections and start drag if NOT shift/cmd-clicking
-            // (Shift-click and Cmd-click are handled by onClipClick for multi-select)
-            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            // For Shift/Cmd clicks anywhere on the clip, block the mousedown
+            // so time selection doesn't start — the click event will handle selection
+            if (e.shiftKey || e.metaKey || e.ctrlKey) {
+              e.stopPropagation();
+              return;
+            }
+
+            // Only start drag from the clip header area
+            if (y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
               // If clicking on an unselected clip, select it exclusively first
               // and only include this clip in the drag
               let selectedClipsInitialPositions;

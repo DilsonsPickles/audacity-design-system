@@ -306,6 +306,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [dividerHover, setDividerHover] = React.useState(false);
   const trackRef = React.useRef<HTMLDivElement>(null);
   const focusFromMouseRef = React.useRef(false);
+  const clipFocusFromMouseRef = React.useRef(false);
 
   // Container-level roving tabindex for clip navigation (ArrowLeft/Right)
   const { onKeyDown: clipNavKeyDown, onBlur: clipNavBlur, onClickCapture: clipNavClickCapture, initTabIndices: initClipTabIndices } = useContainerTabGroup({
@@ -434,8 +435,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // Clip receives DOM focus naturally via its tabIndex.
             // :focus:not(:focus-visible) CSS suppresses the outline on mouse clicks.
             // Do NOT stopPropagation — Canvas.tsx needs mouseDown to bubble for clip dragging.
+            clipFocusFromMouseRef.current = true;
           }}
-          onFocus={(e) => scrollIntoViewIfNeeded(e.currentTarget as HTMLElement)}
+          onClick={(e) => {
+            // Handle Shift/Cmd clicks on the clip body (header clicks are handled by ClipHeader's onClick)
+            // ClipHeader's onClick calls e.stopPropagation(), so this only fires for body clicks
+            if (e.shiftKey || e.metaKey || e.ctrlKey) {
+              e.stopPropagation();
+              onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);
+            }
+          }}
+          onFocus={(e) => {
+            // Only scroll into view for keyboard-driven focus, not mouse clicks
+            if (clipFocusFromMouseRef.current) {
+              clipFocusFromMouseRef.current = false;
+              return;
+            }
+            scrollIntoViewIfNeeded(e.currentTarget as HTMLElement);
+          }}
           onKeyDown={(e) => {
             // Escape: move focus back to the track container
             if (e.key === 'Escape') {
