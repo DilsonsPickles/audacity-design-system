@@ -692,12 +692,19 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           opacity: isMuted ? 0.5 : 1,
         }}
         tabIndex={trackTabIndex ?? -1}
-        onClick={(e) => {
-          // Only focus the track when clicking empty space, not clip headers
-          const target = e.target as HTMLElement;
-          if (!target.closest('[data-clip-id]')) {
-            (e.currentTarget as HTMLDivElement).focus();
+        onMouseDown={(e) => {
+          // Prevent browser from focusing the .track div on click.
+          // Also blur if it already has DOM focus (e.g. from Tab navigation),
+          // so the red container outline is removed — blue outline comes from state.
+          e.preventDefault();
+          if (document.activeElement === e.currentTarget) {
+            (e.currentTarget as HTMLElement).blur();
           }
+        }}
+        onClick={(e) => {
+          // Don't focus the .track DOM element on click — that shows the red
+          // container outline.  onTrackClick sets focusedTrackIndex which gives
+          // the blue track-wrapper outline instead.
           onTrackClick?.(e);
         }}
         onKeyDown={(e: React.KeyboardEvent) => {
