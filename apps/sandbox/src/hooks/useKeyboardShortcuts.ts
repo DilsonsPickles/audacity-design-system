@@ -863,28 +863,22 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           }
         }
 
-        // Collect all clips to delete (union of focused + selected)
+        // Collect all clips to delete: selected clips take priority over focused clip
         const clipsToDelete: Array<{ trackIndex: number; clipId: string | number }> = [];
 
-        // Add focused clip if present
-        if (focusedClipInfo) {
-          clipsToDelete.push(focusedClipInfo);
-        }
-
-        // Add all selected clips
+        // First, collect all selected clips
         state.tracks.forEach((track, trackIndex) => {
           track.clips.forEach((clip) => {
             if (clip.selected) {
-              // Avoid duplicates (if focused clip is also selected)
-              const isDuplicate = clipsToDelete.some(
-                item => item.clipId === clip.id && item.trackIndex === trackIndex
-              );
-              if (!isDuplicate) {
-                clipsToDelete.push({ trackIndex, clipId: clip.id });
-              }
+              clipsToDelete.push({ trackIndex, clipId: clip.id });
             }
           });
         });
+
+        // Only add focused clip if no clips are selected
+        if (clipsToDelete.length === 0 && focusedClipInfo) {
+          clipsToDelete.push(focusedClipInfo);
+        }
 
 
         // Delete all clips in the union
