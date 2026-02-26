@@ -604,65 +604,41 @@ export function Canvas({
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onContainerFocusChange={(hasFocus) => onTrackContainerFocusChange?.(trackIndex, hasFocus)}
                 onClipMove={(clipId, deltaSeconds) => {
-                  // Find the clip to get its current position
-                  const clip = track.clips.find(c => c.id === clipId);
-                  if (clip) {
-                    const newStartTime = Math.max(0, clip.start + deltaSeconds);
-                    // Select the clip being moved
-                    if (!clip.selected) {
-                      dispatch({
-                        type: 'SELECT_CLIP',
-                        payload: { trackIndex, clipId: clipId as number },
-                      });
-                    }
-                    dispatch({
-                      type: 'MOVE_CLIP',
-                      payload: {
-                        clipId: clipId as number,
-                        fromTrackIndex: trackIndex,
-                        toTrackIndex: trackIndex,
-                        newStartTime,
-                      },
-                    });
-                    // Scroll clip into view after React renders the new position
-                    requestAnimationFrame(() => {
-                      requestAnimationFrame(() => {
-                        const clipEl = document.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
-                        if (clipEl) scrollIntoViewIfNeeded(clipEl);
-                      });
-                    });
-                  }
-                }}
-                onClipMoveToTrack={(clipId, direction) => {
-                  // Find the clip to get its current position
                   const clip = track.clips.find(c => c.id === clipId);
                   if (!clip) return;
-
-                  // Calculate target track index
-                  const targetTrackIndex = trackIndex + direction;
-
-                  // Check if target track exists
-                  if (targetTrackIndex < 0 || targetTrackIndex >= tracks.length) return;
-
-                  // Select the clip being moved
+                  // Ensure the focused clip is selected so it moves with the group
                   if (!clip.selected) {
                     dispatch({
                       type: 'SELECT_CLIP',
                       payload: { trackIndex, clipId: clipId as number },
                     });
                   }
-
-                  // Move the clip to the target track
                   dispatch({
-                    type: 'MOVE_CLIP',
-                    payload: {
-                      clipId: clipId as number,
-                      fromTrackIndex: trackIndex,
-                      toTrackIndex: targetTrackIndex,
-                      newStartTime: clip.start,
-                    },
+                    type: 'MOVE_SELECTED_CLIPS',
+                    payload: { deltaSeconds },
                   });
-
+                  // Scroll focused clip into view
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      const clipEl = document.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
+                      if (clipEl) scrollIntoViewIfNeeded(clipEl);
+                    });
+                  });
+                }}
+                onClipMoveToTrack={(clipId, direction) => {
+                  const clip = track.clips.find(c => c.id === clipId);
+                  if (!clip) return;
+                  // Ensure the focused clip is selected so it moves with the group
+                  if (!clip.selected) {
+                    dispatch({
+                      type: 'SELECT_CLIP',
+                      payload: { trackIndex, clipId: clipId as number },
+                    });
+                  }
+                  dispatch({
+                    type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
+                    payload: { direction: direction as 1 | -1 },
+                  });
                   // Focus the clip on the new track and scroll into view
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {

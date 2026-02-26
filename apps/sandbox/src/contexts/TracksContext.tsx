@@ -212,7 +212,9 @@ export type TracksAction =
   | { type: 'REMOVE_MASTER_EFFECT'; payload: number }
   | { type: 'REORDER_MASTER_EFFECTS'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean }
-  | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } };
+  | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } }
+  | { type: 'MOVE_SELECTED_CLIPS'; payload: { deltaSeconds: number } }
+  | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } };
 
 // Initial state
 const initialState: TracksState = {
@@ -604,6 +606,98 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       }
 
       return { ...state, tracks: newTracks, timeSelection: newTimeSelection, clipDurationIndicator: newClipDurationIndicator };
+    }
+
+    case 'MOVE_SELECTED_CLIPS': {
+      const { deltaSeconds } = action.payload;
+      let firstSelectedClip: Clip | null = null;
+
+      const newTracks = state.tracks.map(track => ({
+        ...track,
+        clips: track.clips.map(clip => {
+          if (!clip.selected) return clip;
+          if (!firstSelectedClip) firstSelectedClip = clip;
+          return { ...clip, start: Math.max(0, clip.start + deltaSeconds) };
+        }),
+      }));
+
+      // Update time selection
+      let newTimeSelection = state.timeSelection;
+      if (state.timeSelection) {
+        newTimeSelection = {
+          ...state.timeSelection,
+          startTime: state.timeSelection.startTime + deltaSeconds,
+          endTime: state.timeSelection.endTime + deltaSeconds,
+        };
+      }
+
+      // Update clip duration indicator for the first selected clip
+      let newClipDurationIndicator = state.clipDurationIndicator;
+      if (firstSelectedClip) {
+        const newStart = Math.max(0, (firstSelectedClip as Clip).start + deltaSeconds);
+        newClipDurationIndicator = {
+          startTime: newStart,
+          endTime: newStart + (firstSelectedClip as Clip).duration,
+        };
+      }
+
+      return { ...state, tracks: newTracks, timeSelection: newTimeSelection, clipDurationIndicator: newClipDurationIndicator };
+    }
+
+    case 'MOVE_SELECTED_CLIPS_TO_TRACK': {
+      const { direction } = action.payload;
+
+      // Collect all selected clips with their track indices
+      const selectedEntries: Array<{ trackIndex: number; clip: Clip }> = [];
+      state.tracks.forEach((track, trackIndex) => {
+        track.clips.forEach(clip => {
+          if (clip.selected) {
+            selectedEntries.push({ trackIndex, clip });
+          }
+        });
+      });
+
+      if (selectedEntries.length === 0) return state;
+
+      // Validate: if ANY selected clip would move out of bounds, skip entirely
+      for (const entry of selectedEntries) {
+        const targetIndex = entry.trackIndex + direction;
+        if (targetIndex < 0 || targetIndex >= state.tracks.length) return state;
+      }
+
+      // Remove selected clips from source tracks, add to destination tracks
+      const newTracks = state.tracks.map(track => ({
+        ...track,
+        clips: [...track.clips],
+      }));
+
+      // First pass: remove selected clips from their source tracks
+      for (const entry of selectedEntries) {
+        newTracks[entry.trackIndex] = {
+          ...newTracks[entry.trackIndex],
+          clips: newTracks[entry.trackIndex].clips.filter(c => c.id !== entry.clip.id),
+        };
+      }
+
+      // Second pass: add selected clips to destination tracks
+      for (const entry of selectedEntries) {
+        const destIndex = entry.trackIndex + direction;
+        newTracks[destIndex] = {
+          ...newTracks[destIndex],
+          clips: [...newTracks[destIndex].clips, entry.clip],
+        };
+      }
+
+      // Update selectedTrackIndices to reflect new track positions
+      const newSelectedTrackIndices = [...new Set(
+        selectedEntries.map(e => e.trackIndex + direction)
+      )].sort((a, b) => a - b);
+
+      return {
+        ...state,
+        tracks: newTracks,
+        selectedTrackIndices: newSelectedTrackIndices,
+      };
     }
 
     case 'ADD_CLIP': {
