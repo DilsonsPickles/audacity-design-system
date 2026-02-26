@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
-import { toast } from '@audacity-ui/components';
+import { toast, scrollIntoViewIfNeeded } from '@audacity-ui/components';
 
 export interface EffectsPanelState {
   isOpen: boolean;
@@ -70,17 +70,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
   // Scroll the canvas so the playhead stays visible after a position change
   const scrollPlayheadIntoView = () => {
-    // Wait for React to render the new playhead position
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const container = document.querySelector('.canvas-scroll-container') as HTMLElement;
         const playhead = container?.querySelector('.playhead-cursor') as HTMLElement;
-        if (!container || !playhead) return;
-        const phRect = playhead.getBoundingClientRect();
-        const cRect = container.getBoundingClientRect();
-        if (phRect.left < cRect.left || phRect.right > cRect.right) {
-          playhead.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
+        if (playhead) scrollIntoViewIfNeeded(playhead, container);
       });
     });
   };
@@ -969,7 +963,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               if (targetTrack) {
                 const clipElements = targetTrack.parentElement?.querySelectorAll('[role="button"]');
                 if (clipElements && clipElements[focusClipIndex]) {
-                  (clipElements[focusClipIndex] as HTMLElement).focus();
+                  const clipEl = clipElements[focusClipIndex] as HTMLElement;
+                  clipEl.focus({ preventScroll: true });
+                  scrollIntoViewIfNeeded(clipEl);
                 }
               }
             }, 50);

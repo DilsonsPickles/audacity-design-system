@@ -5,6 +5,7 @@ import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeIn
 import { generateSpeechWaveform } from '../utils/waveform';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
+import { scrollIntoViewIfNeeded } from '../utils/scrollIntoViewIfNeeded';
 import './Track.css';
 
 const EMPTY_NUMBER_ARRAY: number[] = [];
@@ -421,24 +422,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
           aria-label={`${clip.name} clip`}
-          onFocus={(e) => {
-            // Scroll if the clip is partially or fully offscreen
-            const el = e.currentTarget as HTMLElement;
-            const scrollParent = el.closest('.canvas-scroll-container') as HTMLElement;
-            if (scrollParent) {
-              const clipRect = el.getBoundingClientRect();
-              const cRect = scrollParent.getBoundingClientRect();
-              const T = 2; // Tolerance for sub-pixel rounding
-              const fullyVisible =
-                clipRect.left >= cRect.left - T &&
-                clipRect.right <= cRect.right + T &&
-                clipRect.top >= cRect.top - T &&
-                clipRect.bottom <= cRect.bottom + T;
-              if (!fullyVisible) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-              }
-            }
-          }}
+          onFocus={(e) => scrollIntoViewIfNeeded(e.currentTarget as HTMLElement)}
           onKeyDown={(e) => {
             // Delete key: let it bubble to App.tsx handler, but DON'T stop propagation
             // The App.tsx handler will read data-clip-id and data-track-index from this element
