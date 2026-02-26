@@ -34,6 +34,8 @@ export interface UseContainerTabGroupReturn {
   onKeyDown: (e: React.KeyboardEvent) => void;
   /** Blur handler — spread onto the container */
   onBlur: (e: React.FocusEvent) => void;
+  /** Click capture handler — updates roving tabindex when a child is clicked (without focusing) */
+  onClickCapture: (e: React.MouseEvent) => void;
   /** Resolved startTabIndex from profile tabOrder[groupId] */
   startTabIndex: number;
   /** Props to spread on the container element */
@@ -93,14 +95,18 @@ export function useContainerTabGroup({
   // Track whether we're inside a programmatic focus to avoid re-entrant blur resets
   const focusingRef = useRef(false);
 
+  // Persisted active roving index — survives re-renders triggered by selection changes
+  const activeIndexRef = useRef(0);
+
   /** Set initial tabIndex values on all focusable children */
   const initTabIndices = useCallback(() => {
     if (!containerRef.current) return;
     const focusables = getFocusables(containerRef.current, selector, filter);
+    const active = Math.min(activeIndexRef.current, Math.max(0, focusables.length - 1));
 
     focusables.forEach((el, index) => {
       if (isRoving) {
-        el.setAttribute('tabindex', index === 0 ? String(startTabIndex) : '-1');
+        el.setAttribute('tabindex', index === active ? String(startTabIndex) : '-1');
       } else {
         el.setAttribute('tabindex', '0');
       }
@@ -149,6 +155,7 @@ export function useContainerTabGroup({
       if (isRoving) {
         focusables[currentIndex].tabIndex = -1;
         focusables[nextIndex].tabIndex = startTabIndex;
+        activeIndexRef.current = nextIndex;
       }
 
       focusingRef.current = true;
@@ -156,6 +163,27 @@ export function useContainerTabGroup({
       focusingRef.current = false;
     },
     [containerRef, selector, filter, useArrows, wrap, isRoving, startTabIndex],
+  );
+
+  /** Update roving tabindex when a focusable child is clicked (without moving DOM focus).
+   *  Sets the *next* sibling as the active tab stop so Tab advances past the clicked item. */
+  const onClickCapture = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isRoving || !containerRef.current) return;
+      const target = (e.target as HTMLElement).closest(selector);
+      if (!target || !containerRef.current.contains(target as HTMLElement)) return;
+
+      const focusables = getFocusables(containerRef.current, selector, filter);
+      const targetIndex = focusables.indexOf(target as HTMLElement);
+      if (targetIndex === -1) return;
+
+      activeIndexRef.current = targetIndex;
+
+      focusables.forEach((el, i) => {
+        el.tabIndex = i === targetIndex ? startTabIndex : -1;
+      });
+    },
+    [containerRef, selector, filter, isRoving, startTabIndex],
   );
 
   /** Reset first element to startTabIndex when focus leaves the container */
@@ -168,6 +196,7 @@ export function useContainerTabGroup({
       if (containerRef.current?.contains(relatedTarget)) return;
 
       // Focus left the container — reset
+      activeIndexRef.current = 0;
       const focusables = getFocusables(containerRef.current!, selector, filter);
       focusables.forEach((el, index) => {
         el.tabIndex = index === 0 ? startTabIndex : -1;
@@ -184,6 +213,7 @@ export function useContainerTabGroup({
   return {
     onKeyDown,
     onBlur,
+    onClickCapture,
     startTabIndex,
     containerProps,
     initTabIndices,

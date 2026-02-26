@@ -298,9 +298,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [isDraggingDivider, setIsDraggingDivider] = React.useState(false);
   const [dividerHover, setDividerHover] = React.useState(false);
   const trackRef = React.useRef<HTMLDivElement>(null);
+  const focusFromMouseRef = React.useRef(false);
 
   // Container-level roving tabindex for clip navigation (ArrowLeft/Right)
-  const { onKeyDown: clipNavKeyDown, onBlur: clipNavBlur, initTabIndices: initClipTabIndices } = useContainerTabGroup({
+  const { onKeyDown: clipNavKeyDown, onBlur: clipNavBlur, onClickCapture: clipNavClickCapture, initTabIndices: initClipTabIndices } = useContainerTabGroup({
     containerRef: trackRef,
     groupId: `track-${trackIndex}-clips`,
     selector: '[role="button"]',
@@ -423,9 +424,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           role="button"
           aria-label={`${clip.name} clip`}
           onMouseDown={(e) => {
-            // Prevent browser from focusing the clip wrapper on click.
-            // Keyboard focus should only come from Tab/Arrow navigation.
-            e.preventDefault();
+            // Stop propagation so the .track's mouseDown (which calls preventDefault)
+            // doesn't block the browser from focusing this clip wrapper.
+            // :focus:not(:focus-visible) CSS suppresses the outline on mouse clicks.
+            e.stopPropagation();
           }}
           onFocus={(e) => scrollIntoViewIfNeeded(e.currentTarget as HTMLElement)}
           onKeyDown={(e) => {
@@ -614,8 +616,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     setHasKeyboardFocus(true);
     onFocusChange?.(true);
 
-    // Notify if the container itself (not a child) received focus
-    const containerHasFocus = e.target === trackRef.current;
+    // Notify if the container itself (not a child) received focus via keyboard.
+    // Mouse clicks give invisible DOM focus — don't show the red bars.
+    const containerHasFocus = e.target === trackRef.current && !focusFromMouseRef.current;
+    focusFromMouseRef.current = false;
     setIsContainerFocused(containerHasFocus);
     onContainerFocusChange?.(containerHasFocus);
   };
@@ -692,15 +696,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           opacity: isMuted ? 0.5 : 1,
         }}
         tabIndex={trackTabIndex ?? -1}
-        onMouseDown={(e) => {
-          // Prevent browser from focusing the .track div on click.
-          // Also blur if it already has DOM focus (e.g. from Tab navigation),
-          // so the red container outline is removed — blue outline comes from state.
-          e.preventDefault();
-          if (document.activeElement === e.currentTarget) {
-            (e.currentTarget as HTMLElement).blur();
-          }
+        onMouseDown={() => {
+          // Let the browser focus the .track div so Tab continues from here.
+          // The ref tells handleTrackFocus to suppress the red container outline.
+          focusFromMouseRef.current = true;
         }}
+        onClickCapture={clipNavClickCapture}
         onClick={(e) => {
           // Don't focus the .track DOM element on click — that shows the red
           // container outline.  onTrackClick sets focusedTrackIndex which gives
