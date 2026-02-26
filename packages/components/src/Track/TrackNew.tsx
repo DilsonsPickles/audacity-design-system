@@ -422,17 +422,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           role="button"
           aria-label={`${clip.name} clip`}
           onFocus={(e) => {
-            // Scroll if the clip is not fully visible in the viewport
+            // Scroll if the clip is partially or fully offscreen
             const el = e.currentTarget as HTMLElement;
             const scrollParent = el.closest('.canvas-scroll-container') as HTMLElement;
             if (scrollParent) {
               const clipRect = el.getBoundingClientRect();
-              const containerRect = scrollParent.getBoundingClientRect();
+              const cRect = scrollParent.getBoundingClientRect();
+              const T = 2; // Tolerance for sub-pixel rounding
               const fullyVisible =
-                clipRect.left >= containerRect.left &&
-                clipRect.right <= containerRect.right &&
-                clipRect.top >= containerRect.top &&
-                clipRect.bottom <= containerRect.bottom;
+                clipRect.left >= cRect.left - T &&
+                clipRect.right <= cRect.right + T &&
+                clipRect.top >= cRect.top - T &&
+                clipRect.bottom <= cRect.bottom + T;
               if (!fullyVisible) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
               }

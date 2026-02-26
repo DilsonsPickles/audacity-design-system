@@ -695,8 +695,8 @@ export function Canvas({
                       const clipEl = candidateTrack.querySelector(`[data-clip-id="${closestClip.id}"]`) as HTMLElement;
                       if (clipEl) {
                         setTimeout(() => {
-                          clipEl.focus();
-                          clipEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                          clipEl.focus({ preventScroll: true });
+                          // onFocus handler on the clip handles scroll-into-view
                         }, 0);
                         return;
                       }
