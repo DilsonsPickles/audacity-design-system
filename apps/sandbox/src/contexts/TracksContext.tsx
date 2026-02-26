@@ -425,8 +425,13 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }))
       }));
 
-      // Find the selected clip to create duration indicator for ruler display
+      // Find the selected clip to create time selection (ruler-only, no canvas overlay)
       const selectedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+      const newTimeSelection = selectedClip ? {
+        startTime: selectedClip.start,
+        endTime: selectedClip.start + selectedClip.duration,
+        renderOnCanvas: false,
+      } : null;
       const newClipDurationIndicator = selectedClip ? {
         startTime: selectedClip.start,
         endTime: selectedClip.start + selectedClip.duration,
@@ -438,6 +443,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: [trackIndex],
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [], // Clear label selection when selecting clip
+        timeSelection: newTimeSelection,
         clipDurationIndicator: newClipDurationIndicator,
         lastSelectedClip: { trackIndex, clipId },
       };
@@ -591,6 +597,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       let newTimeSelection = state.timeSelection;
       if (clip.selected && state.timeSelection) {
         newTimeSelection = {
+          ...state.timeSelection,
           startTime: state.timeSelection.startTime + timeDelta,
           endTime: state.timeSelection.endTime + timeDelta,
         };
@@ -737,14 +744,20 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         0
       );
 
-      // Only set time selection if exactly 1 clip is selected
+      // When exactly 1 clip is selected, create a ruler-only time selection (no canvas overlay)
       let newTimeSelection: TimeSelection | null = null;
+      let newClipDurationIndicator: { startTime: number; endTime: number } | null = null;
       if (selectedClipsCount === 1) {
         const selectedClip = newTracks
           .flatMap(track => track.clips)
           .find(clip => clip.selected);
         if (selectedClip) {
           newTimeSelection = {
+            startTime: selectedClip.start,
+            endTime: selectedClip.start + selectedClip.duration,
+            renderOnCanvas: false,
+          };
+          newClipDurationIndicator = {
             startTime: selectedClip.start,
             endTime: selectedClip.start + selectedClip.duration,
           };
@@ -760,6 +773,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: tracksWithSelection,
         selectedLabelIds: [], // Clear label selection when toggling clip
         timeSelection: newTimeSelection,
+        clipDurationIndicator: newClipDurationIndicator,
         // Update lastSelectedClip only if the clip was selected (not deselected)
         lastSelectedClip: wasClipSelected ? { trackIndex, clipId } : state.lastSelectedClip,
       };

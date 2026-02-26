@@ -154,7 +154,10 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
 
     const handleMouseUp = () => {
       if (clipDragStateRef.current) {
+        // Preserve didDragRef so the subsequent click event is blocked
+        const wasDragging = didDragRef.current;
         cancelDrag();
+        didDragRef.current = wasDragging;
       }
     };
 
