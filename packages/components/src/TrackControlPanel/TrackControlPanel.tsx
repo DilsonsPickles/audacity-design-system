@@ -36,6 +36,8 @@ export interface TrackControlPanelProps {
   onFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down') => void;
   onTabOut?: () => void;
+  /** Callback when Shift+Tab is pressed to return focus to the track container */
+  onShiftTabOut?: () => void;
   /** Whether the track container (in the canvas) currently has keyboard focus */
   containerFocused?: boolean;
   // Meter props (for mono tracks, use meterLevel; for stereo, use meterLevelLeft/meterLevelRight)
@@ -81,6 +83,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onFocusChange,
   onNavigateVertical,
   onTabOut,
+  onShiftTabOut,
   containerFocused = false,
   meterLevel = 0,
   meterLevelLeft,
@@ -97,6 +100,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   meterMaxPeakRight,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const focusFromMouseRef = React.useRef(false);
 
   // Calculate volume slider position
   const volumePercent = volume;
@@ -178,11 +182,35 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       return;
     }
 
-    // Handle Tab key to navigate out to clips
+    // If a child has invisible focus (mouse click), Tab reveals the outline
+    if (e.key === 'Tab' && !isPanelFocused && focusFromMouseRef.current) {
+      e.preventDefault();
+      focusFromMouseRef.current = false;
+      // Re-focus to reset focus origin — triggers :focus-visible
+      const el = currentElement as HTMLElement;
+      el.blur();
+      el.focus();
+      return;
+    }
+
+    // Handle Tab or Shift+Tab from the panel itself — go to track container
+    if (e.key === 'Tab' && isPanelFocused) {
+      e.preventDefault();
+      onShiftTabOut?.();
+      return;
+    }
+
+    // Handle Tab key from a child — navigate out to clips
     if (e.key === 'Tab' && !e.shiftKey && !isPanelFocused) {
-      // If Tab is pressed on any nested element (not the panel itself), navigate out to clips
       e.preventDefault();
       onTabOut?.();
+      return;
+    }
+
+    // Handle Shift+Tab to return focus to the track container
+    if (e.key === 'Tab' && e.shiftKey && !isPanelFocused) {
+      e.preventDefault();
+      onShiftTabOut?.();
       return;
     }
 
@@ -263,6 +291,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   return (
     <div
       className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${isLabelTrack ? 'track-control-panel--label' : ''} ${className}`}
+      onMouseDown={() => { focusFromMouseRef.current = true; }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}

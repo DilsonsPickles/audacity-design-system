@@ -312,6 +312,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [dividerHover, setDividerHover] = React.useState(false);
   const trackRef = React.useRef<HTMLDivElement>(null);
   const focusFromMouseRef = React.useRef(false);
+  const trackClickXRef = React.useRef<number | null>(null);
   const clipFocusFromMouseRef = React.useRef(false);
   const mouseDownPosRef = React.useRef<{ x: number; y: number } | null>(null);
 
@@ -475,6 +476,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             scrollIntoViewIfNeeded(e.currentTarget as HTMLElement);
           }}
           onKeyDown={(e) => {
+            // If focus is invisible (mouse click), first Tab/Shift+Tab reveals the outline
+            if (e.key === 'Tab' && (e.currentTarget as HTMLElement).hasAttribute('data-focus-mouse')) {
+              e.preventDefault();
+              (e.currentTarget as HTMLElement).removeAttribute('data-focus-mouse');
+              return;
+            }
+
             // Escape: move focus back to the track container
             if (e.key === 'Escape') {
               e.preventDefault();
@@ -756,10 +764,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           opacity: isMuted ? 0.5 : 1,
         }}
         tabIndex={trackTabIndex ?? -1}
-        onMouseDown={() => {
+        onMouseDown={(e) => {
           // Let the browser focus the .track div so Tab continues from here.
           // The ref tells handleTrackFocus to suppress the red container outline.
           focusFromMouseRef.current = true;
+          trackClickXRef.current = e.clientX;
         }}
         onClickCapture={clipNavClickCapture}
         onClick={(e) => {
@@ -781,11 +790,32 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.preventDefault();
               e.stopPropagation();
               onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey);
-            } else if (e.key === 'Tab' && !e.shiftKey) {
-              // Tab: enter panel controls
+            } else if (e.key === 'Tab') {
               e.preventDefault();
               e.stopPropagation();
-              onEnterPanel?.();
+              if (!isContainerFocused && trackClickXRef.current !== null) {
+                // Invisible focus from mouse click — Tab to nearest clip
+                const clipElements = trackRef.current?.querySelectorAll('[data-clip-id]');
+                if (clipElements && clipElements.length > 0) {
+                  const clickX = trackClickXRef.current;
+                  let nearestDist = Infinity;
+                  let nearestIdx = 0;
+                  clipElements.forEach((el, i) => {
+                    const rect = el.getBoundingClientRect();
+                    const clipCenter = rect.left + rect.width / 2;
+                    const dist = Math.abs(clickX - clipCenter);
+                    if (dist < nearestDist) {
+                      nearestDist = dist;
+                      nearestIdx = i;
+                    }
+                  });
+                  trackClickXRef.current = null;
+                  (clipElements[nearestIdx] as HTMLElement).focus();
+                }
+              } else {
+                // Visible keyboard focus — Tab enters panel controls
+                onEnterPanel?.();
+              }
             }
             return; // Don't run clip navigation when container itself is focused
           }

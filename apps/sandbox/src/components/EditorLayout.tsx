@@ -526,6 +526,12 @@ export function EditorLayout(props: EditorLayoutProps) {
                     }
                   }
                 }}
+                onShiftTabOut={() => {
+                  const trackContainer = document.querySelector(
+                    `.track-wrapper[data-track-index="${index}"] .track`
+                  ) as HTMLElement;
+                  trackContainer?.focus();
+                }}
               />
             );
           })}
