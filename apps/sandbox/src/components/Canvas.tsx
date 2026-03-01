@@ -106,6 +106,10 @@ export interface CanvasProps {
    * @default 'mel'
    */
   spectrogramScale?: SpectrogramScale;
+  /**
+   * Callback when Tab is pressed on the track container to enter panel controls
+   */
+  onEnterTrackPanel?: (trackIndex: number) => void;
 }
 
 /**
@@ -135,6 +139,7 @@ export function Canvas({
   beatsPerMeasure = 4,
   timeFormat = 'beats-measures',
   spectrogramScale = 'mel',
+  onEnterTrackPanel,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -603,6 +608,7 @@ export function Canvas({
                 recordingClipId={recordingClipId}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onContainerFocusChange={(hasFocus) => onTrackContainerFocusChange?.(trackIndex, hasFocus)}
+                onEnterPanel={() => onEnterTrackPanel?.(trackIndex)}
                 onClipMove={(clipId, deltaSeconds) => {
                   const clip = track.clips.find(c => c.id === clipId);
                   if (!clip) return;

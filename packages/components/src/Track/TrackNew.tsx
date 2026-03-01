@@ -242,6 +242,11 @@ export interface TrackProps {
    */
   onContainerFocusChange?: (hasFocus: boolean) => void;
 
+  /**
+   * Callback when Tab is pressed on the track container to enter the panel controls.
+   */
+  onEnterPanel?: () => void;
+
 }
 
 // Map track index to color
@@ -295,6 +300,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onTrackNavigateVertical,
   onTrackReorder,
   onContainerFocusChange,
+  onEnterPanel,
 }) => {
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -540,6 +546,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
+            // Shift+Tab: go to panel controls
+            if (e.key === 'Tab' && e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              onEnterPanel?.();
+              return;
+            }
+
             // Navigate vertically between tracks with arrow up/down (without Cmd or Shift)
             if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
               e.preventDefault();
@@ -767,6 +781,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.preventDefault();
               e.stopPropagation();
               onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey);
+            } else if (e.key === 'Tab' && !e.shiftKey) {
+              // Tab: enter panel controls
+              e.preventDefault();
+              e.stopPropagation();
+              onEnterPanel?.();
             }
             return; // Don't run clip navigation when container itself is focused
           }
