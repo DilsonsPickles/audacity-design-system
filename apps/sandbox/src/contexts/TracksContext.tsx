@@ -56,6 +56,8 @@ export interface Track {
   labels?: Label[];
   effects?: Effect[]; // Track-specific effects chain
   effectsEnabled?: boolean; // Master toggle for all track effects (independent of individual effect states)
+  waveformRulerFormat?: 'linear-amp' | 'logarithmic-db' | 'linear-db'; // Per-track waveform ruler format
+  spectrogramScale?: 'mel' | 'linear' | 'period' | 'erb'; // Per-track spectrogram scale
 }
 
 /** Expanded color palette for tracks — each new track cycles through these */
@@ -214,7 +216,9 @@ export type TracksAction =
   | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean }
   | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'MOVE_SELECTED_CLIPS'; payload: { deltaSeconds: number } }
-  | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } };
+  | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } }
+  | { type: 'UPDATE_TRACK_RULER_FORMAT'; payload: { index: number; format: 'linear-amp' | 'logarithmic-db' | 'linear-db' } }
+  | { type: 'UPDATE_TRACK_SPECTROGRAM_SCALE'; payload: { index: number; scale: 'mel' | 'linear' | 'period' | 'erb' } };
 
 // Initial state
 const initialState: TracksState = {
@@ -396,6 +400,24 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       newTracks[action.payload.index] = {
         ...newTracks[action.payload.index],
         channelSplitRatio: action.payload.ratio,
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_TRACK_RULER_FORMAT': {
+      const newTracks = [...state.tracks];
+      newTracks[action.payload.index] = {
+        ...newTracks[action.payload.index],
+        waveformRulerFormat: action.payload.format,
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_TRACK_SPECTROGRAM_SCALE': {
+      const newTracks = [...state.tracks];
+      newTracks[action.payload.index] = {
+        ...newTracks[action.payload.index],
+        spectrogramScale: action.payload.scale,
       };
       return { ...state, tracks: newTracks };
     }

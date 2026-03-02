@@ -29,6 +29,10 @@ export interface TrackRulerConfig {
   trackType?: 'audio' | 'label';
   /** Split ratio for split view (0-1, default 0.5) */
   channelSplitRatio?: number;
+  /** Waveform ruler format for this track */
+  waveformRulerFormat?: WaveformRulerFormat;
+  /** Spectrogram scale for this track */
+  spectrogramScale?: SpectrogramScale;
 }
 
 export interface VerticalRulerPanelProps {
@@ -70,8 +74,9 @@ export interface VerticalRulerPanelProps {
    */
   spectrogramScale?: SpectrogramScale;
   /**
-   * Waveform ruler format
+   * Waveform ruler format (deprecated — use per-track waveformRulerFormat in TrackRulerConfig instead)
    * @default 'linear-amp'
+   * @deprecated
    */
   waveformRulerFormat?: WaveformRulerFormat;
 }
@@ -140,7 +145,12 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
           />
         )}
 
-        {tracks.map((track, index) => (
+        {tracks.map((track, index) => {
+          // Per-track values, falling back to panel-level props, then defaults
+          const format = track.waveformRulerFormat ?? waveformRulerFormat;
+          const specScale = track.spectrogramScale ?? spectrogramScale ?? 'mel';
+
+          return (
           <React.Fragment key={track.id}>
             {/* Track ruler */}
             <div
@@ -171,15 +181,15 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                     <div className="vertical-ruler-panel__split">
                       <FrequencyRuler
                         height={topHeight}
-                        minFreq={getScaleMinFreq(spectrogramScale ?? 'mel')}
+                        minFreq={getScaleMinFreq(specScale)}
                         maxFreq={22050}
-                        scale={spectrogramScale}
+                        scale={specScale}
                         position="right"
                         width={width}
                         headerHeight={0}
                       />
                       <div className="vertical-ruler-panel__split-divider" />
-                      {waveformRulerFormat === 'linear-amp' ? (
+                      {format === 'linear-amp' ? (
                         <VerticalRuler
                           height={bottomHeight}
                           min={-1.0}
@@ -193,7 +203,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                       ) : (
                         <DbRuler
                           height={bottomHeight}
-                          scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
+                          scale={format === 'logarithmic-db' ? 'logarithmic' : 'linear'}
                           position="right"
                           width={width}
                           headerHeight={0}
@@ -206,9 +216,9 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 // Spectrogram mode - frequency ruler
                 <FrequencyRuler
                   height={track.height - (track.height > 44 ? 20 : 0)}
-                  minFreq={getScaleMinFreq(spectrogramScale ?? 'mel')}
+                  minFreq={getScaleMinFreq(specScale)}
                   maxFreq={22050}
-                  scale={spectrogramScale}
+                  scale={specScale}
                   position="right"
                   width={width}
                   headerHeight={0}
@@ -224,7 +234,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
 
                   return (
                     <div className="vertical-ruler-panel__stereo">
-                      {waveformRulerFormat === 'linear-amp' ? (
+                      {format === 'linear-amp' ? (
                         <VerticalRuler
                           height={topHeight}
                           min={-1.0}
@@ -238,14 +248,14 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                       ) : (
                         <DbRuler
                           height={topHeight}
-                          scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
+                          scale={format === 'logarithmic-db' ? 'logarithmic' : 'linear'}
                           position="right"
                           width={width}
                           headerHeight={0}
                         />
                       )}
                       <div className="vertical-ruler-panel__stereo-divider" />
-                      {waveformRulerFormat === 'linear-amp' ? (
+                      {format === 'linear-amp' ? (
                         <VerticalRuler
                           height={bottomHeight}
                           min={-1.0}
@@ -259,7 +269,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                       ) : (
                         <DbRuler
                           height={bottomHeight}
-                          scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
+                          scale={format === 'logarithmic-db' ? 'logarithmic' : 'linear'}
                           position="right"
                           width={width}
                           headerHeight={0}
@@ -268,7 +278,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                     </div>
                   );
                 })()
-              ) : waveformRulerFormat === 'linear-amp' ? (
+              ) : format === 'linear-amp' ? (
                 // Waveform mode - amplitude ruler
                 <VerticalRuler
                   height={track.height - (track.height > 44 ? 20 : 0)}
@@ -284,7 +294,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 // Waveform mode - dB ruler
                 <DbRuler
                   height={track.height - (track.height > 44 ? 20 : 0)}
-                  scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
+                  scale={format === 'logarithmic-db' ? 'logarithmic' : 'linear'}
                   position="right"
                   width={width}
                   headerHeight={0}
@@ -297,7 +307,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               <div className="vertical-ruler-panel__track-gap" />
             )}
           </React.Fragment>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

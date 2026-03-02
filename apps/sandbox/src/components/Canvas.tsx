@@ -879,7 +879,7 @@ export function Canvas({
                   // The actual trimming happens in the mousemove handler
                 }}
                 envelopePointSizes={envelopePointSizes}
-                spectrogramScale={spectrogramScale}
+                spectrogramScale={track.spectrogramScale ?? spectrogramScale}
                 channelSplitRatio={track.channelSplitRatio}
                 onChannelSplitRatioChange={(ratio) => {
                   dispatch({
