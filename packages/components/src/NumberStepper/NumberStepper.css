@@ -22,9 +22,9 @@
 }
 
 .number-stepper--editing:not(.number-stepper--disabled) {
-  outline: 2px solid var(--number-stepper-success-outline);
+  outline: 2px solid var(--focus-color);
   outline-offset: -1px;
-  border-color: var(--number-stepper-success-border);
+  border-color: var(--focus-color);
 }
 
 .number-stepper--disabled {

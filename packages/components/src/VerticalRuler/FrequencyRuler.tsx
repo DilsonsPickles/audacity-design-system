@@ -64,8 +64,20 @@ export const FrequencyRuler: React.FC<FrequencyRulerProps> = ({
   const MIN_LABEL_SPACING = 14;
 
   // Build all ticks sorted top-to-bottom (ascending y)
-  const allTicks = getTicksForScale(scale)
-    .filter(t => t.value >= minFreq && t.value <= maxFreq)
+  const scaleTicks = getTicksForScale(scale)
+    .filter(t => t.value >= minFreq && t.value <= maxFreq);
+
+  // Inject min/max as major ticks so the range endpoints always show
+  const existingValues = new Set(scaleTicks.map(t => t.value));
+  const formatHz = (hz: number) => hz >= 1000 ? `${(hz / 1000).toFixed(hz % 1000 === 0 ? 0 : 1)}k` : String(hz);
+  if (!existingValues.has(minFreq)) {
+    scaleTicks.push({ value: minFreq, label: formatHz(minFreq), isMajor: true });
+  }
+  if (!existingValues.has(maxFreq)) {
+    scaleTicks.push({ value: maxFreq, label: formatHz(maxFreq), isMajor: true });
+  }
+
+  const allTicks = scaleTicks
     .map(t => ({
       ...t,
       y: freqToY(t.value, minFreq, maxFreq, height, scale),

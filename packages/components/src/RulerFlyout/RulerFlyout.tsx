@@ -7,6 +7,61 @@ import { useTheme } from '../ThemeProvider';
 import type { SpectrogramScale } from '../VerticalRuler/FrequencyRuler';
 import './RulerFlyout.css';
 
+/**
+ * NumberStepper wrapper with local draft state.
+ * Lets the user type freely; only validates + commits on blur, Enter,
+ * or arrow-button clicks.
+ */
+function FreqStepper({ value, onCommit, min, max, step, width, className }: {
+  value: number;
+  onCommit: (n: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  width?: number;
+  className?: string;
+}) {
+  const [draft, setDraft] = React.useState(String(value));
+  const ref = React.useRef<HTMLInputElement>(null);
+
+  // Sync draft when external value changes (e.g. from arrow buttons on the other field)
+  React.useEffect(() => { setDraft(String(value)); }, [value]);
+
+  const tryCommit = (raw: string) => {
+    const n = parseInt(raw, 10);
+    if (!isNaN(n) && n >= min && n <= max) {
+      onCommit(n);
+    } else {
+      setDraft(String(value)); // revert
+    }
+  };
+
+  return (
+    <div
+      onBlur={() => tryCommit(draft)}
+      onKeyDown={(e) => { if (e.key === 'Enter') tryCommit(draft); }}
+    >
+      <NumberStepper
+        ref={ref}
+        value={draft}
+        onChange={(val) => {
+          // Arrow buttons produce a clean integer — commit immediately
+          const n = parseInt(val, 10);
+          if (!isNaN(n) && n >= min && n <= max && /^-?\d+$/.test(val.trim())) {
+            onCommit(n);
+          }
+          setDraft(val);
+        }}
+        min={min}
+        max={max}
+        step={step}
+        width={width}
+        className={className}
+      />
+    </div>
+  );
+}
+
 export type WaveformRulerFormat = 'linear-amp' | 'logarithmic-db' | 'linear-db';
 
 export interface RulerFlyoutProps {
@@ -219,12 +274,9 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
             <div className="ruler-flyout__section-label">Frequency range</div>
             <div className="ruler-flyout__freq-row">
               <label className="ruler-flyout__freq-label">Min</label>
-              <NumberStepper
-                value={`${minFreq}`}
-                onChange={(val) => {
-                  const n = parseInt(val, 10);
-                  if (!isNaN(n) && n >= 0 && n < maxFreq) onMinFreqChange?.(n);
-                }}
+              <FreqStepper
+                value={minFreq}
+                onCommit={(n) => onMinFreqChange?.(n)}
                 min={0}
                 max={maxFreq - 1}
                 step={10}
@@ -235,12 +287,9 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
             </div>
             <div className="ruler-flyout__freq-row">
               <label className="ruler-flyout__freq-label">Max</label>
-              <NumberStepper
-                value={`${maxFreq}`}
-                onChange={(val) => {
-                  const n = parseInt(val, 10);
-                  if (!isNaN(n) && n > minFreq && n <= 22050) onMaxFreqChange?.(n);
-                }}
+              <FreqStepper
+                value={maxFreq}
+                onCommit={(n) => onMaxFreqChange?.(n)}
                 min={minFreq + 1}
                 max={22050}
                 step={100}
