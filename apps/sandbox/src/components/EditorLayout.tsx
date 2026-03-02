@@ -1,8 +1,8 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast } from '@audacity-ui/components';
-import type { SpectrogramScale } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, RulerFlyout } from '@audacity-ui/components';
+import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
@@ -41,6 +41,7 @@ export interface EditorLayoutProps {
   showRmsInWaveform: boolean;
   controlPointStyle: EnvelopePointStyleKey;
   spectrogramScale: SpectrogramScale;
+  setSpectrogramScale: React.Dispatch<React.SetStateAction<SpectrogramScale>>;
   showVerticalRulers: boolean;
   setIsSpectrogramSettingsOpen: (open: boolean) => void;
 
@@ -124,7 +125,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
-    showRmsInWaveform, controlPointStyle, spectrogramScale, showVerticalRulers, setIsSpectrogramSettingsOpen,
+    showRmsInWaveform, controlPointStyle, spectrogramScale, setSpectrogramScale, showVerticalRulers, setIsSpectrogramSettingsOpen,
     isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
     selectionAnchor, setSelectionAnchor, controlPanelHasFocus: _controlPanelHasFocus, setControlPanelHasFocus,
     containerFocusedTrack, setContainerFocusedTrack,
@@ -140,6 +141,44 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
+
+  // Ruler flyout state
+  const [rulerFlyout, setRulerFlyout] = React.useState<{ isOpen: boolean; x: number; y: number; mode: 'waveform' | 'spectrogram' } | null>(null);
+  const [waveformRulerFormat, setWaveformRulerFormat] = React.useState<WaveformRulerFormat>('linear-amp');
+  const [halfWave, setHalfWave] = React.useState(false);
+
+  const handleRulerContextMenu = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    // Determine mode based on which track the cursor is over
+    // For now, check if any track at the click position is in spectrogram mode
+    const clickY = e.clientY;
+    const panelRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const relativeY = clickY - panelRect.top + scrollY;
+
+    let accumulatedHeight = 0;
+    let mode: 'waveform' | 'spectrogram' = 'waveform';
+    for (const track of state.tracks) {
+      const trackHeight = track.height || 114;
+      if (relativeY >= accumulatedHeight && relativeY < accumulatedHeight + trackHeight) {
+        mode = track.viewMode === 'spectrogram' || track.viewMode === 'split' ? 'spectrogram' : 'waveform';
+        break;
+      }
+      accumulatedHeight += trackHeight + 2; // 2px gap
+    }
+
+    // Position flyout 24px to the left of the ruler panel, vertically centered on click
+    const flyoutWidth = 200;
+    const flyoutHeight = mode === 'waveform' ? 242 : 280; // approximate heights
+    const flyoutX = panelRect.left - flyoutWidth - 16;
+    let flyoutY = e.clientY - flyoutHeight / 2;
+
+    // Clamp to viewport
+    const vh = window.innerHeight;
+    if (flyoutY + flyoutHeight > vh - 10) flyoutY = vh - flyoutHeight - 10;
+    if (flyoutY < 10) flyoutY = 10;
+
+    setRulerFlyout({ isOpen: true, x: flyoutX, y: flyoutY, mode });
+  }, [state.tracks, scrollY]);
 
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
@@ -280,6 +319,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           bufferSpace={scrollBuffer}
           onTrackResize={(trackIndex, height) => {
             dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
+            setRulerFlyout(null);
           }}
           onAddTrackType={(type: TrackType) => {
             let trackName = `Track ${state.tracks.length + 1}`;
@@ -889,23 +929,43 @@ export function EditorLayout(props: EditorLayoutProps) {
 
           {/* Vertical Amplitude Rulers */}
           {showVerticalRulers && (
-            <VerticalRulerPanel
-              tracks={state.tracks.map((track: any, index: number) => ({
-                id: track.id.toString(),
-                height: track.height || 114,
-                selected: state.selectedTrackIndices.includes(index),
-                focused: state.focusedTrackIndex === index,
-                containerFocused: containerFocusedTrack === index,
-                stereo: track.channelSplitRatio !== undefined,
-                viewMode: track.viewMode,
-                trackType: track.type,
-                channelSplitRatio: track.channelSplitRatio,
-              }))}
-              width={64}
-              headerHeight={0}
-              scrollY={scrollY}
-              cursorY={isOverTrack ? mouseCursorY : undefined}
+            <div onContextMenu={handleRulerContextMenu} style={{ display: 'flex', flexShrink: 0 }}>
+              <VerticalRulerPanel
+                tracks={state.tracks.map((track: any, index: number) => ({
+                  id: track.id.toString(),
+                  height: track.height || 114,
+                  selected: state.selectedTrackIndices.includes(index),
+                  focused: state.focusedTrackIndex === index,
+                  containerFocused: containerFocusedTrack === index,
+                  stereo: track.channelSplitRatio !== undefined,
+                  viewMode: track.viewMode,
+                  trackType: track.type,
+                  channelSplitRatio: track.channelSplitRatio,
+                }))}
+                width={64}
+                headerHeight={0}
+                scrollY={scrollY}
+                cursorY={isOverTrack ? mouseCursorY : undefined}
+                spectrogramScale={spectrogramScale}
+                waveformRulerFormat={waveformRulerFormat}
+              />
+            </div>
+          )}
+
+          {/* Ruler Flyout */}
+          {rulerFlyout && (
+            <RulerFlyout
+              isOpen={rulerFlyout.isOpen}
+              onClose={() => setRulerFlyout(null)}
+              x={rulerFlyout.x}
+              y={rulerFlyout.y}
+              mode={rulerFlyout.mode}
+              rulerFormat={waveformRulerFormat}
+              onRulerFormatChange={setWaveformRulerFormat}
+              halfWave={halfWave}
+              onHalfWaveChange={setHalfWave}
               spectrogramScale={spectrogramScale}
+              onSpectrogramScaleChange={setSpectrogramScale}
             />
           )}
         </div>

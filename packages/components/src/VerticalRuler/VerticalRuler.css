@@ -99,6 +99,12 @@
   color: var(--ruler-text-primary);
 }
 
+/* Major tick mark with secondary label style (used by dB rulers) */
+.vertical-ruler__tick--secondary-label .vertical-ruler__label {
+  font-weight: 400;
+  color: var(--ruler-text-secondary);
+}
+
 /* Position variants */
 .vertical-ruler--right .vertical-ruler__label {
   right: 4px;

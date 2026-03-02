@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { VerticalRuler } from './VerticalRuler';
+import { DbRuler } from './DbRuler';
 import { FrequencyRuler } from './FrequencyRuler';
 import type { SpectrogramScale } from './FrequencyRuler';
+import type { WaveformRulerFormat } from '../RulerFlyout';
 import { getScaleMinFreq } from '../utils/spectrogramScales';
 import { useTheme } from '../ThemeProvider';
 import './VerticalRulerPanel.css';
@@ -67,6 +69,11 @@ export interface VerticalRulerPanelProps {
    * @default 'mel'
    */
   spectrogramScale?: SpectrogramScale;
+  /**
+   * Waveform ruler format
+   * @default 'linear-amp'
+   */
+  waveformRulerFormat?: WaveformRulerFormat;
 }
 
 /**
@@ -84,6 +91,7 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
   cursorY,
   className = '',
   spectrogramScale,
+  waveformRulerFormat = 'linear-amp',
 }) => {
   const { theme } = useTheme();
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -171,16 +179,26 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                         headerHeight={0}
                       />
                       <div className="vertical-ruler-panel__split-divider" />
-                      <VerticalRuler
-                        height={bottomHeight}
-                        min={-1.0}
-                        max={1.0}
-                        majorDivisions={5}
-                        minorDivisions={4}
-                        position="right"
-                        width={width}
-                        headerHeight={0}
-                      />
+                      {waveformRulerFormat === 'linear-amp' ? (
+                        <VerticalRuler
+                          height={bottomHeight}
+                          min={-1.0}
+                          max={1.0}
+                          majorDivisions={5}
+                          minorDivisions={4}
+                          position="right"
+                          width={width}
+                          headerHeight={0}
+                        />
+                      ) : (
+                        <DbRuler
+                          height={bottomHeight}
+                          scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
+                          position="right"
+                          width={width}
+                          headerHeight={0}
+                        />
+                      )}
                     </div>
                   );
                 })()
@@ -206,31 +224,51 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
 
                   return (
                     <div className="vertical-ruler-panel__stereo">
-                      <VerticalRuler
-                        height={topHeight}
-                        min={-1.0}
-                        max={1.0}
-                        majorDivisions={3}
-                        minorDivisions={1}
-                        position="right"
-                        width={width}
-                        headerHeight={0}
-                      />
+                      {waveformRulerFormat === 'linear-amp' ? (
+                        <VerticalRuler
+                          height={topHeight}
+                          min={-1.0}
+                          max={1.0}
+                          majorDivisions={3}
+                          minorDivisions={1}
+                          position="right"
+                          width={width}
+                          headerHeight={0}
+                        />
+                      ) : (
+                        <DbRuler
+                          height={topHeight}
+                          scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
+                          position="right"
+                          width={width}
+                          headerHeight={0}
+                        />
+                      )}
                       <div className="vertical-ruler-panel__stereo-divider" />
-                      <VerticalRuler
-                        height={bottomHeight}
-                        min={-1.0}
-                        max={1.0}
-                        majorDivisions={3}
-                        minorDivisions={1}
-                        position="right"
-                        width={width}
-                        headerHeight={0}
-                      />
+                      {waveformRulerFormat === 'linear-amp' ? (
+                        <VerticalRuler
+                          height={bottomHeight}
+                          min={-1.0}
+                          max={1.0}
+                          majorDivisions={3}
+                          minorDivisions={1}
+                          position="right"
+                          width={width}
+                          headerHeight={0}
+                        />
+                      ) : (
+                        <DbRuler
+                          height={bottomHeight}
+                          scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
+                          position="right"
+                          width={width}
+                          headerHeight={0}
+                        />
+                      )}
                     </div>
                   );
                 })()
-              ) : (
+              ) : waveformRulerFormat === 'linear-amp' ? (
                 // Waveform mode - amplitude ruler
                 <VerticalRuler
                   height={track.height - (track.height > 44 ? 20 : 0)}
@@ -238,6 +276,15 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                   max={1.0}
                   majorDivisions={5}
                   minorDivisions={4}
+                  position="right"
+                  width={width}
+                  headerHeight={0}
+                />
+              ) : (
+                // Waveform mode - dB ruler
+                <DbRuler
+                  height={track.height - (track.height > 44 ? 20 : 0)}
+                  scale={waveformRulerFormat === 'logarithmic-db' ? 'logarithmic' : 'linear'}
                   position="right"
                   width={width}
                   headerHeight={0}
