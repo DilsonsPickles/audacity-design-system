@@ -33,6 +33,10 @@ export interface TrackRulerConfig {
   waveformRulerFormat?: WaveformRulerFormat;
   /** Spectrogram scale for this track */
   spectrogramScale?: SpectrogramScale;
+  /** Minimum frequency in Hz for spectrogram ruler */
+  minFreq?: number;
+  /** Maximum frequency in Hz for spectrogram ruler */
+  maxFreq?: number;
 }
 
 export interface VerticalRulerPanelProps {
@@ -147,6 +151,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
           // Per-track values, falling back to panel-level props, then defaults
           const format = track.waveformRulerFormat ?? waveformRulerFormat;
           const specScale = track.spectrogramScale ?? spectrogramScale ?? 'mel';
+          const trackMinFreq = track.minFreq ?? getScaleMinFreq(specScale);
+          const trackMaxFreq = track.maxFreq ?? 22050;
 
           return (
           <React.Fragment key={track.id}>
@@ -179,8 +185,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                     <div className="vertical-ruler-panel__split">
                       <FrequencyRuler
                         height={topHeight}
-                        minFreq={getScaleMinFreq(specScale)}
-                        maxFreq={22050}
+                        minFreq={trackMinFreq}
+                        maxFreq={trackMaxFreq}
                         scale={specScale}
                         position="right"
                         width={width}
@@ -214,8 +220,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 // Spectrogram mode - frequency ruler
                 <FrequencyRuler
                   height={track.height - (track.height > 44 ? 20 : 0)}
-                  minFreq={getScaleMinFreq(specScale)}
-                  maxFreq={22050}
+                  minFreq={trackMinFreq}
+                  maxFreq={trackMaxFreq}
                   scale={specScale}
                   position="right"
                   width={width}

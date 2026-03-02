@@ -154,18 +154,30 @@ export function EditorLayout(props: EditorLayoutProps) {
     const panelRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const relativeY = clickY - panelRect.top + scrollY;
 
-    let accumulatedHeight = 0;
+    const trackGap = 2; // matches VerticalRulerPanel trackGap default
+    let accumulatedHeight = trackGap; // tracks container has paddingTop of trackGap
     let mode: 'waveform' | 'spectrogram' = 'waveform';
     let targetTrackIndex = 0;
     for (let i = 0; i < state.tracks.length; i++) {
       const track = state.tracks[i];
       const trackHeight = track.height || 114;
       if (relativeY >= accumulatedHeight && relativeY < accumulatedHeight + trackHeight) {
-        mode = track.viewMode === 'spectrogram' || track.viewMode === 'split' ? 'spectrogram' : 'waveform';
         targetTrackIndex = i;
+        if (track.viewMode === 'spectrogram') {
+          mode = 'spectrogram';
+        } else if (track.viewMode === 'split') {
+          // Determine which half of the split the click is in
+          const yInTrack = relativeY - accumulatedHeight;
+          const spacerHeight = trackHeight > 44 ? 20 : 0;
+          const splitRatio = track.channelSplitRatio ?? 0.5;
+          const topHeight = (trackHeight - spacerHeight) * splitRatio;
+          mode = yInTrack < spacerHeight + topHeight ? 'spectrogram' : 'waveform';
+        } else {
+          mode = 'waveform';
+        }
         break;
       }
-      accumulatedHeight += trackHeight + 2; // 2px gap
+      accumulatedHeight += trackHeight + trackGap;
     }
 
     // Position flyout 24px to the left of the ruler panel, vertically centered on click
@@ -945,6 +957,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                   channelSplitRatio: track.channelSplitRatio,
                   waveformRulerFormat: track.waveformRulerFormat,
                   spectrogramScale: track.spectrogramScale,
+                  minFreq: track.spectrogramMinFreq,
+                  maxFreq: track.spectrogramMaxFreq,
                 }))}
                 width={64}
                 headerHeight={0}
@@ -971,6 +985,14 @@ export function EditorLayout(props: EditorLayoutProps) {
               spectrogramScale={state.tracks[rulerFlyout.trackIndex]?.spectrogramScale ?? spectrogramScale}
               onSpectrogramScaleChange={(scale: SpectrogramScale) => {
                 dispatch({ type: 'UPDATE_TRACK_SPECTROGRAM_SCALE', payload: { index: rulerFlyout.trackIndex, scale } });
+              }}
+              minFreq={state.tracks[rulerFlyout.trackIndex]?.spectrogramMinFreq}
+              onMinFreqChange={(freq: number) => {
+                dispatch({ type: 'UPDATE_TRACK_SPECTROGRAM_FREQ', payload: { index: rulerFlyout.trackIndex, minFreq: freq } });
+              }}
+              maxFreq={state.tracks[rulerFlyout.trackIndex]?.spectrogramMaxFreq}
+              onMaxFreqChange={(freq: number) => {
+                dispatch({ type: 'UPDATE_TRACK_SPECTROGRAM_FREQ', payload: { index: rulerFlyout.trackIndex, maxFreq: freq } });
               }}
             />
           )}

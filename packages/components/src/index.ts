@@ -33,6 +33,7 @@ export * from './TransportButton';
 export * from './ContextMenu';
 export * from './ContextMenuItem';
 export * from './AddTrackFlyout';
+export * from './RulerFlyout';
 export * from './Toast';
 export * from './Dialog';
 export * from './DialogHeader';

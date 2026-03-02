@@ -58,6 +58,8 @@ export interface Track {
   effectsEnabled?: boolean; // Master toggle for all track effects (independent of individual effect states)
   waveformRulerFormat?: 'linear-amp' | 'logarithmic-db' | 'linear-db'; // Per-track waveform ruler format
   spectrogramScale?: 'mel' | 'linear' | 'period' | 'erb'; // Per-track spectrogram scale
+  spectrogramMinFreq?: number; // Per-track min frequency in Hz
+  spectrogramMaxFreq?: number; // Per-track max frequency in Hz
 }
 
 /** Expanded color palette for tracks — each new track cycles through these */
@@ -218,7 +220,8 @@ export type TracksAction =
   | { type: 'MOVE_SELECTED_CLIPS'; payload: { deltaSeconds: number } }
   | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } }
   | { type: 'UPDATE_TRACK_RULER_FORMAT'; payload: { index: number; format: 'linear-amp' | 'logarithmic-db' | 'linear-db' } }
-  | { type: 'UPDATE_TRACK_SPECTROGRAM_SCALE'; payload: { index: number; scale: 'mel' | 'linear' | 'period' | 'erb' } };
+  | { type: 'UPDATE_TRACK_SPECTROGRAM_SCALE'; payload: { index: number; scale: 'mel' | 'linear' | 'period' | 'erb' } }
+  | { type: 'UPDATE_TRACK_SPECTROGRAM_FREQ'; payload: { index: number; minFreq?: number; maxFreq?: number } };
 
 // Initial state
 const initialState: TracksState = {
@@ -418,6 +421,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       newTracks[action.payload.index] = {
         ...newTracks[action.payload.index],
         spectrogramScale: action.payload.scale,
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_TRACK_SPECTROGRAM_FREQ': {
+      const newTracks = [...state.tracks];
+      newTracks[action.payload.index] = {
+        ...newTracks[action.payload.index],
+        ...(action.payload.minFreq !== undefined && { spectrogramMinFreq: action.payload.minFreq }),
+        ...(action.payload.maxFreq !== undefined && { spectrogramMaxFreq: action.payload.maxFreq }),
       };
       return { ...state, tracks: newTracks };
     }
