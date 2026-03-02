@@ -49,7 +49,7 @@ function scaleValue(hz: number, scale: SpectrogramScale): number {
     case 'mel':         return hzToMel(hz);
     case 'bark':        return hzToBark(hz);
     case 'erb':         return hzToErb(hz);
-    case 'period':      return 1 / Math.max(hz, 0.001); // period = 1/f (higher freq → smaller period → top)
+    case 'period':      return Math.log10(Math.max(hz, 0.001)); // log-period: logarithmic spacing, flipped in freqToNorm
   }
 }
 
@@ -60,7 +60,7 @@ function inverseScaleValue(v: number, scale: SpectrogramScale): number {
     case 'mel':         return melToHz(v);
     case 'bark':        return barkToHz(v);
     case 'erb':         return erbToHz(v);
-    case 'period':      return 1 / Math.max(v, 0.000001);
+    case 'period':      return Math.pow(10, v);
   }
 }
 
@@ -73,11 +73,9 @@ export function freqToNorm(hz: number, minFreq: number, maxFreq: number, scale: 
   const vMax = scaleValue(maxFreq, scale);
   const v    = scaleValue(hz, scale);
 
-  // For 'period', higher freq = smaller period = top, so inversion is natural
-  // For all other scales, higher freq = larger value = top
+  // For 'period', large period (low freq) at top, small period (high freq) at bottom
   if (scale === 'period') {
-    // period is inverted: minFreq has the largest period (bottom), maxFreq smallest (top)
-    return (vMin - v) / (vMin - vMax);
+    return (vMax - v) / (vMax - vMin);
   }
   return (v - vMin) / (vMax - vMin);
 }
@@ -92,7 +90,7 @@ export function normToFreq(norm: number, minFreq: number, maxFreq: number, scale
 
   let v: number;
   if (scale === 'period') {
-    v = vMin - norm * (vMin - vMax);
+    v = vMax - norm * (vMax - vMin);
   } else {
     v = vMin + norm * (vMax - vMin);
   }
@@ -126,28 +124,23 @@ export interface TickDef {
   isMajor: boolean;
 }
 
-function hzLabel(hz: number): string {
-  if (hz >= 1000) return `${hz / 1000}k`;
-  return `${hz}`;
-}
-
 const LINEAR_TICKS: TickDef[] = [
-  { value: 0,     label: '0',    isMajor: true },
-  { value: 1000,  label: '1k',   isMajor: true },
-  { value: 2000,  label: '2k',   isMajor: true },
-  { value: 3000,  label: '3k',   isMajor: false },
-  { value: 4000,  label: '4k',   isMajor: true },
-  { value: 5000,  label: '5k',   isMajor: true },
-  { value: 6000,  label: '6k',   isMajor: false },
-  { value: 7000,  label: '7k',   isMajor: false },
-  { value: 8000,  label: '8k',   isMajor: true },
-  { value: 9000,  label: '9k',   isMajor: false },
-  { value: 10000, label: '10k',  isMajor: true },
-  { value: 12000, label: '12k',  isMajor: false },
-  { value: 14000, label: '14k',  isMajor: false },
-  { value: 16000, label: '16k',  isMajor: true },
-  { value: 18000, label: '18k',  isMajor: false },
-  { value: 20000, label: '20k',  isMajor: true },
+  { value: 0,     label: '0',     isMajor: true },
+  { value: 1000,  label: '1000',  isMajor: true },
+  { value: 2000,  label: '2000',  isMajor: true },
+  { value: 3000,  label: '3000',  isMajor: false },
+  { value: 4000,  label: '4000',  isMajor: true },
+  { value: 5000,  label: '5000',  isMajor: true },
+  { value: 6000,  label: '6000',  isMajor: false },
+  { value: 7000,  label: '7000',  isMajor: false },
+  { value: 8000,  label: '8000',  isMajor: true },
+  { value: 9000,  label: '9000',  isMajor: false },
+  { value: 10000, label: '10000', isMajor: true },
+  { value: 12000, label: '12000', isMajor: false },
+  { value: 14000, label: '14000', isMajor: false },
+  { value: 16000, label: '16000', isMajor: true },
+  { value: 18000, label: '18000', isMajor: false },
+  { value: 20000, label: '20000', isMajor: true },
 ];
 
 const LOG_TICKS: TickDef[] = [
@@ -169,46 +162,57 @@ const LOG_TICKS: TickDef[] = [
 ];
 
 const MEL_TICKS: TickDef[] = [
-  { value: 100,   label: '100',  isMajor: false },
-  { value: 200,   label: '200',  isMajor: false },
-  { value: 500,   label: '500',  isMajor: true },
-  { value: 1000,  label: '1k',   isMajor: true },
-  { value: 2000,  label: '2k',   isMajor: true },
-  { value: 5000,  label: '5k',   isMajor: true },
-  { value: 10000, label: '10k',  isMajor: true },
-  { value: 20000, label: '20k',  isMajor: true },
+  { value: 100,   label: '100',   isMajor: false },
+  { value: 200,   label: '200',   isMajor: false },
+  { value: 500,   label: '500',   isMajor: true },
+  { value: 1000,  label: '1000',  isMajor: true },
+  { value: 2000,  label: '2000',  isMajor: true },
+  { value: 5000,  label: '5000',  isMajor: true },
+  { value: 10000, label: '10000', isMajor: true },
+  { value: 20000, label: '20000', isMajor: true },
 ];
 
 // Bark scale: label at critical band boundaries (approx)
 const BARK_TICK_HZ = [100, 200, 300, 400, 510, 630, 770, 920, 1080, 1270, 1480, 1720, 2000, 2320, 2700, 3150, 3700, 4400, 5300, 6400, 7700, 9500, 12000, 15500];
-const BARK_TICKS: TickDef[] = BARK_TICK_HZ.map((hz, i) => ({
+const BARK_MAJOR_HZ = new Set([100, 500, 1000, 2000, 5000, 10000]);
+const BARK_TICKS: TickDef[] = BARK_TICK_HZ.map(hz => ({
   value: hz,
-  label: hzLabel(hz),
-  isMajor: [100, 500, 1000, 2000, 5000, 10000].includes(hz),
+  label: `${hz}`,
+  isMajor: BARK_MAJOR_HZ.has(hz),
 }));
 
-// ERB scale: similar to Mel but slightly different spacing
-const ERB_TICKS: TickDef[] = [
-  { value: 100,   label: '100',  isMajor: false },
-  { value: 250,   label: '250',  isMajor: false },
-  { value: 500,   label: '500',  isMajor: true },
-  { value: 1000,  label: '1k',   isMajor: true },
-  { value: 2000,  label: '2k',   isMajor: true },
-  { value: 4000,  label: '4k',   isMajor: true },
-  { value: 8000,  label: '8k',   isMajor: true },
-  { value: 16000, label: '16k',  isMajor: true },
+// ERB scale: dense candidates with plain Hz labels, matching Audacity reference
+const ERB_MAJOR_HZ = new Set([10000, 1000, 100]);
+const ERB_HZ_CANDIDATES = [
+  10, 20, 30, 50, 80,
+  100, 200, 300, 400, 490, 600, 800,
+  1000, 1200, 1400, 1700, 2000, 2500, 3000,
+  4000, 5000, 6000, 8000,
+  10000, 14000, 19000,
 ];
+const ERB_TICKS: TickDef[] = ERB_HZ_CANDIDATES.map(hz => ({
+  value: hz,
+  label: `${hz}`,
+  isMajor: ERB_MAJOR_HZ.has(hz),
+}));
 
-// Period scale: label in ms or s (1/f), shown from long period (low freq) at bottom to short (high freq) at top
-const PERIOD_TICK_HZ = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
-const PERIOD_TICKS: TickDef[] = PERIOD_TICK_HZ.map(hz => {
-  const period = 1 / hz;
-  let label: string;
-  if (period >= 0.01) label = `${Math.round(period * 1000)}ms`;
-  else if (period >= 0.001) label = `${(period * 1000).toFixed(1)}ms`;
-  else label = `${(period * 1000).toFixed(2)}ms`;
-  return { value: hz, label, isMajor: [100, 1000, 10000].includes(hz) };
-});
+// Period scale: labels show period in microseconds (μs) as plain integers.
+// value = frequency in Hz, label = 1 000 000 / freq rounded to integer.
+const PERIOD_US_CANDIDATES = [
+  100000, 50000, 20000, 10000,
+  5000, 4000, 3000, 2000, 1500, 1000,
+  800, 600, 500, 400, 300,
+  200, 150, 120, 100,
+  80, 70, 60, 50,
+  46, 45, 43, 40, 37, 35, 33, 30,
+  28, 26, 25, 24, 23, 22, 21, 20,
+];
+const PERIOD_MAJOR_US = new Set([100000, 10000, 1000, 100]);
+const PERIOD_TICKS: TickDef[] = PERIOD_US_CANDIDATES.map(periodUs => ({
+  value: 1_000_000 / periodUs,
+  label: `${periodUs}`,
+  isMajor: PERIOD_MAJOR_US.has(periodUs),
+}));
 
 /**
  * Returns the recommended minimum frequency (Hz) for a given scale.
