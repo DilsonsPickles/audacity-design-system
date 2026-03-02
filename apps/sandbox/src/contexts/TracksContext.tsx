@@ -789,6 +789,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         ...state,
         tracks: newTracks,
         clipDurationIndicator: null, // Clear duration indicator when deselecting
+        // Clear ruler-only time selection that was showing clip duration
+        timeSelection: state.timeSelection?.renderOnCanvas === false ? null : state.timeSelection,
         lastSelectedClip: null, // Clear range selection anchor when deselecting all
       };
     }

@@ -247,6 +247,16 @@ export interface TrackProps {
    */
   onEnterPanel?: () => void;
 
+  /**
+   * Callback when Shift+Tab is pressed on the track container to go to the previous track.
+   */
+  onShiftTabOut?: () => void;
+
+  /**
+   * Callback when Enter is pressed on the track container itself.
+   */
+  onContainerEnter?: () => void;
+
 }
 
 // Map track index to color
@@ -301,6 +311,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onTrackReorder,
   onContainerFocusChange,
   onEnterPanel,
+  onShiftTabOut,
+  onContainerEnter,
 }) => {
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -752,7 +764,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   };
 
   return (
-    <div className={className} data-track-index={trackIndex} style={isContainerFocused ? { '--track-focus-color': 'red' } as React.CSSProperties : undefined}>
+    <div className={`${className}${isContainerFocused ? ' track-wrapper--container-focused' : ''}`} data-track-index={trackIndex}>
       <div
         ref={trackRef}
         className={`track ${isSelected ? 'track--selected' : ''} ${isMuted ? 'track--muted' : ''}`}
@@ -778,8 +790,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           onTrackClick?.(e);
         }}
         onKeyDown={(e: React.KeyboardEvent) => {
-          // If the track container itself is focused (not a child clip), handle vertical navigation
+          // If the track container itself is focused (not a child clip), handle navigation
           if (e.currentTarget === document.activeElement) {
+            if (e.key === 'Enter') {
+              // Enter on track container: select track and deselect clips
+              e.preventDefault();
+              e.stopPropagation();
+              onContainerEnter?.();
+              return;
+            }
             if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
               // Cmd+Arrow: reorder track
               e.preventDefault();
@@ -790,7 +809,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.preventDefault();
               e.stopPropagation();
               onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey);
-            } else if (e.key === 'Tab') {
+            } else if (e.key === 'Tab' && !e.shiftKey) {
               e.preventDefault();
               e.stopPropagation();
               if (!isContainerFocused && trackClickXRef.current !== null) {
@@ -816,6 +835,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 // Visible keyboard focus — Tab enters panel controls
                 onEnterPanel?.();
               }
+            } else if (e.key === 'Tab' && e.shiftKey) {
+              // Shift+Tab: go to previous track's clips or panel
+              e.preventDefault();
+              e.stopPropagation();
+              onShiftTabOut?.();
             }
             return; // Don't run clip navigation when container itself is focused
           }

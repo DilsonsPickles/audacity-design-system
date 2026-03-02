@@ -27,6 +27,15 @@
   bottom: -2px;
 }
 
+/* Container-focused: 1px white + 1px black instead of solid color */
+.track-wrapper--container-focused.track-wrapper--focused::before {
+  background: linear-gradient(to bottom, white 50%, black 50%);
+}
+
+.track-wrapper--container-focused.track-wrapper--focused::after {
+  background: linear-gradient(to bottom, black 50%, white 50%);
+}
+
 /* Suppress browser default focus outline — wrapper bars serve as focus indicator */
 .track {
   outline: none;

@@ -437,9 +437,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             const newSelection = state.selectedTrackIndices.filter(idx => idx !== state.focusedTrackIndex);
             dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
           } else {
-            // Add to selection
-            const newSelection = [...state.selectedTrackIndices, state.focusedTrackIndex];
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+            // Exclusively select this track (replace existing selection)
+            dispatch({ type: 'SELECT_TRACK', payload: state.focusedTrackIndex });
           }
         }
         return;

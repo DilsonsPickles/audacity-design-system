@@ -110,6 +110,14 @@ export interface CanvasProps {
    * Callback when Tab is pressed on the track container to enter panel controls
    */
   onEnterTrackPanel?: (trackIndex: number) => void;
+  /**
+   * Callback when Shift+Tab is pressed on the track container to go to the previous track
+   */
+  onShiftTabFromTrack?: (trackIndex: number) => void;
+  /**
+   * Callback when Enter is pressed on the track container
+   */
+  onContainerEnter?: (trackIndex: number) => void;
 }
 
 /**
@@ -140,6 +148,8 @@ export function Canvas({
   timeFormat = 'beats-measures',
   spectrogramScale = 'mel',
   onEnterTrackPanel,
+  onShiftTabFromTrack,
+  onContainerEnter,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -609,6 +619,8 @@ export function Canvas({
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}
                 onContainerFocusChange={(hasFocus) => onTrackContainerFocusChange?.(trackIndex, hasFocus)}
                 onEnterPanel={() => onEnterTrackPanel?.(trackIndex)}
+                onShiftTabOut={() => onShiftTabFromTrack?.(trackIndex)}
+                onContainerEnter={() => onContainerEnter?.(trackIndex)}
                 onClipMove={(clipId, deltaSeconds) => {
                   const clip = track.clips.find(c => c.id === clipId);
                   if (!clip) return;

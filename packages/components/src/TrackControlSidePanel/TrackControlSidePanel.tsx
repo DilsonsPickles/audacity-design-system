@@ -282,7 +282,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               initialHeight={height}
               minHeight={44}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
-              style={isContainerFocused ? { '--tcsp-focus-outline': 'red' } as React.CSSProperties : undefined}
+              style={undefined}
               isFirstPanel={index === 0}
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
             >

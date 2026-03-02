@@ -214,12 +214,20 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       return;
     }
 
+    // Arrow keys on the panel itself or on a child with invisible focus — navigate between tracks
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && (isPanelFocused || focusFromMouseRef.current)) {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        onNavigateVertical?.(e.key === 'ArrowUp' ? 'up' : 'down');
+      }
+      // ArrowLeft/Right with invisible focus: do nothing (don't cycle children)
+      return;
+    }
+
     // Only handle arrow keys for navigation
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') {
       return;
     }
-
-    // Plain ArrowUp/Down at panel level falls through to enter children (same as ArrowLeft/Right)
 
     // Handle arrow keys for internal navigation (all four directions)
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
@@ -270,7 +278,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     '--tcp-bg-active': theme.background.surface.default,
     '--tcp-text-primary': theme.foreground.text.primary,
     '--tcp-icon-default': theme.foreground.icon.primary,
-    '--tcp-focus-color': containerFocused ? 'red' : theme.border.focus,
+    '--tcp-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -290,7 +298,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   return (
     <div
-      className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${isLabelTrack ? 'track-control-panel--label' : ''} ${className}`}
+      className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${containerFocused ? 'track-control-panel--container-focused' : ''} ${isLabelTrack ? 'track-control-panel--label' : ''} ${className}`}
       onMouseDown={() => { focusFromMouseRef.current = true; }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

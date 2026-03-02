@@ -781,6 +781,44 @@ export function EditorLayout(props: EditorLayoutProps) {
                         firstButton?.focus();
                       }
                     }}
+                    onContainerEnter={(trackIndex) => {
+                      dispatch({ type: 'DESELECT_ALL_CLIPS' });
+                      const isSelected = state.selectedTrackIndices.includes(trackIndex);
+                      if (isSelected) {
+                        const newSelection = state.selectedTrackIndices.filter((i: number) => i !== trackIndex);
+                        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                      } else {
+                        dispatch({ type: 'SELECT_TRACK', payload: trackIndex });
+                      }
+                    }}
+                    onShiftTabFromTrack={(trackIndex) => {
+                      const prevIndex = trackIndex - 1;
+                      if (prevIndex < 0) {
+                        // First track — focus the "Add new" button
+                        const addButton = document.querySelector('.track-control-side-panel__header button') as HTMLElement;
+                        addButton?.focus();
+                        return;
+                      }
+                      // Try previous track's last clip first
+                      const prevTrack = document.querySelector(
+                        `.track-wrapper[data-track-index="${prevIndex}"] .track`
+                      );
+                      if (prevTrack) {
+                        const clips = prevTrack.querySelectorAll('[data-clip-id]');
+                        if (clips.length > 0) {
+                          (clips[clips.length - 1] as HTMLElement).focus();
+                          return;
+                        }
+                      }
+                      // No clips — focus last button in previous track's panel
+                      const panels = document.querySelectorAll('[aria-label*="track controls"]');
+                      if (panels[prevIndex]) {
+                        const buttons = panels[prevIndex].querySelectorAll('button');
+                        if (buttons.length > 0) {
+                          (buttons[buttons.length - 1] as HTMLElement).focus();
+                        }
+                      }
+                    }}
                     onHeightChange={setCanvasHeight}
                     spectrogramScale={spectrogramScale}
                   />

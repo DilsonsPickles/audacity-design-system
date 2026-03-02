@@ -139,8 +139,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               ref={(el) => (trackRefs.current[index] = el)}
               className={`vertical-ruler-panel__track ${
                 track.focused ? 'vertical-ruler-panel__track--focused' : ''
-              }`}
-              style={{ height: `${track.height}px`, ...(track.containerFocused ? { '--panel-track-selected-border': 'red' } as React.CSSProperties : {}) }}
+              } ${track.containerFocused ? 'vertical-ruler-panel__track--container-focused' : ''}`}
+              style={{ height: `${track.height}px` }}
             >
               {/* 20px spacer to align with clip header recess (hidden for label tracks and when track is too small) */}
               {track.trackType !== 'label' && track.height > 44 && (
