@@ -858,6 +858,7 @@ function CanvasDemoContent() {
           showRmsInWaveform={showRmsInWaveform}
           controlPointStyle={controlPointStyle}
           spectrogramScale={spectrogramScale}
+          setSpectrogramScale={setSpectrogramScale}
           showVerticalRulers={showVerticalRulers}
           setIsSpectrogramSettingsOpen={setIsSpectrogramSettingsOpen}
           isPlaying={isPlaying}
