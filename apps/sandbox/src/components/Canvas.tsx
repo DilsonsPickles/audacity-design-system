@@ -573,7 +573,7 @@ export function Canvas({
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
 
                   if (shiftKey) {
-                    // Extend/contract track selection
+                    // Shift+Arrow: extend/contract track selection
                     const anchor = selectionAnchor ?? trackIndex;
                     if (selectionAnchor === null && setSelectionAnchor) {
                       setSelectionAnchor(trackIndex);

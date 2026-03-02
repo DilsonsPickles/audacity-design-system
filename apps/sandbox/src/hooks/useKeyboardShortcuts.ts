@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import { toast, scrollIntoViewIfNeeded } from '@audacity-ui/components';
 import { applySplitCut } from '../utils/cutOperations';
+import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 
 export interface EffectsPanelState {
   isOpen: boolean;
@@ -429,20 +430,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (state.focusedTrackIndex !== null) {
           e.preventDefault();
 
-          // Check if the focused track is already selected
-          const isSelected = state.selectedTrackIndices.includes(state.focusedTrackIndex);
-
           if (e.metaKey || e.ctrlKey) {
-            // Cmd/Ctrl+Enter: toggle track in/out of multi-selection
-            if (isSelected) {
-              const newSelection = state.selectedTrackIndices.filter(idx => idx !== state.focusedTrackIndex);
-              dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-            } else {
-              dispatch({ type: 'SET_SELECTED_TRACKS', payload: [...state.selectedTrackIndices, state.focusedTrackIndex] });
-            }
+            toggleTrackSelection(state.focusedTrackIndex, state.selectedTrackIndices, dispatch);
           } else {
-            // Plain Enter: exclusively select this track
-            dispatch({ type: 'SELECT_TRACK', payload: state.focusedTrackIndex });
+            selectTrackExclusive(state.focusedTrackIndex, dispatch);
           }
         }
         return;

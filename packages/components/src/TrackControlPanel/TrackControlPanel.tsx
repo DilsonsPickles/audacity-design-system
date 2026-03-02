@@ -34,7 +34,7 @@ export interface TrackControlPanelProps {
   trackHeight?: number; // Actual pixel height for fine-grained responsive behavior
   tabIndex?: number;
   onFocusChange?: (hasFocus: boolean) => void;
-  onNavigateVertical?: (direction: 'up' | 'down') => void;
+  onNavigateVertical?: (direction: 'up' | 'down', shiftKey?: boolean) => void;
   onTabOut?: () => void;
   /** Callback when Shift+Tab is pressed to return focus to the track container */
   onShiftTabOut?: () => void;
@@ -152,10 +152,16 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     const currentElement = document.activeElement;
     const isPanelFocused = currentElement === panelElement;
 
-    // Handle Enter key to toggle track selection when panel is focused
+    // Handle Enter key for track selection when panel is focused
     if (e.key === 'Enter' && isPanelFocused) {
       e.preventDefault();
-      onToggleSelection?.();
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl+Enter: toggle track in/out of multi-selection
+        onToggleSelection?.();
+      } else {
+        // Plain Enter: exclusively select this track
+        onClick?.();
+      }
       return;
     }
 
@@ -218,7 +224,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && (isPanelFocused || focusFromMouseRef.current)) {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
-        onNavigateVertical?.(e.key === 'ArrowUp' ? 'up' : 'down');
+        onNavigateVertical?.(e.key === 'ArrowUp' ? 'up' : 'down', e.shiftKey);
       }
       // ArrowLeft/Right with invisible focus: do nothing (don't cycle children)
       return;

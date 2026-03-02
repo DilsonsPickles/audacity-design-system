@@ -5,6 +5,7 @@ import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor
 import type { SpectrogramScale } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
+import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 
 export interface EditorLayoutProps {
   // State
@@ -437,13 +438,28 @@ export function EditorLayout(props: EditorLayoutProps) {
                     dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
                   }
                 }}
-                onNavigateVertical={(direction) => {
+                onNavigateVertical={(direction, shiftKey) => {
                   const nextIndex = direction === 'up' ? index - 1 : index + 1;
                   if (nextIndex >= 0 && nextIndex < state.tracks.length) {
                     flushSync(() => {
                       dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
                     });
-                    setSelectionAnchor(null);
+
+                    if (shiftKey) {
+                      // Shift+Arrow: extend/contract track selection
+                      const anchor = selectionAnchor ?? index;
+                      if (selectionAnchor === null) {
+                        setSelectionAnchor(index);
+                      }
+                      const start = Math.min(anchor, nextIndex);
+                      const end = Math.max(anchor, nextIndex);
+                      const newSelection: number[] = [];
+                      for (let i = start; i <= end; i++) newSelection.push(i);
+                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                    } else {
+                      setSelectionAnchor(null);
+                    }
+
                     const panels = document.querySelectorAll('[aria-label*="track controls"]');
                     if (panels[nextIndex]) {
                       (panels[nextIndex] as HTMLElement).focus();
@@ -489,19 +505,12 @@ export function EditorLayout(props: EditorLayoutProps) {
                 height={heightState}
                 trackHeight={trackHeight}
                 onClick={() => {
-                  dispatch({ type: 'SELECT_TRACK', payload: index });
+                  selectTrackExclusive(index, dispatch);
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
                   setSelectionAnchor(null);
                 }}
                 onToggleSelection={() => {
-                  const isSelected = state.selectedTrackIndices.includes(index);
-                  if (isSelected) {
-                    const newSelection = state.selectedTrackIndices.filter((i: number) => i !== index);
-                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  } else {
-                    const newSelection = [...state.selectedTrackIndices, index];
-                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  }
+                  toggleTrackSelection(index, state.selectedTrackIndices, dispatch);
                 }}
                 onRangeSelection={() => {
                   const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : index);
@@ -782,19 +791,10 @@ export function EditorLayout(props: EditorLayoutProps) {
                       }
                     }}
                     onContainerEnter={(trackIndex, modifiers) => {
-                      dispatch({ type: 'DESELECT_ALL_CLIPS' });
                       if (modifiers.metaKey || modifiers.ctrlKey) {
-                        // Cmd/Ctrl+Enter: toggle track in/out of multi-selection
-                        const isSelected = state.selectedTrackIndices.includes(trackIndex);
-                        if (isSelected) {
-                          const newSelection = state.selectedTrackIndices.filter((i: number) => i !== trackIndex);
-                          dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                        } else {
-                          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [...state.selectedTrackIndices, trackIndex] });
-                        }
+                        toggleTrackSelection(trackIndex, state.selectedTrackIndices, dispatch);
                       } else {
-                        // Plain Enter: exclusively select this track
-                        dispatch({ type: 'SELECT_TRACK', payload: trackIndex });
+                        selectTrackExclusive(trackIndex, dispatch);
                       }
                     }}
                     onShiftTabFromTrack={(trackIndex) => {
