@@ -30,8 +30,8 @@
 
 /* Keyboard focus outline for clips */
 [data-clip-id]:focus {
-  outline: 2px solid #66aaff;
-  outline-offset: -1px;
+  outline: 1px solid white;
+  box-shadow: 0 0 0 2px black;
   border-radius: 4px;
 }
 

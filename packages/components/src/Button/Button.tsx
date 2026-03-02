@@ -79,7 +79,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
     '--button-bg-active': buttonColors.active,
     '--button-bg-disabled': buttonColors.disabled,
     '--button-text-color': theme.foreground.text.primary,
-    '--button-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   return (

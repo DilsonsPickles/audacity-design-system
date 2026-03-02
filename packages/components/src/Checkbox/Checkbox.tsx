@@ -55,7 +55,6 @@ export function Checkbox({
     '--checkbox-bg-hover': theme.background.control.checkbox.hover,
     '--checkbox-bg-pressed': theme.background.control.checkbox.pressed,
     '--checkbox-icon-color': theme.foreground.icon.primary,
-    '--checkbox-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   const handleClick = () => {

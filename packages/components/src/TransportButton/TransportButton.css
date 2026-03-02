@@ -62,7 +62,7 @@
 
 /* Focus visible state */
 .transport-button:focus-visible {
-  outline: 2px solid var(--transport-focus-color);
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
 }
 

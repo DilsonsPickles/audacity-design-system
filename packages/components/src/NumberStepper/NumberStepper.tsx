@@ -77,7 +77,6 @@ export const NumberStepper = React.forwardRef<HTMLInputElement, NumberStepperPro
   const style = {
     '--number-stepper-border': theme.border.default,
     '--number-stepper-border-focus': theme.border.focus,
-    '--number-stepper-focus-outline': theme.border.focus,
     '--number-stepper-success-outline': theme.foreground.icon.success,
     '--number-stepper-success-border': theme.foreground.icon.success,
     '--number-stepper-text': theme.foreground.text.primary,

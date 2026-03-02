@@ -121,8 +121,6 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
     '--panel-grid-border': '#323644',
     '--panel-track-idle': theme.background.canvas.default,
     '--panel-track-selected': theme.background.canvas.track.selected,
-    '--panel-track-selected-border': theme.border.focus,
-    '--vrp-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   return (

@@ -35,7 +35,7 @@
 }
 
 .effect-slot__drag-handle:focus-visible {
-  outline: 2px solid var(--es-focus-border);
+  outline: 2px solid var(--focus-color);
   outline-offset: 1px;
 }
 
@@ -77,7 +77,7 @@
 }
 
 .effect-slot__toggle:focus-visible {
-  outline: 2px solid var(--es-focus-border);
+  outline: 2px solid var(--focus-color);
   outline-offset: 1px;
 }
 
@@ -104,7 +104,7 @@
 
 .effect-slot__name-field:focus-visible {
   border-color: transparent;
-  outline: 2px solid var(--es-focus-border);
+  outline: 2px solid var(--focus-color);
   outline-offset: 1px;
 }
 
@@ -145,6 +145,6 @@
 
 .effect-slot__settings-button:focus-visible {
   border-color: transparent;
-  outline: 2px solid var(--es-focus-border);
+  outline: 2px solid var(--focus-color);
   outline-offset: 1px;
 }

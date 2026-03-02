@@ -128,7 +128,6 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
     '--es-input-border': theme.border.input.idle,
     '--es-input-hover-border': theme.border.input.hover,
     '--es-text-color': theme.foreground.text.primary,
-    '--es-focus-border': theme.border.focus,
   } as React.CSSProperties;
 
   return (

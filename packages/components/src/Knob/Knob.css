@@ -16,7 +16,7 @@
 
 /* Focus state */
 .knob:focus {
-  outline: 2px solid var(--knob-focus);
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
   border-radius: 50%;
 }

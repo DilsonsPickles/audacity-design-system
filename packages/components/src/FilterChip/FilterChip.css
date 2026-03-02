@@ -28,7 +28,7 @@
 }
 
 .filter-chip:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
+  box-shadow: 0 0 0 2px var(--focus-color);
 }
 
 .filter-chip:active:not(.filter-chip--disabled) {

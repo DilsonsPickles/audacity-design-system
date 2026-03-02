@@ -63,7 +63,7 @@
 
 /* Focus visible state */
 .tool-button:focus-visible {
-  outline: 2px solid var(--tool-focus-color);
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
 }
 

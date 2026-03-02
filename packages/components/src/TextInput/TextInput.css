@@ -43,8 +43,8 @@
 
 /* State: Active (focused) */
 .text-input--active {
-  border-color: var(--focus-border-color);
-  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
+  border-color: var(--focus-color);
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-color);
 }
 
 /* State: Disabled */

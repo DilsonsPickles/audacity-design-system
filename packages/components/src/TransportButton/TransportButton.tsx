@@ -60,7 +60,6 @@ export function TransportButton({
     '--transport-btn-hover': theme.background.control.button.secondary.hover,
     '--transport-btn-pressed': theme.background.control.button.secondary.active,
     '--transport-icon-color': theme.foreground.icon.primary,
-    '--transport-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   const handleMouseEnter = () => {

@@ -68,5 +68,5 @@
 
 /* Focus state - show outline around handle */
 .slider__input:focus + .slider__track + .slider__handle {
-  box-shadow: 0 0 0 2px var(--slider-focus-color);
+  box-shadow: 0 0 0 2px var(--focus-color);
 }

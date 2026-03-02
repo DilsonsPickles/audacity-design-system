@@ -49,7 +49,6 @@ export const TabItem: React.FC<TabItemProps> = ({
     '--tab-bg-selected': theme.background.tab.selected,
     '--tab-border-selected': theme.background.tab.selectedBorder,
     '--tab-text': theme.foreground.text.primary,
-    '--tab-focus': theme.border.focus,
   } as React.CSSProperties;
 
   return (

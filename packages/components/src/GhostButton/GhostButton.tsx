@@ -77,7 +77,6 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
     '--ghost-bg-disabled': theme.background.control.button.ghost.disabled,
     '--ghost-icon-color': theme.foreground.icon.primary,
     '--ghost-label-color': theme.foreground.text.primary,
-    '--ghost-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   return (

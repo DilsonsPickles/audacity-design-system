@@ -73,7 +73,6 @@ export const ToggleButton: React.FC<ToggleButtonProps> = ({
     '--toggle-btn-bg-active': activeColor || theme.background.control.button.primary.active,
     '--toggle-btn-text': theme.foreground.text.primary,
     '--toggle-btn-text-active': theme.foreground.text.inverse,
-    '--toggle-btn-focus': theme.border.focus,
     '--toggle-btn-size': `${size}px`,
   } as React.CSSProperties;
 

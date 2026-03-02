@@ -1,7 +1,3 @@
-:root {
-  --track-focus-color: #84B5FF;
-}
-
 .track-wrapper {
   display: block;
   position: relative;
@@ -15,7 +11,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background-color: var(--track-focus-color);
+  background-color: var(--focus-color);
   pointer-events: none;
 }
 

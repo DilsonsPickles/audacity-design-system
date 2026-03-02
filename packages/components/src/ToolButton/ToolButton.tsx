@@ -63,7 +63,6 @@ export function ToolButton({
     '--tool-btn-hover': theme.background.control.button.secondary.hover,
     '--tool-btn-pressed': theme.background.control.button.secondary.active,
     '--tool-icon-color': theme.foreground.icon.primary,
-    '--tool-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   const handleMouseEnter = () => {

@@ -179,13 +179,13 @@
 
 /* Keyboard focus ring - shows browser's default focus ring */
 .label-wrapper:focus {
-  outline: 2px solid var(--label-marker-focus-outline);
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
 }
 
 /* Keyboard focus state for label marker */
 .label-marker--focused {
-  outline: 2px solid var(--label-marker-focus-outline);
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
   border-radius: 4px;
 }

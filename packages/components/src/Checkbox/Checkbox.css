@@ -67,5 +67,5 @@
 }
 
 .checkbox:focus-visible {
-  box-shadow: 0 0 0 var(--focus-ring-size) var(--checkbox-focus-color);
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-color);
 }

@@ -100,7 +100,6 @@ export const LabelMarker: React.FC<LabelMarkerProps> = ({
   const style = {
     '--label-marker-bg': theme.border.focus,
     '--label-marker-text': theme.foreground.text.primary,
-    '--label-marker-focus-outline': theme.border.focus,
   } as React.CSSProperties;
 
   const actualState = state !== 'idle' ? state : (isHovered ? 'hover' : 'idle');

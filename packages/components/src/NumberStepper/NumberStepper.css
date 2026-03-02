@@ -16,7 +16,7 @@
 }
 
 .number-stepper--focused:not(.number-stepper--disabled) {
-  outline: 2px solid var(--number-stepper-focus-outline);
+  outline: 2px solid var(--focus-color);
   outline-offset: -1px;
   border-color: var(--number-stepper-border-focus);
 }

@@ -117,7 +117,6 @@ export const Knob: React.FC<KnobProps> = ({
     '--knob-dial-border': theme.background.control.panKnob.border,
     '--knob-dial-bg': theme.background.control.panKnob.face,
     '--knob-indicator': theme.foreground.text.primary,
-    '--knob-focus': theme.border.focus,
   } as React.CSSProperties;
 
   const ariaLabel = label ? `${label}: ${clampedValue}` : `${clampedValue}`;

@@ -7,12 +7,12 @@
 
 :root {
   /* Focus ring colors */
-  --focus-border-color: #677ce4;
-  --focus-ring-color: rgba(103, 124, 228, 0.5);
+  --focus-border-color: var(--focus-color, #677ce4);
+  --focus-ring-color: var(--focus-color, #677ce4);
   --focus-ring-size: 3px;
 
   /* Hover state for form inputs */
-  --input-hover-border-color: rgba(103, 124, 228, 0.7);
+  --input-hover-border-color: var(--focus-color, rgba(103, 124, 228, 0.7));
 }
 
 /**

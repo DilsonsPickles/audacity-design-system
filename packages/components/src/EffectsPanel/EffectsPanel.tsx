@@ -692,7 +692,6 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
     '--ep-toggle-icon-color': theme.foreground.text.inverse,
     '--ep-input-bg': theme.background.control.input.idle,
     '--ep-input-border': theme.border.input.idle,
-    '--ep-focus-border': theme.border.focus,
   } as React.CSSProperties;
 
   // Handle vertical resize

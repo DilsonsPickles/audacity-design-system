@@ -68,7 +68,6 @@ export const Slider: React.FC<SliderProps> = ({
     '--slider-fill-bg': theme.border.focus,
     '--slider-handle-bg': theme.background.control.slider.handle.background,
     '--slider-handle-border': theme.background.control.slider.handle.border,
-    '--slider-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   return (

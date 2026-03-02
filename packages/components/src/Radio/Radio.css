@@ -38,7 +38,7 @@
 
 /* Focus state */
 .radio__input:focus + .radio__indicator {
-  outline: 2px solid var(--radio-focus);
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
 }
 

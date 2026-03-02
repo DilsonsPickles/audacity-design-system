@@ -84,7 +84,6 @@ export function ToggleToolButton({
     '--toggle-on-hover-bg': theme.background.control.button.primary.hover,
     '--toggle-disabled-bg': 'transparent',
     '--toggle-disabled-color': theme.foreground.icon.disabled,
-    '--toggle-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
   return (

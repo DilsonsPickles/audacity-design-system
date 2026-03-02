@@ -115,6 +115,6 @@
 
 /* Focused state (keyboard focus) */
 .region-label--focused {
-  outline: 2px solid #0078D4;
+  outline: 2px solid var(--focus-color);
   outline-offset: 2px;
 }

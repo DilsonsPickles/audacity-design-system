@@ -43,6 +43,9 @@ export function ThemeProvider({ theme = lightTheme, children }: ThemeProviderPro
   const cssVars = React.useMemo(() => {
     const vars: Record<string, string> = {};
 
+    // Global focus color - single source for all focus rings
+    vars['--focus-color'] = theme.border.focus;
+
     // Clip colors - inject all clip color states as CSS variables
     Object.entries(theme.audio.clip).forEach(([colorName, colorStates]) => {
       if (colorName === 'border') {

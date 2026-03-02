@@ -47,7 +47,7 @@
 
 .button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 var(--focus-ring-size) var(--button-focus-color);
+  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-color);
 }
 
 /* Primary variant */
