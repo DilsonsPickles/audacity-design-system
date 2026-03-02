@@ -255,7 +255,7 @@ export interface TrackProps {
   /**
    * Callback when Enter is pressed on the track container itself.
    */
-  onContainerEnter?: () => void;
+  onContainerEnter?: (modifiers: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => void;
 
 }
 
@@ -796,7 +796,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // Enter on track container: select track and deselect clips
               e.preventDefault();
               e.stopPropagation();
-              onContainerEnter?.();
+              onContainerEnter?.({ metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey });
               return;
             }
             if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.metaKey || e.ctrlKey) && !e.shiftKey) {

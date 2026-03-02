@@ -432,12 +432,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           // Check if the focused track is already selected
           const isSelected = state.selectedTrackIndices.includes(state.focusedTrackIndex);
 
-          if (isSelected) {
-            // Remove from selection
-            const newSelection = state.selectedTrackIndices.filter(idx => idx !== state.focusedTrackIndex);
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+          if (e.metaKey || e.ctrlKey) {
+            // Cmd/Ctrl+Enter: toggle track in/out of multi-selection
+            if (isSelected) {
+              const newSelection = state.selectedTrackIndices.filter(idx => idx !== state.focusedTrackIndex);
+              dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+            } else {
+              dispatch({ type: 'SET_SELECTED_TRACKS', payload: [...state.selectedTrackIndices, state.focusedTrackIndex] });
+            }
           } else {
-            // Exclusively select this track (replace existing selection)
+            // Plain Enter: exclusively select this track
             dispatch({ type: 'SELECT_TRACK', payload: state.focusedTrackIndex });
           }
         }

@@ -781,13 +781,19 @@ export function EditorLayout(props: EditorLayoutProps) {
                         firstButton?.focus();
                       }
                     }}
-                    onContainerEnter={(trackIndex) => {
+                    onContainerEnter={(trackIndex, modifiers) => {
                       dispatch({ type: 'DESELECT_ALL_CLIPS' });
-                      const isSelected = state.selectedTrackIndices.includes(trackIndex);
-                      if (isSelected) {
-                        const newSelection = state.selectedTrackIndices.filter((i: number) => i !== trackIndex);
-                        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                      if (modifiers.metaKey || modifiers.ctrlKey) {
+                        // Cmd/Ctrl+Enter: toggle track in/out of multi-selection
+                        const isSelected = state.selectedTrackIndices.includes(trackIndex);
+                        if (isSelected) {
+                          const newSelection = state.selectedTrackIndices.filter((i: number) => i !== trackIndex);
+                          dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                        } else {
+                          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [...state.selectedTrackIndices, trackIndex] });
+                        }
                       } else {
+                        // Plain Enter: exclusively select this track
                         dispatch({ type: 'SELECT_TRACK', payload: trackIndex });
                       }
                     }}

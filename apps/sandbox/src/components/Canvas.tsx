@@ -117,7 +117,7 @@ export interface CanvasProps {
   /**
    * Callback when Enter is pressed on the track container
    */
-  onContainerEnter?: (trackIndex: number) => void;
+  onContainerEnter?: (trackIndex: number, modifiers: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => void;
 }
 
 /**
@@ -620,7 +620,7 @@ export function Canvas({
                 onContainerFocusChange={(hasFocus) => onTrackContainerFocusChange?.(trackIndex, hasFocus)}
                 onEnterPanel={() => onEnterTrackPanel?.(trackIndex)}
                 onShiftTabOut={() => onShiftTabFromTrack?.(trackIndex)}
-                onContainerEnter={() => onContainerEnter?.(trackIndex)}
+                onContainerEnter={(modifiers) => onContainerEnter?.(trackIndex, modifiers)}
                 onClipMove={(clipId, deltaSeconds) => {
                   const clip = track.clips.find(c => c.id === clipId);
                   if (!clip) return;
