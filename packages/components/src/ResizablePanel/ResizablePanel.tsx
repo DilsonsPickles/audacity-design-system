@@ -86,6 +86,12 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           newHeight = Math.min(maxHeight, newHeight);
         }
 
+        // Soft snap to default height
+        const SNAP_THRESHOLD = 6;
+        if (Math.abs(newHeight - initialHeight) <= SNAP_THRESHOLD) {
+          newHeight = initialHeight;
+        }
+
         setHeight(newHeight);
         onHeightChange?.(newHeight);
       }
