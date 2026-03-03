@@ -1,11 +1,12 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, RulerFlyout, useTabOrder, useAccessibilityProfile } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
+import { demoMidiClip } from '../data/demoMidiData';
 
 export interface EditorLayoutProps {
   // State
@@ -150,11 +151,23 @@ export function EditorLayout(props: EditorLayoutProps) {
   // Calculate ruler tab indices — one per track, -1 for label tracks
   const rulerTabIndices = React.useMemo(() =>
     state.tracks.map((track: any, i: number) => {
-      if (track.type === 'label') return -1;
+      if (track.type === 'label' || track.type === 'midi') return -1;
       return isFlatNavigation ? 0 : (trackBase + 3 + i * 4);
     }),
     [state.tracks, isFlatNavigation, trackBase],
   );
+
+  // Auto-open piano roll when a MIDI track is focused
+  React.useEffect(() => {
+    const focusedIdx = state.focusedTrackIndex;
+    if (focusedIdx === null) return;
+    const track = state.tracks[focusedIdx];
+    if (track?.type === 'midi' && track.midiClips && track.midiClips.length > 0) {
+      if (!state.pianoRollOpen || state.pianoRollTrackIndex !== focusedIdx) {
+        dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex: focusedIdx, clipIndex: 0 } });
+      }
+    }
+  }, [state.focusedTrackIndex]);
 
   // Ruler flyout state
   const rulerTriggerRef = React.useRef<HTMLElement | null>(null);
@@ -333,6 +346,13 @@ export function EditorLayout(props: EditorLayoutProps) {
               },
             }}
             onClose={() => setEffectsPanel(null)}
+            onTabOut={() => {
+              // Focus first track's container, or the track control panel
+              const firstTrack = document.querySelector('.track-wrapper[data-track-index="0"] .track') as HTMLElement;
+              if (firstTrack) {
+                firstTrack.focus();
+              }
+            }}
           />
         );
       })()}
@@ -358,20 +378,29 @@ export function EditorLayout(props: EditorLayoutProps) {
               trackName = `Stereo ${state.tracks.length + 1}`;
             } else if (type === 'mono') {
               trackName = `Mono ${state.tracks.length + 1}`;
+            } else if (type === 'midi') {
+              trackName = `MIDI ${state.tracks.length + 1}`;
             }
 
-            const newTrack = {
+            const trackType = type === 'label' ? 'label' : type === 'midi' ? 'midi' : 'audio';
+            const newTrack: any = {
               id: state.tracks.length + 1,
               name: trackName,
-              type: (type === 'label' ? 'label' : 'audio') as 'audio' | 'label',
+              type: trackType,
               height: type === 'label' ? 76 : 114,
               ...(type === 'stereo' ? { channelSplitRatio: 0.5 } : {}),
               clips: [],
+              ...(type === 'midi' ? { midiClips: [{ ...demoMidiClip, id: Date.now() }] } : {}),
             };
             dispatch({ type: 'ADD_TRACK', payload: newTrack });
+            if (type === 'midi') {
+              // Auto-open piano roll for new MIDI track
+              const trackIndex = state.tracks.length;
+              dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex, clipIndex: 0 } });
+            }
             toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} track added`);
           }}
-          showMidiOption={false}
+          showMidiOption={true}
           onDeleteTrack={(trackIndex) => {
             dispatch({
               type: 'DELETE_TRACK',
@@ -430,10 +459,12 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         >
           {state.tracks.map((track: any, index: number) => {
-            let trackType: 'mono' | 'stereo' | 'label' = 'mono';
-            if (track.name.toLowerCase().includes('label')) {
+            let trackType: 'mono' | 'stereo' | 'label' | 'midi' = 'mono';
+            if (track.type === 'label') {
               trackType = 'label';
-            } else if (track.name.toLowerCase().includes('stereo')) {
+            } else if (track.type === 'midi') {
+              trackType = 'midi';
+            } else if (track.channelSplitRatio !== undefined) {
               trackType = 'stereo';
             }
 
@@ -900,7 +931,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                         return;
                       }
                       // If rulers are visible and previous track is audio, focus its ruler
-                      if (showVerticalRulers && state.tracks[prevIndex]?.type !== 'label') {
+                      if (showVerticalRulers && state.tracks[prevIndex]?.type !== 'label' && state.tracks[prevIndex]?.type !== 'midi') {
                         const rulerEl = document.querySelector(
                           `[data-track-ruler-index="${prevIndex}"]`
                         ) as HTMLElement;
@@ -931,7 +962,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     }}
                     onTabFromLastClip={(trackIndex) => {
                       // If rulers are visible and this track is audio, focus the ruler
-                      if (showVerticalRulers && state.tracks[trackIndex]?.type !== 'label') {
+                      if (showVerticalRulers && state.tracks[trackIndex]?.type !== 'label' && state.tracks[trackIndex]?.type !== 'midi') {
                         const rulerEl = document.querySelector(
                           `[data-track-ruler-index="${trackIndex}"]`
                         ) as HTMLElement;
@@ -948,9 +979,10 @@ export function EditorLayout(props: EditorLayoutProps) {
                         ) as HTMLElement;
                         target?.focus();
                       } else {
-                        // Last track — focus selection toolbar
-                        const selToolbar = document.querySelector('[aria-label="Selection toolbar"]') as HTMLElement;
-                        selToolbar?.focus();
+                        // Last track — focus first focusable child in selection toolbar
+                        const selToolbar = document.querySelector('.selection-toolbar');
+                        const firstChild = selToolbar?.querySelector('[role="group"]') as HTMLElement;
+                        firstChild?.focus();
                       }
                     }}
                     onHeightChange={setCanvasHeight}
@@ -1040,16 +1072,22 @@ export function EditorLayout(props: EditorLayoutProps) {
                 cursorY={isOverTrack ? mouseCursorY : undefined}
                 rulerTabIndices={rulerTabIndices}
                 onTabFromRuler={(trackIndex) => {
-                  // Focus next track's container, or selection toolbar if last
-                  const nextIndex = trackIndex + 1;
+                  // Focus next track's container, or selection toolbar if last audio track
+                  let nextIndex = trackIndex + 1;
+                  // Skip label tracks (they have no focusable ruler)
+                  while (nextIndex < state.tracks.length && (state.tracks[nextIndex].type === 'label' || state.tracks[nextIndex].type === 'midi')) {
+                    nextIndex++;
+                  }
                   if (nextIndex < state.tracks.length) {
                     const target = document.querySelector(
                       `.track-wrapper[data-track-index="${nextIndex}"] .track`
                     ) as HTMLElement;
                     target?.focus();
                   } else {
-                    const selToolbar = document.querySelector('[aria-label="Selection toolbar"]') as HTMLElement;
-                    selToolbar?.focus();
+                    // Focus first focusable child in selection toolbar
+                    const selToolbar = document.querySelector('.selection-toolbar');
+                    const firstChild = selToolbar?.querySelector('[role="group"]') as HTMLElement;
+                    firstChild?.focus();
                   }
                 }}
                 onShiftTabFromRuler={(trackIndex) => {
@@ -1077,7 +1115,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   // Find next audio track's ruler in the given direction (skip label tracks)
                   let target = trackIndex + direction;
                   while (target >= 0 && target < state.tracks.length) {
-                    if (state.tracks[target].type !== 'label') {
+                    if (state.tracks[target].type !== 'label' && state.tracks[target].type !== 'midi') {
                       const rulerEl = document.querySelector(
                         `[data-track-ruler-index="${target}"]`
                       ) as HTMLElement;
@@ -1148,6 +1186,52 @@ export function EditorLayout(props: EditorLayoutProps) {
             />
           )}
         </div>
+
+        {/* Piano Roll Panel */}
+        {state.pianoRollOpen && state.pianoRollTrackIndex !== null && state.pianoRollClipIndex !== null && (() => {
+          const prTrack = state.tracks[state.pianoRollTrackIndex];
+          const prClip = prTrack?.midiClips?.[state.pianoRollClipIndex];
+          if (!prTrack || !prClip) return null;
+          return (
+            <PianoRollPanel
+              clip={prClip}
+              bpm={bpm}
+              beatsPerMeasure={beatsPerMeasure}
+              pixelsPerSecond={pixelsPerSecond}
+              scrollX={scrollX}
+              snap={state.pianoRollSnap}
+              timeBasis={state.pianoRollTimeBasis}
+              onSnapChange={(snap) => dispatch({ type: 'SET_PIANO_ROLL_SNAP', payload: snap })}
+              onTimeBasisChange={(basis) => dispatch({ type: 'SET_PIANO_ROLL_TIME_BASIS', payload: basis })}
+              onAddNote={(note) => dispatch({
+                type: 'ADD_MIDI_NOTE',
+                payload: { trackIndex: state.pianoRollTrackIndex!, clipIndex: state.pianoRollClipIndex!, note },
+              })}
+              onDeleteNotes={(noteIds) => dispatch({
+                type: 'DELETE_MIDI_NOTES',
+                payload: { trackIndex: state.pianoRollTrackIndex!, clipIndex: state.pianoRollClipIndex!, noteIds },
+              })}
+              onUpdateNote={(noteId, updates) => dispatch({
+                type: 'UPDATE_MIDI_NOTE',
+                payload: { trackIndex: state.pianoRollTrackIndex!, clipIndex: state.pianoRollClipIndex!, noteId, updates },
+              })}
+              onMoveNotes={() => {/* handled via UPDATE_MIDI_NOTE */}}
+              onResizeNote={(noteId, newDuration) => dispatch({
+                type: 'RESIZE_MIDI_NOTE',
+                payload: { trackIndex: state.pianoRollTrackIndex!, clipIndex: state.pianoRollClipIndex!, noteId, newDuration },
+              })}
+              onSelectNote={(noteId, additive) => dispatch({
+                type: 'SELECT_MIDI_NOTE',
+                payload: { trackIndex: state.pianoRollTrackIndex!, clipIndex: state.pianoRollClipIndex!, noteId, additive },
+              })}
+              onDeselectAll={() => dispatch({
+                type: 'DESELECT_ALL_MIDI_NOTES',
+                payload: { trackIndex: state.pianoRollTrackIndex!, clipIndex: state.pianoRollClipIndex! },
+              })}
+              onClose={() => dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } })}
+            />
+          );
+        })()}
       </div>
     </div>
   );

@@ -231,7 +231,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           e.preventDefault();
           setEffectsPanel(prev => {
             if (prev) {
-              // Toggle existing panel
               return { ...prev, isOpen: !prev.isOpen };
             } else {
               // Create new panel for the first selected track, or track 0 if none selected
@@ -248,6 +247,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               };
             }
           });
+          // Focus is handled by EffectsPanel's own mount effect
           return;
         }
       }
@@ -362,7 +362,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
         // Skip elements that handle their own arrow key navigation
         const target = e.target as HTMLElement;
-        if (target.closest('[role="toolbar"], [role="menubar"]')) {
+        if (target.closest('[role="toolbar"], [role="menubar"]') || target.hasAttribute('data-clip-id')) {
           return;
         }
 

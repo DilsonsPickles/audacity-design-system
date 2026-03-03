@@ -93,6 +93,8 @@ export interface EffectsPanelProps {
   onResize?: (width: number) => void;
   /** Called when panel is closed */
   onClose?: () => void;
+  /** Called when Tab is pressed on the panel container — allows parent to redirect focus */
+  onTabOut?: () => void;
   /** Additional CSS class */
   className?: string;
   /** Positioning mode - 'sidebar' for static left panel, 'overlay' for absolute positioned overlay */
@@ -651,6 +653,7 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
   maxWidth = 400,
   onResize,
   onClose,
+  onTabOut,
   className = '',
   mode = 'sidebar',
   left = 0,
@@ -735,9 +738,23 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
 
     // When focused on panel itself (not navigating inside)
     if (!isNavigatingInside && isPanelFocused) {
+      // If focus is invisible (from E shortcut), first Tab reveals the outline
+      if (e.key === 'Tab' && (e.currentTarget as HTMLElement).hasAttribute('data-focus-mouse')) {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).removeAttribute('data-focus-mouse');
+        return;
+      }
+
+      // Tab on the panel container — let parent redirect focus
+      if (e.key === 'Tab' && !e.shiftKey && onTabOut) {
+        e.preventDefault();
+        onTabOut();
+        return;
+      }
+
       if (e.key === 'Enter') {
         e.preventDefault();
-        e.stopPropagation(); // Prevent Enter from triggering other shortcuts
+        e.stopPropagation();
         // Enter the panel - first set the state, then focus will be set by useEffect
         setIsNavigatingInside(true);
 
@@ -893,6 +910,15 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
   React.useEffect(() => {
     if (panelRef.current) {
       itemRefsArray.current[0] = panelRef.current;
+    }
+  }, []);
+
+  // On mount: give the panel invisible DOM focus (Tab reveals the focus ring)
+  // useLayoutEffect runs synchronously after DOM commit, before paint or other handlers
+  React.useLayoutEffect(() => {
+    if (panelRef.current) {
+      panelRef.current.setAttribute('data-focus-mouse', '');
+      panelRef.current.focus();
     }
   }, []);
 

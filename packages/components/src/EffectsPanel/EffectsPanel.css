@@ -25,6 +25,11 @@
   outline-offset: -2px;
 }
 
+/* Suppress focus outline when focus came from E shortcut (invisible until Tab reveals it) */
+.effects-panel__focusable-container[data-focus-mouse]:focus {
+  outline: none;
+}
+
 /* Content container - resizable sections */
 .effects-panel__content {
   display: flex;
