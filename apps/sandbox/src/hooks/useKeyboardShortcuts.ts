@@ -357,24 +357,19 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
       // Left/Right arrow keys for playhead movement and time selection manipulation
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        const activeElement = document.activeElement as HTMLElement;
+        // Skip if a component already handled this event (e.g. useContainerTabGroup cycling clips)
+        if (e.defaultPrevented) return;
 
-        // Only handle if focus is on body, canvas, label, clip header, or timeline ruler
-        // Labels need Shift+Arrow and Cmd+Shift+Arrow to work for time selection extend/reduce
-        // Clip headers should allow arrow keys to pass through for playhead movement
-        // Timeline ruler should allow arrow keys to move playhead
-        const isLabelFocused = activeElement?.classList.contains('label-wrapper');
-        const isClipHeaderFocused = activeElement?.getAttribute('role') === 'button' &&
-                                    activeElement?.getAttribute('aria-label')?.startsWith('Clip:');
-        const isTimelineRulerFocused = activeElement?.getAttribute('aria-label') === 'Timeline ruler';
-        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS' && !isLabelFocused && !isClipHeaderFocused && !isTimelineRulerFocused) {
-          return; // Let the focused element handle arrow keys
+        // Skip elements that handle their own arrow key navigation
+        const target = e.target as HTMLElement;
+        if (target.closest('[role="toolbar"], [role="menubar"]')) {
+          return;
         }
 
         const moveAmount = 0.1; // Move by 0.1 seconds
 
-        // Handle time selection manipulation with Shift or Cmd+Shift (only if selection exists)
-        if (state.timeSelection && (e.shiftKey || e.metaKey)) {
+        if (e.shiftKey && e.metaKey && state.timeSelection) {
+          // REDUCE mode (Cmd+Shift): Trim existing selection inward
           e.preventDefault();
 
           // Initialize ref with current selection if not set
@@ -385,8 +380,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             };
           }
 
-          if (e.shiftKey && e.metaKey) {
-          // REDUCE mode (Cmd+Shift): Trim inward
           if (e.key === 'ArrowLeft') {
             // Cmd+Shift+Left: Move RIGHT edge LEFT (trim from right)
             const newEndTime = Math.max(
@@ -416,35 +409,51 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               },
             });
           }
+          // Keep playhead pinned to left edge of selection
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: selectionEdgesRef.current.startTime });
+          scrollPlayheadIntoView();
         } else if (e.shiftKey) {
-          // EXTEND mode (Shift): Expand outward
-          if (e.key === 'ArrowLeft') {
-            // Shift+Left: Move LEFT edge LEFT (expand leftward)
-            const newStartTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
-            selectionEdgesRef.current.startTime = newStartTime;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                startTime: newStartTime,
-                endTime: selectionEdgesRef.current.endTime,
-              },
-            });
-          } else {
-            // Shift+Right: Move RIGHT edge RIGHT (expand rightward)
-            const newEndTime = selectionEdgesRef.current.endTime + moveAmount;
-            selectionEdgesRef.current.endTime = newEndTime;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                startTime: selectionEdgesRef.current.startTime,
-                endTime: newEndTime,
-              },
-            });
+          // EXTEND mode (Shift): extend selection edges outward, don't move playhead
+          e.preventDefault();
+
+          if (!state.timeSelection) {
+            // No selection yet — create one at the playhead position
+            dispatch({ type: 'DESELECT_ALL_CLIPS' });
+            if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
+              const allTrackIndices = state.tracks.map((_, idx) => idx);
+              dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+            }
           }
-        }
-      } else {
+
+          // Initialize edges ref from existing selection or playhead
+          if (!selectionEdgesRef.current) {
+            selectionEdgesRef.current = state.timeSelection
+              ? { startTime: state.timeSelection.startTime, endTime: state.timeSelection.endTime }
+              : { startTime: state.playheadPosition, endTime: state.playheadPosition };
+          }
+
+          if (e.key === 'ArrowLeft') {
+            // Shift+Left: extend left edge leftward, playhead follows left edge
+            selectionEdgesRef.current.startTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: selectionEdgesRef.current.startTime });
+          } else {
+            // Shift+Right: extend right edge rightward, playhead stays
+            selectionEdgesRef.current.endTime = selectionEdgesRef.current.endTime + moveAmount;
+          }
+
+          dispatch({
+            type: 'SET_TIME_SELECTION',
+            payload: {
+              startTime: selectionEdgesRef.current.startTime,
+              endTime: selectionEdgesRef.current.endTime,
+            },
+          });
+          scrollPlayheadIntoView();
+        } else {
           // Plain arrow keys: move playhead
           e.preventDefault();
+          selectionAnchorRef.current = null;
+          selectionEdgesRef.current = null;
           const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
           const newPosition = Math.max(0, state.playheadPosition + delta);
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
