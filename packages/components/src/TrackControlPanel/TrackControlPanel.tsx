@@ -155,7 +155,10 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     // Handle Enter key for track selection when panel is focused
     if (e.key === 'Enter' && isPanelFocused) {
       e.preventDefault();
-      if (e.metaKey || e.ctrlKey) {
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        // Shift+Enter: range-select from anchor to this track
+        onRangeSelection?.();
+      } else if (e.metaKey || e.ctrlKey) {
         // Cmd/Ctrl+Enter: toggle track in/out of multi-selection
         onToggleSelection?.();
       } else {

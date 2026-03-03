@@ -372,7 +372,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                               hasRole === 'menuitem' ||
                               hasRole === 'menuitemcheckbox' ||
                               hasRole === 'menuitemradio' ||
-                              hasRole === 'group'; // Track headers handle their own Enter key
+                              hasRole === 'group' || // Track headers handle their own Enter key
+                              target.classList.contains('track'); // Track container handles its own Enter key
 
         if (isInteractive) {
           // Let the interactive element handle the Enter key
@@ -430,7 +431,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (state.focusedTrackIndex !== null) {
           e.preventDefault();
 
-          if (e.metaKey || e.ctrlKey) {
+          if (e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            // Shift+Enter: range-select from anchor to focused track
+            const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : state.focusedTrackIndex);
+            if (selectionAnchor === null) setSelectionAnchor(state.focusedTrackIndex);
+            const start = Math.min(anchor, state.focusedTrackIndex);
+            const end = Math.max(anchor, state.focusedTrackIndex);
+            const newSelection: number[] = [];
+            for (let i = start; i <= end; i++) newSelection.push(i);
+            dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+          } else if (e.metaKey || e.ctrlKey) {
             toggleTrackSelection(state.focusedTrackIndex, state.selectedTrackIndices, dispatch);
           } else {
             selectTrackExclusive(state.focusedTrackIndex, dispatch);

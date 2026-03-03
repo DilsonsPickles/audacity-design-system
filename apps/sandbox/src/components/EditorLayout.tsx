@@ -1,7 +1,7 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, RulerFlyout } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, RulerFlyout, useTabOrder, useAccessibilityProfile } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
@@ -142,7 +142,22 @@ export function EditorLayout(props: EditorLayoutProps) {
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
 
+  // Tab order for ruler focus
+  const { activeProfile } = useAccessibilityProfile();
+  const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
+  const trackBase = useTabOrder('tracks');
+
+  // Calculate ruler tab indices — one per track, -1 for label tracks
+  const rulerTabIndices = React.useMemo(() =>
+    state.tracks.map((track: any, i: number) => {
+      if (track.type === 'label') return -1;
+      return isFlatNavigation ? 0 : (trackBase + 3 + i * 4);
+    }),
+    [state.tracks, isFlatNavigation, trackBase],
+  );
+
   // Ruler flyout state
+  const rulerTriggerRef = React.useRef<HTMLElement | null>(null);
   const [rulerFlyout, setRulerFlyout] = React.useState<{ isOpen: boolean; x: number; y: number; mode: 'waveform' | 'spectrogram'; trackIndex: number } | null>(null);
   const [halfWave, setHalfWave] = React.useState(false);
 
@@ -612,6 +627,23 @@ export function EditorLayout(props: EditorLayoutProps) {
           >
             <div
               ref={timelineRulerRef}
+              tabIndex={useTabOrder('timeline-ruler')}
+              role="region"
+              aria-label="Timeline ruler"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  (e.currentTarget as HTMLElement).blur();
+                }
+                if (e.key === 'F10' && e.shiftKey) {
+                  e.preventDefault();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setTimelineRulerContextMenu({
+                    isOpen: true,
+                    x: rect.left + rect.width / 2,
+                    y: rect.bottom,
+                  });
+                }
+              }}
               style={STYLE_FULL_WIDTH_RELATIVE}
               onMouseMove={(e) => {
                 if (timelineRulerRef.current) {
@@ -845,7 +877,16 @@ export function EditorLayout(props: EditorLayoutProps) {
                       }
                     }}
                     onContainerEnter={(trackIndex, modifiers) => {
-                      if (modifiers.metaKey || modifiers.ctrlKey) {
+                      if (modifiers.shiftKey && !modifiers.metaKey && !modifiers.ctrlKey) {
+                        // Shift+Enter: range-select from anchor to this track
+                        const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : trackIndex);
+                        if (selectionAnchor === null) setSelectionAnchor(anchor);
+                        const start = Math.min(anchor, trackIndex);
+                        const end = Math.max(anchor, trackIndex);
+                        const newSelection: number[] = [];
+                        for (let i = start; i <= end; i++) newSelection.push(i);
+                        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+                      } else if (modifiers.metaKey || modifiers.ctrlKey) {
                         toggleTrackSelection(trackIndex, state.selectedTrackIndices, dispatch);
                       } else {
                         selectTrackExclusive(trackIndex, dispatch);
@@ -854,12 +895,21 @@ export function EditorLayout(props: EditorLayoutProps) {
                     onShiftTabFromTrack={(trackIndex) => {
                       const prevIndex = trackIndex - 1;
                       if (prevIndex < 0) {
-                        // First track — focus the "Add new" button
-                        const addButton = document.querySelector('.track-control-side-panel__header button') as HTMLElement;
-                        addButton?.focus();
+                        // First track — focus the timeline ruler
+                        timelineRulerRef.current?.focus();
                         return;
                       }
-                      // Try previous track's last clip first
+                      // If rulers are visible and previous track is audio, focus its ruler
+                      if (showVerticalRulers && state.tracks[prevIndex]?.type !== 'label') {
+                        const rulerEl = document.querySelector(
+                          `[data-track-ruler-index="${prevIndex}"]`
+                        ) as HTMLElement;
+                        if (rulerEl) {
+                          rulerEl.focus();
+                          return;
+                        }
+                      }
+                      // Try previous track's last clip
                       const prevTrack = document.querySelector(
                         `.track-wrapper[data-track-index="${prevIndex}"] .track`
                       );
@@ -877,6 +927,30 @@ export function EditorLayout(props: EditorLayoutProps) {
                         if (buttons.length > 0) {
                           (buttons[buttons.length - 1] as HTMLElement).focus();
                         }
+                      }
+                    }}
+                    onTabFromLastClip={(trackIndex) => {
+                      // If rulers are visible and this track is audio, focus the ruler
+                      if (showVerticalRulers && state.tracks[trackIndex]?.type !== 'label') {
+                        const rulerEl = document.querySelector(
+                          `[data-track-ruler-index="${trackIndex}"]`
+                        ) as HTMLElement;
+                        if (rulerEl) {
+                          rulerEl.focus();
+                          return;
+                        }
+                      }
+                      // Otherwise, focus next track's container
+                      const nextIndex = trackIndex + 1;
+                      if (nextIndex < state.tracks.length) {
+                        const target = document.querySelector(
+                          `.track-wrapper[data-track-index="${nextIndex}"] .track`
+                        ) as HTMLElement;
+                        target?.focus();
+                      } else {
+                        // Last track — focus selection toolbar
+                        const selToolbar = document.querySelector('[aria-label="Selection toolbar"]') as HTMLElement;
+                        selToolbar?.focus();
                       }
                     }}
                     onHeightChange={setCanvasHeight}
@@ -964,6 +1038,82 @@ export function EditorLayout(props: EditorLayoutProps) {
                 headerHeight={0}
                 scrollY={scrollY}
                 cursorY={isOverTrack ? mouseCursorY : undefined}
+                rulerTabIndices={rulerTabIndices}
+                onTabFromRuler={(trackIndex) => {
+                  // Focus next track's container, or selection toolbar if last
+                  const nextIndex = trackIndex + 1;
+                  if (nextIndex < state.tracks.length) {
+                    const target = document.querySelector(
+                      `.track-wrapper[data-track-index="${nextIndex}"] .track`
+                    ) as HTMLElement;
+                    target?.focus();
+                  } else {
+                    const selToolbar = document.querySelector('[aria-label="Selection toolbar"]') as HTMLElement;
+                    selToolbar?.focus();
+                  }
+                }}
+                onShiftTabFromRuler={(trackIndex) => {
+                  // Focus same track's last clip, or panel last button if no clips
+                  const trackEl = document.querySelector(
+                    `.track-wrapper[data-track-index="${trackIndex}"] .track`
+                  );
+                  if (trackEl) {
+                    const clips = trackEl.querySelectorAll('[data-clip-id]');
+                    if (clips.length > 0) {
+                      (clips[clips.length - 1] as HTMLElement).focus();
+                      return;
+                    }
+                  }
+                  // No clips — focus last button in this track's panel
+                  const panels = document.querySelectorAll('[aria-label*="track controls"]');
+                  if (panels[trackIndex]) {
+                    const buttons = panels[trackIndex].querySelectorAll('button');
+                    if (buttons.length > 0) {
+                      (buttons[buttons.length - 1] as HTMLElement).focus();
+                    }
+                  }
+                }}
+                onRulerNavigateVertical={(trackIndex, direction) => {
+                  // Find next audio track's ruler in the given direction (skip label tracks)
+                  let target = trackIndex + direction;
+                  while (target >= 0 && target < state.tracks.length) {
+                    if (state.tracks[target].type !== 'label') {
+                      const rulerEl = document.querySelector(
+                        `[data-track-ruler-index="${target}"]`
+                      ) as HTMLElement;
+                      if (rulerEl) {
+                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: target });
+                        rulerEl.focus();
+                        return;
+                      }
+                    }
+                    target += direction;
+                  }
+                }}
+                onRulerActivate={(trackIndex, rect) => {
+                  // Store trigger element for focus restoration on close
+                  const rulerEl = document.querySelector(
+                    `[data-track-ruler-index="${trackIndex}"]`
+                  ) as HTMLElement;
+                  rulerTriggerRef.current = rulerEl;
+                  // Determine mode for flyout
+                  const track = state.tracks[trackIndex];
+                  const mode: 'waveform' | 'spectrogram' =
+                    track?.viewMode === 'spectrogram' ? 'spectrogram' : 'waveform';
+                  // Position flyout to the left of the ruler
+                  const flyoutWidth = 200;
+                  const flyoutHeight = mode === 'waveform' ? 242 : 280;
+                  const flyoutX = rect.left - flyoutWidth - 16;
+                  let flyoutY = rect.top + rect.height / 2 - flyoutHeight / 2;
+                  const vh = window.innerHeight;
+                  if (flyoutY + flyoutHeight > vh - 10) flyoutY = vh - flyoutHeight - 10;
+                  if (flyoutY < 10) flyoutY = 10;
+                  setRulerFlyout({ isOpen: true, x: flyoutX, y: flyoutY, mode, trackIndex });
+                }}
+                onRulerFocus={(trackIndex) => {
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+                  setControlPanelHasFocus(null);
+                }}
               />
             </div>
           )}
@@ -973,6 +1123,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             <RulerFlyout
               isOpen={rulerFlyout.isOpen}
               onClose={() => setRulerFlyout(null)}
+              triggerRef={rulerTriggerRef as React.RefObject<HTMLElement>}
               x={rulerFlyout.x}
               y={rulerFlyout.y}
               mode={rulerFlyout.mode}

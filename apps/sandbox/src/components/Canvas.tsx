@@ -118,6 +118,10 @@ export interface CanvasProps {
    * Callback when Enter is pressed on the track container
    */
   onContainerEnter?: (trackIndex: number, modifiers: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => void;
+  /**
+   * Callback when Tab is pressed on the last clip of a track (to navigate to ruler)
+   */
+  onTabFromLastClip?: (trackIndex: number) => void;
 }
 
 /**
@@ -150,6 +154,7 @@ export function Canvas({
   onEnterTrackPanel,
   onShiftTabFromTrack,
   onContainerEnter,
+  onTabFromLastClip,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -565,8 +570,8 @@ export function Canvas({
                 isLabelTrack={track.type === 'label'}
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
-                tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 3)}
-                trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 3)}
+                tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 4)}
+                trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 4)}
                 onTrackNavigateVertical={(direction, shiftKey) => {
                   const targetIndex = trackIndex + direction;
                   if (targetIndex < 0 || targetIndex >= tracks.length) return;
@@ -621,6 +626,7 @@ export function Canvas({
                 onEnterPanel={() => onEnterTrackPanel?.(trackIndex)}
                 onShiftTabOut={() => onShiftTabFromTrack?.(trackIndex)}
                 onContainerEnter={(modifiers) => onContainerEnter?.(trackIndex, modifiers)}
+                onTabFromLastClip={() => onTabFromLastClip?.(trackIndex)}
                 onClipMove={(clipId, deltaSeconds) => {
                   const clip = track.clips.find(c => c.id === clipId);
                   if (!clip) return;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { VerticalRuler } from './VerticalRuler';
 import { DbRuler } from './DbRuler';
 import { FrequencyRuler } from './FrequencyRuler';
@@ -83,6 +83,31 @@ export interface VerticalRulerPanelProps {
    * @deprecated
    */
   waveformRulerFormat?: WaveformRulerFormat;
+  /**
+   * Tab indices for each track's ruler (aligned with tracks array).
+   * -1 means not focusable (e.g. label tracks).
+   */
+  rulerTabIndices?: number[];
+  /**
+   * Callback when Tab is pressed on a ruler — move to next track's container.
+   */
+  onTabFromRuler?: (trackIndex: number) => void;
+  /**
+   * Callback when Shift+Tab is pressed on a ruler — move to same track's last clip.
+   */
+  onShiftTabFromRuler?: (trackIndex: number) => void;
+  /**
+   * Callback when ArrowUp/Down is pressed on a ruler — navigate to adjacent audio track's ruler.
+   */
+  onRulerNavigateVertical?: (trackIndex: number, direction: 1 | -1) => void;
+  /**
+   * Callback when Enter/Space is pressed on a ruler — open the flyout.
+   */
+  onRulerActivate?: (trackIndex: number, rect: DOMRect) => void;
+  /**
+   * Callback when a ruler gains focus — set focused track.
+   */
+  onRulerFocus?: (trackIndex: number) => void;
 }
 
 /**
@@ -101,19 +126,15 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
   className = '',
   spectrogramScale,
   waveformRulerFormat = 'linear-amp',
+  rulerTabIndices,
+  onTabFromRuler,
+  onShiftTabFromRuler,
+  onRulerNavigateVertical,
+  onRulerActivate,
+  onRulerFocus,
 }) => {
   const { theme } = useTheme();
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const prevFocusedIndexRef = useRef<number>(-1);
-
-  // Auto-focus the focused track (only when focus changes)
-  useEffect(() => {
-    const focusedIndex = tracks.findIndex(track => track.focused);
-    if (focusedIndex !== prevFocusedIndexRef.current && focusedIndex !== -1 && trackRefs.current[focusedIndex]) {
-      trackRefs.current[focusedIndex]?.focus();
-      prevFocusedIndexRef.current = focusedIndex;
-    }
-  }, [tracks]);
 
   const style = {
     '--panel-width': `${width}px`,
@@ -154,6 +175,15 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
           const trackMinFreq = track.minFreq ?? getScaleMinFreq(specScale);
           const trackMaxFreq = track.maxFreq ?? 22050;
 
+          // Determine ruler type label for accessibility
+          const rulerTypeLabel = track.trackType === 'label' ? '' :
+            track.viewMode === 'spectrogram' ? 'frequency' :
+            track.viewMode === 'split' ? 'frequency and amplitude' :
+            format === 'linear-amp' ? 'amplitude' : 'dB';
+
+          const rulerTabIndex = rulerTabIndices?.[index] ?? -1;
+          const isFocusable = track.trackType !== 'label' && rulerTabIndex !== -1;
+
           return (
           <React.Fragment key={track.id}>
             {/* Track ruler */}
@@ -163,6 +193,29 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
                 track.focused ? 'vertical-ruler-panel__track--focused' : ''
               } ${track.containerFocused ? 'vertical-ruler-panel__track--container-focused' : ''}`}
               style={{ height: `${track.height}px` }}
+              tabIndex={isFocusable ? rulerTabIndex : undefined}
+              role={isFocusable ? 'group' : undefined}
+              aria-label={isFocusable ? `Track ${index + 1} ${rulerTypeLabel} ruler` : undefined}
+              data-track-ruler-index={index}
+              onFocus={isFocusable ? () => onRulerFocus?.(index) : undefined}
+              onKeyDown={isFocusable ? (e: React.KeyboardEvent) => {
+                if (e.key === 'Tab' && !e.shiftKey) {
+                  e.preventDefault();
+                  onTabFromRuler?.(index);
+                } else if (e.key === 'Tab' && e.shiftKey) {
+                  e.preventDefault();
+                  onShiftTabFromRuler?.(index);
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  onRulerNavigateVertical?.(index, e.key === 'ArrowDown' ? 1 : -1);
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  onRulerActivate?.(index, rect);
+                } else if (e.key === 'Escape') {
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              } : undefined}
             >
               {/* 20px spacer to align with clip header recess (hidden for label tracks and when track is too small) */}
               {track.trackType !== 'label' && track.height > 44 && (

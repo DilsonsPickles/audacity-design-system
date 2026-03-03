@@ -87,36 +87,59 @@ export const DbRuler: React.FC<DbRulerProps> = ({
   const isLogarithmic = scale === 'logarithmic';
   const dbToY = isLogarithmic ? dbToYDbLinear : dbToYAmpLinear;
 
-  // Generate every-1-dB candidates for one half (0 dB → MIN_DB)
-  const halfCandidates: Array<{
-    db: number;
-    y: number;
-    label: string;
-    showLabel: boolean;
-    showTick: boolean;
-  }> = [];
+  // Label candidates in priority tiers — nice round values placed first
+  const LABEL_TIERS: number[][] = [
+    [0, MIN_DB],                                     // endpoints
+    [MIN_DB / 2],                                    // midpoint (-30)
+    [-12, -24, -36, -48],                            // every 12 dB
+    [-6, -18, -42, -54],                             // every 6 dB
+    [-3, -9, -15, -21, -27, -33, -39, -45, -51, -57], // every 3 dB
+  ];
 
-  for (let db = 0; db >= MIN_DB; db--) {
+  // All 1-dB values for tick marks
+  const allDbValues: number[] = [];
+  for (let db = 0; db >= MIN_DB; db--) allDbValues.push(db);
+
+  type HalfTick = { db: number; y: number; label: string; showLabel: boolean; showTick: boolean };
+
+  const maxY = isLogarithmic ? halfHeight : halfHeight - 8;
+  const halfCandidateMap = new Map<number, HalfTick>();
+
+  // Create entries for all 1-dB values (for tick marks)
+  for (const db of allDbValues) {
     const y = dbToY(db, halfHeight);
-    // In logarithmic mode, -60 dB IS the center — include it as a candidate
-    // In linear mode, leave room for the −∞ label at center
-    if (isLogarithmic ? y <= halfHeight : y <= halfHeight - 8) {
-      halfCandidates.push({ db, y, label: formatDb(db), showLabel: true, showTick: true });
+    if (y <= maxY) {
+      halfCandidateMap.set(db, { db, y, label: formatDb(db), showLabel: false, showTick: true });
     }
   }
 
-  // Label collision detection (greedy top-to-bottom)
+  // Place labels by priority tier — collision detection against already-placed labels
   const labelPlacedYs: number[] = [];
-  for (const tick of halfCandidates) {
+  for (const tier of LABEL_TIERS) {
+    for (const db of tier) {
+      const tick = halfCandidateMap.get(db);
+      if (!tick) continue;
+      const collides = labelPlacedYs.some(py => Math.abs(tick.y - py) < MIN_LABEL_SPACING);
+      if (!collides) {
+        tick.showLabel = true;
+        labelPlacedYs.push(tick.y);
+      }
+    }
+  }
+
+  // Fill remaining 1-dB labels where space permits (lowest priority)
+  for (const db of allDbValues) {
+    const tick = halfCandidateMap.get(db);
+    if (!tick || tick.showLabel) continue;
     const collides = labelPlacedYs.some(py => Math.abs(tick.y - py) < MIN_LABEL_SPACING);
-    if (collides) {
-      tick.showLabel = false;
-    } else {
+    if (!collides) {
+      tick.showLabel = true;
       labelPlacedYs.push(tick.y);
     }
   }
 
   // Tick-mark collision detection (suppress marks that are too dense)
+  const halfCandidates = Array.from(halfCandidateMap.values()).sort((a, b) => a.y - b.y);
   const tickPlacedYs: number[] = [];
   for (const tick of halfCandidates) {
     const collides = tickPlacedYs.some(py => Math.abs(tick.y - py) < MIN_TICK_SPACING);

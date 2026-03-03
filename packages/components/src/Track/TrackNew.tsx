@@ -257,6 +257,12 @@ export interface TrackProps {
    */
   onContainerEnter?: (modifiers: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => void;
 
+  /**
+   * Callback when Tab is pressed on the last clip.
+   * Used to navigate to the ruler (or next track) when the ruler is in a separate DOM tree.
+   */
+  onTabFromLastClip?: () => void;
+
 }
 
 // Map track index to color
@@ -313,6 +319,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onEnterPanel,
   onShiftTabOut,
   onContainerEnter,
+  onTabFromLastClip,
 }) => {
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -571,6 +578,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.preventDefault();
               e.stopPropagation();
               onEnterPanel?.();
+              return;
+            }
+
+            // Tab from last clip: navigate to ruler (or next track)
+            if (e.key === 'Tab' && !e.shiftKey && onTabFromLastClip && clipIndex === sortedClips.length - 1) {
+              e.preventDefault();
+              e.stopPropagation();
+              onTabFromLastClip();
               return;
             }
 

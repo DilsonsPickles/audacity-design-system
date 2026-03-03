@@ -206,8 +206,9 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       'project-toolbar-workspace': 4,
       'tool-toolbar':              5,
       'effects-panel':             6,
-      'add-track':                99,
-      'tracks':                  100, // base — containers get +0,+3,+6; panels get +1,+4,+7; clips get +2,+5,+8
+      'add-track':                98,
+      'timeline-ruler':           99,
+      'tracks':                  100, // base — stride 4 per track: container +0, panel +1, clips +2, ruler +3
       'selection-toolbar':        200,
     },
 
