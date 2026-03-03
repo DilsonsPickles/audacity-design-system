@@ -33,6 +33,7 @@ export interface UseKeyboardShortcutsOptions {
   setClipboard: React.Dispatch<React.SetStateAction<ClipboardState | null>>;
   isFlatNavigation: boolean;
   controlPanelHasFocus: number | null;
+  toggleLoopRegion: () => void;
 }
 
 /**
@@ -46,6 +47,9 @@ export interface UseKeyboardShortcutsOptions {
  * - Arrow Up/Down: Track focus movement with Shift for range selection
  * - Arrow Left/Right: Playhead movement and time selection manipulation
  * - Enter: Clip and track selection toggling
+ * - Home/End: Jump playhead to start/end of project
+ * - Shift+Home/End: Extend time selection to start/end of project
+ * - L: Toggle loop region
  * - Comma/Period: Large playhead jumps with Shift for time selection creation
  * - Ctrl+K: Delete selected time range
  * - Ctrl+C: Copy clips or time selection
@@ -68,6 +72,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     setClipboard,
     isFlatNavigation,
     controlPanelHasFocus,
+    toggleLoopRegion,
   } = options;
 
   // Track whether the user is navigating via keyboard or mouse.
@@ -118,6 +123,77 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           selectionEdgesRef.current = null;
           return;
         }
+      }
+
+      // Home/End: Jump playhead to start/end of project (with Shift: extend time selection)
+      if (e.key === 'Home' || e.key === 'End') {
+        // Don't handle if focus is inside any tab group (toolbar, menubar, etc.)
+        const target = e.target as HTMLElement;
+        if (target.closest('[role="toolbar"], [role="group"], [role="menubar"]')) {
+          return;
+        }
+
+        e.preventDefault();
+
+        if (e.key === 'Home') {
+          if (e.shiftKey) {
+            // Shift+Home: Extend/create time selection from playhead to time 0
+            if (selectionAnchorRef.current === null) {
+              selectionAnchorRef.current = state.playheadPosition;
+              dispatch({ type: 'DESELECT_ALL_CLIPS' });
+              if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
+                const allTrackIndices = state.tracks.map((_, idx) => idx);
+                dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+              }
+            }
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: 0,
+                endTime: selectionAnchorRef.current,
+              },
+            });
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
+          } else {
+            // Home: Jump playhead to 0, clear selection
+            selectionAnchorRef.current = null;
+            selectionEdgesRef.current = null;
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
+          }
+        } else {
+          // End key
+          const projectEnd = state.tracks.reduce((max, track) =>
+            track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max), 0);
+
+          if (e.shiftKey) {
+            // Shift+End: Extend/create time selection from playhead to end of project
+            if (selectionAnchorRef.current === null) {
+              selectionAnchorRef.current = state.playheadPosition;
+              dispatch({ type: 'DESELECT_ALL_CLIPS' });
+              if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
+                const allTrackIndices = state.tracks.map((_, idx) => idx);
+                dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
+              }
+            }
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: selectionAnchorRef.current,
+                endTime: projectEnd,
+              },
+            });
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: projectEnd });
+          } else {
+            // End: Jump playhead to end of project, clear selection
+            selectionAnchorRef.current = null;
+            selectionEdgesRef.current = null;
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: projectEnd });
+          }
+        }
+        scrollPlayheadIntoView();
+        return;
       }
 
       // Spacebar for play/pause (unless on a real interactive element that uses spacebar)
@@ -172,6 +248,21 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               };
             }
           });
+          return;
+        }
+      }
+
+      // "L" key to toggle loop region
+      if (e.key === 'l' || e.key === 'L') {
+        const target = e.target as HTMLElement;
+        const isTextInput = target.tagName === 'INPUT' ||
+                            target.tagName === 'TEXTAREA' ||
+                            target.getAttribute('role') === 'textbox' ||
+                            target.getAttribute('contenteditable') === 'true';
+
+        if (!isTextInput) {
+          e.preventDefault();
+          toggleLoopRegion();
           return;
         }
       }
@@ -268,13 +359,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         const activeElement = document.activeElement as HTMLElement;
 
-        // Only handle if focus is on body, canvas, label, or clip header (for time selection shortcuts)
+        // Only handle if focus is on body, canvas, label, clip header, or timeline ruler
         // Labels need Shift+Arrow and Cmd+Shift+Arrow to work for time selection extend/reduce
         // Clip headers should allow arrow keys to pass through for playhead movement
+        // Timeline ruler should allow arrow keys to move playhead
         const isLabelFocused = activeElement?.classList.contains('label-wrapper');
         const isClipHeaderFocused = activeElement?.getAttribute('role') === 'button' &&
                                     activeElement?.getAttribute('aria-label')?.startsWith('Clip:');
-        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS' && !isLabelFocused && !isClipHeaderFocused) {
+        const isTimelineRulerFocused = activeElement?.getAttribute('aria-label') === 'Timeline ruler';
+        if (activeElement && activeElement !== document.body && activeElement.tagName !== 'CANVAS' && !isLabelFocused && !isClipHeaderFocused && !isTimelineRulerFocused) {
           return; // Let the focused element handle arrow keys
         }
 
@@ -349,7 +442,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             });
           }
         }
-      }
+      } else {
+          // Plain arrow keys: move playhead
+          e.preventDefault();
+          const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
+          const newPosition = Math.max(0, state.playheadPosition + delta);
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+          scrollPlayheadIntoView();
+        }
       return;
     }
 
@@ -1087,5 +1187,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     controlPanelHasFocus,
     dispatch,
     isFlatNavigation,
+    toggleLoopRegion,
   ]);
 }

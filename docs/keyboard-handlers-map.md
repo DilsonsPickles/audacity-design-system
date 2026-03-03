@@ -79,9 +79,14 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 **Location:** `apps/sandbox/src/hooks/useKeyboardShortcuts.ts`
 
 **Handlers:**
+- **Home** - Jump playhead to time 0, clear time selection
+- **End** - Jump playhead to end of project (max clip end across all tracks)
+- **Shift+Home** - Extend/create time selection from playhead to time 0
+- **Shift+End** - Extend/create time selection from playhead to end of project
+- **L** - Toggle loop region on/off
 - **ArrowUp/Down** - Move track focus outline (only when focus is NOT inside a tab group)
 - **Shift+ArrowUp/Down** - Extend track range selection (only when focus is NOT inside a tab group)
-- **ArrowLeft/Right** - Move playhead / manipulate time selection
+- **ArrowLeft/Right** - Move playhead / manipulate time selection (also works when timeline ruler is focused)
 - **Delete/Backspace** - Delete focused clip (reads `data-clip-id` from `document.activeElement`)
 
 **Tab group guard:** The global ArrowUp/Down handler checks `target.closest('[role="toolbar"], [role="group"], [role="menubar"]')` and exits early if focus is inside any tab group. This prevents the track focus outline from moving when the user is navigating within a toolbar, menubar, or track header panel.

@@ -308,7 +308,7 @@ function CanvasDemoContent() {
     loopRegionEnd, setLoopRegionEnd,
     loopRegionInteracting, setLoopRegionInteracting,
     loopRegionHovering, setLoopRegionHovering,
-    toggleLoopRegion: _toggleLoopRegion,
+    toggleLoopRegion,
   } = useLoopRegion({
     audioManagerRef,
     timeSelection: state.timeSelection,
@@ -324,6 +324,7 @@ function CanvasDemoContent() {
     effectsPanel, setEffectsPanel,
     clipboard, setClipboard,
     isFlatNavigation, controlPanelHasFocus,
+    toggleLoopRegion,
   });
 
   // Sync playhead position with TimeCode display
