@@ -3,12 +3,15 @@
 
 # Claude Code
 .claude/
+.agents/
+skills-lock.json
 
 # Dependencies
 node_modules/
 
 # Build outputs
 dist/
+coverage/
 *.tsbuildinfo
 
 # Next.js app has its own .gitignore
