@@ -69,7 +69,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   const [height, setHeight] = useState(initialHeight);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeCursor, setResizeCursor] = useState(false);
-  const resizeStartRef = useRef<{ y: number; height: number } | null>(null);
+  const resizeStartRef = useRef<{ y: number; height: number; edge: 'top' | 'bottom' } | null>(null);
 
   // Add document-level event listeners for dragging beyond component bounds
   useEffect(() => {
@@ -78,7 +78,10 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     const handleDocumentMouseMove = (e: MouseEvent) => {
       if (resizeStartRef.current) {
         const deltaY = e.clientY - resizeStartRef.current.y;
-        let newHeight = resizeStartRef.current.height + deltaY;
+        // For top-edge resize, dragging up (negative deltaY) should increase height
+        let newHeight = resizeStartRef.current.edge === 'top'
+          ? resizeStartRef.current.height - deltaY
+          : resizeStartRef.current.height + deltaY;
 
         // Apply constraints
         newHeight = Math.max(minHeight, newHeight);
@@ -136,22 +139,26 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
 
-    let inResizeZone = false;
+    let activeEdge: 'top' | 'bottom' | null = null;
 
     if (resizeEdge === 'bottom' || resizeEdge === 'both') {
       const bottomResizeStart = height - resizeThreshold;
-      inResizeZone = y >= bottomResizeStart && y <= height;
+      if (y >= bottomResizeStart && y <= height) {
+        activeEdge = 'bottom';
+      }
     }
 
-    if (!inResizeZone && (resizeEdge === 'top' || resizeEdge === 'both')) {
-      inResizeZone = y >= 0 && y <= resizeThreshold;
+    if (!activeEdge && (resizeEdge === 'top' || resizeEdge === 'both')) {
+      if (y >= 0 && y <= resizeThreshold) {
+        activeEdge = 'top';
+      }
     }
 
-    if (inResizeZone) {
+    if (activeEdge) {
       e.preventDefault();
       e.stopPropagation();
       setIsResizing(true);
-      resizeStartRef.current = { y: e.clientY, height };
+      resizeStartRef.current = { y: e.clientY, height, edge: activeEdge };
       onResizeStart?.();
     }
   };

@@ -9,7 +9,7 @@ export interface ClipTrimState {
   initialDuration: number;
   initialClipStart: number;
   // Store initial state for all selected clips
-  allClipsInitialState: Map<string, { trimStart: number; duration: number; start: number; fullDuration: number }>;
+  allClipsInitialState: Map<string, { trimStart: number; duration: number; start: number; fullDuration: number; isMidi?: boolean }>;
 }
 
 export interface UseClipTrimmingOptions {
@@ -61,8 +61,9 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
       const x = e.clientX - rect.left;
       const trimState = clipTrimStateRef.current;
 
-      // Find the clip being dragged
-      const draggedClip = tracks[trimState.trackIndex]?.clips.find((c: any) => c.id === trimState.clipId);
+      // Find the clip being dragged (audio or midi)
+      const draggedClip = tracks[trimState.trackIndex]?.clips.find((c: any) => c.id === trimState.clipId)
+        || (tracks[trimState.trackIndex]?.midiClips || []).find((c: any) => c.id === trimState.clipId);
       if (!draggedClip) return;
 
       // Calculate mouse position in timeline
@@ -73,11 +74,20 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
       const selectedClips: Array<{
         trackIndex: number;
         clip: any;
-        initialState: { trimStart: number; duration: number; start: number; fullDuration: number };
+        initialState: { trimStart: number; duration: number; start: number; fullDuration: number; isMidi?: boolean };
       }> = [];
 
       tracks.forEach((track: any, trackIndex: number) => {
         track.clips.forEach((clip: any) => {
+          if (clip.selected) {
+            const key = `${trackIndex}-${clip.id}`;
+            const initialState = allClipsInitialState.get(key);
+            if (initialState) {
+              selectedClips.push({ trackIndex, clip, initialState });
+            }
+          }
+        });
+        (track.midiClips || []).forEach((clip: any) => {
           if (clip.selected) {
             const key = `${trackIndex}-${clip.id}`;
             const initialState = allClipsInitialState.get(key);
@@ -97,31 +107,53 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
         // Calculate limits for all selected clips using their INITIAL state
         let clampedTrimDelta = trimDelta;
         selectedClips.forEach(({ initialState }) => {
-          const rightEdge = initialState.trimStart + initialState.duration;
-          // Don't allow trimming past 0
-          const minDelta = -initialState.trimStart;
-          // Don't allow trimming past right edge (min 0.01s visible)
-          const maxDelta = rightEdge - initialState.trimStart - 0.01;
-          clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+          if (initialState.isMidi) {
+            // MIDI clips: only constrain so start >= 0 and min 0.01s visible
+            const minDelta = -(initialState.start); // start + delta >= 0
+            const maxDelta = initialState.duration - 0.01; // duration - delta >= 0.01
+            clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+          } else {
+            const rightEdge = initialState.trimStart + initialState.duration;
+            // Don't allow trimming past 0
+            const minDelta = -initialState.trimStart;
+            // Don't allow trimming past right edge (min 0.01s visible)
+            const maxDelta = rightEdge - initialState.trimStart - 0.01;
+            clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+          }
         });
 
         // Apply clamped delta to all selected clips using their INITIAL state
         selectedClips.forEach(({ trackIndex, clip, initialState }) => {
-          const newTrimStartForClip = initialState.trimStart + clampedTrimDelta;
-          const rightEdge = initialState.trimStart + initialState.duration;
-          const newDuration = rightEdge - newTrimStartForClip;
-          const newStart = initialState.start + clampedTrimDelta;
-
-          dispatch({
-            type: 'TRIM_CLIP',
-            payload: {
-              trackIndex,
-              clipId: clip.id as number,
-              newTrimStart: newTrimStartForClip,
-              newDuration,
-              newStart,
-            },
-          });
+          if (initialState.isMidi) {
+            // MIDI clips: adjust start and duration directly (no trimStart)
+            const newStart = initialState.start + clampedTrimDelta;
+            const newDuration = initialState.duration - clampedTrimDelta;
+            dispatch({
+              type: 'TRIM_CLIP',
+              payload: {
+                trackIndex,
+                clipId: clip.id as number,
+                newTrimStart: 0,
+                newDuration,
+                newStart,
+              },
+            });
+          } else {
+            const newTrimStartForClip = initialState.trimStart + clampedTrimDelta;
+            const rightEdge = initialState.trimStart + initialState.duration;
+            const newDuration = rightEdge - newTrimStartForClip;
+            const newStart = initialState.start + clampedTrimDelta;
+            dispatch({
+              type: 'TRIM_CLIP',
+              payload: {
+                trackIndex,
+                clipId: clip.id as number,
+                newTrimStart: newTrimStartForClip,
+                newDuration,
+                newStart,
+              },
+            });
+          }
         });
       } else {
         // Trimming right edge (non-destructive)
@@ -134,9 +166,14 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
         selectedClips.forEach(({ initialState }) => {
           // Don't allow duration to go below 0.01s
           const minDelta = 0.01 - initialState.duration;
-          // Don't allow duration to exceed available audio
-          const maxDelta = (initialState.fullDuration - initialState.trimStart) - initialState.duration;
-          clampedDurationDelta = Math.max(minDelta, Math.min(clampedDurationDelta, maxDelta));
+          if (initialState.isMidi) {
+            // MIDI clips: no upper bound on duration
+            clampedDurationDelta = Math.max(minDelta, clampedDurationDelta);
+          } else {
+            // Don't allow duration to exceed available audio
+            const maxDelta = (initialState.fullDuration - initialState.trimStart) - initialState.duration;
+            clampedDurationDelta = Math.max(minDelta, Math.min(clampedDurationDelta, maxDelta));
+          }
         });
 
         // Apply clamped delta to all selected clips using their INITIAL state

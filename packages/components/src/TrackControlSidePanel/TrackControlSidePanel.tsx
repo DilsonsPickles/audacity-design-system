@@ -340,8 +340,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         {(() => {
           const trackChild = childArray[menuState.trackIndex];
           const isLabelTrack = trackChild?.props?.trackType === 'label';
+          const isMidiTrack = trackChild?.props?.trackType === 'midi';
 
-          if (isLabelTrack) return null;
+          if (isLabelTrack || isMidiTrack) return null;
 
           return (
             <>

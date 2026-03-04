@@ -47,13 +47,14 @@ export interface Effect {
 export interface Track {
   id: number;
   name: string;
-  type?: 'audio' | 'label'; // Track type: audio (default) or label
+  type?: 'audio' | 'label' | 'midi'; // Track type: audio (default), label, or midi
   color?: typeof TRACK_COLOR_PALETTE[number]; // Assigned at creation, persists across reorder
   height?: number;
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
   clips: Clip[];
   labels?: Label[];
+  midiClips?: import('@audacity-ui/core').MidiClip[]; // MIDI clips for MIDI tracks
   effects?: Effect[]; // Track-specific effects chain
   effectsEnabled?: boolean; // Master toggle for all track effects (independent of individual effect states)
   waveformRulerFormat?: 'linear-amp' | 'logarithmic-db' | 'linear-db'; // Per-track waveform ruler format
@@ -163,6 +164,17 @@ export interface TracksState {
   masterEffectsEnabled: boolean;
   // Counter for cycling through TRACK_COLOR_PALETTE on each new track
   nextTrackColorIndex: number;
+  // Piano roll state
+  pianoRollOpen: boolean;
+  pianoRollTrackIndex: number | null;
+  pianoRollClipIndex: number | null;
+  pianoRollSnap: import('@audacity-ui/core').SnapGrid;
+  pianoRollTimeBasis: 'beats' | 'seconds';
+  pianoRollTimeMode: 'global' | 'local';
+  pianoRollPixelsPerSecond: number;
+  pianoRollScrollX: number;
+  // Canvas snap grid (independent from piano roll)
+  canvasSnap: import('@audacity-ui/core').SnapGrid;
 }
 
 // Action types
@@ -221,7 +233,23 @@ export type TracksAction =
   | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } }
   | { type: 'UPDATE_TRACK_RULER_FORMAT'; payload: { index: number; format: 'linear-amp' | 'logarithmic-db' | 'linear-db' } }
   | { type: 'UPDATE_TRACK_SPECTROGRAM_SCALE'; payload: { index: number; scale: 'mel' | 'linear' | 'period' | 'erb' } }
-  | { type: 'UPDATE_TRACK_SPECTROGRAM_FREQ'; payload: { index: number; minFreq?: number; maxFreq?: number } };
+  | { type: 'UPDATE_TRACK_SPECTROGRAM_FREQ'; payload: { index: number; minFreq?: number; maxFreq?: number } }
+  // Piano roll / MIDI actions
+  | { type: 'SET_PIANO_ROLL_OPEN'; payload: { open: boolean; trackIndex?: number; clipIndex?: number } }
+  | { type: 'SET_CANVAS_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
+  | { type: 'SET_PIANO_ROLL_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
+  | { type: 'SET_PIANO_ROLL_TIME_BASIS'; payload: 'beats' | 'seconds' }
+  | { type: 'SET_PIANO_ROLL_TIME_MODE'; payload: 'global' | 'local' }
+  | { type: 'ADD_MIDI_NOTE'; payload: { trackIndex: number; clipIndex: number; note: import('@audacity-ui/core').MidiNote } }
+  | { type: 'DELETE_MIDI_NOTES'; payload: { trackIndex: number; clipIndex: number; noteIds: number[] } }
+  | { type: 'UPDATE_MIDI_NOTE'; payload: { trackIndex: number; clipIndex: number; noteId: number; updates: Partial<import('@audacity-ui/core').MidiNote> } }
+  | { type: 'SELECT_MIDI_NOTE'; payload: { trackIndex: number; clipIndex: number; noteId: number; additive?: boolean } }
+  | { type: 'SELECT_MIDI_NOTES'; payload: { trackIndex: number; clipIndex: number; noteIds: number[]; additive?: boolean } }
+  | { type: 'DESELECT_ALL_MIDI_NOTES'; payload: { trackIndex: number; clipIndex: number } }
+  | { type: 'RESIZE_MIDI_NOTE'; payload: { trackIndex: number; clipIndex: number; noteId: number; newDuration: number } }
+  | { type: 'SET_PIANO_ROLL_PIXELS_PER_SECOND'; payload: number }
+  | { type: 'SET_PIANO_ROLL_SCROLL_X'; payload: number }
+  | { type: 'ADD_MIDI_CLIP'; payload: { trackIndex: number; clip: import('@audacity-ui/core').MidiClip } };
 
 // Initial state
 const initialState: TracksState = {
@@ -234,7 +262,7 @@ const initialState: TracksState = {
   spectrogramMode: false,
   timeSelection: null,
   clipDurationIndicator: null,
-  playheadPosition: 1,
+  playheadPosition: 0,
   hoveredPoint: null,
   viewModesBeforeOverlay: null,
   cutMode: 'split', // Default to split cut mode
@@ -247,6 +275,15 @@ const initialState: TracksState = {
   masterEffects: [],
   masterEffectsEnabled: true,
   nextTrackColorIndex: 0,
+  pianoRollOpen: false,
+  pianoRollTrackIndex: null,
+  pianoRollClipIndex: null,
+  pianoRollSnap: { subdivision: 4 },
+  pianoRollTimeBasis: 'beats',
+  pianoRollTimeMode: 'global',
+  pianoRollPixelsPerSecond: 200,
+  pianoRollScrollX: 0,
+  canvasSnap: { subdivision: 1 },
 };
 
 // Reducer
@@ -457,11 +494,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         clips: track.clips.map(clip => ({
           ...clip,
           selected: tIndex === trackIndex && clip.id === clipId
-        }))
+        })),
+        midiClips: track.midiClips?.map(clip => ({
+          ...clip,
+          selected: tIndex === trackIndex && clip.id === clipId
+        })),
       }));
 
       // Find the selected clip to create time selection (ruler-only, no canvas overlay)
-      const selectedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+      const selectedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId)
+        || state.tracks[trackIndex]?.midiClips?.find(c => c.id === clipId);
       const newTimeSelection = selectedClip ? {
         startTime: selectedClip.start,
         endTime: selectedClip.start + selectedClip.duration,
@@ -599,38 +641,64 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       const { clipId, fromTrackIndex, toTrackIndex, newStartTime } = action.payload;
       const newTracks = [...state.tracks];
 
-      // Find the clip in the source track
+      // Find the clip in the source track (audio or midi)
       const clip = newTracks[fromTrackIndex].clips.find(c => c.id === clipId);
-      if (!clip) return state;
+      const midiClip = !clip ? newTracks[fromTrackIndex].midiClips?.find(c => c.id === clipId) : null;
+      if (!clip && !midiClip) return state;
+
+      const movingClip = (clip || midiClip)!;
+      const isMidi = !clip;
 
       // Calculate the delta for time selection update
-      const timeDelta = newStartTime - clip.start;
+      const timeDelta = newStartTime - movingClip.start;
 
       if (fromTrackIndex === toTrackIndex) {
         // Moving within the same track - just update start time
-        newTracks[fromTrackIndex] = {
-          ...newTracks[fromTrackIndex],
-          clips: newTracks[fromTrackIndex].clips.map(c =>
-            c.id === clipId ? { ...c, start: newStartTime } : c
-          ),
-        };
+        if (isMidi) {
+          newTracks[fromTrackIndex] = {
+            ...newTracks[fromTrackIndex],
+            midiClips: newTracks[fromTrackIndex].midiClips?.map(c =>
+              c.id === clipId ? { ...c, start: newStartTime } : c
+            ),
+          };
+        } else {
+          newTracks[fromTrackIndex] = {
+            ...newTracks[fromTrackIndex],
+            clips: newTracks[fromTrackIndex].clips.map(c =>
+              c.id === clipId ? { ...c, start: newStartTime } : c
+            ),
+          };
+        }
       } else {
         // Moving to a different track
-        // Remove from source track
-        newTracks[fromTrackIndex] = {
-          ...newTracks[fromTrackIndex],
-          clips: newTracks[fromTrackIndex].clips.filter(c => c.id !== clipId),
-        };
-        // Add to destination track with new start time
-        newTracks[toTrackIndex] = {
-          ...newTracks[toTrackIndex],
-          clips: [...newTracks[toTrackIndex].clips, { ...clip, start: newStartTime }],
-        };
+        if (isMidi) {
+          // Remove from source track
+          newTracks[fromTrackIndex] = {
+            ...newTracks[fromTrackIndex],
+            midiClips: newTracks[fromTrackIndex].midiClips?.filter(c => c.id !== clipId),
+          };
+          // Add to destination track with new start time
+          newTracks[toTrackIndex] = {
+            ...newTracks[toTrackIndex],
+            midiClips: [...(newTracks[toTrackIndex].midiClips || []), { ...midiClip!, start: newStartTime }],
+          };
+        } else {
+          // Remove from source track
+          newTracks[fromTrackIndex] = {
+            ...newTracks[fromTrackIndex],
+            clips: newTracks[fromTrackIndex].clips.filter(c => c.id !== clipId),
+          };
+          // Add to destination track with new start time
+          newTracks[toTrackIndex] = {
+            ...newTracks[toTrackIndex],
+            clips: [...newTracks[toTrackIndex].clips, { ...clip!, start: newStartTime }],
+          };
+        }
       }
 
       // Update time selection if the moved clip is selected
       let newTimeSelection = state.timeSelection;
-      if (clip.selected && state.timeSelection) {
+      if (movingClip.selected && state.timeSelection) {
         newTimeSelection = {
           ...state.timeSelection,
           startTime: state.timeSelection.startTime + timeDelta,
@@ -640,10 +708,10 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
       // Update clip duration indicator if the moved clip is selected
       let newClipDurationIndicator = state.clipDurationIndicator;
-      if (clip.selected && state.clipDurationIndicator) {
+      if (movingClip.selected && state.clipDurationIndicator) {
         newClipDurationIndicator = {
           startTime: newStartTime,
-          endTime: newStartTime + clip.duration,
+          endTime: newStartTime + movingClip.duration,
         };
       }
 
@@ -652,11 +720,16 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'MOVE_SELECTED_CLIPS': {
       const { deltaSeconds } = action.payload;
-      let firstSelectedClip: Clip | null = null;
+      let firstSelectedClip: { start: number; duration: number } | null = null;
 
       const newTracks = state.tracks.map(track => ({
         ...track,
         clips: track.clips.map(clip => {
+          if (!clip.selected) return clip;
+          if (!firstSelectedClip) firstSelectedClip = clip;
+          return { ...clip, start: Math.max(0, clip.start + deltaSeconds) };
+        }),
+        midiClips: track.midiClips?.map(clip => {
           if (!clip.selected) return clip;
           if (!firstSelectedClip) firstSelectedClip = clip;
           return { ...clip, start: Math.max(0, clip.start + deltaSeconds) };
@@ -676,10 +749,10 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       // Update clip duration indicator for the first selected clip
       let newClipDurationIndicator = state.clipDurationIndicator;
       if (firstSelectedClip) {
-        const newStart = Math.max(0, (firstSelectedClip as Clip).start + deltaSeconds);
+        const newStart = Math.max(0, firstSelectedClip.start + deltaSeconds);
         newClipDurationIndicator = {
           startTime: newStart,
-          endTime: newStart + (firstSelectedClip as Clip).duration,
+          endTime: newStart + firstSelectedClip.duration,
         };
       }
 
@@ -689,12 +762,17 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     case 'MOVE_SELECTED_CLIPS_TO_TRACK': {
       const { direction } = action.payload;
 
-      // Collect all selected clips with their track indices
-      const selectedEntries: Array<{ trackIndex: number; clip: Clip }> = [];
+      // Collect all selected clips (audio + midi) with their track indices
+      const selectedEntries: Array<{ trackIndex: number; clip: Clip; isMidi: boolean }> = [];
       state.tracks.forEach((track, trackIndex) => {
         track.clips.forEach(clip => {
           if (clip.selected) {
-            selectedEntries.push({ trackIndex, clip });
+            selectedEntries.push({ trackIndex, clip, isMidi: false });
+          }
+        });
+        track.midiClips?.forEach(clip => {
+          if (clip.selected) {
+            selectedEntries.push({ trackIndex, clip: clip as any, isMidi: true });
           }
         });
       });
@@ -711,23 +789,38 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       const newTracks = state.tracks.map(track => ({
         ...track,
         clips: [...track.clips],
+        midiClips: track.midiClips ? [...track.midiClips] : undefined,
       }));
 
       // First pass: remove selected clips from their source tracks
       for (const entry of selectedEntries) {
-        newTracks[entry.trackIndex] = {
-          ...newTracks[entry.trackIndex],
-          clips: newTracks[entry.trackIndex].clips.filter(c => c.id !== entry.clip.id),
-        };
+        if (entry.isMidi) {
+          newTracks[entry.trackIndex] = {
+            ...newTracks[entry.trackIndex],
+            midiClips: newTracks[entry.trackIndex].midiClips?.filter(c => c.id !== entry.clip.id),
+          };
+        } else {
+          newTracks[entry.trackIndex] = {
+            ...newTracks[entry.trackIndex],
+            clips: newTracks[entry.trackIndex].clips.filter(c => c.id !== entry.clip.id),
+          };
+        }
       }
 
       // Second pass: add selected clips to destination tracks
       for (const entry of selectedEntries) {
         const destIndex = entry.trackIndex + direction;
-        newTracks[destIndex] = {
-          ...newTracks[destIndex],
-          clips: [...newTracks[destIndex].clips, entry.clip],
-        };
+        if (entry.isMidi) {
+          newTracks[destIndex] = {
+            ...newTracks[destIndex],
+            midiClips: [...(newTracks[destIndex].midiClips || []), entry.clip as any],
+          };
+        } else {
+          newTracks[destIndex] = {
+            ...newTracks[destIndex],
+            clips: [...newTracks[destIndex].clips, entry.clip],
+          };
+        }
       }
 
       // Update selectedTrackIndices to reflect new track positions
@@ -764,18 +857,24 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
             return { ...clip, selected: !clip.selected };
           }
           return clip;
-        })
+        }),
+        midiClips: track.midiClips?.map(clip => {
+          if (tIndex === trackIndex && clip.id === clipId) {
+            return { ...clip, selected: !clip.selected };
+          }
+          return clip;
+        }),
       }));
 
       // Update selectedTrackIndices based on which tracks have selected clips
       const tracksWithSelection = newTracks
-        .map((track, idx) => ({ idx, hasSelection: track.clips.some(c => c.selected) }))
+        .map((track, idx) => ({ idx, hasSelection: track.clips.some(c => c.selected) || track.midiClips?.some(c => c.selected) }))
         .filter(t => t.hasSelection)
         .map(t => t.idx);
 
       // Count total selected clips
       const selectedClipsCount = newTracks.reduce(
-        (count, track) => count + track.clips.filter(c => c.selected).length,
+        (count, track) => count + track.clips.filter(c => c.selected).length + (track.midiClips?.filter(c => c.selected).length || 0),
         0
       );
 
@@ -784,7 +883,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       let newClipDurationIndicator: { startTime: number; endTime: number } | null = null;
       if (selectedClipsCount === 1) {
         const selectedClip = newTracks
-          .flatMap(track => track.clips)
+          .flatMap(track => [...track.clips, ...(track.midiClips || [])])
           .find(clip => clip.selected);
         if (selectedClip) {
           newTimeSelection = {
@@ -800,7 +899,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       }
 
       // Determine if the clip was selected (not deselected)
-      const wasClipSelected = newTracks[trackIndex]?.clips.find(c => c.id === clipId)?.selected ?? false;
+      const wasClipSelected = (newTracks[trackIndex]?.clips.find(c => c.id === clipId)?.selected
+        || newTracks[trackIndex]?.midiClips?.find(c => c.id === clipId)?.selected) ?? false;
 
       return {
         ...state,
@@ -817,7 +917,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     case 'DESELECT_ALL_CLIPS': {
       const newTracks = state.tracks.map(track => ({
         ...track,
-        clips: track.clips.map(clip => ({ ...clip, selected: false }))
+        clips: track.clips.map(clip => ({ ...clip, selected: false })),
+        midiClips: track.midiClips?.map(clip => ({ ...clip, selected: false })),
       }));
 
       return {
@@ -885,26 +986,51 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
     case 'DELETE_CLIP': {
       const { trackIndex, clipId } = action.payload;
 
-      // Check if the deleted clip was selected
-      const deletedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+      // Check if the deleted clip was selected (in either clips or midiClips)
+      const deletedClip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId)
+        || state.tracks[trackIndex]?.midiClips?.find(c => c.id === clipId);
+
+      // Find the index of the deleted MIDI clip (for piano roll adjustment)
+      const deletedMidiIndex = state.tracks[trackIndex]?.midiClips?.findIndex(c => c.id === clipId) ?? -1;
 
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...newTracks[trackIndex],
         clips: newTracks[trackIndex].clips.filter(c => c.id !== clipId),
+        midiClips: newTracks[trackIndex].midiClips?.filter(c => c.id !== clipId),
       };
 
       // Clear clip duration indicator if the deleted clip was selected
       const newClipDurationIndicator = deletedClip?.selected ? null : state.clipDurationIndicator;
 
-      return { ...state, tracks: newTracks, clipDurationIndicator: newClipDurationIndicator };
+      // Adjust piano roll clip index when a MIDI clip is deleted from the same track
+      // Never close the piano roll from here — let the user control that
+      let newPianoRollClipIndex = state.pianoRollClipIndex;
+      if (deletedMidiIndex >= 0 && state.pianoRollTrackIndex === trackIndex && state.pianoRollClipIndex !== null) {
+        const remainingMidiClips = newTracks[trackIndex].midiClips?.length ?? 0;
+        if (remainingMidiClips === 0) {
+          newPianoRollClipIndex = null;
+        } else if (deletedMidiIndex < state.pianoRollClipIndex) {
+          newPianoRollClipIndex = state.pianoRollClipIndex - 1;
+        } else if (deletedMidiIndex === state.pianoRollClipIndex) {
+          newPianoRollClipIndex = Math.min(state.pianoRollClipIndex, remainingMidiClips - 1);
+        }
+      }
+
+      return {
+        ...state,
+        tracks: newTracks,
+        clipDurationIndicator: newClipDurationIndicator,
+        pianoRollClipIndex: newPianoRollClipIndex,
+      };
     }
 
     case 'TRIM_CLIP': {
       const { trackIndex, clipId, newTrimStart, newDuration, newStart } = action.payload;
 
-      // Find the clip to check if it's selected
-      const clip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+      // Find the clip to check if it's selected (in either clips or midiClips)
+      const clip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId)
+        || state.tracks[trackIndex]?.midiClips?.find(c => c.id === clipId);
 
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
@@ -926,6 +1052,24 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
             return updatedClip;
           }
           return clip;
+        }),
+        midiClips: newTracks[trackIndex].midiClips?.map(mc => {
+          if (mc.id === clipId) {
+            const updated = { ...mc, duration: newDuration };
+            if (newStart !== undefined) {
+              // Adjust note local times so they stay at the same global position
+              const startDelta = mc.start - newStart;
+              if (startDelta !== 0) {
+                updated.notes = mc.notes.map(n => ({
+                  ...n,
+                  startTime: n.startTime + startDelta,
+                }));
+              }
+              updated.start = newStart;
+            }
+            return updated;
+          }
+          return mc;
         }),
       };
 
@@ -995,7 +1139,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       // Clear all clip selections when selecting labels
       const newTracks = state.tracks.map(track => ({
         ...track,
-        clips: track.clips.map(clip => ({ ...clip, selected: false }))
+        clips: track.clips.map(clip => ({ ...clip, selected: false })),
+        midiClips: track.midiClips?.map(clip => ({ ...clip, selected: false })),
       }));
 
       // Calculate time selection and track selection from selected labels
@@ -1215,6 +1360,177 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: newSelected,
       };
     }
+
+    // Piano Roll / MIDI actions
+    case 'SET_PIANO_ROLL_OPEN': {
+      const trackIdx = action.payload.trackIndex ?? state.pianoRollTrackIndex;
+      const clipIdx = action.payload.clipIndex ?? state.pianoRollClipIndex;
+      // When opening, scroll to the clip's global start position
+      let scrollX = state.pianoRollScrollX;
+      if (action.payload.open && trackIdx !== null && clipIdx !== null) {
+        const midiClip = state.tracks[trackIdx]?.midiClips?.[clipIdx];
+        if (midiClip) {
+          scrollX = midiClip.start * state.pianoRollPixelsPerSecond;
+        }
+      }
+      return {
+        ...state,
+        pianoRollOpen: action.payload.open,
+        pianoRollTrackIndex: trackIdx,
+        pianoRollClipIndex: clipIdx,
+        pianoRollScrollX: scrollX,
+      };
+    }
+
+    case 'SET_CANVAS_SNAP':
+      return { ...state, canvasSnap: action.payload };
+
+    case 'SET_PIANO_ROLL_SNAP':
+      return { ...state, pianoRollSnap: action.payload };
+
+    case 'SET_PIANO_ROLL_TIME_BASIS':
+      return { ...state, pianoRollTimeBasis: action.payload };
+
+    case 'SET_PIANO_ROLL_TIME_MODE': {
+      let scrollX = state.pianoRollScrollX;
+      if (action.payload === 'local') {
+        // In local mode, clip starts at 0 — reset scroll near origin
+        scrollX = 0;
+      } else if (action.payload === 'global' && state.pianoRollTrackIndex !== null) {
+        // Switching to global — scroll to the active clip's global position
+        const track = state.tracks[state.pianoRollTrackIndex];
+        const activeClip = track?.midiClips?.find((c: any) => c.selected);
+        if (activeClip) {
+          scrollX = Math.max(0, activeClip.start * state.pianoRollPixelsPerSecond - 80);
+        }
+      }
+      return { ...state, pianoRollTimeMode: action.payload, pianoRollScrollX: scrollX };
+    }
+
+    case 'ADD_MIDI_CLIP': {
+      const { trackIndex, clip } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      track.midiClips = [...(track.midiClips || []), clip];
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'ADD_MIDI_NOTE': {
+      const { trackIndex, clipIndex, note } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      const midiClips = [...(track.midiClips || [])];
+      midiClips[clipIndex] = {
+        ...midiClips[clipIndex],
+        notes: [...midiClips[clipIndex].notes, note],
+      };
+      track.midiClips = midiClips;
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'DELETE_MIDI_NOTES': {
+      const { trackIndex, clipIndex, noteIds } = action.payload;
+      const idSet = new Set(noteIds);
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      const midiClips = [...(track.midiClips || [])];
+      midiClips[clipIndex] = {
+        ...midiClips[clipIndex],
+        notes: midiClips[clipIndex].notes.filter(n => !idSet.has(n.id)),
+      };
+      track.midiClips = midiClips;
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UPDATE_MIDI_NOTE': {
+      const { trackIndex, clipIndex, noteId, updates } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      const midiClips = [...(track.midiClips || [])];
+      midiClips[clipIndex] = {
+        ...midiClips[clipIndex],
+        notes: midiClips[clipIndex].notes.map(n =>
+          n.id === noteId ? { ...n, ...updates } : n
+        ),
+      };
+      track.midiClips = midiClips;
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'SELECT_MIDI_NOTE': {
+      const { trackIndex, clipIndex, noteId, additive } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      const midiClips = [...(track.midiClips || [])];
+      midiClips[clipIndex] = {
+        ...midiClips[clipIndex],
+        notes: midiClips[clipIndex].notes.map(n => ({
+          ...n,
+          selected: n.id === noteId ? true : (additive ? n.selected : false),
+        })),
+      };
+      track.midiClips = midiClips;
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'DESELECT_ALL_MIDI_NOTES': {
+      const { trackIndex, clipIndex } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      const midiClips = [...(track.midiClips || [])];
+      midiClips[clipIndex] = {
+        ...midiClips[clipIndex],
+        notes: midiClips[clipIndex].notes.map(n => ({ ...n, selected: false })),
+      };
+      track.midiClips = midiClips;
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'RESIZE_MIDI_NOTE': {
+      const { trackIndex, clipIndex, noteId, newDuration } = action.payload;
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      const midiClips = [...(track.midiClips || [])];
+      midiClips[clipIndex] = {
+        ...midiClips[clipIndex],
+        notes: midiClips[clipIndex].notes.map(n =>
+          n.id === noteId ? { ...n, duration: newDuration } : n
+        ),
+      };
+      track.midiClips = midiClips;
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'SELECT_MIDI_NOTES': {
+      const { trackIndex, clipIndex, noteIds, additive } = action.payload;
+      const idSet = new Set(noteIds);
+      const newTracks = [...state.tracks];
+      const track = { ...newTracks[trackIndex] };
+      const midiClips = [...(track.midiClips || [])];
+      midiClips[clipIndex] = {
+        ...midiClips[clipIndex],
+        notes: midiClips[clipIndex].notes.map(n => ({
+          ...n,
+          selected: idSet.has(n.id) ? true : (additive ? n.selected : false),
+        })),
+      };
+      track.midiClips = midiClips;
+      newTracks[trackIndex] = track;
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'SET_PIANO_ROLL_PIXELS_PER_SECOND':
+      return { ...state, pianoRollPixelsPerSecond: action.payload };
+
+    case 'SET_PIANO_ROLL_SCROLL_X':
+      return { ...state, pianoRollScrollX: action.payload };
 
     default:
       return state;

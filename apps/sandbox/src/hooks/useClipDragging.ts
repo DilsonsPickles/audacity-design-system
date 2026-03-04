@@ -115,7 +115,8 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
           // Find the current track index of this clip (it may have moved already)
           let currentTrackIndex = initialPos.trackIndex;
           for (let i = 0; i < tracks.length; i++) {
-            if (tracks[i].clips.some((c: any) => c.id === initialPos.clipId)) {
+            if (tracks[i].clips.some((c: any) => c.id === initialPos.clipId) ||
+                tracks[i].midiClips?.some((c: any) => c.id === initialPos.clipId)) {
               currentTrackIndex = i;
               break;
             }

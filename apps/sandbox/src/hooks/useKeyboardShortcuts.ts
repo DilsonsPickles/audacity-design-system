@@ -163,8 +163,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           }
         } else {
           // End key
-          const projectEnd = state.tracks.reduce((max, track) =>
-            track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max), 0);
+          const projectEnd = state.tracks.reduce((max, track) => {
+            const audioMax = track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max);
+            return (track.midiClips || []).reduce((m, clip) => Math.max(m, clip.start + clip.duration), audioMax);
+          }, 0);
 
           if (e.shiftKey) {
             // Shift+End: Extend/create time selection from playhead to end of project
@@ -196,22 +198,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Spacebar for play/pause (unless on a real interactive element that uses spacebar)
+      // Spacebar for play/pause (always, unless in a text field)
       if (e.key === ' ') {
         const target = e.target as HTMLElement;
-        const isClip = target.hasAttribute('data-clip-id');
-        const isTrackContainer = target.classList.contains('track');
-        const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
-        const hasRole = target.getAttribute('role');
-        const isInteractive = !isClip && !isTrackContainer && (
-                              interactiveElements.includes(target.tagName) ||
-                              hasRole === 'button' ||
-                              hasRole === 'checkbox' ||
-                              hasRole === 'menuitem' ||
-                              hasRole === 'menuitemcheckbox' ||
-                              hasRole === 'menuitemradio');
+        const isTextField = target.tagName === 'TEXTAREA' ||
+          (target.tagName === 'INPUT' && ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes((target as HTMLInputElement).type)) ||
+          target.isContentEditable;
 
-        if (!isInteractive) {
+        if (!isTextField) {
           e.preventDefault(); // Prevent page scroll
           handlePlay();
           return;
@@ -996,8 +990,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           return;
         }
 
-        // Priority 2: If there's a time selection, perform cut operation (BEFORE checking clips)
-        if (state.timeSelection) {
+        // Priority 2: If there's a real time selection (not ruler-only from clip selection), perform cut operation
+        if (state.timeSelection && state.timeSelection.renderOnCanvas !== false) {
 
           const { startTime, endTime } = state.timeSelection;
           const deletionDuration = endTime - startTime;
@@ -1053,11 +1047,20 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           clipsToDelete.push(focusedClipInfo);
         }
 
-        // Add all selected clips
+        // Add all selected clips (audio + midi)
         state.tracks.forEach((track, trackIndex) => {
           track.clips.forEach((clip) => {
             if (clip.selected) {
-              // Avoid duplicates (if focused clip is also selected)
+              const isDuplicate = clipsToDelete.some(
+                item => item.clipId === clip.id && item.trackIndex === trackIndex
+              );
+              if (!isDuplicate) {
+                clipsToDelete.push({ trackIndex, clipId: clip.id });
+              }
+            }
+          });
+          track.midiClips?.forEach((clip) => {
+            if (clip.selected) {
               const isDuplicate = clipsToDelete.some(
                 item => item.clipId === clip.id && item.trackIndex === trackIndex
               );
@@ -1078,15 +1081,21 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
           if (focusedClipInfo) {
             const track = state.tracks[focusedClipInfo.trackIndex];
-            const deletedClip = track.clips.find(c => c.id === focusedClipInfo.clipId);
+            const deletedClip = track.clips.find(c => c.id === focusedClipInfo.clipId)
+              || track.midiClips?.find(c => c.id === focusedClipInfo.clipId);
 
             if (deletedClip) {
               focusTrackIndex = focusedClipInfo.trackIndex;
 
-              // Find nearest remaining clip by start time
-              const remainingClips = track.clips.filter(
-                c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo.trackIndex)
-              );
+              // Find nearest remaining clip by start time (audio + midi)
+              const remainingClips = [
+                ...track.clips.filter(
+                  c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo.trackIndex)
+                ),
+                ...(track.midiClips || []).filter(
+                  c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo.trackIndex)
+                ),
+              ];
 
               if (remainingClips.length > 0) {
                 shouldMoveFocus = true;
@@ -1111,9 +1120,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                   ];
                   for (const ti of candidates) {
                     if (ti < 0 || ti >= trackCount) continue;
-                    const otherRemaining = state.tracks[ti].clips.filter(
-                      c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === ti)
-                    );
+                    const otherRemaining = [
+                      ...state.tracks[ti].clips.filter(
+                        c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === ti)
+                      ),
+                      ...(state.tracks[ti].midiClips || []).filter(
+                        c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === ti)
+                      ),
+                    ];
                     if (otherRemaining.length > 0) {
                       // Pick the closest clip by start time on this track
                       let nearest = otherRemaining[0];
@@ -1166,16 +1180,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (state.selectedTrackIndices.length > 0) {
           // Double-check no clips are selected in any track
           const anyClipsSelected = state.tracks.some(track =>
-            track.clips.some(clip => clip.selected)
+            track.clips.some(clip => clip.selected) || track.midiClips?.some(clip => clip.selected)
           );
 
           if (!anyClipsSelected) {
-            const count = state.selectedTrackIndices.length;
             dispatch({
               type: 'DELETE_TRACKS',
               payload: state.selectedTrackIndices,
             });
-            toast.info(`${count} track${count > 1 ? 's' : ''} deleted`);
           }
           return;
         }

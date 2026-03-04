@@ -521,6 +521,26 @@ export const lightTheme: ThemeTokens = {
       record: '#F08080',         // Red record button
       stop: '#949CAC',           // Gray stop button
     },
+
+    pianoRoll: {
+      laneWhite: '#292d40',        // Match canvas track idle background
+      laneBlack: '#252837',        // Match canvas default background
+      gridMeasure: 'rgba(255,255,255,0.25)',
+      gridBeat: 'rgba(255,255,255,0.12)',
+      gridSubdivision: 'rgba(255,255,255,0.05)',
+      noteFill: '#66A3FF',         // Blue note body
+      noteFillSelected: '#DEEBFF', // Light blue selected
+      noteBorder: '#305BCC',       // Dark blue border
+      noteBorderSelected: '#ffffff',
+      keyWhite: '#F0F0F3',
+      keyBlack: '#3a3e50',
+      keyBorder: '#D2D6DD',
+      keyActive: '#84B5FF',
+      background: '#1e2130',
+      toolbar: '#262932',
+      clipRegionOutside: 'rgba(0,0,0,0.35)',
+      clipBoundary: 'rgba(255,255,255,0.2)',
+    },
   },
 
   overlay: {

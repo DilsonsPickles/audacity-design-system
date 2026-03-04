@@ -25,8 +25,8 @@ export interface TrackRulerConfig {
   type?: 'mono' | 'stereo';
   /** View mode - determines which ruler to show */
   viewMode?: 'waveform' | 'spectrogram' | 'split';
-  /** Track type - label tracks show no ruler */
-  trackType?: 'audio' | 'label';
+  /** Track type - label and midi tracks show no ruler */
+  trackType?: 'audio' | 'label' | 'midi';
   /** Split ratio for split view (0-1, default 0.5) */
   channelSplitRatio?: number;
   /** Waveform ruler format for this track */
@@ -176,13 +176,13 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
           const trackMaxFreq = track.maxFreq ?? 22050;
 
           // Determine ruler type label for accessibility
-          const rulerTypeLabel = track.trackType === 'label' ? '' :
+          const rulerTypeLabel = (track.trackType === 'label' || track.trackType === 'midi') ? '' :
             track.viewMode === 'spectrogram' ? 'frequency' :
             track.viewMode === 'split' ? 'frequency and amplitude' :
             format === 'linear-amp' ? 'amplitude' : 'dB';
 
           const rulerTabIndex = rulerTabIndices?.[index] ?? -1;
-          const isFocusable = track.trackType !== 'label' && rulerTabIndex !== -1;
+          const isFocusable = track.trackType !== 'label' && track.trackType !== 'midi' && rulerTabIndex !== -1;
 
           return (
           <React.Fragment key={track.id}>
@@ -218,12 +218,12 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               } : undefined}
             >
               {/* 20px spacer to align with clip header recess (hidden for label tracks and when track is too small) */}
-              {track.trackType !== 'label' && track.height > 44 && (
+              {track.trackType !== 'label' && track.trackType !== 'midi' && track.height > 44 && (
                 <div className="vertical-ruler-panel__track-spacer" />
               )}
 
-              {track.trackType === 'label' ? (
-                // Label tracks - no ruler needed
+              {(track.trackType === 'label' || track.trackType === 'midi') ? (
+                // Label/MIDI tracks - no ruler needed
                 null
               ) : track.viewMode === 'split' ? (
                 // Split view - frequency ruler on top, amplitude ruler on bottom

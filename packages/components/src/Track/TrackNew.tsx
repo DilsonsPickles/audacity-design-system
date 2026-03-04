@@ -1,4 +1,5 @@
 import React from 'react';
+import type { MidiNote } from '@audacity-ui/core';
 import { Clip } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
@@ -23,6 +24,7 @@ export interface TrackClip {
   waveformLeftRms?: number[];
   waveformRightRms?: number[];
   envelopePoints?: Array<{ time: number; db: number }>;
+  midiNotes?: MidiNote[];
 }
 
 export interface TrackProps {
@@ -84,6 +86,12 @@ export interface TrackProps {
    * @default false
    */
   isLabelTrack?: boolean;
+
+  /**
+   * Whether this is a MIDI track (shows compact note preview instead of waveform)
+   * @default false
+   */
+  isMidiTrack?: boolean;
 
   /**
    * Pixels per second (zoom level)
@@ -288,6 +296,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   isFocused = false,
   isMuted = false,
   isLabelTrack = false,
+  isMidiTrack = false,
   pixelsPerSecond = 100,
   width,
   backgroundColor = 'rgba(255,255,255,0.05)',
@@ -427,10 +436,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       }
 
       // Determine variant and channel mode
-      let variant: 'waveform' | 'spectrogram' = 'waveform';
+      let variant: 'waveform' | 'spectrogram' | 'midi' = 'waveform';
       let channelMode: 'mono' | 'stereo' | 'split-mono' | 'split-stereo' = 'mono';
 
-      if (splitView) {
+      if (isMidiTrack && clip.midiNotes) {
+        variant = 'midi';
+      } else if (splitView) {
         channelMode = isStereo ? 'split-stereo' : 'split-mono';
         variant = 'spectrogram';
       } else if (spectrogramMode) {
@@ -633,6 +644,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             envelopePointSizes={envelopePointSizes}
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
+            midiNotes={clip.midiNotes}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
             onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
             onTrimEdge={
@@ -868,7 +880,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
         {/* Clip header recess - 20px darkened area at top of track (hidden for label tracks and when track is too small) */}
         {/* Rendered after time selection overlay but before clips so clips render on top */}
-        {!isLabelTrack && height > 44 && (
+        {!isLabelTrack && !isMidiTrack && height > 44 && (
           <div
             style={{
               position: 'absolute',

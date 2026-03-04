@@ -82,7 +82,9 @@ export function useClipMouseDown({
       const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
 
       if (y >= currentY && y < currentY + trackHeight) {
-        for (const clip of track.clips) {
+        // Check both audio clips and midi clips
+        const allClips = [...track.clips, ...(track.midiClips || [])];
+        for (const clip of allClips) {
           const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
           const clipWidth = clip.duration * pixelsPerSecond;
           const clipHeaderY = currentY;
@@ -112,11 +114,6 @@ export function useClipMouseDown({
                   type: 'SELECT_CLIP',
                   payload: { trackIndex, clipId: clip.id },
                 });
-                // Don't select track - waveform colors should only change with explicit track selection
-                // dispatch({
-                //   type: 'SELECT_TRACK',
-                //   payload: trackIndex,
-                // });
 
                 // Mark that we just selected on mouse down to prevent immediate deselection on click
                 justSelectedOnMouseDownRef.current = true;
@@ -130,11 +127,14 @@ export function useClipMouseDown({
               } else {
                 // Clip is already selected - get all selected clips for multi-drag
                 // Don't clear time selection - it will move with the clips
-                const selectedClips = tracks.flatMap((track, tIndex) =>
-                  track.clips
+                const selectedClips = tracks.flatMap((track, tIndex) => [
+                  ...track.clips
                     .filter(c => c.selected)
-                    .map(c => ({ clip: c, trackIndex: tIndex }))
-                );
+                    .map(c => ({ clip: c, trackIndex: tIndex })),
+                  ...(track.midiClips || [])
+                    .filter(c => c.selected)
+                    .map(c => ({ clip: c, trackIndex: tIndex })),
+                ]);
 
                 selectedClipsInitialPositions = selectedClips.map(({ clip: c, trackIndex: tIndex }) => ({
                   clipId: c.id,

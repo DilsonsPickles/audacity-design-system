@@ -14,7 +14,7 @@ const EMPTY_ENVELOPE_ARRAY: EnvelopePointData[] = [];
 
 export type { SpectrogramScale };
 
-export type ClipBodyVariant = 'waveform' | 'spectrogram';
+export type ClipBodyVariant = 'waveform' | 'spectrogram' | 'midi';
 export type ClipBodyChannelMode = 'mono' | 'stereo' | 'split-mono' | 'split-stereo';
 
 // Stereo divider line color - fetched from CSS variables at runtime

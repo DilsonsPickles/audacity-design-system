@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import type { MidiNote } from '@audacity-ui/core';
 import type { ClipColor } from '../types/clip';
 import { ClipHeader } from '../ClipHeader/ClipHeader';
 import { ClipBody, ClipBodyVariant, ClipBodyChannelMode } from '../ClipBody/ClipBody';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
+import { MidiClipBody } from '../MidiClipBody/MidiClipBody';
 import type { EnvelopePointData } from '../utils/envelope';
 import './Clip.css';
 
@@ -89,6 +91,8 @@ export interface ClipProps {
   isRecording?: boolean;
   /** Frequency scale for spectrogram rendering */
   spectrogramScale?: SpectrogramScale;
+  /** MIDI notes for midi variant */
+  midiNotes?: MidiNote[];
 }
 
 /**
@@ -134,6 +138,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   envelopePointSizes,
   isRecording = false,
   spectrogramScale,
+  midiNotes,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
@@ -246,36 +251,47 @@ const ClipComponent: React.FC<ClipProps> = ({
           />
         </div>
       )}
-      <ClipBody
-        color={color}
-        selected={selected}
-        variant={variant}
-        channelMode={channelMode}
-        width={width}
-        height={bodyHeight}
-        waveformSrc={waveformSrc}
-        waveformData={waveformData}
-        waveformDataRms={waveformDataRms}
-        waveformLeft={waveformLeft}
-        waveformRight={waveformRight}
-        waveformLeftRms={waveformLeftRms}
-        waveformRightRms={waveformRightRms}
-        channelSplitRatio={channelSplitRatio}
-        envelope={envelope}
-        showEnvelope={showEnvelope}
-        clipDuration={clipDuration}
-        clipTrimStart={clipTrimStart}
-        clipFullDuration={clipFullDuration}
-        pixelsPerSecond={pixelsPerSecond}
-        hiddenPointIndices={hiddenPointIndices}
-        hoveredPointIndices={hoveredPointIndices}
-        cursorPosition={cursorPosition}
-        inTimeSelection={inTimeSelection}
-        clipStartTime={clipStartTime}
-        timeSelectionRange={timeSelectionRange}
-        envelopePointSizes={envelopePointSizes}
-        spectrogramScale={spectrogramScale}
-      />
+      {variant === 'midi' && midiNotes ? (
+        <MidiClipBody
+          notes={midiNotes}
+          clipDuration={clipDuration || 1}
+          width={width}
+          height={bodyHeight}
+          color={color}
+          selected={selected}
+        />
+      ) : (
+        <ClipBody
+          color={color}
+          selected={selected}
+          variant={variant === 'midi' ? 'waveform' : variant}
+          channelMode={channelMode}
+          width={width}
+          height={bodyHeight}
+          waveformSrc={waveformSrc}
+          waveformData={waveformData}
+          waveformDataRms={waveformDataRms}
+          waveformLeft={waveformLeft}
+          waveformRight={waveformRight}
+          waveformLeftRms={waveformLeftRms}
+          waveformRightRms={waveformRightRms}
+          channelSplitRatio={channelSplitRatio}
+          envelope={envelope}
+          showEnvelope={showEnvelope}
+          clipDuration={clipDuration}
+          clipTrimStart={clipTrimStart}
+          clipFullDuration={clipFullDuration}
+          pixelsPerSecond={pixelsPerSecond}
+          hiddenPointIndices={hiddenPointIndices}
+          hoveredPointIndices={hoveredPointIndices}
+          cursorPosition={cursorPosition}
+          inTimeSelection={inTimeSelection}
+          clipStartTime={clipStartTime}
+          timeSelectionRange={timeSelectionRange}
+          envelopePointSizes={envelopePointSizes}
+          spectrogramScale={spectrogramScale}
+        />
+      )}
 
       {/* Trim handles */}
       {onTrimEdge && (

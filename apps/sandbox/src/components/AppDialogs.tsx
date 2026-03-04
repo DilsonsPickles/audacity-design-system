@@ -147,7 +147,7 @@ export interface AppDialogsProps {
   // Active menu item (for debug panel close)
   setActiveMenuItem: React.Dispatch<React.SetStateAction<'home' | 'project' | 'export' | 'debug'>>;
 
-  // State (for cutMode, timeSelection, playheadPosition)
+  // State (for cutMode, timeSelection, playheadPosition, pianoRollTimeMode)
   state: any;
 }
 
@@ -1040,7 +1040,6 @@ export function AppDialogs(props: AppDialogsProps) {
               },
             });
 
-            toast.success(`Created label track: ${trackName}`);
           } else {
             const newLabel = {
               id: Date.now(),
@@ -1086,7 +1085,6 @@ export function AppDialogs(props: AppDialogsProps) {
               payload: newTrack,
             });
 
-            toast.success(`Created label track: ${trackName}`);
             return newTrackIndex;
           }
 
@@ -1130,8 +1128,6 @@ export function AppDialogs(props: AppDialogsProps) {
             type: 'ADD_TRACK',
             payload: newTrack,
           });
-
-          toast.success(`Created label track: ${trackName}`);
 
           return newTrackIndex;
         }}
@@ -1265,6 +1261,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onShowMixerChange={setShowMixer}
         spectrogramScale={spectrogramScale}
         onSpectrogramScaleChange={setSpectrogramScale}
+        pianoRollTimeMode={state.pianoRollTimeMode}
+        onPianoRollTimeModeChange={(mode) => dispatch({ type: 'SET_PIANO_ROLL_TIME_MODE', payload: mode })}
       />
     </>
   );

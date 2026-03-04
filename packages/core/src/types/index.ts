@@ -164,5 +164,32 @@ export interface ClipTheme {
   segmentHoverOverlay: string;
 }
 
+/**
+ * MIDI Types
+ */
+export interface MidiNote {
+  id: number;
+  pitch: number; // 0-127 MIDI pitch
+  startTime: number; // in seconds
+  duration: number; // in seconds
+  velocity: number; // 0-127
+  selected?: boolean;
+}
+
+export interface MidiClip {
+  id: number;
+  name: string;
+  start: number; // in seconds
+  duration: number; // in seconds
+  notes: MidiNote[];
+  selected?: boolean;
+  color?: string;
+}
+
+export interface SnapGrid {
+  subdivision: 1 | 2 | 4 | 8 | 16 | 32;
+  triplet?: boolean;
+}
+
 // Re-export envelope point styles
 export * from './envelopePointStyles';

@@ -59,6 +59,8 @@ export interface TimeSelectionContextMenuState {
   isOpen: boolean;
   x: number;
   y: number;
+  trackIndex?: number;
+  trackType?: string;
 }
 
 // --- Return type ---

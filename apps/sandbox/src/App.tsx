@@ -2,7 +2,7 @@ import React from 'react';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin } from '@audacity-ui/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
@@ -185,8 +185,9 @@ function CanvasDemoContent() {
     effectDialog, setEffectDialog,
     effectContextMenu, setEffectContextMenu,
     effectSelectorMenu, setEffectSelectorMenu,
-    timeSelectionContextMenu: _timeSelectionContextMenu, setTimeSelectionContextMenu,
+    timeSelectionContextMenu, setTimeSelectionContextMenu,
     contextMenuClosedTimeRef,
+    timeSelectionMenuRef,
   } = useContextMenuState();
 
   // Initialize reverb effect when dialog opens
@@ -614,6 +615,32 @@ function CanvasDemoContent() {
     },
     onToggleRmsInWaveform: () => setShowRmsInWaveform(!showRmsInWaveform),
     onToggleVerticalRulers: () => setShowVerticalRulers(!showVerticalRulers),
+    pianoRollOpen: state.pianoRollOpen,
+    onTogglePianoRoll: () => {
+      if (state.pianoRollOpen) {
+        dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
+      } else {
+        // Find first MIDI track to open piano roll for
+        const midiTrackIndex = state.tracks.findIndex((t: any) => t.type === 'midi');
+        if (midiTrackIndex >= 0) {
+          const clipIndex = (state.tracks[midiTrackIndex] as any).midiClips?.length > 0 ? 0 : null;
+          dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex: midiTrackIndex, clipIndex } });
+        } else {
+          // Auto-create an empty MIDI track and open piano roll on it
+          const newTrackIndex = state.tracks.length;
+          const newTrack: any = {
+            id: newTrackIndex + 1,
+            name: `MIDI ${newTrackIndex + 1}`,
+            type: 'midi',
+            height: 114,
+            clips: [],
+            midiClips: [],
+          };
+          dispatch({ type: 'ADD_TRACK', payload: newTrack });
+          dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex: newTrackIndex, clipIndex: null } });
+        }
+      }
+    },
     onOpenPluginManager: () => setIsPluginManagerOpen(true),
     onGenerateTone: handleGenerateTone,
     onOpenMacroManager: () => setIsMacroManagerOpen(true),
@@ -1101,7 +1128,48 @@ function CanvasDemoContent() {
         os={preferences.operatingSystem}
       />
 
-      {/* Time Selection Context Menu - Temporarily disabled */}
+      {/* Time Selection Context Menu */}
+      {timeSelectionContextMenu && timeSelectionContextMenu.isOpen && (
+        <div ref={timeSelectionMenuRef}>
+          <ContextMenu
+            isOpen
+            x={timeSelectionContextMenu.x}
+            y={timeSelectionContextMenu.y}
+            onClose={() => {
+              contextMenuClosedTimeRef.current = Date.now();
+              setTimeSelectionContextMenu(null);
+            }}
+          >
+            {timeSelectionContextMenu.trackType === 'midi' && state.timeSelection && (
+              <ContextMenuItem
+                label="Create Empty MIDI Clip"
+                onClick={() => {
+                  const trackIdx = timeSelectionContextMenu.trackIndex!;
+                  const ts = state.timeSelection!;
+                  const clipStart = Math.min(ts.startTime, ts.endTime);
+                  const clipDuration = Math.abs(ts.endTime - ts.startTime);
+                  dispatch({
+                    type: 'ADD_MIDI_CLIP',
+                    payload: {
+                      trackIndex: trackIdx,
+                      clip: {
+                        id: Date.now(),
+                        name: 'MIDI Clip',
+                        start: clipStart,
+                        duration: clipDuration,
+                        notes: [],
+                      },
+                    },
+                  });
+                  dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+                  contextMenuClosedTimeRef.current = Date.now();
+                  setTimeSelectionContextMenu(null);
+                }}
+              />
+            )}
+          </ContextMenu>
+        </div>
+      )}
     </div>
   );
 }

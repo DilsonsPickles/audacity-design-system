@@ -62,6 +62,7 @@ function PlayheadCursorComponent({
   const x = CLIP_CONTENT_OFFSET + position * pixelsPerSecond - scrollX;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ mouseX: number; position: number } | null>(null);
 
   useEffect(() => {
     if (showTopIcon && canvasRef.current) {
@@ -100,34 +101,22 @@ function PlayheadCursorComponent({
     }
   }, [showTopIcon]);
 
-  // Drag handlers for playhead icon
+  // Drag handlers for playhead icon — delta-based (no DOM queries)
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!onPositionChange) return;
+      if (!onPositionChange || !dragStartRef.current) return;
 
-      // Get scroll offset from the transformed parent
-      const scrollableDiv = document.querySelector('[style*="transform: translateX"]') as HTMLElement;
-      if (!scrollableDiv) return;
+      const deltaX = e.clientX - dragStartRef.current.mouseX;
+      const deltaTime = deltaX / pixelsPerSecond;
+      const newPosition = Math.max(minPosition, dragStartRef.current.position + deltaTime);
 
-      const transform = scrollableDiv.style.transform;
-      const scrollXMatch = transform.match(/translateX\((-?\d+)px\)/);
-      const scrollX = scrollXMatch ? parseInt(scrollXMatch[1], 10) : 0;
-
-      const rect = scrollableDiv.getBoundingClientRect();
-      const x = e.clientX - rect.left - scrollX;
-
-      // Calculate new position in seconds
-      const newPosition = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
-
-      // Constrain to minimum position
-      const constrainedPosition = Math.max(minPosition, newPosition);
-
-      onPositionChange(constrainedPosition);
+      onPositionChange(newPosition);
     };
 
     const handleMouseUp = () => {
+      dragStartRef.current = null;
       setIsDragging(false);
       document.body.style.cursor = '';
     };
@@ -143,9 +132,9 @@ function PlayheadCursorComponent({
 
   const handleIconMouseDown = (e: React.MouseEvent) => {
     if (!onPositionChange) return;
-    console.log('Playhead mousedown triggered');
     e.preventDefault();
     e.stopPropagation();
+    dragStartRef.current = { mouseX: e.clientX, position };
     setIsDragging(true);
     document.body.style.cursor = 'ew-resize';
   };

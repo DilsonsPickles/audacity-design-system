@@ -11,7 +11,7 @@ import './TrackControlPanel.css';
 
 export interface TrackControlPanelProps {
   trackName: string;
-  trackType?: 'mono' | 'stereo' | 'label';
+  trackType?: 'mono' | 'stereo' | 'label' | 'midi';
   volume?: number; // 0-100
   pan?: number; // -100 to 100
   isMuted?: boolean;
@@ -112,6 +112,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     switch (trackType) {
       case 'label':
         return 'label';
+      case 'midi':
+        return 'midi';
       case 'stereo':
         return 'microphone';
       case 'mono':
@@ -121,6 +123,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   };
 
   const isLabelTrack = trackType === 'label';
+  const isMidiTrack = trackType === 'midi';
 
   // Determine if Effect button should be visible based on actual pixel height (>= 102px)
   // Audio tracks: show when height >= 102px

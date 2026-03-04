@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme, scrollIntoViewIfNeeded } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
-import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey } from '@audacity-ui/core';
+import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import { usePreferences } from '@audacity-ui/components';
@@ -42,7 +42,7 @@ export interface CanvasProps {
   /**
    * Callback when time selection context menu is requested
    */
-  onTimeSelectionMenuClick?: (x: number, y: number) => void;
+  onTimeSelectionMenuClick?: (x: number, y: number, trackIndex?: number) => void;
   /**
    * Callback when track keyboard focus changes
    */
@@ -102,6 +102,11 @@ export interface CanvasProps {
    */
   timeFormat?: 'minutes-seconds' | 'beats-measures';
   /**
+   * Snap grid subdivision for beats-measures mode (independent from piano roll)
+   * @default { subdivision: 1 }
+   */
+  snap?: SnapGrid;
+  /**
    * Frequency scale for spectrogram rendering and ruler
    * @default 'mel'
    */
@@ -122,6 +127,10 @@ export interface CanvasProps {
    * Callback when Tab is pressed on the last clip of a track (to navigate to ruler)
    */
   onTabFromLastClip?: (trackIndex: number) => void;
+  /**
+   * Callback when a MIDI clip is double-clicked
+   */
+  onMidiClipDoubleClick?: (trackIndex: number, clipIndex: number) => void;
 }
 
 /**
@@ -150,11 +159,13 @@ export function Canvas({
   bpm = 120,
   beatsPerMeasure = 4,
   timeFormat = 'beats-measures',
+  snap = { subdivision: 1 },
   spectrogramScale = 'mel',
   onEnterTrackPanel,
   onShiftTabFromTrack,
   onContainerEnter,
   onTabFromLastClip,
+  onMidiClipDoubleClick,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -361,21 +372,35 @@ export function Canvas({
     CLIP_HEADER_HEIGHT,
   });
 
-  // Calculate grid line positions — major (bar/measure or major interval) + minor (beat or minor interval)
+  // Calculate grid line positions — three tiers in beats-measures mode (measure/beat/subdivision),
+  // two tiers in minutes-seconds mode (major/minor)
   const { gridLines, measureBands } = React.useMemo(() => {
-    const lines: Array<{ x: number; isMajor: boolean }> = [];
+    const lines: Array<{ x: number; tier: 'measure' | 'beat' | 'subdivision' }> = [];
     const bands: Array<{ x: number; w: number }> = [];
     const totalSeconds = width / pixelsPerSecond;
 
     if (timeFormat === 'beats-measures') {
       const secondsPerBeat = 60 / bpm;
       const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-      const totalBeats = Math.ceil(totalSeconds / secondsPerBeat) + beatsPerMeasure;
-      for (let beat = 0; beat <= totalBeats; beat++) {
-        const x = CLIP_CONTENT_OFFSET + beat * secondsPerBeat * pixelsPerSecond;
+      // Grid step: divide each beat by subdivision (and by 1.5 for triplets)
+      const gridStep = secondsPerBeat / (snap.subdivision * (snap.triplet ? 1.5 : 1));
+      const totalSteps = Math.ceil(totalSeconds / gridStep) + Math.ceil(secondsPerMeasure / gridStep);
+
+      for (let i = 0; i <= totalSteps; i++) {
+        const t = i * gridStep;
+        const x = CLIP_CONTENT_OFFSET + t * pixelsPerSecond;
         if (x > width) break;
-        lines.push({ x, isMajor: beat % beatsPerMeasure === 0 });
+
+        // Classify: is this time on a measure boundary, a beat boundary, or a subdivision?
+        const beatIndex = t / secondsPerBeat;
+        const isOnBeat = Math.abs(beatIndex - Math.round(beatIndex)) < 0.001;
+        const measureIndex = t / secondsPerMeasure;
+        const isOnMeasure = isOnBeat && Math.abs(measureIndex - Math.round(measureIndex)) < 0.001;
+
+        const tier: 'measure' | 'beat' | 'subdivision' = isOnMeasure ? 'measure' : isOnBeat ? 'beat' : 'subdivision';
+        lines.push({ x, tier });
       }
+
       // Alternating measure bands — every other measure gets a darker background
       const measureWidth = secondsPerMeasure * pixelsPerSecond;
       const totalMeasures = Math.ceil(totalSeconds / secondsPerMeasure) + 1;
@@ -406,12 +431,12 @@ export function Canvas({
         const x = CLIP_CONTENT_OFFSET + roundedT * pixelsPerSecond;
         if (x > width) break;
         const isMajor = Math.abs(roundedT % majorInterval) < 0.001;
-        lines.push({ x, isMajor });
+        lines.push({ x, tier: isMajor ? 'measure' : 'beat' });
         t = Math.round((t + minorInterval) * 1000) / 1000;
       }
     }
     return { gridLines: lines, measureBands: bands };
-  }, [bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width]);
+  }, [bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width, snap]);
 
   return (
     <div className="canvas-container" style={{ backgroundColor: bgColor, height: `${totalHeight}px`, overflow: 'clip', overflowClipMargin: '2px', cursor: 'text' } as React.CSSProperties}>
@@ -437,15 +462,15 @@ export function Canvas({
               fill="#252837"
             />
           ))}
-          {gridLines.map(({ x, isMajor }) => (
+          {gridLines.map(({ x, tier }) => (
             <line
               key={x}
               x1={x}
               y1={0}
               x2={x}
               y2={tracksHeight + viewportHeight}
-              stroke={isMajor ? theme.stroke.grid.major : theme.stroke.grid.minor}
-              strokeWidth={1}
+              stroke={tier === 'measure' ? theme.stroke.grid.measure : tier === 'beat' ? theme.stroke.grid.major : theme.stroke.grid.minor}
+              strokeWidth={tier === 'subdivision' ? 0.5 : 1}
             />
           ))}
         </svg>
@@ -467,11 +492,44 @@ export function Canvas({
           // 2. There's an existing time selection
           // 3. We're not currently dragging or creating a selection
           if (lastMouseButtonRef.current === 2 && timeSelection && !selection.selection.isDragging && !selection.selection.isCreating) {
-            onTimeSelectionMenuClick?.(e.clientX, e.clientY);
+            // Determine which track was right-clicked
+            const containerRect = e.currentTarget.getBoundingClientRect();
+            const relativeY = e.clientY - containerRect.top;
+            let clickedTrackIndex: number | undefined;
+            for (let i = 0; i < tracks.length; i++) {
+              const yOff = calculateTrackYOffset(i, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
+              const tH = tracks[i].height || DEFAULT_TRACK_HEIGHT;
+              if (relativeY >= yOff && relativeY < yOff + tH) {
+                clickedTrackIndex = i;
+                break;
+              }
+            }
+            onTimeSelectionMenuClick?.(e.clientX, e.clientY, clickedTrackIndex);
           }
 
           // Reset the button ref after handling
           lastMouseButtonRef.current = 0;
+        }}
+        onDoubleClick={(e) => {
+          if (!onMidiClipDoubleClick) return;
+          // Walk up from the click target to find a clip element with data-clip-id
+          let el = e.target as HTMLElement | null;
+          while (el && el !== e.currentTarget) {
+            const clipId = el.getAttribute('data-clip-id');
+            const tIdx = el.getAttribute('data-track-index');
+            if (clipId && tIdx !== null) {
+              const trackIdx = Number(tIdx);
+              const track = tracks[trackIdx];
+              if (track?.type === 'midi' && track.midiClips) {
+                const clipIndex = track.midiClips.findIndex((mc: any) => String(mc.id) === clipId);
+                if (clipIndex >= 0) {
+                  onMidiClipDoubleClick(trackIdx, clipIndex);
+                }
+              }
+              return;
+            }
+            el = el.parentElement;
+          }
         }}
         onDragStart={(e: React.DragEvent) => e.preventDefault()}
         style={{ ...containerProps.style, height: `${totalHeight}px`, userSelect: 'none', cursor: 'text' } as React.CSSProperties}
@@ -554,12 +612,19 @@ export function Canvas({
               }}
             >
               <TrackNew
-                clips={showRmsInWaveform ? track.clips as any : (track.clips as any).map((clip: any) => ({
-                  ...clip,
-                  waveformRms: undefined,
-                  waveformLeftRms: undefined,
-                  waveformRightRms: undefined,
-                }))}
+                clips={track.type === 'midi'
+                  ? (track.midiClips || []).map((mc: any) => ({
+                      id: mc.id, name: mc.name, start: mc.start,
+                      duration: mc.duration, envelopePoints: [],
+                      selected: mc.selected, color: mc.color || track.color,
+                      midiNotes: mc.notes,
+                    }))
+                  : showRmsInWaveform ? track.clips as any : (track.clips as any).map((clip: any) => ({
+                      ...clip,
+                      waveformRms: undefined,
+                      waveformLeftRms: undefined,
+                      waveformRightRms: undefined,
+                    }))}
                 height={trackHeight}
                 trackIndex={trackIndex}
                 spectrogramMode={track.viewMode === 'spectrogram'}
@@ -568,6 +633,7 @@ export function Canvas({
                 isSelected={isSelected}
                 isFocused={isFocused}
                 isLabelTrack={track.type === 'label'}
+                isMidiTrack={track.type === 'midi'}
                 pixelsPerSecond={pixelsPerSecond}
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 4)}
@@ -628,7 +694,7 @@ export function Canvas({
                 onContainerEnter={(modifiers) => onContainerEnter?.(trackIndex, modifiers)}
                 onTabFromLastClip={() => onTabFromLastClip?.(trackIndex)}
                 onClipMove={(clipId, deltaSeconds) => {
-                  const clip = track.clips.find(c => c.id === clipId);
+                  const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                   if (!clip) return;
                   // Ensure the focused clip is selected so it moves with the group
                   if (!clip.selected) {
@@ -650,7 +716,7 @@ export function Canvas({
                   });
                 }}
                 onClipMoveToTrack={(clipId, direction) => {
-                  const clip = track.clips.find(c => c.id === clipId);
+                  const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                   if (!clip) return;
                   // Ensure the focused clip is selected so it moves with the group
                   if (!clip.selected) {
@@ -714,10 +780,10 @@ export function Canvas({
                 }}
                 onClipTrim={(clipId, edge, deltaSeconds) => {
                   // Find the clip to get its current state
-                  const clip = track.clips.find(c => c.id === clipId);
+                  const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                   if (!clip) return;
 
-                  const currentTrimStart = clip.trimStart || 0;
+                  const currentTrimStart = (clip as any).trimStart || 0;
                   const currentDuration = clip.duration;
                   const currentStart = clip.start;
                   const fullDuration = (clip as any).fullDuration || (currentTrimStart + currentDuration);
@@ -814,13 +880,16 @@ export function Canvas({
                     dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
                   } else {
                     // Regular click/Enter: check if clip is already selected
-                    const clip = track.clips.find(c => c.id === clipId);
+                    const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                     const isSelected = clip?.selected || false;
 
                     // Count total selected clips
                     let totalSelectedClips = 0;
                     tracks.forEach(t => {
                       t.clips.forEach(c => {
+                        if (c.selected) totalSelectedClips++;
+                      });
+                      t.midiClips?.forEach(c => {
                         if (c.selected) totalSelectedClips++;
                       });
                     });
@@ -839,7 +908,7 @@ export function Canvas({
                 }}
                 onClipTrimEdge={(clipId, edge) => {
                   // Find the clip being trimmed
-                  const clip = track.clips.find(c => c.id === clipId);
+                  const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                   if (!clip) return;
 
                   // Initialize trim state on first call
@@ -853,11 +922,14 @@ export function Canvas({
                     }
 
                     // Store initial state for all selected clips (including the one we just selected)
-                    const allClipsInitialState = new Map<string, { trimStart: number; duration: number; start: number; fullDuration: number }>();
+                    const allClipsInitialState = new Map<string, { trimStart: number; duration: number; start: number; fullDuration: number; isMidi?: boolean }>();
                     tracks.forEach((t, tIndex) => {
-                      t.clips.forEach(c => {
+                      const isMidiTrack = t.type === 'midi';
+                      const allTrackClips = [...t.clips, ...(t.midiClips || [])];
+                      allTrackClips.forEach(c => {
                         // Include this clip even if it wasn't selected before (we just selected it)
                         if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
+                          const isMidi = isMidiTrack || (t.midiClips || []).some((mc: any) => mc.id === c.id);
                           const trimStart = (c as any).trimStart || 0;
                           const fullDuration = (c as any).fullDuration || (trimStart + c.duration);
                           const key = `${tIndex}-${c.id}`;
@@ -866,6 +938,7 @@ export function Canvas({
                             duration: c.duration,
                             start: c.start,
                             fullDuration,
+                            isMidi,
                           });
                         }
                       });

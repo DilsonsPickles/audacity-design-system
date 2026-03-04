@@ -114,6 +114,13 @@ export * from './PointLabel';
 export * from './Label';
 
 /**
+ * MIDI Components
+ */
+export * from './MidiClipBody/MidiClipBody';
+export * from './NoteRect';
+export * from './PianoRoll';
+
+/**
  * Layout & Behavior Utilities
  */
 export * from './ResizablePanel';

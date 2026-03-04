@@ -98,7 +98,8 @@ export function AppContextMenus({
           onCut={() => {
             if (clipContextMenu) {
               const track = tracks[clipContextMenu.trackIndex];
-              const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId);
+              const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId)
+                || (track?.midiClips || []).find((c: any) => c.id === clipContextMenu.clipId);
 
               if (clip) {
                 onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut' });
@@ -119,7 +120,8 @@ export function AppContextMenus({
           onCopy={() => {
             if (clipContextMenu) {
               const track = tracks[clipContextMenu.trackIndex];
-              const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId);
+              const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId)
+                || (track?.midiClips || []).find((c: any) => c.id === clipContextMenu.clipId);
 
               if (clip) {
                 onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
@@ -230,7 +232,6 @@ export function AppContextMenus({
                 payload: trackContextMenu.trackIndex,
               });
               setTrackContextMenu(null);
-              toast.success('Track deleted');
             }
           }}
           onColorChange={(color) => {

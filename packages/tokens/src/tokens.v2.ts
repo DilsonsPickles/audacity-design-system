@@ -533,6 +533,35 @@ export interface ThemeTokens {
       /** Stop button color */
       stop: string;
     };
+
+    /** Piano roll editor colors */
+    pianoRoll: {
+      /** Lane backgrounds */
+      laneWhite: string;
+      laneBlack: string;
+      /** Grid lines */
+      gridMeasure: string;
+      gridBeat: string;
+      gridSubdivision: string;
+      /** Note rendering */
+      noteFill: string;
+      noteFillSelected: string;
+      noteBorder: string;
+      noteBorderSelected: string;
+      /** Piano keyboard */
+      keyWhite: string;
+      keyBlack: string;
+      keyBorder: string;
+      keyActive: string;
+      /** Panel background */
+      background: string;
+      /** Toolbar background */
+      toolbar: string;
+      /** Dimmed overlay for regions outside the clip bounds */
+      clipRegionOutside: string;
+      /** Vertical boundary line at clip start/end */
+      clipBoundary: string;
+    };
   };
 
   /** Overlay colors (modals, tooltips) */

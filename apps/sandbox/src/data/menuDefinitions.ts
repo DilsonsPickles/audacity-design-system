@@ -16,10 +16,12 @@ export interface MenuDefinitionDeps {
   effectsPanelOpen: boolean;
   showRmsInWaveform: boolean;
   showVerticalRulers: boolean;
+  pianoRollOpen: boolean;
   selectedTrackIndices: number[];
   onToggleEffectsPanel: () => void;
   onToggleRmsInWaveform: () => void;
   onToggleVerticalRulers: () => void;
+  onTogglePianoRoll: () => void;
 
   // Effect menu deps
   onOpenPluginManager: () => void;
@@ -78,6 +80,11 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Show vertical rulers',
       checked: deps.showVerticalRulers,
       onClick: deps.onToggleVerticalRulers,
+    },
+    {
+      label: 'Show piano roll',
+      checked: deps.pianoRollOpen,
+      onClick: deps.onTogglePianoRoll,
     },
   ];
 

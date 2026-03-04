@@ -26,6 +26,8 @@ export class AudioPlaybackManager {
   private loopEnabled: boolean = false;
   private loopStart: number | null = null;
   private loopEnd: number | null = null;
+  private midiSynths: Map<number, Tone.PolySynth> = new Map();
+  private scheduledMidiEvents: number[] = [];
 
   /**
    * Initialize audio context (must be called after user interaction)
@@ -244,6 +246,47 @@ export class AudioPlaybackManager {
             }
           }
         }
+      });
+    });
+
+    // Clear old MIDI events and synths
+    this.scheduledMidiEvents.forEach(id => Tone.getTransport().clear(id));
+    this.scheduledMidiEvents = [];
+    this.midiSynths.forEach(s => s.dispose());
+    this.midiSynths.clear();
+
+    // Schedule MIDI notes
+    tracks.forEach((track: any, trackIndex: number) => {
+      if (track.type !== 'midi' || !track.midiClips) return;
+      const trackGain = this.trackGains.get(trackIndex);
+      if (!trackGain) return;
+
+      // Create PolySynth with FMSynth for electric piano character
+      const synth = new Tone.PolySynth(Tone.FMSynth, {
+        maxPolyphony: 32,
+        voice: Tone.FMSynth,
+        options: {
+          modulationIndex: 3,
+          envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.4 },
+        },
+      } as any).connect(trackGain);
+      this.midiSynths.set(trackIndex, synth);
+
+      track.midiClips.forEach((clip: any) => {
+        if (!clip.notes) return;
+        const clipEnd = clip.start + clip.duration;
+        clip.notes.forEach((note: any) => {
+          const absTime = clip.start + note.startTime;
+          const noteEnd = absTime + note.duration;
+          if (noteEnd <= startTime) return; // skip notes that end before playback start
+          if (absTime >= clipEnd || absTime < clip.start) return; // skip notes outside clip boundaries
+          const freq = Tone.Frequency(note.pitch, 'midi').toFrequency();
+          const velocity = note.velocity / 127;
+          const eventId = Tone.getTransport().schedule((time: number) => {
+            synth.triggerAttackRelease(freq, note.duration, time, velocity);
+          }, absTime);
+          this.scheduledMidiEvents.push(eventId);
+        });
       });
     });
 
@@ -510,6 +553,12 @@ export class AudioPlaybackManager {
     this.volumes.forEach(volume => volume.dispose());
     this.trackGains.forEach(gain => gain.dispose());
     this.meters.forEach(meter => meter.dispose());
+
+    // Dispose MIDI synths and scheduled events
+    this.scheduledMidiEvents.forEach(id => Tone.getTransport().clear(id));
+    this.scheduledMidiEvents = [];
+    this.midiSynths.forEach(s => s.dispose());
+    this.midiSynths.clear();
 
     this.players.clear();
     this.volumes.clear();
