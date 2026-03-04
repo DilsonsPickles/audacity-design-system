@@ -54,3 +54,6 @@ export const MAX_PPS = 2000;
 
 /** Distance from clip boundary line for hit detection/cursor change */
 export const CLIP_BOUNDARY_THRESHOLD = 6;
+
+/** Height of the clip strip between ruler and grid */
+export const CLIP_STRIP_HEIGHT = 20;

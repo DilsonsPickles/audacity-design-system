@@ -67,6 +67,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   onPixelsPerSecondChange,
   onScrollXChange,
   onResizeClip,
+  trackColor,
   timeMode = 'global',
 }) => {
   const { theme } = useTheme();
@@ -77,6 +78,9 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   const boxSelectionRef = useRef<BoxSelectionState | null>(null);
   const lastResizedDurationRef = useRef<number | null>(null);
   const [boxSelectionRect, setBoxSelectionRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [previewNote, setPreviewNote] = useState<{ pitch: number; startTime: number; duration: number } | null>(null);
+  const previewNoteRef = useRef(previewNote);
+  previewNoteRef.current = previewNote;
 
   const isLocal = timeMode === 'local';
   // In local mode, time offset = active clip's start; everything is relative to clip origin
@@ -289,7 +293,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
       return;
     }
 
-    // Plain click on empty area = create note (global time)
+    // Plain click on empty area = preview note on mousedown, commit on mouseup
     const globalTime = snapTime(xToTime(localX));
     const pitch = yToPitch(localY);
     if (pitch < 0 || pitch > 127) return;
@@ -299,20 +303,41 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     const beatDuration = 60 / bpm;
     const duration = lastResizedDurationRef.current ?? beatDuration / snap.subdivision;
 
-    // Pass note with GLOBAL startTime — EditorLayout routes to the right clip
-    const newNote: MidiNote = {
-      id: Date.now(),
-      pitch,
-      startTime: Math.max(0, globalTime),
-      duration,
-      velocity: DEFAULT_VELOCITY,
+    setPreviewNote({ pitch, startTime: Math.max(0, globalTime), duration });
+
+    const handlePreviewMove = (me: MouseEvent) => {
+      const r = containerRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const newPitch = Math.max(0, Math.min(127, yToPitch(me.clientY - r.top)));
+      const newTime = Math.max(0, snapTime(xToTime(me.clientX - r.left)));
+      setPreviewNote(prev => prev ? { ...prev, pitch: newPitch, startTime: newTime } : null);
     };
-    onAddNote(newNote);
+
+    const handlePreviewUp = () => {
+      const current = previewNoteRef.current;
+      if (current) {
+        const newNote: MidiNote = {
+          id: Date.now(),
+          pitch: current.pitch,
+          startTime: current.startTime,
+          duration: current.duration,
+          velocity: DEFAULT_VELOCITY,
+        };
+        onAddNote(newNote);
+      }
+      setPreviewNote(null);
+      document.removeEventListener('mousemove', handlePreviewMove);
+      document.removeEventListener('mouseup', handlePreviewUp);
+    };
+
+    document.addEventListener('mousemove', handlePreviewMove);
+    document.addEventListener('mouseup', handlePreviewUp);
   }, [snapTime, xToTime, yToPitch, bpm, snap, onAddNote, onDeselectAll, allNotes, pixelsPerSecond, scrollX, scrollY, noteHeight, onSelectNotes, clips, onResizeClip, getClipBoundaryEdge]);
 
   // Handle note mouse down (drag or resize)
   const handleNoteMouseDown = useCallback((e: React.MouseEvent, note: { id: number; pitch: number; velocity: number; selected?: boolean }, edge: NoteEdge) => {
     e.preventDefault();
+    e.stopPropagation();
 
     const isAdditive = e.metaKey || e.ctrlKey;
     const anchorClipStart = noteClipStartMap.get(note.id) ?? 0;
@@ -489,6 +514,21 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   onPpsChangeRef.current = onPixelsPerSecondChange;
   onScrollXChangeRef.current = onScrollXChange;
 
+  const isLocalRef = useRef(isLocal);
+  const clipDurationRef = useRef(clip?.duration ?? 0);
+  const widthRef = useRef(width);
+  isLocalRef.current = isLocal;
+  clipDurationRef.current = clip?.duration ?? 0;
+  widthRef.current = width;
+
+  /** Clamp scrollX — in local mode, limit to 2x clip duration */
+  const clampScrollX = (sx: number, pps: number) => {
+    const clamped = Math.max(0, sx);
+    if (!isLocalRef.current) return clamped;
+    const maxScrollX = Math.max(0, clipDurationRef.current * 2 * pps - widthRef.current);
+    return Math.min(clamped, maxScrollX);
+  };
+
   // Native wheel handler — React 19 onWheel is passive, so we need a native listener
   // to call preventDefault and support Cmd+scroll zoom
   useEffect(() => {
@@ -508,7 +548,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         const zoomDelta = e.deltaY || e.deltaX;
         const zoomFactor = zoomDelta > 0 ? 0.9 : 1.1;
         const newPps = Math.max(MIN_PPS, Math.min(MAX_PPS, ppsRef.current * zoomFactor));
-        const newScrollX = Math.max(0, timeAtCursor * newPps - cursorX);
+        const newScrollX = clampScrollX(timeAtCursor * newPps - cursorX, newPps);
 
         onPpsChangeRef.current(newPps);
         onScrollXChangeRef.current(newScrollX);
@@ -516,7 +556,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         // Shift + scroll or horizontal trackpad swipe = horizontal pan
         if (!onScrollXChangeRef.current) return;
         const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-        const newScrollX = Math.max(0, scrollXRef.current + delta);
+        const newScrollX = clampScrollX(scrollXRef.current + delta, ppsRef.current);
         onScrollXChangeRef.current(newScrollX);
       } else {
         // Plain scroll = vertical pan
@@ -582,9 +622,31 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
             height={noteHeight}
             isSelected={note.selected ?? false}
             onMouseDown={handleNoteMouseDown}
+            trackColor={trackColor}
           />
         );
       })}
+
+      {/* Preview note (pending placement) */}
+      {previewNote && (() => {
+        const px = (previewNote.startTime - timeOffset) * pixelsPerSecond - scrollX;
+        const py = (TOTAL_PITCHES - 1 - previewNote.pitch) * noteHeight - scrollY;
+        const pw = previewNote.duration * pixelsPerSecond;
+        return (
+          <div style={{ position: 'absolute', left: px, top: py, width: pw, height: noteHeight, opacity: 0.7, pointerEvents: 'none' }}>
+            <NoteRect
+              note={{ id: -1, pitch: previewNote.pitch, velocity: DEFAULT_VELOCITY }}
+              x={0}
+              y={0}
+              width={pw}
+              height={noteHeight}
+              isSelected={false}
+              onMouseDown={() => {}}
+              trackColor={trackColor}
+            />
+          </div>
+        );
+      })()}
 
       {/* Box selection overlay */}
       {boxSelectionRect && (

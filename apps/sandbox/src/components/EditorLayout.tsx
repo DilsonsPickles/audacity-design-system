@@ -1271,8 +1271,11 @@ export function EditorLayout(props: EditorLayoutProps) {
           onAddNote={(note) => {
             const trackIndex = state.pianoRollTrackIndex!;
             const clips = prTrack.midiClips || [];
-            // note.startTime is in global time — find which clip it falls in
-            const clipIndex = clips.findIndex(c => note.startTime >= c.start && note.startTime < c.start + c.duration);
+            // In local mode, always route to the active clip (extend if needed)
+            // In global mode, find which clip the note falls in
+            const clipIndex = state.pianoRollTimeMode === 'local'
+              ? -1
+              : clips.findIndex(c => note.startTime >= c.start && note.startTime < c.start + c.duration);
             if (clipIndex >= 0) {
               const localNote = { ...note, startTime: note.startTime - clips[clipIndex].start };
               dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex, note: localNote } });
@@ -1407,6 +1410,11 @@ export function EditorLayout(props: EditorLayoutProps) {
               },
             });
           }}
+          onSelectClip={(clipId) => {
+            skipPianoRollScrollRef.current = true;
+            dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: state.pianoRollTrackIndex!, clipId } });
+          }}
+          trackColor={prTrack.color}
           playheadPosition={state.playheadPosition}
           onClose={() => dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } })}
         />

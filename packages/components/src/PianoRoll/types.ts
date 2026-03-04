@@ -31,6 +31,10 @@ export interface PianoRollPanelProps {
   onCreateClipWithNote?: (note: MidiNote, measureDuration: number) => void;
   /** Called when user drags a clip boundary edge to resize the clip */
   onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, clipId?: number) => void;
+  /** Called when user clicks a clip bar in the clip strip to select it */
+  onSelectClip?: (clipId: number) => void;
+  /** Track color name (e.g. 'blue', 'violet') — notes and clip strip use this color */
+  trackColor?: string;
   /** Playhead position in seconds (global time) */
   playheadPosition?: number;
 }
@@ -94,6 +98,8 @@ export interface NoteGridProps {
   onScrollXChange?: (scrollX: number) => void;
   /** Called when user drags a clip boundary edge to resize the clip */
   onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, clipId?: number) => void;
+  /** Track color name (e.g. 'blue', 'violet') — notes use this color */
+  trackColor?: string;
 }
 
 export interface NoteGridCanvasProps {

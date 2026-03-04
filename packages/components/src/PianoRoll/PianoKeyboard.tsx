@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTheme } from '../ThemeProvider/ThemeProvider';
-import { PIANO_KEY_WIDTH, TOTAL_PITCHES, NOTE_HEIGHT, RULER_HEIGHT } from './constants';
+import { PIANO_KEY_WIDTH, TOTAL_PITCHES, NOTE_HEIGHT, RULER_HEIGHT, CLIP_STRIP_HEIGHT } from './constants';
 import type { PianoKeyboardProps } from './types';
 
 /**
@@ -84,7 +84,7 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
   const { theme } = useTheme();
   const [hoveredPitch, setHoveredPitch] = useState<number | null>(null);
 
-  const gridHeight = height - RULER_HEIGHT;
+  const gridHeight = height - RULER_HEIGHT - CLIP_STRIP_HEIGHT;
 
   const keyElements = useMemo(() => {
     const elements: React.ReactNode[] = [];
@@ -192,10 +192,10 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
         borderRight: `1px solid ${KEY_BORDER}`,
       }}
     >
-      {/* Empty top area aligned with ruler */}
+      {/* Empty top area aligned with ruler + clip strip */}
       <div
         style={{
-          height: RULER_HEIGHT,
+          height: RULER_HEIGHT + CLIP_STRIP_HEIGHT,
           flexShrink: 0,
           background: theme.background.surface.elevated,
           borderBottom: `1px solid ${theme.border.onElevated}`,

@@ -4,6 +4,7 @@ import { PianoRollHeader } from './PianoRollHeader';
 import { PianoRollSidebar } from './PianoRollSidebar';
 import { PianoKeyboard } from './PianoKeyboard';
 import { PianoRollRuler } from './PianoRollRuler';
+import { PianoRollClipStrip } from './PianoRollClipStrip';
 import { NoteGrid } from './NoteGrid';
 import {
   DEFAULT_PANEL_HEIGHT,
@@ -14,6 +15,7 @@ import {
   SIDEBAR_WIDTH,
   HEADER_HEIGHT,
   RULER_HEIGHT,
+  CLIP_STRIP_HEIGHT,
 } from './constants';
 import type { PianoRollPanelProps } from './types';
 
@@ -41,6 +43,8 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   onClose,
   onCreateClipWithNote,
   onResizeClip,
+  onSelectClip,
+  trackColor,
   playheadPosition,
   timeMode = 'global',
 }) => {
@@ -98,7 +102,8 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   }, [panelHeight]);
 
   const contentHeight = panelHeight - HEADER_HEIGHT;
-  const gridHeight = contentHeight - RULER_HEIGHT;
+  const gridHeight = contentHeight - RULER_HEIGHT - CLIP_STRIP_HEIGHT;
+  const timeOffset = timeMode === 'local' ? (clip?.start ?? 0) : 0;
 
   return (
     <div
@@ -154,6 +159,22 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               timeBasis={timeBasis}
             />
 
+            {/* Clip strip */}
+            <PianoRollClipStrip
+              clips={allClips ?? (clip ? [clip] : [])}
+              activeClipId={clip?.id}
+              pixelsPerSecond={pixelsPerSecond}
+              scrollX={scrollX}
+              width={gridWidth}
+              timeOffset={timeOffset}
+              snap={snap}
+              bpm={bpm}
+              onResizeClip={onResizeClip ? (edge, newStart, newDuration, clipId) => onResizeClip(edge, newStart, newDuration, clipId) : undefined}
+              onSelectClip={onSelectClip}
+              trackColor={trackColor}
+              timeMode={timeMode}
+            />
+
             {/* Note grid */}
             <NoteGrid
               clip={clip}
@@ -181,6 +202,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               onPixelsPerSecondChange={onPixelsPerSecondChange}
               onScrollXChange={onScrollXChange}
               onResizeClip={onResizeClip}
+              trackColor={trackColor}
             />
 
             {/* Playhead cursor */}

@@ -55,6 +55,10 @@ export interface NoteRectProps {
    */
   ghost?: boolean;
   /**
+   * Track color name (e.g. 'blue', 'violet') — uses corresponding clip color from theme
+   */
+  trackColor?: string;
+  /**
    * Additional CSS class names
    */
   className?: string;
@@ -69,6 +73,7 @@ export const NoteRect: React.FC<NoteRectProps> = ({
   isSelected,
   onMouseDown,
   ghost = false,
+  trackColor,
   className = '',
 }) => {
   const { theme } = useTheme();
@@ -95,14 +100,20 @@ export const NoteRect: React.FC<NoteRectProps> = ({
   const showLabel = width > 30;
   const noteName = pitchToName(note.pitch);
 
+  // Use track color from clip theme when available, otherwise fall back to piano roll theme
+  const clipColors = trackColor ? (theme.audio.clip as Record<string, any>)[trackColor] : null;
+  const noteFill = clipColors?.header ?? pr.noteFill;
+  const noteFillSelected = clipColors?.headerSelected ?? pr.noteFillSelected;
+  const noteBorder = clipColors?.waveform ?? pr.noteBorder;
+
   // Lighten the fill for hover state
-  const hoverFill = isSelected ? pr.noteFillSelected : pr.noteFill;
+  const hoverFill = isSelected ? noteFillSelected : noteFill;
 
   const style = {
-    '--note-fill': pr.noteFill,
+    '--note-fill': noteFill,
     '--note-fill-hover': hoverFill,
-    '--note-fill-selected': pr.noteFillSelected,
-    '--note-border': pr.noteBorder,
+    '--note-fill-selected': noteFillSelected,
+    '--note-border': noteBorder,
     '--note-border-selected': pr.noteBorderSelected,
     left: x,
     top: y + 1,
