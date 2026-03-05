@@ -44,6 +44,8 @@ function CanvasDemoContent() {
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const [scrollX, setScrollX] = React.useState(0);
   const [scrollY, setScrollY] = React.useState(0);
+  const scrollRafRef = React.useRef<number | null>(null);
+  const pendingScrollRef = React.useRef<{ x: number; y: number } | null>(null);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
   const [homeTabKey, setHomeTabKey] = React.useState(0);
@@ -438,50 +440,69 @@ function CanvasDemoContent() {
   maxPpsRef.current = maxPixelsPerSecond;
   setPixelsPerSecondRef.current = _setPixelsPerSecond;
 
+  const isZoomingRef = React.useRef(false);
+
   React.useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
     const handleWheel = (e: WheelEvent) => {
       if (e.metaKey || e.ctrlKey) {
-        // Cmd/Ctrl + scroll = zoom toward cursor
         e.preventDefault();
         const rect = el.getBoundingClientRect();
         const cursorX = e.clientX - rect.left;
         const timeAtCursor = (cursorX + el.scrollLeft) / ppsRef.current;
 
         const zoomDelta = e.deltaY || e.deltaX;
-        const zoomFactor = zoomDelta > 0 ? 0.9 : 1.1;
+        const zoomFactor = Math.pow(0.998, zoomDelta);
         const newPps = Math.max(MIN_ZOOM, Math.min(maxPpsRef.current, ppsRef.current * zoomFactor));
 
-        // Update zoom level
+        // Update ref immediately so scroll correction uses new value
+        ppsRef.current = newPps;
+
+        // Suppress scroll state updates during zoom to avoid extra re-renders
+        isZoomingRef.current = true;
+
+        // Set scroll position before React re-render
+        el.scrollLeft = Math.max(0, timeAtCursor * newPps - cursorX);
+
+        // Trigger single React update for zoom level
         setPixelsPerSecondRef.current(newPps);
 
-        // Adjust scroll to keep cursor position stable
-        const newScrollLeft = timeAtCursor * newPps - cursorX;
+        // Clear zooming flag after React has processed the update
         requestAnimationFrame(() => {
-          el.scrollLeft = Math.max(0, newScrollLeft);
+          isZoomingRef.current = false;
         });
       }
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
-  }, []);
+  }, [activeMenuItem]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const scrollTop = e.currentTarget.scrollTop;
 
-    setScrollX(scrollLeft);
-    setScrollY(scrollTop);
-
-    // Sync vertical scroll with track headers (skip if this was triggered by sync)
+    // Sync vertical scroll with track headers immediately (DOM-only, no React)
     if (trackHeaderScrollRef.current && isScrollingSyncRef.current !== 'canvas') {
       isScrollingSyncRef.current = 'header';
       trackHeaderScrollRef.current.scrollTop = scrollTop;
       requestAnimationFrame(() => {
         if (isScrollingSyncRef.current === 'header') isScrollingSyncRef.current = null;
+      });
+    }
+
+    // Throttle React state updates to once per animation frame
+    pendingScrollRef.current = { x: scrollLeft, y: scrollTop };
+    if (scrollRafRef.current === null) {
+      scrollRafRef.current = requestAnimationFrame(() => {
+        scrollRafRef.current = null;
+        const pending = pendingScrollRef.current;
+        if (pending) {
+          setScrollX(pending.x);
+          setScrollY(pending.y);
+        }
       });
     }
   };
