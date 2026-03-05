@@ -30,6 +30,8 @@ import { useDialogState } from './hooks/useDialogState';
 import { useContextMenuState } from './hooks/useContextMenuState';
 import { useLoopRegion } from './hooks/useLoopRegion';
 
+const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
+
 type Workspace = 'classic' | 'spectral-editing';
 
 function CanvasDemoContent() {
@@ -264,7 +266,7 @@ function CanvasDemoContent() {
   const {
     pixelsPerSecond, setPixelsPerSecond: _setPixelsPerSecond,
     zoomIn, zoomOut, zoomToSelection, zoomToFitProject, zoomToggle,
-    timelineWidth, timelineDuration,
+    timelineWidth, timelineDuration, maxPixelsPerSecond,
   } = useZoomControls({
     state: { tracks: state.tracks, timeSelection: state.timeSelection },
     scrollContainerRef,
@@ -426,6 +428,45 @@ function CanvasDemoContent() {
       document.removeEventListener('focusin', handleFocusChange);
     };
   }, [showFocusDebug]);
+
+  // Wheel-to-zoom: Cmd/Ctrl + scroll zooms toward cursor (like piano roll)
+  const ppsRef = React.useRef(pixelsPerSecond);
+  const maxPpsRef = React.useRef(maxPixelsPerSecond);
+  const setPixelsPerSecondRef = React.useRef(_setPixelsPerSecond);
+  ppsRef.current = pixelsPerSecond;
+  maxPpsRef.current = maxPixelsPerSecond;
+  setPixelsPerSecondRef.current = _setPixelsPerSecond;
+
+  React.useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl + scroll = zoom toward cursor
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const cursorX = e.clientX - rect.left;
+        const timeAtCursor = (cursorX + el.scrollLeft) / ppsRef.current;
+
+        const zoomDelta = e.deltaY || e.deltaX;
+        const zoomFactor = zoomDelta > 0 ? 0.9 : 1.1;
+        const newPps = Math.max(MIN_ZOOM, Math.min(maxPpsRef.current, ppsRef.current * zoomFactor));
+
+        // Update zoom level
+        setPixelsPerSecondRef.current(newPps);
+
+        // Adjust scroll to keep cursor position stable
+        const newScrollLeft = timeAtCursor * newPps - cursorX;
+        requestAnimationFrame(() => {
+          el.scrollLeft = Math.max(0, newScrollLeft);
+        });
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;

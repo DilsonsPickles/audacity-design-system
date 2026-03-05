@@ -776,9 +776,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
     // Selected tracks: #647F8F when dragging, #627788 when finalized
     // Unselected tracks: #313846
+    // Use rgba so grid lines remain visible through the selection
     const overlayColor = isSelected
-      ? (isTimeSelectionDragging ? '#647F8F' : '#627788')
-      : '#313846';
+      ? (isTimeSelectionDragging ? 'rgba(100, 127, 143, 0.55)' : 'rgba(98, 119, 136, 0.55)')
+      : 'rgba(49, 56, 70, 0.55)';
 
     return (
       <div
