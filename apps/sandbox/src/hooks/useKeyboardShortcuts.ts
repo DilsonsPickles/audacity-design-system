@@ -24,6 +24,7 @@ export interface UseKeyboardShortcutsOptions {
   state: TracksState;
   dispatch: React.Dispatch<TracksAction>;
   handlePlay: () => void;
+  handleRecord: () => void;
   selectionAnchor: number | null;
   setSelectionAnchor: React.Dispatch<React.SetStateAction<number | null>>;
   selectionAnchorRef: React.MutableRefObject<number | null>;
@@ -44,6 +45,7 @@ export interface UseKeyboardShortcutsOptions {
  * Handles:
  * - Escape: Clear time selection
  * - Space: Play/pause
+ * - R: Toggle recording
  * - E: Toggle effects panel
  * - F6: Flat navigation block jumping
  * - Arrow Up/Down: Track focus movement with Shift for range selection
@@ -64,6 +66,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     state,
     dispatch,
     handlePlay,
+    handleRecord,
     selectionAnchor,
     setSelectionAnchor,
     selectionAnchorRef,
@@ -211,6 +214,20 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (!isTextField) {
           e.preventDefault(); // Prevent page scroll
           handlePlay();
+          return;
+        }
+      }
+
+      // "R" key to toggle recording
+      if (e.key === 'r' || e.key === 'R') {
+        const target = e.target as HTMLElement;
+        const isTextInput = target.tagName === 'INPUT' ||
+                            target.tagName === 'TEXTAREA' ||
+                            target.getAttribute('role') === 'textbox' ||
+                            target.isContentEditable;
+        if (!isTextInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          handleRecord();
           return;
         }
       }

@@ -323,7 +323,7 @@ function CanvasDemoContent() {
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    state, dispatch, handlePlay,
+    state, dispatch, handlePlay, handleRecord,
     selectionAnchor, setSelectionAnchor,
     selectionAnchorRef, selectionEdgesRef,
     effectsPanel, setEffectsPanel,
