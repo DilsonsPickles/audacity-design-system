@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RecordingManager } from '../utils/RecordingManager';
 import { generateRmsWaveform } from '../utils/rmsWaveform';
-import { toast } from '@audacity-ui/components';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 
@@ -92,7 +91,6 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
 
       // If still no track found, we need at least one audio track
       if (trackIndex === -1) {
-        toast.error('Please add an audio track before recording');
         return;
       }
 

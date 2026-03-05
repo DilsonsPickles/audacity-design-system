@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, toast } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button } from '@audacity-ui/components';
 
 type Workspace = 'classic' | 'spectral-editing';
 
@@ -177,17 +177,17 @@ export function TransportToolbar({
                 <ToolButton
                   icon="cut"
                   ariaLabel="Cut"
-                  onClick={() => toast.info('Cut', 'Selected audio has been cut to clipboard', undefined, 6000)}
+                  onClick={() => {}}
                 />
                 <ToolButton
                   icon="copy"
                   ariaLabel="Copy"
-                  onClick={() => toast.info('Copy', 'Selected audio has been copied to clipboard', undefined, 6000)}
+                  onClick={() => {}}
                 />
                 <ToolButton
                   icon="paste"
                   ariaLabel="Paste"
-                  onClick={() => toast.info('Paste', 'Audio has been pasted from clipboard', undefined, 6000)}
+                  onClick={() => {}}
                 />
               </ToolbarButtonGroup>
 

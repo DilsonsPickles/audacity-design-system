@@ -510,7 +510,6 @@ function CanvasDemoContent() {
   // Generate tone handler
   const handleGenerateTone = async () => {
     if (state.selectedTrackIndices.length === 0) {
-      toast.error('Please select a track first');
       return;
     }
 
@@ -553,7 +552,6 @@ function CanvasDemoContent() {
     }
 
     audioManager.loadClips(state.tracks);
-    toast.success('Generated 4-second tone');
   };
 
   // Sync toast handler for cloud save
@@ -849,9 +847,7 @@ function CanvasDemoContent() {
                 dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
 
                 setActiveMenuItem('project');
-                toast.success('Project loaded');
               } else {
-                toast.error('Project not found');
               }
             }}
             onOpenOther={() => console.log('Open other')}

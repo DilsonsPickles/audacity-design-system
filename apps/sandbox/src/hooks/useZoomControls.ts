@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, RefObject } from 'react';
-import { toast } from '@audacity-ui/components';
 import type { Track } from '../contexts/TracksContext';
 import type { TimeSelection } from '@audacity-ui/core';
 
@@ -154,7 +153,6 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
 
   const zoomToSelection = useCallback(() => {
     if (!state.timeSelection) {
-      toast.warning('No Selection', 'Please select a time range first');
       return;
     }
 
@@ -192,7 +190,6 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
 
     // If no clips found, show a message
     if (projectStart === Infinity || projectEnd === 0) {
-      toast.warning('No Audio', 'Project has no audio clips to display');
       return;
     }
 
