@@ -328,6 +328,7 @@ function CanvasDemoContent() {
     clipboard, setClipboard,
     isFlatNavigation, controlPanelHasFocus,
     toggleLoopRegion,
+    audioManagerRef,
   });
 
   // Sync playhead position with TimeCode display

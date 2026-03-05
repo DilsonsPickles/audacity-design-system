@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import { scrollIntoViewIfNeeded } from '@audacity-ui/components';
+import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { applySplitCut } from '../utils/cutOperations';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 
@@ -34,6 +35,7 @@ export interface UseKeyboardShortcutsOptions {
   isFlatNavigation: boolean;
   controlPanelHasFocus: number | null;
   toggleLoopRegion: () => void;
+  audioManagerRef: React.RefObject<AudioPlaybackManager>;
 }
 
 /**
@@ -73,6 +75,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     isFlatNavigation,
     controlPanelHasFocus,
     toggleLoopRegion,
+    audioManagerRef,
   } = options;
 
   // Track whether the user is navigating via keyboard or mouse.
@@ -887,10 +890,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 selected: true,
                 color: state.tracks[destTrackIndex].color,
               },
+              sourceClipId: clipData.id,
               destTrackIndex,
             };
           })
-          .filter((item): item is { clip: any; destTrackIndex: number } => item !== null);
+          .filter((item): item is { clip: any; sourceClipId: string | number; destTrackIndex: number } => item !== null);
 
         // Group clips by destination track
         const clipsByTrack = new Map<number, any[]>();
@@ -914,6 +918,17 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         });
 
         dispatch({ type: 'SET_TRACKS', payload: updatedTracks });
+
+        // Copy audio buffers for pasted clips so they play back correctly
+        const audioManager = audioManagerRef.current;
+        if (audioManager) {
+          newClipsWithTracks.forEach(({ clip, sourceClipId }) => {
+            const buffer = audioManager.getClipBuffer(sourceClipId);
+            if (buffer) {
+              audioManager.addClipBuffer(clip.id, buffer);
+            }
+          });
+        }
 
         // Note: Clipboard is NOT cleared after paste, allowing multiple pastes for both cut and copy
         return;

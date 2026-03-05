@@ -134,6 +134,13 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Get the audio buffer for a specific clip
+   */
+  getClipBuffer(clipId: string | number): AudioBuffer | undefined {
+    return this.audioBuffers.get(String(clipId));
+  }
+
+  /**
    * Set the effect chain for a specific track
    */
   setTrackEffectChain(trackIndex: number, effects: Tone.ToneAudioNode[]): void {
