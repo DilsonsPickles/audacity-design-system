@@ -103,6 +103,15 @@ export const EffectDialog: React.FC<EffectDialogProps> = ({
     '--effect-dialog-footer-border': theme.border.divider,
   } as React.CSSProperties;
 
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-focus the dialog when it opens
+  React.useEffect(() => {
+    if (isOpen && dialogRef.current) {
+      dialogRef.current.focus();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -112,6 +121,7 @@ export const EffectDialog: React.FC<EffectDialogProps> = ({
 
       {/* Dialog */}
       <div
+        ref={dialogRef}
         className={`effect-dialog ${className}`}
         style={{
           ...style,
@@ -121,6 +131,14 @@ export const EffectDialog: React.FC<EffectDialogProps> = ({
         role="dialog"
         aria-labelledby="effect-dialog-title"
         aria-modal="true"
+        tabIndex={-1}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }
+        }}
       >
         {/* Header */}
         <DialogHeader

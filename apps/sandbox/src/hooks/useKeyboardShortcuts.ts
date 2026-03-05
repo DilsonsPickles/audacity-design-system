@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
-import { toast, scrollIntoViewIfNeeded } from '@audacity-ui/components';
+import { scrollIntoViewIfNeeded } from '@audacity-ui/components';
 import { applySplitCut } from '../utils/cutOperations';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 
@@ -301,10 +301,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
       // Move track focus with up/down arrow keys
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        // Don't handle if focus is inside any tab group (toolbar, menubar, track header, etc.)
+        // Don't handle if focus is inside any tab group or region (toolbar, menubar, effects panel, etc.)
         // These containers handle their own arrow key navigation.
         const target = e.target as HTMLElement;
-        if (target.closest('[role="toolbar"], [role="group"], [role="menubar"]')) {
+        if (target.closest('[role="toolbar"], [role="group"], [role="menubar"], [role="region"], [role="menu"]') || target.hasAttribute('data-clip-id')) {
           return;
         }
 
@@ -356,11 +356,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
         // Skip elements that handle their own arrow key navigation
         const target = e.target as HTMLElement;
-        if (target.closest('[role="toolbar"], [role="menubar"]') || target.hasAttribute('data-clip-id')) {
+        if (target.closest('[role="toolbar"], [role="menubar"], [role="menu"]') || target.hasAttribute('data-clip-id')) {
           return;
         }
 
         const moveAmount = 0.1; // Move by 0.1 seconds
+        const isLeftward = e.key === 'ArrowLeft';
 
         if (e.shiftKey && e.metaKey && state.timeSelection) {
           // REDUCE mode (Cmd+Shift): Trim existing selection inward
@@ -374,7 +375,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             };
           }
 
-          if (e.key === 'ArrowLeft') {
+          if (isLeftward) {
             // Cmd+Shift+Left: Move RIGHT edge LEFT (trim from right)
             const newEndTime = Math.max(
               selectionEdgesRef.current.startTime + 0.1, // Min selection size
@@ -410,23 +411,31 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           // EXTEND mode (Shift): extend selection edges outward, don't move playhead
           e.preventDefault();
 
-          if (!state.timeSelection) {
-            // No selection yet — create one at the playhead position
+          // If playhead is outside the current selection, start a new selection from playhead
+          const playheadOutsideSelection = state.timeSelection && (
+            state.playheadPosition < state.timeSelection.startTime - 0.001 ||
+            state.playheadPosition > state.timeSelection.endTime + 0.001
+          );
+
+          if (!state.timeSelection || playheadOutsideSelection) {
+            // No selection or playhead moved away — start fresh from playhead
             dispatch({ type: 'DESELECT_ALL_CLIPS' });
             if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
               const allTrackIndices = state.tracks.map((_, idx) => idx);
               dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
             }
+            selectionEdgesRef.current = { startTime: state.playheadPosition, endTime: state.playheadPosition };
           }
 
-          // Initialize edges ref from existing selection or playhead
+          // Initialize edges ref from existing selection if not yet set
           if (!selectionEdgesRef.current) {
-            selectionEdgesRef.current = state.timeSelection
-              ? { startTime: state.timeSelection.startTime, endTime: state.timeSelection.endTime }
-              : { startTime: state.playheadPosition, endTime: state.playheadPosition };
+            selectionEdgesRef.current = {
+              startTime: state.timeSelection!.startTime,
+              endTime: state.timeSelection!.endTime,
+            };
           }
 
-          if (e.key === 'ArrowLeft') {
+          if (isLeftward) {
             // Shift+Left: extend left edge leftward, playhead follows left edge
             selectionEdgesRef.current.startTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
             dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: selectionEdgesRef.current.startTime });
@@ -552,48 +561,96 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Move playhead with comma and period keys for larger jumps (or create time selection with Shift)
+      // Comma/Period: Same as ArrowLeft/ArrowRight but with 1s jumps
       // Note: When shift is held, browser sends '<' for shift+comma and '>' for shift+period
       if (e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>') {
         e.preventDefault();
         const moveAmount = 1.0; // Move by 1 second (larger jumps than arrow keys)
-        // Handle both , and < (shift+comma), . and > (shift+period)
-        const delta = (e.key === '.' || e.key === '>') ? moveAmount : -moveAmount;
+        const isLeftward = e.key === ',' || e.key === '<';
 
-        if (e.shiftKey || e.key === '<' || e.key === '>') {
-          // Create or extend time selection
-          const newPlayheadPosition = Math.max(0, state.playheadPosition + delta);
+        if (e.shiftKey && e.metaKey && state.timeSelection) {
+          // REDUCE mode (Cmd+Shift): Trim existing selection inward
+          if (!selectionEdgesRef.current) {
+            selectionEdgesRef.current = {
+              startTime: state.timeSelection.startTime,
+              endTime: state.timeSelection.endTime,
+            };
+          }
 
-          if (selectionAnchorRef.current === null) {
-            // Start a new selection - set anchor to current playhead position
-            selectionAnchorRef.current = state.playheadPosition;
+          if (isLeftward) {
+            const newEndTime = Math.max(
+              selectionEdgesRef.current.startTime + 0.1,
+              selectionEdgesRef.current.endTime - moveAmount
+            );
+            selectionEdgesRef.current.endTime = newEndTime;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: selectionEdgesRef.current.startTime,
+                endTime: newEndTime,
+              },
+            });
+          } else {
+            const newStartTime = Math.min(
+              selectionEdgesRef.current.endTime - 0.1,
+              selectionEdgesRef.current.startTime + moveAmount
+            );
+            selectionEdgesRef.current.startTime = newStartTime;
+            dispatch({
+              type: 'SET_TIME_SELECTION',
+              payload: {
+                startTime: newStartTime,
+                endTime: selectionEdgesRef.current.endTime,
+              },
+            });
+          }
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: selectionEdgesRef.current.startTime });
+          scrollPlayheadIntoView();
+        } else if (e.shiftKey || e.key === '<' || e.key === '>') {
+          // EXTEND mode (Shift): extend selection edges outward
 
-            // Deselect all clips when making a time selection
+          // If playhead is outside the current selection, start a new selection from playhead
+          const playheadOutsideSelection = state.timeSelection && (
+            state.playheadPosition < state.timeSelection.startTime - 0.001 ||
+            state.playheadPosition > state.timeSelection.endTime + 0.001
+          );
+
+          if (!state.timeSelection || playheadOutsideSelection) {
             dispatch({ type: 'DESELECT_ALL_CLIPS' });
-
-            // Auto-select all tracks when creating a new time selection
             if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
               const allTrackIndices = state.tracks.map((_, idx) => idx);
               dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
             }
+            selectionEdgesRef.current = { startTime: state.playheadPosition, endTime: state.playheadPosition };
           }
 
-          // Create selection between anchor and new playhead position
-          const newSelection = {
-            startTime: Math.min(selectionAnchorRef.current, newPlayheadPosition),
-            endTime: Math.max(selectionAnchorRef.current, newPlayheadPosition),
-          };
+          if (!selectionEdgesRef.current) {
+            selectionEdgesRef.current = {
+              startTime: state.timeSelection!.startTime,
+              endTime: state.timeSelection!.endTime,
+            };
+          }
+
+          if (isLeftward) {
+            selectionEdgesRef.current.startTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: selectionEdgesRef.current.startTime });
+          } else {
+            selectionEdgesRef.current.endTime = selectionEdgesRef.current.endTime + moveAmount;
+          }
+
           dispatch({
             type: 'SET_TIME_SELECTION',
-            payload: newSelection,
+            payload: {
+              startTime: selectionEdgesRef.current.startTime,
+              endTime: selectionEdgesRef.current.endTime,
+            },
           });
-
-          // Always update playhead position
-          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
           scrollPlayheadIntoView();
         } else {
-          // Normal playhead movement (no shift) - clear the selection anchor
+          // Plain , / .: move playhead
           selectionAnchorRef.current = null;
+          selectionEdgesRef.current = null;
+          const delta = isLeftward ? -moveAmount : moveAmount;
           const newPosition = Math.max(0, state.playheadPosition + delta);
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
           scrollPlayheadIntoView();
@@ -626,9 +683,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           selectionAnchorRef.current = null;
           selectionEdgesRef.current = null;
 
-          toast.success(`Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
         } else {
-          toast.warning('No time selection - create a time selection first (Shift+, and Shift+. or Shift+click and drag)');
         }
         return;
       }
@@ -661,10 +716,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               operation: 'copy',
               timeSelection: { startTime, endTime }
             });
-            const duration = (endTime - startTime).toFixed(2);
-            toast.success(`Copied ${duration}s of audio from ${clipsInSelection.length} clip${clipsInSelection.length > 1 ? 's' : ''}`);
           } else {
-            toast.warning('No audio in time selection');
           }
           return;
         }
@@ -681,9 +733,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
         if (selectedClips.length > 0) {
           setClipboard({ clips: selectedClips, operation: 'copy' });
-          toast.success(`Copied ${selectedClips.length} clip${selectedClips.length > 1 ? 's' : ''}`);
         } else {
-          toast.warning('No selection to copy');
         }
         return;
       }
@@ -726,10 +776,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
             dispatch({ type: 'SET_TRACKS', payload: tracksAfterCut });
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-            const duration = (endTime - startTime).toFixed(2);
-            toast.success(`Cut ${duration}s of audio from ${clipsInSelection.length} clip${clipsInSelection.length > 1 ? 's' : ''}`);
           } else {
-            toast.warning('No audio in time selection');
           }
           return;
         }
@@ -756,7 +803,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           }));
 
           dispatch({ type: 'SET_TRACKS', payload: tracksAfterCut });
-          toast.success(`Cut ${selectedClips.length} clip${selectedClips.length > 1 ? 's' : ''}`);
         }
         return;
       }
@@ -766,14 +812,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         e.preventDefault();
 
         if (!clipboard || clipboard.clips.length === 0) {
-          toast.warning('Nothing to paste');
           return;
         }
 
         // Paste at playhead position on the focused track
         const targetTrackIndex = state.focusedTrackIndex ?? 0;
         if (targetTrackIndex < 0 || targetTrackIndex >= state.tracks.length) {
-          toast.error('No valid track to paste to');
           return;
         }
 
@@ -841,6 +885,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
                 id: maxClipId + index + 1,
                 start: clipData.start + timeOffset,
                 selected: true,
+                color: state.tracks[destTrackIndex].color,
               },
               destTrackIndex,
             };
@@ -871,12 +916,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         dispatch({ type: 'SET_TRACKS', payload: updatedTracks });
 
         // Note: Clipboard is NOT cleared after paste, allowing multiple pastes for both cut and copy
-        const totalPasted = newClipsWithTracks.length;
-        const tracksAffected = clipsByTrack.size;
-        const message = tracksAffected > 1
-          ? `Pasted ${totalPasted} clip${totalPasted > 1 ? 's' : ''} across ${tracksAffected} tracks`
-          : `Pasted ${totalPasted} clip${totalPasted > 1 ? 's' : ''}`;
-        toast.success(message);
         return;
       }
 
@@ -977,15 +1016,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
             }
 
-            const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
-            toast.success(`${cutModeLabel}: Deleted label(s) and ${(endTime - startTime).toFixed(2)}s from timeline`);
           } else {
             // Clear time selection even when not deleting time
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
             // Clear selection anchor so next Shift+. starts fresh
             selectionAnchorRef.current = null;
             selectionEdgesRef.current = null;
-            toast.info(`Deleted ${state.selectedLabelIds.length} label(s)`);
           }
           return;
         }
@@ -1016,8 +1052,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPlayheadPosition });
           }
 
-          const cutModeLabel = state.cutMode === 'split' ? 'Split cut' : 'Ripple cut';
-          toast.success(`${cutModeLabel}: Deleted ${(endTime - startTime).toFixed(2)}s from timeline`);
           return;
         }
 

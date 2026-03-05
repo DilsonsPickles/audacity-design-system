@@ -82,6 +82,12 @@ export interface EffectSlotProps {
    * Custom active color for the toggle button (e.g., orange for master effects)
    */
   activeColor?: string;
+
+  /**
+   * Called when Cmd+Up/Down is pressed to reorder this slot.
+   * direction: -1 for up, +1 for down.
+   */
+  onReorder?: (direction: -1 | 1) => void;
 }
 
 /**
@@ -104,10 +110,15 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
   className = '',
   style: customStyle,
   activeColor,
+  onReorder,
 }) => {
   const { theme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isNavigatingInside, setIsNavigatingInside] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const slotRef = React.useRef<HTMLDivElement>(null);
+  const dragHandleRef = React.useRef<HTMLDivElement>(null);
 
   const handleSettingsClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -115,6 +126,131 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
     setMenuPosition({ x: rect.right + 4, y: rect.top });
     setMenuOpen(true);
     onShowSettings?.();
+  };
+
+  // Manage tabIndex on internal focusable elements
+  React.useEffect(() => {
+    if (!slotRef.current) return;
+    const focusables = slotRef.current.querySelectorAll<HTMLElement>(
+      'button, input, select, [role="button"]'
+    );
+    focusables.forEach((el) => {
+      el.tabIndex = isNavigatingInside ? 0 : -1;
+    });
+  }, [isNavigatingInside, effectName, enabled]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const isSlotFocused = document.activeElement === slotRef.current;
+
+    if (!isNavigatingInside && isSlotFocused) {
+      // Cmd+Up/Down reorders the slot (only when focused on the row itself)
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        if (onReorder) {
+          e.preventDefault();
+          e.stopPropagation();
+          onReorder(e.key === 'ArrowUp' ? -1 : 1);
+        }
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsNavigatingInside(true);
+        // Focus first internal control after state update
+        setTimeout(() => {
+          const dragHandle = slotRef.current?.querySelector<HTMLElement>('.effect-slot__drag-handle');
+          if (dragHandle) {
+            dragHandle.focus();
+          } else {
+            const first = slotRef.current?.querySelector<HTMLElement>('button, input, select');
+            first?.focus();
+          }
+        }, 0);
+        return;
+      }
+    } else if (isNavigatingInside) {
+      // Move mode: Enter on drag handle activates, Up/Down reorders, Enter/Escape exits
+      if (isMoving) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          onReorder?.(e.key === 'ArrowUp' ? -1 : 1);
+          return;
+        }
+        if (e.key === 'Escape' || e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsMoving(false);
+          return;
+        }
+        // Block all other keys while in move mode
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // Enter on drag handle enters move mode
+      if (e.key === 'Enter' && document.activeElement === dragHandleRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsMoving(true);
+        return;
+      }
+
+      // Arrow keys cycle between controls within this slot
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        const focusables = Array.from(
+          slotRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+          ) ?? []
+        );
+        const idx = focusables.indexOf(document.activeElement as HTMLElement);
+        if (idx === -1) return;
+        const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+        let next = forward ? idx + 1 : idx - 1;
+        if (next >= focusables.length) next = 0;
+        if (next < 0) next = focusables.length - 1;
+        focusables[next].focus();
+        return;
+      }
+
+      // Escape returns to the slot row
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsNavigatingInside(false);
+        setIsMoving(false);
+        slotRef.current?.focus();
+        return;
+      }
+
+      // Tab exits the slot — let the panel's container tab group handle it
+      if (e.key === 'Tab') {
+        setIsNavigatingInside(false);
+        setIsMoving(false);
+        return;
+      }
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent) => {
+    // If a child receives focus (not the slot row itself), enter navigation mode
+    // This handles focus restoration from dialogs landing on a child element
+    if (e.target !== slotRef.current && slotRef.current?.contains(e.target as Node)) {
+      if (!isNavigatingInside) {
+        setIsNavigatingInside(true);
+      }
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent) => {
+    // If focus leaves the slot entirely, exit navigation mode
+    if (!slotRef.current?.contains(e.relatedTarget as Node)) {
+      setIsNavigatingInside(false);
+      setIsMoving(false);
+    }
   };
 
   const themeStyle = {
@@ -132,8 +268,15 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
 
   return (
     <div
+      ref={slotRef}
       className={`effect-slot ${isDragging ? 'effect-slot--dragging' : ''} ${className}`}
       style={{ ...themeStyle, ...customStyle }}
+      tabIndex={-1}
+      role="group"
+      aria-label={effectName}
+      onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
       draggable
       onDragStart={onDragStart}
       onDragOver={onDragOver}
@@ -142,10 +285,11 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
     >
       {/* Drag handle */}
       <div
-        className="effect-slot__drag-handle"
+        ref={dragHandleRef}
+        className={`effect-slot__drag-handle ${isMoving ? 'effect-slot__drag-handle--moving' : ''}`}
         tabIndex={-1}
         role="button"
-        aria-label="Drag to reorder effect"
+        aria-label={isMoving ? 'Moving effect — use Up/Down arrows, Escape to stop' : 'Press Enter to reorder effect'}
       >
         <Icon name="gripper" size={16} />
       </div>

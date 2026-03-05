@@ -29,6 +29,7 @@
   flex-direction: column;
   z-index: 10000;
   overflow: hidden;
+  outline: none;
 }
 
 /* Content */

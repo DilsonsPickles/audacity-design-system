@@ -210,7 +210,13 @@ export function AppDialogs(props: AppDialogsProps) {
           <EffectDialog
             effectName={effectDialog.effectName}
             isOpen={effectDialog.isOpen}
-            onClose={() => setEffectDialog(null)}
+            onClose={() => {
+              const trigger = effectDialog.triggerElement;
+              setEffectDialog(null);
+              if (trigger) {
+                setTimeout(() => trigger.focus(), 0);
+              }
+            }}
             headerSlot={
               <EffectHeader
                 automationEnabled={effect?.enabled ?? true}
@@ -235,9 +241,9 @@ export function AppDialogs(props: AppDialogsProps) {
                   }
                 }}
                 presetName="Default preset"
-                onSavePreset={() => toast.info('Save preset')}
-                onUndo={() => toast.info('Undo')}
-                onDeletePreset={() => toast.info('Delete preset')}
+                onSavePreset={() => {}}
+                onUndo={() => {}}
+                onDeletePreset={() => {}}
                 onMoreOptions={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   setEffectContextMenu({
@@ -249,10 +255,8 @@ export function AppDialogs(props: AppDialogsProps) {
               />
             }
             onOk={() => {
-              toast.success(`Applied ${effectDialog.effectName}`);
             }}
             onPreview={() => {
-              toast.info(`Previewing ${effectDialog.effectName}`);
             }}
             hideFooter={effectDialog.effectName === 'Reverb'}
           >
@@ -295,30 +299,24 @@ export function AppDialogs(props: AppDialogsProps) {
             y={effectContextMenu.y}
             onClose={() => setEffectContextMenu({ ...effectContextMenu, isOpen: false })}
             onSavePreset={() => {
-              toast.success('Preset saved');
               console.log('Save preset clicked');
             }}
             onDeletePreset={() => {
-              toast.info('Delete preset clicked');
               console.log('Delete preset clicked');
             }}
             canDelete={false}
             factoryPresets={['Default', 'Heavy', 'Light', 'Room', 'Hall', 'Cathedral']}
             onSelectFactoryPreset={(preset) => {
-              toast.info(`Factory preset selected: ${preset}`);
               console.log('Factory preset selected:', preset);
             }}
             onImport={() => {
-              toast.info('Import clicked');
               console.log('Import clicked');
             }}
             onExport={() => {
-              toast.info('Export clicked');
               console.log('Export clicked');
             }}
             onShowVendorUI={() => {
               setShowVendorUI(!showVendorUI);
-              toast.info(showVendorUI ? 'Vendor UI hidden' : 'Vendor UI shown');
             }}
             showVendorUI={showVendorUI}
             onOptions={() => {
@@ -572,7 +570,6 @@ export function AppDialogs(props: AppDialogsProps) {
               setPasswordError(hasPasswordError);
 
               if (hasEmailError || hasPasswordError) {
-                toast.error('Please fill in all fields');
                 return;
               }
 
@@ -662,7 +659,7 @@ export function AppDialogs(props: AppDialogsProps) {
 
           {authMode === 'signin' && (
             <div style={{ marginTop: '-8px' }}>
-              <TextLink onClick={() => toast.info('Forgot password clicked')}>
+              <TextLink onClick={() => {}}>
                 Forgot your password?
               </TextLink>
             </div>
@@ -784,7 +781,6 @@ export function AppDialogs(props: AppDialogsProps) {
         onZoomToggleLevel2Change={setZoomToggleLevel2}
         onResetWarnings={() => {
           setDontShowSaveModalAgain(false);
-          toast.success('Warning dialogs reset');
         }}
       />
 
@@ -880,9 +876,7 @@ export function AppDialogs(props: AppDialogsProps) {
                     try {
                       const audioManager = audioManagerRef.current;
                       await audioManager.setAudioOutputDevice(device.deviceId);
-                      toast.success(`Playback device: ${device.label || 'Unknown Device'}`);
                     } catch (error) {
-                      toast.error('Failed to set playback device. Your browser may not support this feature.');
                     }
                   }}
                 />
@@ -901,7 +895,6 @@ export function AppDialogs(props: AppDialogsProps) {
                   onClick={() => {
                     setSelectedRecordingDevice(device.label || 'Unknown Device');
                     setAudioSetupMenuAnchor(null);
-                    toast.success(`Recording device: ${device.label || 'Unknown Device'}`);
                   }}
                 />
               ))}
@@ -915,7 +908,6 @@ export function AppDialogs(props: AppDialogsProps) {
             <ContextMenuItem
               label="Rescan audio devices"
               onClick={() => {
-                toast.info('Rescanning audio devices...');
                 setAudioSetupMenuAnchor(null);
               }}
             />
@@ -923,7 +915,6 @@ export function AppDialogs(props: AppDialogsProps) {
               label="Audio settings"
               onClick={() => {
                 setAudioSetupMenuAnchor(null);
-                toast.info('Opening audio settings...');
               }}
             />
           </div>
@@ -936,10 +927,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onClose={() => dialogs.setIsExportModalOpen(false)}
         onExport={(settings: ExportSettings) => {
           console.log('Export settings:', settings);
-          toast.success(settings.exportType === 'loop-region' ? 'Exporting loop region!' : 'Export started!');
         }}
         onEditMetadata={() => {
-          toast.info('Edit metadata clicked');
         }}
         os={os}
         initialExportType={initialExportType}
@@ -995,8 +984,8 @@ export function AppDialogs(props: AppDialogsProps) {
           });
         }}
         onClose={() => dialogs.setIsLabelEditorOpen(false)}
-        onImport={() => toast.info('Import labels')}
-        onExport={() => toast.info('Export labels')}
+        onImport={() => {}}
+        onExport={() => {}}
         onAddLabel={async () => {
           console.log('onAddLabel called');
           const labelTrackIndex = tracks.findIndex((t: any) => t.clips.length === 0);
@@ -1100,7 +1089,6 @@ export function AppDialogs(props: AppDialogsProps) {
           });
 
           if (!labelToMove || sourceTrackIndex === -1) {
-            toast.error('Label not found');
             return null;
           }
 
@@ -1149,7 +1137,6 @@ export function AppDialogs(props: AppDialogsProps) {
         onClose={() => dialogs.setIsVSTOptionsDialogOpen(false)}
         onConfirm={(bufferSize, latencyCompensation) => {
           console.log('VST Options confirmed:', { bufferSize, latencyCompensation });
-          toast.success('VST options saved');
         }}
       />
 
@@ -1214,11 +1201,9 @@ export function AppDialogs(props: AppDialogsProps) {
           dispatch({ type: 'ADD_MASTER_EFFECT', payload: { id: 'm1', name: 'Limiter', enabled: true } });
           dispatch({ type: 'ADD_MASTER_EFFECT', payload: { id: 'm2', name: 'Mastering EQ', enabled: true } });
 
-          toast.success('Generated tracks successfully');
         }}
         onClearAllTracks={() => {
           dispatch({ type: 'SET_TRACKS', payload: [] });
-          toast.info('Cleared all tracks');
         }}
         onLoadColorTest={() => {
           const colors = ['cyan', 'blue', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green', 'teal'] as const;
@@ -1244,7 +1229,6 @@ export function AppDialogs(props: AppDialogsProps) {
             ],
           }));
           dispatch({ type: 'SET_TRACKS', payload: colorTracks });
-          toast.success('Loaded all 9 clip colours');
         }}
         showFocusDebug={showFocusDebug}
         onShowFocusDebugChange={setShowFocusDebug}

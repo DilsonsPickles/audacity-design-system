@@ -680,7 +680,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           // Add to destination track with new start time
           newTracks[toTrackIndex] = {
             ...newTracks[toTrackIndex],
-            midiClips: [...(newTracks[toTrackIndex].midiClips || []), { ...midiClip!, start: newStartTime }],
+            midiClips: [...(newTracks[toTrackIndex].midiClips || []), { ...midiClip!, start: newStartTime, color: newTracks[toTrackIndex].color }],
           };
         } else {
           // Remove from source track
@@ -691,7 +691,7 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
           // Add to destination track with new start time
           newTracks[toTrackIndex] = {
             ...newTracks[toTrackIndex],
-            clips: [...newTracks[toTrackIndex].clips, { ...clip!, start: newStartTime }],
+            clips: [...newTracks[toTrackIndex].clips, { ...clip!, start: newStartTime, color: newTracks[toTrackIndex].color }],
           };
         }
       }
@@ -813,12 +813,12 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         if (entry.isMidi) {
           newTracks[destIndex] = {
             ...newTracks[destIndex],
-            midiClips: [...(newTracks[destIndex].midiClips || []), entry.clip as any],
+            midiClips: [...(newTracks[destIndex].midiClips || []), { ...(entry.clip as any), color: newTracks[destIndex].color }],
           };
         } else {
           newTracks[destIndex] = {
             ...newTracks[destIndex],
-            clips: [...newTracks[destIndex].clips, entry.clip],
+            clips: [...newTracks[destIndex].clips, { ...entry.clip, color: newTracks[destIndex].color }],
           };
         }
       }

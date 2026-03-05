@@ -40,6 +40,8 @@ export interface EffectDialogState {
   effectName: string;
   trackIndex?: number; // undefined means master effect
   effectIndex: number;
+  /** Element to restore focus to when dialog closes */
+  triggerElement?: HTMLElement | null;
 }
 
 export interface EffectContextMenuState {
@@ -53,6 +55,8 @@ export interface EffectSelectorMenuState {
   x: number;
   y: number;
   trackIndex?: number; // undefined means master effect
+  /** Element to restore focus to when menu closes */
+  triggerElement?: HTMLElement | null;
 }
 
 export interface TimeSelectionContextMenuState {

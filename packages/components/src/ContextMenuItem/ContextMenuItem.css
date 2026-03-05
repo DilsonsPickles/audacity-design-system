@@ -16,6 +16,11 @@
   background-color: var(--context-menu-item-hover-bg);
 }
 
+.context-menu-item:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: -2px;
+}
+
 .context-menu-item.disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -76,7 +81,7 @@
   border: 1px solid var(--context-menu-submenu-border);
   border-radius: 4px;
   box-shadow: var(--context-menu-submenu-shadow);
-  overflow: hidden;
+  overflow: visible;
   z-index: 1000;
   min-width: 180px;
 }

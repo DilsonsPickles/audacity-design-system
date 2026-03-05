@@ -600,6 +600,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
+            // Shift+Arrow Up/Down on a clip: no-op for now, prevent browser default
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+              e.preventDefault();
+              return;
+            }
+
             // Navigate vertically between tracks with arrow up/down (without Cmd or Shift)
             if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
               e.preventDefault();

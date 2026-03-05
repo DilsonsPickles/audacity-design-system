@@ -10,6 +10,13 @@
   height: 24px;
   padding: 8px 0;
   cursor: move;
+  outline: none;
+  border-radius: 2px;
+}
+
+.effect-slot:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: -2px;
 }
 
 .effect-slot--dragging {
@@ -37,6 +44,12 @@
 .effect-slot__drag-handle:focus-visible {
   outline: 2px solid var(--focus-color);
   outline-offset: 1px;
+}
+
+.effect-slot__drag-handle--moving {
+  background: var(--focus-color);
+  color: #fff;
+  border-radius: 2px;
 }
 
 /* Content Container */

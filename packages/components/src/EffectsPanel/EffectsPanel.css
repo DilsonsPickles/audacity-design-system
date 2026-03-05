@@ -20,15 +20,6 @@
   outline: none;
 }
 
-.effects-panel__focusable-container:focus-visible {
-  outline: 2px solid var(--focus-color);
-  outline-offset: -2px;
-}
-
-/* Suppress focus outline when focus came from E shortcut (invisible until Tab reveals it) */
-.effects-panel__focusable-container[data-focus-mouse]:focus {
-  outline: none;
-}
 
 /* Content container - resizable sections */
 .effects-panel__content {
@@ -205,14 +196,9 @@
   overflow-y: auto;
   overflow-x: visible;
   min-height: 0;
-  outline: none;
   border-bottom: 1px solid var(--ep-section-border);
 }
 
-.effects-panel__effect-stack:focus-visible {
-  outline: 2px solid var(--focus-color);
-  outline-offset: -2px;
-}
 
 /* Effect Slot */
 .effects-panel__effect-slot {

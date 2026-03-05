@@ -34,6 +34,8 @@ export interface UseContainerTabGroupReturn {
   onKeyDown: (e: React.KeyboardEvent) => void;
   /** Blur handler — spread onto the container */
   onBlur: (e: React.FocusEvent) => void;
+  /** Focus handler — updates roving tabindex when a child receives focus (e.g. programmatic focus restoration) */
+  onFocus: (e: React.FocusEvent) => void;
   /** Click capture handler — updates roving tabindex when a child is clicked (without focusing) */
   onClickCapture: (e: React.MouseEvent) => void;
   /** Resolved startTabIndex from profile tabOrder[groupId] */
@@ -205,6 +207,28 @@ export function useContainerTabGroup({
     [containerRef, selector, filter, isRoving, startTabIndex],
   );
 
+  /** Update roving tabindex when a child receives focus (e.g. programmatic focus restoration) */
+  const onFocus = useCallback(
+    (e: React.FocusEvent) => {
+      if (!isRoving || !containerRef.current) return;
+      if (focusingRef.current) return;
+
+      const target = e.target as HTMLElement;
+      // Ignore focus on the container itself
+      if (target === containerRef.current) return;
+
+      const focusables = getFocusables(containerRef.current, selector, filter);
+      const targetIndex = focusables.indexOf(target);
+      if (targetIndex === -1) return;
+
+      activeIndexRef.current = targetIndex;
+      focusables.forEach((el, i) => {
+        el.tabIndex = i === targetIndex ? startTabIndex : -1;
+      });
+    },
+    [containerRef, selector, filter, isRoving, startTabIndex],
+  );
+
   const containerProps = {
     role: isRoving ? 'toolbar' as string | undefined : undefined,
     'aria-label': isRoving ? ariaLabel : undefined,
@@ -213,6 +237,7 @@ export function useContainerTabGroup({
   return {
     onKeyDown,
     onBlur,
+    onFocus,
     onClickCapture,
     startTabIndex,
     containerProps,

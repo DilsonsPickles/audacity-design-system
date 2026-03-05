@@ -1,7 +1,7 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, toast, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
@@ -320,6 +320,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   effectName: effect.name,
                   trackIndex,
                   effectIndex: index,
+                  triggerElement: document.activeElement as HTMLElement,
                 });
               },
               onEffectsReorder: (fromIndex, toIndex) => {
@@ -329,28 +330,26 @@ export function EditorLayout(props: EditorLayoutProps) {
                 });
               },
               onAddEffect: (e) => {
-                const button = e.currentTarget;
+                const button = e.currentTarget as HTMLElement;
                 const rect = button.getBoundingClientRect();
                 setEffectSelectorMenu({
                   isOpen: true,
                   x: rect.left,
                   y: rect.bottom + 4,
                   trackIndex,
+                  triggerElement: button,
                 });
               },
               onContextMenu: (_e) => {
-                toast.info('Track effects context menu');
               },
               onRemoveEffect: (index) => {
                 dispatch({ type: 'REMOVE_TRACK_EFFECT', payload: { trackIndex, effectIndex: index } });
-                toast.success('Effect removed');
               },
               onReplaceEffect: (index, effectName) => {
                 dispatch({
                   type: 'UPDATE_TRACK_EFFECT',
                   payload: { trackIndex, effectIndex: index, updates: { name: effectName } }
                 });
-                toast.success(`Effect changed to ${effectName}`);
               },
             }}
             masterSection={{
@@ -373,6 +372,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   effectName: effect.name,
                   trackIndex: undefined,
                   effectIndex: index,
+                  triggerElement: document.activeElement as HTMLElement,
                 });
               },
               onEffectsReorder: (fromIndex, toIndex) => {
@@ -382,38 +382,29 @@ export function EditorLayout(props: EditorLayoutProps) {
                 });
               },
               onAddEffect: (e) => {
-                const button = e.currentTarget;
+                const button = e.currentTarget as HTMLElement;
                 const rect = button.getBoundingClientRect();
                 setEffectSelectorMenu({
                   isOpen: true,
                   x: rect.left,
                   y: rect.bottom + 4,
                   trackIndex: undefined,
+                  triggerElement: button,
                 });
               },
               onContextMenu: (_e) => {
-                toast.info('Master effects context menu');
               },
               onRemoveEffect: (index) => {
                 dispatch({ type: 'REMOVE_MASTER_EFFECT', payload: index });
-                toast.success('Master effect removed');
               },
               onReplaceEffect: (index, effectName) => {
                 dispatch({
                   type: 'UPDATE_MASTER_EFFECT',
                   payload: { effectIndex: index, updates: { name: effectName } }
                 });
-                toast.success(`Effect changed to ${effectName}`);
               },
             }}
             onClose={() => setEffectsPanel(null)}
-            onTabOut={() => {
-              // Focus first track's container, or the track control panel
-              const firstTrack = document.querySelector('.track-wrapper[data-track-index="0"] .track') as HTMLElement;
-              if (firstTrack) {
-                firstTrack.focus();
-              }
-            }}
           />
         );
       })()}
@@ -643,7 +634,6 @@ export function EditorLayout(props: EditorLayoutProps) {
                     type: 'ADD_LABEL',
                     payload: { trackIndex: index, label: newLabel }
                   });
-                  toast.success('Label added at playhead');
                 }}
                 onMenuClick={(e) => {
                   const button = e.currentTarget;

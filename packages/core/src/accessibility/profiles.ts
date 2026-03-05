@@ -73,7 +73,7 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       // Effects panel (left sidebar with track and master effects)
       'effects-panel': {
         tabindex: 'roving',
-        arrows: false,  // Panel itself doesn't use arrow navigation, only Enter to enter
+        arrows: true,
         wrap: true,
       },
 

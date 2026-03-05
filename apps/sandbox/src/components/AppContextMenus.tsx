@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button, toast } from '@audacity-ui/components';
+import { ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
@@ -88,11 +88,9 @@ export function AppContextMenus({
           autoFocus={clipContextMenu.openedViaKeyboard}
           onClose={() => setClipContextMenu(null)}
           onRename={() => {
-            toast.info('Rename clip - not yet implemented');
             setClipContextMenu(null);
           }}
-          onColorChange={(color) => {
-            toast.info(`Change clip color to ${color} - not yet implemented`);
+          onColorChange={(_color) => {
             setClipContextMenu(null);
           }}
           onCut={() => {
@@ -112,7 +110,6 @@ export function AppContextMenus({
                   },
                 });
 
-                toast.success('Cut clip');
               }
               setClipContextMenu(null);
             }
@@ -125,13 +122,11 @@ export function AppContextMenus({
 
               if (clip) {
                 onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
-                toast.success('Copied clip');
               }
               setClipContextMenu(null);
             }
           }}
           onDuplicate={() => {
-            toast.info('Duplicate clip - not yet implemented');
             setClipContextMenu(null);
           }}
           onDelete={() => {
@@ -147,23 +142,18 @@ export function AppContextMenus({
             }
           }}
           onSplit={() => {
-            toast.info('Split clip - not yet implemented');
             setClipContextMenu(null);
           }}
           onExport={() => {
-            toast.info('Export clip - not yet implemented');
             setClipContextMenu(null);
           }}
           stretchWithTempo={false}
           onToggleStretchWithTempo={() => {
-            toast.info('Toggle stretch with tempo - not yet implemented');
           }}
           onOpenPitchSpeedDialog={() => {
-            toast.info('Open pitch and speed dialog - not yet implemented');
             setClipContextMenu(null);
           }}
           onRenderPitchSpeed={() => {
-            toast.info('Render pitch and speed - not yet implemented');
             setClipContextMenu(null);
           }}
         />
@@ -266,25 +256,21 @@ export function AppContextMenus({
           timeFormat={timelineFormat}
           onTimeFormatChange={(format) => {
             setTimelineFormat(format);
-            toast.info(`Time format changed to: ${format}`);
             setTimelineRulerContextMenu(null);
           }}
           updateDisplayWhilePlaying={updateDisplayWhilePlaying}
           onToggleUpdateDisplay={() => {
             setUpdateDisplayWhilePlaying(!updateDisplayWhilePlaying);
-            toast.info(`Update display while playing ${!updateDisplayWhilePlaying ? 'enabled' : 'disabled'}`);
             setTimelineRulerContextMenu(null);
           }}
           pinnedPlayHead={pinnedPlayHead}
           onTogglePinnedPlayHead={() => {
             setPinnedPlayHead(!pinnedPlayHead);
-            toast.info(`Pinned play head ${!pinnedPlayHead ? 'enabled' : 'disabled'}`);
             setTimelineRulerContextMenu(null);
           }}
           clickRulerToStartPlayback={clickRulerToStartPlayback}
           onToggleClickRulerToStartPlayback={() => {
             setClickRulerToStartPlayback(!clickRulerToStartPlayback);
-            toast.info(`Click ruler to start playback ${!clickRulerToStartPlayback ? 'enabled' : 'disabled'}`);
             setTimelineRulerContextMenu(null);
           }}
           loopRegionEnabled={loopRegionEnabled}
@@ -304,14 +290,12 @@ export function AppContextMenus({
               }
             }
             setLoopRegionEnabled(!loopRegionEnabled);
-            toast.info(`Loop region ${!loopRegionEnabled ? 'enabled' : 'disabled'}`);
             setTimelineRulerContextMenu(null);
           }}
           onClearLoopRegion={() => {
             setLoopRegionStart(null);
             setLoopRegionEnd(null);
             setLoopRegionEnabled(false);
-            toast.info('Loop region cleared');
             setTimelineRulerContextMenu(null);
           }}
           onSetLoopRegionToSelection={() => {
@@ -319,9 +303,7 @@ export function AppContextMenus({
               setLoopRegionStart(timeSelection.startTime);
               setLoopRegionEnd(timeSelection.endTime);
               setLoopRegionEnabled(true);
-              toast.info('Loop region set to selection');
             } else {
-              toast.info('No time selection to set loop region from');
             }
             setTimelineRulerContextMenu(null);
           }}
@@ -331,15 +313,12 @@ export function AppContextMenus({
                 type: 'SET_TIME_SELECTION',
                 payload: { startTime: loopRegionStart, endTime: loopRegionEnd },
               });
-              toast.info('Selection set to loop region');
             } else {
-              toast.info('No loop region to set selection from');
             }
             setTimelineRulerContextMenu(null);
           }}
           creatingLoopSelectsAudio={false}
           onToggleCreatingLoopSelectsAudio={() => {
-            toast.info('Creating loop selects audio - toggled');
             setTimelineRulerContextMenu(null);
           }}
           showVerticalRulers={showVerticalRulers}
@@ -352,6 +331,14 @@ export function AppContextMenus({
 
       {/* Effect Selector Menu */}
       {effectSelectorMenu && (() => {
+        const closeAndRestoreFocus = () => {
+          const trigger = effectSelectorMenu.triggerElement;
+          setEffectSelectorMenu(null);
+          if (trigger) {
+            setTimeout(() => trigger.focus(), 0);
+          }
+        };
+
         const addEffect = (effectName: string) => {
           const isMaster = effectSelectorMenu.trackIndex === undefined;
 
@@ -362,7 +349,6 @@ export function AppContextMenus({
               enabled: true,
             };
             dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
-            toast.success(`Added ${effectName} to master`);
           } else {
             const trackIndex = effectSelectorMenu.trackIndex!;
             const currentEffects = tracks[trackIndex]?.effects || [];
@@ -372,10 +358,9 @@ export function AppContextMenus({
               enabled: true,
             };
             dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
-            toast.success(`Added ${effectName} to ${tracks[trackIndex]?.name}`);
           }
 
-          setEffectSelectorMenu(null);
+          closeAndRestoreFocus();
         };
 
         return (
@@ -383,7 +368,7 @@ export function AppContextMenus({
             isOpen={effectSelectorMenu.isOpen}
             x={effectSelectorMenu.x}
             y={effectSelectorMenu.y}
-            onClose={() => setEffectSelectorMenu(null)}
+            onClose={closeAndRestoreFocus}
           >
             {Object.entries(EFFECT_REGISTRY).map(([categoryName, effectDefs]) => (
               <ContextMenuItem

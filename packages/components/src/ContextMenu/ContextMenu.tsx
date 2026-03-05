@@ -55,7 +55,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   y,
   children,
   className = '',
-  autoFocus = false,
+  autoFocus = true,
   style: externalStyle,
 }) => {
   const { theme } = useTheme();
@@ -74,7 +74,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   // Store the trigger element when menu opens
   useEffect(() => {
     if (isOpen) {
-      // Store the currently focused element to restore later
       triggerElementRef.current = document.activeElement as HTMLElement;
     }
   }, [isOpen]);
@@ -145,9 +144,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           onClose();
           // Restore focus to trigger element
           if (triggerElementRef.current) {
-            setTimeout(() => {
-              triggerElementRef.current?.focus();
-            }, 0);
+            const trigger = triggerElementRef.current;
+            triggerElementRef.current = null;
+            setTimeout(() => trigger.focus(), 0);
           }
           break;
 
