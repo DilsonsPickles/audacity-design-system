@@ -40,4 +40,5 @@
    :focus-visible, which flips on any keypress including bare Shift. */
 [data-clip-id][data-focus-mouse]:focus {
   outline: none;
+  box-shadow: none;
 }
