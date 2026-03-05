@@ -259,6 +259,10 @@ const ClipComponent: React.FC<ClipProps> = ({
           height={bodyHeight}
           color={color}
           selected={selected}
+          inTimeSelection={inTimeSelection}
+          clipStartTime={clipStartTime}
+          timeSelectionRange={timeSelectionRange}
+          pixelsPerSecond={pixelsPerSecond}
         />
       ) : (
         <ClipBody

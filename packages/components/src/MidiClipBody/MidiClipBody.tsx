@@ -9,6 +9,10 @@ export interface MidiClipBodyProps {
   height: number;
   color?: ClipColor;
   selected?: boolean;
+  inTimeSelection?: boolean;
+  clipStartTime?: number;
+  timeSelectionRange?: { startTime: number; endTime: number } | null;
+  pixelsPerSecond?: number;
 }
 
 /**
@@ -22,7 +26,25 @@ const MidiClipBodyComponent: React.FC<MidiClipBodyProps> = ({
   height,
   color = 'blue',
   selected = false,
+  inTimeSelection = false,
+  clipStartTime = 0,
+  timeSelectionRange = null,
+  pixelsPerSecond = 100,
 }) => {
+
+  // Calculate time selection overlay geometry
+  let selectionOverlay: { left: number; width: number } | null = null;
+  if (inTimeSelection && timeSelectionRange) {
+    const clipEndTime = clipStartTime + clipDuration;
+    const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
+    const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
+    if (overlapStart < overlapEnd) {
+      selectionOverlay = {
+        left: (overlapStart - clipStartTime) * pixelsPerSecond,
+        width: (overlapEnd - overlapStart) * pixelsPerSecond,
+      };
+    }
+  }
 
   if (notes.length === 0) {
     return (
@@ -31,7 +53,21 @@ const MidiClipBodyComponent: React.FC<MidiClipBodyProps> = ({
         data-color={color}
         data-selected={selected}
         style={{ width: `${width}px`, height: `${height}px`, position: 'relative' }}
-      />
+      >
+        {selectionOverlay && (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${selectionOverlay.left}px`,
+              top: 0,
+              width: `${selectionOverlay.width}px`,
+              height: '100%',
+              backgroundColor: `var(--clip-${color}-time-selection-body, rgba(255,255,255,0.15))`,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </div>
     );
   }
 
@@ -53,6 +89,19 @@ const MidiClipBodyComponent: React.FC<MidiClipBodyProps> = ({
       data-selected={selected}
       style={{ width: `${width}px`, height: `${height}px`, position: 'relative', overflow: 'hidden' }}
     >
+      {selectionOverlay && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${selectionOverlay.left}px`,
+            top: 0,
+            width: `${selectionOverlay.width}px`,
+            height: '100%',
+            backgroundColor: `var(--clip-${color}-time-selection-body, rgba(255,255,255,0.15))`,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
       {notes.map((note) => {
         const x = (note.startTime / clipDuration) * width;
         const noteWidth = Math.max(1, (note.duration / clipDuration) * width);
