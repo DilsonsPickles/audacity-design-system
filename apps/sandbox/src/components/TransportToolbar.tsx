@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, useTheme } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@audacity-ui/components';
 import type { SnapGrid } from '@audacity-ui/core';
 
 export type SnapMode =
@@ -73,6 +73,16 @@ export interface TransportToolbarProps {
   onShareClick: () => void;
   onExportAudioClick: () => void;
   onExportLoopRegionClick: () => void;
+
+  // Master meter
+  masterLevelLeft?: number;
+  masterLevelRight?: number;
+  masterClippedLeft?: boolean;
+  masterClippedRight?: boolean;
+  masterRecentPeakLeft?: number;
+  masterRecentPeakRight?: number;
+  masterVolume?: number;
+  onMasterVolumeChange?: (volume: number) => void;
 }
 
 function SplitRecordButton({
@@ -166,6 +176,8 @@ export function TransportToolbar({
   onZoomIn, onZoomOut, onZoomToSelection, onZoomToFitProject, onZoomToggle,
   currentTime, timeCodeFormat, onTimeCodeChange, onTimeCodeFormatChange,
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
+  masterLevelLeft = -60, masterLevelRight = -60, masterClippedLeft = false, masterClippedRight = false,
+  masterRecentPeakLeft, masterRecentPeakRight, masterVolume = 1, onMasterVolumeChange,
 }: TransportToolbarProps) {
   const { theme } = useTheme();
   const [recordMenuOpen, setRecordMenuOpen] = React.useState(false);
@@ -480,6 +492,26 @@ export function TransportToolbar({
               </ContextMenuItem>
             </ContextMenu>
           </ToolbarButtonGroup>
+
+          <ToolbarDivider />
+
+          <ToolbarButtonGroup gap={2}>
+            <ToolButton icon="microphone" ariaLabel="Microphone settings" onClick={() => {}} />
+            <ToolButton icon="volume" ariaLabel="Playback volume settings" onClick={() => {}} />
+          </ToolbarButtonGroup>
+
+          <div style={{ marginLeft: 8 }}>
+          <MasterMeter
+            levelLeft={masterLevelLeft}
+            levelRight={masterLevelRight}
+            clippedLeft={masterClippedLeft}
+            clippedRight={masterClippedRight}
+            recentPeakLeft={masterRecentPeakLeft}
+            recentPeakRight={masterRecentPeakRight}
+            volume={masterVolume}
+            onVolumeChange={onMasterVolumeChange}
+          />
+          </div>
         </>
       )}
     </Toolbar>

@@ -38,6 +38,14 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Set master output volume (0 to 1, where 1 = 0dB)
+   */
+  setMasterVolume(volume: number): void {
+    const db = volume <= 0 ? -Infinity : 20 * Math.log10(volume);
+    (Tone as any).getDestination().volume.value = db;
+  }
+
+  /**
    * Set the audio output device
    * @param deviceId - The device ID to route audio to, or null for default
    */

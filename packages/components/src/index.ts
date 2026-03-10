@@ -27,6 +27,7 @@ export * from './Slider';
 export * from './ToggleButton';
 export * from './ToolButton';
 export * from './TrackMeter';
+export * from './MasterMeter';
 export * from './ToggleToolButton';
 export * from './TrackControlPanel';
 export * from './TransportButton';

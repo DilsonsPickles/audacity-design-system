@@ -1,0 +1,130 @@
+/* MasterMeter - Horizontal stereo playback meter with volume slider */
+
+.master-meter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 360px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Row containing meter bars + clip indicators */
+.master-meter__row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Track area containing meter bars and slider */
+.master-meter__track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  height: 16px; /* ensure thumb is fully clickable */
+}
+
+/* Individual meter bar (left/right channel) */
+.master-meter__bar {
+  position: relative;
+  height: 6px;
+  background: var(--mm-bg);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+/* Level fill */
+.master-meter__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--mm-fill);
+  border-radius: 1px;
+  transition: width 0.05s linear;
+}
+
+/* Recent peak thin line */
+.master-meter__peak-line {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--mm-peak);
+  transform: translateX(-1px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Volume slider thumb — matches Slider component handle */
+.master-meter__thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 9px;
+  background: var(--mm-thumb-bg);
+  border: 1px solid var(--mm-thumb-border);
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  cursor: grab;
+}
+
+.master-meter__thumb:active {
+  cursor: grabbing;
+}
+
+.master-meter__thumb:focus-visible {
+  outline: 2px solid var(--mm-fill);
+  outline-offset: 1px;
+}
+
+/* Clip indicators */
+.master-meter__clip-indicators {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.master-meter__clip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--mm-bg);
+}
+
+.master-meter__clip-dot--active {
+  background: var(--mm-clip);
+}
+
+/* dB scale below the meter */
+.master-meter__scale {
+  position: relative;
+  height: 6px;
+  margin-right: 8px; /* align with meter bars (not clip indicators) */
+}
+
+/* Individual tick + label */
+.master-meter__tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.master-meter__tick-label {
+  font-size: 9px;
+  line-height: 6px;
+  height: 6px;
+  color: var(--mm-text);
+  white-space: nowrap;
+}

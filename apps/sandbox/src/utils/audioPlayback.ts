@@ -28,6 +28,14 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Set master output volume (0 to 1, where 1 = 0dB)
+   */
+  setMasterVolume(volume: number): void {
+    const db = volume <= 0 ? -Infinity : 20 * Math.log10(volume);
+    (Tone as any).getDestination().volume.value = db;
+  }
+
+  /**
    * Generate a tone and return the audio buffer and waveform data
    */
   async generateTone(

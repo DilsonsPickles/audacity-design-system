@@ -310,6 +310,39 @@ function CanvasDemoContent() {
     rollInTime: parseFloat(preferences.rollInTime) || 3,
   });
 
+  // Master meter: compute combined level from all track meters
+  const [masterVolume, setMasterVolume] = React.useState(1);
+  const handleMasterVolumeChange = React.useCallback((vol: number) => {
+    setMasterVolume(vol);
+    audioManagerRef.current.setMasterVolume(vol);
+  }, []);
+  const masterLevelLeft = React.useMemo(() => {
+    if (trackMeterLevels.size === 0) return -60;
+    // Convert track levels (0-100) to dB, combine as RMS-like sum
+    let sumLinear = 0;
+    trackMeterLevels.forEach((level) => {
+      const linear = level / 100;
+      sumLinear += linear * linear;
+    });
+    const rms = Math.sqrt(sumLinear / trackMeterLevels.size);
+    if (rms <= 0) return -60;
+    const db = 20 * Math.log10(rms * masterVolume);
+    return Math.max(-60, Math.min(0, db));
+  }, [trackMeterLevels, masterVolume]);
+  const masterLevelRight = React.useMemo(() => {
+    // For now, simulate slight stereo difference
+    if (trackMeterLevels.size === 0) return -60;
+    let sumLinear = 0;
+    trackMeterLevels.forEach((level) => {
+      const linear = level / 100;
+      sumLinear += linear * linear;
+    });
+    const rms = Math.sqrt(sumLinear / trackMeterLevels.size) * 0.95;
+    if (rms <= 0) return -60;
+    const db = 20 * Math.log10(rms * masterVolume);
+    return Math.max(-60, Math.min(0, db));
+  }, [trackMeterLevels, masterVolume]);
+
   // Loop region
   const {
     loopRegionEnabled, setLoopRegionEnabled,
@@ -861,6 +894,12 @@ function CanvasDemoContent() {
           setInitialExportType('full-project');
           setIsExportModalOpen(true);
         }}
+        masterLevelLeft={masterLevelLeft}
+        masterLevelRight={masterLevelRight}
+        masterClippedLeft={masterLevelLeft >= 0}
+        masterClippedRight={masterLevelRight >= 0}
+        masterVolume={masterVolume}
+        onMasterVolumeChange={handleMasterVolumeChange}
         onExportLoopRegionClick={() => {
           if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
             setAlertDialogTitle('No loop region');
