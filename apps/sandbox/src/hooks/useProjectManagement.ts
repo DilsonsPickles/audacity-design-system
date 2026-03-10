@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { TracksState, TracksAction } from '../contexts/TracksContext';
 import { saveProject, getProject } from '../utils/projectDatabase';
 import { toast } from '@audacity-ui/components';
+import type { AudioPlaybackManager } from '@audacity-ui/audio';
 
 export interface UseProjectManagementOptions {
   dispatch: React.Dispatch<TracksAction>;
@@ -10,6 +11,7 @@ export interface UseProjectManagementOptions {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   setIsCloudProject: (value: boolean) => void;
   setCurrentProjectId: (value: string | null) => void;
+  audioManagerRef: React.RefObject<AudioPlaybackManager>;
 }
 
 export interface UseProjectManagementReturn {
@@ -29,6 +31,7 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
     scrollContainerRef,
     setIsCloudProject,
     setCurrentProjectId,
+    audioManagerRef,
   } = options;
 
   // Handler for creating a new project
@@ -113,10 +116,21 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
         }
       }
 
+      // Export audio buffers as WAV ArrayBuffers for persistence
+      const wavBuffers: Record<string, ArrayBuffer> = {};
+      const audioManager = audioManagerRef.current;
+      if (audioManager) {
+        const exported = audioManager.exportBuffersAsWav();
+        for (const [clipId, wavData] of exported) {
+          wavBuffers[clipId] = wavData;
+        }
+      }
+
       // Serialize tracks state with full clip data including waveforms
       const projectData = {
         tracks: state.tracks,
         playheadPosition: state.playheadPosition,
+        audioBuffers: wavBuffers,
       };
 
       console.log('Saving project to IndexedDB...');

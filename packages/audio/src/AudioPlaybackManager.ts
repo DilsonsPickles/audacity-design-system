@@ -149,6 +149,42 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Get all stored audio buffers as a Map (clipId -> AudioBuffer)
+   */
+  getAudioBuffers(): Map<string, AudioBuffer> {
+    return this.audioBuffers;
+  }
+
+  /**
+   * Export all audio buffers as WAV ArrayBuffers for persistence.
+   * Returns a map of clipId -> WAV ArrayBuffer.
+   */
+  exportBuffersAsWav(): Map<string, ArrayBuffer> {
+    const result = new Map<string, ArrayBuffer>();
+    for (const [clipId, buffer] of this.audioBuffers) {
+      result.set(clipId, audioBufferToWav(buffer));
+    }
+    return result;
+  }
+
+  /**
+   * Import audio buffers from WAV ArrayBuffers (e.g. after loading from IndexedDB).
+   * Decodes each WAV and registers it for playback.
+   */
+  async importBuffersFromWav(wavBuffers: Record<string, ArrayBuffer>): Promise<void> {
+    await Tone.start();
+    const ctx = Tone.getContext().rawContext;
+    for (const [clipId, wavData] of Object.entries(wavBuffers)) {
+      try {
+        const audioBuffer = await ctx.decodeAudioData(wavData.slice(0));
+        this.audioBuffers.set(clipId, audioBuffer);
+      } catch (e) {
+        console.warn(`Failed to decode audio for clip ${clipId}:`, e);
+      }
+    }
+  }
+
+  /**
    * Set the effect chain for a specific track
    */
   setTrackEffectChain(trackIndex: number, effects: Tone.ToneAudioNode[]): void {

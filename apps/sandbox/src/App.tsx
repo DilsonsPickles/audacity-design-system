@@ -604,7 +604,7 @@ function CanvasDemoContent() {
   // Project management
   const { createNewProject, handleSaveToComputer } = useProjectManagement({
     dispatch, currentProjectId, state, scrollContainerRef,
-    setIsCloudProject, setCurrentProjectId,
+    setIsCloudProject, setCurrentProjectId, audioManagerRef,
   });
 
   // Generate tone handler
@@ -960,6 +960,17 @@ function CanvasDemoContent() {
                   dispatch({ type: 'SET_TRACKS', payload: project.data.tracks });
                 } else {
                   dispatch({ type: 'SET_TRACKS', payload: [] });
+                }
+
+                // Restore audio buffers from saved WAV data
+                if (project.data?.audioBuffers) {
+                  const audioManager = audioManagerRef.current;
+                  await audioManager.importBuffersFromWav(project.data.audioBuffers);
+                  // Reload clips for playback now that buffers are available
+                  if (project.data.tracks) {
+                    audioManager.loadClips(project.data.tracks, 0);
+                  }
+                  console.log('Restored audio buffers for', Object.keys(project.data.audioBuffers).length, 'clips');
                 }
 
                 // Always start playhead at 0 on project open
