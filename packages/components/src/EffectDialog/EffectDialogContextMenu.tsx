@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider/ThemeProvider';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 
@@ -79,6 +80,17 @@ export interface EffectDialogContextMenuProps {
    * @default false
    */
   isThirdParty?: boolean;
+
+  /**
+   * About info for the effect
+   */
+  aboutInfo?: {
+    type: string;
+    name: string;
+    version: string;
+    vendor: string;
+    description: string;
+  };
 }
 
 /**
@@ -101,7 +113,9 @@ export const EffectDialogContextMenu: React.FC<EffectDialogContextMenuProps> = (
   onShowVendorUI,
   showVendorUI = false,
   isThirdParty = false,
+  aboutInfo,
 }) => {
+  const { theme } = useTheme();
   const handleSavePreset = () => {
     onSavePreset?.();
     onClose();
@@ -216,6 +230,37 @@ export const EffectDialogContextMenu: React.FC<EffectDialogContextMenuProps> = (
         disabled={!isThirdParty}
         onClose={onClose}
       />
+
+      {/* About submenu */}
+      {aboutInfo && (
+        <>
+          <ContextMenuItem isDivider />
+          <ContextMenuItem
+            label="About"
+            hasSubmenu
+            onClose={onClose}
+          >
+            <div style={{
+              background: theme.background.menu.background,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: 6,
+              padding: '4px 8px',
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: theme.foreground.text.primary,
+              minWidth: 200,
+              maxWidth: 360,
+              whiteSpace: 'normal',
+            }}>
+              <div>Type: {aboutInfo.type}</div>
+              <div>Name: {aboutInfo.name}</div>
+              <div>Version: {aboutInfo.version}</div>
+              <div>Vendor: {aboutInfo.vendor}</div>
+              <div>Description: {aboutInfo.description}</div>
+            </div>
+          </ContextMenuItem>
+        </>
+      )}
     </ContextMenu>
   );
 };

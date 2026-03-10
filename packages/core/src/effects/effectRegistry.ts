@@ -13,7 +13,8 @@ export interface EffectDefinition {
   category: EffectCategory;
   provider: EffectProvider;
   description?: string;
-  // Future: Add parameter schemas, presets, etc.
+  version?: string;
+  type?: 'Built-in' | 'VST' | 'AU' | 'LV2';
 }
 
 /**
@@ -21,15 +22,15 @@ export interface EffectDefinition {
  */
 export const EFFECT_REGISTRY: Record<EffectCategory, EffectDefinition[]> = {
   Audacity: [
-    { id: 'compressor', name: 'Compressor', category: 'Audacity', provider: 'Audacity' },
-    { id: 'limiter', name: 'Limiter', category: 'Audacity', provider: 'Audacity' },
-    { id: 'reverb', name: 'Reverb', category: 'Audacity', provider: 'Audacity' },
+    { id: 'compressor', name: 'Compressor', category: 'Audacity', provider: 'Audacity', description: 'Reduces "dynamic range", or differences between loud and quiet parts.' },
+    { id: 'limiter', name: 'Limiter', category: 'Audacity', provider: 'Audacity', description: 'Limits the level of audio to a specified threshold.' },
+    { id: 'reverb', name: 'Reverb', category: 'Audacity', provider: 'Audacity', description: 'Adds reverberation to simulate room acoustics.' },
   ],
   DAWson: [
-    { id: 'dawson-delay', name: 'Delay', category: 'DAWson', provider: 'DAWson' },
-    { id: 'dawson-chorus', name: 'Chorus', category: 'DAWson', provider: 'DAWson' },
-    { id: 'dawson-eq', name: '3-Band EQ', category: 'DAWson', provider: 'DAWson' },
-    { id: 'dawson-phaser', name: 'Phaser', category: 'DAWson', provider: 'DAWson' },
+    { id: 'dawson-delay', name: 'Delay', category: 'DAWson', provider: 'DAWson', description: 'Adds echo and delay effects to the audio signal.' },
+    { id: 'dawson-chorus', name: 'Chorus', category: 'DAWson', provider: 'DAWson', description: 'Creates a richer sound by layering slightly detuned copies.' },
+    { id: 'dawson-eq', name: '3-Band EQ', category: 'DAWson', provider: 'DAWson', description: 'Adjusts the balance of low, mid, and high frequencies.' },
+    { id: 'dawson-phaser', name: 'Phaser', category: 'DAWson', provider: 'DAWson', description: 'Creates sweeping phase-shifted effects.' },
   ],
 };
 

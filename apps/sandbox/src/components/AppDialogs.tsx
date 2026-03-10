@@ -309,6 +309,13 @@ export function AppDialogs(props: AppDialogsProps) {
               dialogs.setIsVSTOptionsDialogOpen(true);
             }}
             isThirdParty={isThirdParty}
+            aboutInfo={effectDef ? {
+              type: effectDef.type ?? 'Built-in',
+              name: effectDef.name,
+              version: effectDef.version ?? '3.7.5',
+              vendor: effectDef.provider,
+              description: effectDef.description ?? '',
+            } : undefined}
           />
         );
       })()}
