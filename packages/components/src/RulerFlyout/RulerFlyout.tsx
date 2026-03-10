@@ -122,6 +122,13 @@ const SPECTROGRAM_OPTIONS: { value: SpectrogramScale; label: string }[] = [
   { value: 'period', label: 'Period' },
 ];
 
+/** Query focusable items within a group container */
+function getGroupItems(group: HTMLElement): HTMLElement[] {
+  return Array.from(
+    group.querySelectorAll<HTMLElement>('button, input, [role="radio"], [role="checkbox"]')
+  );
+}
+
 export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
   isOpen,
   onClose,
@@ -146,6 +153,15 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
 }) => {
   const { theme } = useTheme();
   const flyoutRef = React.useRef<HTMLDivElement>(null);
+  const zoomGroupRef = React.useRef<HTMLDivElement>(null);
+  const radioGroupRef = React.useRef<HTMLDivElement>(null);
+  const lastGroupRef = React.useRef<HTMLDivElement>(null);
+
+  // Collect visible group refs
+  const getGroups = React.useCallback((): HTMLDivElement[] => {
+    return [zoomGroupRef.current, radioGroupRef.current, lastGroupRef.current]
+      .filter((ref): ref is HTMLDivElement => ref !== null);
+  }, []);
 
   // Click outside to close
   React.useEffect(() => {
@@ -164,6 +180,45 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
 
+  // Set up roving tabindex and focus first item when opened
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      const groups = getGroups();
+      // Set roving tabindex: first item in first group gets 0, all others -1
+      groups.forEach((group, groupIdx) => {
+        const items = getGroupItems(group);
+        items.forEach((item, itemIdx) => {
+          if (groupIdx === 0 && itemIdx === 0) {
+            item.setAttribute('tabindex', '0');
+          } else if (itemIdx === 0 && groupIdx > 0) {
+            // First item in non-first groups: tabbable but not initially focused
+            item.setAttribute('tabindex', '0');
+          } else {
+            item.setAttribute('tabindex', '-1');
+          }
+        });
+      });
+      // Focus the active item in the radio group if it exists, otherwise first zoom button
+      const radioGroup = radioGroupRef.current;
+      if (radioGroup) {
+        const checkedRadio = radioGroup.querySelector('[role="radio"][aria-checked="true"]') as HTMLElement;
+        if (checkedRadio) {
+          // Make checked radio the active item in its group
+          const radios = getGroupItems(radioGroup);
+          radios.forEach(r => r.setAttribute('tabindex', r === checkedRadio ? '0' : '-1'));
+        }
+      }
+      // Focus first item in zoom group
+      const firstGroup = groups[0];
+      if (firstGroup) {
+        const items = getGroupItems(firstGroup);
+        items[0]?.focus();
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [isOpen, getGroups]);
+
   // Escape to close
   React.useEffect(() => {
     if (!isOpen) return;
@@ -181,6 +236,51 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose, triggerRef]);
 
+  // Keyboard handler for tab group navigation
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    const groups = getGroups();
+
+    // Find which group the target is in
+    const currentGroupIndex = groups.findIndex(g => g.contains(target));
+    if (currentGroupIndex === -1) return;
+
+    const currentGroup = groups[currentGroupIndex];
+    const items = getGroupItems(currentGroup);
+    const currentItemIndex = items.indexOf(target);
+
+    // Arrow keys: navigate within group
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+        e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (items.length <= 1) return;
+
+      const direction = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+      const nextIndex = (currentItemIndex + direction + items.length) % items.length;
+
+      // Update roving tabindex
+      items[currentItemIndex].setAttribute('tabindex', '-1');
+      items[nextIndex].setAttribute('tabindex', '0');
+      items[nextIndex].focus();
+      return;
+    }
+
+    // Tab / Shift+Tab: move between groups
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      e.stopPropagation();
+      const direction = e.shiftKey ? -1 : 1;
+      const nextGroupIndex = (currentGroupIndex + direction + groups.length) % groups.length;
+      const nextGroup = groups[nextGroupIndex];
+      const nextItems = getGroupItems(nextGroup);
+
+      // Focus the active (tabindex=0) item in the next group
+      const activeItem = nextItems.find(el => el.getAttribute('tabindex') === '0') || nextItems[0];
+      activeItem?.focus();
+    }
+  }, [getGroups]);
+
   if (!isOpen) return null;
 
   const style = {
@@ -194,6 +294,10 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
 
   const triangleFill = theme.background.surface.default;
 
+  // Determine which radio options to show
+  const radioOptions = mode === 'waveform' ? WAVEFORM_OPTIONS : SPECTROGRAM_OPTIONS;
+  const checkedValue = mode === 'waveform' ? rulerFormat : spectrogramScale;
+
   return (
     <div
       ref={flyoutRef}
@@ -205,6 +309,7 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
         top: `${y}px`,
         zIndex: 10000,
       }}
+      onKeyDown={handleKeyDown}
     >
       {/* Triangle pointer (right side) */}
       <svg className="ruler-flyout__triangle" width="16" height="9" viewBox="0 0 16 9" fill="none">
@@ -212,13 +317,14 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
       </svg>
 
       <div className="ruler-flyout__content">
-        {/* Zoom controls */}
-        <div className="ruler-flyout__toolbar">
+        {/* Group 1: Zoom controls */}
+        <div ref={zoomGroupRef} className="ruler-flyout__toolbar" role="toolbar" aria-label="Zoom controls">
           <div className="ruler-flyout__toolbar-zoom">
             <button
               className="ruler-flyout__btn"
               aria-label="Zoom in"
               onClick={onZoomIn}
+              tabIndex={-1}
             >
               <Icon name="zoom-in" size={16} />
             </button>
@@ -226,6 +332,7 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
               className="ruler-flyout__btn"
               aria-label="Zoom out"
               onClick={onZoomOut}
+              tabIndex={-1}
             >
               <Icon name="zoom-out" size={16} />
             </button>
@@ -234,43 +341,38 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
             className="ruler-flyout__btn ruler-flyout__btn--reset"
             aria-label="Reset zoom"
             onClick={onReset}
+            tabIndex={-1}
           >
             <Icon name="refresh" size={16} />
             <span className="ruler-flyout__btn-label">Reset</span>
           </button>
         </div>
 
-        {/* Ruler format section */}
+        {/* Group 2: Ruler format radio group */}
         <div className="ruler-flyout__format-section">
           <div className="ruler-flyout__section-label">Ruler format</div>
-          <div className="ruler-flyout__radio-group" role="radiogroup" aria-label="Ruler format">
-            {mode === 'waveform'
-              ? WAVEFORM_OPTIONS.map((opt) => (
-                  <LabeledRadio
-                    key={opt.value}
-                    label={opt.label}
-                    name="ruler-format"
-                    value={opt.value}
-                    checked={rulerFormat === opt.value}
-                    onChange={() => onRulerFormatChange?.(opt.value)}
-                  />
-                ))
-              : SPECTROGRAM_OPTIONS.map((opt) => (
-                  <LabeledRadio
-                    key={opt.value}
-                    label={opt.label}
-                    name="ruler-format"
-                    value={opt.value}
-                    checked={spectrogramScale === opt.value}
-                    onChange={() => onSpectrogramScaleChange?.(opt.value)}
-                  />
-                ))}
+          <div ref={radioGroupRef} className="ruler-flyout__radio-group" role="radiogroup" aria-label="Ruler format">
+            {radioOptions.map((opt) => (
+              <LabeledRadio
+                key={opt.value}
+                label={opt.label}
+                name="ruler-format"
+                value={opt.value}
+                checked={checkedValue === opt.value}
+                onChange={() =>
+                  mode === 'waveform'
+                    ? onRulerFormatChange?.(opt.value as WaveformRulerFormat)
+                    : onSpectrogramScaleChange?.(opt.value as SpectrogramScale)
+                }
+                tabIndex={-1}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Frequency range inputs (spectrogram mode only) */}
-        {mode === 'spectrogram' && (
-          <div className="ruler-flyout__freq-section">
+        {/* Group 3: Mode-specific options */}
+        {mode === 'spectrogram' ? (
+          <div ref={lastGroupRef} className="ruler-flyout__freq-section">
             <div className="ruler-flyout__section-label">Frequency range</div>
             <div className="ruler-flyout__freq-row">
               <label className="ruler-flyout__freq-label">Min</label>
@@ -299,15 +401,13 @@ export const RulerFlyout: React.FC<RulerFlyoutProps> = ({
               <span className="ruler-flyout__freq-unit">Hz</span>
             </div>
           </div>
-        )}
-
-        {/* Half wave checkbox (waveform mode only) */}
-        {mode === 'waveform' && (
-          <div className="ruler-flyout__checkbox-section">
+        ) : (
+          <div ref={lastGroupRef} className="ruler-flyout__checkbox-section">
             <LabeledCheckbox
               label="Half wave"
               checked={halfWave}
               onChange={onHalfWaveChange}
+              tabIndex={-1}
             />
           </div>
         )}
