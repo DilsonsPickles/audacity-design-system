@@ -120,7 +120,7 @@ export const NoteRect: React.FC<NoteRectProps> = ({
     width: Math.max(width, 4),
     height: height - 2,
     cursor: ghost ? 'default' : cursor,
-    opacity: ghost ? 0.25 : opacity,
+    opacity: ghost ? 0.35 : opacity,
     pointerEvents: ghost ? 'none' as const : undefined,
   } as React.CSSProperties;
 

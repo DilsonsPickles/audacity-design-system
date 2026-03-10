@@ -285,7 +285,7 @@ export function TransportToolbar({
                   y={recordMenuPos.y}
                 >
                   <ContextMenuItem
-                    label="Enable roll in time"
+                    label="Enable lead in time"
                     checked={rollInTimeEnabled}
                     onClick={() => {
                       onToggleRollInTime?.();

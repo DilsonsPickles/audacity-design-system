@@ -1007,7 +1007,7 @@ function PlaybackRecordingPage() {
           onActiveIndexChange={setRecordingBehaviorActiveIndex}
           resetKey="playback-recording"
         >
-          <label className="preferences-page__label">Roll in time</label>
+          <label className="preferences-page__label">Lead in time</label>
           <NumberStepper
             value={preferences.rollInTime}
             onChange={(value) => updatePreference('rollInTime', value)}

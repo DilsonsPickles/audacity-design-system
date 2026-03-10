@@ -108,7 +108,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
 
   const recordMenuItems: MenuItem[] = [
     {
-      label: 'Enable roll in time',
+      label: 'Enable lead in time',
       checked: deps.rollInTimeEnabled,
       onClick: deps.onToggleRollInTime,
     },

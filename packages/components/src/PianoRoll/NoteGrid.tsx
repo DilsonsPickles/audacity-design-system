@@ -81,6 +81,8 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   const [previewNote, setPreviewNote] = useState<{ pitch: number; startTime: number; duration: number } | null>(null);
   const previewNoteRef = useRef(previewNote);
   previewNoteRef.current = previewNote;
+  const [ghostNote, setGhostNote] = useState<{ pitch: number; startTime: number; duration: number } | null>(null);
+  const isDraggingRef = useRef(false);
 
   const isLocal = timeMode === 'local';
   // In local mode, time offset = active clip's start; everything is relative to clip origin
@@ -158,19 +160,46 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     return null;
   }, [clips, pixelsPerSecond, scrollX, timeOffset]);
 
-  // Update cursor on mouse move over grid
+  // Update cursor on mouse move over grid and show ghost note
   const handleGridMouseMove = useCallback((e: React.MouseEvent) => {
     // Don't override cursor during active drags
     if (dragRef.current || clipBoundaryDragRef.current || boxSelectionRef.current) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const localX = e.clientX - rect.left;
+    const localY = e.clientY - rect.top;
     const edge = getClipBoundaryEdge(localX);
     setGridCursor(edge ? 'ew-resize' : 'crosshair');
-  }, [getClipBoundaryEdge]);
+
+    // Hide ghost note when hovering over an existing note
+    const target = e.target as HTMLElement;
+    const isOverNote = target.closest('[data-note-id]') !== null;
+
+    // Show ghost note preview when not dragging, not near clip boundary, and not over a note
+    if (!isDraggingRef.current && !edge && !isOverNote) {
+      const pitch = yToPitch(localY);
+      if (pitch >= 0 && pitch <= 127) {
+        const snappedTime = snapTime(xToTime(localX));
+        const beatDuration = 60 / bpm;
+        const duration = lastResizedDurationRef.current ?? beatDuration / snap.subdivision;
+        setGhostNote({ pitch, startTime: Math.max(0, snappedTime), duration });
+      } else {
+        setGhostNote(null);
+      }
+    } else if (isOverNote) {
+      setGhostNote(null);
+    }
+  }, [getClipBoundaryEdge, yToPitch, snapTime, xToTime, bpm, snap]);
+
+  // Clear ghost when mouse leaves the grid
+  const handleMouseLeave = useCallback(() => {
+    setGhostNote(null);
+  }, []);
 
   // Handle click on empty grid — add note, start box selection, or start clip boundary drag
   const handleBackgroundMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
+    isDraggingRef.current = true;
+    setGhostNote(null);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const localX = e.clientX - rect.left;
@@ -216,6 +245,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
 
         const handleBoundaryUp = () => {
           clipBoundaryDragRef.current = null;
+          isDraggingRef.current = false;
           setGridCursor('crosshair');
           document.removeEventListener('mousemove', handleBoundaryMove);
           document.removeEventListener('mouseup', handleBoundaryUp);
@@ -257,6 +287,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
       };
 
       const handleBoxUp = () => {
+        isDraggingRef.current = false;
         const box = boxSelectionRef.current;
         if (box) {
           // AABB intersection: find notes within the box
@@ -314,6 +345,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     };
 
     const handlePreviewUp = () => {
+      isDraggingRef.current = false;
       const current = previewNoteRef.current;
       if (current) {
         const newNote: MidiNote = {
@@ -585,6 +617,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
       tabIndex={0}
       onMouseDown={handleBackgroundMouseDown}
       onMouseMove={handleGridMouseMove}
+      onMouseLeave={handleMouseLeave}
       onKeyDown={handleKeyDown}
     >
       <NoteGridCanvas
@@ -626,6 +659,26 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
           />
         );
       })}
+
+      {/* Ghost note (hover preview before click) */}
+      {ghostNote && !previewNote && (() => {
+        const gx = (ghostNote.startTime - timeOffset) * pixelsPerSecond - scrollX;
+        const gy = (TOTAL_PITCHES - 1 - ghostNote.pitch) * noteHeight - scrollY;
+        const gw = ghostNote.duration * pixelsPerSecond;
+        return (
+          <NoteRect
+            note={{ id: -2, pitch: ghostNote.pitch, velocity: DEFAULT_VELOCITY }}
+            x={gx}
+            y={gy}
+            width={gw}
+            height={noteHeight}
+            isSelected={false}
+            onMouseDown={() => {}}
+            trackColor={trackColor}
+            ghost
+          />
+        );
+      })()}
 
       {/* Preview note (pending placement) */}
       {previewNote && (() => {
