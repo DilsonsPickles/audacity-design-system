@@ -684,7 +684,29 @@ export function EditorLayout(props: EditorLayoutProps) {
                     const firstClip = trackElement.querySelector(`[data-first-clip="true"]`) as HTMLElement;
                     if (firstClip) {
                       firstClip.focus();
+                      return;
                     }
+                  }
+                  // No clips — skip to ruler or next track
+                  if (showVerticalRulers && state.tracks[index]?.type !== 'label' && state.tracks[index]?.type !== 'midi') {
+                    const rulerEl = document.querySelector(
+                      `[data-track-ruler-index="${index}"]`
+                    ) as HTMLElement;
+                    if (rulerEl) {
+                      rulerEl.focus();
+                      return;
+                    }
+                  }
+                  const nextIndex = index + 1;
+                  if (nextIndex < state.tracks.length) {
+                    const target = document.querySelector(
+                      `.track-wrapper[data-track-index="${nextIndex}"] .track`
+                    ) as HTMLElement;
+                    target?.focus();
+                  } else {
+                    const selToolbar = document.querySelector('.selection-toolbar');
+                    const firstChild = selToolbar?.querySelector('[role="group"]') as HTMLElement;
+                    firstChild?.focus();
                   }
                 }}
                 onShiftTabOut={() => {
