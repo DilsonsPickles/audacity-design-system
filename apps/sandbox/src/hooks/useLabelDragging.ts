@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useTracksDispatch } from '../contexts/TracksContext';
+import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
 export interface LabelDragInfo {
   trackIndex: number;
@@ -15,6 +16,8 @@ export interface UseLabelDraggingOptions {
   pixelsPerSecond: number;
   clipContentOffset: number;
   onDragStatusChange?: (isDragging: boolean) => void;
+  snapEnabled?: boolean;
+  snapOptions?: SnapOptions;
 }
 
 export interface UseLabelDraggingReturn {
@@ -33,6 +36,8 @@ export function useLabelDragging(options: UseLabelDraggingOptions): UseLabelDrag
     pixelsPerSecond,
     clipContentOffset,
     onDragStatusChange,
+    snapEnabled = false,
+    snapOptions,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -60,9 +65,12 @@ export function useLabelDragging(options: UseLabelDraggingOptions): UseLabelDrag
         const deltaX = e.clientX - dragInfo.initialClientX;
         const deltaTime = deltaX / pixelsPerSecond;
 
-        const newStartTime = Math.max(0, dragInfo.initialStartTime + deltaTime);
+        let newStartTime = Math.max(0, dragInfo.initialStartTime + deltaTime);
+        if (snapEnabled && snapOptions) {
+          newStartTime = Math.max(0, snapToGrid(newStartTime, snapOptions));
+        }
         const newEndTime = dragInfo.initialEndTime !== undefined
-          ? Math.max(newStartTime + 0.01, dragInfo.initialEndTime + deltaTime)
+          ? Math.max(newStartTime + 0.01, (dragInfo.initialEndTime - dragInfo.initialStartTime) + newStartTime)
           : undefined;
 
         // Dispatch update for this label
@@ -93,7 +101,7 @@ export function useLabelDragging(options: UseLabelDraggingOptions): UseLabelDrag
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [pixelsPerSecond, clipContentOffset, dispatch, onDragStatusChange, containerRef]);
+  }, [pixelsPerSecond, clipContentOffset, dispatch, onDragStatusChange, containerRef, snapEnabled, snapOptions]);
 
   return {
     labelDragStateRef,

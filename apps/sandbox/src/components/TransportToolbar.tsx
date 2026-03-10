@@ -1,5 +1,19 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, useTheme } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, useTheme } from '@audacity-ui/components';
+import type { SnapGrid } from '@audacity-ui/core';
+
+export type SnapMode =
+  | 'musical'
+  | 'seconds'
+  | 'deciseconds'
+  | 'centiseconds'
+  | 'milliseconds'
+  | 'samples'
+  | 'video-24fps'
+  | 'video-29.97fps'
+  | 'video-30fps'
+  | 'video-25fps'
+  | 'cdda-75fps';
 
 type Workspace = 'classic' | 'spectral-editing';
 
@@ -16,6 +30,14 @@ export interface TransportToolbarProps {
   useSplitRecordButton?: boolean;
   rollInTimeEnabled?: boolean;
   onToggleRollInTime?: () => void;
+  snapEnabled?: boolean;
+  onToggleSnap?: () => void;
+  snapSubdivision?: SnapGrid['subdivision'];
+  onSnapSubdivisionChange?: (subdivision: SnapGrid['subdivision']) => void;
+  snapTriplet?: boolean;
+  onToggleSnapTriplet?: () => void;
+  snapMode?: SnapMode;
+  onSnapModeChange?: (mode: SnapMode) => void;
 
   // Loop
   loopRegionEnabled: boolean;
@@ -136,7 +158,7 @@ function SplitRecordButton({
 
 export function TransportToolbar({
   activeMenuItem, workspace,
-  isPlaying, isRecording, onPlay, onStop, onRecord, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime,
+  isPlaying, isRecording, onPlay, onStop, onRecord, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
   timeSelection, bpm, beatsPerMeasure,
@@ -145,9 +167,13 @@ export function TransportToolbar({
   currentTime, timeCodeFormat, onTimeCodeChange, onTimeCodeFormatChange,
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
 }: TransportToolbarProps) {
+  const { theme } = useTheme();
   const [recordMenuOpen, setRecordMenuOpen] = React.useState(false);
   const [recordMenuPos, setRecordMenuPos] = React.useState({ x: 0, y: 0 });
   const caretRef = React.useRef<HTMLButtonElement>(null);
+  const [snapMenuOpen, setSnapMenuOpen] = React.useState(false);
+  const [snapMenuPos, setSnapMenuPos] = React.useState({ x: 0, y: 0 });
+  const snapButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const handleRecordCaretClick = () => {
     if (caretRef.current) {
@@ -349,6 +375,110 @@ export function TransportToolbar({
               onChange={onTimeCodeChange}
               onFormatChange={onTimeCodeFormatChange}
             />
+          </ToolbarButtonGroup>
+
+          <ToolbarDivider />
+
+          <ToolbarButtonGroup gap={8}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: theme.foreground.text.primary, whiteSpace: 'nowrap', userSelect: 'none' }}>
+              Snap
+              <Checkbox
+                checked={snapEnabled}
+                onChange={() => onToggleSnap?.()}
+                aria-label="Snap to grid"
+              />
+            </label>
+            <button
+              ref={snapButtonRef}
+              type="button"
+              aria-label="Snap subdivision"
+              aria-haspopup="true"
+              disabled={!snapEnabled}
+              onClick={() => {
+                if (!snapEnabled) return;
+                if (snapButtonRef.current) {
+                  const rect = snapButtonRef.current.getBoundingClientRect();
+                  setSnapMenuPos({ x: rect.left, y: rect.bottom + 2 });
+                }
+                setSnapMenuOpen(true);
+              }}
+              style={{
+                height: 24,
+                fontSize: 12,
+                padding: '0 8px',
+                borderRadius: 2,
+                border: 'none',
+                backgroundColor: theme.background.control.button.secondary.idle,
+                color: snapEnabled ? theme.foreground.text.primary : theme.foreground.text.secondary,
+                cursor: snapEnabled ? 'pointer' : 'not-allowed',
+                opacity: snapEnabled ? 1 : 0.5,
+                outline: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {snapMode === 'musical'
+                ? { 1: 'Bar', 2: '1/2', 4: '1/4', 8: '1/8', 16: '1/16', 32: '1/32', 64: '1/64', 128: '1/128' }[snapSubdivision]
+                : { seconds: 'Seconds', deciseconds: 'Deciseconds', centiseconds: 'Centiseconds', milliseconds: 'Milliseconds', samples: 'Samples', 'video-24fps': 'Video Frames (24 fps)', 'video-29.97fps': 'NTSC (29.97 fps)', 'video-30fps': 'NTSC (30 fps)', 'video-25fps': 'PAL (25 fps)', 'cdda-75fps': 'CDDA (75 fps)' }[snapMode]
+              }
+              <Icon name="caret-down" size={10} />
+            </button>
+            <ContextMenu
+              isOpen={snapMenuOpen}
+              onClose={() => setSnapMenuOpen(false)}
+              x={snapMenuPos.x}
+              y={snapMenuPos.y}
+            >
+              {([1, 2, 4, 8, 16, 32, 64, 128] as const).map((val) => (
+                <ContextMenuItem
+                  key={val}
+                  label={val === 1 ? 'Bar' : `1/${val}`}
+                  checked={snapMode === 'musical' && snapSubdivision === val}
+                  onClick={() => {
+                    onSnapModeChange?.('musical');
+                    onSnapSubdivisionChange?.(val);
+                    setSnapMenuOpen(false);
+                  }}
+                />
+              ))}
+              <div className="context-menu-separator" />
+              <ContextMenuItem
+                label="Enable triplets"
+                checked={snapTriplet}
+                onClick={() => {
+                  onToggleSnapTriplet?.();
+                }}
+              />
+              <div className="context-menu-separator" />
+              <ContextMenuItem label="Seconds samples" hasSubmenu checked={['seconds', 'deciseconds', 'centiseconds', 'milliseconds', 'samples'].includes(snapMode)}>
+                {(['seconds', 'deciseconds', 'centiseconds', 'milliseconds', 'samples'] as const).map((mode) => (
+                  <ContextMenuItem
+                    key={mode}
+                    label={{ seconds: 'Seconds', deciseconds: 'Deciseconds', centiseconds: 'Centiseconds', milliseconds: 'Milliseconds', samples: 'Samples' }[mode]}
+                    checked={snapMode === mode}
+                    onClick={() => { onSnapModeChange?.(mode); setSnapMenuOpen(false); }}
+                  />
+                ))}
+              </ContextMenuItem>
+              <ContextMenuItem label="Video frames" hasSubmenu checked={['video-24fps', 'video-29.97fps', 'video-30fps', 'video-25fps'].includes(snapMode)}>
+                {(['video-24fps', 'video-29.97fps', 'video-30fps', 'video-25fps'] as const).map((mode) => (
+                  <ContextMenuItem
+                    key={mode}
+                    label={{ 'video-24fps': 'Video Frames (24 fps)', 'video-29.97fps': 'NTSC Frames (29.97 fps)', 'video-30fps': 'NTSC Frames (30 fps)', 'video-25fps': 'PAL Frames (25 fps)' }[mode]}
+                    checked={snapMode === mode}
+                    onClick={() => { onSnapModeChange?.(mode); setSnapMenuOpen(false); }}
+                  />
+                ))}
+              </ContextMenuItem>
+              <ContextMenuItem label="CD frames" hasSubmenu checked={snapMode === 'cdda-75fps'}>
+                <ContextMenuItem
+                  label="CDDA Frames (75 fps)"
+                  checked={snapMode === 'cdda-75fps'}
+                  onClick={() => { onSnapModeChange?.('cdda-75fps'); setSnapMenuOpen(false); }}
+                />
+              </ContextMenuItem>
+            </ContextMenu>
           </ToolbarButtonGroup>
         </>
       )}

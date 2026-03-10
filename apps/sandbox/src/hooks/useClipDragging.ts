@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { ClipDragState, useTracksDispatch } from '../contexts/TracksContext';
+import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
 export interface UseClipDraggingOptions {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -10,6 +11,8 @@ export interface UseClipDraggingOptions {
   trackGap: number;
   defaultTrackHeight: number;
   onDragStatusChange?: (isDragging: boolean) => void;
+  snapEnabled?: boolean;
+  snapOptions?: SnapOptions;
 }
 
 export interface UseClipDraggingReturn {
@@ -33,6 +36,8 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
     trackGap,
     defaultTrackHeight,
     onDragStatusChange,
+    snapEnabled = false,
+    snapOptions,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -67,7 +72,10 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       didDragRef.current = true; // Mark that dragging has occurred
 
       // Calculate new start time
-      const newStartTime = Math.max(0, (x - dragState.offsetX - clipContentOffset) / pixelsPerSecond);
+      let newStartTime = Math.max(0, (x - dragState.offsetX - clipContentOffset) / pixelsPerSecond);
+      if (snapEnabled && snapOptions) {
+        newStartTime = Math.max(0, snapToGrid(newStartTime, snapOptions));
+      }
 
       // Find which track the cursor is over
       let currentY = topGap;
@@ -169,7 +177,7 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [tracks, pixelsPerSecond, clipContentOffset, topGap, trackGap, defaultTrackHeight, dispatch, onDragStatusChange, containerRef]);
+  }, [tracks, pixelsPerSecond, clipContentOffset, topGap, trackGap, defaultTrackHeight, dispatch, onDragStatusChange, containerRef, snapEnabled, snapOptions]);
 
   return {
     clipDragStateRef,

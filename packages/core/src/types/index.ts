@@ -187,7 +187,7 @@ export interface MidiClip {
 }
 
 export interface SnapGrid {
-  subdivision: 1 | 2 | 4 | 8 | 16 | 32;
+  subdivision: 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128;
   triplet?: boolean;
 }
 

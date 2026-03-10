@@ -127,6 +127,8 @@ function CanvasDemoContent() {
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
+  const [snapEnabled, setSnapEnabled] = React.useState(false);
+  const [snapMode, setSnapMode] = React.useState<import('./components/TransportToolbar').SnapMode>('musical');
   const [showMixer, setShowMixer] = React.useState(false);
   const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
   const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
@@ -824,6 +826,14 @@ function CanvasDemoContent() {
         useSplitRecordButton={useSplitRecordButton}
         rollInTimeEnabled={rollInTimeEnabled}
         onToggleRollInTime={() => setRollInTimeEnabled(!rollInTimeEnabled)}
+        snapEnabled={snapEnabled}
+        onToggleSnap={() => setSnapEnabled(!snapEnabled)}
+        snapSubdivision={state.canvasSnap.subdivision}
+        onSnapSubdivisionChange={(subdivision) => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, subdivision } })}
+        snapTriplet={state.canvasSnap.triplet ?? false}
+        onToggleSnapTriplet={() => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, triplet: !state.canvasSnap.triplet } })}
+        snapMode={snapMode}
+        onSnapModeChange={setSnapMode}
         loopRegionEnabled={loopRegionEnabled}
         loopRegionStart={loopRegionStart}
         loopRegionEnd={loopRegionEnd}
@@ -961,6 +971,7 @@ function CanvasDemoContent() {
           isMicMonitoring={isMicMonitoring}
           recordingClipId={recordingClipId}
           punchPointPosition={punchPointPosition}
+          snapEnabled={snapEnabled}
           selectionAnchor={selectionAnchor}
           setSelectionAnchor={setSelectionAnchor}
           controlPanelHasFocus={controlPanelHasFocus}

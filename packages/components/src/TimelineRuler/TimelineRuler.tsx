@@ -617,7 +617,38 @@ function drawBeatsAndMeasures(
   const secondsPerBeat = 60 / bpm;
   const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
 
-  // Calculate visible range in measures and beats
+  // Determine finest subdivision to show based on zoom level
+  // Each subdivision level doubles: beat, eighth, sixteenth, thirty-second
+  const pixelsPerBeat = secondsPerBeat * pixelsPerSecond;
+  let subdivisionsPerBeat = 1;
+  if (pixelsPerBeat >= 160) subdivisionsPerBeat = 8;      // 32nd notes
+  else if (pixelsPerBeat >= 80) subdivisionsPerBeat = 4;   // 16th notes
+  else if (pixelsPerBeat >= 40) subdivisionsPerBeat = 2;   // 8th notes
+
+  const secondsPerSubdivision = secondsPerBeat / subdivisionsPerBeat;
+  const totalSubdivisionsPerMeasure = beatsPerMeasure * subdivisionsPerBeat;
+
+  // Show beat ticks when there's enough room (≥8px per beat)
+  // Show beat labels only when there's plenty of room (≥60px per beat)
+  const showBeatTicks = pixelsPerBeat >= 8;
+  const showBeatLabels = pixelsPerBeat >= 60;
+
+  // When zoomed out, skip measure labels to avoid crowding
+  // Find the smallest power-of-2-friendly interval where labels are ≥60px apart
+  const pixelsPerMeasure = secondsPerMeasure * pixelsPerSecond;
+  let measureLabelInterval = 1;
+  for (const interval of [1, 2, 4, 8, 16, 32, 64, 128, 256]) {
+    if (pixelsPerMeasure * interval >= 60) {
+      measureLabelInterval = interval;
+      break;
+    }
+  }
+
+  // Also find interval for minor measure ticks (shown between labeled measures)
+  // Hide them when they'd be less than ~6px apart
+  const showMinorMeasureTicks = pixelsPerMeasure >= 6;
+
+  // Calculate visible range
   const startMeasure = Math.floor((scrollX / pixelsPerSecond) / secondsPerMeasure);
   const endMeasure = Math.ceil(((scrollX + width) / pixelsPerSecond) / secondsPerMeasure);
 
@@ -625,43 +656,83 @@ function drawBeatsAndMeasures(
   ctx.fillStyle = textColor;
   ctx.lineWidth = 1;
 
-  // Draw measures (major ticks) and beats (minor ticks)
+  const bottomHalf = height - midHeight;
+
   for (let measure = startMeasure; measure <= endMeasure; measure++) {
-    for (let beat = 0; beat < beatsPerMeasure; beat++) {
-      const timeInSeconds = measure * secondsPerMeasure + beat * secondsPerBeat;
+    // When very zoomed out, only process labeled measures
+    const isLabeledMeasure = measure % measureLabelInterval === 0;
+    if (!showMinorMeasureTicks && !isLabeledMeasure) continue;
+
+    for (let sub = 0; sub < totalSubdivisionsPerMeasure; sub++) {
+      const beatIndex = Math.floor(sub / subdivisionsPerBeat);
+      const subWithinBeat = sub % subdivisionsPerBeat;
+
+      // Skip beats and subdivisions if beat ticks aren't shown
+      if (!showBeatTicks && sub !== 0) continue;
+
+      const timeInSeconds = measure * secondsPerMeasure + sub * secondsPerSubdivision;
       const x = CLIP_CONTENT_OFFSET + timeInSeconds * pixelsPerSecond - scrollX;
 
       if (x < CLIP_CONTENT_OFFSET || x > width) continue;
 
       const tickX = Math.floor(x) + 0.5;
-      const isMeasureBoundary = beat === 0;
+      const isMeasureBoundary = sub === 0;
+      const isBeatBoundary = subWithinBeat === 0;
 
       if (isMeasureBoundary) {
-        // Major tick (measure boundary) - full height in both sections
-        ctx.strokeStyle = topTickColor;
+        const isLabeledMeasure = measure % measureLabelInterval === 0;
 
-        // Top section
-        ctx.beginPath();
-        ctx.moveTo(tickX, 0);
-        ctx.lineTo(tickX, midHeight);
-        ctx.stroke();
+        if (isLabeledMeasure) {
+          // Major tick (labeled measure) - full height in both sections
+          ctx.strokeStyle = topTickColor;
 
-        // Bottom section
+          // Top section
+          ctx.beginPath();
+          ctx.moveTo(tickX, 0);
+          ctx.lineTo(tickX, midHeight);
+          ctx.stroke();
+
+          // Bottom section
+          ctx.beginPath();
+          ctx.moveTo(tickX, midHeight);
+          ctx.lineTo(tickX, height);
+          ctx.stroke();
+
+          // Draw measure label
+          ctx.fillStyle = textColor;
+          const measureLabel = `${measure + 1}`;
+          const textY = midHeight / 2 + 4;
+          ctx.fillText(measureLabel, x + 4, textY);
+        } else {
+          // Minor measure tick - shorter, bottom section only
+          ctx.strokeStyle = bottomTickColor;
+          const tickHeight = bottomHalf * 0.4;
+          ctx.beginPath();
+          ctx.moveTo(tickX, height - tickHeight);
+          ctx.lineTo(tickX, height);
+          ctx.stroke();
+        }
+      } else if (isBeatBoundary) {
+        // Beat tick - small, in bottom section
+        ctx.strokeStyle = bottomTickColor;
+        const tickHeight = bottomHalf * 0.25;
         ctx.beginPath();
-        ctx.moveTo(tickX, midHeight);
+        ctx.moveTo(tickX, height - tickHeight);
         ctx.lineTo(tickX, height);
         ctx.stroke();
 
-        // Draw measure label
-        const measureLabel = `${measure + 1}`;
+        // Beat label (e.g., "1.2", "1.3") — only when zoomed in enough
+        if (!showBeatLabels) continue;
+        ctx.fillStyle = bottomTickColor;
+        const beatLabel = `${measure + 1}.${beatIndex + 1}`;
         const textY = midHeight / 2 + 4;
-        ctx.fillText(measureLabel, x + 4, textY);
+        ctx.fillText(beatLabel, x + 4, textY);
       } else {
-        // Minor tick (beat) - shorter, in bottom section only
+        // Subdivision tick - short, in bottom section only
         ctx.strokeStyle = bottomTickColor;
-        const minorTickHeight = (height - midHeight) * 0.4;
+        const tickHeight = bottomHalf * 0.25;
         ctx.beginPath();
-        ctx.moveTo(tickX, height - minorTickHeight);
+        ctx.moveTo(tickX, height - tickHeight);
         ctx.lineTo(tickX, height);
         ctx.stroke();
       }

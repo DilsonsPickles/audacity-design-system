@@ -13,6 +13,7 @@ import { useContainerClick } from '../hooks/useContainerClick';
 import { LabelRenderer } from './LabelRenderer';
 import { calculateTrackYOffset } from '../utils/trackLayout';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT, CLIP_HEADER_HEIGHT } from '../constants/canvas';
+import type { SnapOptions } from '../utils/snapToGrid';
 import './Canvas.css';
 
 export interface CanvasProps {
@@ -107,6 +108,11 @@ export interface CanvasProps {
    */
   snap?: SnapGrid;
   /**
+   * Whether snapping to grid divisions is enabled
+   * @default false
+   */
+  snapEnabled?: boolean;
+  /**
    * Frequency scale for spectrogram rendering and ruler
    * @default 'mel'
    */
@@ -160,6 +166,7 @@ export function Canvas({
   beatsPerMeasure = 4,
   timeFormat = 'beats-measures',
   snap = { subdivision: 1 },
+  snapEnabled = false,
   spectrogramScale = 'mel',
   onEnterTrackPanel,
   onShiftTabFromTrack,
@@ -219,6 +226,15 @@ export function Canvas({
   // Track if we just selected a clip on mouse down to prevent immediate deselection on click
   const justSelectedOnMouseDownRef = useRef(false);
 
+  // Snap options for grid snapping
+  const snapOptions: SnapOptions | undefined = snapEnabled ? {
+    timeFormat,
+    bpm,
+    beatsPerMeasure,
+    snap,
+    pixelsPerSecond,
+  } : undefined;
+
   // Clip dragging - extracted to custom hook
   const {
     clipDragStateRef,
@@ -231,6 +247,8 @@ export function Canvas({
     topGap: TOP_GAP,
     trackGap: TRACK_GAP,
     defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
+    snapEnabled,
+    snapOptions,
   });
 
   // Clip trimming - extracted to custom hook
@@ -248,6 +266,8 @@ export function Canvas({
     containerRef,
     pixelsPerSecond,
     clipContentOffset: CLIP_CONTENT_OFFSET,
+    snapEnabled,
+    snapOptions,
   });
 
   // Calculate total height based on all tracks + 2px gaps (top + between tracks)
@@ -382,8 +402,22 @@ export function Canvas({
     if (timeFormat === 'beats-measures') {
       const secondsPerBeat = 60 / bpm;
       const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-      // Grid step: divide each beat by subdivision (and by 1.5 for triplets)
-      const gridStep = secondsPerBeat / (snap.subdivision * (snap.triplet ? 1.5 : 1));
+      // Grid step: determined by zoom level, not snap subdivision
+      // At low zoom show only measures, at high zoom show finer subdivisions
+      const pixelsPerBeat = secondsPerBeat * pixelsPerSecond;
+      let gridSubdivision: number;
+      if (pixelsPerBeat < 20) {
+        gridSubdivision = 1; // measures only
+      } else if (pixelsPerBeat < 40) {
+        gridSubdivision = beatsPerMeasure; // beats (quarter notes in 4/4)
+      } else if (pixelsPerBeat < 80) {
+        gridSubdivision = beatsPerMeasure * 2; // eighth notes
+      } else if (pixelsPerBeat < 160) {
+        gridSubdivision = beatsPerMeasure * 4; // sixteenth notes
+      } else {
+        gridSubdivision = beatsPerMeasure * 8; // thirty-second notes
+      }
+      const gridStep = secondsPerMeasure / gridSubdivision;
       const totalSteps = Math.ceil(totalSeconds / gridStep) + Math.ceil(secondsPerMeasure / gridStep);
 
       for (let i = 0; i <= totalSteps; i++) {
@@ -436,7 +470,7 @@ export function Canvas({
       }
     }
     return { gridLines: lines, measureBands: bands };
-  }, [bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width, snap]);
+  }, [bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width]);
 
   return (
     <div className="canvas-container" style={{ backgroundColor: bgColor, height: `${totalHeight}px`, overflow: 'clip', overflowClipMargin: '2px', cursor: 'text' } as React.CSSProperties}>

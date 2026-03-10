@@ -110,6 +110,9 @@ export interface EditorLayoutProps {
   // Punch point (roll-in recording indicator)
   punchPointPosition?: number | null;
 
+  // Snap to grid
+  snapEnabled?: boolean;
+
   // Flat navigation mode
   isFlatNavigation: boolean;
 }
@@ -139,7 +142,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     contextMenuClosedTimeRef,
     audioManagerRef, rulerTimeSelection, spectralSelection,
     theme, baseTheme, canvasHeight, setCanvasHeight,
-    clickRulerToStartPlayback, punchPointPosition, isFlatNavigation: _isFlatNavigation,
+    clickRulerToStartPlayback, punchPointPosition, snapEnabled, isFlatNavigation: _isFlatNavigation,
   } = props;
 
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
@@ -933,6 +936,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     width={timelineWidth}
                     leftPadding={12}
                     snap={state.canvasSnap}
+                    snapEnabled={snapEnabled}
                     keyboardFocusedTrack={state.focusedTrackIndex}
                     showRmsInWaveform={showRmsInWaveform}
                     controlPointStyle={controlPointStyle}
