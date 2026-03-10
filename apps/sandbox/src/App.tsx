@@ -1245,6 +1245,7 @@ function CanvasDemoContent() {
         bpm={bpm}
         beatsPerMeasure={beatsPerMeasure}
         onClipboardSet={setClipboard}
+        setEffectDialog={setEffectDialog}
         os={preferences.operatingSystem}
       />
 

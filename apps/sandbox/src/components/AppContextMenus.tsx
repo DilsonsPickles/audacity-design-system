@@ -3,7 +3,7 @@ import { ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, ContextMen
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
-import type { ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, EffectSelectorMenuState } from '../hooks/useContextMenuState';
+import type { ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, EffectSelectorMenuState, EffectDialogState } from '../hooks/useContextMenuState';
 
 export interface AppContextMenusProps {
   // Context menu states
@@ -53,6 +53,9 @@ export interface AppContextMenusProps {
   // Clipboard
   onClipboardSet: (clipboard: { clips: any[]; operation: 'copy' | 'cut'; timeSelection?: { startTime: number; endTime: number } } | null) => void;
 
+  // Effect dialog
+  setEffectDialog: React.Dispatch<React.SetStateAction<EffectDialogState | null>>;
+
   // OS preference
   os: 'windows' | 'macos';
 }
@@ -75,6 +78,7 @@ export function AppContextMenus({
   loopRegionEnd, setLoopRegionEnd,
   timeSelection, bpm, beatsPerMeasure,
   onClipboardSet,
+  setEffectDialog,
   os,
 }: AppContextMenusProps) {
   return (
@@ -341,10 +345,14 @@ export function AppContextMenus({
 
         const addEffect = (effectName: string) => {
           const isMaster = effectSelectorMenu.trackIndex === undefined;
+          let newEffectId: string;
+          let effectIndex: number;
 
           if (isMaster) {
+            newEffectId = `m${masterEffects.length + 1}`;
+            effectIndex = masterEffects.length;
             const newEffect: Effect = {
-              id: `m${masterEffects.length + 1}`,
+              id: newEffectId,
               name: effectName,
               enabled: true,
             };
@@ -352,15 +360,26 @@ export function AppContextMenus({
           } else {
             const trackIndex = effectSelectorMenu.trackIndex!;
             const currentEffects = tracks[trackIndex]?.effects || [];
+            newEffectId = `t${trackIndex}-${currentEffects.length + 1}`;
+            effectIndex = currentEffects.length;
             const newEffect: Effect = {
-              id: `t${trackIndex}-${currentEffects.length + 1}`,
+              id: newEffectId,
               name: effectName,
               enabled: true,
             };
             dispatch({ type: 'ADD_TRACK_EFFECT', payload: { trackIndex, effect: newEffect } });
           }
 
-          closeAndRestoreFocus();
+          // Open the effect dialog for the newly added effect
+          setEffectDialog({
+            isOpen: true,
+            effectId: newEffectId,
+            effectName,
+            trackIndex: effectSelectorMenu.trackIndex,
+            effectIndex,
+          });
+
+          setEffectSelectorMenu(null);
         };
 
         return (

@@ -3,16 +3,15 @@
  * Base dialog for audio effects with header, content, and footer
  */
 
-/* Backdrop */
+/* Backdrop — transparent click-away target, no dimming */
 .effect-dialog-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: transparent;
   z-index: 9999;
-  backdrop-filter: blur(2px);
 }
 
 /* Dialog Container */
