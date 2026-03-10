@@ -6,6 +6,7 @@ import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/compone
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
+import { snapToGrid } from '../utils/snapToGrid';
 
 export interface EditorLayoutProps {
   // State
@@ -745,7 +746,17 @@ export function EditorLayout(props: EditorLayoutProps) {
                 const rect = timelineRulerRef.current.getBoundingClientRect();
                 const x = e.clientX - rect.left + scrollX;
                 const CLIP_CONTENT_OFFSET = 12;
-                const clickedTime = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
+                let clickedTime = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
+
+                if (snapEnabled) {
+                  clickedTime = snapToGrid(clickedTime, {
+                    timeFormat: timelineFormat,
+                    bpm,
+                    beatsPerMeasure,
+                    snap: state.canvasSnap,
+                    pixelsPerSecond,
+                  });
+                }
 
                 if (clickedTime >= 0) {
                   dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: clickedTime });
@@ -852,10 +863,20 @@ export function EditorLayout(props: EditorLayoutProps) {
                 iconTopOffset={24}
                 scrollX={scrollX}
                 onPositionChange={(newPosition) => {
-                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newPosition });
+                  let pos = newPosition;
+                  if (snapEnabled) {
+                    pos = snapToGrid(pos, {
+                      timeFormat: timelineFormat,
+                      bpm,
+                      beatsPerMeasure,
+                      snap: state.canvasSnap,
+                      pixelsPerSecond,
+                    });
+                  }
+                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: pos });
                   const audioManager = audioManagerRef.current;
                   if (audioManager.getIsPaused()) {
-                    audioManager.seek(newPosition);
+                    audioManager.seek(pos);
                   }
                 }}
                 minPosition={0}
