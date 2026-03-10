@@ -29,6 +29,10 @@ export interface MenuDefinitionDeps {
   // Generate menu deps
   onGenerateTone: () => void;
 
+  // Record menu deps
+  rollInTimeEnabled: boolean;
+  onToggleRollInTime: () => void;
+
   // Tools menu deps
   onOpenMacroManager: () => void;
 }
@@ -102,6 +106,14 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     },
   ];
 
+  const recordMenuItems: MenuItem[] = [
+    {
+      label: 'Enable roll in time',
+      checked: deps.rollInTimeEnabled,
+      onClick: deps.onToggleRollInTime,
+    },
+  ];
+
   const toolsMenuItems: MenuItem[] = [
     {
       label: 'Manage macros...',
@@ -113,6 +125,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     File: fileMenuItems,
     Edit: editMenuItems,
     View: viewMenuItems,
+    Record: recordMenuItems,
     Effect: effectMenuItems,
     Generate: generateMenuItems,
     Tools: toolsMenuItems,

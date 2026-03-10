@@ -440,7 +440,7 @@ export function Canvas({
 
   return (
     <div className="canvas-container" style={{ backgroundColor: bgColor, height: `${totalHeight}px`, overflow: 'clip', overflowClipMargin: '2px', cursor: 'text' } as React.CSSProperties}>
-      {/* Beat/measure grid — rendered first so tracks appear on top */}
+      {/* Beat/measure grid — rendered behind tracks */}
       {(gridLines.length > 0 || measureBands.length > 0) && (
         <svg
           style={{
@@ -452,16 +452,6 @@ export function Canvas({
             pointerEvents: 'none',
           }}
         >
-          {measureBands.map(({ x, w }) => (
-            <rect
-              key={x}
-              x={x}
-              y={0}
-              width={w}
-              height={tracksHeight + viewportHeight}
-              fill="#252837"
-            />
-          ))}
           {gridLines.map(({ x, tier }) => (
             <line
               key={x}

@@ -31,6 +31,7 @@ export interface PreferencesState {
   soloMode: 'multiple' | 'single';
   shortSkip: string;
   longSkip: string;
+  rollInTime: string;
   showMicMetering: boolean;
   enableInputMonitoring: boolean;
 
@@ -72,6 +73,7 @@ const defaultPreferences: PreferencesState = {
   soloMode: 'multiple',
   shortSkip: '5 seconds',
   longSkip: '15 seconds',
+  rollInTime: '3 seconds',
   showMicMetering: true,
   enableInputMonitoring: false,
 

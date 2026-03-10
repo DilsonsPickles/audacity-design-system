@@ -25,6 +25,7 @@ export interface UseKeyboardShortcutsOptions {
   dispatch: React.Dispatch<TracksAction>;
   handlePlay: () => void;
   handleRecord: () => void;
+  handleStopRecording: () => void;
   selectionAnchor: number | null;
   setSelectionAnchor: React.Dispatch<React.SetStateAction<number | null>>;
   selectionAnchorRef: React.MutableRefObject<number | null>;
@@ -67,6 +68,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     dispatch,
     handlePlay,
     handleRecord,
+    handleStopRecording,
     selectionAnchor,
     setSelectionAnchor,
     selectionAnchorRef,
@@ -213,7 +215,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
         if (!isTextField) {
           e.preventDefault(); // Prevent page scroll
-          handlePlay();
+          if (state.isRecording) {
+            // Stop recording, keep the clip, leave playhead in place
+            handleStopRecording();
+          } else {
+            handlePlay();
+          }
           return;
         }
       }

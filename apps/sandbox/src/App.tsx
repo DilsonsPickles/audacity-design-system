@@ -119,14 +119,14 @@ function CanvasDemoContent() {
   // Convert EFFECT_REGISTRY to Plugin[] format for PluginManagerDialog
   const [plugins, setPlugins] = React.useState<Plugin[]>(createInitialPlugins);
   const [isCloudUploading, setIsCloudUploading] = React.useState(false);
-  const [showDuration, setShowDuration] = React.useState(true);
-  const [showProjectRate, setShowProjectRate] = React.useState(false);
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
-  const [envelopeColor, setEnvelopeColor] = React.useState<'yellow-green' | 'bright-cyan' | 'hot-pink'>('yellow-green');
-  const [controlPointStyle, setControlPointStyle] = React.useState<EnvelopePointStyleKey>('solidGreenSimple');
+  const envelopeColor = 'yellow-green' as const;
+  const controlPointStyle: EnvelopePointStyleKey = 'solidGreenSimple';
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
+  const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
+  const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [showMixer, setShowMixer] = React.useState(false);
   const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
   const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
@@ -301,9 +301,11 @@ function CanvasDemoContent() {
 
   // Recording
   const {
-    handleRecord, isMicMonitoring, recordingClipId,
+    handleRecord, handleStopRecording, isMicMonitoring, recordingClipId, punchPointPosition,
   } = useRecording({
     state, dispatch, audioManagerRef, recordingManagerRef,
+    rollInTimeEnabled,
+    rollInTime: parseFloat(preferences.rollInTime) || 3,
   });
 
   // Loop region
@@ -323,7 +325,7 @@ function CanvasDemoContent() {
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    state, dispatch, handlePlay, handleRecord,
+    state, dispatch, handlePlay, handleRecord, handleStopRecording,
     selectionAnchor, setSelectionAnchor,
     selectionAnchorRef, selectionEdgesRef,
     effectsPanel, setEffectsPanel,
@@ -702,6 +704,8 @@ function CanvasDemoContent() {
         }
       }
     },
+    rollInTimeEnabled,
+    onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),
     onOpenPluginManager: () => setIsPluginManagerOpen(true),
     onGenerateTone: handleGenerateTone,
     onOpenMacroManager: () => setIsMacroManagerOpen(true),
@@ -817,6 +821,9 @@ function CanvasDemoContent() {
         onPlay={handlePlay}
         onStop={handleStop}
         onRecord={handleRecord}
+        useSplitRecordButton={useSplitRecordButton}
+        rollInTimeEnabled={rollInTimeEnabled}
+        onToggleRollInTime={() => setRollInTimeEnabled(!rollInTimeEnabled)}
         loopRegionEnabled={loopRegionEnabled}
         loopRegionStart={loopRegionStart}
         loopRegionEnd={loopRegionEnd}
@@ -953,6 +960,7 @@ function CanvasDemoContent() {
           trackMeterLevels={trackMeterLevels}
           isMicMonitoring={isMicMonitoring}
           recordingClipId={recordingClipId}
+          punchPointPosition={punchPointPosition}
           selectionAnchor={selectionAnchor}
           setSelectionAnchor={setSelectionAnchor}
           controlPanelHasFocus={controlPanelHasFocus}
@@ -1001,7 +1009,7 @@ function CanvasDemoContent() {
           durationFormat={durationTimeCodeFormat}
           showCloudIndicator={isCloudProject || isCloudUploading}
           isCloudUploading={isCloudUploading}
-          showDuration={showDuration}
+          showDuration={true}
           status={showFocusDebug ? 'Focused element' : undefined}
           instructionText={showFocusDebug ? focusedElement : undefined}
           onFormatChange={setSelectionTimeCodeFormat}
@@ -1129,21 +1137,13 @@ function CanvasDemoContent() {
         setDebugTrackCount={setDebugTrackCount}
         showFocusDebug={showFocusDebug}
         setShowFocusDebug={setShowFocusDebug}
-        showDuration={showDuration}
-        setShowDuration={setShowDuration}
-        showProjectRate={showProjectRate}
-        setShowProjectRate={setShowProjectRate}
         activeProfile={activeProfile}
         profiles={profiles}
         setProfile={setProfile}
-        envelopeColor={envelopeColor}
-        setEnvelopeColor={setEnvelopeColor}
-        controlPointStyle={controlPointStyle}
-        setControlPointStyle={setControlPointStyle}
+        useSplitRecordButton={useSplitRecordButton}
+        setUseSplitRecordButton={setUseSplitRecordButton}
         showMixer={showMixer}
         setShowMixer={setShowMixer}
-        spectrogramScale={spectrogramScale}
-        setSpectrogramScale={setSpectrogramScale}
         setActiveMenuItem={setActiveMenuItem}
         state={state}
       />

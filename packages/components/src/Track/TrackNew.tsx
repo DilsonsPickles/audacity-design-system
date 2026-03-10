@@ -7,6 +7,7 @@ import { generateSpeechWaveform } from '../utils/waveform';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { scrollIntoViewIfNeeded } from '../utils/scrollIntoViewIfNeeded';
+import { useTheme } from '../ThemeProvider/ThemeProvider';
 import './Track.css';
 
 const EMPTY_NUMBER_ARRAY: number[] = [];
@@ -330,6 +331,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onContainerEnter,
   onTabFromLastClip,
 }) => {
+  const { theme } = useTheme();
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
   const [clipHiddenPoints, setClipHiddenPoints] = React.useState<Map<string | number, number[]>>(new Map());
   const [clipHoveredPoints, setClipHoveredPoints] = React.useState<Map<string | number, number[]>>(new Map());
@@ -397,7 +399,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     };
   }, [isDraggingDivider, onChannelSplitRatioChange, height]);
 
-  const getTrackBackgroundColor = () => isSelected ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.05)';
+  // Use theme tokens (semi-transparent so grid lines show through)
+  const getTrackBackgroundColor = () => isSelected ? theme.background.canvas.track.selected : theme.background.canvas.track.idle;
 
   // Sort clips by start time so tab order follows timeline position
   const sortedClips = React.useMemo(

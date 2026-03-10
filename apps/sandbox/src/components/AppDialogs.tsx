@@ -1,8 +1,6 @@
 import React from 'react';
 import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroManager, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
-import type { EnvelopePointStyleKey } from '@audacity-ui/core';
-import type { SpectrogramScale } from '@audacity-ui/components';
 import { DebugPanel } from './DebugPanel';
 import { generateWaveform } from '../utils/waveformGenerator';
 import { saveProject, getProject, getProjects } from '../utils/projectDatabase';
@@ -128,22 +126,13 @@ export interface AppDialogsProps {
   setDebugTrackCount: React.Dispatch<React.SetStateAction<number>>;
   showFocusDebug: boolean;
   setShowFocusDebug: React.Dispatch<React.SetStateAction<boolean>>;
-  showDuration: boolean;
-  setShowDuration: React.Dispatch<React.SetStateAction<boolean>>;
-  showProjectRate: boolean;
-  setShowProjectRate: React.Dispatch<React.SetStateAction<boolean>>;
   activeProfile: any;
   profiles: any[];
   setProfile: (id: string) => void;
-  envelopeColor: 'yellow-green' | 'bright-cyan' | 'hot-pink';
-  setEnvelopeColor: React.Dispatch<React.SetStateAction<'yellow-green' | 'bright-cyan' | 'hot-pink'>>;
-  controlPointStyle: EnvelopePointStyleKey;
-  setControlPointStyle: React.Dispatch<React.SetStateAction<EnvelopePointStyleKey>>;
+  useSplitRecordButton: boolean;
+  setUseSplitRecordButton: React.Dispatch<React.SetStateAction<boolean>>;
   showMixer: boolean;
   setShowMixer: React.Dispatch<React.SetStateAction<boolean>>;
-  spectrogramScale: SpectrogramScale;
-  setSpectrogramScale: React.Dispatch<React.SetStateAction<SpectrogramScale>>;
-
   // Active menu item (for debug panel close)
   setActiveMenuItem: React.Dispatch<React.SetStateAction<'home' | 'project' | 'export' | 'debug'>>;
 
@@ -182,12 +171,9 @@ export function AppDialogs(props: AppDialogsProps) {
     os, updatePreference,
     debugTrackCount, setDebugTrackCount,
     showFocusDebug, setShowFocusDebug,
-    showDuration, setShowDuration, showProjectRate, setShowProjectRate,
     activeProfile, profiles, setProfile,
-    envelopeColor, setEnvelopeColor,
-    controlPointStyle, setControlPointStyle,
+    useSplitRecordButton, setUseSplitRecordButton,
     showMixer, setShowMixer,
-    spectrogramScale, setSpectrogramScale,
     setActiveMenuItem,
     state,
   } = props;
@@ -1162,10 +1148,6 @@ export function AppDialogs(props: AppDialogsProps) {
         onCloudProjectChange={setIsCloudProject}
         isCloudUploading={isCloudUploading}
         onCloudUploadingChange={setIsCloudUploading}
-        showDuration={showDuration}
-        onShowDurationChange={setShowDuration}
-        showProjectRate={showProjectRate}
-        onShowProjectRateChange={setShowProjectRate}
         operatingSystem={os}
         onOperatingSystemChange={(osVal) => updatePreference('operatingSystem', osVal)}
         trackCount={debugTrackCount}
@@ -1237,14 +1219,10 @@ export function AppDialogs(props: AppDialogsProps) {
         onAccessibilityProfileChange={setProfile}
         cutMode={state.cutMode}
         onCutModeChange={(mode) => dispatch({ type: 'SET_CUT_MODE', payload: mode })}
-        envelopeColor={envelopeColor}
-        onEnvelopeColorChange={setEnvelopeColor}
-        controlPointStyle={controlPointStyle}
-        onControlPointStyleChange={setControlPointStyle}
+        useSplitRecordButton={useSplitRecordButton}
+        onUseSplitRecordButtonChange={setUseSplitRecordButton}
         showMixer={showMixer}
         onShowMixerChange={setShowMixer}
-        spectrogramScale={spectrogramScale}
-        onSpectrogramScaleChange={setSpectrogramScale}
         pianoRollTimeMode={state.pianoRollTimeMode}
         onPianoRollTimeModeChange={(mode) => dispatch({ type: 'SET_PIANO_ROLL_TIME_MODE', payload: mode })}
       />

@@ -4,13 +4,11 @@
  * Provides controls for:
  * - User authentication state
  * - Cloud project state
- * - Selection toolbar configuration
+ * - Operating system, cut mode, accessibility
  * - Track/clip generation
  */
 
 import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@audacity-ui/components';
-import type { SpectrogramScale } from '@audacity-ui/components';
-import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 
 export interface DebugPanelProps {
   isOpen: boolean;
@@ -26,13 +24,6 @@ export interface DebugPanelProps {
 
   isCloudUploading: boolean;
   onCloudUploadingChange: (value: boolean) => void;
-
-  // Selection toolbar
-  showDuration: boolean;
-  onShowDurationChange: (value: boolean) => void;
-
-  showProjectRate: boolean;
-  onShowProjectRateChange: (value: boolean) => void;
 
   // OS
   operatingSystem: 'windows' | 'macos';
@@ -59,21 +50,13 @@ export interface DebugPanelProps {
   cutMode: 'split' | 'ripple';
   onCutModeChange: (value: 'split' | 'ripple') => void;
 
-  // Envelope color
-  envelopeColor: 'yellow-green' | 'bright-cyan' | 'hot-pink';
-  onEnvelopeColorChange: (value: 'yellow-green' | 'bright-cyan' | 'hot-pink') => void;
-
-  // Control point style
-  controlPointStyle: EnvelopePointStyleKey;
-  onControlPointStyleChange: (value: EnvelopePointStyleKey) => void;
+  // Split record button
+  useSplitRecordButton: boolean;
+  onUseSplitRecordButtonChange: (value: boolean) => void;
 
   // Mixer
   showMixer: boolean;
   onShowMixerChange: (value: boolean) => void;
-
-  // Spectrogram scale
-  spectrogramScale: SpectrogramScale;
-  onSpectrogramScaleChange: (value: SpectrogramScale) => void;
 
   // Piano roll time mode
   pianoRollTimeMode: 'global' | 'local';
@@ -89,10 +72,6 @@ export function DebugPanel({
   onCloudProjectChange,
   isCloudUploading,
   onCloudUploadingChange,
-  showDuration,
-  onShowDurationChange,
-  showProjectRate,
-  onShowProjectRateChange,
   operatingSystem,
   onOperatingSystemChange,
   trackCount,
@@ -107,14 +86,10 @@ export function DebugPanel({
   onAccessibilityProfileChange,
   cutMode,
   onCutModeChange,
-  envelopeColor,
-  onEnvelopeColorChange,
-  controlPointStyle: _controlPointStyle,
-  onControlPointStyleChange: _onControlPointStyleChange,
+  useSplitRecordButton,
+  onUseSplitRecordButtonChange,
   showMixer,
   onShowMixerChange,
-  spectrogramScale,
-  onSpectrogramScaleChange,
   pianoRollTimeMode,
   onPianoRollTimeModeChange,
 }: DebugPanelProps) {
@@ -163,36 +138,6 @@ export function DebugPanel({
               checked={isCloudUploading}
               onChange={onCloudUploadingChange}
               disabled={!isCloudProject}
-            />
-          </div>
-        </div>
-
-        {/* Selection Toolbar Section */}
-        <div>
-          <h3 style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '14px',
-            fontWeight: 600,
-            lineHeight: '20px',
-            color: '#14151a',
-            margin: '0 0 12px 0',
-          }}>
-            Selection Toolbar
-          </h3>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
-            <LabeledCheckbox
-              label="Show duration"
-              checked={showDuration}
-              onChange={onShowDurationChange}
-            />
-            <LabeledCheckbox
-              label="Show project rate"
-              checked={showProjectRate}
-              onChange={onShowProjectRateChange}
             />
           </div>
         </div>
@@ -327,7 +272,7 @@ export function DebugPanel({
           </div>
         </div>
 
-        {/* Envelope Appearance Section */}
+        {/* Record Button Section */}
         <div>
           <h3 style={{
             fontFamily: 'Inter, sans-serif',
@@ -337,109 +282,14 @@ export function DebugPanel({
             color: '#14151a',
             margin: '0 0 12px 0',
           }}>
-            Envelope Appearance
+            Record Button
           </h3>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          }}>
-            {/* Color options */}
-            <div>
-              <label style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '11px',
-                fontWeight: 600,
-                lineHeight: '14px',
-                color: '#14151a',
-                opacity: 0.7,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '8px',
-                display: 'block',
-              }}>
-                Color
-              </label>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                }}>
-                  <input
-                    type="radio"
-                    value="yellow-green"
-                    checked={envelopeColor === 'yellow-green'}
-                    onChange={(e) => onEnvelopeColorChange(e.target.value as 'yellow-green' | 'bright-cyan' | 'hot-pink')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 400,
-                    lineHeight: '16px',
-                    color: '#14151a',
-                  }}>
-                    Yellow-green (#b8ff00)
-                  </span>
-                </label>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                }}>
-                  <input
-                    type="radio"
-                    value="bright-cyan"
-                    checked={envelopeColor === 'bright-cyan'}
-                    onChange={(e) => onEnvelopeColorChange(e.target.value as 'yellow-green' | 'bright-cyan' | 'hot-pink')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 400,
-                    lineHeight: '16px',
-                    color: '#14151a',
-                  }}>
-                    Bright cyan (#00e5ff)
-                  </span>
-                </label>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                }}>
-                  <input
-                    type="radio"
-                    value="hot-pink"
-                    checked={envelopeColor === 'hot-pink'}
-                    onChange={(e) => onEnvelopeColorChange(e.target.value as 'yellow-green' | 'bright-cyan' | 'hot-pink')}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 400,
-                    lineHeight: '16px',
-                    color: '#14151a',
-                  }}>
-                    Hot pink (#ff007f)
-                  </span>
-                </label>
-              </div>
-            </div>
-
-          </div>
+          <LabeledCheckbox
+            label="Use split record button"
+            checked={useSplitRecordButton}
+            onChange={onUseSplitRecordButtonChange}
+          />
         </div>
-
 
         {/* Accessibility Section */}
         <div>
@@ -591,43 +441,6 @@ export function DebugPanel({
                 Local (clip-relative)
               </span>
             </label>
-          </div>
-        </div>
-
-        {/* Spectrogram Scale Section */}
-        <div>
-          <h3 style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '14px',
-            fontWeight: 600,
-            lineHeight: '20px',
-            color: '#14151a',
-            margin: '0 0 12px 0',
-          }}>
-            Spectrogram Scale
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {(['linear', 'logarithmic', 'mel', 'bark', 'erb', 'period'] as SpectrogramScale[]).map((scale) => (
-              <label key={scale} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  value={scale}
-                  checked={spectrogramScale === scale}
-                  onChange={() => onSpectrogramScaleChange(scale)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <span style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  fontWeight: 400,
-                  lineHeight: '16px',
-                  color: '#14151a',
-                  textTransform: 'capitalize',
-                }}>
-                  {scale.charAt(0).toUpperCase() + scale.slice(1)}
-                </span>
-              </label>
-            ))}
           </div>
         </div>
 

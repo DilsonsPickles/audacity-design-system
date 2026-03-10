@@ -61,12 +61,18 @@ export const PianoRollRuler: React.FC<PianoRollRulerProps> = ({
     const startMeasure = Math.floor((scrollX / pixelsPerSecond) / secondsPerMeasure);
     const endMeasure = Math.ceil(((scrollX + width) / pixelsPerSecond) / secondsPerMeasure);
 
+    // Hide beat ticks/labels when they're too close together
+    const beatPixelSpacing = secondsPerBeat * pixelsPerSecond;
+    const showBeats = beatPixelSpacing >= 32;
+
     ctx.font = '11px system-ui, sans-serif';
     ctx.fillStyle = textColor;
     ctx.lineWidth = 1;
 
     for (let measure = startMeasure; measure <= endMeasure; measure++) {
       for (let beat = 0; beat < beatsPerMeasure; beat++) {
+        if (!showBeats && beat !== 0) continue;
+
         const timeInSeconds = measure * secondsPerMeasure + beat * secondsPerBeat;
         const x = timeInSeconds * pixelsPerSecond - scrollX;
 

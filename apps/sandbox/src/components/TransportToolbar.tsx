@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, useTheme } from '@audacity-ui/components';
 
 type Workspace = 'classic' | 'spectral-editing';
 
@@ -13,6 +13,9 @@ export interface TransportToolbarProps {
   onPlay: () => void;
   onStop: () => void;
   onRecord: () => void;
+  useSplitRecordButton?: boolean;
+  rollInTimeEnabled?: boolean;
+  onToggleRollInTime?: () => void;
 
   // Loop
   loopRegionEnabled: boolean;
@@ -50,9 +53,90 @@ export interface TransportToolbarProps {
   onExportLoopRegionClick: () => void;
 }
 
+function SplitRecordButton({
+  isRecording,
+  disabled,
+  onRecord,
+  onCaretClick,
+  caretRef,
+}: {
+  isRecording: boolean;
+  disabled: boolean;
+  onRecord: () => void;
+  onCaretClick: () => void;
+  caretRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+  const { theme } = useTheme();
+  const [mainState, setMainState] = React.useState<'idle' | 'hover' | 'pressed'>('idle');
+  const [caretState, setCaretState] = React.useState<'idle' | 'hover' | 'pressed'>('idle');
+
+  const bg = (state: 'idle' | 'hover' | 'pressed') => {
+    if (state === 'pressed') return theme.background.control.button.secondary.active;
+    if (state === 'hover') return theme.background.control.button.secondary.hover;
+    return theme.background.control.button.secondary.idle;
+  };
+
+  const sharedStyle: React.CSSProperties = {
+    height: 32,
+    border: 'none',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.4 : 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    transition: 'background-color 0.1s ease',
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Record"
+        disabled={disabled}
+        onClick={() => { if (!disabled) onRecord(); }}
+        onMouseEnter={() => { if (!disabled) setMainState('hover'); }}
+        onMouseLeave={() => setMainState('idle')}
+        onMouseDown={() => { if (!disabled) setMainState('pressed'); }}
+        onMouseUp={() => { if (!disabled) setMainState('hover'); }}
+        style={{
+          ...sharedStyle,
+          width: 32,
+          borderRadius: 0,
+          backgroundColor: isRecording ? bg('pressed') : bg(mainState),
+          color: theme.audio.transport.record,
+        }}
+      >
+        <Icon name="record" size={14} />
+      </button>
+      <button
+        ref={caretRef}
+        type="button"
+        aria-label="Record options"
+        aria-haspopup="true"
+        disabled={disabled}
+        onClick={() => { if (!disabled) onCaretClick(); }}
+        onMouseEnter={() => { if (!disabled) setCaretState('hover'); }}
+        onMouseLeave={() => setCaretState('idle')}
+        onMouseDown={() => { if (!disabled) setCaretState('pressed'); }}
+        onMouseUp={() => { if (!disabled) setCaretState('hover'); }}
+        style={{
+          ...sharedStyle,
+          width: 16,
+          borderRadius: 0,
+          backgroundColor: bg(caretState),
+          marginLeft: 1,
+        }}
+      >
+        <Icon name="caret-down" size={14} />
+      </button>
+    </>
+  );
+}
+
 export function TransportToolbar({
   activeMenuItem, workspace,
-  isPlaying, isRecording, onPlay, onStop, onRecord,
+  isPlaying, isRecording, onPlay, onStop, onRecord, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
   timeSelection, bpm, beatsPerMeasure,
@@ -61,6 +145,18 @@ export function TransportToolbar({
   currentTime, timeCodeFormat, onTimeCodeChange, onTimeCodeFormatChange,
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
 }: TransportToolbarProps) {
+  const [recordMenuOpen, setRecordMenuOpen] = React.useState(false);
+  const [recordMenuPos, setRecordMenuPos] = React.useState({ x: 0, y: 0 });
+  const caretRef = React.useRef<HTMLButtonElement>(null);
+
+  const handleRecordCaretClick = () => {
+    if (caretRef.current) {
+      const rect = caretRef.current.getBoundingClientRect();
+      setRecordMenuPos({ x: rect.left, y: rect.bottom + 2 });
+    }
+    setRecordMenuOpen(true);
+  };
+
   const handleToggleLoop = () => {
     if (!loopRegionEnabled) {
       if (loopRegionStart === null || loopRegionEnd === null) {
@@ -135,13 +231,40 @@ export function TransportToolbar({
           <ToolbarButtonGroup gap={2}>
             <TransportButton icon={isPlaying ? "pause" : "play"} ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />
             <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />
-            <TransportButton
-              icon="record"
-              ariaLabel="Record"
-              active={isRecording}
-              disabled={isPlaying}
-              onClick={onRecord}
-            />
+            {useSplitRecordButton ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 3, overflow: 'hidden' }}>
+                <SplitRecordButton
+                  isRecording={isRecording}
+                  disabled={isPlaying}
+                  onRecord={onRecord}
+                  onCaretClick={handleRecordCaretClick}
+                  caretRef={caretRef}
+                />
+                <ContextMenu
+                  isOpen={recordMenuOpen}
+                  onClose={() => setRecordMenuOpen(false)}
+                  x={recordMenuPos.x}
+                  y={recordMenuPos.y}
+                >
+                  <ContextMenuItem
+                    label="Enable roll in time"
+                    checked={rollInTimeEnabled}
+                    onClick={() => {
+                      onToggleRollInTime?.();
+                      setRecordMenuOpen(false);
+                    }}
+                  />
+                </ContextMenu>
+              </div>
+            ) : (
+              <TransportButton
+                icon="record"
+                ariaLabel="Record"
+                active={isRecording}
+                disabled={isPlaying}
+                onClick={onRecord}
+              />
+            )}
             <TransportButton icon="skip-back" ariaLabel="Step backward" disabled={isPlaying} />
             <TransportButton icon="skip-forward" ariaLabel="Step forward" disabled={isPlaying} />
             <TransportButton

@@ -107,6 +107,9 @@ export interface EditorLayoutProps {
   // Click ruler to start playback
   clickRulerToStartPlayback: boolean;
 
+  // Punch point (roll-in recording indicator)
+  punchPointPosition?: number | null;
+
   // Flat navigation mode
   isFlatNavigation: boolean;
 }
@@ -136,7 +139,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     contextMenuClosedTimeRef,
     audioManagerRef, rulerTimeSelection, spectralSelection,
     theme, baseTheme, canvasHeight, setCanvasHeight,
-    clickRulerToStartPlayback, isFlatNavigation: _isFlatNavigation,
+    clickRulerToStartPlayback, punchPointPosition, isFlatNavigation: _isFlatNavigation,
   } = props;
 
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
@@ -822,6 +825,21 @@ export function EditorLayout(props: EditorLayoutProps) {
                   />
                 </>
               )}
+              {/* Punch point indicator in ruler */}
+              {punchPointPosition != null && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${12 + punchPointPosition * pixelsPerSecond}px`,
+                    top: 0,
+                    width: 1,
+                    height: '100%',
+                    backgroundColor: '#FF2672',
+                    zIndex: 99,
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
               {/* Playhead icon only in ruler */}
               <PlayheadCursor
                 position={state.playheadPosition}
@@ -1046,6 +1064,21 @@ export function EditorLayout(props: EditorLayoutProps) {
                   height={Math.max(canvasHeight + scrollBuffer, viewportH)}
                   showTopIcon={false}
                 />
+                {/* Punch point indicator (roll-in recording) */}
+                {punchPointPosition != null && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${12 + punchPointPosition * pixelsPerSecond}px`,
+                      top: 0,
+                      width: 1,
+                      height: Math.max(canvasHeight + scrollBuffer, viewportH),
+                      backgroundColor: '#FF2672',
+                      zIndex: 99,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
                 {/* Loop region stalks */}
                 {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
                   <>

@@ -26,9 +26,9 @@ export const darkTheme: ThemeTokens = {
     canvas: {
       default: '#1a1b1e',        // Main audio canvas (very dark)
       track: {
-        idle: '#1d1e21',         // Track idle (computed: #1a1b1e + 3% white)
-        selected: '#24252a',     // Track selected (computed: #1a1b1e + 8% white)
-        hover: '#20212',         // Track hover (computed: #1a1b1e + 5% white)
+        idle: 'rgba(255, 255, 255, 0.03)',   // Track idle (semi-transparent so grid lines show through)
+        selected: 'rgba(255, 255, 255, 0.08)', // Track selected
+        hover: 'rgba(255, 255, 255, 0.05)',  // Track hover
       },
       grid: {
         major: '#2d2f34',        // Major grid lines
@@ -509,7 +509,7 @@ export const darkTheme: ThemeTokens = {
 
     transport: {
       play: '#22c55e',           // Green play button (brighter in dark)
-      record: '#ef4444',         // Red record button
+      record: '#FF2672',         // Pink record button
       stop: '#9ca3af',           // Gray stop button
     },
 

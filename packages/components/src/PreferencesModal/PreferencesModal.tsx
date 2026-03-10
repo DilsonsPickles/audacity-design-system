@@ -1000,7 +1000,32 @@ function PlaybackRecordingPage() {
         <TabGroupField
           groupId="recording-behavior"
           itemIndex={0}
-          totalItems={2}
+          totalItems={3}
+          itemRefs={recordingBehaviorRefs}
+          activeIndexRef={recordingBehaviorActiveIndexRef}
+          activeIndex={recordingBehaviorActiveIndex}
+          onActiveIndexChange={setRecordingBehaviorActiveIndex}
+          resetKey="playback-recording"
+        >
+          <label className="preferences-page__label">Roll in time</label>
+          <NumberStepper
+            value={preferences.rollInTime}
+            onChange={(value) => updatePreference('rollInTime', value)}
+          />
+        </TabGroupField>
+
+      </div>
+
+      <Separator />
+
+      {/* Section 5: Monitoring */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Monitoring</h3>
+
+        <TabGroupField
+          groupId="recording-behavior"
+          itemIndex={1}
+          totalItems={3}
           itemRefs={recordingBehaviorRefs}
           activeIndexRef={recordingBehaviorActiveIndexRef}
           activeIndex={recordingBehaviorActiveIndex}
@@ -1016,8 +1041,8 @@ function PlaybackRecordingPage() {
 
         <TabGroupField
           groupId="recording-behavior"
-          itemIndex={1}
-          totalItems={2}
+          itemIndex={2}
+          totalItems={3}
           itemRefs={recordingBehaviorRefs}
           activeIndexRef={recordingBehaviorActiveIndexRef}
           activeIndex={recordingBehaviorActiveIndex}

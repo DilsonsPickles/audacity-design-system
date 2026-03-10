@@ -48,7 +48,7 @@ export const NoteGridCanvas: React.FC<NoteGridCanvasProps> = ({
 
       // Lane separator
       ctx.strokeStyle = pr.gridSubdivision;
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, y + noteHeight);
       ctx.lineTo(width, y + noteHeight);
@@ -68,7 +68,14 @@ export const NoteGridCanvas: React.FC<NoteGridCanvasProps> = ({
     // Draw grid lines (vertical)
     const beatDuration = 60 / bpm;
     const measureDuration = beatDuration * beatsPerMeasure;
-    const subDivisions = snap.subdivision * (snap.triplet ? 1.5 : 1);
+    const fullSubDivisions = snap.subdivision * (snap.triplet ? 1.5 : 1);
+
+    // Reduce visible subdivisions when zoomed out so lines don't crowd
+    const MIN_GRID_PX = 12; // Minimum pixels between grid lines
+    let subDivisions = fullSubDivisions;
+    while (subDivisions > 1 && (beatDuration / subDivisions) * pixelsPerSecond < MIN_GRID_PX) {
+      subDivisions = Math.floor(subDivisions / 2) || 1;
+    }
     const gridStep = beatDuration / subDivisions;
 
     const startTime = scrollX / pixelsPerSecond;
@@ -88,7 +95,7 @@ export const NoteGridCanvas: React.FC<NoteGridCanvasProps> = ({
         if (wholeBeat % beatsPerMeasure === 0) {
           // Measure line
           ctx.strokeStyle = pr.gridMeasure;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1;
         } else {
           // Beat line
           ctx.strokeStyle = pr.gridBeat;
@@ -97,7 +104,7 @@ export const NoteGridCanvas: React.FC<NoteGridCanvasProps> = ({
       } else {
         // Subdivision line
         ctx.strokeStyle = pr.gridSubdivision;
-        ctx.lineWidth = 0.5;
+        ctx.lineWidth = 1;
       }
 
       ctx.beginPath();
