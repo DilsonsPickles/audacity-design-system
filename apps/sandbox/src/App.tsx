@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Tone from 'tone';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
@@ -120,7 +121,8 @@ function CanvasDemoContent() {
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [snapEnabled, setSnapEnabled] = React.useState(false);
   const [snapMode, setSnapMode] = React.useState<import('./components/TransportToolbar').SnapMode>('musical');
-  const [showMixer, setShowMixer] = React.useState(false);
+  const [showMixer, setShowMixer] = React.useState(true);
+  const [mixerPanelOpen, setMixerPanelOpen] = React.useState(true);
   const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
   const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
 
@@ -640,6 +642,82 @@ function CanvasDemoContent() {
     audioManager.loadClips(state.tracks);
   };
 
+  // Import audio file handler
+  const handleImportAudio = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      const audioManager = audioManagerRef.current;
+      await audioManager.initialize();
+
+      const arrayBuffer = await file.arrayBuffer();
+      const audioContext = Tone.context.rawContext;
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      const duration = audioBuffer.duration;
+      const isStereo = audioBuffer.numberOfChannels >= 2;
+
+      // Pick a target track — use first selected audio track, or first audio track
+      let trackIndex = state.selectedTrackIndices.find(
+        i => !state.tracks[i]?.type || state.tracks[i]?.type === 'audio'
+      );
+      if (trackIndex === undefined) {
+        trackIndex = state.tracks.findIndex(t => !t.type || t.type === 'audio');
+      }
+      if (trackIndex === -1) return;
+
+      const newClipId = Date.now();
+
+      audioManager.addClipBuffer(newClipId, audioBuffer);
+
+      // Downsample for waveform display (~100 samples per second)
+      const downsample = (channelData: Float32Array) => {
+        const samplesPerPixel = Math.floor(channelData.length / (duration * 100));
+        const result: number[] = [];
+        for (let i = 0; i < channelData.length; i += samplesPerPixel) {
+          result.push(channelData[i]);
+        }
+        return result;
+      };
+
+      const startTime = state.playheadPosition;
+
+      const newClip = isStereo ? {
+        id: newClipId,
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        start: startTime,
+        duration,
+        waveformLeft: downsample(audioBuffer.getChannelData(0)),
+        waveformRight: downsample(audioBuffer.getChannelData(1)),
+        waveformLeftRms: generateRmsWaveform(downsample(audioBuffer.getChannelData(0))),
+        waveformRightRms: generateRmsWaveform(downsample(audioBuffer.getChannelData(1))),
+        envelopePoints: [],
+        fullDuration: duration,
+      } : {
+        id: newClipId,
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        start: startTime,
+        duration,
+        waveform: downsample(audioBuffer.getChannelData(0)),
+        waveformRms: generateRmsWaveform(downsample(audioBuffer.getChannelData(0))),
+        envelopePoints: [],
+        fullDuration: duration,
+      };
+
+      dispatch({
+        type: 'ADD_CLIP',
+        payload: { trackIndex, clip: newClip },
+      });
+
+      audioManager.loadClips(state.tracks);
+    };
+    input.click();
+  };
+
   // Sync toast handler for cloud save
   const handleSyncToast = () => {
     const syncToastId = toast.syncing('Syncing to audio.com...');
@@ -671,6 +749,7 @@ function CanvasDemoContent() {
   const menuDefinitions = createMenuDefinitions({
     isCloudProject,
     dontShowSaveModalAgain,
+    onImportAudio: handleImportAudio,
     onSyncToast: handleSyncToast,
     onShowSaveProjectModal: () => setIsSaveProjectModalOpen(true),
     onSaveToComputer: handleSaveToComputer,
@@ -765,7 +844,7 @@ function CanvasDemoContent() {
         centerContent={
           activeMenuItem !== 'export' ? (
             <ToolbarGroup ariaLabel="Toolbar options" tabGroupId="project-toolbar-actions">
-              {showMixer && <GhostButton icon="mixer" label="Mixer" />}
+              {showMixer && <GhostButton icon="mixer" label="Mixer" onClick={() => setMixerPanelOpen(prev => !prev)} />}
               <GhostButton
                 icon="cog"
                 label="Audio setup"
@@ -1034,6 +1113,7 @@ function CanvasDemoContent() {
           setCanvasHeight={setCanvasHeight}
           clickRulerToStartPlayback={clickRulerToStartPlayback}
           isFlatNavigation={isFlatNavigation}
+          showMixer={mixerPanelOpen}
         />
       )}
 

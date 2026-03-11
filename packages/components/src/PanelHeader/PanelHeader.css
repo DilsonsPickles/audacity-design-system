@@ -1,0 +1,69 @@
+/**
+ * Panel Header Styles
+ */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: var(--ph-bg);
+  border-bottom: 1px solid var(--ph-border);
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Tab group container - uses gap color as 1px separator */
+.panel-header__tab-group {
+  display: flex;
+  align-items: center;
+  background: var(--ph-border);
+  gap: 1px;
+  padding-right: 1px;
+  height: 100%;
+}
+
+/* Base tab styles */
+.panel-header__tab {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--ph-bg);
+  border: none;
+  border-bottom: 1px solid var(--ph-border);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--ph-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-header__tab:focus-visible {
+  outline: 2px solid var(--ph-focus);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* Active tab */
+.panel-header__tab--active {
+  background: var(--ph-tab-active-bg);
+  border-bottom: none;
+  padding-left: 12px;
+  padding-right: 8px;
+  gap: 8px;
+}
+
+/* Inactive tab */
+.panel-header__tab--inactive:hover {
+  background: var(--ph-tab-hover-bg);
+}
+
+.panel-header__tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -521,6 +521,28 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Set the gain for a specific track in dB.
+   * This affects both the audible output and the meter reading.
+   */
+  setTrackGain(trackIndex: number, gainDb: number): void {
+    const gainNode = this.trackGains.get(trackIndex);
+    if (!gainNode) return;
+    const linear = gainDb <= -60 ? 0 : Math.pow(10, gainDb / 20);
+    gainNode.gain.value = linear;
+  }
+
+  /**
+   * Mute or unmute a specific track.
+   */
+  setTrackMuted(trackIndex: number, muted: boolean): void {
+    const gainNode = this.trackGains.get(trackIndex);
+    if (!gainNode) return;
+    if (muted) {
+      gainNode.gain.value = 0;
+    }
+  }
+
+  /**
    * Get current playback position in seconds
    */
   getCurrentPosition(): number {

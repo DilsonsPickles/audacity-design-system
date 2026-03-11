@@ -75,11 +75,25 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     };
   }, [dispatch]);
 
+  // Apply per-track gain/mute to the audio manager after loading clips
+  const applyTrackGains = (audioManager: AudioPlaybackManager, tracks: any[]) => {
+    tracks.forEach((track: any, index: number) => {
+      if (track.type === 'label') return;
+      const gain = track.gain ?? -6;
+      if (track.muted) {
+        audioManager.setTrackMuted(index, true);
+      } else {
+        audioManager.setTrackGain(index, gain);
+      }
+    });
+  };
+
   // Reload clips for playback whenever tracks change (but not during playback/recording)
   useEffect(() => {
     if (!isPlaying && !state.isRecording) {
       const audioManager = audioManagerRef.current;
       audioManager.loadClips(state.tracks, state.playheadPosition);
+      applyTrackGains(audioManager, state.tracks);
     }
   }, [state.tracks, isPlaying, state.isRecording, state.playheadPosition]);
 
@@ -95,6 +109,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       // Always use the current playhead position (which the user may have
       // repositioned via ,/. keys or clicking the timeline)
       audioManager.loadClips(state.tracks, state.playheadPosition);
+      applyTrackGains(audioManager, state.tracks);
       await audioManager.play(state.playheadPosition);
 
       setIsPlaying(true);

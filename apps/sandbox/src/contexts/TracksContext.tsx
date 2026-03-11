@@ -61,6 +61,10 @@ export interface Track {
   spectrogramScale?: 'mel' | 'linear' | 'period' | 'erb'; // Per-track spectrogram scale
   spectrogramMinFreq?: number; // Per-track min frequency in Hz
   spectrogramMaxFreq?: number; // Per-track max frequency in Hz
+  gain?: number; // Track gain in dB (-60 to +12, default -6)
+  pan?: number; // Pan position (-100 to 100, default 0)
+  muted?: boolean; // Whether the track is muted
+  soloed?: boolean; // Whether the track is soloed
 }
 
 /** Expanded color palette for tracks — each new track cycles through these */

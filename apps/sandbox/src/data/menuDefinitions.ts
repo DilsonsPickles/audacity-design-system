@@ -4,6 +4,7 @@ export interface MenuDefinitionDeps {
   // File menu deps
   isCloudProject: boolean;
   dontShowSaveModalAgain: boolean;
+  onImportAudio: () => void;
   onSyncToast: () => void;
   onShowSaveProjectModal: () => void;
   onSaveToComputer: () => void;
@@ -39,6 +40,11 @@ export interface MenuDefinitionDeps {
 
 export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, MenuItem[]> {
   const fileMenuItems: MenuItem[] = [
+    {
+      label: 'Import',
+      shortcut: 'Ctrl+I',
+      onClick: deps.onImportAudio,
+    },
     {
       label: 'Save Project',
       shortcut: 'Ctrl+S',

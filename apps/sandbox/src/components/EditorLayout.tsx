@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
 import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/components';
+import { MixerPanel, type MixerPanelChannel } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
@@ -103,6 +104,9 @@ export interface EditorLayoutProps {
 
   // Flat navigation mode
   isFlatNavigation: boolean;
+
+  // Mixer panel
+  showMixer?: boolean;
 }
 
 const STYLE_FLEX_ROW_OVERFLOW: React.CSSProperties = { display: 'flex', flex: 1, overflow: 'hidden' };
@@ -128,6 +132,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     audioManagerRef, rulerTimeSelection, spectralSelection,
     theme, baseTheme, canvasHeight, setCanvasHeight,
     clickRulerToStartPlayback, punchPointPosition, snapEnabled, isFlatNavigation: _isFlatNavigation,
+    showMixer,
   } = props;
 
   const { setIsSpectrogramSettingsOpen } = useDialogs();
@@ -1310,6 +1315,64 @@ export function EditorLayout(props: EditorLayoutProps) {
 
       </div>
     </div>
+
+    {/* Mixer Panel — full width, below canvas+sidebar */}
+    {showMixer && activeMenuItem !== 'export' && (() => {
+      const audioTracks = state.tracks.filter((t: any) => t.type !== 'label');
+      const mixerChannels: MixerPanelChannel[] = audioTracks.map((track: any) => {
+        const trackIndex = state.tracks.findIndex((t: any) => t.id === track.id);
+        const trackGain = track.gain ?? -6;
+        const meterLevel = trackMeterLevels.get(trackIndex) ?? 0;
+        return {
+          id: String(track.id),
+          channelProps: {
+            trackName: track.name,
+            trackColor: track.color ? (theme.audio.clip as any)[track.color]?.header : undefined,
+            variant: track.channelSplitRatio !== undefined ? 'stereo' as const : 'mono' as const,
+            volume: trackGain,
+            pan: track.pan ?? 0,
+            muted: track.muted ?? false,
+            soloed: track.soloed ?? false,
+            meterLeft: meterLevel,
+            meterRight: meterLevel,
+            onVolumeChange: (value: number) => {
+              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { gain: value } } });
+              audioManagerRef.current.setTrackGain(trackIndex, value);
+            },
+            onPanChange: (value: number) => {
+              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { pan: value } } });
+            },
+            onMuteToggle: () => {
+              const newMuted = !track.muted;
+              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { muted: newMuted } } });
+              if (newMuted) {
+                audioManagerRef.current.setTrackMuted(trackIndex, true);
+              } else {
+                audioManagerRef.current.setTrackGain(trackIndex, trackGain);
+              }
+            },
+            onSoloToggle: () => {
+              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { soloed: !track.soloed } } });
+            },
+          },
+        };
+      });
+
+      return (
+        <div style={{ borderTop: `1px solid ${theme.border.default}`, flexShrink: 0 }}>
+          <MixerPanel
+            tabs={[{ id: 'mixer', label: 'Mixer' }]}
+            activeTabId="mixer"
+            masterChannel={{
+              trackName: 'Master',
+              trackColor: theme.accent.secondary,
+              variant: 'stereo',
+            }}
+            channels={mixerChannels}
+          />
+        </div>
+      );
+    })()}
 
     {/* Piano Roll Panel — full width, below canvas+sidebar, above bottom toolbar */}
     {state.pianoRollOpen && state.pianoRollTrackIndex !== null && (() => {
