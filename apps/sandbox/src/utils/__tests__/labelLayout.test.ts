@@ -1,12 +1,40 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   calculateLabelRows,
+  calculatePointLabelWidth,
   getLabelYOffset,
   getLabelDimensions,
   isPointInLabel,
   LABEL_LAYOUT_CONSTANTS,
+  POINT_LABEL_MIN_WIDTH,
+  POINT_LABEL_MAX_WIDTH,
 } from '../labelLayout';
 import type { Label } from '../labelLayout';
+
+describe('calculatePointLabelWidth', () => {
+  it('returns min width for empty string', () => {
+    expect(calculatePointLabelWidth('')).toBe(POINT_LABEL_MIN_WIDTH);
+  });
+
+  it('returns min width for undefined', () => {
+    expect(calculatePointLabelWidth(undefined)).toBe(POINT_LABEL_MIN_WIDTH);
+  });
+
+  it('returns min width for whitespace-only string', () => {
+    expect(calculatePointLabelWidth('   ')).toBe(POINT_LABEL_MIN_WIDTH);
+  });
+
+  it('returns at least min width for short text', () => {
+    const result = calculatePointLabelWidth('Hi');
+    expect(result).toBeGreaterThanOrEqual(POINT_LABEL_MIN_WIDTH);
+  });
+
+  it('returns at most max width for very long text', () => {
+    const longText = 'A'.repeat(500);
+    const result = calculatePointLabelWidth(longText);
+    expect(result).toBeLessThanOrEqual(POINT_LABEL_MAX_WIDTH);
+  });
+});
 
 describe('calculateLabelRows', () => {
   it('puts non-overlapping labels on row 0', () => {

@@ -125,6 +125,85 @@ describe('applyRippleCut', () => {
   });
 });
 
+describe('applyRippleCut — envelope & deletedRegions handling', () => {
+  it('Case 4: shifts envelope points when deletion overlaps start', () => {
+    const tracks = [{
+      id: 0, name: 'Track 1',
+      clips: [{
+        id: 1, name: 'Clip 1', start: 2, duration: 4,
+        envelopePoints: [{ time: 0, db: -6 }, { time: 1, db: -3 }, { time: 3, db: 0 }],
+      }],
+    }];
+    // cut 1..4, overlaps first 2s of clip (2..4)
+    const result = applyRippleCut(tracks, 1, 4, [0]);
+    const clip = result[0].clips[0];
+    // Only the point at time=3 survives (shifted by 2): time=1
+    expect(clip.envelopePoints).toEqual([{ time: 1, db: 0 }]);
+  });
+
+  it('Case 4: shifts deletedRegions when deletion overlaps start', () => {
+    const tracks = [{
+      id: 0, name: 'Track 1',
+      clips: [{
+        id: 1, name: 'Clip 1', start: 2, duration: 6,
+        envelopePoints: [],
+        deletedRegions: [{ startTime: 3, duration: 0.5 }],
+      }],
+    }];
+    // cut 1..4, overlaps first 2s of clip
+    const result = applyRippleCut(tracks, 1, 4, [0]);
+    const clip = result[0].clips[0];
+    // deletedRegion at 3 shifted by 2 = 1
+    expect(clip.deletedRegions).toEqual([{ startTime: 1, duration: 0.5 }]);
+  });
+
+  it('Case 4: drops deletedRegions that shift below 0', () => {
+    const tracks = [{
+      id: 0, name: 'Track 1',
+      clips: [{
+        id: 1, name: 'Clip 1', start: 2, duration: 6,
+        envelopePoints: [],
+        deletedRegions: [{ startTime: 1, duration: 0.5 }],
+      }],
+    }];
+    // cut 1..4, overlaps first 2s of clip; region at 1 shifted by 2 = -1, dropped
+    const result = applyRippleCut(tracks, 1, 4, [0]);
+    const clip = result[0].clips[0];
+    expect(clip.deletedRegions).toBeUndefined();
+  });
+
+  it('Case 5: filters envelope points when deletion overlaps end', () => {
+    const tracks = [{
+      id: 0, name: 'Track 1',
+      clips: [{
+        id: 1, name: 'Clip 1', start: 0, duration: 4,
+        envelopePoints: [{ time: 1, db: -6 }, { time: 3.5, db: 0 }],
+      }],
+    }];
+    // cut 3..6, overlaps last 1s of clip
+    const result = applyRippleCut(tracks, 3, 6, [0]);
+    const clip = result[0].clips[0];
+    // Only points before relativeStart (3) survive
+    expect(clip.envelopePoints).toEqual([{ time: 1, db: -6 }]);
+  });
+
+  it('Case 5: filters deletedRegions when deletion overlaps end', () => {
+    const tracks = [{
+      id: 0, name: 'Track 1',
+      clips: [{
+        id: 1, name: 'Clip 1', start: 0, duration: 4,
+        envelopePoints: [],
+        deletedRegions: [{ startTime: 1, duration: 0.5 }, { startTime: 3.5, duration: 0.2 }],
+      }],
+    }];
+    // cut 3..6, overlaps last 1s of clip
+    const result = applyRippleCut(tracks, 3, 6, [0]);
+    const clip = result[0].clips[0];
+    // Only regions before relativeStart (3) survive
+    expect(clip.deletedRegions).toEqual([{ startTime: 1, duration: 0.5 }]);
+  });
+});
+
 describe('applyCut', () => {
   it('delegates to applySplitCut for split mode', () => {
     const tracks = [makeTrack(0, 4)];
