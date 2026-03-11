@@ -26,8 +26,8 @@ import { usePlaybackControls } from './hooks/usePlaybackControls';
 import { useRecording } from './hooks/useRecording';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useProjectManagement } from './hooks/useProjectManagement';
-import { useDialogState } from './hooks/useDialogState';
-import { useContextMenuState } from './hooks/useContextMenuState';
+import { DialogProvider, useDialogs } from './contexts/DialogContext';
+import { ContextMenuProvider, useContextMenus } from './contexts/ContextMenuContext';
 import { useLoopRegion } from './hooks/useLoopRegion';
 
 const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
@@ -55,24 +55,15 @@ function CanvasDemoContent() {
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [selectionTimeCodeFormat, setSelectionTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [durationTimeCodeFormat, setDurationTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
-  // Dialog state (consolidated)
+  // Dialog state (from context) — only destructure what App.tsx uses directly
   const {
-    isShareDialogOpen, setIsShareDialogOpen,
-    isCreateAccountOpen, setIsCreateAccountOpen,
-    isSyncingDialogOpen, setIsSyncingDialogOpen,
-    isSaveToCloudDialogOpen, setIsSaveToCloudDialogOpen,
-    isSaveProjectModalOpen, setIsSaveProjectModalOpen,
-    isPreferencesModalOpen, setIsPreferencesModalOpen,
-    isExportModalOpen, setIsExportModalOpen,
-    isLabelEditorOpen, setIsLabelEditorOpen,
-    isPluginManagerOpen, setIsPluginManagerOpen,
-    alertDialogOpen, setAlertDialogOpen,
-    isVSTOptionsDialogOpen, setIsVSTOptionsDialogOpen,
-    isDebugPanelOpen, setIsDebugPanelOpen,
-    isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen,
-    isPluginBrowserOpen, setIsPluginBrowserOpen,
-    isMacroManagerOpen, setIsMacroManagerOpen,
-  } = useDialogState();
+    isSaveToCloudDialogOpen,
+    setIsShareDialogOpen, setIsCreateAccountOpen,
+    setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
+    setIsExportModalOpen, setIsLabelEditorOpen,
+    setIsPluginManagerOpen, setIsMacroManagerOpen,
+    setAlertDialogOpen, setIsDebugPanelOpen, setIsPluginBrowserOpen,
+  } = useDialogs();
 
   const [isSignedIn, setIsSignedIn] = React.useState(true);
   const [authMode, setAuthMode] = React.useState<'signin' | 'create'>('create');
@@ -182,19 +173,14 @@ function CanvasDemoContent() {
   const [bpm] = React.useState(120);
   const [beatsPerMeasure] = React.useState(4);
 
-  // Context menu state (consolidated)
+  // Context menu state (from context) — only destructure what App.tsx uses directly
   const {
-    clipContextMenu, setClipContextMenu,
-    trackContextMenu, setTrackContextMenu,
-    timelineRulerContextMenu, setTimelineRulerContextMenu,
     effectsPanel, setEffectsPanel,
-    effectDialog, setEffectDialog,
-    effectContextMenu, setEffectContextMenu,
-    effectSelectorMenu, setEffectSelectorMenu,
+    effectDialog,
     timeSelectionContextMenu, setTimeSelectionContextMenu,
     contextMenuClosedTimeRef,
     timeSelectionMenuRef,
-  } = useContextMenuState();
+  } = useContextMenus();
 
   // Initialize reverb effect when dialog opens
   React.useEffect(() => {
@@ -993,10 +979,6 @@ function CanvasDemoContent() {
           state={state}
           dispatch={dispatch}
           activeMenuItem={activeMenuItem}
-          effectsPanel={effectsPanel}
-          setEffectsPanel={setEffectsPanel}
-          setEffectDialog={setEffectDialog}
-          setEffectSelectorMenu={setEffectSelectorMenu}
           scrollX={scrollX}
           scrollY={scrollY}
           onScroll={handleScroll}
@@ -1014,7 +996,6 @@ function CanvasDemoContent() {
           spectrogramScale={spectrogramScale}
           setSpectrogramScale={setSpectrogramScale}
           showVerticalRulers={showVerticalRulers}
-          setIsSpectrogramSettingsOpen={setIsSpectrogramSettingsOpen}
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}
           trackMeterLevels={trackMeterLevels}
@@ -1044,11 +1025,6 @@ function CanvasDemoContent() {
           setLoopRegionInteracting={setLoopRegionInteracting}
           loopRegionHovering={loopRegionHovering}
           setLoopRegionHovering={setLoopRegionHovering}
-          setClipContextMenu={setClipContextMenu}
-          setTimeSelectionContextMenu={setTimeSelectionContextMenu}
-          setTrackContextMenu={setTrackContextMenu}
-          setTimelineRulerContextMenu={setTimelineRulerContextMenu}
-          contextMenuClosedTimeRef={contextMenuClosedTimeRef}
           audioManagerRef={audioManagerRef}
           rulerTimeSelection={rulerTimeSelection}
           spectralSelection={spectralSelection}
@@ -1104,29 +1080,8 @@ function CanvasDemoContent() {
       <ToastContainer />
 
       <AppDialogs
-        dialogs={{
-          isShareDialogOpen, setIsShareDialogOpen,
-          isCreateAccountOpen, setIsCreateAccountOpen,
-          isSyncingDialogOpen, setIsSyncingDialogOpen,
-          isSaveToCloudDialogOpen, setIsSaveToCloudDialogOpen,
-          isSaveProjectModalOpen, setIsSaveProjectModalOpen,
-          isPreferencesModalOpen, setIsPreferencesModalOpen,
-          isExportModalOpen, setIsExportModalOpen,
-          isLabelEditorOpen, setIsLabelEditorOpen,
-          isPluginManagerOpen, setIsPluginManagerOpen,
-          alertDialogOpen, setAlertDialogOpen,
-          isVSTOptionsDialogOpen, setIsVSTOptionsDialogOpen,
-          isDebugPanelOpen, setIsDebugPanelOpen,
-          isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen,
-          isPluginBrowserOpen, setIsPluginBrowserOpen,
-          isMacroManagerOpen, setIsMacroManagerOpen,
-        } as any}
         welcomeDialog={welcomeDialog}
         audioEngine={audioEngine}
-        effectDialog={effectDialog}
-        setEffectDialog={setEffectDialog}
-        effectContextMenu={effectContextMenu}
-        setEffectContextMenu={setEffectContextMenu}
         tracks={state.tracks}
         masterEffects={state.masterEffects}
         dispatch={dispatch}
@@ -1210,16 +1165,6 @@ function CanvasDemoContent() {
       />
 
       <AppContextMenus
-        clipContextMenu={clipContextMenu}
-        setClipContextMenu={setClipContextMenu}
-        trackContextMenu={trackContextMenu}
-        setTrackContextMenu={setTrackContextMenu}
-        timelineRulerContextMenu={timelineRulerContextMenu}
-        setTimelineRulerContextMenu={setTimelineRulerContextMenu}
-        effectSelectorMenu={effectSelectorMenu}
-        setEffectSelectorMenu={setEffectSelectorMenu}
-        isSpectrogramSettingsOpen={isSpectrogramSettingsOpen}
-        setIsSpectrogramSettingsOpen={setIsSpectrogramSettingsOpen}
         spectrogramScale={spectrogramScale}
         setSpectrogramScale={setSpectrogramScale}
         tracks={state.tracks}
@@ -1245,7 +1190,6 @@ function CanvasDemoContent() {
         bpm={bpm}
         beatsPerMeasure={beatsPerMeasure}
         onClipboardSet={setClipboard}
-        setEffectDialog={setEffectDialog}
         os={preferences.operatingSystem}
       />
 
@@ -1306,7 +1250,11 @@ function ThemedApp() {
         <AudioEngineProvider>
           <TracksProvider initialTracks={[]}>
             <SpectralSelectionProvider>
-              <CanvasDemoContent />
+              <DialogProvider>
+                <ContextMenuProvider>
+                  <CanvasDemoContent />
+                </ContextMenuProvider>
+              </DialogProvider>
             </SpectralSelectionProvider>
           </TracksProvider>
         </AudioEngineProvider>

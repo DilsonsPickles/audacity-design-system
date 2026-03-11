@@ -4,7 +4,8 @@ import { Canvas } from './Canvas';
 import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
-import type { EffectsPanelState, EffectDialogState, EffectSelectorMenuState, ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, TimeSelectionContextMenuState } from '../hooks/useContextMenuState';
+import { useDialogs } from '../contexts/DialogContext';
+import { useContextMenus } from '../contexts/ContextMenuContext';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 import { snapToGrid } from '../utils/snapToGrid';
 
@@ -15,12 +16,6 @@ export interface EditorLayoutProps {
 
   // Active menu
   activeMenuItem: 'home' | 'project' | 'export' | 'debug';
-
-  // Effects panel
-  effectsPanel: EffectsPanelState | null;
-  setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
-  setEffectDialog: React.Dispatch<React.SetStateAction<EffectDialogState | null>>;
-  setEffectSelectorMenu: React.Dispatch<React.SetStateAction<EffectSelectorMenuState | null>>;
 
   // Scroll
   scrollX: number;
@@ -44,7 +39,6 @@ export interface EditorLayoutProps {
   spectrogramScale: SpectrogramScale;
   setSpectrogramScale: React.Dispatch<React.SetStateAction<SpectrogramScale>>;
   showVerticalRulers: boolean;
-  setIsSpectrogramSettingsOpen: (open: boolean) => void;
 
   // Playback
   isPlaying: boolean;
@@ -82,13 +76,6 @@ export interface EditorLayoutProps {
   setLoopRegionInteracting: React.Dispatch<React.SetStateAction<boolean>>;
   loopRegionHovering: boolean;
   setLoopRegionHovering: React.Dispatch<React.SetStateAction<boolean>>;
-
-  // Context menu triggers
-  setClipContextMenu: React.Dispatch<React.SetStateAction<ClipContextMenuState | null>>;
-  setTimeSelectionContextMenu: React.Dispatch<React.SetStateAction<TimeSelectionContextMenuState | null>>;
-  setTrackContextMenu: React.Dispatch<React.SetStateAction<TrackContextMenuState | null>>;
-  setTimelineRulerContextMenu: React.Dispatch<React.SetStateAction<TimelineRulerContextMenuState | null>>;
-  contextMenuClosedTimeRef: React.MutableRefObject<number>;
 
   // Refs
   audioManagerRef: React.RefObject<any>;
@@ -128,23 +115,27 @@ const STYLE_FLEX_ROW_OVERFLOW_HIDDEN: React.CSSProperties = { flex: 1, display: 
 export function EditorLayout(props: EditorLayoutProps) {
   const {
     state, dispatch, activeMenuItem,
-    effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
-    showRmsInWaveform, controlPointStyle, spectrogramScale, setSpectrogramScale: _setSpectrogramScale, showVerticalRulers, setIsSpectrogramSettingsOpen,
+    showRmsInWaveform, controlPointStyle, spectrogramScale, setSpectrogramScale: _setSpectrogramScale, showVerticalRulers,
     isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
     selectionAnchor, setSelectionAnchor, controlPanelHasFocus: _controlPanelHasFocus, setControlPanelHasFocus,
     containerFocusedTrack, setContainerFocusedTrack,
     mouseCursorPosition, setMouseCursorPosition, mouseCursorY, setMouseCursorY, isOverTrack, setIsOverTrack,
     loopRegionEnabled, setLoopRegionEnabled, loopRegionStart, setLoopRegionStart, loopRegionEnd, setLoopRegionEnd,
     loopRegionInteracting, setLoopRegionInteracting, loopRegionHovering, setLoopRegionHovering,
-    setClipContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
-    contextMenuClosedTimeRef,
     audioManagerRef, rulerTimeSelection, spectralSelection,
     theme, baseTheme, canvasHeight, setCanvasHeight,
     clickRulerToStartPlayback, punchPointPosition, snapEnabled, isFlatNavigation: _isFlatNavigation,
   } = props;
+
+  const { setIsSpectrogramSettingsOpen } = useDialogs();
+  const {
+    effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
+    setClipContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
+    contextMenuClosedTimeRef,
+  } = useContextMenus();
 
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);

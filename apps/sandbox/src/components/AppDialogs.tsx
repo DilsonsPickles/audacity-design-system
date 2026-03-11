@@ -5,24 +5,15 @@ import { DebugPanel } from './DebugPanel';
 import { generateWaveform } from '../utils/waveformGenerator';
 import { saveProject, getProject, getProjects } from '../utils/projectDatabase';
 import { availableCommands } from '../data/commands';
-import type { EffectDialogState, EffectContextMenuState } from '../hooks/useContextMenuState';
-import type { UseDialogStateReturn } from '../hooks/useDialogState';
+import { useDialogs } from '../contexts/DialogContext';
+import { useContextMenus } from '../contexts/ContextMenuContext';
 
 export interface AppDialogsProps {
-  // Dialog state
-  dialogs: UseDialogStateReturn;
-
   // Welcome dialog
   welcomeDialog: { isOpen: boolean; onClose: () => void };
 
   // Audio engine
   audioEngine: any;
-
-  // Effect dialog + context menu
-  effectDialog: EffectDialogState | null;
-  setEffectDialog: React.Dispatch<React.SetStateAction<EffectDialogState | null>>;
-  effectContextMenu: EffectContextMenuState;
-  setEffectContextMenu: React.Dispatch<React.SetStateAction<EffectContextMenuState>>;
 
   // Track/clip state
   tracks: any[];
@@ -141,9 +132,10 @@ export interface AppDialogsProps {
 }
 
 export function AppDialogs(props: AppDialogsProps) {
+  const dialogs = useDialogs();
+  const { effectDialog, setEffectDialog, effectContextMenu, setEffectContextMenu } = useContextMenus();
   const {
-    dialogs, welcomeDialog, audioEngine,
-    effectDialog, setEffectDialog, effectContextMenu, setEffectContextMenu,
+    welcomeDialog, audioEngine,
     tracks, masterEffects, dispatch,
     isSignedIn, setIsSignedIn, authMode, setAuthMode,
     email, setEmail, password, setPassword,

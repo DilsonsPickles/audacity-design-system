@@ -4,15 +4,7 @@ import { scrollIntoViewIfNeeded } from '@audacity-ui/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { applySplitCut } from '../utils/cutOperations';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
-
-export interface EffectsPanelState {
-  isOpen: boolean;
-  trackIndex: number;
-  left: number;
-  top: number;
-  height: number;
-  width: number;
-}
+import type { EffectsPanelState } from './useContextMenuState';
 
 export interface ClipboardState {
   clips: any[];

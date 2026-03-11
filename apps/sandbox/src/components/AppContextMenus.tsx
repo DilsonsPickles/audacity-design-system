@@ -3,22 +3,11 @@ import { ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, ContextMen
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
-import type { ClipContextMenuState, TrackContextMenuState, TimelineRulerContextMenuState, EffectSelectorMenuState, EffectDialogState } from '../hooks/useContextMenuState';
+import { useDialogs } from '../contexts/DialogContext';
+import { useContextMenus } from '../contexts/ContextMenuContext';
 
 export interface AppContextMenusProps {
-  // Context menu states
-  clipContextMenu: ClipContextMenuState | null;
-  setClipContextMenu: React.Dispatch<React.SetStateAction<ClipContextMenuState | null>>;
-  trackContextMenu: TrackContextMenuState | null;
-  setTrackContextMenu: React.Dispatch<React.SetStateAction<TrackContextMenuState | null>>;
-  timelineRulerContextMenu: TimelineRulerContextMenuState | null;
-  setTimelineRulerContextMenu: React.Dispatch<React.SetStateAction<TimelineRulerContextMenuState | null>>;
-  effectSelectorMenu: EffectSelectorMenuState | null;
-  setEffectSelectorMenu: React.Dispatch<React.SetStateAction<EffectSelectorMenuState | null>>;
-
-  // Spectrogram settings
-  isSpectrogramSettingsOpen: boolean;
-  setIsSpectrogramSettingsOpen: (open: boolean) => void;
+  // Spectrogram
   spectrogramScale: SpectrogramScale;
   setSpectrogramScale: React.Dispatch<React.SetStateAction<SpectrogramScale>>;
 
@@ -53,19 +42,11 @@ export interface AppContextMenusProps {
   // Clipboard
   onClipboardSet: (clipboard: { clips: any[]; operation: 'copy' | 'cut'; timeSelection?: { startTime: number; endTime: number } } | null) => void;
 
-  // Effect dialog
-  setEffectDialog: React.Dispatch<React.SetStateAction<EffectDialogState | null>>;
-
   // OS preference
   os: 'windows' | 'macos';
 }
 
 export function AppContextMenus({
-  clipContextMenu, setClipContextMenu,
-  trackContextMenu, setTrackContextMenu,
-  timelineRulerContextMenu, setTimelineRulerContextMenu,
-  effectSelectorMenu, setEffectSelectorMenu,
-  isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen,
   spectrogramScale, setSpectrogramScale,
   tracks, masterEffects, dispatch,
   timelineFormat, setTimelineFormat,
@@ -78,9 +59,16 @@ export function AppContextMenus({
   loopRegionEnd, setLoopRegionEnd,
   timeSelection, bpm, beatsPerMeasure,
   onClipboardSet,
-  setEffectDialog,
   os,
 }: AppContextMenusProps) {
+  const { isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen } = useDialogs();
+  const {
+    clipContextMenu, setClipContextMenu,
+    trackContextMenu, setTrackContextMenu,
+    timelineRulerContextMenu, setTimelineRulerContextMenu,
+    effectSelectorMenu, setEffectSelectorMenu,
+    setEffectDialog,
+  } = useContextMenus();
   return (
     <>
       {/* Clip Context Menu */}
