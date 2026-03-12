@@ -1,8 +1,8 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel } from '@audacity-ui/components';
-import type { SpectrogramScale, WaveformRulerFormat } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel, PanelHeader } from '@audacity-ui/components';
+import type { SpectrogramScale, WaveformRulerFormat, PanelHeaderTab } from '@audacity-ui/components';
 import { MixerPanel, type MixerPanelChannel } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useDialogs } from '../contexts/DialogContext';
@@ -87,7 +87,6 @@ export interface EditorLayoutProps {
 
   // Theme
   theme: any;
-  baseTheme: any;
 
   // Canvas height
   canvasHeight: number;
@@ -130,7 +129,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     loopRegionEnabled, setLoopRegionEnabled, loopRegionStart, setLoopRegionStart, loopRegionEnd, setLoopRegionEnd,
     loopRegionInteracting, setLoopRegionInteracting, loopRegionHovering, setLoopRegionHovering,
     audioManagerRef, rulerTimeSelection, spectralSelection,
-    theme, baseTheme, canvasHeight, setCanvasHeight,
+    theme, canvasHeight, setCanvasHeight,
     clickRulerToStartPlayback, punchPointPosition, snapEnabled, isFlatNavigation: _isFlatNavigation,
     showMixer,
   } = props;
@@ -142,6 +141,9 @@ export function EditorLayout(props: EditorLayoutProps) {
     contextMenuClosedTimeRef,
   } = useContextMenus();
 
+  const [drawerHeight, setDrawerHeight] = React.useState(376);
+  const [drawerActiveTab, setDrawerActiveTab] = React.useState<'mixer' | 'piano-roll'>('mixer');
+  const [drawerTabOrder, setDrawerTabOrder] = React.useState<Array<'mixer' | 'piano-roll'>>(['mixer', 'piano-roll']);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
 
@@ -158,6 +160,25 @@ export function EditorLayout(props: EditorLayoutProps) {
     }),
     [state.tracks, isFlatNavigation, trackBase],
   );
+
+  // Auto-switch drawer active tab when panels open/close
+  const prevMixerRef = React.useRef(showMixer);
+  const prevPianoRollRef = React.useRef(state.pianoRollOpen);
+  React.useEffect(() => {
+    const mixerJustOpened = showMixer && !prevMixerRef.current;
+    const pianoRollJustOpened = state.pianoRollOpen && !prevPianoRollRef.current;
+    if (pianoRollJustOpened) {
+      setDrawerActiveTab('piano-roll');
+    } else if (mixerJustOpened) {
+      setDrawerActiveTab('mixer');
+    } else if (!showMixer && drawerActiveTab === 'mixer' && state.pianoRollOpen) {
+      setDrawerActiveTab('piano-roll');
+    } else if (!state.pianoRollOpen && drawerActiveTab === 'piano-roll' && showMixer) {
+      setDrawerActiveTab('mixer');
+    }
+    prevMixerRef.current = showMixer;
+    prevPianoRollRef.current = state.pianoRollOpen;
+  }, [showMixer, state.pianoRollOpen]);
 
   // Auto-open/switch piano roll when a MIDI track is focused
   React.useEffect(() => {
@@ -908,9 +929,9 @@ export function EditorLayout(props: EditorLayoutProps) {
               width: '64px',
               height: '40px',
               flexShrink: 0,
-              backgroundColor: baseTheme.background.surface.elevated,
-              borderLeft: `1px solid ${baseTheme.border.default}`,
-              borderBottom: `1px solid ${baseTheme.border.default}`,
+              backgroundColor: theme.background.surface.elevated,
+              borderLeft: `1px solid ${theme.border.default}`,
+              borderBottom: `1px solid ${theme.border.default}`,
             }} />
           )}
         </div>
@@ -1316,232 +1337,352 @@ export function EditorLayout(props: EditorLayoutProps) {
       </div>
     </div>
 
-    {/* Mixer Panel — full width, below canvas+sidebar */}
-    {showMixer && activeMenuItem !== 'export' && (() => {
-      const audioTracks = state.tracks.filter((t: any) => t.type !== 'label');
-      const mixerChannels: MixerPanelChannel[] = audioTracks.map((track: any) => {
-        const trackIndex = state.tracks.findIndex((t: any) => t.id === track.id);
-        const trackGain = track.gain ?? -6;
-        const meterLevel = trackMeterLevels.get(trackIndex) ?? 0;
-        return {
-          id: String(track.id),
-          channelProps: {
-            trackName: track.name,
-            trackColor: track.color ? (theme.audio.clip as any)[track.color]?.header : undefined,
-            variant: track.channelSplitRatio !== undefined ? 'stereo' as const : 'mono' as const,
-            volume: trackGain,
-            pan: track.pan ?? 0,
-            muted: track.muted ?? false,
-            soloed: track.soloed ?? false,
-            meterLeft: meterLevel,
-            meterRight: meterLevel,
-            onVolumeChange: (value: number) => {
-              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { gain: value } } });
-              audioManagerRef.current.setTrackGain(trackIndex, value);
-            },
-            onPanChange: (value: number) => {
-              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { pan: value } } });
-            },
-            onMuteToggle: () => {
-              const newMuted = !track.muted;
-              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { muted: newMuted } } });
-              if (newMuted) {
-                audioManagerRef.current.setTrackMuted(trackIndex, true);
-              } else {
-                audioManagerRef.current.setTrackGain(trackIndex, trackGain);
-              }
-            },
-            onSoloToggle: () => {
-              dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { soloed: !track.soloed } } });
-            },
-          },
-        };
-      });
+    {/* Bottom Drawer — unified tabbed panel for Mixer and Piano Roll */}
+    {(() => {
+      const mixerOpen = showMixer && activeMenuItem !== 'export';
+      const pianoRollOpen = state.pianoRollOpen && state.pianoRollTrackIndex !== null;
+      if (!mixerOpen && !pianoRollOpen) return null;
+
+      // Build tabs for open panels, respecting user's drag order
+      const allTabDefs: Record<string, PanelHeaderTab> = {
+        mixer: { id: 'mixer', label: 'Mixer' },
+        'piano-roll': { id: 'piano-roll', label: 'Piano roll' },
+      };
+      const openIds = new Set<string>();
+      if (mixerOpen) openIds.add('mixer');
+      if (pianoRollOpen) openIds.add('piano-roll');
+      const tabs: PanelHeaderTab[] = drawerTabOrder
+        .filter(id => openIds.has(id))
+        .map(id => allTabDefs[id]);
+
+      // Ensure active tab is valid
+      const activeTab = tabs.find(t => t.id === drawerActiveTab) ? drawerActiveTab : tabs[0].id;
+
+      const handleTabClose = () => {
+        if (activeTab === 'mixer') {
+          // Close mixer — find and call the mixer toggle in App via dispatch or prop
+          // The mixer is controlled by App.tsx's setMixerPanelOpen, but we only have showMixer as a read prop.
+          // We need a callback. For now, dispatch is not available for mixer.
+          // Actually, we can just toggle the prop — but we don't have a setter here.
+          // Let's use a custom event or add an onCloseMixer prop.
+          // For minimal change: dispatch a custom action or use window event.
+          // Simplest: add onCloseMixer prop.
+          window.dispatchEvent(new CustomEvent('close-mixer-panel'));
+        } else if (activeTab === 'piano-roll') {
+          dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
+        }
+      };
+
+      // Content height = drawer height - header (32px)
+      const contentHeight = drawerHeight - 32;
 
       return (
-        <div style={{ borderTop: `1px solid ${theme.border.default}`, flexShrink: 0 }}>
-          <MixerPanel
-            tabs={[{ id: 'mixer', label: 'Mixer' }]}
-            activeTabId="mixer"
-            masterChannel={{
-              trackName: 'Master',
-              trackColor: theme.accent.secondary,
-              variant: 'stereo',
+        <div
+          style={{
+            borderTop: `1px solid ${theme.border.default}`,
+            flexShrink: 0,
+            height: drawerHeight,
+            minHeight: 144,
+            maxHeight: '50vh',
+            overflow: 'hidden',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <PanelHeader
+            tabs={tabs}
+            activeTabId={activeTab}
+            onTabChange={(tabId) => setDrawerActiveTab(tabId as 'mixer' | 'piano-roll')}
+            onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as Array<'mixer' | 'piano-roll'>)}
+            onClose={handleTabClose}
+            onResizeStart={(e) => {
+              e.preventDefault();
+              const startY = e.clientY;
+              const startHeight = drawerHeight;
+              const maxH = window.innerHeight * 0.5;
+              const onMove = (ev: MouseEvent) => {
+                const delta = startY - ev.clientY;
+                const newH = Math.max(144, Math.min(maxH, startHeight + delta));
+                setDrawerHeight(newH);
+              };
+              const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+              };
+              document.addEventListener('mousemove', onMove);
+              document.addEventListener('mouseup', onUp);
             }}
-            channels={mixerChannels}
           />
-        </div>
-      );
-    })()}
 
-    {/* Piano Roll Panel — full width, below canvas+sidebar, above bottom toolbar */}
-    {state.pianoRollOpen && state.pianoRollTrackIndex !== null && (() => {
-      const prTrack = state.tracks[state.pianoRollTrackIndex];
-      if (!prTrack) return null;
-      const prClip = prTrack.midiClips?.find(c => c.selected) ?? null;
-      return (
-        <PianoRollPanel
-          clip={prClip}
-          allClips={prTrack.midiClips}
-          bpm={bpm}
-          beatsPerMeasure={beatsPerMeasure}
-          pixelsPerSecond={state.pianoRollPixelsPerSecond}
-          scrollX={state.pianoRollScrollX}
-          snap={state.pianoRollSnap}
-          timeMode={state.pianoRollTimeMode}
-          timeBasis={state.pianoRollTimeBasis}
-          onSnapChange={(snap) => dispatch({ type: 'SET_PIANO_ROLL_SNAP', payload: snap })}
-          onTimeBasisChange={(basis) => dispatch({ type: 'SET_PIANO_ROLL_TIME_BASIS', payload: basis })}
-          onAddNote={(note) => {
-            const trackIndex = state.pianoRollTrackIndex!;
-            const clips = prTrack.midiClips || [];
-            // In local mode, always route to the active clip (extend if needed)
-            // In global mode, find which clip the note falls in
-            const clipIndex = state.pianoRollTimeMode === 'local'
-              ? -1
-              : clips.findIndex(c => note.startTime >= c.start && note.startTime < c.start + c.duration);
-            if (clipIndex >= 0) {
-              const localNote = { ...note, startTime: note.startTime - clips[clipIndex].start };
-              dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex, note: localNote } });
-              skipPianoRollScrollRef.current = true;
-              dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clips[clipIndex].id } });
-            } else {
-              // If a clip is selected, extend it to contain the note
-              const selectedClip = clips.find(c => c.selected);
-              if (selectedClip) {
-                const selectedClipIndex = clips.indexOf(selectedClip);
-                const noteEnd = note.startTime + note.duration;
-                const newStart = Math.min(selectedClip.start, note.startTime);
-                const newEnd = Math.max(selectedClip.start + selectedClip.duration, noteEnd);
-                // Extend the clip boundary
-                if (newStart < selectedClip.start || newEnd > selectedClip.start + selectedClip.duration) {
+          {/* Mixer content */}
+          {activeTab === 'mixer' && mixerOpen && (() => {
+            const audioTracks = state.tracks.filter((t: any) => t.type !== 'label');
+            const mixerChannels: MixerPanelChannel[] = audioTracks.map((track: any) => {
+              const trackIndex = state.tracks.findIndex((t: any) => t.id === track.id);
+              const trackGain = track.gain ?? -6;
+              const meterLevel = trackMeterLevels.get(trackIndex) ?? 0;
+              return {
+                id: String(track.id),
+                channelProps: {
+                  trackName: track.name,
+                  trackColor: track.color ? (theme.audio.clip as any)[track.color]?.header : undefined,
+                  variant: track.channelSplitRatio !== undefined ? 'stereo' as const : 'mono' as const,
+                  volume: trackGain,
+                  pan: track.pan ?? 0,
+                  muted: track.muted ?? false,
+                  soloed: track.soloed ?? false,
+                  meterLeft: meterLevel,
+                  meterRight: meterLevel,
+                  onVolumeChange: (value: number) => {
+                    dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { gain: value } } });
+                    audioManagerRef.current.setTrackGain(trackIndex, value);
+                  },
+                  onPanChange: (value: number) => {
+                    dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { pan: value } } });
+                  },
+                  onMuteToggle: () => {
+                    const newMuted = !track.muted;
+                    dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { muted: newMuted } } });
+                    if (newMuted) {
+                      audioManagerRef.current.setTrackMuted(trackIndex, true);
+                    } else {
+                      audioManagerRef.current.setTrackGain(trackIndex, trackGain);
+                    }
+                  },
+                  onSoloToggle: () => {
+                    dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { soloed: !track.soloed } } });
+                  },
+                  effects: (track.effects || []).map((effect: any, effectIndex: number) => ({
+                    name: effect.name,
+                    enabled: effect.enabled,
+                    onToggle: () => {
+                      dispatch({ type: 'UPDATE_TRACK_EFFECT', payload: { trackIndex, effectIndex, updates: { enabled: !effect.enabled } } });
+                    },
+                    onRemoveEffect: () => {
+                      dispatch({ type: 'REMOVE_TRACK_EFFECT', payload: { trackIndex, effectIndex } });
+                    },
+                    onReplaceEffect: (effectName: string) => {
+                      dispatch({ type: 'UPDATE_TRACK_EFFECT', payload: { trackIndex, effectIndex, updates: { name: effectName } } });
+                    },
+                  })),
+                  onAddEffect: (e: React.MouseEvent<HTMLButtonElement>) => {
+                    const button = e.currentTarget as HTMLElement;
+                    const rect = button.getBoundingClientRect();
+                    setEffectSelectorMenu({
+                      isOpen: true,
+                      x: rect.left,
+                      y: rect.bottom + 4,
+                      trackIndex,
+                      triggerElement: button,
+                    });
+                  },
+                },
+              };
+            });
+
+            return (
+              <MixerPanel
+                hideHeader
+                masterChannel={{
+                  trackName: 'Master',
+                  trackColor: theme.accent.secondary,
+                  variant: 'stereo',
+                  effects: (state.masterEffects || []).map((effect: any, effectIndex: number) => ({
+                    name: effect.name,
+                    enabled: effect.enabled,
+                    onToggle: () => {
+                      dispatch({ type: 'UPDATE_MASTER_EFFECT', payload: { effectIndex, updates: { enabled: !effect.enabled } } });
+                    },
+                    onRemoveEffect: () => {
+                      dispatch({ type: 'REMOVE_MASTER_EFFECT', payload: effectIndex });
+                    },
+                    onReplaceEffect: (effectName: string) => {
+                      dispatch({ type: 'UPDATE_MASTER_EFFECT', payload: { effectIndex, updates: { name: effectName } } });
+                    },
+                  })),
+                  onAddEffect: (e: React.MouseEvent<HTMLButtonElement>) => {
+                    const button = e.currentTarget as HTMLElement;
+                    const rect = button.getBoundingClientRect();
+                    setEffectSelectorMenu({
+                      isOpen: true,
+                      x: rect.left,
+                      y: rect.bottom + 4,
+                      trackIndex: undefined,
+                      triggerElement: button,
+                    });
+                  },
+                }}
+                channels={mixerChannels}
+              />
+            );
+          })()}
+
+          {/* Piano Roll content */}
+          {activeTab === 'piano-roll' && pianoRollOpen && (() => {
+            const prTrack = state.tracks[state.pianoRollTrackIndex];
+            if (!prTrack) return null;
+            const prClip = prTrack.midiClips?.find(c => c.selected) ?? null;
+            return (
+              <PianoRollPanel
+                hideHeader
+                height={contentHeight}
+                clip={prClip}
+                allClips={prTrack.midiClips}
+                bpm={bpm}
+                beatsPerMeasure={beatsPerMeasure}
+                pixelsPerSecond={state.pianoRollPixelsPerSecond}
+                scrollX={state.pianoRollScrollX}
+                snap={state.pianoRollSnap}
+                timeMode={state.pianoRollTimeMode}
+                timeBasis={state.pianoRollTimeBasis}
+                onSnapChange={(snap) => dispatch({ type: 'SET_PIANO_ROLL_SNAP', payload: snap })}
+                onTimeBasisChange={(basis) => dispatch({ type: 'SET_PIANO_ROLL_TIME_BASIS', payload: basis })}
+                onAddNote={(note) => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  const clips = prTrack.midiClips || [];
+                  const clipIndex = state.pianoRollTimeMode === 'local'
+                    ? -1
+                    : clips.findIndex(c => note.startTime >= c.start && note.startTime < c.start + c.duration);
+                  if (clipIndex >= 0) {
+                    const localNote = { ...note, startTime: note.startTime - clips[clipIndex].start };
+                    dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex, note: localNote } });
+                    skipPianoRollScrollRef.current = true;
+                    dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clips[clipIndex].id } });
+                  } else {
+                    const selectedClip = clips.find(c => c.selected);
+                    if (selectedClip) {
+                      const selectedClipIndex = clips.indexOf(selectedClip);
+                      const noteEnd = note.startTime + note.duration;
+                      const newStart = Math.min(selectedClip.start, note.startTime);
+                      const newEnd = Math.max(selectedClip.start + selectedClip.duration, noteEnd);
+                      if (newStart < selectedClip.start || newEnd > selectedClip.start + selectedClip.duration) {
+                        dispatch({
+                          type: 'TRIM_CLIP',
+                          payload: {
+                            trackIndex,
+                            clipId: selectedClip.id,
+                            newTrimStart: 0,
+                            newDuration: newEnd - newStart,
+                            newStart,
+                          },
+                        });
+                      }
+                      const localNote = { ...note, startTime: note.startTime - newStart };
+                      dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex: selectedClipIndex, note: localNote } });
+                    } else {
+                      const measureDuration = (60 / bpm) * beatsPerMeasure;
+                      const clipStart = Math.floor(note.startTime / measureDuration) * measureDuration;
+                      const newClipId = Date.now();
+                      const newClip = {
+                        id: newClipId,
+                        name: 'MIDI Clip',
+                        start: clipStart,
+                        duration: measureDuration,
+                        notes: [{ ...note, startTime: note.startTime - clipStart }],
+                      };
+                      dispatch({ type: 'ADD_MIDI_CLIP', payload: { trackIndex, clip: newClip } });
+                      skipPianoRollScrollRef.current = true;
+                      dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: newClipId } });
+                    }
+                  }
+                }}
+                onDeleteNotes={(noteIds) => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  const clips = prTrack.midiClips || [];
+                  const idSet = new Set(noteIds);
+                  for (let ci = 0; ci < clips.length; ci++) {
+                    const clipNoteIds = clips[ci].notes.filter(n => idSet.has(n.id)).map(n => n.id);
+                    if (clipNoteIds.length > 0) {
+                      dispatch({ type: 'DELETE_MIDI_NOTES', payload: { trackIndex, clipIndex: ci, noteIds: clipNoteIds } });
+                    }
+                  }
+                }}
+                onUpdateNote={(noteId, updates) => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  const clips = prTrack.midiClips || [];
+                  const clipIndex = clips.findIndex(c => c.notes.some(n => n.id === noteId));
+                  if (clipIndex >= 0) {
+                    dispatch({ type: 'UPDATE_MIDI_NOTE', payload: { trackIndex, clipIndex, noteId, updates } });
+                  }
+                }}
+                onMoveNotes={() => {/* handled via UPDATE_MIDI_NOTE */}}
+                onResizeNote={(noteId, newDuration) => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  const clips = prTrack.midiClips || [];
+                  const clipIndex = clips.findIndex(c => c.notes.some(n => n.id === noteId));
+                  if (clipIndex >= 0) {
+                    dispatch({ type: 'RESIZE_MIDI_NOTE', payload: { trackIndex, clipIndex, noteId, newDuration } });
+                  }
+                }}
+                onSelectNote={(noteId, additive) => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  const clips = prTrack.midiClips || [];
+                  if (!additive) {
+                    for (let ci = 0; ci < clips.length; ci++) {
+                      if (clips[ci].notes.some(n => n.selected)) {
+                        dispatch({ type: 'DESELECT_ALL_MIDI_NOTES', payload: { trackIndex, clipIndex: ci } });
+                      }
+                    }
+                  }
+                  const clipIndex = clips.findIndex(c => c.notes.some(n => n.id === noteId));
+                  if (clipIndex >= 0) {
+                    dispatch({ type: 'SELECT_MIDI_NOTE', payload: { trackIndex, clipIndex, noteId, additive: true } });
+                  }
+                }}
+                onSelectNotes={(noteIds, additive) => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  const clips = prTrack.midiClips || [];
+                  const idSet = new Set(noteIds);
+                  if (!additive) {
+                    for (let ci = 0; ci < clips.length; ci++) {
+                      if (clips[ci].notes.some(n => n.selected)) {
+                        dispatch({ type: 'DESELECT_ALL_MIDI_NOTES', payload: { trackIndex, clipIndex: ci } });
+                      }
+                    }
+                  }
+                  for (let ci = 0; ci < clips.length; ci++) {
+                    const clipNoteIds = clips[ci].notes.filter(n => idSet.has(n.id)).map(n => n.id);
+                    if (clipNoteIds.length > 0) {
+                      dispatch({ type: 'SELECT_MIDI_NOTES', payload: { trackIndex, clipIndex: ci, noteIds: clipNoteIds, additive: true } });
+                    }
+                  }
+                }}
+                onDeselectAll={() => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  const clips = prTrack.midiClips || [];
+                  for (let ci = 0; ci < clips.length; ci++) {
+                    if (clips[ci].notes.some(n => n.selected)) {
+                      dispatch({ type: 'DESELECT_ALL_MIDI_NOTES', payload: { trackIndex, clipIndex: ci } });
+                    }
+                  }
+                }}
+                onPixelsPerSecondChange={(pps) => dispatch({ type: 'SET_PIANO_ROLL_PIXELS_PER_SECOND', payload: pps })}
+                onScrollXChange={(sx) => dispatch({ type: 'SET_PIANO_ROLL_SCROLL_X', payload: sx })}
+                onResizeClip={(_edge, newStart, newDuration, clipId) => {
+                  const targetId = clipId ?? prClip?.id;
+                  if (!targetId) return;
                   dispatch({
                     type: 'TRIM_CLIP',
                     payload: {
-                      trackIndex,
-                      clipId: selectedClip.id,
+                      trackIndex: state.pianoRollTrackIndex!,
+                      clipId: targetId,
                       newTrimStart: 0,
-                      newDuration: newEnd - newStart,
+                      newDuration,
                       newStart,
                     },
                   });
-                }
-                const localNote = { ...note, startTime: note.startTime - newStart };
-                dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex: selectedClipIndex, note: localNote } });
-              } else {
-                // No clip selected — create a new clip at this position
-                const measureDuration = (60 / bpm) * beatsPerMeasure;
-                const clipStart = Math.floor(note.startTime / measureDuration) * measureDuration;
-                const newClipId = Date.now();
-                const newClip = {
-                  id: newClipId,
-                  name: 'MIDI Clip',
-                  start: clipStart,
-                  duration: measureDuration,
-                  notes: [{ ...note, startTime: note.startTime - clipStart }],
-                };
-                dispatch({ type: 'ADD_MIDI_CLIP', payload: { trackIndex, clip: newClip } });
-                skipPianoRollScrollRef.current = true;
-                dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: newClipId } });
-              }
-            }
-          }}
-          onDeleteNotes={(noteIds) => {
-            const trackIndex = state.pianoRollTrackIndex!;
-            const clips = prTrack.midiClips || [];
-            const idSet = new Set(noteIds);
-            for (let ci = 0; ci < clips.length; ci++) {
-              const clipNoteIds = clips[ci].notes.filter(n => idSet.has(n.id)).map(n => n.id);
-              if (clipNoteIds.length > 0) {
-                dispatch({ type: 'DELETE_MIDI_NOTES', payload: { trackIndex, clipIndex: ci, noteIds: clipNoteIds } });
-              }
-            }
-          }}
-          onUpdateNote={(noteId, updates) => {
-            const trackIndex = state.pianoRollTrackIndex!;
-            const clips = prTrack.midiClips || [];
-            const clipIndex = clips.findIndex(c => c.notes.some(n => n.id === noteId));
-            if (clipIndex >= 0) {
-              dispatch({ type: 'UPDATE_MIDI_NOTE', payload: { trackIndex, clipIndex, noteId, updates } });
-            }
-          }}
-          onMoveNotes={() => {/* handled via UPDATE_MIDI_NOTE */}}
-          onResizeNote={(noteId, newDuration) => {
-            const trackIndex = state.pianoRollTrackIndex!;
-            const clips = prTrack.midiClips || [];
-            const clipIndex = clips.findIndex(c => c.notes.some(n => n.id === noteId));
-            if (clipIndex >= 0) {
-              dispatch({ type: 'RESIZE_MIDI_NOTE', payload: { trackIndex, clipIndex, noteId, newDuration } });
-            }
-          }}
-          onSelectNote={(noteId, additive) => {
-            const trackIndex = state.pianoRollTrackIndex!;
-            const clips = prTrack.midiClips || [];
-            // When not additive, deselect all notes across all clips first
-            if (!additive) {
-              for (let ci = 0; ci < clips.length; ci++) {
-                if (clips[ci].notes.some(n => n.selected)) {
-                  dispatch({ type: 'DESELECT_ALL_MIDI_NOTES', payload: { trackIndex, clipIndex: ci } });
-                }
-              }
-            }
-            const clipIndex = clips.findIndex(c => c.notes.some(n => n.id === noteId));
-            if (clipIndex >= 0) {
-              dispatch({ type: 'SELECT_MIDI_NOTE', payload: { trackIndex, clipIndex, noteId, additive: true } });
-            }
-          }}
-          onSelectNotes={(noteIds, additive) => {
-            const trackIndex = state.pianoRollTrackIndex!;
-            const clips = prTrack.midiClips || [];
-            const idSet = new Set(noteIds);
-            // When not additive, deselect all first
-            if (!additive) {
-              for (let ci = 0; ci < clips.length; ci++) {
-                if (clips[ci].notes.some(n => n.selected)) {
-                  dispatch({ type: 'DESELECT_ALL_MIDI_NOTES', payload: { trackIndex, clipIndex: ci } });
-                }
-              }
-            }
-            for (let ci = 0; ci < clips.length; ci++) {
-              const clipNoteIds = clips[ci].notes.filter(n => idSet.has(n.id)).map(n => n.id);
-              if (clipNoteIds.length > 0) {
-                dispatch({ type: 'SELECT_MIDI_NOTES', payload: { trackIndex, clipIndex: ci, noteIds: clipNoteIds, additive: true } });
-              }
-            }
-          }}
-          onDeselectAll={() => {
-            const trackIndex = state.pianoRollTrackIndex!;
-            const clips = prTrack.midiClips || [];
-            for (let ci = 0; ci < clips.length; ci++) {
-              if (clips[ci].notes.some(n => n.selected)) {
-                dispatch({ type: 'DESELECT_ALL_MIDI_NOTES', payload: { trackIndex, clipIndex: ci } });
-              }
-            }
-          }}
-          onPixelsPerSecondChange={(pps) => dispatch({ type: 'SET_PIANO_ROLL_PIXELS_PER_SECOND', payload: pps })}
-          onScrollXChange={(sx) => dispatch({ type: 'SET_PIANO_ROLL_SCROLL_X', payload: sx })}
-          onResizeClip={(_edge, newStart, newDuration, clipId) => {
-            const targetId = clipId ?? prClip?.id;
-            if (!targetId) return;
-            dispatch({
-              type: 'TRIM_CLIP',
-              payload: {
-                trackIndex: state.pianoRollTrackIndex!,
-                clipId: targetId,
-                newTrimStart: 0,
-                newDuration,
-                newStart,
-              },
-            });
-          }}
-          onSelectClip={(clipId) => {
-            skipPianoRollScrollRef.current = true;
-            dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: state.pianoRollTrackIndex!, clipId } });
-          }}
-          trackColor={prTrack.color}
-          playheadPosition={state.playheadPosition}
-          onClose={() => dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } })}
-        />
+                }}
+                onSelectClip={(clipId) => {
+                  skipPianoRollScrollRef.current = true;
+                  dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: state.pianoRollTrackIndex!, clipId } });
+                }}
+                trackColor={prTrack.color}
+                playheadPosition={state.playheadPosition}
+              />
+            );
+          })()}
+        </div>
       );
     })()}
     </div>

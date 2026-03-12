@@ -40,22 +40,24 @@ export interface MixerPanelProps {
    */
   channels?: MixerPanelChannel[];
   /**
+   * Hide the built-in PanelHeader (when managed externally, e.g. in a tabbed drawer)
+   */
+  hideHeader?: boolean;
+  /**
    * Additional CSS classes
    */
   className?: string;
 }
 
-/** Row labels that align with MixerChannel sections */
-const ROW_LABELS = [
-  { label: 'Audio FX', height: 36 },
-  { label: 'Pan', height: 40 },
-  { label: 'Volume', height: 36 },
-] as const;
+/** Height of a single effect slot (24px) + gap (4px) */
+const EFFECT_SLOT_HEIGHT = 24;
+const EFFECT_SLOT_GAP = 4;
+const EFFECT_SLOT_PADDING = 12; // 6px top + 6px bottom
 
-const BOTTOM_LABELS = [
-  { label: 'Mute/Solo', height: 40 },
-  { label: 'Track', height: 24 },
-] as const;
+/** Calculate effect stack height for a given number of slots */
+function effectStackHeight(slotCount: number): number {
+  return EFFECT_SLOT_PADDING + slotCount * EFFECT_SLOT_HEIGHT + Math.max(0, slotCount - 1) * EFFECT_SLOT_GAP;
+}
 
 /**
  * MixerPanel - The complete mixer panel with header tabs, row labels, and channel strips.
@@ -70,9 +72,17 @@ export const MixerPanel: React.FC<MixerPanelProps> = ({
   onMenuClick,
   masterChannel,
   channels = [],
+  hideHeader = false,
   className = '',
 }) => {
   const { theme } = useTheme();
+
+  // Compute max effect slot count across all channels (at least 1 empty slot per channel)
+  const masterEffectCount = (masterChannel?.effects?.length ?? 0) + 1; // +1 for empty add slot
+  const channelEffectCounts = channels.map(ch => (ch.channelProps.effects?.length ?? 0) + 1);
+  const maxEffectSlots = Math.min(5, Math.max(masterEffectCount, ...channelEffectCounts, 1));
+
+  const effectRowHeight = effectStackHeight(maxEffectSlots);
 
   const style = {
     '--mp-text': theme.foreground.text.primary,
@@ -83,58 +93,59 @@ export const MixerPanel: React.FC<MixerPanelProps> = ({
   return (
     <div className={`mixer-panel ${className}`} style={style}>
       {/* Reuse existing PanelHeader component */}
-      <PanelHeader
-        tabs={tabs}
-        activeTabId={activeTabId}
-        onTabChange={onTabChange}
-        onMenuClick={onMenuClick}
-      />
+      {!hideHeader && (
+        <PanelHeader
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onTabChange={onTabChange}
+          onMenuClick={onMenuClick}
+        />
+      )}
 
-      {/* Panel body */}
+      {/* Panel body — scrolls vertically */}
       <div className="mixer-panel__body">
-        {/* Row labels column */}
-        <div className="mixer-panel__row-labels">
-          <div className="mixer-panel__row-labels-top">
-            {ROW_LABELS.map(({ label, height }) => (
-              <div
-                key={label}
-                className="mixer-panel__row-label"
-                style={{ height }}
-              >
-                <span>{label}</span>
+        {/* Inner content row — sized by channel content, may exceed body */}
+        <div className="mixer-panel__content">
+          {/* Row labels */}
+          <div className="mixer-panel__row-labels">
+            <div style={{ marginTop: 'auto', paddingRight: 8 }}>
+              <div className="mixer-panel__row-label" style={{ height: effectRowHeight, alignItems: 'flex-start', paddingTop: 10 }}>
+                <span>Audio FX</span>
               </div>
-            ))}
-          </div>
-          <div className="mixer-panel__row-labels-bottom">
-            {BOTTOM_LABELS.map(({ label, height }) => (
-              <div
-                key={label}
-                className="mixer-panel__row-label"
-                style={{ height }}
-              >
-                <span>{label}</span>
+              <div className="mixer-panel__row-label" style={{ height: 40 }}>
+                <span>Pan</span>
               </div>
-            ))}
+              <div className="mixer-panel__row-label" style={{ height: 40 }}>
+                <span>Volume</span>
+              </div>
+              <div style={{ height: 160 }} />
+              <div className="mixer-panel__row-label" style={{ height: 40 }}>
+                <span>Mute/Solo</span>
+              </div>
+              <div className="mixer-panel__row-label" style={{ height: 24 }}>
+                <span>Name</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Scrollable channel strip area */}
-        <div className="mixer-panel__channels-scroll">
-          <div className="mixer-panel__channels">
-            <div className="mixer-panel__channel-divider" />
-            {masterChannel && (
-              <>
-                <MixerChannel {...masterChannel} />
-                <div className="mixer-panel__channel-divider" />
-              </>
-            )}
-            {channels.map((ch, i) => (
-              <React.Fragment key={ch.id}>
-                {i > 0 && <div className="mixer-panel__channel-divider" />}
-                <MixerChannel {...ch.channelProps} />
-              </React.Fragment>
-            ))}
-            <div className="mixer-panel__channel-divider" />
+          {/* Channel strip area — scrolls horizontally */}
+          <div className="mixer-panel__channels-scroll">
+            <div className="mixer-panel__channels">
+              <div className="mixer-panel__channel-divider" />
+              {channels.map((ch, i) => (
+                <React.Fragment key={ch.id}>
+                  {i > 0 && <div className="mixer-panel__channel-divider" />}
+                  <MixerChannel {...ch.channelProps} effectSlotCount={maxEffectSlots} />
+                </React.Fragment>
+              ))}
+              {masterChannel && (
+                <>
+                  {channels.length > 0 && <div className="mixer-panel__channel-divider" />}
+                  <MixerChannel {...masterChannel} effectSlotCount={maxEffectSlots} />
+                </>
+              )}
+              <div className="mixer-panel__channel-divider" />
+            </div>
           </div>
         </div>
       </div>

@@ -37,13 +37,10 @@ export interface PianoRollPanelProps {
   trackColor?: string;
   /** Playhead position in seconds (global time) */
   playheadPosition?: number;
-}
-
-export interface PianoRollHeaderProps {
-  clipName?: string;
-  onClose?: () => void;
-  onMenuClick?: () => void;
-  onResizeStart?: (e: React.MouseEvent) => void;
+  /** Hide the built-in PanelHeader (when managed externally, e.g. in a tabbed drawer) */
+  hideHeader?: boolean;
+  /** External height override — when provided, internal resize is disabled */
+  height?: number;
 }
 
 export interface PianoRollSidebarProps {

@@ -7,9 +7,20 @@
   align-items: center;
   height: 32px;
   background: var(--ph-bg);
-  border-bottom: 1px solid var(--ph-border);
   position: relative;
   flex-shrink: 0;
+}
+
+/* Bottom border as pseudo-element so the active tab can overlap it */
+.panel-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--ph-border);
+  pointer-events: none;
 }
 
 /* Tab group container - uses gap color as 1px separator */
@@ -48,13 +59,15 @@
   z-index: 1;
 }
 
-/* Active tab */
+/* Active tab — overlaps the header's bottom border pseudo-element */
 .panel-header__tab--active {
   background: var(--ph-tab-active-bg);
   border-bottom: none;
   padding-left: 12px;
   padding-right: 8px;
   gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Inactive tab */
@@ -66,4 +79,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Drag-to-reorder states */
+.panel-header__tab--dragging {
+  opacity: 0.5;
+}
+
+.panel-header__tab--drop-before {
+  box-shadow: inset 2px 0 0 var(--ph-focus);
+}
+
+.panel-header__tab--drop-after {
+  box-shadow: inset -2px 0 0 var(--ph-focus);
+}
+
+/* Close button — pushed to the far right */
+.panel-header__close {
+  margin-left: auto;
+  margin-right: 4px;
+  flex-shrink: 0;
 }

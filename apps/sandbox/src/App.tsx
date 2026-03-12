@@ -1,5 +1,4 @@
 import React from 'react';
-import * as Tone from 'tone';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
@@ -114,7 +113,6 @@ function CanvasDemoContent() {
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const [focusedElement, setFocusedElement] = React.useState<string>('None');
-  const envelopeColor = 'yellow-green' as const;
   const controlPointStyle: EnvelopePointStyleKey = 'solidGreenSimple';
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
@@ -123,6 +121,13 @@ function CanvasDemoContent() {
   const [snapMode, setSnapMode] = React.useState<import('./components/TransportToolbar').SnapMode>('musical');
   const [showMixer, setShowMixer] = React.useState(true);
   const [mixerPanelOpen, setMixerPanelOpen] = React.useState(true);
+
+  // Listen for close-mixer-panel events from the bottom drawer
+  React.useEffect(() => {
+    const handler = () => setMixerPanelOpen(false);
+    window.addEventListener('close-mixer-panel', handler);
+    return () => window.removeEventListener('close-mixer-panel', handler);
+  }, []);
   const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
   const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
 
@@ -131,41 +136,6 @@ function CanvasDemoContent() {
   const [selectedPlaybackDevice, setSelectedPlaybackDevice] = React.useState('Built-in Speakers');
   const [availableAudioInputs, setAvailableAudioInputs] = React.useState<MediaDeviceInfo[]>([]);
   const [availableAudioOutputs, setAvailableAudioOutputs] = React.useState<MediaDeviceInfo[]>([]);
-  // Create a modified theme with the selected envelope color
-  const theme = React.useMemo(() => {
-    const envelopeColors = {
-      'yellow-green': {
-        line: '#b8ff00',
-        lineHover: '#d4ff33',
-        point: '#b8ff00',
-        hitZone: '#b8ff0026',
-      },
-      'bright-cyan': {
-        line: '#00e5ff',
-        lineHover: '#33eeff',
-        point: '#00e5ff',
-        hitZone: '#00e5ff26',
-      },
-      'hot-pink': {
-        line: '#ff007f',
-        lineHover: '#ff33a3',
-        point: '#ff007f',
-        hitZone: '#ff007f26',
-      },
-    };
-
-    return {
-      ...baseTheme,
-      audio: {
-        ...baseTheme.audio,
-        envelope: {
-          ...baseTheme.audio.envelope,
-          ...envelopeColors[envelopeColor],
-        },
-      },
-    };
-  }, [baseTheme, envelopeColor]);
-
   // View options
   const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(false);
   const [showVerticalRulers, setShowVerticalRulers] = React.useState(true);
@@ -651,69 +621,87 @@ function CanvasDemoContent() {
       const file = input.files?.[0];
       if (!file) return;
 
-      const audioManager = audioManagerRef.current;
-      await audioManager.initialize();
+      const toastId = toast.progress(`Importing ${file.name}...`);
 
-      const arrayBuffer = await file.arrayBuffer();
-      const audioContext = Tone.context.rawContext;
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      try {
+        const audioManager = audioManagerRef.current;
+        await audioManager.initialize();
 
-      const duration = audioBuffer.duration;
-      const isStereo = audioBuffer.numberOfChannels >= 2;
+        toast.updateProgress(toastId, 20, 'Reading file...');
+        const arrayBuffer = await file.arrayBuffer();
 
-      // Pick a target track — use first selected audio track, or first audio track
-      let trackIndex = state.selectedTrackIndices.find(
-        i => !state.tracks[i]?.type || state.tracks[i]?.type === 'audio'
-      );
-      if (trackIndex === undefined) {
-        trackIndex = state.tracks.findIndex(t => !t.type || t.type === 'audio');
-      }
-      if (trackIndex === -1) return;
+        toast.updateProgress(toastId, 40, 'Decoding audio...');
+        // Use a fresh AudioContext for decoding to avoid issues with Tone.js context state
+        const decodeCtx = new AudioContext();
+        const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+        await decodeCtx.close();
 
-      const newClipId = Date.now();
+        toast.updateProgress(toastId, 70, 'Building waveform...');
+        const duration = audioBuffer.duration;
+        console.log(`[Import] File: ${file.name}, size: ${file.size}, decoded duration: ${duration}s, channels: ${audioBuffer.numberOfChannels}, sampleRate: ${audioBuffer.sampleRate}, samples: ${audioBuffer.length}`);
+        const isStereo = audioBuffer.numberOfChannels >= 2;
 
-      audioManager.addClipBuffer(newClipId, audioBuffer);
-
-      // Downsample for waveform display (~100 samples per second)
-      const downsample = (channelData: Float32Array) => {
-        const samplesPerPixel = Math.floor(channelData.length / (duration * 100));
-        const result: number[] = [];
-        for (let i = 0; i < channelData.length; i += samplesPerPixel) {
-          result.push(channelData[i]);
+        // Pick a target track — use first selected audio track, or first audio track
+        let trackIndex = state.selectedTrackIndices.find(
+          i => !state.tracks[i]?.type || state.tracks[i]?.type === 'audio'
+        );
+        if (trackIndex === undefined) {
+          trackIndex = state.tracks.findIndex(t => !t.type || t.type === 'audio');
         }
-        return result;
-      };
+        if (trackIndex === -1) {
+          toast.dismiss(toastId);
+          toast.error('No audio track available');
+          return;
+        }
 
-      const startTime = state.playheadPosition;
+        const newClipId = Date.now();
+        audioManager.addClipBuffer(newClipId, audioBuffer);
 
-      const newClip = isStereo ? {
-        id: newClipId,
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        start: startTime,
-        duration,
-        waveformLeft: downsample(audioBuffer.getChannelData(0)),
-        waveformRight: downsample(audioBuffer.getChannelData(1)),
-        waveformLeftRms: generateRmsWaveform(downsample(audioBuffer.getChannelData(0))),
-        waveformRightRms: generateRmsWaveform(downsample(audioBuffer.getChannelData(1))),
-        envelopePoints: [],
-        fullDuration: duration,
-      } : {
-        id: newClipId,
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        start: startTime,
-        duration,
-        waveform: downsample(audioBuffer.getChannelData(0)),
-        waveformRms: generateRmsWaveform(downsample(audioBuffer.getChannelData(0))),
-        envelopePoints: [],
-        fullDuration: duration,
-      };
+        // Use full sample arrays for waveform display (matches recording flow)
+        const leftChannel = Array.from(audioBuffer.getChannelData(0)) as number[];
+        const startTime = state.playheadPosition;
 
-      dispatch({
-        type: 'ADD_CLIP',
-        payload: { trackIndex, clip: newClip },
-      });
+        const clipName = file.name.replace(/\.[^/.]+$/, '');
 
-      audioManager.loadClips(state.tracks);
+        const newClip = isStereo ? {
+          id: newClipId,
+          name: clipName,
+          start: startTime,
+          duration,
+          waveformLeft: leftChannel,
+          waveformRight: Array.from(audioBuffer.getChannelData(1)) as number[],
+          waveformLeftRms: generateRmsWaveform(leftChannel),
+          waveformRightRms: generateRmsWaveform(Array.from(audioBuffer.getChannelData(1)) as number[]),
+          envelopePoints: [],
+          fullDuration: duration,
+        } : {
+          id: newClipId,
+          name: clipName,
+          start: startTime,
+          duration,
+          waveform: leftChannel,
+          waveformRms: generateRmsWaveform(leftChannel),
+          envelopePoints: [],
+          fullDuration: duration,
+        };
+
+        toast.updateProgress(toastId, 100, 'Done');
+
+        dispatch({
+          type: 'ADD_CLIP',
+          payload: { trackIndex, clip: newClip },
+        });
+
+        setTimeout(() => {
+          toast.dismiss(toastId);
+          const mins = Math.floor(duration / 60);
+          const secs = Math.floor(duration % 60);
+          toast.success('Import complete', `${clipName} (${mins}:${secs.toString().padStart(2, '0')}) added to track`);
+        }, 500);
+      } catch (err) {
+        toast.dismiss(toastId);
+        toast.error('Import failed', err instanceof Error ? err.message : 'Could not decode audio file');
+      }
     };
     input.click();
   };
@@ -1107,8 +1095,7 @@ function CanvasDemoContent() {
           audioManagerRef={audioManagerRef}
           rulerTimeSelection={rulerTimeSelection}
           spectralSelection={spectralSelection}
-          theme={theme}
-          baseTheme={baseTheme}
+          theme={baseTheme}
           canvasHeight={canvasHeight}
           setCanvasHeight={setCanvasHeight}
           clickRulerToStartPlayback={clickRulerToStartPlayback}

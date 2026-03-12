@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTheme } from '../ThemeProvider/ThemeProvider';
-import { PianoRollHeader } from './PianoRollHeader';
+import { PanelHeader } from '../PanelHeader';
 import { PianoRollSidebar } from './PianoRollSidebar';
 import { PianoKeyboard } from './PianoKeyboard';
 import { PianoRollRuler } from './PianoRollRuler';
@@ -12,7 +12,6 @@ import {
   DEFAULT_SCROLL_Y,
   NOTE_HEIGHT,
   PIANO_KEY_WIDTH,
-  SIDEBAR_WIDTH,
   HEADER_HEIGHT,
   RULER_HEIGHT,
   CLIP_STRIP_HEIGHT,
@@ -47,16 +46,22 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   trackColor,
   playheadPosition,
   timeMode = 'global',
+  hideHeader = false,
+  height: externalHeight,
 }) => {
   const { theme } = useTheme();
   const pr = theme.audio.pianoRoll;
 
-  const [panelHeight, setPanelHeight] = useState(DEFAULT_PANEL_HEIGHT);
+  const [internalHeight, setInternalHeight] = useState(DEFAULT_PANEL_HEIGHT);
   const [scrollY, setScrollY] = useState(DEFAULT_SCROLL_Y);
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [gridWidth, setGridWidth] = useState(800);
+
+  // Use external height when provided, otherwise internal
+  const panelHeight = externalHeight ?? internalHeight;
+  const hasOwnHeader = !hideHeader;
 
   // Measure grid width: total width - sidebar - piano keyboard
   useEffect(() => {
@@ -71,7 +76,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Top-edge resize handle
+  // Top-edge resize handle (only when managing own header)
   useEffect(() => {
     if (!isResizing) return;
 
@@ -79,7 +84,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
       if (!resizeRef.current) return;
       const deltaY = e.clientY - resizeRef.current.startY;
       const newHeight = Math.max(MIN_PANEL_HEIGHT, resizeRef.current.startHeight - deltaY);
-      setPanelHeight(newHeight);
+      setInternalHeight(newHeight);
     };
 
     const handleMouseUp = () => {
@@ -101,7 +106,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
     resizeRef.current = { startY: e.clientY, startHeight: panelHeight };
   }, [panelHeight]);
 
-  const contentHeight = panelHeight - HEADER_HEIGHT;
+  const contentHeight = hasOwnHeader ? panelHeight - HEADER_HEIGHT : panelHeight;
   const gridHeight = contentHeight - RULER_HEIGHT - CLIP_STRIP_HEIGHT;
   const timeOffset = timeMode === 'local' ? (clip?.start ?? 0) : 0;
 
@@ -110,19 +115,22 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
       style={{
         height: panelHeight,
         background: pr.background,
-        borderTop: `1px solid ${theme.border.onElevated}`,
+        ...(hasOwnHeader ? { borderTop: `1px solid ${theme.border.onElevated}` } : {}),
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
         position: 'relative',
       }}
     >
-      {/* Header (resize via top edge) */}
-      <PianoRollHeader
-        clipName={clip?.name}
-        onClose={onClose}
-        onResizeStart={handleResizeStart}
-      />
+      {/* Header (resize via top edge) — only when not managed externally */}
+      {hasOwnHeader && (
+        <PanelHeader
+          tabs={[{ id: 'piano-roll', label: 'Piano roll' }]}
+          activeTabId="piano-roll"
+          onClose={onClose}
+          onResizeStart={handleResizeStart}
+        />
+      )}
 
       {/* Main content: Sidebar | Keyboard + Ruler/Grid */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
