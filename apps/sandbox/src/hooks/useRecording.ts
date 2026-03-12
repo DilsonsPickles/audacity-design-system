@@ -242,31 +242,8 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
     }
 
     if (state.isRecording) {
-      // Cancel recording — discard the clip
-      if (recordingManagerRef.current) {
-        await recordingManagerRef.current.stopRecording();
-      }
-
-      // Remove the recording clip
-      if (recordingClipId !== null && state.recordingTrackIndex !== null) {
-        dispatch({ type: 'DELETE_CLIP', payload: { trackIndex: state.recordingTrackIndex, clipId: recordingClipId } });
-      }
-      setRecordingClipId(null);
-
-      dispatch({ type: 'STOP_RECORDING' });
-      setPunchPointPosition(null);
-
-      // Stop playback FIRST (before restoring playhead, since stop may reset it)
-      const audioManager = audioManagerRef.current;
-      if (audioManager.getIsPlaying()) {
-        audioManager.stop();
-      }
-
-      // Restore playhead to where it was before record was pressed
-      if (preRecordPlayheadRef.current !== null) {
-        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: preRecordPlayheadRef.current });
-        preRecordPlayheadRef.current = null;
-      }
+      // Stop recording — keep the clip and leave cursor in place
+      await handleStopRecording();
     } else {
       // Start recording - find a track to record into
       let trackIndex = state.focusedTrackIndex;

@@ -135,8 +135,8 @@ function SplitRecordButton({
           ...sharedStyle,
           width: 32,
           borderRadius: 0,
-          backgroundColor: isRecording ? bg('pressed') : bg(mainState),
-          color: theme.audio.transport.record,
+          backgroundColor: isRecording ? theme.audio.transport.record : bg(mainState),
+          color: isRecording ? '#FFFFFF' : theme.audio.transport.record,
         }}
       >
         <Icon name="record" size={14} />
@@ -299,6 +299,7 @@ export function TransportToolbar({
                 icon="record"
                 ariaLabel="Record"
                 active={isRecording}
+                recording={isRecording}
                 disabled={isPlaying}
                 onClick={onRecord}
               />
