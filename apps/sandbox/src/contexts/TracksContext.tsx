@@ -174,7 +174,6 @@ export interface TracksState {
   pianoRollClipIndex: number | null;
   pianoRollSnap: import('@audacity-ui/core').SnapGrid;
   pianoRollTimeBasis: 'beats' | 'seconds';
-  pianoRollTimeMode: 'global' | 'local';
   pianoRollPixelsPerSecond: number;
   pianoRollScrollX: number;
   // Canvas snap grid (independent from piano roll)
@@ -243,7 +242,6 @@ export type TracksAction =
   | { type: 'SET_CANVAS_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
   | { type: 'SET_PIANO_ROLL_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
   | { type: 'SET_PIANO_ROLL_TIME_BASIS'; payload: 'beats' | 'seconds' }
-  | { type: 'SET_PIANO_ROLL_TIME_MODE'; payload: 'global' | 'local' }
   | { type: 'ADD_MIDI_NOTE'; payload: { trackIndex: number; clipIndex: number; note: import('@audacity-ui/core').MidiNote } }
   | { type: 'DELETE_MIDI_NOTES'; payload: { trackIndex: number; clipIndex: number; noteIds: number[] } }
   | { type: 'UPDATE_MIDI_NOTE'; payload: { trackIndex: number; clipIndex: number; noteId: number; updates: Partial<import('@audacity-ui/core').MidiNote> } }
@@ -284,7 +282,6 @@ const initialState: TracksState = {
   pianoRollClipIndex: null,
   pianoRollSnap: { subdivision: 4 },
   pianoRollTimeBasis: 'beats',
-  pianoRollTimeMode: 'global',
   pianoRollPixelsPerSecond: 200,
   pianoRollScrollX: 0,
   canvasSnap: { subdivision: 1 },
@@ -1059,16 +1056,8 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
         }),
         midiClips: newTracks[trackIndex].midiClips?.map(mc => {
           if (mc.id === clipId) {
-            const updated = { ...mc, duration: newDuration };
+            const updated = { ...mc, trimStart: newTrimStart, duration: newDuration };
             if (newStart !== undefined) {
-              // Adjust note local times so they stay at the same global position
-              const startDelta = mc.start - newStart;
-              if (startDelta !== 0) {
-                updated.notes = mc.notes.map(n => ({
-                  ...n,
-                  startTime: n.startTime + startDelta,
-                }));
-              }
               updated.start = newStart;
             }
             return updated;
@@ -1394,22 +1383,6 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'SET_PIANO_ROLL_TIME_BASIS':
       return { ...state, pianoRollTimeBasis: action.payload };
-
-    case 'SET_PIANO_ROLL_TIME_MODE': {
-      let scrollX = state.pianoRollScrollX;
-      if (action.payload === 'local') {
-        // In local mode, clip starts at 0 — reset scroll near origin
-        scrollX = 0;
-      } else if (action.payload === 'global' && state.pianoRollTrackIndex !== null) {
-        // Switching to global — scroll to the active clip's global position
-        const track = state.tracks[state.pianoRollTrackIndex];
-        const activeClip = track?.midiClips?.find((c: any) => c.selected);
-        if (activeClip) {
-          scrollX = Math.max(0, activeClip.start * state.pianoRollPixelsPerSecond - 80);
-        }
-      }
-      return { ...state, pianoRollTimeMode: action.payload, pianoRollScrollX: scrollX };
-    }
 
     case 'ADD_MIDI_CLIP': {
       const { trackIndex, clip } = action.payload;

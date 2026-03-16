@@ -179,8 +179,9 @@ export interface MidiNote {
 export interface MidiClip {
   id: number;
   name: string;
-  start: number; // in seconds
-  duration: number; // in seconds
+  start: number; // in seconds — global position of visible left edge
+  duration: number; // in seconds — visible duration
+  trimStart: number; // offset into local time where visible window begins
   notes: MidiNote[];
   selected?: boolean;
   color?: string;

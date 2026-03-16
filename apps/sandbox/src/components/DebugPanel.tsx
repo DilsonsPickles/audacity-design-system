@@ -58,9 +58,6 @@ export interface DebugPanelProps {
   showMixer: boolean;
   onShowMixerChange: (value: boolean) => void;
 
-  // Piano roll time mode
-  pianoRollTimeMode: 'global' | 'local';
-  onPianoRollTimeModeChange: (value: 'global' | 'local') => void;
 }
 
 export function DebugPanel({
@@ -90,8 +87,6 @@ export function DebugPanel({
   onUseSplitRecordButtonChange,
   showMixer,
   onShowMixerChange,
-  pianoRollTimeMode,
-  onPianoRollTimeModeChange,
 }: DebugPanelProps) {
   return (
     <Dialog
@@ -377,71 +372,6 @@ export function DebugPanel({
             checked={showMixer}
             onChange={onShowMixerChange}
           />
-        </div>
-
-        {/* Piano Roll Time Mode Section */}
-        <div>
-          <h3 style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '14px',
-            fontWeight: 600,
-            lineHeight: '20px',
-            color: '#14151a',
-            margin: '0 0 12px 0',
-          }}>
-            Piano Roll Time Mode
-          </h3>
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-          }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-            }}>
-              <input
-                type="radio"
-                value="global"
-                checked={pianoRollTimeMode === 'global'}
-                onChange={() => onPianoRollTimeModeChange('global')}
-                style={{ cursor: 'pointer' }}
-              />
-              <span style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '12px',
-                fontWeight: 400,
-                lineHeight: '16px',
-                color: '#14151a',
-              }}>
-                Global (track timeline)
-              </span>
-            </label>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-            }}>
-              <input
-                type="radio"
-                value="local"
-                checked={pianoRollTimeMode === 'local'}
-                onChange={() => onPianoRollTimeModeChange('local')}
-                style={{ cursor: 'pointer' }}
-              />
-              <span style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '12px',
-                fontWeight: 400,
-                lineHeight: '16px',
-                color: '#14151a',
-              }}>
-                Local (clip-relative)
-              </span>
-            </label>
-          </div>
         </div>
 
         {/* Track & Clip Controls Section */}

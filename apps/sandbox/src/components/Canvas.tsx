@@ -639,7 +639,8 @@ export function Canvas({
                 clips={track.type === 'midi'
                   ? (track.midiClips || []).map((mc: any) => ({
                       id: mc.id, name: mc.name, start: mc.start,
-                      duration: mc.duration, envelopePoints: [],
+                      duration: mc.duration, trimStart: mc.trimStart ?? 0,
+                      envelopePoints: [],
                       selected: mc.selected, color: mc.color || track.color,
                       midiNotes: mc.notes,
                     }))

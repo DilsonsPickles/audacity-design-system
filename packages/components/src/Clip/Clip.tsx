@@ -255,6 +255,7 @@ const ClipComponent: React.FC<ClipProps> = ({
         <MidiClipBody
           notes={midiNotes}
           clipDuration={clipDuration || 1}
+          trimStart={clipTrimStart}
           width={width}
           height={bodyHeight}
           color={color}

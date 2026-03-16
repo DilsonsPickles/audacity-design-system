@@ -108,8 +108,8 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
         let clampedTrimDelta = trimDelta;
         selectedClips.forEach(({ initialState }) => {
           if (initialState.isMidi) {
-            // MIDI clips: only constrain so start >= 0 and min 0.01s visible
-            const minDelta = -(initialState.start); // start + delta >= 0
+            // MIDI clips: use trimStart like audio
+            const minDelta = -(initialState.trimStart ?? 0); // trimStart + delta >= 0
             const maxDelta = initialState.duration - 0.01; // duration - delta >= 0.01
             clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
           } else {
@@ -125,15 +125,16 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
         // Apply clamped delta to all selected clips using their INITIAL state
         selectedClips.forEach(({ trackIndex, clip, initialState }) => {
           if (initialState.isMidi) {
-            // MIDI clips: adjust start and duration directly (no trimStart)
-            const newStart = initialState.start + clampedTrimDelta;
+            // MIDI clips: use trimStart like audio — notes stay at absolute local positions
+            const newTrimStartForClip = (initialState.trimStart ?? 0) + clampedTrimDelta;
             const newDuration = initialState.duration - clampedTrimDelta;
+            const newStart = initialState.start + clampedTrimDelta;
             dispatch({
               type: 'TRIM_CLIP',
               payload: {
                 trackIndex,
                 clipId: clip.id as number,
-                newTrimStart: 0,
+                newTrimStart: newTrimStartForClip,
                 newDuration,
                 newStart,
               },

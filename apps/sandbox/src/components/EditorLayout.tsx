@@ -211,14 +211,9 @@ export function EditorLayout(props: EditorLayoutProps) {
       skipPianoRollScrollRef.current = false;
       return;
     }
-    const track = state.tracks[state.pianoRollTrackIndex];
-    const clip = track?.midiClips?.find(c => c.id === selectedMidiClipId);
-    if (!clip) return;
 
-    // In local mode, clip boundary starts at 0; in global mode, use clip.start
-    const clipLocalStart = state.pianoRollTimeMode === 'local' ? 0 : clip.start;
-    // Offset so the clip's left edge sits ~80px into the viewport, not flush left
-    const targetScrollX = Math.max(0, clipLocalStart * state.pianoRollPixelsPerSecond - 80);
+    // Piano roll is in local time — always scroll to the start (0) on clip switch
+    const targetScrollX = 0;
     const startScrollX = state.pianoRollScrollX;
     if (Math.abs(targetScrollX - startScrollX) < 1) return;
 
@@ -1534,57 +1529,45 @@ export function EditorLayout(props: EditorLayoutProps) {
                 pixelsPerSecond={state.pianoRollPixelsPerSecond}
                 scrollX={state.pianoRollScrollX}
                 snap={state.pianoRollSnap}
-                timeMode={state.pianoRollTimeMode}
                 timeBasis={state.pianoRollTimeBasis}
                 onSnapChange={(snap) => dispatch({ type: 'SET_PIANO_ROLL_SNAP', payload: snap })}
                 onTimeBasisChange={(basis) => dispatch({ type: 'SET_PIANO_ROLL_TIME_BASIS', payload: basis })}
                 onAddNote={(note) => {
                   const trackIndex = state.pianoRollTrackIndex!;
                   const clips = prTrack.midiClips || [];
-                  const clipIndex = state.pianoRollTimeMode === 'local'
-                    ? -1
-                    : clips.findIndex(c => note.startTime >= c.start && note.startTime < c.start + c.duration);
-                  if (clipIndex >= 0) {
-                    const localNote = { ...note, startTime: note.startTime - clips[clipIndex].start };
-                    dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex, note: localNote } });
-                    skipPianoRollScrollRef.current = true;
-                    dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clips[clipIndex].id } });
-                  } else {
-                    const selectedClip = clips.find(c => c.selected);
-                    if (selectedClip) {
-                      const selectedClipIndex = clips.indexOf(selectedClip);
-                      const noteEnd = note.startTime + note.duration;
-                      const newStart = Math.min(selectedClip.start, note.startTime);
-                      const newEnd = Math.max(selectedClip.start + selectedClip.duration, noteEnd);
-                      if (newStart < selectedClip.start || newEnd > selectedClip.start + selectedClip.duration) {
-                        dispatch({
-                          type: 'TRIM_CLIP',
-                          payload: {
-                            trackIndex,
-                            clipId: selectedClip.id,
-                            newTrimStart: 0,
-                            newDuration: newEnd - newStart,
-                            newStart,
-                          },
-                        });
-                      }
-                      const localNote = { ...note, startTime: note.startTime - newStart };
-                      dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex: selectedClipIndex, note: localNote } });
-                    } else {
-                      const measureDuration = (60 / bpm) * beatsPerMeasure;
-                      const clipStart = Math.floor(note.startTime / measureDuration) * measureDuration;
-                      const newClipId = Date.now();
-                      const newClip = {
-                        id: newClipId,
-                        name: 'MIDI Clip',
-                        start: clipStart,
-                        duration: measureDuration,
-                        notes: [{ ...note, startTime: note.startTime - clipStart }],
-                      };
-                      dispatch({ type: 'ADD_MIDI_CLIP', payload: { trackIndex, clip: newClip } });
-                      skipPianoRollScrollRef.current = true;
-                      dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: newClipId } });
+                  const selectedClip = clips.find(c => c.selected);
+                  if (selectedClip) {
+                    // Note startTime is already in clip-local time — add directly
+                    const selectedClipIndex = clips.indexOf(selectedClip);
+                    const noteEnd = note.startTime + note.duration;
+                    // Expand clip if note falls outside current boundaries
+                    if (noteEnd > selectedClip.duration) {
+                      dispatch({
+                        type: 'TRIM_CLIP',
+                        payload: {
+                          trackIndex,
+                          clipId: selectedClip.id,
+                          newTrimStart: 0,
+                          newDuration: noteEnd,
+                        },
+                      });
                     }
+                    dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex: selectedClipIndex, note } });
+                  } else {
+                    // No selected clip — create one starting at beat 0
+                    const measureDuration = (60 / bpm) * beatsPerMeasure;
+                    const newClipId = Date.now();
+                    const newClip = {
+                      id: newClipId,
+                      name: 'MIDI Clip',
+                      start: 0,
+                      trimStart: 0,
+                      duration: Math.max(measureDuration, note.startTime + note.duration),
+                      notes: [note],
+                    };
+                    dispatch({ type: 'ADD_MIDI_CLIP', payload: { trackIndex, clip: newClip } });
+                    skipPianoRollScrollRef.current = true;
+                    dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: newClipId } });
                   }
                 }}
                 onDeleteNotes={(noteIds) => {
@@ -1659,7 +1642,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 }}
                 onPixelsPerSecondChange={(pps) => dispatch({ type: 'SET_PIANO_ROLL_PIXELS_PER_SECOND', payload: pps })}
                 onScrollXChange={(sx) => dispatch({ type: 'SET_PIANO_ROLL_SCROLL_X', payload: sx })}
-                onResizeClip={(_edge, newStart, newDuration, clipId) => {
+                onResizeClip={(_edge, newStart, newDuration, newTrimStart, clipId) => {
                   const targetId = clipId ?? prClip?.id;
                   if (!targetId) return;
                   dispatch({
@@ -1667,7 +1650,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     payload: {
                       trackIndex: state.pianoRollTrackIndex!,
                       clipId: targetId,
-                      newTrimStart: 0,
+                      newTrimStart,
                       newDuration,
                       newStart,
                     },

@@ -1,7 +1,6 @@
 import type { MidiNote, MidiClip, SnapGrid } from '@audacity-ui/core';
 
 export type TimeBasis = 'beats' | 'seconds';
-export type PianoRollTimeMode = 'global' | 'local';
 
 export interface PianoRollPanelProps {
   clip?: MidiClip | null;
@@ -12,8 +11,6 @@ export interface PianoRollPanelProps {
   scrollX: number;
   snap: SnapGrid;
   timeBasis: TimeBasis;
-  /** 'global' = track-level timeline, 'local' = clip-relative timeline */
-  timeMode?: PianoRollTimeMode;
   onSnapChange: (snap: SnapGrid) => void;
   onTimeBasisChange: (basis: TimeBasis) => void;
   onAddNote: (note: MidiNote) => void;
@@ -30,7 +27,7 @@ export interface PianoRollPanelProps {
   /** Called when user clicks to add a note but no clip exists yet. Should create a clip and add the note. */
   onCreateClipWithNote?: (note: MidiNote, measureDuration: number) => void;
   /** Called when user drags a clip boundary edge to resize the clip */
-  onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, clipId?: number) => void;
+  onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, newTrimStart: number, clipId?: number) => void;
   /** Called when user clicks a clip bar in the clip strip to select it */
   onSelectClip?: (clipId: number) => void;
   /** Track color name (e.g. 'blue', 'violet') — notes and clip strip use this color */
@@ -79,7 +76,6 @@ export interface NoteGridProps {
   noteHeight: number;
   snap: SnapGrid;
   timeBasis: TimeBasis;
-  timeMode?: PianoRollTimeMode;
   width: number;
   height: number;
   onAddNote: (note: MidiNote) => void;
@@ -94,7 +90,7 @@ export interface NoteGridProps {
   onPixelsPerSecondChange?: (pps: number) => void;
   onScrollXChange?: (scrollX: number) => void;
   /** Called when user drags a clip boundary edge to resize the clip */
-  onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, clipId?: number) => void;
+  onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, newTrimStart: number, clipId?: number) => void;
   /** Track color name (e.g. 'blue', 'violet') — notes use this color */
   trackColor?: string;
 }

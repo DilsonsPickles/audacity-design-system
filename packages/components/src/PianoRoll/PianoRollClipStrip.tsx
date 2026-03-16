@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTheme } from '../ThemeProvider/ThemeProvider';
 import { CLIP_STRIP_HEIGHT } from './constants';
-import type { PianoRollTimeMode } from './types';
 import type { MidiClip, SnapGrid } from '@audacity-ui/core';
 
 export interface PianoRollClipStripProps {
@@ -10,11 +9,9 @@ export interface PianoRollClipStripProps {
   pixelsPerSecond: number;
   scrollX: number;
   width: number;
-  timeOffset: number;
   snap: SnapGrid;
   bpm: number;
-  timeMode?: PianoRollTimeMode;
-  onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, clipId: number) => void;
+  onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, newTrimStart: number, clipId: number) => void;
   onSelectClip?: (clipId: number) => void;
   trackColor?: string;
 }
@@ -27,13 +24,11 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
   pixelsPerSecond,
   scrollX,
   width,
-  timeOffset,
   snap,
   bpm,
   onResizeClip,
   onSelectClip,
   trackColor,
-  timeMode = 'global',
 }) => {
   const { theme } = useTheme();
   const pr = theme.audio.pianoRoll;
@@ -42,6 +37,7 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
     clipId: number;
     edge: 'left' | 'right';
     initialStart: number;
+    initialTrimStart: number;
     initialDuration: number;
     startMouseX: number;
   } | null>(null);
@@ -61,17 +57,20 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
       const deltaTime = deltaX / pixelsPerSecond;
 
       if (drag.edge === 'left') {
-        const newStart = snapTime(drag.initialStart + deltaTime);
-        const endTime = drag.initialStart + drag.initialDuration;
-        const newDuration = endTime - newStart;
+        // Left edge adjusts trimStart (like trimming audio)
+        const newTrimStart = snapTime(drag.initialTrimStart + deltaTime);
+        const clampedTrimStart = Math.max(0, newTrimStart);
+        const trimDelta = clampedTrimStart - drag.initialTrimStart;
+        const newDuration = drag.initialDuration - trimDelta;
+        const newStart = drag.initialStart + trimDelta;
         if (newDuration > 0) {
-          onResizeClip?.('left', newStart, newDuration, drag.clipId);
+          onResizeClip?.('left', newStart, newDuration, clampedTrimStart, drag.clipId);
         }
       } else {
-        const newEnd = snapTime(drag.initialStart + drag.initialDuration + deltaTime);
-        const newDuration = newEnd - drag.initialStart;
+        const newEnd = snapTime(drag.initialTrimStart + drag.initialDuration + deltaTime);
+        const newDuration = newEnd - drag.initialTrimStart;
         if (newDuration > 0) {
-          onResizeClip?.('right', drag.initialStart, newDuration, drag.clipId);
+          onResizeClip?.('right', drag.initialStart, newDuration, drag.initialTrimStart, drag.clipId);
         }
       }
     };
@@ -94,6 +93,7 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
     clipId: number,
     edge: 'left' | 'right',
     clipStart: number,
+    clipTrimStart: number,
     clipDuration: number,
   ) => {
     e.stopPropagation();
@@ -102,6 +102,7 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
       clipId,
       edge,
       initialStart: clipStart,
+      initialTrimStart: clipTrimStart,
       initialDuration: clipDuration,
       startMouseX: e.clientX,
     };
@@ -125,14 +126,15 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
       }}
     >
       {clips.map((clip) => {
-        const x = (clip.start - timeOffset) * pixelsPerSecond - scrollX;
+        // Local time — clip visible window starts at trimStart
+        const trimStart = clip.trimStart ?? 0;
+        const x = trimStart * pixelsPerSecond - scrollX;
         const w = clip.duration * pixelsPerSecond;
 
         // Skip if entirely out of view
         if (x + w < 0 || x > width) return null;
 
         const isActive = clip.id === activeClipId;
-        const isGhost = !isActive && timeMode === 'local';
         const baseColor = clipColors?.header ?? pr.noteFill;
 
         return (
@@ -147,15 +149,15 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
               background: baseColor,
               opacity: isActive ? 1 : 0.4,
               borderRadius: 2,
-              cursor: isGhost || (timeMode === 'local' && clip.id === activeClipId) ? 'default' : 'pointer',
-              pointerEvents: isGhost ? 'none' : undefined,
+              cursor: 'pointer',
+              pointerEvents: undefined,
               overflow: 'hidden',
               whiteSpace: 'nowrap',
               textOverflow: 'ellipsis',
               display: 'flex',
               alignItems: 'center',
             }}
-            onMouseDown={isGhost || (timeMode === 'local' && clip.id === activeClipId) ? undefined : (e) => handleClipClick(e, clip.id)}
+            onMouseDown={(e) => handleClipClick(e, clip.id)}
           >
             {/* Clip name */}
             <span
@@ -174,35 +176,31 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
               {clip.name}
             </span>
 
-            {/* Left edge handle — hidden for ghost clips */}
-            {!isGhost && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  width: EDGE_WIDTH,
-                  height: '100%',
-                  cursor: 'ew-resize',
-                }}
-                onMouseDown={(e) => handleEdgeMouseDown(e, clip.id, 'left', clip.start, clip.duration)}
-              />
-            )}
+            {/* Left edge handle */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: EDGE_WIDTH,
+                height: '100%',
+                cursor: 'ew-resize',
+              }}
+              onMouseDown={(e) => handleEdgeMouseDown(e, clip.id, 'left', clip.start, clip.trimStart ?? 0, clip.duration)}
+            />
 
-            {/* Right edge handle — hidden for ghost clips */}
-            {!isGhost && (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  width: EDGE_WIDTH,
-                  height: '100%',
-                  cursor: 'ew-resize',
-                }}
-                onMouseDown={(e) => handleEdgeMouseDown(e, clip.id, 'right', clip.start, clip.duration)}
-              />
-            )}
+            {/* Right edge handle */}
+            <div
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                width: EDGE_WIDTH,
+                height: '100%',
+                cursor: 'ew-resize',
+              }}
+              onMouseDown={(e) => handleEdgeMouseDown(e, clip.id, 'right', clip.start, clip.trimStart ?? 0, clip.duration)}
+            />
           </div>
         );
       })}

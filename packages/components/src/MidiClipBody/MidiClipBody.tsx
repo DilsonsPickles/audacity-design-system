@@ -5,6 +5,7 @@ import type { ClipColor } from '../types/clip';
 export interface MidiClipBodyProps {
   notes: MidiNote[];
   clipDuration: number;
+  trimStart?: number;
   width: number;
   height: number;
   color?: ClipColor;
@@ -22,6 +23,7 @@ export interface MidiClipBodyProps {
 const MidiClipBodyComponent: React.FC<MidiClipBodyProps> = ({
   notes,
   clipDuration,
+  trimStart = 0,
   width,
   height,
   color = 'blue',
@@ -103,7 +105,7 @@ const MidiClipBodyComponent: React.FC<MidiClipBodyProps> = ({
         />
       )}
       {notes.map((note) => {
-        const x = (note.startTime / clipDuration) * width;
+        const x = ((note.startTime - trimStart) / clipDuration) * width;
         const noteWidth = Math.max(1, (note.duration / clipDuration) * width);
         // Higher pitch = higher on screen (lower y value)
         const y = ((maxPitch - note.pitch) / pitchRange) * (height - 2);

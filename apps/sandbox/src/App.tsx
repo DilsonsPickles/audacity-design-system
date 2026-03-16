@@ -1288,6 +1288,7 @@ function CanvasDemoContent() {
                         id: Date.now(),
                         name: 'MIDI Clip',
                         start: clipStart,
+                        trimStart: 0,
                         duration: clipDuration,
                         notes: [],
                       },

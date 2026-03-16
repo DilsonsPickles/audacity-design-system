@@ -45,7 +45,6 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   onSelectClip,
   trackColor,
   playheadPosition,
-  timeMode = 'global',
   hideHeader = false,
   height: externalHeight,
 }) => {
@@ -108,7 +107,6 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
 
   const contentHeight = hasOwnHeader ? panelHeight - HEADER_HEIGHT : panelHeight;
   const gridHeight = contentHeight - RULER_HEIGHT - CLIP_STRIP_HEIGHT;
-  const timeOffset = timeMode === 'local' ? (clip?.start ?? 0) : 0;
 
   return (
     <div
@@ -174,13 +172,11 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               pixelsPerSecond={pixelsPerSecond}
               scrollX={scrollX}
               width={gridWidth}
-              timeOffset={timeOffset}
               snap={snap}
               bpm={bpm}
-              onResizeClip={onResizeClip ? (edge, newStart, newDuration, clipId) => onResizeClip(edge, newStart, newDuration, clipId) : undefined}
+              onResizeClip={onResizeClip ? (edge, newStart, newDuration, newTrimStart, clipId) => onResizeClip(edge, newStart, newDuration, newTrimStart, clipId) : undefined}
               onSelectClip={onSelectClip}
               trackColor={trackColor}
-              timeMode={timeMode}
             />
 
             {/* Note grid */}
@@ -195,7 +191,6 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               noteHeight={NOTE_HEIGHT}
               snap={snap}
               timeBasis={timeBasis}
-              timeMode={timeMode}
               width={gridWidth}
               height={gridHeight}
               onAddNote={onAddNote}
@@ -215,7 +210,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
 
             {/* Playhead cursor */}
             {playheadPosition !== undefined && (() => {
-              const localPlayhead = timeMode === 'local' ? playheadPosition - (clip?.start ?? 0) : playheadPosition;
+              const localPlayhead = playheadPosition;
               const playheadX = localPlayhead * pixelsPerSecond - scrollX;
               return playheadX >= 0 && playheadX <= gridWidth ? (
               <div

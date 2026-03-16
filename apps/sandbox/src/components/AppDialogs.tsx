@@ -127,7 +127,7 @@ export interface AppDialogsProps {
   // Active menu item (for debug panel close)
   setActiveMenuItem: React.Dispatch<React.SetStateAction<'home' | 'project' | 'export' | 'debug'>>;
 
-  // State (for cutMode, timeSelection, playheadPosition, pianoRollTimeMode)
+  // State (for cutMode, timeSelection, playheadPosition)
   state: any;
 }
 
@@ -1222,8 +1222,6 @@ export function AppDialogs(props: AppDialogsProps) {
         onUseSplitRecordButtonChange={setUseSplitRecordButton}
         showMixer={showMixer}
         onShowMixerChange={setShowMixer}
-        pianoRollTimeMode={state.pianoRollTimeMode}
-        onPianoRollTimeModeChange={(mode) => dispatch({ type: 'SET_PIANO_ROLL_TIME_MODE', payload: mode })}
       />
     </>
   );

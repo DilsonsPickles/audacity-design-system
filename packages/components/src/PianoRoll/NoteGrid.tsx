@@ -13,8 +13,6 @@ interface DragState {
   startX: number;
   startY: number;
   hasMoved: boolean;
-  /** Clip start for the anchor note (used for snap math) */
-  anchorClipStart: number;
   /** Initial positions of all selected notes (for multi-note drag) */
   initials: Array<{ id: number; pitch: number; startTime: number; duration: number }>;
 }
@@ -24,6 +22,7 @@ interface ClipBoundaryDragState {
   clipId: number;
   startMouseX: number;
   initialStart: number;
+  initialTrimStart: number;
   initialDuration: number;
 }
 
@@ -39,12 +38,10 @@ interface BoxSelectionState {
 interface NoteWithContext {
   note: MidiNote;
   clipId: number;
-  clipStart: number;
 }
 
 export const NoteGrid: React.FC<NoteGridProps> = ({
   clip,
-  allClips,
   bpm,
   beatsPerMeasure,
   pixelsPerSecond,
@@ -68,7 +65,6 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   onScrollXChange,
   onResizeClip,
   trackColor,
-  timeMode = 'global',
 }) => {
   const { theme } = useTheme();
   const dragRef = useRef<DragState | null>(null);
@@ -84,42 +80,18 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   const [ghostNote, setGhostNote] = useState<{ pitch: number; startTime: number; duration: number } | null>(null);
   const isDraggingRef = useRef(false);
 
-  const isLocal = timeMode === 'local';
-  // In local mode, time offset = active clip's start; everything is relative to clip origin
-  const timeOffset = isLocal ? (clip?.start ?? 0) : 0;
+  // Piano roll is in clip-local time — only show the active clip
+  const clips = clip ? [clip] : [];
 
-  // In local mode, only show the active clip. In global mode, show all.
-  const clips = isLocal
-    ? (clip ? [clip] : [])
-    : (allClips ?? (clip ? [clip] : []));
-
-  // Build unified note list from visible clips
-  // In local mode, clipStart is offset-adjusted so notes render at local time
+  // Build unified note list from all visible clips
   const allNotes: NoteWithContext[] = useMemo(() => {
     return clips.flatMap(c =>
-      c.notes.map(n => ({ note: n, clipId: c.id, clipStart: c.start - timeOffset }))
+      c.notes.map(n => ({ note: n, clipId: c.id }))
     );
-  }, [clips, timeOffset]);
+  }, [clips]);
 
-  // Map noteId -> clipStart (offset-adjusted) for quick lookup during drag
-  const noteClipStartMap = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const c of clips) {
-      for (const n of c.notes) {
-        map.set(n.id, c.start - timeOffset);
-      }
-    }
-    return map;
-  }, [clips, timeOffset]);
-
-  // All clip bounds for NoteGridCanvas (ghost boundaries for non-selected clips)
-  const ghostClipBounds = useMemo(() => {
-    if (isLocal) {
-      // No ghost clips in local mode
-      return [];
-    }
-    return clips.filter(c => !clip || c.id !== clip.id).map(c => ({ start: c.start, duration: c.duration }));
-  }, [clips, clip, isLocal]);
+  // No ghost clip bounds in local time — each clip has its own local coordinate space
+  const ghostClipBounds: Array<{ start: number; duration: number }> = [];
 
   // Snap helper
   const snapTime = useCallback((t: number): number => {
@@ -129,36 +101,28 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     return Math.round(t / gridStep) * gridStep;
   }, [bpm, snap]);
 
-  // Convert pixel X to time (global in global mode, local in local mode)
+  // Convert pixel X to global time
   const xToTime = useCallback((px: number): number => {
-    return (px + scrollX) / pixelsPerSecond + timeOffset;
-  }, [scrollX, pixelsPerSecond, timeOffset]);
+    return (px + scrollX) / pixelsPerSecond;
+  }, [scrollX, pixelsPerSecond]);
 
   // Convert pixel Y to pitch
   const yToPitch = useCallback((py: number): number => {
     return TOTAL_PITCHES - 1 - Math.floor((py + scrollY) / noteHeight);
   }, [scrollY, noteHeight]);
 
-  // Find which clip a global time falls within
-  const findClipAtTime = useCallback((globalTime: number): MidiClip | null => {
-    for (const c of clips) {
-      if (globalTime >= c.start && globalTime < c.start + c.duration) {
-        return c;
-      }
-    }
-    return null;
-  }, [clips]);
-
-  // Detect if a pixel X is near any clip boundary edge
+  // Detect if a pixel X is near the active clip's boundary edge (local time: trimStart to trimStart + duration)
   const getClipBoundaryEdge = useCallback((localX: number): { edge: 'left' | 'right'; clip: MidiClip } | null => {
-    for (const c of clips) {
-      const clipStartX = (c.start - timeOffset) * pixelsPerSecond - scrollX;
-      const clipEndX = (c.start - timeOffset + c.duration) * pixelsPerSecond - scrollX;
+    if (!clip) return null;
+    for (const c of [clip]) {
+      const trimStart = c.trimStart ?? 0;
+      const clipStartX = trimStart * pixelsPerSecond - scrollX;
+      const clipEndX = (trimStart + c.duration) * pixelsPerSecond - scrollX;
       if (Math.abs(localX - clipStartX) <= CLIP_BOUNDARY_THRESHOLD) return { edge: 'left', clip: c };
       if (Math.abs(localX - clipEndX) <= CLIP_BOUNDARY_THRESHOLD) return { edge: 'right', clip: c };
     }
     return null;
-  }, [clips, pixelsPerSecond, scrollX, timeOffset]);
+  }, [clips, pixelsPerSecond, scrollX]);
 
   // Update cursor on mouse move over grid and show ghost note
   const handleGridMouseMove = useCallback((e: React.MouseEvent) => {
@@ -215,6 +179,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
           clipId: boundaryHit.clip.id,
           startMouseX: e.clientX,
           initialStart: boundaryHit.clip.start,
+          initialTrimStart: boundaryHit.clip.trimStart ?? 0,
           initialDuration: boundaryHit.clip.duration,
         };
         setGridCursor('ew-resize');
@@ -228,17 +193,21 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
           const minDuration = (60 / bpm) / 4; // minimum 1/4 beat
 
           if (drag.edge === 'left') {
-            const newStart = snapTime(drag.initialStart + deltaTime);
-            const endTime = drag.initialStart + drag.initialDuration;
-            const newDuration = endTime - newStart;
-            if (newDuration >= minDuration && newStart >= 0) {
-              onResizeClip('left', newStart, newDuration, drag.clipId);
+            // Left edge drag adjusts trimStart — like trimming audio
+            const newTrimStart = snapTime(drag.initialTrimStart + deltaTime);
+            const clampedTrimStart = Math.max(0, newTrimStart);
+            const trimDelta = clampedTrimStart - drag.initialTrimStart;
+            const newDuration = drag.initialDuration - trimDelta;
+            const newStart = drag.initialStart + trimDelta;
+            if (newDuration >= minDuration) {
+              onResizeClip('left', newStart, newDuration, clampedTrimStart, drag.clipId);
             }
           } else {
-            const newEnd = snapTime(drag.initialStart + drag.initialDuration + deltaTime);
-            const newDuration = newEnd - drag.initialStart;
+            // Right edge drag adjusts duration only — trimStart unchanged
+            const newEnd = snapTime(drag.initialTrimStart + drag.initialDuration + deltaTime);
+            const newDuration = newEnd - drag.initialTrimStart;
             if (newDuration >= minDuration) {
-              onResizeClip('right', drag.initialStart, newDuration, drag.clipId);
+              onResizeClip('right', drag.initialStart, newDuration, drag.initialTrimStart, drag.clipId);
             }
           }
         };
@@ -297,8 +266,8 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
           const boxBottom = Math.max(box.startY, box.currentY);
 
           const matchedIds: number[] = [];
-          for (const { note, clipStart } of allNotes) {
-            const nx = (note.startTime + clipStart) * pixelsPerSecond - scrollX;
+          for (const { note } of allNotes) {
+            const nx = note.startTime * pixelsPerSecond - scrollX;
             const ny = (TOTAL_PITCHES - 1 - note.pitch) * noteHeight - scrollY;
             const nw = note.duration * pixelsPerSecond;
             const nh = noteHeight;
@@ -372,7 +341,6 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     e.stopPropagation();
 
     const isAdditive = e.metaKey || e.ctrlKey;
-    const anchorClipStart = noteClipStartMap.get(note.id) ?? 0;
 
     // Find the full note data across all clips
     const fullNote = allNotes.find(nc => nc.note.id === note.id)?.note;
@@ -398,7 +366,6 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         startX: e.clientX,
         startY: e.clientY,
         hasMoved: false,
-        anchorClipStart,
         initials,
       };
       setGridCursor('grabbing');
@@ -413,7 +380,6 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         startX: e.clientX,
         startY: e.clientY,
         hasMoved: false,
-        anchorClipStart,
         initials: selectedNotes.map(nc => ({
           id: nc.note.id,
           pitch: nc.note.pitch,
@@ -442,9 +408,9 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         const deltaTime = dx / pixelsPerSecond;
         const deltaPitch = -Math.round(dy / noteHeight);
 
-        // Apply snapped delta to all selected notes (snap in global time using anchor's clip offset)
+        // Apply snapped delta to all selected notes
         const anchor = drag.initials.find(i => i.id === drag.noteId)!;
-        const snappedNewTime = snapTime(anchor.startTime + drag.anchorClipStart + deltaTime) - drag.anchorClipStart;
+        const snappedNewTime = snapTime(anchor.startTime + deltaTime);
         const snappedDeltaTime = snappedNewTime - anchor.startTime;
 
         for (const init of drag.initials) {
@@ -469,7 +435,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         const minDuration = (60 / bpm) / 32;
         // Compute snapped start delta from the anchor note, apply same shift to all
         const anchor = drag.initials.find(i => i.id === drag.noteId)!;
-        const snappedStart = snapTime(anchor.startTime + drag.anchorClipStart + deltaTime) - drag.anchorClipStart;
+        const snappedStart = snapTime(anchor.startTime + deltaTime);
         const clampedStart = Math.max(0, snappedStart);
         const startDelta = clampedStart - anchor.startTime;
         const anchorEndTime = anchor.startTime + anchor.duration;
@@ -506,7 +472,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [allNotes, noteClipStartMap, pixelsPerSecond, noteHeight, snapTime, bpm, onSelectNote, onUpdateNote, onResizeNote]);
+  }, [allNotes, pixelsPerSecond, noteHeight, snapTime, bpm, onSelectNote, onUpdateNote, onResizeNote]);
 
   // Handle keyboard events
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -546,20 +512,8 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   onPpsChangeRef.current = onPixelsPerSecondChange;
   onScrollXChangeRef.current = onScrollXChange;
 
-  const isLocalRef = useRef(isLocal);
-  const clipDurationRef = useRef(clip?.duration ?? 0);
   const widthRef = useRef(width);
-  isLocalRef.current = isLocal;
-  clipDurationRef.current = clip?.duration ?? 0;
   widthRef.current = width;
-
-  /** Clamp scrollX — in local mode, limit to 2x clip duration */
-  const clampScrollX = (sx: number, pps: number) => {
-    const clamped = Math.max(0, sx);
-    if (!isLocalRef.current) return clamped;
-    const maxScrollX = Math.max(0, clipDurationRef.current * 2 * pps - widthRef.current);
-    return Math.min(clamped, maxScrollX);
-  };
 
   // Native wheel handler — React 19 onWheel is passive, so we need a native listener
   // to call preventDefault and support Cmd+scroll zoom
@@ -580,7 +534,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         const zoomDelta = e.deltaY || e.deltaX;
         const zoomFactor = zoomDelta > 0 ? 0.9 : 1.1;
         const newPps = Math.max(MIN_PPS, Math.min(MAX_PPS, ppsRef.current * zoomFactor));
-        const newScrollX = clampScrollX(timeAtCursor * newPps - cursorX, newPps);
+        const newScrollX = Math.max(0, timeAtCursor * newPps - cursorX);
 
         onPpsChangeRef.current(newPps);
         onScrollXChangeRef.current(newScrollX);
@@ -588,7 +542,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         // Shift + scroll or horizontal trackpad swipe = horizontal pan
         if (!onScrollXChangeRef.current) return;
         const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-        const newScrollX = clampScrollX(scrollXRef.current + delta, ppsRef.current);
+        const newScrollX = Math.max(0, scrollXRef.current + delta);
         onScrollXChangeRef.current(newScrollX);
       } else {
         // Plain scroll = vertical pan
@@ -631,14 +585,14 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         beatsPerMeasure={beatsPerMeasure}
         snap={snap}
         timeBasis={timeBasis}
-        clipStart={clip != null ? clip.start - timeOffset : undefined}
+        clipStart={clip != null ? (clip.trimStart ?? 0) : undefined}
         clipDuration={clip?.duration}
         allClipBounds={ghostClipBounds}
       />
 
       {/* All note rects from all clips — fully interactive */}
-      {allNotes.map(({ note, clipStart }) => {
-        const x = (note.startTime + clipStart) * pixelsPerSecond - scrollX;
+      {allNotes.map(({ note }) => {
+        const x = note.startTime * pixelsPerSecond - scrollX;
         const y = (TOTAL_PITCHES - 1 - note.pitch) * noteHeight - scrollY;
         const w = note.duration * pixelsPerSecond;
 
@@ -662,7 +616,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
 
       {/* Ghost note (hover preview before click) */}
       {ghostNote && !previewNote && (() => {
-        const gx = (ghostNote.startTime - timeOffset) * pixelsPerSecond - scrollX;
+        const gx = ghostNote.startTime * pixelsPerSecond - scrollX;
         const gy = (TOTAL_PITCHES - 1 - ghostNote.pitch) * noteHeight - scrollY;
         const gw = ghostNote.duration * pixelsPerSecond;
         return (
@@ -682,7 +636,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
 
       {/* Preview note (pending placement) */}
       {previewNote && (() => {
-        const px = (previewNote.startTime - timeOffset) * pixelsPerSecond - scrollX;
+        const px = previewNote.startTime * pixelsPerSecond - scrollX;
         const py = (TOTAL_PITCHES - 1 - previewNote.pitch) * noteHeight - scrollY;
         const pw = previewNote.duration * pixelsPerSecond;
         return (

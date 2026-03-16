@@ -82,6 +82,7 @@ export const demoMidiClip: MidiClip = {
   id: 1,
   name: 'Demo MIDI',
   start: 0,
+  trimStart: 0,
   duration: MEASURE * 4, // 8 seconds (4 measures)
   notes: demoMidiNotes,
 };
