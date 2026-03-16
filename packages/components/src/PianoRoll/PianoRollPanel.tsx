@@ -109,7 +109,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   }, [panelHeight]);
 
   const contentHeight = hasOwnHeader ? panelHeight - HEADER_HEIGHT : panelHeight;
-  const gridHeight = contentHeight - RULER_HEIGHT - CLIP_STRIP_HEIGHT;
+  const gridHeight = contentHeight - RULER_HEIGHT - (clip ? CLIP_STRIP_HEIGHT : 0);
 
   return (
     <div
@@ -168,74 +168,94 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               timeBasis={timeBasis}
             />
 
-            {/* Clip strip */}
-            <PianoRollClipStrip
-              clips={allClips ?? (clip ? [clip] : [])}
-              activeClipId={clip?.id}
-              pixelsPerSecond={pixelsPerSecond}
-              scrollX={scrollX}
-              width={gridWidth}
-              snap={snap}
-              bpm={bpm}
-              onResizeClip={onResizeClip ? (edge, newStart, newDuration, newTrimStart, clipId) => onResizeClip(edge, newStart, newDuration, newTrimStart, clipId) : undefined}
-              onSelectClip={onSelectClip}
-              onMoveClip={onMoveClip}
-              hoveredClipId={hoveredClipId}
-              onHoverClip={onHoverClip}
-              trackColor={trackColor}
-            />
+            {/* Clip strip — visible only when a clip is selected */}
+            {clip && (
+              <PianoRollClipStrip
+                clips={[clip]}
+                activeClipId={clip.id}
+                pixelsPerSecond={pixelsPerSecond}
+                scrollX={scrollX}
+                width={gridWidth}
+                snap={snap}
+                bpm={bpm}
+                onResizeClip={onResizeClip ? (edge, newStart, newDuration, newTrimStart, clipId) => onResizeClip(edge, newStart, newDuration, newTrimStart, clipId) : undefined}
+                onSelectClip={onSelectClip}
+                onMoveClip={undefined}
+                hoveredClipId={hoveredClipId}
+                onHoverClip={onHoverClip}
+                trackColor={trackColor}
+              />
+            )}
 
-            {/* Note grid */}
-            <NoteGrid
-              clip={clip}
-              allClips={allClips}
-              bpm={bpm}
-              beatsPerMeasure={beatsPerMeasure}
-              pixelsPerSecond={pixelsPerSecond}
-              scrollX={scrollX}
-              scrollY={scrollY}
-              noteHeight={NOTE_HEIGHT}
-              snap={snap}
-              timeBasis={timeBasis}
-              width={gridWidth}
-              height={gridHeight}
-              onAddNote={onAddNote}
-              onDeleteNotes={onDeleteNotes}
-              onUpdateNote={onUpdateNote}
-              onMoveNotes={onMoveNotes}
-              onResizeNote={onResizeNote}
-              onSelectNote={onSelectNote}
-              onSelectNotes={onSelectNotes}
-              onDeselectAll={onDeselectAll}
-              onScrollYChange={setScrollY}
-              onPixelsPerSecondChange={onPixelsPerSecondChange}
-              onScrollXChange={onScrollXChange}
-              onResizeClip={onResizeClip}
-              trackColor={trackColor}
-              onHoverClip={onHoverClip}
-            />
+            {/* Note grid or empty state */}
+            {clip ? (
+              <>
+                <NoteGrid
+                  clip={clip}
+                  allClips={allClips}
+                  bpm={bpm}
+                  beatsPerMeasure={beatsPerMeasure}
+                  pixelsPerSecond={pixelsPerSecond}
+                  scrollX={scrollX}
+                  scrollY={scrollY}
+                  noteHeight={NOTE_HEIGHT}
+                  snap={snap}
+                  timeBasis={timeBasis}
+                  width={gridWidth}
+                  height={gridHeight}
+                  onAddNote={onAddNote}
+                  onDeleteNotes={onDeleteNotes}
+                  onUpdateNote={onUpdateNote}
+                  onMoveNotes={onMoveNotes}
+                  onResizeNote={onResizeNote}
+                  onSelectNote={onSelectNote}
+                  onSelectNotes={onSelectNotes}
+                  onDeselectAll={onDeselectAll}
+                  onScrollYChange={setScrollY}
+                  onPixelsPerSecondChange={onPixelsPerSecondChange}
+                  onScrollXChange={onScrollXChange}
+                  onResizeClip={onResizeClip}
+                  trackColor={trackColor}
+                  onHoverClip={onHoverClip}
+                />
 
-            {/* Playhead cursor */}
-            {playheadPosition !== undefined && (() => {
-              // In local mode, convert global playhead to clip-local time
-              const localPlayhead = clip ? playheadPosition - clip.start + (clip.trimStart ?? 0) : playheadPosition;
-              const playheadX = localPlayhead * pixelsPerSecond - scrollX;
-              return playheadX >= 0 && playheadX <= gridWidth ? (
+                {/* Playhead cursor */}
+                {playheadPosition !== undefined && (() => {
+                  const localPlayhead = playheadPosition - clip.start + (clip.trimStart ?? 0);
+                  const playheadX = localPlayhead * pixelsPerSecond - scrollX;
+                  return playheadX >= 0 && playheadX <= gridWidth ? (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: playheadX,
+                        width: 1,
+                        height: '100%',
+                        background: '#ffffff',
+                        boxShadow: '-1px 0 0 #000000, 1px 0 0 #000000',
+                        pointerEvents: 'none',
+                        zIndex: 20,
+                      }}
+                    />
+                  ) : null;
+                })()}
+              </>
+            ) : (
               <div
                 style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: playheadX,
-                  width: 1,
-                  height: '100%',
-                  background: '#ffffff',
-                  boxShadow: '-1px 0 0 #000000, 1px 0 0 #000000',
-                  pointerEvents: 'none',
-                  zIndex: 20,
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: theme.foreground.text.secondary,
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: 13,
+                  userSelect: 'none',
                 }}
-              />
-              ) : null;
-            })()}
+              >
+                Select a MIDI clip to edit
+              </div>
+            )}
           </div>
         </div>
       </div>
