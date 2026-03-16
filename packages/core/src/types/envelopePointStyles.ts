@@ -111,7 +111,6 @@ export const ENVELOPE_POINT_STYLES: Record<string, EnvelopePointStyle> = {
     outerRadiusHover: 6,
     innerRadiusHover: 0,
     lineWidth: 2,
-    lineColor: '#b8ff00',
     solidCircle: {
       fillColor: '#b8ff00',
       strokeColor: '#b8ff00',

@@ -588,13 +588,15 @@ export class AudioPlaybackManager {
       if (this.onMeterUpdate) {
         this.meters.forEach((meter, trackIndex) => {
           // Get dB value and convert to 0-100 scale
-          // Tone.Meter returns values in dB (typically -Infinity to 0)
-          const dbValue = meter.getValue();
-          // Convert dB to linear scale (0-100)
-          // -60dB or less = 0, 0dB = 100
-          const linearValue = typeof dbValue === 'number'
-            ? Math.max(0, Math.min(100, ((dbValue + 60) / 60) * 100))
-            : 0;
+          // Tone.Meter.getValue() returns number (mono) or number[] (multi-channel)
+          const raw = meter.getValue();
+          const dbValue = typeof raw === 'number'
+            ? raw
+            : Array.isArray(raw) && raw.length > 0
+              ? Math.max(...raw) // Use peak across channels
+              : -Infinity;
+          // Convert dB to linear scale: -60dB or less = 0, 0dB = 100
+          const linearValue = Math.max(0, Math.min(100, ((dbValue + 60) / 60) * 100));
           this.onMeterUpdate(trackIndex, linearValue);
         });
       }
