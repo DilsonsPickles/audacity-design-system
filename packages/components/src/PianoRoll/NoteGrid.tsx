@@ -68,6 +68,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   onScrollXChange,
   onResizeClip,
   trackColor,
+  onHoverClip,
 }) => {
   const { theme } = useTheme();
   const dragRef = useRef<DragState | null>(null);
@@ -141,6 +142,13 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     const edge = getClipBoundaryEdge(localX);
     setGridCursor(edge ? 'ew-resize' : 'crosshair');
 
+    // Detect which clip the cursor is over (for cross-component hover highlight)
+    if (onHoverClip && isGlobalMode) {
+      const cursorTime = xToTime(localX);
+      const hovered = visibleClips.find(c => cursorTime >= c.start && cursorTime <= c.start + c.duration);
+      onHoverClip(hovered ? hovered.id : null);
+    }
+
     // Hide ghost note when hovering over an existing note
     const target = e.target as HTMLElement;
     const isOverNote = target.closest('[data-note-id]') !== null;
@@ -159,12 +167,13 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     } else if (isOverNote) {
       setGhostNote(null);
     }
-  }, [getClipBoundaryEdge, yToPitch, snapTime, xToTime, bpm, snap]);
+  }, [getClipBoundaryEdge, yToPitch, snapTime, xToTime, bpm, snap, onHoverClip, isGlobalMode, visibleClips]);
 
-  // Clear ghost when mouse leaves the grid
+  // Clear ghost and hover when mouse leaves the grid
   const handleMouseLeave = useCallback(() => {
     setGhostNote(null);
-  }, []);
+    onHoverClip?.(null);
+  }, [onHoverClip]);
 
   // Handle click on empty grid — add note, start box selection, or start clip boundary drag
   const handleBackgroundMouseDown = useCallback((e: React.MouseEvent) => {

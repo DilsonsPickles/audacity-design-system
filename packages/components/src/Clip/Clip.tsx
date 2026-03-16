@@ -93,6 +93,8 @@ export interface ClipProps {
   spectrogramScale?: SpectrogramScale;
   /** MIDI notes for midi variant */
   midiNotes?: MidiNote[];
+  /** Force header hover state (e.g. when hovering the corresponding clip strip in piano roll) */
+  forceHeaderHover?: boolean;
 }
 
 /**
@@ -139,6 +141,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   isRecording = false,
   spectrogramScale,
   midiNotes,
+  forceHeaderHover = false,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
@@ -231,7 +234,7 @@ const ClipComponent: React.FC<ClipProps> = ({
             color={color}
             selected={selected}
             inTimeSelection={inTimeSelection}
-            state={isHeaderHovering ? 'hover' : 'default'}
+            state={isHeaderHovering || forceHeaderHover ? 'hover' : 'default'}
             name={name}
             width={width}
             showMenu={!isRecording}

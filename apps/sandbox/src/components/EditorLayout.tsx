@@ -252,6 +252,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const rulerTriggerRef = React.useRef<HTMLElement | null>(null);
   const [rulerFlyout, setRulerFlyout] = React.useState<{ isOpen: boolean; x: number; y: number; mode: 'waveform' | 'spectrogram'; trackIndex: number } | null>(null);
   const [halfWave, setHalfWave] = React.useState(false);
+  const [hoveredMidiClipId, setHoveredMidiClipId] = React.useState<number | null>(null);
 
   const handleRulerContextMenu = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -1112,6 +1113,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                     onMidiClipDoubleClick={(trackIndex, clipIndex) => {
                       dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex, clipIndex } });
                     }}
+                    hoveredMidiClipId={hoveredMidiClipId}
+                    onHoverMidiClip={setHoveredMidiClipId}
                     onHeightChange={setCanvasHeight}
                     spectrogramScale={spectrogramScale}
                   />
@@ -1659,6 +1662,12 @@ export function EditorLayout(props: EditorLayoutProps) {
                 onSelectClip={(clipId) => {
                   dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: state.pianoRollTrackIndex!, clipId } });
                 }}
+                onMoveClip={(clipId, newStart) => {
+                  const trackIndex = state.pianoRollTrackIndex!;
+                  dispatch({ type: 'MOVE_CLIP', payload: { clipId, fromTrackIndex: trackIndex, toTrackIndex: trackIndex, newStartTime: newStart } });
+                }}
+                hoveredClipId={hoveredMidiClipId}
+                onHoverClip={setHoveredMidiClipId}
                 trackColor={prTrack.color}
                 playheadPosition={state.playheadPosition}
               />

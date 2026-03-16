@@ -137,6 +137,14 @@ export interface CanvasProps {
    * Callback when a MIDI clip is double-clicked
    */
   onMidiClipDoubleClick?: (trackIndex: number, clipIndex: number) => void;
+  /**
+   * ID of the MIDI clip currently being hovered (for cross-component highlight with piano roll)
+   */
+  hoveredMidiClipId?: number | null;
+  /**
+   * Called when mouse enters/leaves a MIDI clip
+   */
+  onHoverMidiClip?: (clipId: number | null) => void;
 }
 
 /**
@@ -173,6 +181,8 @@ export function Canvas({
   onContainerEnter,
   onTabFromLastClip,
   onMidiClipDoubleClick,
+  hoveredMidiClipId,
+  onHoverMidiClip,
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
@@ -718,6 +728,8 @@ export function Canvas({
                 onShiftTabOut={() => onShiftTabFromTrack?.(trackIndex)}
                 onContainerEnter={(modifiers) => onContainerEnter?.(trackIndex, modifiers)}
                 onTabFromLastClip={() => onTabFromLastClip?.(trackIndex)}
+                hoveredClipId={track.type === 'midi' ? hoveredMidiClipId : undefined}
+                onHoverClip={track.type === 'midi' ? onHoverMidiClip : undefined}
                 onClipMove={(clipId, deltaSeconds) => {
                   const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                   if (!clip) return;

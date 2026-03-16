@@ -13,6 +13,12 @@ export interface PianoRollClipStripProps {
   bpm: number;
   onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, newTrimStart: number, clipId: number) => void;
   onSelectClip?: (clipId: number) => void;
+  /** Called when a clip is dragged to a new position in global mode */
+  onMoveClip?: (clipId: number, newStart: number) => void;
+  /** ID of the clip being hovered (for cross-component highlight) */
+  hoveredClipId?: number | null;
+  /** Called when mouse enters/leaves a clip bar */
+  onHoverClip?: (clipId: number | null) => void;
   trackColor?: string;
 }
 
@@ -28,6 +34,9 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
   bpm,
   onResizeClip,
   onSelectClip,
+  onMoveClip,
+  hoveredClipId,
+  onHoverClip,
   trackColor,
 }) => {
   const { theme } = useTheme();
@@ -109,10 +118,34 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
     document.body.style.cursor = 'ew-resize';
   }, []);
 
-  const handleClipClick = useCallback((e: React.MouseEvent, clipId: number) => {
+  const handleClipMouseDown = useCallback((e: React.MouseEvent, clip: MidiClip) => {
     e.stopPropagation();
-    onSelectClip?.(clipId);
-  }, [onSelectClip]);
+    e.preventDefault();
+    const startX = e.clientX;
+    let hasMoved = false;
+
+    const handleMove = (me: MouseEvent) => {
+      const dx = Math.abs(me.clientX - startX);
+      if (!hasMoved && dx < 3) return;
+      hasMoved = true;
+      if (onMoveClip) {
+        const deltaTime = (me.clientX - startX) / pixelsPerSecond;
+        const newStart = snapTime(Math.max(0, clip.start + deltaTime));
+        onMoveClip(clip.id, newStart);
+      }
+    };
+
+    const handleUp = () => {
+      if (!hasMoved) {
+        onSelectClip?.(clip.id);
+      }
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  }, [onSelectClip, onMoveClip, pixelsPerSecond, snapTime]);
 
   return (
     <div
@@ -137,6 +170,7 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
         if (x + w < 0 || x > width) return null;
 
         const isActive = clip.id === activeClipId;
+        const isHovered = clip.id === hoveredClipId;
         const baseColor = clipColors?.header ?? pr.noteFill;
 
         return (
@@ -149,7 +183,7 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
               width: w,
               height: CLIP_STRIP_HEIGHT - 4,
               background: baseColor,
-              opacity: isActive ? 1 : 0.4,
+              opacity: isActive || isHovered ? 1 : 0.4,
               borderRadius: 2,
               cursor: 'pointer',
               pointerEvents: undefined,
@@ -158,8 +192,12 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
               textOverflow: 'ellipsis',
               display: 'flex',
               alignItems: 'center',
+              outline: isHovered && !isActive ? `1px solid ${baseColor}` : undefined,
+              outlineOffset: 1,
             }}
-            onMouseDown={(e) => handleClipClick(e, clip.id)}
+            onMouseDown={(e) => handleClipMouseDown(e, clip)}
+            onMouseEnter={() => onHoverClip?.(clip.id)}
+            onMouseLeave={() => onHoverClip?.(null)}
           >
             {/* Clip name */}
             <span

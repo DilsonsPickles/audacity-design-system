@@ -43,6 +43,9 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   onCreateClipWithNote,
   onResizeClip,
   onSelectClip,
+  onMoveClip,
+  hoveredClipId,
+  onHoverClip,
   trackColor,
   playheadPosition,
   hideHeader = false,
@@ -176,6 +179,9 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               bpm={bpm}
               onResizeClip={onResizeClip ? (edge, newStart, newDuration, newTrimStart, clipId) => onResizeClip(edge, newStart, newDuration, newTrimStart, clipId) : undefined}
               onSelectClip={onSelectClip}
+              onMoveClip={onMoveClip}
+              hoveredClipId={hoveredClipId}
+              onHoverClip={onHoverClip}
               trackColor={trackColor}
             />
 
@@ -206,6 +212,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               onScrollXChange={onScrollXChange}
               onResizeClip={onResizeClip}
               trackColor={trackColor}
+              onHoverClip={onHoverClip}
             />
 
             {/* Playhead cursor */}

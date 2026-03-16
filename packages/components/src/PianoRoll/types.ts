@@ -30,6 +30,12 @@ export interface PianoRollPanelProps {
   onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, newTrimStart: number, clipId?: number) => void;
   /** Called when user clicks a clip bar in the clip strip to select it */
   onSelectClip?: (clipId: number) => void;
+  /** Called when user drags a clip in the clip strip to move it */
+  onMoveClip?: (clipId: number, newStart: number) => void;
+  /** ID of the clip being hovered (for cross-component highlight) */
+  hoveredClipId?: number | null;
+  /** Called when mouse enters/leaves a clip in the clip strip */
+  onHoverClip?: (clipId: number | null) => void;
   /** Track color name (e.g. 'blue', 'violet') — notes and clip strip use this color */
   trackColor?: string;
   /** Playhead position in seconds (global time) */
@@ -93,6 +99,8 @@ export interface NoteGridProps {
   onResizeClip?: (edge: 'left' | 'right', newStart: number, newDuration: number, newTrimStart: number, clipId?: number) => void;
   /** Track color name (e.g. 'blue', 'violet') — notes use this color */
   trackColor?: string;
+  /** Called when mouse enters/leaves a clip region in the grid */
+  onHoverClip?: (clipId: number | null) => void;
 }
 
 export interface NoteGridCanvasProps {

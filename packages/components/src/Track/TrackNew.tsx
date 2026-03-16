@@ -272,6 +272,16 @@ export interface TrackProps {
    */
   onTabFromLastClip?: () => void;
 
+  /**
+   * ID of the clip currently being hovered (for cross-component highlight, e.g. piano roll ↔ canvas)
+   */
+  hoveredClipId?: number | null;
+
+  /**
+   * Called when mouse enters/leaves a clip
+   */
+  onHoverClip?: (clipId: number | null) => void;
+
 }
 
 // Map track index to color
@@ -330,6 +340,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onShiftTabOut,
   onContainerEnter,
   onTabFromLastClip,
+  hoveredClipId,
+  onHoverClip,
 }) => {
   const { theme } = useTheme();
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
@@ -456,6 +468,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       }
 
       const clipSelected = (clip as any).selected || false;
+      const isClipHovered = hoveredClipId != null && clip.id === hoveredClipId;
 
       return (
         <div
@@ -472,6 +485,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
           aria-label={`${clip.name} clip`}
+          onMouseEnter={() => onHoverClip?.(clip.id as number)}
+          onMouseLeave={() => onHoverClip?.(null)}
           onMouseDown={(e) => {
             // Clip receives DOM focus naturally via its tabIndex.
             // Mark as mouse-focused so CSS suppresses the outline (data-focus-mouse attr).
@@ -654,6 +669,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
             midiNotes={clip.midiNotes}
+            forceHeaderHover={isClipHovered}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
             onMenuClick={(x, y) => onClipMenuClick?.(clip.id, x, y)}
             onTrimEdge={
