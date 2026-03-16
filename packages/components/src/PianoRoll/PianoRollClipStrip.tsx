@@ -126,9 +126,11 @@ export const PianoRollClipStrip: React.FC<PianoRollClipStripProps> = ({
       }}
     >
       {clips.map((clip) => {
-        // Local time — clip visible window starts at trimStart
-        const trimStart = clip.trimStart ?? 0;
-        const x = trimStart * pixelsPerSecond - scrollX;
+        // Global mode (no active clip): position at clip.start
+        // Local mode (active clip): position at trimStart
+        const isGlobalMode = activeClipId === undefined || activeClipId === null;
+        const xTime = isGlobalMode ? clip.start : (clip.trimStart ?? 0);
+        const x = xTime * pixelsPerSecond - scrollX;
         const w = clip.duration * pixelsPerSecond;
 
         // Skip if entirely out of view

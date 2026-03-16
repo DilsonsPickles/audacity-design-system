@@ -210,7 +210,8 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
 
             {/* Playhead cursor */}
             {playheadPosition !== undefined && (() => {
-              const localPlayhead = playheadPosition;
+              // In local mode, convert global playhead to clip-local time
+              const localPlayhead = clip ? playheadPosition - clip.start + (clip.trimStart ?? 0) : playheadPosition;
               const playheadX = localPlayhead * pixelsPerSecond - scrollX;
               return playheadX >= 0 && playheadX <= gridWidth ? (
               <div

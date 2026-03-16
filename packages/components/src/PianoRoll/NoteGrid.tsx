@@ -38,10 +38,13 @@ interface BoxSelectionState {
 interface NoteWithContext {
   note: MidiNote;
   clipId: number;
+  /** In global mode, notes render offset by their clip's start time */
+  globalTimeOffset: number;
 }
 
 export const NoteGrid: React.FC<NoteGridProps> = ({
   clip,
+  allClips,
   bpm,
   beatsPerMeasure,
   pixelsPerSecond,
@@ -80,18 +83,22 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   const [ghostNote, setGhostNote] = useState<{ pitch: number; startTime: number; duration: number } | null>(null);
   const isDraggingRef = useRef(false);
 
-  // Piano roll is in clip-local time — only show the active clip
-  const clips = clip ? [clip] : [];
+  // Global mode (no clip selected): show all clips' notes at global positions
+  // Local mode (clip selected): show only the active clip's notes at local positions
+  const isGlobalMode = !clip;
+  const visibleClips = clip ? [clip] : (allClips ?? []);
 
   // Build unified note list from all visible clips
   const allNotes: NoteWithContext[] = useMemo(() => {
-    return clips.flatMap(c =>
-      c.notes.map(n => ({ note: n, clipId: c.id }))
+    return visibleClips.flatMap(c =>
+      c.notes.map(n => ({ note: n, clipId: c.id, globalTimeOffset: isGlobalMode ? c.start : 0 }))
     );
-  }, [clips]);
+  }, [visibleClips, isGlobalMode]);
 
-  // No ghost clip bounds in local time — each clip has its own local coordinate space
-  const ghostClipBounds: Array<{ start: number; duration: number }> = [];
+  // In global mode, show all clip boundaries
+  const ghostClipBounds: Array<{ start: number; duration: number }> = isGlobalMode
+    ? (allClips ?? []).map(c => ({ start: c.start, duration: c.duration }))
+    : [];
 
   // Snap helper
   const snapTime = useCallback((t: number): number => {
@@ -122,7 +129,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
       if (Math.abs(localX - clipEndX) <= CLIP_BOUNDARY_THRESHOLD) return { edge: 'right', clip: c };
     }
     return null;
-  }, [clips, pixelsPerSecond, scrollX]);
+  }, [visibleClips, pixelsPerSecond, scrollX]);
 
   // Update cursor on mouse move over grid and show ghost note
   const handleGridMouseMove = useCallback((e: React.MouseEvent) => {
@@ -266,8 +273,8 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
           const boxBottom = Math.max(box.startY, box.currentY);
 
           const matchedIds: number[] = [];
-          for (const { note } of allNotes) {
-            const nx = note.startTime * pixelsPerSecond - scrollX;
+          for (const { note, globalTimeOffset } of allNotes) {
+            const nx = (note.startTime + globalTimeOffset) * pixelsPerSecond - scrollX;
             const ny = (TOTAL_PITCHES - 1 - note.pitch) * noteHeight - scrollY;
             const nw = note.duration * pixelsPerSecond;
             const nh = noteHeight;
@@ -333,7 +340,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
 
     document.addEventListener('mousemove', handlePreviewMove);
     document.addEventListener('mouseup', handlePreviewUp);
-  }, [snapTime, xToTime, yToPitch, bpm, snap, onAddNote, onDeselectAll, allNotes, pixelsPerSecond, scrollX, scrollY, noteHeight, onSelectNotes, clips, onResizeClip, getClipBoundaryEdge]);
+  }, [snapTime, xToTime, yToPitch, bpm, snap, onAddNote, onDeselectAll, allNotes, pixelsPerSecond, scrollX, scrollY, noteHeight, onSelectNotes, visibleClips, onResizeClip, getClipBoundaryEdge]);
 
   // Handle note mouse down (drag or resize)
   const handleNoteMouseDown = useCallback((e: React.MouseEvent, note: { id: number; pitch: number; velocity: number; selected?: boolean }, edge: NoteEdge) => {
@@ -591,8 +598,8 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
       />
 
       {/* All note rects from all clips — fully interactive */}
-      {allNotes.map(({ note }) => {
-        const x = note.startTime * pixelsPerSecond - scrollX;
+      {allNotes.map(({ note, globalTimeOffset }) => {
+        const x = (note.startTime + globalTimeOffset) * pixelsPerSecond - scrollX;
         const y = (TOTAL_PITCHES - 1 - note.pitch) * noteHeight - scrollY;
         const w = note.duration * pixelsPerSecond;
 

@@ -1523,7 +1523,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 hideHeader
                 height={contentHeight}
                 clip={prClip}
-                allClips={prTrack.midiClips}
+                allClips={prClip ? [prClip] : (prTrack.midiClips ?? [])}
                 bpm={bpm}
                 beatsPerMeasure={beatsPerMeasure}
                 pixelsPerSecond={state.pianoRollPixelsPerSecond}
@@ -1657,7 +1657,6 @@ export function EditorLayout(props: EditorLayoutProps) {
                   });
                 }}
                 onSelectClip={(clipId) => {
-                  skipPianoRollScrollRef.current = true;
                   dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: state.pianoRollTrackIndex!, clipId } });
                 }}
                 trackColor={prTrack.color}
