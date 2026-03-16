@@ -261,7 +261,7 @@ export const lightTheme: ThemeTokens = {
 
   accent: {
     primary: '#677CE4',          // Blue - for selected tracks
-    secondary: '#FF9857',        // Orange - for master track
+    secondary: '#CC8800',        // Amber/gold - for master track
   },
 
   semantic: {

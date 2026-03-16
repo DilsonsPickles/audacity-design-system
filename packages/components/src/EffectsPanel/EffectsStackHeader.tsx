@@ -75,7 +75,7 @@ export const EffectsStackHeader: React.FC<EffectsStackHeaderProps> = ({
           onClick={() => onToggleAll?.(!allEnabled)}
           ariaLabel={allEnabled ? `Disable all ${isMaster ? 'master' : 'track'} effects` : `Enable all ${isMaster ? 'master' : 'track'} effects`}
           size={24}
-          activeColor={isMaster ? theme.accent.secondary : undefined}
+          activeColor={theme.accent.primary}
         />
 
         {/* Track name */}

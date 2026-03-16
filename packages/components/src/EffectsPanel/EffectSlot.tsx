@@ -303,7 +303,7 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
           onClick={() => onToggle?.(!enabled)}
           ariaLabel={enabled ? 'Disable effect' : 'Enable effect'}
           size={24}
-          activeColor={activeColor}
+          activeColor={activeColor || theme.accent.primary}
         />
 
         {/* Effect name field */}

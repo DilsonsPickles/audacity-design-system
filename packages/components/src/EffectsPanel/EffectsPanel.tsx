@@ -283,7 +283,6 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
               onDragStart={handleDragStart(index)}
               onDragOver={handleDragOver(index)}
               onDragEnd={handleDragEnd}
-              activeColor={theme.accent.secondary}
               onReorder={(dir) => {
                 const target = index + dir;
                 if (target >= 0 && target < effects.length) {
