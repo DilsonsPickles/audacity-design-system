@@ -1,10 +1,28 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
 import { MixerFader } from '../MixerFader';
+import { MixerEffect } from '../MixerEffect';
 import { Knob } from '../Knob';
 import './MixerChannel.css';
 
 export type MixerChannelVariant = 'mono' | 'stereo';
+
+export interface MixerChannelEffect {
+  /** Effect name */
+  name: string;
+  /** Whether the effect is enabled */
+  enabled: boolean;
+  /** Called when the power button is toggled */
+  onToggle?: () => void;
+  /** Called when the dropdown is clicked */
+  onDropdownClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Called when "Remove effect" is selected */
+  onRemoveEffect?: () => void;
+  /** Called when a different effect is selected */
+  onReplaceEffect?: (effectName: string) => void;
+  /** Called when the effect name is clicked */
+  onClick?: () => void;
+}
 
 export interface MixerChannelProps {
   /**
@@ -59,6 +77,21 @@ export interface MixerChannelProps {
   onMuteToggle?: () => void;
   onSoloToggle?: () => void;
   /**
+   * Effects displayed in the effect stack (up to 5 slots).
+   * Each entry has a name, enabled state, and callbacks.
+   */
+  effects?: MixerChannelEffect[];
+  /**
+   * Called when the empty effect slot dropdown is clicked (to add a new effect)
+   */
+  onAddEffect?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /**
+   * Total number of effect slots to display (including empty ones).
+   * Used to keep all channels the same height when one has more effects.
+   * @default 1
+   */
+  effectSlotCount?: number;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -93,6 +126,9 @@ export const MixerChannel: React.FC<MixerChannelProps> = ({
   onPanChange,
   onMuteToggle,
   onSoloToggle,
+  effects = [],
+  onAddEffect,
+  effectSlotCount = 1,
   className = '',
 }) => {
   const { theme } = useTheme();
@@ -121,10 +157,25 @@ export const MixerChannel: React.FC<MixerChannelProps> = ({
 
   return (
     <div className={`mixer-channel ${className}`} style={style}>
-      <div className="mixer-channel__container">
-        {/* Effect slot */}
+        {/* Effect stack */}
         <div className="mixer-channel__effect-slot">
-          <div className="mixer-channel__effect-input" />
+          {effects.map((effect, i) => (
+            <MixerEffect
+              key={i}
+              effectName={effect.name}
+              enabled={effect.enabled}
+              trackColor={resolvedTrackColor}
+              onToggle={effect.onToggle}
+              onDropdownClick={effect.onDropdownClick}
+              onRemoveEffect={effect.onRemoveEffect}
+              onReplaceEffect={effect.onReplaceEffect}
+              onClick={effect.onClick}
+            />
+          ))}
+          {/* Fill remaining slots with empties to match effectSlotCount */}
+          {Array.from({ length: Math.max(0, effectSlotCount - effects.length) }, (_, i) => (
+            <MixerEffect key={`empty-${i}`} onDropdownClick={onAddEffect} />
+          ))}
         </div>
 
         {/* Pan control */}
@@ -234,12 +285,11 @@ export const MixerChannel: React.FC<MixerChannelProps> = ({
             S
           </button>
         </div>
-      </div>
 
-      {/* Track name bar */}
-      <div className="mixer-channel__track-name">
-        <span className="mixer-channel__track-name-text">{trackName}</span>
-      </div>
+        {/* Track name bar */}
+        <div className="mixer-channel__track-name">
+          <span className="mixer-channel__track-name-text">{trackName}</span>
+        </div>
     </div>
   );
 };

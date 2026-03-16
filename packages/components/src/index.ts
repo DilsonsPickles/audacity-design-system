@@ -30,6 +30,7 @@ export * from './TrackMeter';
 export * from './MasterMeter';
 export * from './MixerFaderHandle';
 export * from './MixerFader';
+export * from './MixerEffect';
 export * from './MixerChannel';
 export * from './MixerPanel';
 export * from './ToggleToolButton';
