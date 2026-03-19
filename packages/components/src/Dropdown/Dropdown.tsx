@@ -100,8 +100,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
     onChange?.(optionValue);
     setIsOpen(false);
     setHoveredIndex(-1);
-    // Return focus to trigger button after selection
-    if (triggerRef.current) {
+    // Return focus to trigger button after selection, but only if the dropdown
+    // is part of the tab order. When tabIndex={-1} the dropdown is embedded in
+    // a composite widget and stealing focus breaks the parent's keyboard handling.
+    if (triggerRef.current && tabIndex !== -1) {
       triggerRef.current.focus();
     }
   };

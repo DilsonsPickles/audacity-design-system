@@ -242,10 +242,14 @@ export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const playMidiNote = useCallback((pitch: number, duration = 0.3, instrumentId?: string) => {
-    const id = instrumentId ?? instrumentIdRef.current;
-    const synth = getSynth(id);
-    const note = midiToNoteName(pitch);
-    synth.triggerAttackRelease(note, duration);
+    try {
+      const id = instrumentId ?? instrumentIdRef.current;
+      const synth = getSynth(id);
+      const note = midiToNoteName(pitch);
+      synth.triggerAttackRelease(note, duration);
+    } catch (e) {
+      console.warn('Failed to play MIDI note:', e);
+    }
   }, [getSynth]);
 
   const value: AudioEngineContextValue = {
