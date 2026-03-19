@@ -16,7 +16,7 @@ import { SearchField } from '../SearchField';
 import { DialogSideNav, DialogSideNavItem } from '../DialogSideNav/DialogSideNav';
 import { useTabGroup } from '../hooks/useTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
-import { usePreferences } from '../contexts/PreferencesContext';
+import { usePreferences, type PreferencesState } from '../contexts/PreferencesContext';
 import './PreferencesModal.css';
 
 export type PreferencesPage =
@@ -78,13 +78,17 @@ export interface PreferencesModalProps {
    * Reset warnings handler (for "Don't show again" checkboxes)
    */
   onResetWarnings?: () => void;
+  /**
+   * Open plugin manager handler
+   */
+  onOpenPluginManager?: () => void;
 }
 
 const menuItems: DialogSideNavItem<PreferencesPage>[] = [
   { id: 'general', label: 'General', icon: '\uEF55' }, // cog
   { id: 'appearance', label: 'Appearance', icon: '\uF444' }, // brush
   { id: 'audio-settings', label: 'Audio settings', icon: '\uEF4E' }, // volume
-  { id: 'playback-recording', label: 'Playback/Recording', icon: '\uF446' }, // play
+  { id: 'playback-recording', label: 'Playback/Recording', icon: '\uF41B' }, // microphone
   { id: 'editing', label: 'Audio editing', icon: '\uF43C' }, // waveform
   { id: 'spectral-display', label: 'Spectral display', icon: '\uF442' }, // spectrogram
   { id: 'plugins', label: 'Plugins', icon: '\uF440' }, // plug
@@ -248,6 +252,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   zoomToggleLevel2 = 'seconds',
   onZoomToggleLevel2Change,
   onResetWarnings,
+  onOpenPluginManager,
 }) => {
   const [selectedPage, setSelectedPage] = useState<PreferencesPage>(currentPage);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -361,7 +366,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
               />
             )}
             {selectedPage === 'shortcuts' && <ShortcutsPage />}
-            {/* Add other pages as needed */}
+            {selectedPage === 'plugins' && <PluginsPage onOpenPluginManager={onOpenPluginManager} />}
           </div>
         </main>
       </div>
@@ -1797,6 +1802,58 @@ function ShortcutsPage() {
 }
 
 // Placeholder for other pages
+function PluginsPage({ onOpenPluginManager }: { onOpenPluginManager?: () => void }) {
+  const { preferences, updatePreference } = usePreferences();
+
+  const pluginPaths: { key: keyof PreferencesState; label: string }[] = [
+    { key: 'vst3PluginLocation', label: 'VST3 plugin location' },
+    { key: 'vstPluginLocation', label: 'VST plugin location' },
+    { key: 'lv2PluginLocation', label: 'LV2 plugin location' },
+    { key: 'ladspaPluginLocation', label: 'LADSPA plugin location' },
+    { key: 'audioUnitsPluginLocation', label: 'Audio Units plugin location' },
+  ];
+
+  return (
+    <div className="preferences-page">
+      <div className="preferences-page__section">
+        <div>
+          <Button variant="secondary" onClick={onOpenPluginManager}>
+            Open plugin manager
+          </Button>
+        </div>
+
+        <LabeledCheckbox
+          label="Group effects in menus"
+          checked={preferences.groupEffectsInMenus}
+          onChange={(checked) => updatePreference('groupEffectsInMenus', checked)}
+        />
+      </div>
+
+      <Separator />
+
+      <div className="preferences-page__section">
+        <div className="preferences-page__section-title">Custom plugin search paths</div>
+
+        {pluginPaths.map(({ key, label }) => (
+          <div key={key} className="preferences-page__field preferences-page__field--large">
+            <label className="preferences-page__label">{label}</label>
+            <div className="preferences-page__input-group">
+              <LabeledInput
+                label=""
+                value={preferences[key] as string}
+                onChange={(val) => updatePreference(key, val as any)}
+              />
+              <Button variant="secondary">
+                Browse
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PlaceholderPage({ title }: { title: string }) {
   return (
     <div className="preferences-page">

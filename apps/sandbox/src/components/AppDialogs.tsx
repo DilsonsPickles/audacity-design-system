@@ -767,6 +767,10 @@ export function AppDialogs(props: AppDialogsProps) {
         onResetWarnings={() => {
           setDontShowSaveModalAgain(false);
         }}
+        onOpenPluginManager={() => {
+          dialogs.setIsPreferencesModalOpen(false);
+          dialogs.setIsPluginManagerOpen(true);
+        }}
       />
 
       {/* Plugin Browser Dialog */}

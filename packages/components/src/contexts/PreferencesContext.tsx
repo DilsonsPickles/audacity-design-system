@@ -35,6 +35,14 @@ export interface PreferencesState {
   showMicMetering: boolean;
   enableInputMonitoring: boolean;
 
+  // Plugins
+  groupEffectsInMenus: boolean;
+  vst3PluginLocation: string;
+  vstPluginLocation: string;
+  lv2PluginLocation: string;
+  ladspaPluginLocation: string;
+  audioUnitsPluginLocation: string;
+
   // Spectral Display
   enableSpectralSelection: boolean;
   spectralScale: string;
@@ -76,6 +84,14 @@ const defaultPreferences: PreferencesState = {
   rollInTime: '3 seconds',
   showMicMetering: true,
   enableInputMonitoring: false,
+
+  // Plugins
+  groupEffectsInMenus: true,
+  vst3PluginLocation: '/Users/Username/Library/Application Support/audacity',
+  vstPluginLocation: '/Users/Username/Library/Application Support/audacity',
+  lv2PluginLocation: '/Users/Username/Library/Application Support/audacity',
+  ladspaPluginLocation: '/Users/Username/Library/Application Support/audacity',
+  audioUnitsPluginLocation: '/Users/Username/Library/Application Support/audacity',
 
   // Spectral Display
   enableSpectralSelection: true,
