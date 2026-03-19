@@ -6,6 +6,7 @@ import { Icon } from '../Icon';
 import { PanKnob } from '../PanKnob';
 import { Slider } from '../Slider';
 import { ToggleButton } from '../ToggleButton';
+import { Dropdown } from '../Dropdown';
 import { TrackMeter } from '../TrackMeter';
 import './TrackControlPanel.css';
 
@@ -24,6 +25,12 @@ export interface TrackControlPanelProps {
   onSoloToggle?: () => void;
   onEffectsClick?: () => void;
   onAddLabelClick?: () => void;
+  /** Available MIDI instruments (shown for MIDI tracks) */
+  instruments?: Array<{ id: string; label: string }>;
+  /** Currently selected instrument id */
+  instrument?: string;
+  /** Called when user changes the instrument */
+  onInstrumentChange?: (id: string) => void;
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
   onToggleSelection?: () => void; // Cmd/Ctrl+Click to toggle
@@ -71,6 +78,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onSoloToggle,
   onEffectsClick,
   onAddLabelClick,
+  instruments,
+  instrument,
+  onInstrumentChange,
   onMenuClick,
   onClick,
   onToggleSelection,
@@ -421,20 +431,44 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           </div>
         )}
 
-        {/* Bottom Button */}
+        {/* Bottom row: Effects button + instrument dropdown (MIDI tracks) */}
         {/* Audio tracks: show Effect button when height >= 102px */}
         {/* Label tracks: show Add label button when height >= 76px */}
-        {showEffectButton && (
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={isLabelTrack ? onAddLabelClick : onEffectsClick}
-            showIcon={false}
-            tabIndex={-1}
-          >
-            {isLabelTrack ? 'Add label' : 'Effects'}
-          </Button>
-        )}
+        {showEffectButton && (() => {
+          const showInstrument = isMidiTrack && instruments && instruments.length > 0;
+          return showInstrument ? (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={onEffectsClick}
+                showIcon={false}
+                tabIndex={-1}
+              >
+                Effects
+              </Button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Dropdown
+                  options={instruments!.map(i => ({ label: i.label, value: i.id }))}
+                  value={instrument ?? instruments![0].id}
+                  onChange={(val) => onInstrumentChange?.(val)}
+                  width="100%"
+                  tabIndex={-1}
+                />
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={isLabelTrack ? onAddLabelClick : onEffectsClick}
+              showIcon={false}
+              tabIndex={-1}
+            >
+              {isLabelTrack ? 'Add label' : 'Effects'}
+            </Button>
+          );
+        })()}
       </div>
 
       {/* Volume Meter - Always visible (empty for label tracks to maintain alignment) */}

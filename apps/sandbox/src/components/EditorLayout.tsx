@@ -7,6 +7,7 @@ import { MixerPanel, type MixerPanelChannel } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
+import { useAudioEngine, MIDI_INSTRUMENTS } from '../contexts/AudioEngineContext';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 import { snapToGrid } from '../utils/snapToGrid';
 
@@ -141,6 +142,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     contextMenuClosedTimeRef,
   } = useContextMenus();
 
+  const { playMidiNote, midiInstrument } = useAudioEngine();
   const [drawerHeight, setDrawerHeight] = React.useState(376);
   const [drawerActiveTab, setDrawerActiveTab] = React.useState<'mixer' | 'piano-roll'>('mixer');
   const [drawerTabOrder, setDrawerTabOrder] = React.useState<Array<'mixer' | 'piano-roll'>>(['mixer', 'piano-roll']);
@@ -597,6 +599,11 @@ export function EditorLayout(props: EditorLayoutProps) {
                     width: 0,
                   });
                 }}
+                instruments={track.type === 'midi' ? MIDI_INSTRUMENTS : undefined}
+                instrument={track.instrument}
+                onInstrumentChange={track.type === 'midi' ? (id: string) => {
+                  dispatch({ type: 'UPDATE_TRACK', payload: { index, track: { instrument: id } } });
+                } : undefined}
                 tabIndex={-1}
                 onFocusChange={(hasFocus) => {
                   setControlPanelHasFocus(hasFocus ? index : null);
@@ -1668,6 +1675,13 @@ export function EditorLayout(props: EditorLayoutProps) {
                 }}
                 hoveredClipId={hoveredMidiClipId}
                 onHoverClip={setHoveredMidiClipId}
+                onKeyClick={(pitch: number) => playMidiNote(pitch, 0.3, prTrack.instrument)}
+                onPlayNote={(pitch: number) => playMidiNote(pitch, 0.3, prTrack.instrument)}
+                instruments={MIDI_INSTRUMENTS}
+                instrument={prTrack.instrument ?? midiInstrument}
+                onInstrumentChange={(id: string) => {
+                  dispatch({ type: 'UPDATE_TRACK', payload: { index: state.pianoRollTrackIndex!, track: { instrument: id } } });
+                }}
                 trackColor={prTrack.color}
                 playheadPosition={state.playheadPosition}
               />

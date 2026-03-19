@@ -69,6 +69,8 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   onResizeClip,
   trackColor,
   onHoverClip,
+  hoveredKeyPitch,
+  onPlayNote,
 }) => {
   const { theme } = useTheme();
   const dragRef = useRef<DragState | null>(null);
@@ -83,6 +85,11 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
   previewNoteRef.current = previewNote;
   const [ghostNote, setGhostNote] = useState<{ pitch: number; startTime: number; duration: number } | null>(null);
   const isDraggingRef = useRef(false);
+  const [dragPitch, setDragPitch] = useState<number | null>(null);
+  const lastPlayedPitchRef = useRef<number | null>(null);
+
+  // Effective highlighted pitch: keyboard hover > preview note > ghost note > drag
+  const effectiveHoveredPitch = hoveredKeyPitch ?? previewNote?.pitch ?? ghostNote?.pitch ?? dragPitch ?? null;
 
   // Global mode (no clip selected): show all clips' notes at global positions
   // Local mode (clip selected): show only the active clip's notes at local positions
@@ -320,17 +327,24 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
     const duration = lastResizedDurationRef.current ?? beatDuration / snap.subdivision;
 
     setPreviewNote({ pitch, startTime: Math.max(0, globalTime), duration });
+    onPlayNote?.(pitch);
+    lastPlayedPitchRef.current = pitch;
 
     const handlePreviewMove = (me: MouseEvent) => {
       const r = containerRef.current?.getBoundingClientRect();
       if (!r) return;
       const newPitch = Math.max(0, Math.min(127, yToPitch(me.clientY - r.top)));
       const newTime = Math.max(0, snapTime(xToTime(me.clientX - r.left)));
+      if (newPitch !== lastPlayedPitchRef.current) {
+        onPlayNote?.(newPitch);
+        lastPlayedPitchRef.current = newPitch;
+      }
       setPreviewNote(prev => prev ? { ...prev, pitch: newPitch, startTime: newTime } : null);
     };
 
     const handlePreviewUp = () => {
       isDraggingRef.current = false;
+      lastPlayedPitchRef.current = null;
       const current = previewNoteRef.current;
       if (current) {
         const newNote: MidiNote = {
@@ -349,7 +363,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
 
     document.addEventListener('mousemove', handlePreviewMove);
     document.addEventListener('mouseup', handlePreviewUp);
-  }, [snapTime, xToTime, yToPitch, bpm, snap, onAddNote, onDeselectAll, allNotes, pixelsPerSecond, scrollX, scrollY, noteHeight, onSelectNotes, visibleClips, onResizeClip, getClipBoundaryEdge]);
+  }, [snapTime, xToTime, yToPitch, bpm, snap, onAddNote, onDeselectAll, allNotes, pixelsPerSecond, scrollX, scrollY, noteHeight, onSelectNotes, visibleClips, onResizeClip, getClipBoundaryEdge, onPlayNote]);
 
   // Handle note mouse down (drag or resize)
   const handleNoteMouseDown = useCallback((e: React.MouseEvent, note: { id: number; pitch: number; velocity: number; selected?: boolean }, edge: NoteEdge) => {
@@ -367,8 +381,13 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         onSelectNote(note.id, isAdditive);
       }
 
-      // Build initial positions for all selected notes (including this one)
-      const selectedNotes = allNotes.filter(nc => nc.note.selected || nc.note.id === note.id);
+      // Build initial positions for drag. If clicking an unselected note without
+      // modifier, only drag that note (the select call above deselects others, but
+      // the state update hasn't flushed yet so allNotes still shows stale selection).
+      const willBeMulti = note.selected || isAdditive;
+      const selectedNotes = willBeMulti
+        ? allNotes.filter(nc => nc.note.selected || nc.note.id === note.id)
+        : allNotes.filter(nc => nc.note.id === note.id);
       const initials = selectedNotes.map(nc => ({
         id: nc.note.id,
         pitch: nc.note.pitch,
@@ -385,11 +404,16 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         initials,
       };
       setGridCursor('grabbing');
+      onPlayNote?.(note.pitch);
+      lastPlayedPitchRef.current = note.pitch;
     } else {
       // Resize — include all selected notes so they resize together
       onSelectNote(note.id, isAdditive);
       if (!fullNote) return;
-      const selectedNotes = allNotes.filter(nc => nc.note.selected || nc.note.id === note.id);
+      const willResizeMulti = note.selected || isAdditive;
+      const selectedNotes = willResizeMulti
+        ? allNotes.filter(nc => nc.note.selected || nc.note.id === note.id)
+        : allNotes.filter(nc => nc.note.id === note.id);
       dragRef.current = {
         type: edge === 'left' ? 'resize-left' : 'resize-right',
         noteId: note.id,
@@ -428,6 +452,13 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         const anchor = drag.initials.find(i => i.id === drag.noteId)!;
         const snappedNewTime = snapTime(anchor.startTime + deltaTime);
         const snappedDeltaTime = snappedNewTime - anchor.startTime;
+
+        const anchorNewPitch = Math.max(0, Math.min(127, anchor.pitch + deltaPitch));
+        if (anchorNewPitch !== lastPlayedPitchRef.current) {
+          onPlayNote?.(anchorNewPitch);
+          lastPlayedPitchRef.current = anchorNewPitch;
+        }
+        setDragPitch(anchorNewPitch);
 
         for (const init of drag.initials) {
           const newTime = Math.max(0, init.startTime + snappedDeltaTime);
@@ -481,6 +512,8 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         lastResizedDurationRef.current = lastResizeDuration;
       }
       dragRef.current = null;
+      setDragPitch(null);
+      lastPlayedPitchRef.current = null;
       setGridCursor('crosshair');
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
@@ -604,6 +637,7 @@ export const NoteGrid: React.FC<NoteGridProps> = ({
         clipStart={clip != null ? (clip.trimStart ?? 0) : undefined}
         clipDuration={clip?.duration}
         allClipBounds={ghostClipBounds}
+        hoveredKeyPitch={effectiveHoveredPitch}
       />
 
       {/* All note rects from all clips — fully interactive */}

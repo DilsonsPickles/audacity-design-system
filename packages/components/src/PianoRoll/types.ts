@@ -38,12 +38,22 @@ export interface PianoRollPanelProps {
   onHoverClip?: (clipId: number | null) => void;
   /** Track color name (e.g. 'blue', 'violet') — notes and clip strip use this color */
   trackColor?: string;
+  /** Called when a piano key is clicked */
+  onKeyClick?: (pitch: number) => void;
+  /** Called to audibly preview a pitch (e.g. when placing or dragging a note) */
+  onPlayNote?: (pitch: number) => void;
   /** Playhead position in seconds (global time) */
   playheadPosition?: number;
   /** Hide the built-in PanelHeader (when managed externally, e.g. in a tabbed drawer) */
   hideHeader?: boolean;
   /** External height override — when provided, internal resize is disabled */
   height?: number;
+  /** Available MIDI instruments for the dropdown */
+  instruments?: Array<{ id: string; label: string }>;
+  /** Currently selected instrument id */
+  instrument?: string;
+  /** Called when user changes the instrument */
+  onInstrumentChange?: (id: string) => void;
 }
 
 export interface PianoRollSidebarProps {
@@ -51,6 +61,20 @@ export interface PianoRollSidebarProps {
   timeBasis: TimeBasis;
   onSnapChange: (snap: SnapGrid) => void;
   onTimeBasisChange: (basis: TimeBasis) => void;
+  /** Current computer keyboard octave (e.g. 3 = C3–C4) */
+  keyboardOctave?: number;
+  /** Called when user changes the keyboard octave via UI */
+  onKeyboardOctaveChange?: (octave: number) => void;
+  /** Whether computer keyboard input is enabled */
+  keyboardEnabled?: boolean;
+  /** Called when user toggles computer keyboard input */
+  onKeyboardEnabledChange?: (enabled: boolean) => void;
+  /** Available MIDI instruments for the dropdown */
+  instruments?: Array<{ id: string; label: string }>;
+  /** Currently selected instrument id */
+  instrument?: string;
+  /** Called when user changes the instrument */
+  onInstrumentChange?: (id: string) => void;
 }
 
 export interface PianoKeyboardProps {
@@ -59,6 +83,10 @@ export interface PianoKeyboardProps {
   height: number;
   highlightedPitch?: number | null;
   onKeyClick?: (pitch: number) => void;
+  /** Called when mouse enters/leaves a key */
+  onHoverKey?: (pitch: number | null) => void;
+  /** Whether the clip strip is visible (affects top spacer height) */
+  clipStripVisible?: boolean;
 }
 
 export interface PianoRollRulerProps {
@@ -101,6 +129,10 @@ export interface NoteGridProps {
   trackColor?: string;
   /** Called when mouse enters/leaves a clip region in the grid */
   onHoverClip?: (clipId: number | null) => void;
+  /** Pitch currently hovered on the piano keyboard (for lane highlight) */
+  hoveredKeyPitch?: number | null;
+  /** Called to audibly preview a pitch (e.g. when placing or dragging a note) */
+  onPlayNote?: (pitch: number) => void;
 }
 
 export interface NoteGridCanvasProps {
@@ -120,5 +152,7 @@ export interface NoteGridCanvasProps {
   clipDuration?: number;
   /** Bounds of ghost (non-active) clips for rendering boundary lines */
   allClipBounds?: Array<{ start: number; duration: number }>;
+  /** Pitch currently hovered on the piano keyboard (for lane highlight) */
+  hoveredKeyPitch?: number | null;
 }
 

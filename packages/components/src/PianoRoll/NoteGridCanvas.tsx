@@ -17,6 +17,7 @@ export const NoteGridCanvas: React.FC<NoteGridCanvasProps> = ({
   clipStart,
   clipDuration,
   allClipBounds,
+  hoveredKeyPitch,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
@@ -63,6 +64,13 @@ export const NoteGridCanvas: React.FC<NoteGridCanvasProps> = ({
         ctx.lineTo(width, y + noteHeight);
         ctx.stroke();
       }
+    }
+
+    // Hovered lane highlight
+    if (hoveredKeyPitch != null && hoveredKeyPitch >= bottomPitch && hoveredKeyPitch <= topPitch) {
+      const hy = (TOTAL_PITCHES - 1 - hoveredKeyPitch) * noteHeight - scrollY;
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(0, hy, width, noteHeight);
     }
 
     // Draw grid lines (vertical)
@@ -183,7 +191,7 @@ export const NoteGridCanvas: React.FC<NoteGridCanvasProps> = ({
         ctx.setLineDash([]);
       }
     }
-  }, [width, height, scrollX, scrollY, noteHeight, pixelsPerSecond, bpm, beatsPerMeasure, snap, timeBasis, pr, clipStart, clipDuration, allClipBounds]);
+  }, [width, height, scrollX, scrollY, noteHeight, pixelsPerSecond, bpm, beatsPerMeasure, snap, timeBasis, pr, clipStart, clipDuration, allClipBounds, hoveredKeyPitch]);
 
   return (
     <canvas

@@ -46,20 +46,85 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   onMoveClip,
   hoveredClipId,
   onHoverClip,
+  onKeyClick,
+  onPlayNote,
   trackColor,
   playheadPosition,
   hideHeader = false,
   height: externalHeight,
+  instruments,
+  instrument,
+  onInstrumentChange,
 }) => {
   const { theme } = useTheme();
   const pr = theme.audio.pianoRoll;
 
   const [internalHeight, setInternalHeight] = useState(DEFAULT_PANEL_HEIGHT);
   const [scrollY, setScrollY] = useState(DEFAULT_SCROLL_Y);
+  const [hoveredKeyPitch, setHoveredKeyPitch] = useState<number | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [gridWidth, setGridWidth] = useState(800);
+
+  // Computer keyboard piano — Ableton-style key mapping
+  const [keyboardEnabled, setKeyboardEnabled] = useState(false);
+  const [keyboardOctave, setKeyboardOctave] = useState(3);
+  const [activeKeyboardPitch, setActiveKeyboardPitch] = useState<number | null>(null);
+  const activeKeysRef = useRef(new Set<string>());
+
+  // Lower row: A..K maps to C..C (one octave + 1). Upper row: Q..U extends higher.
+  const KEY_TO_SEMITONE: Record<string, number> = {
+    a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11,
+    k: 12, o: 13, l: 14, p: 15,
+  };
+
+  const handlePanelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!keyboardEnabled) return;
+
+    // Octave shift: Z down, X up
+    if (e.key === 'z' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      setKeyboardOctave(prev => Math.max(-1, prev - 1));
+      return;
+    }
+    if (e.key === 'x' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      setKeyboardOctave(prev => Math.min(8, prev + 1));
+      return;
+    }
+
+    const key = e.key.toLowerCase();
+    if (activeKeysRef.current.has(key)) return; // Key repeat guard
+    const semitone = KEY_TO_SEMITONE[key];
+    if (semitone === undefined) return;
+
+    e.preventDefault();
+    activeKeysRef.current.add(key);
+    // Octave offset: keyboardOctave maps to MIDI octave (C4 = MIDI 60, octave 4 → base 60)
+    const pitch = Math.max(0, Math.min(127, (keyboardOctave + 1) * 12 + semitone));
+    setActiveKeyboardPitch(pitch);
+    onPlayNote?.(pitch);
+  }, [keyboardEnabled, keyboardOctave, onPlayNote]);
+
+  const handlePanelKeyUp = useCallback((e: React.KeyboardEvent) => {
+    const key = e.key.toLowerCase();
+    activeKeysRef.current.delete(key);
+    // Clear highlight if no keys held
+    if (activeKeysRef.current.size === 0) {
+      setActiveKeyboardPitch(null);
+    } else {
+      // Show the most recently remaining held key
+      const semitones = [...activeKeysRef.current]
+        .map(k => KEY_TO_SEMITONE[k])
+        .filter((s): s is number => s !== undefined);
+      if (semitones.length > 0) {
+        const lastSemitone = semitones[semitones.length - 1];
+        setActiveKeyboardPitch(Math.max(0, Math.min(127, (keyboardOctave + 1) * 12 + lastSemitone)));
+      }
+    }
+  }, [keyboardOctave]);
 
   // Use external height when provided, otherwise internal
   const panelHeight = externalHeight ?? internalHeight;
@@ -113,6 +178,11 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
 
   return (
     <div
+      ref={panelRef}
+      tabIndex={-1}
+      onKeyDown={handlePanelKeyDown}
+      onKeyUp={handlePanelKeyUp}
+      onBlur={() => { activeKeysRef.current.clear(); setActiveKeyboardPitch(null); }}
       style={{
         height: panelHeight,
         background: pr.background,
@@ -121,6 +191,7 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
         flexDirection: 'column',
         flexShrink: 0,
         position: 'relative',
+        outline: 'none',
       }}
     >
       {/* Header (resize via top edge) — only when not managed externally */}
@@ -141,6 +212,13 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
           timeBasis={timeBasis}
           onSnapChange={onSnapChange}
           onTimeBasisChange={onTimeBasisChange}
+          keyboardEnabled={keyboardEnabled}
+          onKeyboardEnabledChange={setKeyboardEnabled}
+          keyboardOctave={keyboardOctave}
+          onKeyboardOctaveChange={setKeyboardOctave}
+          instruments={instruments}
+          instrument={instrument}
+          onInstrumentChange={onInstrumentChange}
         />
 
         {/* Main content: Keyboard + (Ruler + Grid) */}
@@ -153,6 +231,10 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
             scrollY={scrollY}
             noteHeight={NOTE_HEIGHT}
             height={contentHeight}
+            highlightedPitch={activeKeyboardPitch}
+            onKeyClick={onKeyClick}
+            onHoverKey={setHoveredKeyPitch}
+            clipStripVisible={!!clip}
           />
 
           {/* Ruler + Grid column */}
@@ -217,6 +299,8 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
                   onResizeClip={onResizeClip}
                   trackColor={trackColor}
                   onHoverClip={onHoverClip}
+                  hoveredKeyPitch={hoveredKeyPitch ?? activeKeyboardPitch}
+                  onPlayNote={onPlayNote}
                 />
 
                 {/* Playhead cursor */}

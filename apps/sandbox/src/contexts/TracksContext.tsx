@@ -65,6 +65,7 @@ export interface Track {
   pan?: number; // Pan position (-100 to 100, default 0)
   muted?: boolean; // Whether the track is muted
   soloed?: boolean; // Whether the track is soloed
+  instrument?: string; // MIDI instrument id (e.g. 'synth', 'fm-synth')
 }
 
 /** Expanded color palette for tracks — each new track cycles through these */
