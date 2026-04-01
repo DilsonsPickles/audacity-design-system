@@ -335,8 +335,8 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#172533',
         waveformRms: '#4A6E85', // Subtle but visible
         waveformRmsSelected: '#4A6E85',
-        timeSelectionBody: '#A3FCFF',        
-        timeSelectionHeader: '#7EEBFF',      
+        timeSelectionBody: '#B0D4FF',        
+        timeSelectionHeader: '#94C4FF',      
         timeSelectionWaveform: '#303E4C',    // 10% white added to #172533
         timeSelectionWaveformRms: '#6C849D', // 10% white added to #536B85 
       },
@@ -351,8 +351,8 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#232233',
         waveformRms: '#5D5A8A', // Subtle but visible
         waveformRmsSelected: '#5D5A8A',
-        timeSelectionBody: '#DCF1FF',        
-        timeSelectionHeader: '#C8DCFF',      
+        timeSelectionBody: '#D2D0FF',        
+        timeSelectionHeader: '#BDB8FF',      
         timeSelectionWaveform: '#3C3B4C',    // 10% white added to #232233
         timeSelectionWaveformRms: '#807F9D', // 10% white added to #676685 
       },
@@ -399,8 +399,8 @@ export const lightTheme: ThemeTokens = {
         waveformSelected: '#332318',
         waveformRms: '#8A5F3F', // Subtle but visible
         waveformRmsSelected: '#8A5F3F',
-        timeSelectionBody: '#FFF6CC',        
-        timeSelectionHeader: '#FFE2AB',      
+        timeSelectionBody: '#FFD0A8',        
+        timeSelectionHeader: '#FFB88A',      
         timeSelectionWaveform: '#4C3C31',    // 10% white added to #332318
         timeSelectionWaveformRms: '#9E806C', // 10% white added to #856754 
       },
