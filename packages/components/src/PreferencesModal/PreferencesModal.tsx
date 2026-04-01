@@ -367,6 +367,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
             )}
             {selectedPage === 'shortcuts' && <ShortcutsPage />}
             {selectedPage === 'plugins' && <PluginsPage onOpenPluginManager={onOpenPluginManager} />}
+            {selectedPage === 'cloud' && <CloudPage />}
           </div>
         </main>
       </div>
@@ -1607,10 +1608,11 @@ function EditingPage({
 
       {/* Zoom toggle */}
       <div className="preferences-page__section">
-        <h3 className="preferences-page__section-title">Zoom toggle</h3>
+        <h3 className="preferences-page__section-title">Zoom toggle (magnifying glass)</h3>
+        <p className="preferences-page__description">A special tool in the top bar that toggles between two different zoom states.</p>
 
         <div className="preferences-page__field preferences-page__field--small">
-          <label className="preferences-page__label">Preset 1:</label>
+          <label className="preferences-page__label">Zoom state 1:</label>
           <Dropdown
             value={zoomToggleLevel1}
             options={[
@@ -1635,7 +1637,7 @@ function EditingPage({
         </div>
 
         <div className="preferences-page__field preferences-page__field--small">
-          <label className="preferences-page__label">Preset 2:</label>
+          <label className="preferences-page__label">Zoom state 2:</label>
           <Dropdown
             value={zoomToggleLevel2}
             options={[
@@ -1849,6 +1851,104 @@ function PluginsPage({ onOpenPluginManager }: { onOpenPluginManager?: () => void
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function CloudPage() {
+  const { preferences, updatePreference } = usePreferences();
+
+  const mixdownIntervalOptions: DropdownOption[] = [
+    { value: '3', label: '3 saves' },
+    { value: '5', label: '5 saves' },
+    { value: '10', label: '10 saves' },
+    { value: '20', label: '20 saves' },
+  ];
+
+  return (
+    <div className="preferences-page">
+      <div className="preferences-page__section">
+        <label className="preferences-page__label">Generate mixdown for audio.com playback</label>
+
+        <div className="preferences-page__radio-group">
+          <LabeledRadio
+            label="Never"
+            checked={preferences.cloudMixdownMode === 'never'}
+            onChange={() => updatePreference('cloudMixdownMode', 'never')}
+            name="cloudMixdownMode"
+            value="never"
+          />
+
+          <LabeledRadio
+            label="Always"
+            checked={preferences.cloudMixdownMode === 'always'}
+            onChange={() => updatePreference('cloudMixdownMode', 'always')}
+            name="cloudMixdownMode"
+            value="always"
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <LabeledRadio
+              label="Every"
+              checked={preferences.cloudMixdownMode === 'every'}
+              onChange={() => updatePreference('cloudMixdownMode', 'every')}
+              name="cloudMixdownMode"
+              value="every"
+            />
+            <Dropdown
+              options={mixdownIntervalOptions}
+              value={preferences.cloudMixdownInterval}
+              onChange={(val) => updatePreference('cloudMixdownInterval', val)}
+              width="120px"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="preferences-page__section">
+        <LabeledCheckbox
+          label="Show 'How would you like to save?' dialog"
+          checked={preferences.showSaveDialog}
+          onChange={(checked) => updatePreference('showSaveDialog', checked)}
+        />
+      </div>
+
+      <Separator />
+
+      <div className="preferences-page__section">
+        <div className="preferences-page__field preferences-page__field--large">
+          <label className="preferences-page__label">Temporary local save location</label>
+          <div className="preferences-page__input-group">
+            <LabeledInput
+              label=""
+              value={preferences.cloudTempLocation}
+              onChange={(val) => updatePreference('cloudTempLocation', val)}
+            />
+            <Button variant="secondary">
+              Browse
+            </Button>
+          </div>
+        </div>
+
+        <div className="preferences-page__field preferences-page__field--small">
+          <label className="preferences-page__label">Remove temporary files after</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <NumberStepper
+              value={preferences.cloudTempRetentionDays}
+              onChange={(val) => updatePreference('cloudTempRetentionDays', val)}
+              min={1}
+              max={365}
+              width="80px"
+            />
+            <span className="preferences-page__label" style={{ fontWeight: 400 }}>days</span>
+          </div>
+        </div>
+
+        <div className="preferences-page__info-box">
+          Audacity creates a local copy of cloud projects while you work on them,
+          improving performance and enabling you to work on unstable connections.
+        </div>
       </div>
     </div>
   );

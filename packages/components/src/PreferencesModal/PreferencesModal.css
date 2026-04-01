@@ -150,6 +150,16 @@
   opacity: 0.8;
 }
 
+.preferences-page__description {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: #14151a;
+  opacity: 0.8;
+  margin: -8px 0 4px 0;
+}
+
 .preferences-page__value {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
