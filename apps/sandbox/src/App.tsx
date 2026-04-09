@@ -78,7 +78,14 @@ function CanvasDemoContent() {
     size: string;
     blobUrl: string;
     waveformData: number[];
-  }>>([]);
+  }>>(() => {
+    try {
+      const saved = localStorage.getItem('cloudAudioFiles');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [emailError, setEmailError] = React.useState(false);
@@ -98,6 +105,11 @@ function CanvasDemoContent() {
   React.useEffect(() => {
     localStorage.setItem('dontShowSaveModalAgain', String(dontShowSaveModalAgain));
   }, [dontShowSaveModalAgain]);
+
+  // Persist cloud audio files to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('cloudAudioFiles', JSON.stringify(cloudAudioFiles));
+  }, [cloudAudioFiles]);
 
   // Select and focus track 0 on mount
   React.useEffect(() => {
