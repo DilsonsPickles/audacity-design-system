@@ -43,6 +43,13 @@ export interface PreferencesState {
   ladspaPluginLocation: string;
   audioUnitsPluginLocation: string;
 
+  // Cloud
+  cloudMixdownMode: 'never' | 'always' | 'every';
+  cloudMixdownInterval: string;
+  showSaveDialog: boolean;
+  cloudTempLocation: string;
+  cloudTempRetentionDays: string;
+
   // Spectral Display
   enableSpectralSelection: boolean;
   spectralScale: string;
@@ -92,6 +99,13 @@ const defaultPreferences: PreferencesState = {
   lv2PluginLocation: '/Users/Username/Library/Application Support/audacity',
   ladspaPluginLocation: '/Users/Username/Library/Application Support/audacity',
   audioUnitsPluginLocation: '/Users/Username/Library/Application Support/audacity',
+
+  // Cloud
+  cloudMixdownMode: 'never',
+  cloudMixdownInterval: '5 saves',
+  showSaveDialog: true,
+  cloudTempLocation: '/Users/Username/Library/Application Support/audacity/cloud-temp',
+  cloudTempRetentionDays: '30',
 
   // Spectral Display
   enableSpectralSelection: true,
