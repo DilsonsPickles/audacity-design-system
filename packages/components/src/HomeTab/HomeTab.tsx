@@ -792,11 +792,10 @@ export function HomeTab({
                         <div className="home-tab__list-header home-tab__list-header--audio">
                           <div className="home-tab__list-header-cell">Name</div>
                           <div className="home-tab__list-header-cell"></div>
-                          <div className="home-tab__list-header-cell"></div>
                           <div className="home-tab__list-header-cell">Modified</div>
                           <div className="home-tab__list-header-cell">Duration</div>
                           <div className="home-tab__list-header-cell">Size</div>
-                          <div className="home-tab__list-header-spacer" />
+                          <div className="home-tab__list-header-cell"></div>
                         </div>
                       </div>
                       <div className="home-tab__list-items">
@@ -822,9 +821,6 @@ export function HomeTab({
                                 height={40}
                                 className="home-tab__list-item-waveform"
                               />
-                              <div className="home-tab__list-item-cloud-badge">
-                                <Icon name="cloud-filled" size={12} />
-                              </div>
                               <div className="home-tab__list-item-modified">{audioFile.dateText}</div>
                               <div className="home-tab__list-item-duration-col">{audioFile.duration}</div>
                               <div className="home-tab__list-item-size">{audioFile.size}</div>
@@ -1034,11 +1030,6 @@ export function HomeTab({
         {/* Bottom Actions - Only shown on Project page */}
         {activeSidebarItem === 'project' && (
           <div className="home-tab__footer">
-            <div className="home-tab__footer-left">
-              <Button variant="secondary" size="default">
-                View projects in audio.com
-              </Button>
-            </div>
             <div className="home-tab__footer-right">
               <Button variant="secondary" size="default" onClick={handleCreateNewProject}>
                 New
