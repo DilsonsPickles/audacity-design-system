@@ -253,6 +253,7 @@ export type TracksAction =
   // Piano roll / MIDI actions
   | { type: 'SET_PIANO_ROLL_OPEN'; payload: { open: boolean; trackIndex?: number; clipIndex?: number } }
   | { type: 'GROUP_SELECTED_CLIPS' }
+  | { type: 'UNGROUP_CLIPS'; payload: { groupId: string } }
   | { type: 'SET_CANVAS_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
   | { type: 'SET_PIANO_ROLL_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
   | { type: 'SET_PIANO_ROLL_TIME_BASIS'; payload: 'beats' | 'seconds' }
@@ -1012,6 +1013,17 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
         }
       }
 
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'UNGROUP_CLIPS': {
+      const targetGroupId = action.payload.groupId;
+      const newTracks = state.tracks.map(t => ({
+        ...t,
+        clips: t.clips.map(c =>
+          c.groupId === targetGroupId ? { ...c, groupId: undefined } : c
+        ),
+      }));
       return { ...state, tracks: newTracks };
     }
 

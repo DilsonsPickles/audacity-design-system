@@ -161,3 +161,36 @@ describe('GROUP_SELECTED_CLIPS', () => {
     expect(next.tracks[0].clips[0].groupId).toBeUndefined();
   });
 });
+
+describe('UNGROUP_CLIPS', () => {
+  it('clears groupId on every clip with the matching groupId', () => {
+    const state = baseState([
+      { id: 1, groupId: 'A' },
+      { id: 2, groupId: 'A' },
+      { id: 3, groupId: 'A' },
+    ]);
+    const next = tracksReducer(state, { type: 'UNGROUP_CLIPS', payload: { groupId: 'A' } });
+    expect(next.tracks[0].clips.every(c => c.groupId === undefined)).toBe(true);
+  });
+
+  it('leaves clips in other groups untouched', () => {
+    const state = baseState([
+      { id: 1, groupId: 'A' },
+      { id: 2, groupId: 'A' },
+      { id: 3, groupId: 'B' },
+      { id: 4, groupId: 'B' },
+    ]);
+    const next = tracksReducer(state, { type: 'UNGROUP_CLIPS', payload: { groupId: 'A' } });
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.groupId).toBeUndefined();
+    expect(next.tracks[0].clips.find(c => c.id === 3)?.groupId).toBe('B');
+    expect(next.tracks[0].clips.find(c => c.id === 4)?.groupId).toBe('B');
+  });
+
+  it('is a no-op when no clip has the target groupId', () => {
+    const state = baseState([
+      { id: 1, groupId: 'A' },
+    ]);
+    const next = tracksReducer(state, { type: 'UNGROUP_CLIPS', payload: { groupId: 'nonexistent' } });
+    expect(next.tracks[0].clips[0].groupId).toBe('A');
+  });
+});
