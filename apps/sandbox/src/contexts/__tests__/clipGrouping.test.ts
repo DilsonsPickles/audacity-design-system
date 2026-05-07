@@ -194,3 +194,56 @@ describe('UNGROUP_CLIPS', () => {
     expect(next.tracks[0].clips[0].groupId).toBe('A');
   });
 });
+
+describe('SELECT_CLIP auto-expansion', () => {
+  it('selecting a grouped clip selects all members in the same group on the same track', () => {
+    const state = baseState([
+      { id: 1, groupId: 'g1' },
+      { id: 2, groupId: 'g1' },
+      { id: 3 },
+    ]);
+    const next = tracksReducer(state, {
+      type: 'SELECT_CLIP',
+      payload: { trackIndex: 0, clipId: 1 },
+    });
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.selected).toBe(true);
+    expect(next.tracks[0].clips.find(c => c.id === 2)?.selected).toBe(true);
+    expect(next.tracks[0].clips.find(c => c.id === 3)?.selected).toBeFalsy();
+  });
+
+  it('selecting a grouped clip expands selection across tracks', () => {
+    const state: TracksState = {
+      tracks: [
+        { id: 1, name: 't1', clips: [
+          { id: 1, name: '', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' } as any,
+        ] },
+        { id: 2, name: 't2', clips: [
+          { id: 2, name: '', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' } as any,
+        ] },
+      ],
+    } as unknown as TracksState;
+
+    const next = tracksReducer(state, {
+      type: 'SELECT_CLIP',
+      payload: { trackIndex: 0, clipId: 1 },
+    });
+    expect(next.tracks[0].clips[0].selected).toBe(true);
+    expect(next.tracks[1].clips[0].selected).toBe(true);
+    expect(next.selectedTrackIndices).toEqual(expect.arrayContaining([0, 1]));
+  });
+
+  it('selecting an ungrouped clip behaves as before (single selection)', () => {
+    const state = baseState([
+      { id: 1 },
+      { id: 2, groupId: 'g1' },
+      { id: 3, groupId: 'g1' },
+    ]);
+    const next = tracksReducer(state, {
+      type: 'SELECT_CLIP',
+      payload: { trackIndex: 0, clipId: 1 },
+    });
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.selected).toBe(true);
+    expect(next.tracks[0].clips.find(c => c.id === 2)?.selected).toBeFalsy();
+    expect(next.tracks[0].clips.find(c => c.id === 3)?.selected).toBeFalsy();
+  });
+});

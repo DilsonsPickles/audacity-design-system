@@ -552,12 +552,22 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
         endTime: selectedClip.start + selectedClip.duration,
       } : null;
 
+      const expandedTracks = expandSelectionToGroups(newTracks);
+
+      // Derive selectedTrackIndices from the expanded selection (groups may span tracks).
+      const expandedSelectedTrackIndices: number[] = [];
+      expandedTracks.forEach((t, idx) => {
+        if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) {
+          expandedSelectedTrackIndices.push(idx);
+        }
+      });
+
       return {
         ...state,
-        tracks: newTracks,
-        selectedTrackIndices: [trackIndex],
+        tracks: expandedTracks,
+        selectedTrackIndices: expandedSelectedTrackIndices.length > 0 ? expandedSelectedTrackIndices : [trackIndex],
         focusedTrackIndex: trackIndex,
-        selectedLabelIds: [], // Clear label selection when selecting clip
+        selectedLabelIds: [],
         timeSelection: newTimeSelection,
         clipDurationIndicator: newClipDurationIndicator,
         lastSelectedClip: { trackIndex, clipId },
