@@ -587,10 +587,16 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
           }))
         }));
 
+        const expandedTracks = expandSelectionToGroups(newTracks);
+        const sti: number[] = [];
+        expandedTracks.forEach((t, idx) => {
+          if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) sti.push(idx);
+        });
+
         return {
           ...state,
-          tracks: newTracks,
-          selectedTrackIndices: [trackIndex],
+          tracks: expandedTracks,
+          selectedTrackIndices: sti.length > 0 ? sti : [trackIndex],
           focusedTrackIndex: trackIndex,
           selectedLabelIds: [],
           lastSelectedClip: { trackIndex, clipId },
@@ -615,10 +621,16 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
           }))
         }));
 
+        const expandedTracks = expandSelectionToGroups(newTracks);
+        const sti: number[] = [];
+        expandedTracks.forEach((t, idx) => {
+          if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) sti.push(idx);
+        });
+
         return {
           ...state,
-          tracks: newTracks,
-          selectedTrackIndices: [trackIndex],
+          tracks: expandedTracks,
+          selectedTrackIndices: sti.length > 0 ? sti : [trackIndex],
           focusedTrackIndex: trackIndex,
           selectedLabelIds: [],
           lastSelectedClip: { trackIndex, clipId },
@@ -638,10 +650,16 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
         }))
       }));
 
+      const expandedTracks = expandSelectionToGroups(newTracks);
+      const sti: number[] = [];
+      expandedTracks.forEach((t, idx) => {
+        if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) sti.push(idx);
+      });
+
       return {
         ...state,
-        tracks: newTracks,
-        selectedTrackIndices: [trackIndex],
+        tracks: expandedTracks,
+        selectedTrackIndices: sti.length > 0 ? sti : [trackIndex],
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [],
         // Keep lastSelectedClip as the anchor for future range selections
@@ -914,14 +932,16 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
         }),
       }));
 
+      const expandedTracks = expandSelectionToGroups(newTracks);
+
       // Update selectedTrackIndices based on which tracks have selected clips
-      const tracksWithSelection = newTracks
+      const tracksWithSelection = expandedTracks
         .map((track, idx) => ({ idx, hasSelection: track.clips.some(c => c.selected) || track.midiClips?.some(c => c.selected) }))
         .filter(t => t.hasSelection)
         .map(t => t.idx);
 
       // Count total selected clips
-      const selectedClipsCount = newTracks.reduce(
+      const selectedClipsCount = expandedTracks.reduce(
         (count, track) => count + track.clips.filter(c => c.selected).length + (track.midiClips?.filter(c => c.selected).length || 0),
         0
       );
@@ -930,7 +950,7 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
       let newTimeSelection: TimeSelection | null = null;
       let newClipDurationIndicator: { startTime: number; endTime: number } | null = null;
       if (selectedClipsCount === 1) {
-        const selectedClip = newTracks
+        const selectedClip = expandedTracks
           .flatMap(track => [...track.clips, ...(track.midiClips || [])])
           .find(clip => clip.selected);
         if (selectedClip) {
@@ -947,12 +967,12 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
       }
 
       // Determine if the clip was selected (not deselected)
-      const wasClipSelected = (newTracks[trackIndex]?.clips.find(c => c.id === clipId)?.selected
-        || newTracks[trackIndex]?.midiClips?.find(c => c.id === clipId)?.selected) ?? false;
+      const wasClipSelected = (expandedTracks[trackIndex]?.clips.find(c => c.id === clipId)?.selected
+        || expandedTracks[trackIndex]?.midiClips?.find(c => c.id === clipId)?.selected) ?? false;
 
       return {
         ...state,
-        tracks: newTracks,
+        tracks: expandedTracks,
         selectedTrackIndices: tracksWithSelection,
         selectedLabelIds: [], // Clear label selection when toggling clip
         timeSelection: newTimeSelection,

@@ -247,3 +247,41 @@ describe('SELECT_CLIP auto-expansion', () => {
     expect(next.tracks[0].clips.find(c => c.id === 3)?.selected).toBeFalsy();
   });
 });
+
+describe('TOGGLE_CLIP_SELECTION auto-expansion', () => {
+  it('toggling a grouped clip into selected expands to all group members', () => {
+    const state = baseState([
+      { id: 1, groupId: 'g1' },
+      { id: 2, groupId: 'g1' },
+      { id: 3 },
+    ]);
+    const next = tracksReducer(state, {
+      type: 'TOGGLE_CLIP_SELECTION',
+      payload: { trackIndex: 0, clipId: 1 },
+    });
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.selected).toBe(true);
+    expect(next.tracks[0].clips.find(c => c.id === 2)?.selected).toBe(true);
+    expect(next.tracks[0].clips.find(c => c.id === 3)?.selected).toBeFalsy();
+  });
+});
+
+describe('SELECT_CLIP_RANGE auto-expansion', () => {
+  it('range selection that includes a grouped clip expands to its group members', () => {
+    const seeded: TracksState = {
+      ...baseState([
+        { id: 1, groupId: 'g1' },
+        { id: 2 },
+        { id: 3, groupId: 'g1' },
+      ]),
+      lastSelectedClip: { trackIndex: 0, clipId: 1 },
+    } as TracksState;
+
+    const next = tracksReducer(seeded, {
+      type: 'SELECT_CLIP_RANGE',
+      payload: { trackIndex: 0, clipId: 2 },
+    });
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.selected).toBe(true);
+    expect(next.tracks[0].clips.find(c => c.id === 2)?.selected).toBe(true);
+    expect(next.tracks[0].clips.find(c => c.id === 3)?.selected).toBe(true);
+  });
+});
