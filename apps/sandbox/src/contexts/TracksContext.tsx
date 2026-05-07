@@ -252,6 +252,7 @@ export type TracksAction =
   | { type: 'UPDATE_TRACK_SPECTROGRAM_FREQ'; payload: { index: number; minFreq?: number; maxFreq?: number } }
   // Piano roll / MIDI actions
   | { type: 'SET_PIANO_ROLL_OPEN'; payload: { open: boolean; trackIndex?: number; clipIndex?: number } }
+  | { type: 'GROUP_SELECTED_CLIPS' }
   | { type: 'SET_CANVAS_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
   | { type: 'SET_PIANO_ROLL_SNAP'; payload: import('@audacity-ui/core').SnapGrid }
   | { type: 'SET_PIANO_ROLL_TIME_BASIS'; payload: 'beats' | 'seconds' }
@@ -965,6 +966,53 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
         timeSelection: state.timeSelection?.renderOnCanvas === false ? null : state.timeSelection,
         lastSelectedClip: null, // Clear range selection anchor when deselecting all
       };
+    }
+
+    case 'GROUP_SELECTED_CLIPS': {
+      // Collect selected clips and any old group IDs they belong to
+      let selectedCount = 0;
+      const oldGroupIds = new Set<string>();
+      for (const t of state.tracks) {
+        for (const c of t.clips) {
+          if (c.selected) {
+            selectedCount++;
+            if (c.groupId) oldGroupIds.add(c.groupId);
+          }
+        }
+      }
+
+      // Need at least 2 selected clips to form a group
+      if (selectedCount < 2) return state;
+
+      const newGroupId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+        ? crypto.randomUUID()
+        : `group-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      // Pass 1: assign new groupId to every selected clip
+      let newTracks = state.tracks.map(t => ({
+        ...t,
+        clips: t.clips.map(c =>
+          c.selected ? { ...c, groupId: newGroupId } : c
+        ),
+      }));
+
+      // Pass 2: for each old group, dissolve it if only 1 member remains
+      for (const oldId of oldGroupIds) {
+        let remainingCount = 0;
+        for (const t of newTracks) {
+          for (const c of t.clips) {
+            if (c.groupId === oldId) remainingCount++;
+          }
+        }
+        if (remainingCount <= 1) {
+          newTracks = newTracks.map(t => ({
+            ...t,
+            clips: t.clips.map(c => c.groupId === oldId ? { ...c, groupId: undefined } : c),
+          }));
+        }
+      }
+
+      return { ...state, tracks: newTracks };
     }
 
     case 'DELETE_TIME_RANGE': {
