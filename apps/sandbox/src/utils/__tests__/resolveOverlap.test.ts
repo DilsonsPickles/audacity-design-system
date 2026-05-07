@@ -202,4 +202,30 @@ describe('resolveOverlap', () => {
       },
     ]);
   });
+
+  it('deletes the underlying clip when moving clip fully obscures it', () => {
+    const tracks: ResolverTrack[] = [
+      track([{ id: 1, start: 2, duration: 3 }]), // underlying 2..5
+    ];
+    const intent: ClipPlacement[] = [
+      { clipId: 2, trackIndex: 0, start: 1, duration: 6 }, // moving 1..7
+    ];
+    const result = resolveOverlap(tracks, intent, new Set([2]));
+    expect(result.mutations).toEqual([
+      { type: 'delete', clipId: 1, trackIndex: 0 },
+    ]);
+  });
+
+  it('deletes when boundaries match exactly (mStart=uStart and mEnd=uEnd)', () => {
+    const tracks: ResolverTrack[] = [
+      track([{ id: 1, start: 0, duration: 5 }]),
+    ];
+    const intent: ClipPlacement[] = [
+      { clipId: 2, trackIndex: 0, start: 0, duration: 5 },
+    ];
+    const result = resolveOverlap(tracks, intent, new Set([2]));
+    expect(result.mutations).toEqual([
+      { type: 'delete', clipId: 1, trackIndex: 0 },
+    ]);
+  });
 });

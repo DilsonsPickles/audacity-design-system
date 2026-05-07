@@ -83,7 +83,11 @@ export function resolveOverlap(
       const overlapsLeft = mStart <= uStart && mEnd < uEnd && mEnd > uStart; // moving covers underlying's left portion
 
       if (fullyObscured) {
-        // delete — implemented in a later task
+        mutations.push({
+          type: 'delete',
+          clipId: underlying.id,
+          trackIndex: placement.trackIndex,
+        });
       } else if (fullyInside) {
         mutations.push({
           type: 'split',
