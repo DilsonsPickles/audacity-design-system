@@ -18,7 +18,7 @@ interface DeletedRegion {
   duration: number;   // Duration of the deleted region
 }
 
-interface Clip {
+export interface Clip {
   id: number;
   name: string;
   start: number;
@@ -206,6 +206,17 @@ export type TracksAction =
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
   | { type: 'UPDATE_CLIP'; payload: { trackIndex: number; clipId: number; updates: Partial<Clip> } }
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
+  | {
+      type: 'APPLY_CLIP_PLACEMENT';
+      payload: {
+        placements: Array<{ clipId: number; trackIndex: number; start: number; duration: number }>;
+        mutations: Array<
+          | { type: 'trim'; clipId: number; trackIndex: number; newStart: number; newDuration: number; newTrimStart: number }
+          | { type: 'split'; clipId: number; trackIndex: number; leftEnd: number; rightStart: number }
+          | { type: 'delete'; clipId: number; trackIndex: number }
+        >;
+      };
+    }
   | { type: 'ADD_CLIP'; payload: { trackIndex: number; clip: Clip } }
   | { type: 'TOGGLE_CLIP_SELECTION'; payload: { trackIndex: number; clipId: number } }
   | { type: 'DESELECT_ALL_CLIPS' }
@@ -289,7 +300,7 @@ const initialState: TracksState = {
 };
 
 // Reducer
-function tracksReducer(state: TracksState, action: TracksAction): TracksState {
+export function tracksReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
     case 'RESET_STATE':
       return initialState;
@@ -1078,6 +1089,88 @@ function tracksReducer(state: TracksState, action: TracksAction): TracksState {
       }
 
       return { ...state, tracks: newTracks, clipDurationIndicator: newClipDurationIndicator };
+    }
+
+    case 'APPLY_CLIP_PLACEMENT': {
+      const { placements, mutations } = action.payload;
+
+      // Generate fresh ids for split right-segments. Use a single counter
+      // anchored to the current max id so all splits in this dispatch get unique ids.
+      let nextId = 1;
+      for (const t of state.tracks) {
+        for (const c of t.clips) if (c.id >= nextId) nextId = c.id + 1;
+      }
+
+      const newTracks = state.tracks.map((track, trackIndex) => {
+        const trackMutations = mutations.filter(m => m.trackIndex === trackIndex);
+        const trackPlacements = placements.filter(p => p.trackIndex === trackIndex);
+
+        if (trackMutations.length === 0 && trackPlacements.length === 0) return track;
+
+        // Apply mutations to existing clips, producing a list of new clips.
+        let newClips: Clip[] = [];
+        for (const clip of track.clips) {
+          const mutation = trackMutations.find(m => m.clipId === clip.id);
+
+          if (!mutation) {
+            newClips.push(clip);
+            continue;
+          }
+
+          if (mutation.type === 'delete') {
+            // omit
+            continue;
+          }
+
+          if (mutation.type === 'trim') {
+            newClips.push({
+              ...clip,
+              start: mutation.newStart,
+              duration: mutation.newDuration,
+              trimStart: mutation.newTrimStart,
+              fullDuration: clip.fullDuration ?? ((clip.trimStart ?? 0) + clip.duration),
+            });
+            continue;
+          }
+
+          // mutation.type === 'split'
+          const originalTrimStart = clip.trimStart ?? 0;
+          const originalEnd = clip.start + clip.duration;
+          const fullDuration = clip.fullDuration ?? (originalTrimStart + clip.duration);
+
+          // Left segment keeps the original id and waveform reference.
+          const leftSegment: Clip = {
+            ...clip,
+            duration: mutation.leftEnd - clip.start,
+            fullDuration,
+          };
+
+          // Right segment gets a fresh id; trimStart advances by skipped audio length.
+          const rightSegment: Clip = {
+            ...clip,
+            id: nextId++,
+            start: mutation.rightStart,
+            duration: originalEnd - mutation.rightStart,
+            trimStart: originalTrimStart + (mutation.rightStart - clip.start),
+            fullDuration,
+          };
+
+          newClips.push(leftSegment, rightSegment);
+        }
+
+        // Apply placements: update start/duration on moving clips already in the track.
+        if (trackPlacements.length > 0) {
+          newClips = newClips.map(clip => {
+            const placement = trackPlacements.find(p => p.clipId === clip.id);
+            if (!placement) return clip;
+            return { ...clip, start: placement.start, duration: placement.duration };
+          });
+        }
+
+        return { ...track, clips: newClips };
+      });
+
+      return { ...state, tracks: newTracks };
     }
 
     case 'ADD_LABEL': {
