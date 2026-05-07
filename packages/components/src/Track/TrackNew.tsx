@@ -488,7 +488,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             left: `${clipX}px`,
             top: 0,
             zIndex: isDragging ? 10 : 2, // Dragged clips float above all others; above clip header recess (z-index: 1) otherwise
-            opacity: isDragging ? 0.7 : undefined,
+            opacity: isDragging ? 0.5 : undefined,
           }}
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"
