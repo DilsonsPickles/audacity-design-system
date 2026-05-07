@@ -55,9 +55,31 @@ export interface OverlapResolution {
  * non-destructively trimmed, split, or deleted depending on geometry.
  */
 export function resolveOverlap(
-  _tracks: ResolverTrack[],
-  _intent: ClipPlacement[],
-  _movingClipIds: ReadonlySet<number>,
+  tracks: ResolverTrack[],
+  intent: ClipPlacement[],
+  movingClipIds: ReadonlySet<number>,
 ): OverlapResolution {
-  return { placements: [], mutations: [] };
+  const mutations: ClipMutation[] = [];
+
+  for (const placement of intent) {
+    const destTrack = tracks[placement.trackIndex];
+    if (!destTrack) continue;
+
+    const mStart = placement.start;
+    const mEnd = placement.start + placement.duration;
+
+    for (const underlying of destTrack.clips) {
+      if (movingClipIds.has(underlying.id)) continue;
+
+      const uStart = underlying.start;
+      const uEnd = underlying.start + underlying.duration;
+
+      // No overlap (strict): mEnd <= uStart or mStart >= uEnd
+      if (mEnd <= uStart || mStart >= uEnd) continue;
+
+      // Geometry classification will go here in later tasks.
+    }
+  }
+
+  return { placements: intent, mutations };
 }
