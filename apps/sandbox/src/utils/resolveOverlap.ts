@@ -96,7 +96,15 @@ export function resolveOverlap(
           newTrimStart: underlying.trimStart ?? 0,
         });
       } else if (overlapsLeft) {
-        // left-trim — implemented in a later task
+        const overlapAmount = mEnd - uStart;
+        mutations.push({
+          type: 'trim',
+          clipId: underlying.id,
+          trackIndex: placement.trackIndex,
+          newStart: mEnd,
+          newDuration: uEnd - mEnd,
+          newTrimStart: (underlying.trimStart ?? 0) + overlapAmount,
+        });
       }
     }
   }
