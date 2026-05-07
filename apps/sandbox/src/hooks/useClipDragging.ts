@@ -62,6 +62,7 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
   const cancelDrag = () => {
     clipDragStateRef.current = null;
     didDragRef.current = false;
+    snapHysteresisRef.current = null;
     if (containerRef.current) {
       containerRef.current.style.cursor = '';
     }

@@ -161,6 +161,19 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
                 const snapDelta = bestTarget - draggedInitial.start;
                 clampedTrimDelta = snapDelta;
                 snapHysteresisRef.current = { cursorXAtEngage: cursorX };
+                // Re-clamp after snap to prevent exposing audio past recorded boundaries.
+                selectedClips.forEach(({ initialState }) => {
+                  if (initialState.isMidi) {
+                    const minDelta = -(initialState.trimStart ?? 0);
+                    const maxDelta = initialState.duration - 0.01;
+                    clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+                  } else {
+                    const rightEdge = initialState.trimStart + initialState.duration;
+                    const minDelta = -initialState.trimStart;
+                    const maxDelta = rightEdge - initialState.trimStart - 0.01;
+                    clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+                  }
+                });
               }
             }
           }
@@ -256,6 +269,16 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
                 const originalRight = draggedInitial.start + draggedInitial.duration;
                 clampedDurationDelta = bestTarget - originalRight;
                 snapHysteresisRef.current = { cursorXAtEngage: cursorX };
+                // Re-clamp after snap to prevent exposing audio past recorded boundaries.
+                selectedClips.forEach(({ initialState }) => {
+                  const minDelta = 0.01 - initialState.duration;
+                  if (initialState.isMidi) {
+                    clampedDurationDelta = Math.max(minDelta, clampedDurationDelta);
+                  } else {
+                    const maxDelta = (initialState.fullDuration - initialState.trimStart) - initialState.duration;
+                    clampedDurationDelta = Math.max(minDelta, Math.min(clampedDurationDelta, maxDelta));
+                  }
+                });
               }
             }
           }
