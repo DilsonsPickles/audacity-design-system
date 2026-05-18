@@ -40,7 +40,7 @@ export interface TransportButtonProps {
 
 /**
  * TransportButton component matching Figma design specifications
- * - Size: 32x32px
+ * - Size: 28x28px
  * - Border radius: 3px
  * - States: idle, hover, pressed, disabled
  * - Uses MusescoreIcon font for icons

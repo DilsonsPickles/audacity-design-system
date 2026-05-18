@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, ToolbarDivider, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@audacity-ui/components';
 import type { SnapGrid } from '@audacity-ui/core';
 
 export type SnapMode =
@@ -230,7 +230,6 @@ export function TransportToolbar({
             />
           </ToolbarButtonGroup>
 
-          <ToolbarDivider />
 
           <ToolbarButtonGroup gap={8}>
             <Button
@@ -243,7 +242,6 @@ export function TransportToolbar({
             </Button>
           </ToolbarButtonGroup>
 
-          <ToolbarDivider />
 
           <ToolbarButtonGroup gap={8}>
             <Button
@@ -316,7 +314,6 @@ export function TransportToolbar({
 
           {workspace === 'classic' && (
             <>
-              <ToolbarDivider />
 
               <ToolbarButtonGroup gap={2}>
                 <ToggleToolButton
@@ -379,7 +376,6 @@ export function TransportToolbar({
             </>
           )}
 
-          <ToolbarDivider />
 
           <ToolbarButtonGroup gap={2}>
             <TimeCode
@@ -390,7 +386,6 @@ export function TransportToolbar({
             />
           </ToolbarButtonGroup>
 
-          <ToolbarDivider />
 
           <ToolbarButtonGroup gap={8}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: theme.foreground.text.primary, whiteSpace: 'nowrap', userSelect: 'none' }}>
@@ -494,7 +489,6 @@ export function TransportToolbar({
             </ContextMenu>
           </ToolbarButtonGroup>
 
-          <ToolbarDivider />
 
           <ToolbarButtonGroup gap={2}>
             <ToolButton icon="microphone" ariaLabel="Microphone settings" onClick={() => {}} />
@@ -512,6 +506,12 @@ export function TransportToolbar({
             volume={masterVolume}
             onVolumeChange={onMasterVolumeChange}
           />
+          </div>
+
+          <div style={{ marginLeft: 'auto' }}>
+            <ToolbarButtonGroup gap={2}>
+              <ToolButton icon="cog" ariaLabel="Settings" onClick={() => {}} />
+            </ToolbarButtonGroup>
           </div>
         </>
       )}
