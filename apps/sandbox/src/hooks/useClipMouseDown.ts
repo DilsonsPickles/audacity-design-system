@@ -21,6 +21,7 @@ interface ClipMouseDownConfig {
   TRACK_GAP: number;
   DEFAULT_TRACK_HEIGHT: number;
   CLIP_HEADER_HEIGHT: number;
+  onDragStart?: () => void;
 }
 
 /**
@@ -49,6 +50,7 @@ export function useClipMouseDown({
   TRACK_GAP,
   DEFAULT_TRACK_HEIGHT,
   CLIP_HEADER_HEIGHT,
+  onDragStart,
 }: ClipMouseDownConfig) {
 
   const handleClipMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -118,12 +120,26 @@ export function useClipMouseDown({
                 // Mark that we just selected on mouse down to prevent immediate deselection on click
                 justSelectedOnMouseDownRef.current = true;
 
-                // Only drag this one clip (state hasn't updated yet)
-                selectedClipsInitialPositions = [{
-                  clipId: clip.id,
-                  trackIndex: trackIndex,
-                  startTime: clip.start,
-                }];
+                // If the clip is in a group, include every member in the drag (state from
+                // SELECT_CLIP hasn't propagated yet, so we compute the expansion ourselves).
+                const clipGroupId = (clip as { groupId?: string }).groupId;
+                if (clipGroupId) {
+                  const members: Array<{ clipId: number; trackIndex: number; startTime: number }> = [];
+                  tracks.forEach((t, ti) => {
+                    t.clips.forEach(c => {
+                      if (c.groupId === clipGroupId) {
+                        members.push({ clipId: c.id, trackIndex: ti, startTime: c.start });
+                      }
+                    });
+                  });
+                  selectedClipsInitialPositions = members;
+                } else {
+                  selectedClipsInitialPositions = [{
+                    clipId: clip.id,
+                    trackIndex: trackIndex,
+                    startTime: clip.start,
+                  }];
+                }
               } else {
                 // Clip is already selected - get all selected clips for multi-drag
                 // Don't clear time selection - it will move with the clips
@@ -154,6 +170,7 @@ export function useClipMouseDown({
                 selectedClipsInitialPositions,
               };
               didDragRef.current = false; // Reset drag flag
+              onDragStart?.();
 
               // Only block propagation for header clicks (drag initiation)
               e.stopPropagation();

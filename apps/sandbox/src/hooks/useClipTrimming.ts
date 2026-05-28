@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useTracksDispatch } from '../contexts/TracksContext';
+import { resolveOverlap, ClipPlacement } from '../utils/resolveOverlap';
 
 export interface ClipTrimState {
   trackIndex: number;
@@ -41,6 +42,9 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
 
   const dispatch = useTracksDispatch();
   const clipTrimStateRef = useRef<ClipTrimState | null>(null);
+  const snapHysteresisRef = useRef<{ cursorXAtEngage: number } | null>(null);
+  const SNAP_THRESHOLD_PX = 6;
+  const SNAP_RELEASE_PX = 10;
 
   const startClipTrim = (trimState: ClipTrimState) => {
     clipTrimStateRef.current = trimState;
@@ -105,7 +109,7 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
         const trimDelta = newTrimStart - trimState.initialTrimStart;
 
         // Calculate limits for all selected clips using their INITIAL state
-        let clampedTrimDelta = trimDelta;
+        let clampedTrimDelta = trimDelta; // let so snap block can mutate it
         selectedClips.forEach(({ initialState }) => {
           if (initialState.isMidi) {
             // MIDI clips: use trimStart like audio
@@ -121,6 +125,59 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
             clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
           }
         });
+
+        // Snap-to-flush: adjust clampedTrimDelta so the dragged clip's left edge
+        // (newStart) meets a non-selected clip's edge on the same track within threshold.
+        {
+          const draggedInitial = trimState.allClipsInitialState.get(`${trimState.trackIndex}-${trimState.clipId}`);
+          if (draggedInitial) {
+            const projectedLeftEdge = draggedInitial.start + clampedTrimDelta;
+            const trackClips = tracks[trimState.trackIndex]?.clips ?? [];
+            const targetEdges: number[] = [];
+            for (const c of trackClips) {
+              if (c.selected) continue;
+              targetEdges.push(c.start);
+              targetEdges.push(c.start + c.duration);
+            }
+
+            const cursorX = e.clientX;
+            const hysteresis = snapHysteresisRef.current;
+            if (hysteresis && Math.abs(cursorX - hysteresis.cursorXAtEngage) > SNAP_RELEASE_PX) {
+              snapHysteresisRef.current = null;
+            }
+
+            if (snapHysteresisRef.current === null) {
+              const thresholdTime = SNAP_THRESHOLD_PX / pixelsPerSecond;
+              let bestTarget: number | null = null;
+              let bestDistance = Infinity;
+              for (const target of targetEdges) {
+                const d = Math.abs(projectedLeftEdge - target);
+                if (d <= thresholdTime && d < bestDistance) {
+                  bestTarget = target;
+                  bestDistance = d;
+                }
+              }
+              if (bestTarget !== null) {
+                const snapDelta = bestTarget - draggedInitial.start;
+                clampedTrimDelta = snapDelta;
+                snapHysteresisRef.current = { cursorXAtEngage: cursorX };
+                // Re-clamp after snap to prevent exposing audio past recorded boundaries.
+                selectedClips.forEach(({ initialState }) => {
+                  if (initialState.isMidi) {
+                    const minDelta = -(initialState.trimStart ?? 0);
+                    const maxDelta = initialState.duration - 0.01;
+                    clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+                  } else {
+                    const rightEdge = initialState.trimStart + initialState.duration;
+                    const minDelta = -initialState.trimStart;
+                    const maxDelta = rightEdge - initialState.trimStart - 0.01;
+                    clampedTrimDelta = Math.max(minDelta, Math.min(clampedTrimDelta, maxDelta));
+                  }
+                });
+              }
+            }
+          }
+        }
 
         // Apply clamped delta to all selected clips using their INITIAL state
         selectedClips.forEach(({ trackIndex, clip, initialState }) => {
@@ -177,6 +234,56 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
           }
         });
 
+        // Snap-to-flush: adjust clampedDurationDelta so the dragged clip's right edge
+        // meets a non-selected clip's edge on the same track within threshold.
+        {
+          const draggedInitial = trimState.allClipsInitialState.get(`${trimState.trackIndex}-${trimState.clipId}`);
+          if (draggedInitial) {
+            const projectedRightEdge = draggedInitial.start + draggedInitial.duration + clampedDurationDelta;
+            const trackClips = tracks[trimState.trackIndex]?.clips ?? [];
+            const targetEdges: number[] = [];
+            for (const c of trackClips) {
+              if (c.selected) continue;
+              targetEdges.push(c.start);
+              targetEdges.push(c.start + c.duration);
+            }
+
+            const cursorX = e.clientX;
+            const hysteresis = snapHysteresisRef.current;
+            if (hysteresis && Math.abs(cursorX - hysteresis.cursorXAtEngage) > SNAP_RELEASE_PX) {
+              snapHysteresisRef.current = null;
+            }
+
+            if (snapHysteresisRef.current === null) {
+              const thresholdTime = SNAP_THRESHOLD_PX / pixelsPerSecond;
+              let bestTarget: number | null = null;
+              let bestDistance = Infinity;
+              for (const target of targetEdges) {
+                const d = Math.abs(projectedRightEdge - target);
+                if (d <= thresholdTime && d < bestDistance) {
+                  bestTarget = target;
+                  bestDistance = d;
+                }
+              }
+              if (bestTarget !== null) {
+                const originalRight = draggedInitial.start + draggedInitial.duration;
+                clampedDurationDelta = bestTarget - originalRight;
+                snapHysteresisRef.current = { cursorXAtEngage: cursorX };
+                // Re-clamp after snap to prevent exposing audio past recorded boundaries.
+                selectedClips.forEach(({ initialState }) => {
+                  const minDelta = 0.01 - initialState.duration;
+                  if (initialState.isMidi) {
+                    clampedDurationDelta = Math.max(minDelta, clampedDurationDelta);
+                  } else {
+                    const maxDelta = (initialState.fullDuration - initialState.trimStart) - initialState.duration;
+                    clampedDurationDelta = Math.max(minDelta, Math.min(clampedDurationDelta, maxDelta));
+                  }
+                });
+              }
+            }
+          }
+        }
+
         // Apply clamped delta to all selected clips using their INITIAL state
         selectedClips.forEach(({ trackIndex, clip, initialState }) => {
           const newDurationForClip = initialState.duration + clampedDurationDelta;
@@ -195,9 +302,36 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
     };
 
     const handleMouseUp = () => {
-      if (clipTrimStateRef.current) {
-        cancelTrim();
+      const trimState = clipTrimStateRef.current;
+      if (!trimState) return;
+
+      // Build intent from final positions of all clips that were being trimmed
+      // (every selected clip on every track).
+      const intent: ClipPlacement[] = [];
+      const movingIds = new Set<number>();
+      tracks.forEach((track: any, trackIndex: number) => {
+        track.clips.forEach((clip: any) => {
+          if (clip.selected) {
+            intent.push({
+              clipId: clip.id,
+              trackIndex,
+              start: clip.start,
+              duration: clip.duration,
+            });
+            movingIds.add(clip.id);
+          }
+        });
+      });
+
+      if (intent.length > 0) {
+        const resolution = resolveOverlap(tracks, intent, movingIds);
+        if (resolution.mutations.length > 0) {
+          dispatch({ type: 'APPLY_CLIP_PLACEMENT', payload: resolution });
+        }
       }
+
+      snapHysteresisRef.current = null;
+      cancelTrim();
     };
 
     document.addEventListener('mousemove', handleMouseMove);

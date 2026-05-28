@@ -86,6 +86,26 @@ export interface ClipContextMenuProps {
   onRenderPitchSpeed?: () => void;
 
   /**
+   * Whether the "Group clips" item is enabled (≥2 clips selected).
+   */
+  canGroup?: boolean;
+
+  /**
+   * Whether the "Ungroup clips" item is enabled (right-click target is in a group).
+   */
+  canUngroup?: boolean;
+
+  /**
+   * Callback for grouping the currently-selected clips.
+   */
+  onGroup?: () => void;
+
+  /**
+   * Callback for ungrouping the right-clicked clip's group.
+   */
+  onUngroup?: () => void;
+
+  /**
    * Whether to auto-focus first menu item (when opened via keyboard)
    */
   autoFocus?: boolean;
@@ -112,6 +132,10 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   onToggleStretchWithTempo,
   onOpenPitchSpeedDialog,
   onRenderPitchSpeed,
+  canGroup,
+  canUngroup,
+  onGroup,
+  onUngroup,
   autoFocus = false,
 }) => {
   const { theme } = useTheme();
@@ -179,6 +203,22 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
         label="Delete clip"
         onClick={onDelete}
         onClose={onClose}
+      />
+
+      {/* Divider */}
+      <div className="clip-context-menu-divider" />
+
+      {/* Group / Ungroup */}
+      <ContextMenuItem
+        label="Group clips"
+        onClick={() => { onGroup?.(); onClose(); }}
+        disabled={!canGroup}
+      />
+
+      <ContextMenuItem
+        label="Ungroup clips"
+        onClick={() => { onUngroup?.(); onClose(); }}
+        disabled={!canUngroup}
       />
 
       {/* Divider */}

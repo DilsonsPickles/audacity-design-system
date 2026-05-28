@@ -1,0 +1,782 @@
+/* Marketplace flyout — anchored to the "Effects" trigger, lighter scrim */
+
+.mp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  /* Almost-transparent click-catcher; the flyout casts its own shadow so the
+     surrounding UI doesn't need to be dimmed. */
+  background: rgba(0, 0, 0, 0.12);
+}
+
+@keyframes mp-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mp-modal {
+  position: fixed;
+  width: 860px;
+  max-width: calc(100vw - 32px);
+  height: 640px;
+  max-height: calc(100vh - 32px);
+  background: #1A1F26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  /* overflow is set per-element below; the modal itself needs to allow the
+     pointer arrow to escape its rounded rect. */
+  overflow: visible;
+  color: #E5E7EB;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+  animation: mp-fade-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Inner content needs to clip to the rounded modal corners since the modal
+   itself is overflow:visible (for the arrow to escape). */
+.mp-modal > .mp-header,
+.mp-modal > .mp-body,
+.mp-modal > .mp-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.mp-modal > .mp-header { border-top-left-radius: 12px; border-top-right-radius: 12px; }
+.mp-modal > .mp-footer { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+
+/* ---- Popover arrow -------------------------------------------------- */
+
+.mp-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #1A1F26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transform: rotate(45deg);
+  z-index: 0;
+}
+
+.mp-arrow--right {
+  /* Popover sits to the right of the trigger; arrow points left, off the
+     popover's left edge. */
+  left: -6px;
+  margin-top: -6px;
+  border-top: 0;
+  border-right: 0;
+}
+
+.mp-arrow--left {
+  /* Popover sits to the left of the trigger; arrow points right. */
+  right: -6px;
+  margin-top: -6px;
+  border-bottom: 0;
+  border-left: 0;
+}
+
+/* ---- Header ---------------------------------------------------------- */
+
+.mp-header {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr 32px;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Tile / list toggle — lives next to the marketplace section title. */
+.mp-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #11151B;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.mp-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mp-view-btn:hover {
+  color: #fff;
+}
+
+.mp-view-btn--active {
+  background: rgba(99, 132, 247, 0.25);
+  color: #fff;
+}
+
+.mp-header__title h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.mp-header__destination {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mp-header__destination strong {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mp-header__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #11151B;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0 12px;
+  height: 32px;
+}
+
+.mp-header__search svg {
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+}
+
+.mp-header__search input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: #E5E7EB;
+  font: inherit;
+  font-size: 13px;
+  margin-left: 8px;
+}
+
+.mp-header__search input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.mp-header__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mp-header__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ---- Body (sidebar + list) ------------------------------------------ */
+
+.mp-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 0;
+}
+
+.mp-sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: 0;
+  gap: 4px;
+}
+
+/* Installed / MuseHub segmented control at the top of the rail. */
+.mp-source-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #11151B;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.mp-source-tab {
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mp-source-tab:hover {
+  color: #fff;
+}
+
+.mp-source-tab--active {
+  background: rgba(99, 132, 247, 0.25);
+  color: #fff;
+}
+
+.mp-sidebar__section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 14px 8px 6px;
+}
+
+.mp-sidebar__list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.mp-sidebar__tab {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.mp-sidebar__tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.mp-sidebar__tab--active {
+  background: rgba(99, 132, 247, 0.18);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ---- Section headers (Your library / From MuseHub) ----------------- */
+
+.mp-section {
+  padding: 0;
+}
+
+.mp-section + .mp-section {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mp-section__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 18px 18px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* In tile view, .mp-grid-wrap already adds 18px padding, so trim the title's
+   horizontal padding to avoid stacking it. */
+.mp-grid-wrap .mp-section__title {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 4px;
+}
+
+.mp-grid-wrap .mp-section + .mp-section {
+  padding-top: 24px;
+}
+
+.mp-section--marketplace .mp-section__title {
+  color: #BCC8FF;
+}
+
+.mp-section__count {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.02em;
+}
+
+.mp-section--marketplace .mp-section__count {
+  background: rgba(99, 132, 247, 0.18);
+  color: #BCC8FF;
+}
+
+/* ---- Tile grid ------------------------------------------------------ */
+
+.mp-grid-wrap {
+  padding: 18px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.mp-grid {
+  display: grid;
+  /* Fixed track width keeps tiles a consistent size no matter how many items
+     are in view — switching manufacturers no longer rescales the grid. */
+  grid-template-columns: repeat(auto-fill, 196px);
+  justify-content: start;
+  gap: 14px;
+}
+
+.mp-card {
+  background: #232932;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.mp-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.mp-card--selected {
+  border-color: rgba(99, 132, 247, 0.7);
+  box-shadow: 0 0 0 1px rgba(99, 132, 247, 0.55);
+}
+
+.mp-card__art {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+/* Built-in effects don't have marketing art — flat tile + category glyph
+   so they read as utilitarian tools rather than branded products. */
+.mp-card__art--builtin {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mp-card__glyph {
+  opacity: 0.85;
+}
+
+.mp-card__initials {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  opacity: 0.9;
+}
+
+.mp-card__tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.mp-card__tag--price {
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+}
+
+.mp-card__tag--installed {
+  background: rgba(34, 197, 94, 0.85);
+  color: #052E16;
+}
+
+.mp-card__star {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mp-card__star:hover {
+  color: #fff;
+}
+
+.mp-card__star--on {
+  color: #FBBF24;
+}
+
+.mp-card__meta {
+  padding: 10px 12px;
+}
+
+.mp-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-card__vendor {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 1px;
+}
+
+/* ---- List ----------------------------------------------------------- */
+
+.mp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* When the list is embedded inside the tile-view grid wrap (Your library
+   section), the wrap already provides 18px outer padding — drop the row's
+   horizontal padding so the rows align with the section title and tiles. */
+.mp-grid-wrap .mp-list--embedded .mp-row {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.mp-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 200px 100px 28px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  outline: none;
+}
+
+.mp-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mp-row--selected {
+  background: rgba(99, 132, 247, 0.18);
+}
+
+.mp-row:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(99, 132, 247, 0.6);
+}
+
+.mp-row__star,
+.mp-row__info {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mp-row__star:hover,
+.mp-row__info:hover {
+  color: #fff;
+}
+
+.mp-row__star--on {
+  color: #FBBF24;
+}
+
+.mp-row__name {
+  font-size: 13px;
+  color: #fff;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-row__vendor {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-row__tag {
+  justify-self: end;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.mp-row__tag--installed {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.mp-row__tag--price {
+  background: rgba(99, 132, 247, 0.18);
+  color: #BCC8FF;
+}
+
+.mp-row__tag--current {
+  background: rgba(34, 197, 94, 0.85);
+  color: #052E16;
+}
+
+.mp-card__tag--current {
+  background: rgba(34, 197, 94, 0.85);
+  color: #052E16;
+}
+
+/* Row + card highlight for the currently-selected effect when replacing. */
+.mp-row--current {
+  background: rgba(34, 197, 94, 0.08);
+  box-shadow: inset 2px 0 0 #22C55E;
+}
+
+.mp-row--current:hover {
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.mp-card--current {
+  outline: 2px solid rgba(34, 197, 94, 0.7);
+  outline-offset: -2px;
+}
+
+.mp-row__check {
+  color: #22C55E;
+  margin-right: 6px;
+  flex-shrink: 0;
+  vertical-align: -2px;
+}
+
+/* ---- Footer --------------------------------------------------------- */
+
+.mp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.mp-footer__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  user-select: none;
+}
+
+.mp-footer__check input {
+  accent-color: #677CE4;
+}
+
+.mp-footer__add {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: 0;
+  background: #677CE4;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mp-footer__add:hover:not(:disabled) {
+  background: #7C8EF0;
+}
+
+.mp-footer__add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---- Empty state ---------------------------------------------------- */
+
+.mp-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+}
+
+.mp-empty__reset {
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mp-empty__reset:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Detail pane (slides in from right) ----------------------------- */
+
+.mp-detail {
+  position: absolute;
+  inset: 0;
+  background: #1A1F26;
+  display: grid;
+  grid-template-rows: 44px 1fr;
+  z-index: 2;
+  animation: mp-detail-in 180ms ease-out;
+}
+
+@keyframes mp-detail-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.mp-detail__close {
+  align-self: flex-start;
+  margin: 12px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mp-detail__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.mp-detail__art {
+  display: none;
+}
+
+.mp-detail__body {
+  padding: 0 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.mp-detail__heading h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mp-detail__heading p {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.mp-detail__blurb {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+}
+
+.mp-detail__bullets {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.mp-detail__cta-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.mp-detail__cta {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mp-detail__cta--primary {
+  background: #677CE4;
+  color: #fff;
+}
+
+.mp-detail__cta--primary:hover {
+  background: #7C8EF0;
+}
+
+.mp-detail__cta--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.mp-detail__cta--ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+}

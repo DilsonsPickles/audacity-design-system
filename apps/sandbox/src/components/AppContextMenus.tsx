@@ -72,28 +72,68 @@ export function AppContextMenus({
   return (
     <>
       {/* Clip Context Menu */}
-      {clipContextMenu && (
-        <ClipContextMenu
-          isOpen={clipContextMenu.isOpen}
-          x={clipContextMenu.x}
-          y={clipContextMenu.y}
-          autoFocus={clipContextMenu.openedViaKeyboard}
-          onClose={() => setClipContextMenu(null)}
-          onRename={() => {
-            setClipContextMenu(null);
-          }}
-          onColorChange={(_color) => {
-            setClipContextMenu(null);
-          }}
-          onCut={() => {
-            if (clipContextMenu) {
-              const track = tracks[clipContextMenu.trackIndex];
-              const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId)
-                || (track?.midiClips || []).find((c: any) => c.id === clipContextMenu.clipId);
+      {clipContextMenu && (() => {
+        const targetTrack = tracks[clipContextMenu.trackIndex];
+        const targetClip = targetTrack?.clips.find((c: any) => c.id === clipContextMenu.clipId);
+        const targetGroupId = targetClip?.groupId;
+        const selectedClipsCount = tracks.reduce(
+          (sum: number, t: any) => sum + (t.clips || []).filter((c: any) => c.selected).length,
+          0
+        );
+        const canGroup = selectedClipsCount >= 2;
+        const canUngroup = !!targetGroupId;
 
-              if (clip) {
-                onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut' });
+        return (
+          <ClipContextMenu
+            isOpen={clipContextMenu.isOpen}
+            x={clipContextMenu.x}
+            y={clipContextMenu.y}
+            autoFocus={clipContextMenu.openedViaKeyboard}
+            onClose={() => setClipContextMenu(null)}
+            onRename={() => {
+              setClipContextMenu(null);
+            }}
+            onColorChange={(_color) => {
+              setClipContextMenu(null);
+            }}
+            onCut={() => {
+              if (clipContextMenu) {
+                const track = tracks[clipContextMenu.trackIndex];
+                const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId)
+                  || (track?.midiClips || []).find((c: any) => c.id === clipContextMenu.clipId);
 
+                if (clip) {
+                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut' });
+
+                  dispatch({
+                    type: 'DELETE_CLIP',
+                    payload: {
+                      trackIndex: clipContextMenu.trackIndex,
+                      clipId: clipContextMenu.clipId,
+                    },
+                  });
+
+                }
+                setClipContextMenu(null);
+              }
+            }}
+            onCopy={() => {
+              if (clipContextMenu) {
+                const track = tracks[clipContextMenu.trackIndex];
+                const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId)
+                  || (track?.midiClips || []).find((c: any) => c.id === clipContextMenu.clipId);
+
+                if (clip) {
+                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
+                }
+                setClipContextMenu(null);
+              }
+            }}
+            onDuplicate={() => {
+              setClipContextMenu(null);
+            }}
+            onDelete={() => {
+              if (clipContextMenu) {
                 dispatch({
                   type: 'DELETE_CLIP',
                   payload: {
@@ -101,55 +141,41 @@ export function AppContextMenus({
                     clipId: clipContextMenu.clipId,
                   },
                 });
-
+                setClipContextMenu(null);
+              }
+            }}
+            onSplit={() => {
+              setClipContextMenu(null);
+            }}
+            onExport={() => {
+              setClipContextMenu(null);
+            }}
+            stretchWithTempo={false}
+            onToggleStretchWithTempo={() => {
+            }}
+            onOpenPitchSpeedDialog={() => {
+              setClipContextMenu(null);
+            }}
+            onRenderPitchSpeed={() => {
+              setClipContextMenu(null);
+            }}
+            canGroup={canGroup}
+            canUngroup={canUngroup}
+            onGroup={() => {
+              if (canGroup) {
+                dispatch({ type: 'GROUP_SELECTED_CLIPS' });
               }
               setClipContextMenu(null);
-            }
-          }}
-          onCopy={() => {
-            if (clipContextMenu) {
-              const track = tracks[clipContextMenu.trackIndex];
-              const clip = track?.clips.find((c: any) => c.id === clipContextMenu.clipId)
-                || (track?.midiClips || []).find((c: any) => c.id === clipContextMenu.clipId);
-
-              if (clip) {
-                onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
+            }}
+            onUngroup={() => {
+              if (targetGroupId) {
+                dispatch({ type: 'UNGROUP_CLIPS', payload: { groupId: targetGroupId } });
               }
               setClipContextMenu(null);
-            }
-          }}
-          onDuplicate={() => {
-            setClipContextMenu(null);
-          }}
-          onDelete={() => {
-            if (clipContextMenu) {
-              dispatch({
-                type: 'DELETE_CLIP',
-                payload: {
-                  trackIndex: clipContextMenu.trackIndex,
-                  clipId: clipContextMenu.clipId,
-                },
-              });
-              setClipContextMenu(null);
-            }
-          }}
-          onSplit={() => {
-            setClipContextMenu(null);
-          }}
-          onExport={() => {
-            setClipContextMenu(null);
-          }}
-          stretchWithTempo={false}
-          onToggleStretchWithTempo={() => {
-          }}
-          onOpenPitchSpeedDialog={() => {
-            setClipContextMenu(null);
-          }}
-          onRenderPitchSpeed={() => {
-            setClipContextMenu(null);
-          }}
-        />
-      )}
+            }}
+          />
+        );
+      })()}
 
       {/* Spectrogram Settings Dialog */}
       <Dialog

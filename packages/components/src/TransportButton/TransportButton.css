@@ -2,8 +2,8 @@
 
 /* Button base styles */
 .transport-button {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 3px;
   background-color: var(--transport-btn-idle);

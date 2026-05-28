@@ -282,6 +282,11 @@ export interface TrackProps {
    */
   onHoverClip?: (clipId: number | null) => void;
 
+  /**
+   * Set of clip ids currently being dragged. Drawn at reduced opacity and elevated z-index.
+   */
+  draggingClipIds?: ReadonlySet<number>;
+
 }
 
 // Map track index to color
@@ -342,6 +347,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onTabFromLastClip,
   hoveredClipId,
   onHoverClip,
+  draggingClipIds,
 }) => {
   const { theme } = useTheme();
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
@@ -469,6 +475,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
       const clipSelected = (clip as any).selected || false;
       const isClipHovered = hoveredClipId != null && clip.id === hoveredClipId;
+      const isDragging = draggingClipIds?.has(clip.id as number) ?? false;
 
       return (
         <div
@@ -480,7 +487,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             position: 'absolute',
             left: `${clipX}px`,
             top: 0,
-            zIndex: 2, // Above clip header recess (z-index: 1)
+            zIndex: isDragging ? 10 : 2, // Dragged clips float above all others; above clip header recess (z-index: 1) otherwise
+            opacity: isDragging ? 0.5 : undefined,
           }}
           tabIndex={isFirstClip && tabIndex !== undefined ? tabIndex : -1}
           role="button"

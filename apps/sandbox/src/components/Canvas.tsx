@@ -245,6 +245,8 @@ export function Canvas({
     pixelsPerSecond,
   } : undefined;
 
+  const [isDraggingClips, setIsDraggingClips] = useState(false);
+
   // Clip dragging - extracted to custom hook
   const {
     clipDragStateRef,
@@ -257,9 +259,20 @@ export function Canvas({
     topGap: TOP_GAP,
     trackGap: TRACK_GAP,
     defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
+    onDragStatusChange: setIsDraggingClips,
     snapEnabled,
     snapOptions,
   });
+
+  const draggingClipIds = React.useMemo(() => {
+    if (!isDraggingClips) return new Set<number>();
+    const dragState = clipDragStateRef.current;
+    if (!dragState) return new Set<number>();
+    if (dragState.selectedClipsInitialPositions && dragState.selectedClipsInitialPositions.length > 1) {
+      return new Set<number>(dragState.selectedClipsInitialPositions.map(p => p.clipId));
+    }
+    return new Set<number>([dragState.clip.id]);
+  }, [isDraggingClips, clipDragStateRef]);
 
   // Clip trimming - extracted to custom hook
   const {
@@ -400,6 +413,7 @@ export function Canvas({
     TRACK_GAP,
     DEFAULT_TRACK_HEIGHT,
     CLIP_HEADER_HEIGHT,
+    onDragStart: () => setIsDraggingClips(true),
   });
 
   // Calculate grid line positions — three tiers in beats-measures mode (measure/beat/subdivision),
@@ -730,6 +744,7 @@ export function Canvas({
                 onTabFromLastClip={() => onTabFromLastClip?.(trackIndex)}
                 hoveredClipId={track.type === 'midi' ? hoveredMidiClipId : undefined}
                 onHoverClip={track.type === 'midi' ? onHoverMidiClip : undefined}
+                draggingClipIds={draggingClipIds}
                 onClipMove={(clipId, deltaSeconds) => {
                   const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                   if (!clip) return;
