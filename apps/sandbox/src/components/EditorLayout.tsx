@@ -1,6 +1,7 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { Canvas } from './Canvas';
+import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, PianoRollPanel, PanelHeader } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat, PanelHeaderTab } from '@audacity-ui/components';
 import { MixerPanel, type MixerPanelChannel } from '@audacity-ui/components';
@@ -143,6 +144,14 @@ export function EditorLayout(props: EditorLayoutProps) {
   } = useContextMenus();
 
   const { playMidiNote, midiInstrument } = useAudioEngine();
+  const [marketplaceModal, setMarketplaceModal] = React.useState<{
+    open: boolean;
+    trackIndex?: number;
+    anchorRect?: DOMRect | null;
+    /** When set, picking an effect REPLACES the slot at this index instead
+     *  of appending a new one. */
+    replaceIndex?: number;
+  }>({ open: false });
   const [drawerHeight, setDrawerHeight] = React.useState(376);
   const [drawerActiveTab, setDrawerActiveTab] = React.useState<'mixer' | 'piano-roll'>('mixer');
   const [drawerTabOrder, setDrawerTabOrder] = React.useState<Array<'mixer' | 'piano-roll'>>(['mixer', 'piano-roll']);
@@ -352,15 +361,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                 });
               },
               onAddEffect: (e) => {
-                const button = e.currentTarget as HTMLElement;
-                const rect = button.getBoundingClientRect();
-                setEffectSelectorMenu({
-                  isOpen: true,
-                  x: rect.left,
-                  y: rect.bottom + 4,
-                  trackIndex,
-                  triggerElement: button,
-                });
+                const rect = (e?.currentTarget as HTMLElement | undefined)?.getBoundingClientRect();
+                setMarketplaceModal({ open: true, trackIndex, anchorRect: rect ?? null });
               },
               onContextMenu: (_e) => {
               },
@@ -372,6 +374,9 @@ export function EditorLayout(props: EditorLayoutProps) {
                   type: 'UPDATE_TRACK_EFFECT',
                   payload: { trackIndex, effectIndex: index, updates: { name: effectName } }
                 });
+              },
+              onChangeEffect: (index, anchor) => {
+                setMarketplaceModal({ open: true, trackIndex, anchorRect: anchor, replaceIndex: index });
               },
             }}
             masterSection={{
@@ -404,15 +409,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                 });
               },
               onAddEffect: (e) => {
-                const button = e.currentTarget as HTMLElement;
-                const rect = button.getBoundingClientRect();
-                setEffectSelectorMenu({
-                  isOpen: true,
-                  x: rect.left,
-                  y: rect.bottom + 4,
-                  trackIndex: undefined,
-                  triggerElement: button,
-                });
+                const rect = (e?.currentTarget as HTMLElement | undefined)?.getBoundingClientRect();
+                setMarketplaceModal({ open: true, trackIndex: undefined, anchorRect: rect ?? null });
               },
               onContextMenu: (_e) => {
               },
@@ -424,6 +422,9 @@ export function EditorLayout(props: EditorLayoutProps) {
                   type: 'UPDATE_MASTER_EFFECT',
                   payload: { effectIndex: index, updates: { name: effectName } }
                 });
+              },
+              onChangeEffect: (index, anchor) => {
+                setMarketplaceModal({ open: true, trackIndex: undefined, anchorRect: anchor, replaceIndex: index });
               },
             }}
             onClose={() => setEffectsPanel(null)}
@@ -1690,6 +1691,57 @@ export function EditorLayout(props: EditorLayoutProps) {
         </div>
       );
     })()}
+
+    <MarketplaceModal
+      open={marketplaceModal.open}
+      anchorRect={marketplaceModal.anchorRect}
+      mode={marketplaceModal.replaceIndex !== undefined ? 'replace' : 'add'}
+      currentEffect={(() => {
+        if (marketplaceModal.replaceIndex === undefined) return null;
+        const list = marketplaceModal.trackIndex === undefined
+          ? state.masterEffects
+          : state.tracks[marketplaceModal.trackIndex!]?.effects ?? [];
+        const e = list[marketplaceModal.replaceIndex];
+        return e ? { id: e.id, name: e.name } : null;
+      })()}
+      destinationName={
+        marketplaceModal.trackIndex === undefined
+          ? 'Master track'
+          : state.tracks[marketplaceModal.trackIndex!]?.name ?? 'Track'
+      }
+      onClose={() => setMarketplaceModal({ open: false })}
+      onAddEffect={(effect: MarketplaceEffect) => {
+        const newEffect = { id: effect.id, name: effect.name, enabled: true };
+        const { trackIndex, replaceIndex } = marketplaceModal;
+        if (replaceIndex !== undefined) {
+          // Replace flow — update the existing slot in place.
+          if (trackIndex === undefined) {
+            dispatch({
+              type: 'UPDATE_MASTER_EFFECT',
+              payload: { effectIndex: replaceIndex, updates: { name: effect.name, id: effect.id } },
+            });
+          } else {
+            dispatch({
+              type: 'UPDATE_TRACK_EFFECT',
+              payload: { trackIndex, effectIndex: replaceIndex, updates: { name: effect.name, id: effect.id } },
+            });
+          }
+        } else if (trackIndex === undefined) {
+          dispatch({ type: 'ADD_MASTER_EFFECT', payload: newEffect });
+        } else {
+          dispatch({
+            type: 'ADD_TRACK_EFFECT',
+            payload: { trackIndex, effect: newEffect },
+          });
+        }
+        setMarketplaceModal({ open: false });
+      }}
+      onPurchase={(effect) => {
+        // Prototype: log only — wire to MuseHub purchase flow later.
+        // eslint-disable-next-line no-console
+        console.log('[MuseHub] purchase requested for', effect.id);
+      }}
+    />
     </div>
   );
 }

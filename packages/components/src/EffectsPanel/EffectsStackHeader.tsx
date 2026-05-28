@@ -1,6 +1,7 @@
 import React from 'react';
 import { ToggleButton } from '../ToggleButton';
-import { GhostButton } from '../GhostButton';
+import { Button } from '../Button';
+import { Icon } from '../Icon';
 import { useTheme } from '../ThemeProvider';
 import './EffectsStackHeader.css';
 
@@ -26,6 +27,19 @@ export interface EffectsStackHeaderProps {
   onContextMenu?: (event: React.MouseEvent) => void;
 
   /**
+   * Called when the header's "Effects" / add button is clicked. When provided
+   * the header renders an inline button on the right edge (the standalone
+   * "Add effect" button at the bottom of the section is removed).
+   */
+  onAddEffect?: (event: React.MouseEvent) => void;
+
+  /**
+   * Label for the inline add button.
+   * @default 'Effects'
+   */
+  addButtonLabel?: string;
+
+  /**
    * Whether this is a master track header
    */
   isMaster?: boolean;
@@ -44,7 +58,9 @@ export const EffectsStackHeader: React.FC<EffectsStackHeaderProps> = ({
   name,
   allEnabled,
   onToggleAll,
-  onContextMenu,
+  onContextMenu: _onContextMenu,
+  onAddEffect,
+  addButtonLabel = 'Effects',
   isMaster = false,
   className = '',
 }) => {
@@ -83,6 +99,21 @@ export const EffectsStackHeader: React.FC<EffectsStackHeaderProps> = ({
           {name}
         </div>
       </div>
+
+      {/* Inline add-effect button on the right, mirroring "Add new" in
+          TrackControlSidePanel's header. */}
+      {onAddEffect && (
+        <Button
+          variant="secondary"
+          size="default"
+          onClick={(e) => e && onAddEffect(e)}
+          showIcon={true}
+          icon={<Icon name="plus" size={14} />}
+          className="effects-stack-header__add-button"
+        >
+          {addButtonLabel}
+        </Button>
+      )}
     </div>
   );
 };

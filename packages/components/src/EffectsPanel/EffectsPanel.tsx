@@ -1,6 +1,5 @@
 import React from 'react';
 import { SidePanel } from '../SidePanel';
-import { Button } from '../Button';
 import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { EffectsPanelHeader } from './EffectsPanelHeader';
@@ -50,6 +49,8 @@ export interface EffectsTrackSectionProps {
   onRemoveEffect?: (effectIndex: number) => void;
   /** Called when effect is replaced with a different effect */
   onReplaceEffect?: (effectIndex: number, effectName: string) => void;
+  /** Called when "Change effect…" is picked from a slot's context menu */
+  onChangeEffect?: (effectIndex: number, anchor: DOMRect | null) => void;
 }
 
 export interface EffectsMasterSectionProps {
@@ -73,6 +74,8 @@ export interface EffectsMasterSectionProps {
   onRemoveEffect?: (effectIndex: number) => void;
   /** Called when effect is replaced with a different effect */
   onReplaceEffect?: (effectIndex: number, effectName: string) => void;
+  /** Called when "Change effect…" is picked from a slot's context menu */
+  onChangeEffect?: (effectIndex: number, anchor: DOMRect | null) => void;
 }
 
 export interface EffectsPanelProps {
@@ -145,6 +148,7 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
   onContextMenu,
   onRemoveEffect,
   onReplaceEffect,
+  onChangeEffect,
 }) => {
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
 
@@ -172,6 +176,8 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
         allEnabled={allEnabled}
         onToggleAll={onToggleAll}
         onContextMenu={onContextMenu}
+        onAddEffect={onAddEffect}
+        addButtonLabel="Effects"
       />
 
       {/* Effect stack - only show if there are effects */}
@@ -190,6 +196,7 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
               onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
               onRemoveEffect={() => onRemoveEffect?.(index)}
               onReplaceEffect={(effectName) => onReplaceEffect?.(index, effectName)}
+              onChangeEffect={(anchor) => onChangeEffect?.(index, anchor)}
               onDragStart={handleDragStart(index)}
               onDragOver={handleDragOver(index)}
               onDragEnd={handleDragEnd}
@@ -203,18 +210,6 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
           ))}
         </div>
       )}
-
-      {/* Add effect button */}
-      <div className="effects-panel__add-button-container">
-        <Button
-          variant="secondary"
-          size="default"
-          onClick={(e) => e && onAddEffect?.(e)}
-          className="effects-panel__add-button"
-        >
-          Add effect
-        </Button>
-      </div>
     </div>
   );
 };
@@ -233,8 +228,8 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
   onContextMenu,
   onRemoveEffect,
   onReplaceEffect,
+  onChangeEffect,
 }) => {
-  const { theme } = useTheme();
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
 
   const handleDragStart = (index: number) => (e: React.DragEvent) => {
@@ -261,6 +256,8 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
         allEnabled={allEnabled}
         onToggleAll={onToggleAll}
         onContextMenu={onContextMenu}
+        onAddEffect={onAddEffect}
+        addButtonLabel="Effects"
         isMaster
       />
 
@@ -280,6 +277,7 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
               onSelectEffect={onEffectChange ? () => onEffectChange?.(index, '') : undefined}
               onRemoveEffect={() => onRemoveEffect?.(index)}
               onReplaceEffect={(effectName) => onReplaceEffect?.(index, effectName)}
+              onChangeEffect={(anchor) => onChangeEffect?.(index, anchor)}
               onDragStart={handleDragStart(index)}
               onDragOver={handleDragOver(index)}
               onDragEnd={handleDragEnd}
@@ -293,18 +291,6 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
           ))}
         </div>
       )}
-
-      {/* Add master effect button */}
-      <div className="effects-panel__add-button-container">
-        <Button
-          variant="secondary"
-          size="default"
-          onClick={(e) => e && onAddEffect?.(e)}
-          className="effects-panel__add-button"
-        >
-          Add master effect
-        </Button>
-      </div>
     </div>
   );
 };

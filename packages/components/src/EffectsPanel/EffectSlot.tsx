@@ -44,6 +44,13 @@ export interface EffectSlotProps {
   onReplaceEffect?: (effectName: string) => void;
 
   /**
+   * Called when "Change effect…" is picked from the slot context menu — the
+   * host opens the marketplace modal so the same browse/replace flow is used.
+   * Receives the slot's bounding rect so the modal can anchor next to it.
+   */
+  onChangeEffect?: (anchor: DOMRect | null) => void;
+
+  /**
    * Whether this slot is being dragged
    */
   isDragging?: boolean;
@@ -99,6 +106,7 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
   enabled = true,
   onToggle,
   onSelectEffect,
+  onChangeEffect,
   onShowSettings,
   onRemoveEffect,
   onReplaceEffect,
@@ -325,7 +333,8 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
         </button>
       </div>
 
-      {/* Context menu */}
+      {/* Context menu — kept minimal so that picking a replacement effect
+          flows through the marketplace modal rather than an inline submenu. */}
       <ContextMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -333,31 +342,24 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
         y={menuPosition.y}
       >
         <ContextMenuItem
+          label="Change effect…"
+          onClick={() => {
+            // Anchor the marketplace modal next to this slot so the user
+            // stays oriented to the row they're replacing.
+            const slotEl = (slotRef.current as HTMLElement | null);
+            const anchor = slotEl ? slotEl.getBoundingClientRect() : null;
+            onChangeEffect?.(anchor);
+            setMenuOpen(false);
+          }}
+        />
+        <ContextMenuItem isDivider />
+        <ContextMenuItem
           label="Remove effect"
           onClick={() => {
             onRemoveEffect?.();
             setMenuOpen(false);
           }}
         />
-        <ContextMenuItem isDivider />
-        {Object.entries(EFFECT_REGISTRY).map(([categoryName, effectDefs]) => (
-          <ContextMenuItem
-            key={categoryName}
-            label={categoryName}
-          >
-            {effectDefs.map((effectDef) => (
-              <ContextMenuItem
-                key={effectDef.id}
-                label={effectDef.name}
-                checked={effectDef.name === effectName}
-                onClick={() => {
-                  onReplaceEffect?.(effectDef.name);
-                  setMenuOpen(false);
-                }}
-              />
-            ))}
-          </ContextMenuItem>
-        ))}
       </ContextMenu>
     </div>
   );
