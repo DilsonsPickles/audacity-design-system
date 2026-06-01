@@ -44,6 +44,20 @@ export interface EffectSlotProps {
   onReplaceEffect?: (effectName: string) => void;
 
   /**
+   * Optional list of effects the user has purchased from MuseHub this
+   * session — grouped by vendor and rendered after the built-in categories
+   * so power users can swap to a paid plugin without going through the
+   * marketplace modal.
+   */
+  purchasedEffects?: Array<{ id: string; name: string; vendor: string }>;
+
+  /**
+   * Plugin IDs disabled in the Plugin Manager — those effects are omitted
+   * from the caret menu so the slot can't be set to a disabled plugin.
+   */
+  disabledPluginIds?: Set<string>;
+
+  /**
    * Called when "Change effect…" is picked from the slot context menu — the
    * host opens the marketplace modal so the same browse/replace flow is used.
    * Receives the slot's bounding rect so the modal can anchor next to it.
@@ -110,6 +124,8 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
   onShowSettings,
   onRemoveEffect,
   onReplaceEffect,
+  purchasedEffects,
+  disabledPluginIds,
   isDragging = false,
   onDragStart,
   onDragOver,
@@ -333,16 +349,68 @@ export const EffectSlot: React.FC<EffectSlotProps> = ({
         </button>
       </div>
 
-      {/* Context menu — kept minimal so that picking a replacement effect
-          flows through the marketplace modal rather than an inline submenu. */}
+      {/* Context menu — category submenus pick from installed effects in one
+          click; "Get effects…" hands off to the MuseHub marketplace for
+          anything else; "Remove effect" tears the slot down. */}
       <ContextMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         x={menuPosition.x}
         y={menuPosition.y}
       >
+        {Object.entries(EFFECT_REGISTRY).map(([category, effects]) => {
+          const enabled = effects.filter((e) => !disabledPluginIds || !disabledPluginIds.has(e.id));
+          if (enabled.length === 0) return null;
+          return (
+            <ContextMenuItem key={category} label={category} hasSubmenu>
+              {enabled.map((effect) => (
+                <ContextMenuItem
+                  key={effect.id}
+                  label={effect.name}
+                  onClick={() => {
+                    onReplaceEffect?.(effect.name);
+                    setMenuOpen(false);
+                  }}
+                />
+              ))}
+            </ContextMenuItem>
+          );
+        })}
+        {/* MuseHub purchases — grouped by vendor and rendered after the
+            built-in categories so the plugin manager is the same surface
+            wherever the user got the effect from. */}
+        {(() => {
+          if (!purchasedEffects || purchasedEffects.length === 0) return null;
+          const visible = purchasedEffects.filter(
+            (e) => !disabledPluginIds || !disabledPluginIds.has(e.id),
+          );
+          if (visible.length === 0) return null;
+          const byVendor = new Map<string, typeof visible>();
+          for (const e of visible) {
+            const list = byVendor.get(e.vendor) ?? [];
+            list.push(e);
+            byVendor.set(e.vendor, list);
+          }
+          return Array.from(byVendor.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([vendor, effects]) => (
+              <ContextMenuItem key={vendor} label={vendor} hasSubmenu>
+                {effects.map((effect) => (
+                  <ContextMenuItem
+                    key={effect.id}
+                    label={effect.name}
+                    onClick={() => {
+                      onReplaceEffect?.(effect.name);
+                      setMenuOpen(false);
+                    }}
+                  />
+                ))}
+              </ContextMenuItem>
+            ));
+        })()}
+        <ContextMenuItem isDivider />
         <ContextMenuItem
-          label="Change effect…"
+          label="Get effects…"
           onClick={() => {
             // Anchor the marketplace modal next to this slot so the user
             // stays oriented to the row they're replacing.

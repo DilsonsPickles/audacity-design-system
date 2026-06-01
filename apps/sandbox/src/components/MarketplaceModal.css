@@ -1,41 +1,42 @@
-/* Marketplace flyout — anchored to the "Effects" trigger, lighter scrim */
+/* Marketplace modal — centred, draggable and resizable */
 
 .mp-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1100;
-  /* Almost-transparent click-catcher; the flyout casts its own shadow so the
+  /* Almost-transparent click-catcher; the modal casts its own shadow so the
      surrounding UI doesn't need to be dimmed. */
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.18);
 }
 
 @keyframes mp-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 .mp-modal {
   position: fixed;
-  width: 860px;
-  max-width: calc(100vw - 32px);
+  /* Initial size — user can drag the bottom-right corner to resize. */
+  width: 920px;
   height: 640px;
+  min-width: 560px;
+  min-height: 420px;
+  max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
   background: #1A1F26;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  /* overflow is set per-element below; the modal itself needs to allow the
-     pointer arrow to escape its rounded rect. */
-  overflow: visible;
+  overflow: hidden;
   color: #E5E7EB;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
   animation: mp-fade-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Native resize handle in the bottom-right corner. */
+  resize: both;
 }
 
-/* Inner content needs to clip to the rounded modal corners since the modal
-   itself is overflow:visible (for the arrow to escape). */
 .mp-modal > .mp-header,
 .mp-modal > .mp-body,
 .mp-modal > .mp-footer {
@@ -43,48 +44,28 @@
   z-index: 1;
 }
 
-.mp-modal > .mp-header { border-top-left-radius: 12px; border-top-right-radius: 12px; }
-.mp-modal > .mp-footer { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
-
-/* ---- Popover arrow -------------------------------------------------- */
-
-.mp-arrow {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: #1A1F26;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transform: rotate(45deg);
-  z-index: 0;
+/* Header doubles as the drag handle — give the user a hint. */
+.mp-modal > .mp-header[data-mp-drag-handle] {
+  cursor: grab;
 }
 
-.mp-arrow--right {
-  /* Popover sits to the right of the trigger; arrow points left, off the
-     popover's left edge. */
-  left: -6px;
-  margin-top: -6px;
-  border-top: 0;
-  border-right: 0;
-}
-
-.mp-arrow--left {
-  /* Popover sits to the left of the trigger; arrow points right. */
-  right: -6px;
-  margin-top: -6px;
-  border-bottom: 0;
-  border-left: 0;
+.mp-modal > .mp-header[data-mp-drag-handle]:active {
+  cursor: grabbing;
 }
 
 /* ---- Header ---------------------------------------------------------- */
 
 .mp-header {
-  display: grid;
-  grid-template-columns: minmax(220px, 280px) 1fr 32px;
+  display: flex;
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
+
+.mp-header__title { flex: 0 0 auto; min-width: 200px; }
+.mp-header__search { flex: 1 1 auto; min-width: 0; }
+.mp-header__close { flex: 0 0 32px; }
 
 /* Tile / list toggle — lives next to the marketplace section title. */
 .mp-view-toggle {
@@ -95,7 +76,113 @@
   border-radius: 6px;
   padding: 2px;
   gap: 2px;
+}
+
+/* Section-title link — "Open in Plugin Manager" on the Owned page. */
+.mp-section__link {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  color: #B98CFF;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.mp-section__link:hover {
+  background: rgba(185, 140, 255, 0.12);
+  color: #D5B3FF;
+}
+
+/* Management row actions — Update + Uninstall buttons that replace the
+   trailing tag on the Owned page. */
+.mp-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
+}
+
+.mp-row__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.mp-row__action:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.mp-row__action:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.mp-row__action--update {
+  color: #93B4FF;
+  border-color: rgba(99, 132, 247, 0.4);
+}
+
+.mp-row__action--update:hover:not(:disabled) {
+  background: rgba(99, 132, 247, 0.15);
+  border-color: rgba(99, 132, 247, 0.65);
+  color: #C0D2FF;
+}
+
+.mp-row__action--danger {
+  color: #FF8E8E;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.mp-row__action--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.7);
+  color: #FFB0B0;
+}
+
+/* Installing state — shown while the simulated local install runs. */
+.mp-row__installing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
+}
+
+.mp-row__installing-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #93B4FF;
+  animation: mp-row-spin 700ms linear infinite;
+}
+
+@keyframes mp-row-spin {
+  to { transform: rotate(360deg); }
 }
 
 .mp-view-btn {
@@ -170,6 +257,51 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
+.mp-header__search-clear {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  padding: 0;
+  margin-left: 6px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.mp-header__search-clear:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* Override the generic .mp-header__search svg colour so the X stays bright. */
+.mp-header__search-clear svg {
+  color: inherit;
+}
+
+.mp-header__wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-header__wallet svg {
+  color: rgba(255, 255, 255, 0.55);
+}
+
 .mp-header__close {
   width: 32px;
   height: 32px;
@@ -236,6 +368,59 @@
 .mp-source-tab--active {
   background: rgba(99, 132, 247, 0.25);
   color: #fff;
+}
+
+.mp-sidebar__segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.mp-sidebar__segment-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.mp-sidebar__segment-tab:hover { color: #fff; }
+
+.mp-sidebar__segment-tab--active {
+  background: rgba(99, 132, 247, 0.22);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(99, 132, 247, 0.4);
+}
+
+.mp-sidebar__segment-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 0 4px;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-sidebar__segment-tab--active .mp-sidebar__segment-count {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .mp-sidebar__section-title {
@@ -344,8 +529,9 @@
 
 .mp-grid {
   display: grid;
-  /* Fixed track width keeps tiles a consistent size no matter how many items
-     are in view — switching manufacturers no longer rescales the grid. */
+  /* Fixed tile width so resizing the modal snaps from N → N-1 columns
+     instead of stretching the artwork. 196px is sized so the default
+     modal width comfortably holds three columns. */
   grid-template-columns: repeat(auto-fill, 196px);
   justify-content: start;
   gap: 14px;
@@ -418,9 +604,61 @@
   color: #fff;
 }
 
+/* Price chip rendered as a button — clickable shortcut to purchase. */
+.mp-card__tag--button {
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.mp-card__tag--button:hover {
+  background: #677CE4;
+  color: #fff;
+}
+
+.mp-card__tag--button:focus-visible {
+  outline: 2px solid rgba(146, 180, 255, 0.7);
+  outline-offset: 2px;
+}
+
+.mp-row__tag--button {
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.mp-row__tag--button:hover {
+  background: #677CE4;
+  color: #fff;
+}
+
+.mp-row__tag--button:focus-visible {
+  outline: 2px solid rgba(146, 180, 255, 0.7);
+  outline-offset: 2px;
+}
+
 .mp-card__tag--installed {
   background: rgba(34, 197, 94, 0.85);
   color: #052E16;
+}
+
+/* Install (own but not installed locally) — emphasised so it's
+   distinguishable from a paid Buy chip at a glance. */
+.mp-card__tag--install {
+  background: #B98CFF;
+  color: #1B0F2E;
+}
+
+.mp-card__tag--installing {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .mp-card__star {
@@ -494,6 +732,20 @@
   outline: none;
 }
 
+/* Management rows give the trailing column to the action cluster and hide
+   the per-row info button (details are reached by clicking the row). */
+.mp-row--manage {
+  grid-template-columns: 24px 1fr 200px auto;
+}
+
+.mp-row--manage .mp-row__info { display: none; }
+
+/* Drop the per-row divider on the final row of each list so it doesn't
+   stack against the section divider below. */
+.mp-list .mp-row:last-child {
+  border-bottom: 0;
+}
+
 .mp-row:hover {
   background: rgba(255, 255, 255, 0.03);
 }
@@ -560,6 +812,21 @@
 .mp-row__tag--price {
   background: rgba(99, 132, 247, 0.18);
   color: #BCC8FF;
+}
+
+.mp-row__tag--install {
+  background: rgba(185, 140, 255, 0.18);
+  color: #D5B3FF;
+}
+
+.mp-row__tag--install.mp-row__tag--button:hover {
+  background: #B98CFF;
+  color: #1B0F2E;
+}
+
+.mp-row__tag--installing {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .mp-row__tag--current {
@@ -666,14 +933,18 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* ---- Detail pane (slides in from right) ----------------------------- */
+/* ---- Detail pane (MuseHub-style product page) ----------------------- */
 
 .mp-detail {
   position: absolute;
   inset: 0;
   background: #1A1F26;
-  display: grid;
-  grid-template-rows: 44px 1fr;
+  /* Match the modal's rounded corners so the detail pane doesn't poke past
+     them — the modal itself is overflow:visible (for the popover arrow). */
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   z-index: 2;
   animation: mp-detail-in 180ms ease-out;
 }
@@ -683,67 +954,404 @@
   to   { transform: translateX(0);    opacity: 1; }
 }
 
-.mp-detail__close {
-  align-self: flex-start;
-  margin: 12px 16px;
+.mp-detail__back {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 4;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  background: transparent;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.25);
   border: 0;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.7);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.92);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background-color 160ms ease;
 }
 
-.mp-detail__close:hover {
-  background: rgba(255, 255, 255, 0.08);
+.mp-detail__back:hover {
+  background: rgba(0, 0, 0, 0.45);
   color: #fff;
 }
 
-.mp-detail__art {
-  display: none;
-}
-
-.mp-detail__body {
-  padding: 0 28px 28px;
+.mp-detail__scroll {
+  flex: 1;
+  overflow: auto;
+  /* Top padding leaves room for the back-button pill above the hero. All
+     other edges sit on a consistent 24px gutter. */
+  padding: 56px 24px 24px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  max-width: 720px;
-  width: 100%;
-  margin: 0 auto;
+  gap: 28px;
 }
 
-.mp-detail__heading h3 {
-  margin: 0;
-  font-size: 24px;
+/* ---- Hero banner ---------------------------------------------------- */
+
+.mp-detail__hero {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 160px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  transition: min-height 220ms ease;
+}
+
+.mp-detail--scrolled .mp-detail__hero {
+  min-height: 64px;
+}
+
+.mp-detail__hero-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent 18px,
+      rgba(0, 0, 0, 0.04) 18px,
+      rgba(0, 0, 0, 0.04) 19px
+    ),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
+}
+
+.mp-detail__hero-content {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 20px;
+  transition: padding 220ms ease;
+}
+
+.mp-detail--scrolled .mp-detail__hero-content {
+  padding: 12px 16px;
+}
+
+.mp-detail__hero-thumb {
+  width: 128px;
+  height: 128px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 28px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: width 220ms ease, height 220ms ease, border-radius 220ms ease, font-size 220ms ease;
 }
 
-.mp-detail__heading p {
-  margin: 4px 0 0;
-  color: rgba(255, 255, 255, 0.6);
+.mp-detail--scrolled .mp-detail__hero-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
   font-size: 14px;
 }
 
-.mp-detail__blurb {
+.mp-detail__hero-meta {
+  min-width: 0;
+}
+
+.mp-detail__hero-name {
   margin: 0;
-  font-size: 15px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.mp-detail__hero-vendor {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.mp-detail__hero-blurb {
+  margin: 8px 0 0;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.85);
+  line-height: 1.45;
+  max-width: 540px;
+  overflow: hidden;
+  max-height: 80px;
+  opacity: 1;
+  transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease;
+}
+
+.mp-detail--scrolled .mp-detail__hero-blurb {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mp-detail__hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-detail__tip,
+.mp-detail__buy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.mp-detail__tip {
+  background: #22C55E;
+  color: #052E16;
+}
+
+.mp-detail__tip:hover { background: #34D779; }
+
+.mp-detail__buy {
+  background: #B98CFF;
+  color: #1B0F2E;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-detail__buy:hover { background: #C9A2FF; }
+
+/* ---- Generic section ------------------------------------------------ */
+
+.mp-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Sections share a small inner inset so their headings line up with the
+     hero content rather than hugging the modal edge. */
+  padding: 0 4px;
+}
+
+.mp-detail__section h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.mp-detail__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mp-detail__carousel-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mp-detail__carousel-controls button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mp-detail__carousel-controls button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.mp-detail__carousel-controls button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.mp-detail__previews {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.mp-detail__preview {
+  flex: 0 0 auto;
+  width: 220px;
+  height: 130px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.mp-detail__changelog-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mp-detail__changelog {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.mp-detail__changelog .mp-detail__version-chip {
+  flex: 0 0 auto;
+}
+
+.mp-detail__changelog-note {
   line-height: 1.5;
 }
 
-.mp-detail__bullets {
+.mp-detail__version-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-detail__description {
   margin: 0;
-  padding-left: 18px;
-  color: rgba(255, 255, 255, 0.7);
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mp-detail__description p { margin: 0; }
+
+.mp-detail__description a {
+  color: #B98CFF;
+  text-decoration: none;
+}
+
+.mp-detail__description a:hover { text-decoration: underline; }
+
+.mp-detail__features {
+  margin: 8px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px 24px;
+}
+
+.mp-detail__features li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.mp-detail__features li svg {
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.mp-detail__features strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.mp-detail__features span {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.45;
+}
+
+.mp-detail__sysreq {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 24px;
+  max-width: 760px;
+}
+
+.mp-detail__sysreq > div {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.mp-detail__sysreq dt {
+  margin: 0;
+  min-width: 90px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mp-detail__sysreq dd {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.mp-detail__musehub-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 9999px;
+  border: 1px solid rgba(185, 140, 255, 0.35);
+  background: rgba(185, 140, 255, 0.08);
+  color: #D5B3FF;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.mp-detail__musehub-link:hover {
+  background: rgba(185, 140, 255, 0.16);
+  border-color: rgba(185, 140, 255, 0.55);
+  color: #E4CDFF;
 }
 
 .mp-detail__cta-row {
@@ -779,4 +1387,138 @@
 
 .mp-detail__cta--ghost:hover {
   background: rgba(255, 255, 255, 0.06);
+}
+
+.mp-detail__cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- Purchase flow -------------------------------------------------- */
+
+.mp-purchase {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+/* Signed-out: skip the framed wallet card — just inline Get/Try so the
+   page doesn't pretend to show a balance the user can't see yet. */
+.mp-purchase--unauth {
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.mp-purchase__balance {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.mp-purchase__balance strong {
+  color: #fff;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-purchase__hint {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mp-purchase__hint a {
+  color: #93B4FF;
+}
+
+.mp-purchase--confirm {
+  background: rgba(103, 124, 228, 0.08);
+  border-color: rgba(103, 124, 228, 0.35);
+}
+
+.mp-purchase__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.mp-purchase__summary {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-purchase__summary > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.mp-purchase__summary dt,
+.mp-purchase__summary dd {
+  margin: 0;
+  font-size: 14px;
+  color: #fff;
+}
+
+.mp-purchase__row--muted dt,
+.mp-purchase__row--muted dd {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+}
+
+.mp-purchase__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 2px 0;
+}
+
+.mp-purchase--success {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.4);
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.mp-purchase__success-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.mp-purchase__success-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.mp-purchase__success-text strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.mp-purchase__success-text span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-purchase--success .mp-detail__cta-row {
+  margin-top: 0;
+  margin-left: auto;
 }

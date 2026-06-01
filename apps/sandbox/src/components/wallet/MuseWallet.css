@@ -1,0 +1,216 @@
+/* MuseHub wallet — chrome chip + popover. Visual language borrowed from the
+   web client: deep forest-green chip, near-black popover with the same green
+   undertone, gradient-stroked top-up button. */
+
+/* ---- Sign-in button (signed-out state) ----------------------------- */
+
+.muse-wallet__signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.muse-wallet__signin:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.muse-wallet__signin:focus-visible {
+  outline: 2px solid rgba(146, 180, 255, 0.7);
+  outline-offset: 2px;
+}
+
+.muse-wallet__signin--busy {
+  cursor: progress;
+  opacity: 0.8;
+}
+
+.muse-wallet__spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: muse-wallet-spin 700ms linear infinite;
+}
+
+@keyframes muse-wallet-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Chip --------------------------------------------------------- */
+
+.muse-wallet__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 9999px;
+  border: 0;
+  background: #2D6A4F;
+  color: #FFFFFF;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.muse-wallet__chip:hover { background: #34795A; }
+.muse-wallet__chip:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+.muse-wallet__chip--open { background: #34795A; }
+
+.muse-wallet__chip svg { color: rgba(255, 255, 255, 0.95); }
+.muse-wallet__chip-balance { letter-spacing: 0.01em; }
+
+/* ---- Popover ------------------------------------------------------ */
+
+@keyframes muse-wallet-in {
+  from { transform: translateY(-4px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.muse-wallet__popover {
+  /* Rendered via portal at body level; top/left set inline from JS. */
+  position: fixed;
+  background: #1A2B22;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  color: #FFFFFF;
+  padding: 20px 22px 22px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 1200;
+  animation: muse-wallet-in 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.muse-wallet__notch {
+  position: absolute;
+  top: -6px;
+  /* `left` is set inline by the component so the notch always lines up
+     with the centre of the chip, even when the popover is clamped. */
+  margin-left: -6px;
+  transform: rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: #1A2B22;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ---- Brand row ---------------------------------------------------- */
+
+.muse-wallet__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.muse-wallet__brandmark {
+  display: inline-flex;
+  align-items: center;
+}
+
+.muse-wallet__wordmark {
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  /* Mirror the slightly playful weight in the screenshot. */
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.muse-wallet__help {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.muse-wallet__help:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+
+/* ---- Balance block ------------------------------------------------ */
+
+.muse-wallet__balance-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.muse-wallet__balance-label {
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.muse-wallet__balance-value {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #FFFFFF;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Top Up button ------------------------------------------------- */
+
+.muse-wallet__topup {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 9999px;
+  text-decoration: none;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  background: transparent;
+  /* Two-layer trick: a gradient border via background-clip, with the inner
+     fill matching the popover so only the ring shows. */
+  background-image:
+    linear-gradient(#1A2B22, #1A2B22),
+    linear-gradient(90deg, #7CFFB2 0%, #56C8F6 50%, #B98CFF 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background-image 120ms ease, transform 120ms ease;
+}
+
+.muse-wallet__topup:hover {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04)),
+    linear-gradient(90deg, #7CFFB2 0%, #56C8F6 50%, #B98CFF 100%);
+}
+
+.muse-wallet__topup:active { transform: translateY(1px); }

@@ -51,6 +51,12 @@ export interface EffectsTrackSectionProps {
   onReplaceEffect?: (effectIndex: number, effectName: string) => void;
   /** Called when "Change effect…" is picked from a slot's context menu */
   onChangeEffect?: (effectIndex: number, anchor: DOMRect | null) => void;
+  /** Effects the user has purchased from MuseHub this session — surfaced in
+   *  each slot's caret context menu alongside the built-in categories. */
+  purchasedEffects?: Array<{ id: string; name: string; vendor: string }>;
+  /** Plugin IDs the user has disabled in the Plugin Manager — filtered out
+   *  of each slot's caret menu. */
+  disabledPluginIds?: Set<string>;
 }
 
 export interface EffectsMasterSectionProps {
@@ -76,6 +82,12 @@ export interface EffectsMasterSectionProps {
   onReplaceEffect?: (effectIndex: number, effectName: string) => void;
   /** Called when "Change effect…" is picked from a slot's context menu */
   onChangeEffect?: (effectIndex: number, anchor: DOMRect | null) => void;
+  /** Effects the user has purchased from MuseHub this session — surfaced in
+   *  each slot's caret context menu alongside the built-in categories. */
+  purchasedEffects?: Array<{ id: string; name: string; vendor: string }>;
+  /** Plugin IDs the user has disabled in the Plugin Manager — filtered out
+   *  of each slot's caret menu. */
+  disabledPluginIds?: Set<string>;
 }
 
 export interface EffectsPanelProps {
@@ -149,6 +161,8 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
   onRemoveEffect,
   onReplaceEffect,
   onChangeEffect,
+  purchasedEffects,
+  disabledPluginIds,
 }) => {
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
 
@@ -197,6 +211,8 @@ const TrackEffectsSection: React.FC<EffectsTrackSectionProps> = ({
               onRemoveEffect={() => onRemoveEffect?.(index)}
               onReplaceEffect={(effectName) => onReplaceEffect?.(index, effectName)}
               onChangeEffect={(anchor) => onChangeEffect?.(index, anchor)}
+              purchasedEffects={purchasedEffects}
+              disabledPluginIds={disabledPluginIds}
               onDragStart={handleDragStart(index)}
               onDragOver={handleDragOver(index)}
               onDragEnd={handleDragEnd}
@@ -229,6 +245,8 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
   onRemoveEffect,
   onReplaceEffect,
   onChangeEffect,
+  purchasedEffects,
+  disabledPluginIds,
 }) => {
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
 
@@ -278,6 +296,8 @@ const MasterEffectsSection: React.FC<EffectsMasterSectionProps> = ({
               onRemoveEffect={() => onRemoveEffect?.(index)}
               onReplaceEffect={(effectName) => onReplaceEffect?.(index, effectName)}
               onChangeEffect={(anchor) => onChangeEffect?.(index, anchor)}
+              purchasedEffects={purchasedEffects}
+              disabledPluginIds={disabledPluginIds}
               onDragStart={handleDragStart(index)}
               onDragOver={handleDragOver(index)}
               onDragEnd={handleDragEnd}

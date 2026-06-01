@@ -21,6 +21,7 @@ const SpectralRulerDemo = React.lazy(() => import('./pages/SpectralRulerDemo'));
 import { RecordingManager } from './utils/RecordingManager';
 import { createMenuDefinitions } from './data/menuDefinitions';
 import { createInitialPlugins } from './data/plugins';
+import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
 import { useZoomControls } from './hooks/useZoomControls';
 import { usePlaybackControls } from './hooks/usePlaybackControls';
 import { useRecording } from './hooks/useRecording';
@@ -121,6 +122,46 @@ function CanvasDemoContent() {
 
   // Convert EFFECT_REGISTRY to Plugin[] format for PluginManagerDialog
   const [plugins, setPlugins] = React.useState<Plugin[]>(createInitialPlugins);
+  // Append currently-installed MuseHub plugins so they show up in the
+  // Plugin Manager. Uninstalled-but-owned effects are not listed here —
+  // they only live in the Owned view of the marketplace modal until the
+  // user reinstalls them.
+  const installedEffects = useInstalledEffects();
+  const allPlugins = React.useMemo<Plugin[]>(() => {
+    if (installedEffects.length === 0) return plugins;
+    const existing = new Set(plugins.map((p) => p.id));
+    const extras: Plugin[] = installedEffects
+      .filter((e) => !existing.has(e.id))
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        type: 'VST3',
+        category: 'Effect',
+        path: `/Library/Audio/Plug-Ins/VST3/MuseHub/${e.vendor}/${e.name}.vst3`,
+        enabled: true,
+      }));
+    return [...plugins, ...extras];
+  }, [plugins, installedEffects]);
+
+  // Mirror the plugins' enabled/disabled state into the MuseHub context so
+  // the picker context menu and slot caret menus filter disabled plugins out.
+  const { syncDisabledFromList } = useMuseHub();
+  React.useEffect(() => {
+    syncDisabledFromList(allPlugins.map((p) => ({ id: p.id, enabled: p.enabled })));
+  }, [allPlugins, syncDisabledFromList]);
+
+  // Intercept setPlugins from the Plugin Manager so toggling an enabled
+  // state both updates the local Plugin[] and the shared disabled-IDs set.
+  const setPluginsWithSync: React.Dispatch<React.SetStateAction<Plugin[]>> = React.useCallback(
+    (update) => {
+      setPlugins((prev) => {
+        const next = typeof update === 'function' ? (update as (p: Plugin[]) => Plugin[])(prev) : update;
+        syncDisabledFromList(next.map((p) => ({ id: p.id, enabled: p.enabled })));
+        return next;
+      });
+    },
+    [syncDisabledFromList],
+  );
   const [isCloudUploading, setIsCloudUploading] = React.useState(false);
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
@@ -352,6 +393,31 @@ function CanvasDemoContent() {
     };
     loadProjects();
   }, []);
+
+  // Debounced auto-save: whenever the project state changes (tracks, effects,
+  // playhead, etc.), persist it back to IndexedDB so navigating Home → Project
+  // and re-opening the project picks up the latest edits.
+  React.useEffect(() => {
+    if (!currentProjectId) return;
+    const handle = setTimeout(async () => {
+      try {
+        const existing = await getProject(currentProjectId);
+        if (!existing) return;
+        await saveProject({
+          ...existing,
+          data: {
+            ...(existing.data ?? {}),
+            tracks: state.tracks,
+            playheadPosition: state.playheadPosition,
+            audioBuffers: existing.data?.audioBuffers,
+          },
+        });
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [currentProjectId, state.tracks, state.playheadPosition]);
 
   // Live-update the project title in IndexedDB + local state as the user types in the Save to Cloud dialog
   React.useEffect(() => {
@@ -1210,8 +1276,8 @@ function CanvasDemoContent() {
         setMacros={setMacros}
         selectedMacroId={selectedMacroId}
         setSelectedMacroId={setSelectedMacroId}
-        plugins={plugins}
-        setPlugins={setPlugins}
+        plugins={allPlugins}
+        setPlugins={setPluginsWithSync}
         initialExportType={initialExportType}
         loopRegionEnabled={loopRegionEnabled}
         loopRegionStart={loopRegionStart}
@@ -1332,7 +1398,9 @@ function ThemedApp() {
             <SpectralSelectionProvider>
               <DialogProvider>
                 <ContextMenuProvider>
-                  <CanvasDemoContent />
+                  <MuseHubProvider>
+                    <CanvasDemoContent />
+                  </MuseHubProvider>
                 </ContextMenuProvider>
               </DialogProvider>
             </SpectralSelectionProvider>
