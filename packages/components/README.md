@@ -39,11 +39,48 @@ import '@dilsonspickles/components/style.css';
 After this, `<Icon>` (and anything that uses it — `TransportButton`,
 `ToolButton`, etc.) renders without any further setup.
 
-## Usage
+## Two usage modes
 
-Components are designed to work standalone — **no theme provider is
-required**. Wrapping with `<ThemeProvider>` is optional and only needed if
-you want to override the default light-theme tokens.
+### Standalone (marketing site, manual, docs)
+
+Components render with sensible defaults out of the box. No provider
+wrapping needed — perfect for static sites that don't have a runtime
+context to plug into.
+
+```tsx
+import { Toolbar, TransportButton } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
+
+<Toolbar>
+  <TransportButton icon="play" ariaLabel="Play" />
+</Toolbar>
+```
+
+Internally, `useTheme()` falls back to the bundled `lightTheme` and
+`useAccessibilityProfile()` falls back to the default `au4` profile when
+no providers are present.
+
+### App usage with runtime theming + accessibility profiles
+
+For apps that need to switch themes at runtime, persist accessibility
+preferences, or coordinate keyboard navigation across the chrome (like
+the Audacity sandbox), wrap the tree:
+
+```tsx
+import {
+  ThemeProvider,
+  AccessibilityProfileProvider,
+  darkTheme,
+} from '@dilsonspickles/components';
+
+<ThemeProvider theme={darkTheme}>
+  <AccessibilityProfileProvider initialProfileId="au4">
+    <YourApp />
+  </AccessibilityProfileProvider>
+</ThemeProvider>
+```
+
+## Component reference
 
 ### Icon
 
@@ -95,24 +132,6 @@ import { ToolButton } from '@dilsonspickles/components';
 <ToolButton icon="cog" ariaLabel="Settings" />
 <ToolButton icon="trim" label="Trim" />
 ```
-
-## Theme overrides (optional)
-
-```tsx
-import {
-  ThemeProvider,
-  lightTheme,
-  darkTheme,
-  type ThemeTokens,
-} from '@dilsonspickles/components';
-
-<ThemeProvider theme={darkTheme}>
-  <App />
-</ThemeProvider>
-```
-
-Without a `<ThemeProvider>`, components fall back to `lightTheme` baked into
-the package.
 
 ## What's exported
 

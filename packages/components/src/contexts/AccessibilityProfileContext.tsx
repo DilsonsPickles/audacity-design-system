@@ -86,17 +86,26 @@ export function AccessibilityProfileProvider({
   );
 }
 
+// Default profile used when no <AccessibilityProfileProvider> ancestor is
+// present. We resolve the bundled 'au4' profile lazily so consumers that
+// never wrap their tree still get a sensible (no-overrides) baseline.
+const DEFAULT_PROFILE_ID = 'au4';
+const DEFAULT_PROFILE_VALUE: AccessibilityProfileContextValue = {
+  activeProfile: getProfileById(DEFAULT_PROFILE_ID),
+  profiles: ACCESSIBILITY_PROFILES,
+  // No-op setter — without a provider there's nowhere to persist a change.
+  setProfile: () => {},
+};
+
 /**
- * Hook to access accessibility profile context
+ * Hook to access accessibility profile context.
+ *
+ * If no <AccessibilityProfileProvider> ancestor is present (e.g. when this
+ * component library is consumed by a static marketing site), the hook
+ * returns the default `au4` profile with a no-op setter so individual
+ * components still render.
  */
 export function useAccessibilityProfile(): AccessibilityProfileContextValue {
   const context = useContext(AccessibilityProfileContext);
-
-  if (!context) {
-    throw new Error(
-      'useAccessibilityProfile must be used within AccessibilityProfileProvider'
-    );
-  }
-
-  return context;
+  return context ?? DEFAULT_PROFILE_VALUE;
 }
