@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { SelectionToolbar } from '@audacity-ui/components';
+import { SelectionToolbar } from '@dilsonspickles/components';
 import { useState } from 'react';
 
 const meta: Meta<typeof SelectionToolbar> = {

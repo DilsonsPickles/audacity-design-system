@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { Icon } from '@audacity-ui/components';
+import { Icon } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/Icon',

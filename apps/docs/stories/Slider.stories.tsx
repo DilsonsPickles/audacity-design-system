@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { Slider } from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+import { Slider } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 
 const meta = {
   title: 'Components/Slider',

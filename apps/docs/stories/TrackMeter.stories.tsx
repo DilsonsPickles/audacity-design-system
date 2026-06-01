@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { TrackMeter } from '@audacity-ui/components';
+import { TrackMeter } from '@dilsonspickles/components';
 
 const meta: Meta<typeof TrackMeter> = {
   title: 'Audio/TrackMeter',

@@ -11,8 +11,8 @@ import {
   Button,
   toast,
   ToastContainer
-} from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+} from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 
 const meta = {
   title: 'Components/Dialog',

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { PreferencesModal, PreferencesPage } from '@audacity-ui/components';
-import { Button } from '@audacity-ui/components';
+import { PreferencesModal, PreferencesPage } from '@dilsonspickles/components';
+import { Button } from '@dilsonspickles/components';
 
 const meta: Meta<typeof PreferencesModal> = {
   title: 'Components/PreferencesModal',

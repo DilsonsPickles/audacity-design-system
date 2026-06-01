@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { TracksState, TracksAction } from '../contexts/TracksContext';
 import { saveProject, getProject } from '../utils/projectDatabase';
-import { toast } from '@audacity-ui/components';
+import { toast } from '@dilsonspickles/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 
 export interface UseProjectManagementOptions {

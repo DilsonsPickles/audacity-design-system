@@ -4,7 +4,7 @@
 // "Get effects…" hands off to the marketplace for everything else.
 
 import React from 'react';
-import { ContextMenu, ContextMenuItem } from '@audacity-ui/components';
+import { ContextMenu, ContextMenuItem } from '@dilsonspickles/components';
 import { EFFECT_REGISTRY, type EffectDefinition } from '@audacity-ui/core';
 
 export interface PurchasedPickerEffect {

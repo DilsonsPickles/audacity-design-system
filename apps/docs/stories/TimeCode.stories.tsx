@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { TimeCode, TimeCodeFormat } from '@audacity-ui/components';
+import { TimeCode, TimeCodeFormat } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/TimeCode',

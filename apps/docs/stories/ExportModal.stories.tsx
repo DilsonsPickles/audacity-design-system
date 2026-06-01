@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { ExportModal, ExportSettings, ThemeProvider } from '@audacity-ui/components';
-import { Button } from '@audacity-ui/components';
+import { ExportModal, ExportSettings, ThemeProvider } from '@dilsonspickles/components';
+import { Button } from '@dilsonspickles/components';
 
 const meta: Meta<typeof ExportModal> = {
   title: 'Components/ExportModal',

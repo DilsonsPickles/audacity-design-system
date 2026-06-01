@@ -1,4 +1,4 @@
-name: Release @audacity-ui/components
+name: Release @dilsonspickles/components
 
 # Trigger a publish to GitHub Packages whenever a tag of the form
 # `components-v*` is pushed (e.g. `components-v0.1.0`). Using a prefixed
@@ -35,14 +35,14 @@ jobs:
         with:
           version: 10
 
-      # Configure Node to talk to GitHub Packages for the @audacity-ui scope.
-      # NODE_AUTH_TOKEN gets read from secrets.GITHUB_TOKEN below.
+      # Configure Node to talk to GitHub Packages for the @dilsonspickles
+      # scope. NODE_AUTH_TOKEN gets read from secrets.GITHUB_TOKEN below.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@audacity-ui'
+          scope: '@dilsonspickles'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -59,7 +59,7 @@ jobs:
           test -f packages/components/dist/index.css
           ls packages/components/dist/*.ttf
 
-      - name: Publish @audacity-ui/components
+      - name: Publish @dilsonspickles/components
         working-directory: packages/components
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

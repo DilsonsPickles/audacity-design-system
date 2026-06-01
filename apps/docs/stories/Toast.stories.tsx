@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { Toast, ToastContainer, toast } from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+import { Toast, ToastContainer, toast } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 import { useEffect } from 'react';
 
 const meta = {

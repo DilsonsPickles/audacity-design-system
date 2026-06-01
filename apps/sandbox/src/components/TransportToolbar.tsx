@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@dilsonspickles/components';
 import type { SnapGrid } from '@audacity-ui/core';
 
 export type SnapMode =

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
-import { scrollIntoViewIfNeeded } from '@audacity-ui/components';
+import { scrollIntoViewIfNeeded } from '@dilsonspickles/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';

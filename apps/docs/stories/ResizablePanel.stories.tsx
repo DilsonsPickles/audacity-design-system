@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ResizablePanel, TrackControlPanel } from '@audacity-ui/components';
+import { ResizablePanel, TrackControlPanel } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Layout & Behavior/ResizablePanel',

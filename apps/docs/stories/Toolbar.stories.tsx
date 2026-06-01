@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { Toolbar, ToolbarDivider, ToolbarButtonGroup, GhostButton, ToggleButton, Icon, TransportButton } from '@audacity-ui/components';
+import { Toolbar, ToolbarDivider, ToolbarButtonGroup, GhostButton, ToggleButton, Icon, TransportButton } from '@dilsonspickles/components';
 
 const meta: Meta<typeof Toolbar> = {
   title: 'Layout/Toolbar',

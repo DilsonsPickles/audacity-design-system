@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@audacity-ui/audio": "workspace:*",
-    "@audacity-ui/components": "workspace:*",
+    "@dilsonspickles/components": "workspace:*",
     "@audacity-ui/core": "workspace:*",
     "audiobuffer-to-wav": "^1.0.0",
     "dexie": "^4.3.0",

@@ -17,7 +17,7 @@ export default defineConfig({
     '.webp': 'dataurl',
     // Emit font files into dist/ and rewrite the @font-face URL to a hashed
     // filename. Required so consumers can ship the MusescoreIcon font by
-    // just importing `@audacity-ui/components/style.css`.
+    // just importing `@dilsonspickles/components/style.css`.
     '.ttf': 'file',
     '.woff': 'file',
     '.woff2': 'file',

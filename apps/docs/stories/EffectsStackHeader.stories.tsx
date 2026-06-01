@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { EffectsStackHeader, ThemeProvider, darkTheme } from '@audacity-ui/components';
+import { EffectsStackHeader, ThemeProvider, darkTheme } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/EffectsStackHeader',

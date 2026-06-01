@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ApplicationHeader } from '@audacity-ui/components';
+import { ApplicationHeader } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/ApplicationHeader',

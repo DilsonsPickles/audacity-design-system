@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { EffectsPanel, TrackControlPanel } from '@audacity-ui/components';
+import { EffectsPanel, TrackControlPanel } from '@dilsonspickles/components';
 import { useState, useRef } from 'react';
 
 const meta: Meta<typeof EffectsPanel> = {

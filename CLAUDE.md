@@ -130,7 +130,7 @@ afterEach(cleanup);
 - **`packages/`** - Published npm packages (use tsup for builds)
   - `@audacity-ui/core` - Core TypeScript types and interfaces
   - `@audacity-ui/tokens` - Design tokens (themes, colors)
-  - `@audacity-ui/components` - UI components (ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, etc.)
+  - `@dilsonspickles/components` - UI components (ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, etc.)
   - *(Planned)* `@audacity-ui/audio-components` - Complex audio editing components
 
 - **`apps/sandbox/`** - Vite + React development application
@@ -339,7 +339,7 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - ✅ Monorepo infrastructure setup (pnpm workspaces)
 - ✅ `@audacity-ui/core` package created with types and accessibility utilities
 - ✅ `@audacity-ui/tokens` package created with theme tokens
-- ✅ `@audacity-ui/components` package created with full UI component library
+- ✅ `@dilsonspickles/components` package created with full UI component library
 - ✅ Sandbox app (`apps/sandbox/`) actively using all published components
 - ✅ **Canvas.tsx refactored** - Reduced from 2,121 to 788 lines (62.8% reduction)
   - ✅ Extracted clip dragging logic to `useClipDragging` hook
@@ -415,7 +415,7 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 Packages will be published under `@audacity-ui/*` scope to npm registry:
 - `@audacity-ui/core`
 - `@audacity-ui/tokens`
-- `@audacity-ui/components`
+- `@dilsonspickles/components`
 - `@audacity-ui/audio-components`
 
 Use independent versioning (each package has own version number).

@@ -1,5 +1,5 @@
 import React from 'react';
-import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroManager, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast } from '@audacity-ui/components';
+import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, SocialSignInButton, LabeledFormDivider, TextLink, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroManager, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast } from '@dilsonspickles/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import { DebugPanel } from './DebugPanel';
 import { generateWaveform } from '../utils/waveformGenerator';

@@ -1,4 +1,4 @@
-import type { Plugin } from '@audacity-ui/components';
+import type { Plugin } from '@dilsonspickles/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 
 export function createInitialPlugins(): Plugin[] {

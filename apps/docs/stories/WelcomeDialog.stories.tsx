@@ -1,8 +1,8 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { WelcomeDialog } from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+import { WelcomeDialog } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 
 const meta = {
   title: 'Components/WelcomeDialog',

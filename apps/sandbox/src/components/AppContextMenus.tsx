@@ -1,8 +1,8 @@
 import React from 'react';
-import { ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@audacity-ui/components';
-import type { SpectrogramScale } from '@audacity-ui/components';
+import { ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@dilsonspickles/components';
+import type { SpectrogramScale } from '@dilsonspickles/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
-import type { Effect } from '@audacity-ui/components';
+import type { Effect } from '@dilsonspickles/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
 

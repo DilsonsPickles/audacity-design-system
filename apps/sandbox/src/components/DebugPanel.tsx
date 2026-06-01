@@ -8,7 +8,7 @@
  * - Track/clip generation
  */
 
-import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@audacity-ui/components';
+import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@dilsonspickles/components';
 
 export interface DebugPanelProps {
   isOpen: boolean;

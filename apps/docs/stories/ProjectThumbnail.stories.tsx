@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
-import { ProjectThumbnail } from '@audacity-ui/components';
+import { ProjectThumbnail } from '@dilsonspickles/components';
 
 const meta: Meta<typeof ProjectThumbnail> = {
   title: 'Components/ProjectThumbnail',

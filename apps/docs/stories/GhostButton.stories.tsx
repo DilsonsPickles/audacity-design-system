@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { GhostButton } from '@audacity-ui/components';
+import { GhostButton } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/GhostButton',

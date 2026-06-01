@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { SaveProjectModal } from '@audacity-ui/components';
+import { SaveProjectModal } from '@dilsonspickles/components';
 import React from 'react';
 
 const meta = {

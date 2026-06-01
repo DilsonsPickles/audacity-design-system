@@ -8,7 +8,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@audacity-ui/components": "workspace:*",
+    "@dilsonspickles/components": "workspace:*",
     "@audacity-ui/core": "workspace:*",
     "@audacity-ui/tokens": "workspace:*",
     "react": "^19.0.0",

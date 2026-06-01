@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VerticalRulerPanel, type TrackRulerConfig } from '@audacity-ui/components';
+import { VerticalRulerPanel, type TrackRulerConfig } from '@dilsonspickles/components';
 
 /**
  * VerticalRulerPanel component demo

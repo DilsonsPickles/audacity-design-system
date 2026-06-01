@@ -258,7 +258,7 @@ theme.foreground.icon.info
 
 After migrating all components:
 
-1. Build: `pnpm --filter @audacity-ui/components build`
+1. Build: `pnpm --filter @dilsonspickles/components build`
 2. Run sandbox: Already running at http://localhost:3001
 3. Test theme toggle: Preferences → Appearance → Light/Dark
 4. Verify all components adapt to theme changes

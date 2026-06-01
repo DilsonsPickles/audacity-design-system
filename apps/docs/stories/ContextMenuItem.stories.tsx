@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ContextMenu, ContextMenuItem } from '@audacity-ui/components';
+import { ContextMenu, ContextMenuItem } from '@dilsonspickles/components';
 import { useState } from 'react';
 
 const meta: Meta<typeof ContextMenuItem> = {

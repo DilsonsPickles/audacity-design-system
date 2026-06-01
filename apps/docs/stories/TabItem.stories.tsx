@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { TabItem } from '@audacity-ui/components';
+import { TabItem } from '@dilsonspickles/components';
 
 // Settings icon component for the stories
 const SettingsIcon = () => (

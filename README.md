@@ -27,11 +27,11 @@ pnpm add @audacity-ui/tokens
 - `darkTheme` - Dark theme configuration
 - `Theme` interface
 
-### `@audacity-ui/components`
+### `@dilsonspickles/components`
 UI component library with track controls and interface elements.
 
 ```bash
-pnpm add @audacity-ui/components
+pnpm add @dilsonspickles/components
 ```
 
 **Components:**
@@ -130,7 +130,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the prototype.
 - [x] Setup monorepo infrastructure
 - [x] Create `@audacity-ui/core` package
 - [x] Create `@audacity-ui/tokens` package
-- [x] Create `@audacity-ui/components` (basic UI components)
+- [x] Create `@dilsonspickles/components` (basic UI components)
   - [x] TrackControlPanel component
 - [ ] Create `@audacity-ui/audio-components` (complex audio components)
 - [ ] Setup Storybook for component documentation

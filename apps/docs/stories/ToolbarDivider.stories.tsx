@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Toolbar, ToolbarDivider, ToolbarButtonGroup, TransportButton } from '@audacity-ui/components';
+import { Toolbar, ToolbarDivider, ToolbarButtonGroup, TransportButton } from '@dilsonspickles/components';
 
 const meta: Meta<typeof ToolbarDivider> = {
   title: 'Layout/ToolbarDivider',

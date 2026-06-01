@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { EffectSlot, ThemeProvider, darkTheme } from '@audacity-ui/components';
+import { EffectSlot, ThemeProvider, darkTheme } from '@dilsonspickles/components';
 import React from 'react';
 
 const meta = {

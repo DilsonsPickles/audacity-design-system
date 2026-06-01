@@ -1,5 +1,5 @@
 /**
- * @audacity-ui/components
+ * @dilsonspickles/components
  *
  * UI component library for Audacity Design System
  */
@@ -165,5 +165,5 @@ export * from './utils/waveform';
 export * from './utils/spectrogram';
 export * from './utils/projectStorage';
 export * from './utils/scrollIntoViewIfNeeded';
-// Note: envelope utilities are available via direct import from '@audacity-ui/components/utils/envelope'
+// Note: envelope utilities are available via direct import from '@dilsonspickles/components/utils/envelope'
 // Not re-exported here to avoid naming conflicts with EnvelopePoint component

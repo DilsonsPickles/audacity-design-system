@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { EnvelopePoint } from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+import { EnvelopePoint } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 
 const meta = {
   title: 'Audio/EnvelopePoint',

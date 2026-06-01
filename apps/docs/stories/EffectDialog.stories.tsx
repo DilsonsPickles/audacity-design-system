@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { EffectDialog, AmplifyEffect, ThemeProvider, lightTheme, Button } from '@audacity-ui/components';
+import { EffectDialog, AmplifyEffect, ThemeProvider, lightTheme, Button } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Audio/EffectDialog',

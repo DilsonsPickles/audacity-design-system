@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
-import { Table, TableHeader, TableHeaderCell } from '@audacity-ui/components';
+import { Table, TableHeader, TableHeaderCell } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/Table/TableHeaderCell',

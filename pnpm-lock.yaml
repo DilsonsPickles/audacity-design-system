@@ -27,15 +27,15 @@ importers:
 
   apps/docs:
     dependencies:
-      '@audacity-ui/components':
-        specifier: workspace:*
-        version: link:../../packages/components
       '@audacity-ui/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@audacity-ui/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@dilsonspickles/components':
+        specifier: workspace:*
+        version: link:../../packages/components
       react:
         specifier: ^19.0.0
         version: 19.2.0
@@ -76,12 +76,12 @@ importers:
       '@audacity-ui/audio':
         specifier: workspace:*
         version: link:../../packages/audio
-      '@audacity-ui/components':
-        specifier: workspace:*
-        version: link:../../packages/components
       '@audacity-ui/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@dilsonspickles/components':
+        specifier: workspace:*
+        version: link:../../packages/components
       audiobuffer-to-wav:
         specifier: ^1.0.0
         version: 1.0.0

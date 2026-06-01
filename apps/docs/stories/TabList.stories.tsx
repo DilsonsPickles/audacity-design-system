@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { TabList, Icon } from '@audacity-ui/components';
+import { TabList, Icon } from '@dilsonspickles/components';
 
 // Helper function to get icon for each preference tab
 const getIconForTab = (tabId: string) => {

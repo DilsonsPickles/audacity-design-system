@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Preview } from '@storybook/react';
-import { PreferencesProvider, ThemeProvider } from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+import { PreferencesProvider, ThemeProvider } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 
 // Import Inter font from Google Fonts
 const link = document.createElement('link');

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ProgressBar } from '@audacity-ui/components';
+import { ProgressBar } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/ProgressBar',

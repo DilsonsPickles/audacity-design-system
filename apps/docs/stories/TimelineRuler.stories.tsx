@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { TimelineRuler } from '@audacity-ui/components';
+import { TimelineRuler } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Layout/TimelineRuler',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VerticalRuler } from '@audacity-ui/components';
+import { VerticalRuler } from '@dilsonspickles/components';
 
 /**
  * VerticalRuler component demo

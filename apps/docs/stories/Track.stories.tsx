@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { Track, type TrackClip } from '@audacity-ui/components';
+import { Track, type TrackClip } from '@dilsonspickles/components';
 import { useState } from 'react';
 
 const meta = {

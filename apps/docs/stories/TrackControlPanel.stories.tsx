@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { TrackControlPanel } from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+import { TrackControlPanel } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 
 const meta = {
   title: 'Components/TrackControlPanel',

@@ -1,28 +1,28 @@
-# @audacity-ui/components
+# @dilsonspickles/components
 
 React component library for the Audacity Design System.
 
 ## Install
 
 This package is published to the **private** GitHub Packages registry under
-the `@audacity-ui` scope. Consuming projects need an `.npmrc` that points
-the scope at npm.pkg.github.com with a `GITHUB_TOKEN` that has
+the `@dilsonspickles` scope. Consuming projects need an `.npmrc` that
+points the scope at npm.pkg.github.com with a `GITHUB_TOKEN` that has
 `read:packages` permission.
 
 ```ini
 # .npmrc
-@audacity-ui:registry=https://npm.pkg.github.com
+@dilsonspickles:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
 Then:
 
 ```bash
-bun add @audacity-ui/components
+bun add @dilsonspickles/components
 # or
-pnpm add @audacity-ui/components
+pnpm add @dilsonspickles/components
 # or
-npm install @audacity-ui/components
+npm install @dilsonspickles/components
 ```
 
 React 18 or newer is a **peer dependency** — the package does not bundle it.
@@ -33,7 +33,7 @@ Components ship their styles + the embedded `MusescoreIcon` font file in a
 single stylesheet. Import it once at your app entry point:
 
 ```ts
-import '@audacity-ui/components/style.css';
+import '@dilsonspickles/components/style.css';
 ```
 
 After this, `<Icon>` (and anything that uses it — `TransportButton`,
@@ -48,7 +48,7 @@ you want to override the default light-theme tokens.
 ### Icon
 
 ```tsx
-import { Icon, type IconName } from '@audacity-ui/components';
+import { Icon, type IconName } from '@dilsonspickles/components';
 
 <Icon name="record" size={20} />
 ```
@@ -60,7 +60,7 @@ import {
   Toolbar,
   ToolbarDivider,
   ToolbarButtonGroup,
-} from '@audacity-ui/components';
+} from '@dilsonspickles/components';
 
 <Toolbar height={48}>
   <ToolbarButtonGroup>
@@ -80,7 +80,7 @@ import {
 ### TransportButton
 
 ```tsx
-import { TransportButton } from '@audacity-ui/components';
+import { TransportButton } from '@dilsonspickles/components';
 
 <TransportButton icon="record" />
 <TransportButton icon="play" active />
@@ -90,7 +90,7 @@ import { TransportButton } from '@audacity-ui/components';
 ### ToolButton
 
 ```tsx
-import { ToolButton } from '@audacity-ui/components';
+import { ToolButton } from '@dilsonspickles/components';
 
 <ToolButton icon="cog" ariaLabel="Settings" />
 <ToolButton icon="trim" label="Trim" />
@@ -104,7 +104,7 @@ import {
   lightTheme,
   darkTheme,
   type ThemeTokens,
-} from '@audacity-ui/components';
+} from '@dilsonspickles/components';
 
 <ThemeProvider theme={darkTheme}>
   <App />
@@ -140,13 +140,13 @@ contain breaking changes — pin to an exact version in production.
 
 ```bash
 # Build the package
-pnpm --filter @audacity-ui/components build
+pnpm --filter @dilsonspickles/components build
 
 # Watch mode for development
-pnpm --filter @audacity-ui/components dev
+pnpm --filter @dilsonspickles/components dev
 
 # Run tests
-pnpm --filter @audacity-ui/components test
+pnpm --filter @dilsonspickles/components test
 ```
 
 ## License

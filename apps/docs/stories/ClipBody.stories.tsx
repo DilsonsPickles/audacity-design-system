@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ClipBody, generateSpeechWaveform } from '@audacity-ui/components';
+import { ClipBody, generateSpeechWaveform } from '@dilsonspickles/components';
 
 // Generate sample waveform data for stories
 // Use lower sample rate for ClipBody demos - just need ~2x pixel width for smooth rendering

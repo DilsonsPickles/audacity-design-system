@@ -295,7 +295,7 @@ After each migration:
 
 ```bash
 # Build components package
-pnpm --filter @audacity-ui/components build
+pnpm --filter @dilsonspickles/components build
 
 # Test in sandbox (already running)
 # http://localhost:3001
@@ -354,7 +354,7 @@ grep -nE '#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}\b|rgba?\(' packages/components/src/Com
 grep -q "useTheme" packages/components/src/ComponentName/ComponentName.tsx && echo "Already migrated" || echo "Needs migration"
 
 # Build just components
-pnpm --filter @audacity-ui/components build
+pnpm --filter @dilsonspickles/components build
 
 # Count remaining hardcoded colors
 find packages/components/src -name "*.css" -exec grep -l '#[0-9a-fA-F]\|rgba\?' {} \; | wc -l

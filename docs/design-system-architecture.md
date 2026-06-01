@@ -166,7 +166,7 @@ export const spacing = {
 - Can generate CSS variables or Tailwind config
 - Supports theming
 
-### 3. `@audacity-ui/components`
+### 3. `@dilsonspickles/components`
 
 **Purpose**: Basic UI components (non-audio-specific)
 
@@ -179,7 +179,7 @@ export const spacing = {
 
 **Example Usage**:
 ```tsx
-import { Ruler, Toolbar } from '@audacity-ui/components'
+import { Ruler, Toolbar } from '@dilsonspickles/components'
 
 <Toolbar>
   <Button>Play</Button>
@@ -307,7 +307,7 @@ Use **independent versioning** (each package has its own version):
 # Example versions
 @audacity-ui/core@1.2.0
 @audacity-ui/tokens@1.0.5
-@audacity-ui/components@2.1.0
+@dilsonspickles/components@2.1.0
 @audacity-ui/audio-components@0.9.0
 ```
 
@@ -379,7 +379,7 @@ Use **independent versioning** (each package has its own version):
 ### Phase 3: Extract UI Components (Week 2-3)
 
 **Tasks**:
-1. Create `@audacity-ui/components` package
+1. Create `@dilsonspickles/components` package
    - Extract `Ruler`, `Toolbar`, `Tooltip`
    - Make components composition-friendly
    - Add prop interfaces and documentation

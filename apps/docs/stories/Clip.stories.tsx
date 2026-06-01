@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { Clip, generateSpeechWaveform } from '@audacity-ui/components';
+import { Clip, generateSpeechWaveform } from '@dilsonspickles/components';
 
 // Generate sample waveform data for stories
 const sampleWaveform = generateSpeechWaveform(0.5, 1800);

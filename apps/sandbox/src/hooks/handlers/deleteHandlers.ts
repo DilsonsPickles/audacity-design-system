@@ -1,5 +1,5 @@
 import type { TracksState, TracksAction } from '../../contexts/TracksContext';
-import { scrollIntoViewIfNeeded } from '@audacity-ui/components';
+import { scrollIntoViewIfNeeded } from '@dilsonspickles/components';
 
 export interface DeleteHandlerDeps {
   state: TracksState;

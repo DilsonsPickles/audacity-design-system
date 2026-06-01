@@ -1,4 +1,4 @@
-import { NOTE_NAMES, BLACK_KEY_CLASSES, NOTE_HEIGHT, TOTAL_PITCHES } from '@audacity-ui/components';
+import { NOTE_NAMES, BLACK_KEY_CLASSES, NOTE_HEIGHT, TOTAL_PITCHES } from '@dilsonspickles/components';
 
 /**
  * Convert seconds to beat number at a given BPM.

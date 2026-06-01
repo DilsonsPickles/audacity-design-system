@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton } from '@audacity-ui/components';
+import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton } from '@dilsonspickles/components';
 
 const meta: Meta<typeof ToolbarButtonGroup> = {
   title: 'Layout/ToolbarButtonGroup',

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { AddTrackFlyout } from '@audacity-ui/components';
-import '@audacity-ui/components/style.css';
+import { AddTrackFlyout } from '@dilsonspickles/components';
+import '@dilsonspickles/components/style.css';
 import { useState } from 'react';
 
 const meta = {

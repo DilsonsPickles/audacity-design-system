@@ -85,7 +85,7 @@ To test the implementation:
 
 1. Build the components package:
    ```bash
-   pnpm --filter @audacity-ui/components build
+   pnpm --filter @dilsonspickles/components build
    ```
 
 2. Run the sandbox app:

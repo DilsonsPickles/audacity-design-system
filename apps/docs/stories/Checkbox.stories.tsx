@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
-import { Checkbox } from '@audacity-ui/components';
+import { Checkbox } from '@dilsonspickles/components';
 
 const meta = {
   title: 'Components/Checkbox',

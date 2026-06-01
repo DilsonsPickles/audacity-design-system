@@ -135,5 +135,5 @@ Built with:
 - React 18
 - TypeScript 5
 - Vite 6
-- @audacity-ui/components
+- @dilsonspickles/components
 - @audacity-ui/core
