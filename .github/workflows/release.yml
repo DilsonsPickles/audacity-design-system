@@ -59,6 +59,13 @@ jobs:
           test -f packages/components/dist/index.css
           ls packages/components/dist/*.ttf
 
+      # Catches the class of bug where a hook throws when used outside its
+      # provider — exactly what slipped through before 0.2.0. Runs against
+      # the freshly built ./dist so we're testing what consumers actually
+      # see, not the source.
+      - name: Standalone-mode smoke test
+        run: pnpm --filter @dilsonspickles/components test:smoke
+
       - name: Publish @dilsonspickles/components
         working-directory: packages/components
         env:

@@ -23,7 +23,8 @@
     "dev": "tsup --watch",
     "lint": "echo 'No linting configured yet'",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:smoke": "node scripts/smoke-test.mjs"
   },
   "keywords": [
     "audacity",
