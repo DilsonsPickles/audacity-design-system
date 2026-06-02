@@ -1,0 +1,215 @@
+/* MuseHub account section rendered inside Preferences → Accounts. Picks
+   up the light / dark surface from the surrounding preferences-page
+   wrapper but defines its own card chrome. */
+
+.musehub-account {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 640px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.musehub-account__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.musehub-account__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--preferences-text, #1a1a1a);
+}
+
+.musehub-account__brand h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.musehub-account__lead {
+  margin: 0;
+  font-size: 13px;
+  color: var(--preferences-muted, rgba(0, 0, 0, 0.6));
+  line-height: 1.45;
+}
+
+.musehub-account__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .musehub-account__card {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.musehub-account__identity {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.musehub-account__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #677CE4 0%, #4D5DC4 100%);
+  background-size: cover;
+  background-position: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.musehub-account__identity-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.musehub-account__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--preferences-text, #1a1a1a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.musehub-account__email {
+  font-size: 12px;
+  color: var(--preferences-muted, rgba(0, 0, 0, 0.55));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.musehub-account__manage-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #677CE4;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.musehub-account__manage-link:hover { text-decoration: underline; }
+
+.musehub-account__stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .musehub-account__stats {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.musehub-account__stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.musehub-account__stats dt {
+  margin: 0;
+  font-size: 11px;
+  color: var(--preferences-muted, rgba(0, 0, 0, 0.55));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.musehub-account__stats dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--preferences-text, #1a1a1a);
+  font-variant-numeric: tabular-nums;
+}
+
+.musehub-account__signed-out-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--preferences-muted, rgba(0, 0, 0, 0.65));
+  line-height: 1.45;
+}
+
+.musehub-account__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.musehub-account__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.musehub-account__btn--primary {
+  background: #B98CFF;
+  color: #1B0F2E;
+}
+
+.musehub-account__btn--primary:hover { background: #C9A2FF; }
+
+.musehub-account__btn--ghost {
+  background: transparent;
+  border-color: rgba(0, 0, 0, 0.18);
+  color: var(--preferences-text, #1a1a1a);
+}
+
+.musehub-account__btn--ghost:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.32);
+}
+
+@media (prefers-color-scheme: dark) {
+  .musehub-account__btn--ghost {
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #f3f4f6;
+  }
+
+  .musehub-account__btn--ghost:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+}
+
+.musehub-account__footnote {
+  margin: 0;
+  font-size: 11px;
+  color: var(--preferences-muted, rgba(0, 0, 0, 0.5));
+  line-height: 1.5;
+}

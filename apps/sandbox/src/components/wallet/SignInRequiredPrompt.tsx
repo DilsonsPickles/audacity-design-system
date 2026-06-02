@@ -9,7 +9,7 @@ import type { MarketplaceEffect } from '../MarketplaceModal';
 import { useMuseHub, useSignedIn, useWalletBalance } from '../../contexts/MuseHubContext';
 import './SignInRequiredPrompt.css';
 
-type Phase = 'idle' | 'signing-in' | 'processing' | 'success';
+type Phase = 'idle' | 'processing' | 'success';
 
 export interface SignInRequiredPromptProps {
   effect: MarketplaceEffect;
@@ -33,17 +33,15 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
 }) => {
   const signedIn = useSignedIn();
   const balance = useWalletBalance();
-  const { signIn } = useMuseHub();
+  const { openAuthDialog } = useMuseHub();
   const [phase, setPhase] = useState<Phase>('idle');
 
   const price = effect.price ?? 0;
   const canAfford = balance >= price;
   const balanceAfter = Math.max(0, balance - price);
 
-  const handleSignIn = async () => {
-    setPhase('signing-in');
-    await signIn();
-    setPhase('idle');
+  const handleSignIn = () => {
+    openAuthDialog('sign-in');
   };
 
   const handleConfirm = () => {
@@ -55,7 +53,7 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
   };
 
   // Escape dismisses (only when nothing is in flight).
-  const blocking = phase === 'signing-in' || phase === 'processing';
+  const blocking = phase === 'processing';
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !blocking) {
@@ -143,16 +141,8 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
               type="button"
               className="signin-prompt__cta"
               onClick={handleSignIn}
-              disabled={blocking}
             >
-              {phase === 'signing-in' ? (
-                <>
-                  <span className="signin-prompt__spinner" aria-hidden="true" />
-                  <span>Signing in…</span>
-                </>
-              ) : (
-                <span>Sign in or Create Account</span>
-              )}
+              <span>Sign in or Create Account</span>
             </button>
           ) : phase === 'success' ? (
             <div className="signin-prompt__success-actions">

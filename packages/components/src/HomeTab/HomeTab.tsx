@@ -41,6 +41,11 @@ export interface HomeTabProps {
   projects?: StoredProject[];
   audioFiles?: CloudAudioFile[];
   onDeleteAudioFile?: (id: string) => void;
+  /** Render-slot for any extra account cards on the "My accounts" page
+   *  (e.g. the sandbox supplies a MuseHub card here). Each child should
+   *  render its own `<div class="home-tab__accounts-section">` so styling
+   *  stays consistent with the built-in Audio.com card. */
+  extraAccountsSections?: React.ReactNode;
 }
 
 export function HomeTab({
@@ -59,6 +64,7 @@ export function HomeTab({
   projects: externalProjects,
   audioFiles: externalAudioFiles,
   onDeleteAudioFile,
+  extraAccountsSections,
 }: HomeTabProps) {
   const { theme } = useTheme();
   const [activeSidebarItem, setActiveSidebarItem] = React.useState<'my-accounts' | 'project' | 'plugins' | 'learn'>('project');
@@ -969,6 +975,11 @@ export function HomeTab({
               </div>
               <div className="home-tab__accounts-page">
                 <div className="home-tab__accounts-list">
+                  {/* Extra account cards (e.g. MuseHub) rendered before the
+                      built-in Audio.com card so additional services don't
+                      get buried at the bottom of the list. */}
+                  {extraAccountsSections}
+
                   {/* Audio.com Service */}
                   <div className="home-tab__accounts-section">
                     <h2 className="home-tab__accounts-section-title">Audio.com</h2>

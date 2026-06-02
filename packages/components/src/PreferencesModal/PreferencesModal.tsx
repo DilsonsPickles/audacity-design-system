@@ -21,6 +21,7 @@ import './PreferencesModal.css';
 
 export type PreferencesPage =
   | 'general'
+  | 'accounts'
   | 'appearance'
   | 'audio-settings'
   | 'playback-recording'
@@ -82,10 +83,18 @@ export interface PreferencesModalProps {
    * Open plugin manager handler
    */
   onOpenPluginManager?: () => void;
+  /**
+   * Render-slot for the Accounts page. The consumer supplies whatever
+   * account / sign-in UI it wants (e.g. the sandbox supplies its MuseHub
+   * account section bound to MuseHubContext). The slot is wrapped in the
+   * standard preferences-page container so it inherits layout + spacing.
+   */
+  accountsContent?: React.ReactNode;
 }
 
 const menuItems: DialogSideNavItem<PreferencesPage>[] = [
   { id: 'general', label: 'General', icon: '\uEF55' }, // cog
+  { id: 'accounts', label: 'Accounts', icon: '\uEF99' }, // user
   { id: 'appearance', label: 'Appearance', icon: '\uF444' }, // brush
   { id: 'audio-settings', label: 'Audio settings', icon: '\uEF4E' }, // volume
   { id: 'playback-recording', label: 'Playback/Recording', icon: '\uF41B' }, // microphone
@@ -253,6 +262,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   onZoomToggleLevel2Change,
   onResetWarnings,
   onOpenPluginManager,
+  accountsContent,
 }) => {
   const [selectedPage, setSelectedPage] = useState<PreferencesPage>(currentPage);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -353,6 +363,9 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
         >
           <div className="preferences-modal__scroll-container" tabIndex={-1}>
             {selectedPage === 'general' && <GeneralPage onResetWarnings={onResetWarnings} />}
+            {selectedPage === 'accounts' && (
+              <div className="preferences-page">{accountsContent}</div>
+            )}
             {selectedPage === 'appearance' && <AppearancePage />}
             {selectedPage === 'audio-settings' && <AudioSettingsPage />}
             {selectedPage === 'playback-recording' && <PlaybackRecordingPage />}

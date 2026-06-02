@@ -25,9 +25,8 @@ export const MuseWallet: React.FC<MuseWalletProps> = ({
 }) => {
   const balance = useWalletBalance();
   const signedIn = useSignedIn();
-  const { signIn } = useMuseHub();
+  const { openAuthDialog } = useMuseHub();
   const [open, setOpen] = useState(false);
-  const [signingIn, setSigningIn] = useState(false);
   const chipRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; notchLeft: number } | null>(null);
@@ -134,37 +133,22 @@ export const MuseWallet: React.FC<MuseWalletProps> = ({
     </div>
   ) : null;
 
-  const handleSignIn = async () => {
-    if (signingIn) return;
-    setSigningIn(true);
-    await signIn();
-    setSigningIn(false);
-  };
-
   if (!signedIn) {
-    // Signed-out: render a low-key sign-in button instead of the wallet chip.
+    // Signed-out: render a low-key sign-in button instead of the wallet
+    // chip. Opens the global auth dialog so the user can enter credentials
+    // or create an account.
     return (
       <button
         ref={chipRef}
         type="button"
-        className={`muse-wallet__signin ${signingIn ? 'muse-wallet__signin--busy' : ''}`}
-        onClick={handleSignIn}
-        disabled={signingIn}
+        className="muse-wallet__signin"
+        onClick={() => openAuthDialog('sign-in')}
       >
-        {signingIn ? (
-          <>
-            <span className="muse-wallet__spinner" aria-hidden="true" />
-            <span>Signing in…</span>
-          </>
-        ) : (
-          <>
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-              <circle cx="7" cy="5" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M1.8 12.5C2.7 9.9 4.7 8.6 7 8.6s4.3 1.3 5.2 3.9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-            <span>Sign in</span>
-          </>
-        )}
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          <circle cx="7" cy="5" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M1.8 12.5C2.7 9.9 4.7 8.6 7 8.6s4.3 1.3 5.2 3.9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+        <span>Sign in</span>
       </button>
     );
   }

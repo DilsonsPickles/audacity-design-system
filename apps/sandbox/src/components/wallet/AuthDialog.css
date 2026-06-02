@@ -1,0 +1,217 @@
+/* MuseHub auth dialog — sign-in / create-account. Portal'd above
+   everything else (z-index 1500) so it sits over the marketplace modal +
+   the sign-in-required prompt + the wallet popover. */
+
+@keyframes auth-dialog-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes auth-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.auth-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: auth-dialog-backdrop-in 140ms ease-out;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.auth-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: #131722;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 22px 22px 24px;
+  color: #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: auth-dialog-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.auth-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth-dialog__header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+}
+
+.auth-dialog__close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-dialog__close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.auth-dialog__close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.auth-dialog__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.45;
+}
+
+.auth-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.auth-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-dialog__field > span:first-child {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.01em;
+}
+
+.auth-dialog__field input {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: #FFFFFF;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.auth-dialog__field input:focus {
+  border-color: rgba(185, 140, 255, 0.7);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.auth-dialog__field input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-dialog__hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  min-height: 14px;
+}
+
+.auth-dialog__error {
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #FFB0B0;
+  font-size: 12px;
+}
+
+.auth-dialog__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 9999px;
+  border: 0;
+  background: #B98CFF;
+  color: #1B0F2E;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.auth-dialog__cta:hover:not(:disabled) { background: #C9A2FF; }
+.auth-dialog__cta:active:not(:disabled) { transform: translateY(1px); }
+
+.auth-dialog__cta:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+.auth-dialog__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.6px solid rgba(27, 15, 46, 0.2);
+  border-top-color: #1B0F2E;
+  animation: auth-dialog-spin 700ms linear infinite;
+}
+
+@keyframes auth-dialog-spin {
+  to { transform: rotate(360deg); }
+}
+
+.auth-dialog__switch,
+.auth-dialog__forgot {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.auth-dialog__link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #B98CFF;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-dialog__link:hover:not(:disabled) { color: #D5B3FF; }
+.auth-dialog__link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-dialog__forgot a {
+  color: #B98CFF;
+  text-decoration: none;
+}
+
+.auth-dialog__forgot a:hover { text-decoration: underline; }

@@ -681,16 +681,22 @@
 }
 
 .home-tab__accounts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
+  display: grid;
+  /* auto-fit + minmax means the grid stays two-up while there's room for
+     each card to hold its avatar + identity text + two action buttons
+     comfortably; it collapses to one column the moment a card would have
+     to squeeze below ~440px. No hard viewport breakpoint needed. */
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 32px 24px;
+  align-items: start;
 }
 
 .home-tab__accounts-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+  min-width: 0;
 }
 
 .home-tab__accounts-section-title {
