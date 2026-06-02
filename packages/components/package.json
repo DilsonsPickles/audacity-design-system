@@ -1,6 +1,6 @@
 {
   "name": "@dilsonspickles/components",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "UI component library for Audacity Design System",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -16,7 +16,8 @@
     "./dist/*.png": "./dist/*.png"
   },
   "files": [
-    "dist"
+    "dist",
+    "AGENTS.md"
   ],
   "scripts": {
     "build": "tsup",
