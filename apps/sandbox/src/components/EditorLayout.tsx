@@ -187,6 +187,20 @@ export function EditorLayout(props: EditorLayoutProps) {
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
 
+  // Measured viewport width of the ruler wrapper. Passed to TimelineRuler
+  // as `viewportWidth` so its canvas stays sharp on HiDPI displays — the
+  // project-sized `width` is kept only for legacy scroll-extent math.
+  const [rulerViewportWidth, setRulerViewportWidth] = React.useState<number>(0);
+  React.useLayoutEffect(() => {
+    const el = timelineRulerRef.current;
+    if (!el) return;
+    const update = () => setRulerViewportWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Tab order for ruler focus
   const { activeProfile } = useAccessibilityProfile();
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
@@ -877,6 +891,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 scrollX={scrollX}
                 totalDuration={timelineDuration}
                 width={timelineWidth}
+                viewportWidth={rulerViewportWidth || undefined}
                 height={40}
                 timeSelection={rulerTimeSelection}
                 spectralSelection={spectralSelection}

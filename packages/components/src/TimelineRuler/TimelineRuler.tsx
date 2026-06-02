@@ -18,9 +18,30 @@ export interface TimelineRulerProps {
    */
   totalDuration: number;
   /**
-   * Width of the ruler in pixels
+   * Width of the ruler in pixels.
+   *
+   * **Legacy / scroll-extent only.** Passing the full project width here
+   * still works, but for any project width above ~16,000px on HiDPI
+   * displays the canvas hits browser size limits and renders blurry.
+   *
+   * Prefer `viewportWidth` (just the visible portion) — the ruler will
+   * redraw on scroll via `scrollX` without losing resolution.
+   *
+   * When `viewportWidth` is set, this prop is unused for sizing.
    */
   width: number;
+  /**
+   * Visible viewport width in CSS pixels. When set, the canvas backing
+   * store is sized to this value (always sharp, never hits the canvas
+   * size cap). Drawing uses `scrollX` to determine which time range is
+   * currently visible.
+   *
+   * This is the recommended way to render long timelines on HiDPI
+   * displays. The consumer is responsible for positioning the ruler
+   * outside the horizontally-scrolling region (e.g., sticky/fixed) so
+   * it stays in view as the tracks below scroll.
+   */
+  viewportWidth?: number;
   /**
    * Height of the ruler in pixels
    */
@@ -110,6 +131,7 @@ export function TimelineRuler({
   scrollX = 0,
   totalDuration,
   width,
+  viewportWidth,
   height = DEFAULT_HEIGHT,
   timeSelection = null,
   spectralSelection = null,
@@ -153,23 +175,34 @@ export function TimelineRuler({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Calculate DPR but constrain to prevent exceeding canvas max size (~32,767px)
+    // Resolve canvas size: prefer viewport sizing when provided.
+    // Drawing already works in viewport coordinates (offset by scrollX), so
+    // a viewport-sized canvas stays sharp regardless of project length.
+    const renderWidth = viewportWidth ?? width;
+
+    // Cap DPR so the backing store never exceeds browser canvas limits.
+    // With viewportWidth this cap effectively never engages (viewport is
+    // typically < 4000px). With a project-sized `width`, the cap may drop
+    // DPR below the device's native value — that's the blurry path.
     const MAX_CANVAS_DIMENSION = 32000;
     const baseDpr = window.devicePixelRatio || 1;
-    const maxDprForWidth = MAX_CANVAS_DIMENSION / width;
+    const maxDprForWidth = MAX_CANVAS_DIMENSION / renderWidth;
     const maxDprForHeight = MAX_CANVAS_DIMENSION / height;
-    const dpr = Math.min(baseDpr, maxDprForWidth, maxDprForHeight);
+    const dpr = Math.max(1, Math.min(baseDpr, maxDprForWidth, maxDprForHeight));
 
-    canvas.width = width * dpr;
+    canvas.width = renderWidth * dpr;
     canvas.height = height * dpr;
+    canvas.style.width = `${renderWidth}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
 
     // Clear canvas
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, renderWidth, height);
 
     // Draw background
     ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, renderWidth, height);
 
     // Draw time selection in bottom half (if present)
     const midHeight = Math.floor(height / 2);
@@ -216,7 +249,7 @@ export function TimelineRuler({
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(CLIP_CONTENT_OFFSET, midHeight + 0.5); // Start after the left padding box
-    ctx.lineTo(width, midHeight + 0.5);
+    ctx.lineTo(renderWidth, midHeight + 0.5);
     ctx.stroke();
 
     // Draw time markers
@@ -225,7 +258,7 @@ export function TimelineRuler({
       pixelsPerSecond,
       scrollX,
       totalDuration,
-      width,
+      renderWidth,
       height,
       txtColor,
       lnColor,
@@ -240,7 +273,7 @@ export function TimelineRuler({
       const cursorX = CLIP_CONTENT_OFFSET + cursorPosition * pixelsPerSecond - scrollX;
 
       // Only draw if cursor is visible in viewport
-      if (cursorX >= CLIP_CONTENT_OFFSET && cursorX <= width) {
+      if (cursorX >= CLIP_CONTENT_OFFSET && cursorX <= renderWidth) {
         ctx.strokeStyle = txtColor;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -249,7 +282,7 @@ export function TimelineRuler({
         ctx.stroke();
       }
     }
-  }, [pixelsPerSecond, scrollX, totalDuration, width, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure, loopRegionEnabled, loopRegionStart, loopRegionEnd]);
+  }, [pixelsPerSecond, scrollX, totalDuration, width, viewportWidth, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure, loopRegionEnabled, loopRegionStart, loopRegionEnd]);
 
   // Mouse event handlers for loop region interaction
   const EDGE_THRESHOLD = 5; // pixels from edge for resize cursor
@@ -464,7 +497,7 @@ export function TimelineRuler({
       ref={canvasRef}
       className="timeline-ruler"
       style={{
-        width: `${width}px`,
+        width: `${viewportWidth ?? width}px`,
         height: `${height}px`,
         display: 'block',
         cursor,

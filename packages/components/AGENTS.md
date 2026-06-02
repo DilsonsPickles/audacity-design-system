@@ -177,7 +177,7 @@ Outer shell is a vertical flex column at `100vh`. Each row below documents the e
 | 4a | Track control column | `TrackControlPanel` | matches its row | **268px self-sized** | `flex-shrink: 0` | Do not put it in a flex parent that can shrink it. Width is intentional. |
 | 4b | Canvas column | `TrackNew` + overlays | matches its row | `flex: 1` | grows | Wrap in `position: relative; overflow: hidden` so playhead overlay can be `position: absolute` |
 | 4c | Vertical ruler column | `VerticalRuler` | matches its row | self-sized (~32px) | `flex-shrink: 0` | Right-side amplitude/frequency scale |
-| 4-top | Timeline ruler | `TimelineRuler` | 40px default | matches canvas column | `flex-shrink: 0` | Sits above the track rows in the canvas column; scrolls H with canvases |
+| 4-top | Timeline ruler | `TimelineRuler` | 40px default | matches canvas column | `flex-shrink: 0` | Sits above the track rows. **Pass `viewportWidth` (visible width), not the project width**, so the canvas stays sharp on HiDPI. See section 4e. |
 | 5 | Status bar | `SelectionToolbar` | 40px | 100% | `flex-shrink: 0` | Always last child of the editor body's parent flex column |
 | — | Track row | (your wrapper) | `track.height ?? 114` (`DEFAULT_TRACK_HEIGHT`) | 100% | `display: flex; flex-shrink: 0` | Gap between rows: 2px (`TRACK_GAP`). Top gap: 2px (`TOP_GAP`). |
 | — | Clip header (inside track) | `ClipHeader` | 20px (`CLIP_HEADER_HEIGHT`) | clip width | — | Drawn on canvas by `TrackNew`, you don't position it directly |
@@ -370,6 +370,33 @@ The bottom status strip (Stopped / hint text / Selection start+end + Duration) *
 ```
 
 Height: 40px. `flex-shrink: 0`. Put it as the last child of the editor body's parent flex column.
+
+### 4e. TimelineRuler — viewport sizing
+
+The `TimelineRuler` accepts two width-related props:
+
+| Prop | What it means | When to use |
+|---|---|---|
+| `viewportWidth` | Visible CSS width of the ruler (e.g., editor body width minus the side rails) | **Use this.** Canvas backing store sizes to this, stays sharp at any project length or zoom on HiDPI. |
+| `width` | Legacy / project-extent. Sets canvas width to this CSS px value. | Avoid for new code. Beyond ~16,000px on HiDPI the canvas hits browser size limits and renders blurry. |
+
+The drawing code already operates in viewport coordinates (using `scrollX` to determine which time range to draw). With `viewportWidth` set, the canvas never grows past viewport size — no resolution loss.
+
+```tsx
+<TimelineRuler
+  viewportWidth={editorBodyWidth}   // measure the parent (ResizeObserver) or pass a known value
+  height={40}
+  pixelsPerSecond={pps}
+  scrollX={scrollX}                  // updated as the user scrolls horizontally
+  totalDuration={timelineDuration}
+  timeFormat={timelineFormat}
+  /* … */
+/>
+```
+
+**Layout placement**: the ruler must live *outside* the horizontally-scrolling region so it stays in view as the user scrolls right. The standard pattern is a fixed-height row above the scroll container; the scroll container's `onScroll` updates `scrollX` and the ruler redraws.
+
+---
 
 ### 4d. ApplicationHeader menu definitions
 
