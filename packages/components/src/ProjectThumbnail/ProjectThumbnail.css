@@ -9,6 +9,7 @@
   gap: 8px;
   width: 224px;
   font-family: 'Inter', sans-serif;
+  position: relative;
 }
 
 .project-thumbnail__button {

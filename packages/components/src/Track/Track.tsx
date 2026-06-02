@@ -306,13 +306,23 @@ export const Track: React.FC<TrackProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // HiDPI: size backing store to device pixels, keep CSS box at logical pixels,
+    // then scale the drawing context so the rest of this effect can draw in logical px.
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+
     // Clear canvas
     ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
     // Draw track background
     ctx.fillStyle = isSelected ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)';
-    ctx.fillRect(0, 0, canvas.width, height);
+    ctx.fillRect(0, 0, width, height);
 
     // Note: Focus borders are rendered via CSS wrapper, not on canvas
 

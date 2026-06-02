@@ -69,8 +69,18 @@ function PlayheadCursorComponent({
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // HiDPI: scale backing store, keep CSS box at 17x17 logical px.
+        const cssSize = 17;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = cssSize * dpr;
+        canvas.height = cssSize * dpr;
+        canvas.style.width = `${cssSize}px`;
+        canvas.style.height = `${cssSize}px`;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+
         // Clear canvas with transparent background
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, cssSize, cssSize);
 
         const radius = 1;
 

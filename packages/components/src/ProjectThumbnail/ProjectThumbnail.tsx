@@ -130,27 +130,27 @@ export function ProjectThumbnail({
               <Icon name={isUploading ? 'cloud' : 'cloud-filled'} size={16} />
             </div>
           )}
-          {onContextMenu && !isNewProject && (
-            <div
-              className="project-thumbnail__context-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onContextMenu(e);
-              }}
-            >
-              <ToolButton
-                icon="menu"
-                size="small"
-                onClick={() => {}}
-              />
-            </div>
-          )}
         </div>
         <div className="project-thumbnail__info">
           <div className="project-thumbnail__title">{title}</div>
           {!isNewProject && <div className="project-thumbnail__date">{dateText}</div>}
         </div>
       </button>
+      {onContextMenu && !isNewProject && (
+        <div
+          className="project-thumbnail__context-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onContextMenu(e);
+          }}
+        >
+          <ToolButton
+            icon="menu"
+            size="small"
+            onClick={() => {}}
+          />
+        </div>
+      )}
     </div>
   );
 }

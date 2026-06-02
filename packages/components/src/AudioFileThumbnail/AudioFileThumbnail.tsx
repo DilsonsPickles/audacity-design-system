@@ -49,11 +49,16 @@ const WaveformVisual = ({ seed = 0 }: { seed?: number }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
+    // Set canvas size (HiDPI-aware)
     const width = 280;
     const height = 170;
-    canvas.width = width;
-    canvas.height = height;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
 
     // Generate realistic speech waveform data with seeded randomness
     // Create seeded random number generator

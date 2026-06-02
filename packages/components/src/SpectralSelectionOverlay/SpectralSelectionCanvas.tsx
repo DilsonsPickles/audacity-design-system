@@ -63,8 +63,18 @@ export function SpectralSelectionCanvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // HiDPI: size backing store to device pixels, keep CSS box at logical pixels,
+    // then scale the drawing context so the rest of this effect can draw in logical px.
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, width, height);
 
     const { trackIndex, clipId, startTime, endTime, minFrequency, maxFrequency } = selection;
 

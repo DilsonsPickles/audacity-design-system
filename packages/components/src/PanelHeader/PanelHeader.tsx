@@ -187,9 +187,10 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
           const isDragging = tab.id === dragTabId;
           const isDropTarget = tab.id === dropTargetId;
           return (
-            <button
+            <div
               key={tab.id}
               role="tab"
+              tabIndex={0}
               data-tab-id={tab.id}
               aria-selected={isActive}
               className={`panel-header__tab ${
@@ -200,6 +201,12 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
                 isDropTarget ? ` panel-header__tab--drop-${dropSide}` : ''
               }`}
               onClick={() => onTabChange?.(tab.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onTabChange?.(tab.id);
+                }
+              }}
               onPointerDown={(e) => handleTabPointerDown(e, tab.id)}
             >
               <span className="panel-header__tab-label">{tab.label}</span>
@@ -215,7 +222,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
                   tabIndex={-1}
                 />
               )}
-            </button>
+            </div>
           );
         })}
       </div>
