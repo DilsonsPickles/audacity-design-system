@@ -96,7 +96,12 @@ jobs:
           # Resolve the installed entry point and hand it to the script.
           INSTALLED_ENTRY="$(node -e "console.log(require.resolve('@dilsonspickles/components'))")"
           echo "Installed entry: $INSTALLED_ENTRY"
-          SMOKE_TARGET="$INSTALLED_ENTRY" node "$SCRIPT_PATH"
+          # Copy the script into the smoke dir so Node resolves its
+          # `import 'react'` from this dir's node_modules (the React 18
+          # we just installed), not the monorepo's React 19. Running it
+          # from the monorepo path causes two-Reacts and invalid-hook errors.
+          cp "$SCRIPT_PATH" ./smoke-test.mjs
+          SMOKE_TARGET="$INSTALLED_ENTRY" node ./smoke-test.mjs
 
       - name: Publish @dilsonspickles/components
         working-directory: packages/components
