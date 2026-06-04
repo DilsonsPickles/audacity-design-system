@@ -18,7 +18,7 @@
 //     cross-origin fetch the sandbox makes.
 // A loopback http server sidesteps all three with no allowlist changes.
 
-const { app, BrowserWindow, shell, Menu } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('node:path');
 const net = require('node:net');
 
@@ -95,6 +95,9 @@ function createWindow(url) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Preload exposes window.electronMenu.onCommand so the renderer
+      // can subscribe to native menu clicks (File > Save, etc.).
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
@@ -114,11 +117,19 @@ function createWindow(url) {
 }
 
 function setApplicationMenu() {
-  // Bare-bones macOS-style menu so the standard shortcuts (⌘Q, ⌘W,
-  // ⌘C/V, ⌘R for reload during dev, devtools) work out of the box. We
-  // intentionally don't try to mirror the in-app File/Edit/View menus
-  // here — those live in the toolbar and would diverge.
+  // Mirrors the renderer's in-app File / View / Effect / Generate / Record /
+  // Tools menus so the Electron build has the same commands the browser
+  // build exposes via ApplicationHeader. Each custom item posts an IPC
+  // command on `menu:command`; the renderer routes it to the existing
+  // handler (see App.tsx → window.electronMenu.onCommand).
+  //
+  // We don't try to sync checkmark state — Electron menus are static
+  // unless rebuilt, and the renderer is the source of truth anyway.
   const isMac = process.platform === 'darwin';
+  const send = (command) => (_item, focusedWindow) => {
+    const target = focusedWindow ?? BrowserWindow.getAllWindows()[0];
+    target?.webContents.send('menu:command', command);
+  };
   const template = [
     ...(isMac
       ? [{
@@ -135,6 +146,13 @@ function setApplicationMenu() {
         }]
       : []),
     {
+      label: 'File',
+      submenu: [
+        { label: 'Import…', accelerator: 'CmdOrCtrl+I', click: send('file:import') },
+        { label: 'Save Project', accelerator: 'CmdOrCtrl+S', click: send('file:save') },
+      ],
+    },
+    {
       label: 'Edit',
       submenu: [
         { role: 'undo' },
@@ -144,11 +162,19 @@ function setApplicationMenu() {
         { role: 'copy' },
         { role: 'paste' },
         { role: 'selectAll' },
+        { type: 'separator' },
+        { label: 'Edit Labels…', accelerator: 'CmdOrCtrl+B', click: send('edit:labels') },
+        { label: 'Preferences…', accelerator: 'CmdOrCtrl+,', click: send('edit:preferences') },
       ],
     },
     {
       label: 'View',
       submenu: [
+        { label: 'Show Effects', click: send('view:toggle-effects') },
+        { label: 'Show RMS in Waveform', click: send('view:toggle-rms') },
+        { label: 'Show Vertical Rulers', click: send('view:toggle-rulers') },
+        { label: 'Show Piano Roll', click: send('view:toggle-piano-roll') },
+        { type: 'separator' },
         { role: 'reload' },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },
@@ -158,6 +184,30 @@ function setApplicationMenu() {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Record',
+      submenu: [
+        { label: 'Enable Lead-In Time', click: send('record:toggle-lead-in') },
+      ],
+    },
+    {
+      label: 'Effect',
+      submenu: [
+        { label: 'Manage Plugins…', click: send('effect:manage-plugins') },
+      ],
+    },
+    {
+      label: 'Generate',
+      submenu: [
+        { label: 'Tone…', click: send('generate:tone') },
+      ],
+    },
+    {
+      label: 'Tools',
+      submenu: [
+        { label: 'Manage Macros…', click: send('tools:manage-macros') },
       ],
     },
     {
@@ -183,6 +233,15 @@ app.whenReady().then(async () => {
     || (app.isPackaged ? await startLocalRendererServer() : DEV_URL);
 
   createWindow(startUrl);
+
+  // Renderer asks for a fresh window — opens the same start URL with a
+  // `newProject=1` flag so the new window auto-creates a blank project
+  // on boot. Mirrors how multi-window desktop DAWs treat each project as
+  // its own document window.
+  ipcMain.on('window:open-new', () => {
+    const sep = startUrl.includes('?') ? '&' : '?';
+    createWindow(`${startUrl}${sep}newProject=1`);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(startUrl);

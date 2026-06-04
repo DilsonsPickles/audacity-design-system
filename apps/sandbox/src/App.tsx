@@ -2,7 +2,7 @@ import React from 'react';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, type StoredProject } from '@dilsonspickles/components';
 import {
   getProject as adieuGetProject,
   saveProject as adieuSaveProject,
@@ -147,9 +147,25 @@ function CanvasDemoContent() {
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
     setIsPluginManagerOpen, setIsMacroManagerOpen,
-    setAlertDialogOpen, setIsDebugPanelOpen, setIsPluginBrowserOpen,
+    setAlertDialogOpen, setIsDebugPanelOpen,
     showMissingPlugins,
   } = useDialogs();
+
+  // MuseHub marketplace modal — lifted from EditorLayout so the project
+  // toolbar's "Get effects" button can open it the same way the in-track
+  // EffectPickerMenu's "Get effects…" entry does.
+  const [marketplaceModal, setMarketplaceModal] = React.useState<{
+    open: boolean;
+    trackIndex?: number;
+    anchorRect?: DOMRect | null;
+    replaceIndex?: number;
+  }>({ open: false });
+
+  // Blocking modal shown while a cloud project is being fetched + hydrated.
+  // Cloud loads pull the full payload (incl. audio buffers) from adieu, which
+  // can take seconds — without a modal the user can interact with stale state
+  // mid-hydration.
+  const [isLoadingCloudProject, setIsLoadingCloudProject] = React.useState(false);
 
   const [isCloudProject, setIsCloudProject] = React.useState(false);
   const [cloudProjectName, setCloudProjectName] = React.useState('');
@@ -821,6 +837,32 @@ function CanvasDemoContent() {
     setIsCloudProject, setCurrentProjectId, audioManagerRef,
   });
 
+  // When Electron opens a fresh window for "New Project", it appends
+  // ?newProject=1 to the URL. Detect it on boot, create a blank project,
+  // jump to the project view, and strip the query so a reload doesn't
+  // spawn a second one.
+  const newProjectBootRef = React.useRef(false);
+  React.useEffect(() => {
+    if (newProjectBootRef.current) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('newProject') !== '1') return;
+    newProjectBootRef.current = true;
+    params.delete('newProject');
+    const next = params.toString();
+    window.history.replaceState(
+      {},
+      '',
+      `${window.location.pathname}${next ? `?${next}` : ''}`,
+    );
+    (async () => {
+      await createNewProject();
+      const projects = await getProjects();
+      setIndexedDBProjects(projects);
+      setActiveMenuItem('project');
+    })();
+  }, [createNewProject]);
+
   // Hidden file input for "Open from Computer". Click triggered from
   // HomeTab's onOpenOther so we reuse an existing UI affordance instead
   // of teaching HomeTab about a new button.
@@ -1149,6 +1191,46 @@ function CanvasDemoContent() {
     onOpenMacroManager: () => setIsMacroManagerOpen(true),
   });
 
+  // Route Electron native-menu clicks to the same handlers the in-app menu
+  // uses. We look up by item label so renaming the in-app menu in
+  // menuDefinitions automatically keeps the native menu in sync (rather
+  // than via brittle array indices).
+  const menuByLabel = React.useMemo(() => {
+    const map = new Map<string, (() => void) | undefined>();
+    for (const items of Object.values(menuDefinitions)) {
+      for (const item of items) {
+        if (item.label) map.set(item.label, item.onClick);
+      }
+    }
+    return map;
+  }, [menuDefinitions]);
+
+  const electronCommandsRef = React.useRef<Record<string, () => void>>({});
+  electronCommandsRef.current = {
+    'file:import': () => menuByLabel.get('Import')?.(),
+    'file:save': () => menuByLabel.get('Save Project')?.(),
+    'edit:labels': () => menuByLabel.get('Edit Labels...')?.(),
+    'edit:preferences': () => menuByLabel.get('Preferences')?.(),
+    'view:toggle-effects': () => menuByLabel.get('Show effects')?.(),
+    'view:toggle-rms': () => menuByLabel.get('Show RMS in waveform')?.(),
+    'view:toggle-rulers': () => menuByLabel.get('Show vertical rulers')?.(),
+    'view:toggle-piano-roll': () => menuByLabel.get('Show piano roll')?.(),
+    'record:toggle-lead-in': () => menuByLabel.get('Enable lead in time')?.(),
+    'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),
+    'generate:tone': () => menuByLabel.get('Tone...')?.(),
+    'tools:manage-macros': () => menuByLabel.get('Manage macros...')?.(),
+  };
+
+  React.useEffect(() => {
+    const api = (window as unknown as {
+      electronMenu?: { onCommand: (cb: (cmd: string) => void) => () => void };
+    }).electronMenu;
+    if (!api) return;
+    return api.onCommand((cmd) => {
+      electronCommandsRef.current[cmd]?.();
+    });
+  }, []);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       {!IS_ELECTRON && (
@@ -1201,7 +1283,10 @@ function CanvasDemoContent() {
               <GhostButton
                 icon="plugins"
                 label="Get effects"
-                onClick={() => setIsPluginBrowserOpen(true)}
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setMarketplaceModal({ open: true, anchorRect: rect });
+                }}
               />
             </ToolbarGroup>
           ) : null
@@ -1378,6 +1463,20 @@ function CanvasDemoContent() {
               );
             }}
             onNewProject={async () => {
+              // In Electron, "New Project" opens a fresh window instead of
+              // replacing the current one — mirrors how desktop DAWs treat
+              // each project as its own document window. The new window
+              // boots into the home tab; the user can then create/open a
+              // project there.
+              if (IS_ELECTRON) {
+                const api = (window as unknown as {
+                  electronShell?: { openNewWindow: () => void };
+                }).electronShell;
+                if (api) {
+                  api.openNewWindow();
+                  return;
+                }
+              }
               await createNewProject();
               // Reload projects list
               const projects = await getProjects();
@@ -1389,7 +1488,10 @@ function CanvasDemoContent() {
               // Cloud projects come from moose-hub; locals from IndexedDB.
               // The lists are presented exclusively (no merged view) so this
               // dispatch is unambiguous.
-              const project = cloudProjectIds.has(projectId)
+              const isCloud = cloudProjectIds.has(projectId);
+              if (isCloud) setIsLoadingCloudProject(true);
+              try {
+              const project = isCloud
                 ? await loadCloudProjectAsStored(projectId)
                 : await getProject(projectId);
               if (project) {
@@ -1451,6 +1553,9 @@ function CanvasDemoContent() {
 
                 setActiveMenuItem('project');
               } else {
+              }
+              } finally {
+                if (isCloud) setIsLoadingCloudProject(false);
               }
             }}
             onOpenOther={handleOpenFromComputer}
@@ -1533,6 +1638,8 @@ function CanvasDemoContent() {
           clickRulerToStartPlayback={clickRulerToStartPlayback}
           isFlatNavigation={isFlatNavigation}
           showMixer={mixerPanelOpen}
+          marketplaceModal={marketplaceModal}
+          setMarketplaceModal={setMarketplaceModal}
         />
       )}
 
@@ -1577,6 +1684,17 @@ function CanvasDemoContent() {
 
       {/* Toast Container */}
       <ToastContainer />
+
+      <Dialog
+        isOpen={isLoadingCloudProject}
+        title="Loading project…"
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+      >
+        <div style={{ padding: '8px 4px', fontSize: '14px', lineHeight: 1.5 }}>
+          Fetching audio and project data from the cloud. This may take a moment.
+        </div>
+      </Dialog>
 
       <AppDialogs
         welcomeDialog={welcomeDialog}

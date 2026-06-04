@@ -111,6 +111,21 @@ export interface EditorLayoutProps {
 
   // Mixer panel
   showMixer?: boolean;
+
+  // MuseHub marketplace modal — lifted to App.tsx so the project toolbar
+  // can trigger it from outside the track UI.
+  marketplaceModal: {
+    open: boolean;
+    trackIndex?: number;
+    anchorRect?: DOMRect | null;
+    replaceIndex?: number;
+  };
+  setMarketplaceModal: React.Dispatch<React.SetStateAction<{
+    open: boolean;
+    trackIndex?: number;
+    anchorRect?: DOMRect | null;
+    replaceIndex?: number;
+  }>>;
 }
 
 const STYLE_FLEX_ROW_OVERFLOW: React.CSSProperties = { display: 'flex', flex: 1, overflow: 'hidden' };
@@ -147,14 +162,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   } = useContextMenus();
 
   const { playMidiNote, midiInstrument } = useAudioEngine();
-  const [marketplaceModal, setMarketplaceModal] = React.useState<{
-    open: boolean;
-    trackIndex?: number;
-    anchorRect?: DOMRect | null;
-    /** When set, picking an effect REPLACES the slot at this index instead
-     *  of appending a new one. */
-    replaceIndex?: number;
-  }>({ open: false });
+  const { marketplaceModal, setMarketplaceModal } = props;
   // Pull MuseHub state (wallet, library, plugin-manager flags) from the
   // shared context so the picker, slot caret menus and marketplace modal all
   // stay in sync without prop-drilling.
