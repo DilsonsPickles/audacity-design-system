@@ -1,5 +1,16 @@
 import * as Tone from 'tone';
-import { generateRmsWaveform } from './rmsWaveform';
+
+// Window size used for the *live* recording RMS preview. Much smaller than
+// the offline 2048 window so we can recompute incrementally on each tick
+// without burning the main thread. The final RMS (computed once in
+// onRecordingComplete) still uses the full 2048 window so the saved clip
+// matches the rest of the app's visual style.
+const LIVE_RMS_WINDOW = 256;
+const LIVE_RMS_HALF = LIVE_RMS_WINDOW >> 1;
+// Throttle the React dispatch — 15Hz is still smooth visually but halves
+// the reducer/reconciler work versus the 30Hz capture rate.
+const LIVE_DISPATCH_HZ = 15;
+const LIVE_DISPATCH_INTERVAL_MS = 1000 / LIVE_DISPATCH_HZ;
 
 export interface RecordingManagerCallbacks {
   onMeterUpdate: (level: number, peak: number) => void;
@@ -25,6 +36,13 @@ export class RecordingManager {
   private recordingStartPosition = 0;
   private isMonitoring = false;
   private recordedSamples: number[] = [];
+  // Running RMS, length matches recordedSamples 1:1. Maintained
+  // incrementally by appendRecordedChunk so we never re-process the full
+  // buffer during a long recording.
+  private recordedRms: number[] = [];
+  // Wall-clock of the last React dispatch — used to throttle visual
+  // updates to LIVE_DISPATCH_HZ without dropping incoming audio samples.
+  private lastDispatchAt = 0;
   private actualSampleRate = SAMPLE_RATE; // Track actual sample rate from AudioContext
 
   constructor(callbacks: RecordingManagerCallbacks) {
@@ -93,6 +111,46 @@ export class RecordingManager {
   }
 
   /**
+   * Append a fresh snapshot from the Tone.Waveform node to the running
+   * buffers. Downsamples to keep the preview light, then extends the RMS
+   * envelope only over the affected range — the previously-finalized RMS
+   * values are not re-touched. Cost is O(chunk) per call rather than
+   * O(total samples), which is what was killing recordings >30s.
+   */
+  private appendRecordedChunk(dataArray: Float32Array | number[]): void {
+    const previousLength = this.recordedSamples.length;
+    // Downsample by 4 (matches the pre-existing visual density).
+    for (let i = 0; i < dataArray.length; i += 4) {
+      this.recordedSamples.push(dataArray[i]);
+    }
+    const newLength = this.recordedSamples.length;
+    if (newLength === previousLength) return;
+
+    // The RMS window straddles each sample, so when we append new data
+    // the last LIVE_RMS_HALF positions of the *previous* RMS need to be
+    // re-computed too (their right halves now reach into the new audio).
+    // Everything earlier than that is stable and doesn't change.
+    const recomputeStart = Math.max(0, previousLength - LIVE_RMS_HALF);
+    // Truncate the now-stale tail of recordedRms before re-extending.
+    if (this.recordedRms.length > recomputeStart) {
+      this.recordedRms.length = recomputeStart;
+    }
+    const samples = this.recordedSamples;
+    for (let i = recomputeStart; i < newLength; i++) {
+      const start = Math.max(0, i - LIVE_RMS_HALF);
+      const end = Math.min(newLength, i + LIVE_RMS_HALF);
+      let sumSquares = 0;
+      let count = 0;
+      for (let j = start; j < end; j++) {
+        const s = samples[j];
+        sumSquares += s * s;
+        count++;
+      }
+      this.recordedRms.push(Math.sqrt(sumSquares / count));
+    }
+  }
+
+  /**
    * Stop monitoring microphone input
    */
   stopMonitoring(): void {
@@ -135,8 +193,10 @@ export class RecordingManager {
         await this.startMonitoring();
       }
 
-      // Reset recorded samples
+      // Reset recorded samples + RMS + dispatch throttle.
       this.recordedSamples = [];
+      this.recordedRms = [];
+      this.lastDispatchAt = 0;
 
       // Create recorder and connect to existing userMedia
       if (this.userMedia) {
@@ -146,36 +206,37 @@ export class RecordingManager {
         // Start recording
         this.recorder.start();
 
-        // Calculate expected duration during live recording
+        // Live preview tick: pulls the latest Waveform-node snapshot,
+        // appends it to the running buffer, and incrementally extends
+        // the RMS envelope so visual updates stay O(chunk) instead of
+        // O(total recording length).
         if (this.waveform && this.callbacks.onRecordingWaveformUpdate) {
           this.waveformUpdateInterval = window.setInterval(() => {
-            if (this.waveform) {
-              const dataArray = this.waveform.getValue();
+            if (!this.waveform) return;
+            const dataArray = this.waveform.getValue();
+            this.appendRecordedChunk(dataArray);
 
-              // Append current snapshot (downsampled)
-              const downsampledData: number[] = [];
-              for (let i = 0; i < dataArray.length; i += 4) {
-                downsampledData.push(dataArray[i]);
-              }
-              this.recordedSamples.push(...downsampledData);
+            // Throttle the actual React dispatch — capture continues at
+            // 30Hz, but we only push fresh state to the renderer at
+            // LIVE_DISPATCH_HZ. The clip's preview waveform doesn't need
+            // more than ~15Hz to look continuous.
+            const now = performance.now();
+            if (now - this.lastDispatchAt < LIVE_DISPATCH_INTERVAL_MS) return;
+            this.lastDispatchAt = now;
 
-              // Calculate expected duration based on elapsed time
-              const elapsedSeconds = (Date.now() - this.recordingStartTime) / 1000;
+            const elapsedSeconds = (Date.now() - this.recordingStartTime) / 1000;
+            // Duration is derived: samples.length / fakeRate = elapsed.
+            const fakeSampleRate = this.recordedSamples.length / Math.max(0.001, elapsedSeconds);
 
-              // Generate RMS waveform
-              const waveformRms = generateRmsWaveform(this.recordedSamples);
-
-              // Pass samples, RMS, and ELAPSED TIME as "fake sample rate"
-              // Duration will be calculated as: samples.length / fakeRate = samples.length / (samples.length / elapsed) = elapsed
-              const fakeSampleRate = this.recordedSamples.length / Math.max(0.001, elapsedSeconds);
-
-              this.callbacks.onRecordingWaveformUpdate(
-                [...this.recordedSamples],
-                waveformRms,
-                fakeSampleRate
-              );
-            }
-          }, 1000 / 30); // 30 FPS for waveform updates
+            // slice() snapshots the references so React's reducer can
+            // own its own copies (the recorder keeps mutating the
+            // originals between dispatches).
+            this.callbacks.onRecordingWaveformUpdate(
+              this.recordedSamples.slice(),
+              this.recordedRms.slice(),
+              fakeSampleRate
+            );
+          }, 1000 / 30); // 30Hz capture; dispatch throttled above.
         }
       }
 
@@ -243,8 +304,10 @@ export class RecordingManager {
         this.recorder = null;
       }
 
-      // Clear recorded samples
+      // Clear recorded buffers + dispatch throttle.
       this.recordedSamples = [];
+      this.recordedRms = [];
+      this.lastDispatchAt = 0;
 
       // Return to monitoring mode (keep mic active, just stop recording)
       // Restart the meter interval without playhead updates

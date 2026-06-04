@@ -1,0 +1,463 @@
+/* InstallerWizardDialog — Apple PackageKit + classic Windows Setup look. */
+
+.installer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.installer-window {
+  width: 720px;
+  max-width: 90vw;
+  height: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.2);
+  color: #1D1D1F;
+}
+
+.installer-window--windows {
+  border-radius: 6px;
+}
+
+/* ---- Title bar -------------------------------------------------------- */
+
+.installer-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #E5E5E7;
+  background: linear-gradient(to bottom, #F6F6F8, #E9E9EC);
+}
+
+.installer-window--windows .installer-titlebar {
+  background: linear-gradient(to bottom, #0E76C9, #0958A0);
+  border-bottom: none;
+  color: #FFFFFF;
+}
+
+.installer-titlebar__lights {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  width: 64px;
+}
+
+.installer-titlebar__light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.installer-titlebar__light--close { background: #FF5F57; }
+.installer-titlebar__light--min   { background: #FEBC2E; }
+.installer-titlebar__light--max   { background: #28C940; }
+
+.installer-titlebar__title {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1D1D1F;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.installer-window--windows .installer-titlebar__title {
+  justify-content: flex-start;
+  color: #FFFFFF;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.installer-titlebar__icon {
+  font-size: 14px;
+}
+
+.installer-titlebar__close {
+  background: transparent;
+  border: none;
+  color: #FFFFFF;
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.installer-titlebar__close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ---- Content layout --------------------------------------------------- */
+
+.installer-content {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.installer-steps {
+  width: 200px;
+  flex: 0 0 auto;
+  padding: 28px 0 28px 24px;
+  background: #FFFFFF;
+  border-right: 1px solid #ECECEF;
+}
+
+.installer-steps ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.installer-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1D1D1F;
+  font-size: 13px;
+}
+
+.installer-steps__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1.5px solid #C7C7CC;
+  flex: 0 0 auto;
+}
+
+.installer-steps__dot--done {
+  background: #C7C7CC;
+  border-color: #C7C7CC;
+}
+
+.installer-steps__dot--active {
+  background: #007AFF;
+  border-color: #007AFF;
+}
+
+.installer-steps__item--active .installer-steps__label {
+  font-weight: 600;
+}
+
+.installer-pane {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 24px 16px;
+  background: #FFFFFF;
+}
+
+.installer-pane__header {
+  font-size: 13px;
+  color: #1D1D1F;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.installer-pane__body {
+  flex: 1 1 auto;
+  border: 1px solid #E5E5E7;
+  border-radius: 6px;
+  padding: 22px 24px;
+  min-height: 0;
+  overflow: auto;
+  background: #FFFFFF;
+}
+
+.installer-window--windows .installer-steps {
+  display: none;
+}
+
+.installer-window--windows .installer-pane {
+  padding: 0;
+}
+
+.installer-window--windows .installer-pane__body {
+  border: none;
+  border-radius: 0;
+  padding: 24px 28px;
+}
+
+/* ---- Body presentations ---------------------------------------------- */
+
+.installer-body__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  gap: 12px;
+}
+
+.installer-body__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+}
+
+.installer-body__title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: #1D1D1F;
+}
+
+.installer-body__lead {
+  font-size: 13px;
+  margin: 0;
+  color: #3A3A3C;
+}
+
+.installer-body__meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.installer-body__meta dt {
+  color: #6E6E73;
+}
+
+.installer-body__meta dd {
+  margin: 0;
+  color: #1D1D1F;
+}
+
+.installer-disk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 18px;
+  border: 2px solid #007AFF;
+  border-radius: 8px;
+  background: rgba(0, 122, 255, 0.06);
+  min-width: 220px;
+}
+
+.installer-disk__icon {
+  font-size: 28px;
+}
+
+.installer-disk__name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.installer-disk__meta {
+  font-size: 12px;
+  color: #6E6E73;
+}
+
+.installer-license {
+  flex: 1 1 auto;
+  border: 1px solid #D2D2D7;
+  border-radius: 4px;
+  padding: 12px 14px;
+  overflow: auto;
+  background: #FAFAFA;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #1D1D1F;
+}
+
+.installer-license p { margin: 0 0 10px; }
+
+.installer-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #1D1D1F;
+  cursor: pointer;
+}
+
+.installer-path {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #F5F5F7;
+  border-radius: 6px;
+  border: 1px solid #E5E5E7;
+}
+
+.installer-path__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6E6E73;
+}
+
+.installer-path__value {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #1D1D1F;
+  word-break: break-all;
+}
+
+.installer-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #E5E5E7;
+  overflow: hidden;
+}
+
+.installer-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007AFF, #5AC8FA);
+  transition: width 80ms linear;
+}
+
+.installer-progress__label {
+  font-size: 12px;
+  color: #6E6E73;
+  text-align: right;
+}
+
+.installer-log {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: #1D1D1F;
+  color: #34D399;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  border-radius: 6px;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.installer-log li::before {
+  content: '› ';
+  color: #6EE7B7;
+}
+
+.installer-checkmark {
+  width: 96px;
+  height: 96px;
+}
+
+.installer-checkmark svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Footer ---------------------------------------------------------- */
+
+.installer-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #E5E5E7;
+  background: #F5F5F7;
+}
+
+.installer-footer__spacer {
+  flex: 1 1 auto;
+}
+
+.installer-btn {
+  min-width: 90px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.installer-btn--primary {
+  background: #007AFF;
+  color: #FFFFFF;
+}
+
+.installer-btn--primary:hover { background: #0066D6; }
+
+.installer-btn--secondary {
+  background: #FFFFFF;
+  color: #1D1D1F;
+  border-color: #D2D2D7;
+}
+
+.installer-btn--secondary:hover { background: #F5F5F7; }
+
+.installer-btn--ghost {
+  background: transparent;
+  color: #1D1D1F;
+  border-color: transparent;
+}
+
+.installer-btn--ghost:hover { background: rgba(0, 0, 0, 0.05); }
+
+.installer-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Windows variants — different palette + sharper edges. */
+.installer-window--windows .installer-footer {
+  background: #F0F0F0;
+  border-top: 1px solid #D6D6D6;
+}
+
+.installer-window--windows .installer-btn {
+  border-radius: 3px;
+  border-color: #ADADAD;
+}
+
+.installer-window--windows .installer-btn--primary {
+  background: #0E76C9;
+  border-color: #0958A0;
+}
+
+.installer-window--windows .installer-btn--primary:hover {
+  background: #0958A0;
+}
+
+.installer-window--windows .installer-btn--secondary {
+  background: linear-gradient(to bottom, #FDFDFD, #E5E5E5);
+}
+
+.installer-window--windows .installer-btn--secondary:hover {
+  background: linear-gradient(to bottom, #E8F4FE, #C7E4FB);
+  border-color: #7EB4EA;
+}
+
+.installer-window--windows .installer-pane__header {
+  background: #FFFFFF;
+  padding: 16px 24px;
+  border-bottom: 1px solid #E5E5E5;
+  text-align: left;
+  font-weight: 600;
+  margin: 0;
+}

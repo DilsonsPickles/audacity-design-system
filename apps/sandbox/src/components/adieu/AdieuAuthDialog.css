@@ -1,19 +1,21 @@
-/* MuseHub auth dialog — sign-in / create-account. z-index 20000 puts it
-   above the design system Dialog (10000) so when a Dialog triggers a
-   sign-in it overlays correctly instead of getting buried, and well above
-   the marketplace modal + sign-in-required prompt + wallet popover. */
+/* adieu auth dialog — sign-in / create-account. Mirror of the MuseHub
+   AuthDialog with the violet accent swapped for rose-500 (#F43F5E) so the
+   user can tell at a glance which service they're signing into.
+   z-index 20000 puts it above the design system Dialog (10000), so when
+   the Save-to-Cloud dialog triggers a sign-in it overlays correctly
+   instead of getting buried. */
 
-@keyframes auth-dialog-backdrop-in {
+@keyframes adieu-auth-dialog-backdrop-in {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-@keyframes auth-dialog-in {
+@keyframes adieu-auth-dialog-in {
   from { opacity: 0; transform: translateY(8px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.auth-dialog__backdrop {
+.adieu-auth-dialog__backdrop {
   position: fixed;
   inset: 0;
   z-index: 20000;
@@ -22,11 +24,11 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  animation: auth-dialog-backdrop-in 140ms ease-out;
+  animation: adieu-auth-dialog-backdrop-in 140ms ease-out;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.auth-dialog {
+.adieu-auth-dialog {
   position: relative;
   width: 100%;
   max-width: 420px;
@@ -39,17 +41,17 @@
   flex-direction: column;
   gap: 14px;
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
-  animation: auth-dialog-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: adieu-auth-dialog-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.auth-dialog__header {
+.adieu-auth-dialog__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.auth-dialog__header h2 {
+.adieu-auth-dialog__header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
@@ -57,7 +59,7 @@
   color: #FFFFFF;
 }
 
-.auth-dialog__close {
+.adieu-auth-dialog__close {
   width: 28px;
   height: 28px;
   border-radius: 6px;
@@ -70,44 +72,44 @@
   justify-content: center;
 }
 
-.auth-dialog__close:hover:not(:disabled) {
+.adieu-auth-dialog__close:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
 }
 
-.auth-dialog__close:disabled {
+.adieu-auth-dialog__close:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.auth-dialog__subtitle {
+.adieu-auth-dialog__subtitle {
   margin: 0;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.45;
 }
 
-.auth-dialog__form {
+.adieu-auth-dialog__form {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: 2px;
 }
 
-.auth-dialog__field {
+.adieu-auth-dialog__field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.auth-dialog__field > span:first-child {
+.adieu-auth-dialog__field > span:first-child {
   font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
   letter-spacing: 0.01em;
 }
 
-.auth-dialog__field input {
+.adieu-auth-dialog__field input {
   height: 36px;
   padding: 0 12px;
   border-radius: 8px;
@@ -120,23 +122,23 @@
   transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.auth-dialog__field input:focus {
-  border-color: rgba(185, 140, 255, 0.7);
+.adieu-auth-dialog__field input:focus {
+  border-color: rgba(244, 63, 94, 0.7);
   background: rgba(0, 0, 0, 0.4);
 }
 
-.auth-dialog__field input:disabled {
+.adieu-auth-dialog__field input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.auth-dialog__hint {
+.adieu-auth-dialog__hint {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.45);
   min-height: 14px;
 }
 
-.auth-dialog__error {
+.adieu-auth-dialog__error {
   margin: 0;
   padding: 8px 10px;
   background: rgba(239, 68, 68, 0.12);
@@ -146,7 +148,7 @@
   font-size: 12px;
 }
 
-.auth-dialog__cta {
+.adieu-auth-dialog__cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -155,8 +157,8 @@
   padding: 0 20px;
   border-radius: 9999px;
   border: 0;
-  background: #B98CFF;
-  color: #1B0F2E;
+  background: #F43F5E;
+  color: #1A0A10;
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -164,55 +166,55 @@
   transition: background-color 120ms ease, transform 120ms ease;
 }
 
-.auth-dialog__cta:hover:not(:disabled) { background: #C9A2FF; }
-.auth-dialog__cta:active:not(:disabled) { transform: translateY(1px); }
+.adieu-auth-dialog__cta:hover:not(:disabled) { background: #FB7185; }
+.adieu-auth-dialog__cta:active:not(:disabled) { transform: translateY(1px); }
 
-.auth-dialog__cta:disabled {
+.adieu-auth-dialog__cta:disabled {
   cursor: progress;
   opacity: 0.85;
 }
 
-.auth-dialog__spinner {
+.adieu-auth-dialog__spinner {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1.6px solid rgba(27, 15, 46, 0.2);
-  border-top-color: #1B0F2E;
-  animation: auth-dialog-spin 700ms linear infinite;
+  border: 1.6px solid rgba(26, 10, 16, 0.2);
+  border-top-color: #1A0A10;
+  animation: adieu-auth-dialog-spin 700ms linear infinite;
 }
 
-@keyframes auth-dialog-spin {
+@keyframes adieu-auth-dialog-spin {
   to { transform: rotate(360deg); }
 }
 
-.auth-dialog__switch,
-.auth-dialog__forgot {
+.adieu-auth-dialog__switch,
+.adieu-auth-dialog__forgot {
   margin: 0;
   text-align: center;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
 }
 
-.auth-dialog__link {
+.adieu-auth-dialog__link {
   background: transparent;
   border: 0;
   padding: 0;
   font: inherit;
   font-size: 12px;
-  color: #B98CFF;
+  color: #F43F5E;
   font-weight: 600;
   cursor: pointer;
 }
 
-.auth-dialog__link:hover:not(:disabled) { color: #D5B3FF; }
-.auth-dialog__link:disabled {
+.adieu-auth-dialog__link:hover:not(:disabled) { color: #FB7185; }
+.adieu-auth-dialog__link:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.auth-dialog__forgot a {
-  color: #B98CFF;
+.adieu-auth-dialog__forgot a {
+  color: #F43F5E;
   text-decoration: none;
 }
 
-.auth-dialog__forgot a:hover { text-decoration: underline; }
+.adieu-auth-dialog__forgot a:hover { text-decoration: underline; }

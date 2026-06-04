@@ -15,17 +15,18 @@ const VIEWPORT_PAD = 12;
 export interface MuseWalletProps {
   /** ISO currency code — defaults to USD to match the rest of the marketplace. */
   currency?: 'USD' | 'GBP' | 'EUR';
-  /** Where "Top Up" should send the user. Defaults to the real musehub.com host. */
+  /** Where "Top Up" should send the user. Defaults to the local moose-hub
+   *  /wallet/top-up page (derived from VITE_MUSEHUB_BASE_URL). */
   topUpUrl?: string;
 }
 
 export const MuseWallet: React.FC<MuseWalletProps> = ({
   currency = 'USD',
-  topUpUrl = 'https://musehub.com/wallet/top-up',
+  topUpUrl = `${(import.meta.env.VITE_MUSEHUB_BASE_URL as string | undefined) ?? 'http://localhost:3000'}/wallet/top-up`,
 }) => {
   const balance = useWalletBalance();
   const signedIn = useSignedIn();
-  const { openAuthDialog } = useMuseHub();
+  const { signIn } = useMuseHub();
   const [open, setOpen] = useState(false);
   const chipRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -142,7 +143,7 @@ export const MuseWallet: React.FC<MuseWalletProps> = ({
         ref={chipRef}
         type="button"
         className="muse-wallet__signin"
-        onClick={() => openAuthDialog('sign-in')}
+        onClick={() => { void signIn(); }}
       >
         <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
           <circle cx="7" cy="5" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.3" />

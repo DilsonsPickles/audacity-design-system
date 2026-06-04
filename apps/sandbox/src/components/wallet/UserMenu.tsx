@@ -12,12 +12,13 @@ const POPOVER_GAP = 10;
 const VIEWPORT_PAD = 12;
 
 export interface UserMenuProps {
-  /** Where "View My Account" should send the user. */
+  /** Where "View My Account" should send the user. Defaults to the local
+   *  moose-hub /account page (derived from VITE_MUSEHUB_BASE_URL). */
   accountUrl?: string;
 }
 
 export const UserMenu: React.FC<UserMenuProps> = ({
-  accountUrl = 'https://musehub.com/account',
+  accountUrl = `${(import.meta.env.VITE_MUSEHUB_BASE_URL as string | undefined) ?? 'http://localhost:3000'}/account`,
 }) => {
   const user = useUser();
   const { signOut } = useMuseHub();

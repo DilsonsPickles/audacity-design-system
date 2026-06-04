@@ -239,6 +239,7 @@ export type TracksAction =
   | { type: 'REORDER_TRACK_EFFECTS'; payload: { trackIndex: number; fromIndex: number; toIndex: number } }
   | { type: 'TOGGLE_ALL_TRACK_EFFECTS'; payload: { trackIndex: number; enabled: boolean } }
   // Master effects actions
+  | { type: 'SET_MASTER_EFFECTS'; payload: Effect[] }
   | { type: 'ADD_MASTER_EFFECT'; payload: Effect }
   | { type: 'UPDATE_MASTER_EFFECT'; payload: { effectIndex: number; updates: Partial<Effect> } }
   | { type: 'REMOVE_MASTER_EFFECT'; payload: number }
@@ -1488,6 +1489,13 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
     }
 
     // Master effects actions
+    case 'SET_MASTER_EFFECTS': {
+      return {
+        ...state,
+        masterEffects: action.payload,
+      };
+    }
+
     case 'ADD_MASTER_EFFECT': {
       return {
         ...state,

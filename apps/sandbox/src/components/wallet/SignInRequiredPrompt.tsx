@@ -33,7 +33,7 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
 }) => {
   const signedIn = useSignedIn();
   const balance = useWalletBalance();
-  const { openAuthDialog } = useMuseHub();
+  const { signIn } = useMuseHub();
   const [phase, setPhase] = useState<Phase>('idle');
 
   const price = effect.price ?? 0;
@@ -41,7 +41,7 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
   const balanceAfter = Math.max(0, balance - price);
 
   const handleSignIn = () => {
-    openAuthDialog('sign-in');
+    void signIn();
   };
 
   const handleConfirm = () => {

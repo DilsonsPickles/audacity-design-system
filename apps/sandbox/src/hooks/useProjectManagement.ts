@@ -3,6 +3,7 @@ import { TracksState, TracksAction } from '../contexts/TracksContext';
 import { saveProject, getProject } from '../utils/projectDatabase';
 import { toast } from '@dilsonspickles/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
+import { downloadProjectFile, readProjectFile } from '../lib/projectFile';
 
 export interface UseProjectManagementOptions {
   dispatch: React.Dispatch<TracksAction>;
@@ -17,6 +18,10 @@ export interface UseProjectManagementOptions {
 export interface UseProjectManagementReturn {
   createNewProject: () => Promise<string>;
   handleSaveToComputer: () => Promise<void>;
+  /** Reads a `.audacityweb` file the user picked from their computer,
+   *  reconstructs tracks + audio buffers, persists a new IndexedDB row,
+   *  and switches the editor to it. Returns the new project id. */
+  openProjectFromFile: (file: File) => Promise<string | null>;
 }
 
 /**
@@ -68,55 +73,42 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
     return projectId;
   }, [dispatch, setIsCloudProject, setCurrentProjectId]);
 
-  // Handler for saving project to computer
+  // Save the open project as a real .audacityweb file the user can move,
+  // back up, email, or re-open later. Bundles tracks JSON + per-clip WAVs
+  // + a thumbnail JPG into a single ZIP and triggers a browser download.
+  // Also mirrors the latest state into IndexedDB so the home tab thumbnail
+  // stays current.
   const handleSaveToComputer = useCallback(async () => {
-    console.log('Save to computer - currentProjectId:', currentProjectId);
-
     if (!currentProjectId) {
-      console.error('No current project ID');
       toast.error('No project open');
       return;
     }
 
     try {
-      // Get current project from IndexedDB
       const project = await getProject(currentProjectId);
-      console.log('Retrieved project from IndexedDB:', project);
       if (!project) {
-        console.error('Project not found for ID:', currentProjectId);
         toast.error('Project not found');
         return;
       }
 
-      // Capture canvas screenshot for thumbnail
-      let thumbnailUrl: string | undefined;
+      // Capture a thumbnail of the canvas (best-effort).
+      let thumbnailDataUrl: string | undefined;
       if (scrollContainerRef.current) {
-        console.log('Attempting to capture screenshot...');
         try {
-          // Use dom-to-image-more (better CSS support than html2canvas)
           const domtoimage = (await import('dom-to-image-more')).default;
-
-          // Capture as data URL directly (224x126 aspect ratio)
-          const dataUrl = await domtoimage.toJpeg(scrollContainerRef.current, {
+          thumbnailDataUrl = await domtoimage.toJpeg(scrollContainerRef.current, {
             quality: 0.8,
             bgcolor: '#F5F5F7',
-            width: 448, // 2x for retina
-            height: 252, // 2x for retina
-            style: {
-              transform: 'scale(1)',
-              transformOrigin: 'top left',
-            },
+            width: 448,
+            height: 252,
+            style: { transform: 'scale(1)', transformOrigin: 'top left' },
           });
-
-          thumbnailUrl = dataUrl;
-          console.log('Screenshot captured');
-        } catch (error) {
-          console.error('Error capturing screenshot:', error);
-          // Continue without thumbnail
+        } catch {
+          // Thumbnail is optional.
         }
       }
 
-      // Export audio buffers as WAV ArrayBuffers for persistence
+      // Pull per-clip audio buffers out of the playback manager.
       const wavBuffers: Record<string, ArrayBuffer> = {};
       const audioManager = audioManagerRef.current;
       if (audioManager) {
@@ -126,30 +118,90 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
         }
       }
 
-      // Serialize tracks state with full clip data including waveforms
-      const projectData = {
+      const title = project.title || 'Untitled Project';
+
+      // Trigger the real file download.
+      await downloadProjectFile({
+        title,
         tracks: state.tracks,
+        masterEffects: state.masterEffects,
         playheadPosition: state.playheadPosition,
         audioBuffers: wavBuffers,
-      };
-
-      console.log('Saving project to IndexedDB...');
-      await saveProject({
-        ...project,
-        data: projectData,
-        thumbnailUrl,
+        thumbnailDataUrl,
       });
 
-      console.log('Project saved successfully');
-      toast.success('Project saved');
+      // Also persist the latest snapshot to IndexedDB so the home tab
+      // shows the current thumbnail next time the user comes back.
+      await saveProject({
+        ...project,
+        data: {
+          tracks: state.tracks,
+          masterEffects: state.masterEffects,
+          playheadPosition: state.playheadPosition,
+          audioBuffers: wavBuffers,
+        },
+        thumbnailUrl: thumbnailDataUrl ?? project.thumbnailUrl,
+      });
+
+      toast.success('Project downloaded');
     } catch (error) {
       console.error('Error saving project:', error);
       toast.error('Failed to save project');
     }
-  }, [currentProjectId, state.tracks, state.playheadPosition, scrollContainerRef]);
+  }, [currentProjectId, state.tracks, state.masterEffects, state.playheadPosition, scrollContainerRef, audioManagerRef]);
+
+  const openProjectFromFile = useCallback(
+    async (file: File): Promise<string | null> => {
+      try {
+        const bundle = await readProjectFile(file);
+
+        const audioManager = audioManagerRef.current;
+        if (audioManager && Object.keys(bundle.audioBuffers).length > 0) {
+          await audioManager.importBuffersFromWav(bundle.audioBuffers);
+        }
+
+        const projectId = `project-${Date.now()}`;
+        await saveProject({
+          id: projectId,
+          title: bundle.title,
+          dateCreated: Date.now(),
+          dateModified: Date.now(),
+          isCloudProject: false,
+          isUploading: false,
+          thumbnailUrl: bundle.thumbnailDataUrl,
+          data: {
+            tracks: bundle.tracks,
+            masterEffects: bundle.masterEffects ?? [],
+            playheadPosition: bundle.playheadPosition,
+            audioBuffers: bundle.audioBuffers,
+          },
+        });
+
+        setCurrentProjectId(projectId);
+        setIsCloudProject(false);
+        dispatch({ type: 'SET_TRACKS', payload: bundle.tracks as TracksState['tracks'] });
+        dispatch({
+          type: 'SET_MASTER_EFFECTS',
+          payload: (Array.isArray(bundle.masterEffects) ? bundle.masterEffects : []) as TracksState['masterEffects'],
+        });
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: bundle.playheadPosition });
+        if (audioManager) audioManager.loadClips(bundle.tracks as TracksState['tracks'], 0);
+
+        toast.success('Project opened');
+        return projectId;
+      } catch (error) {
+        console.error('Error opening project file:', error);
+        const message = error instanceof Error ? error.message : 'Could not open project file';
+        toast.error(message);
+        return null;
+      }
+    },
+    [audioManagerRef, dispatch, setCurrentProjectId, setIsCloudProject],
+  );
 
   return {
     createNewProject,
     handleSaveToComputer,
+    openProjectFromFile,
   };
 }

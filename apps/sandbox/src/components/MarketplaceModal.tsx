@@ -5,7 +5,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MuseWallet } from './wallet/MuseWallet';
 import { UserMenu } from './wallet/UserMenu';
 import { SignInRequiredPrompt } from './wallet/SignInRequiredPrompt';
-import { useSignedIn } from '../contexts/MuseHubContext';
+import { useSignedIn, useMuseHub } from '../contexts/MuseHubContext';
+import { getPlugins, type MuseHubPlugin } from '../lib/musehub-client';
 import './MarketplaceModal.css';
 
 const DEFAULT_WIDTH = 920;
@@ -35,7 +36,9 @@ export interface MarketplaceEffect {
   blurb?: string;
 }
 
-const CATALOG: MarketplaceEffect[] = [
+// Fallback used when the moose-hub backend is unreachable (offline dev). The
+// real catalog is fetched on first modal open and cached at module scope.
+const CATALOG_FALLBACK: MarketplaceEffect[] = [
   // MuseHub marketplace — a spread of price tiers so the wallet/purchase flow
   // is demoable from a modest starting balance. Audacity's built-in effects
   // are excluded from the catalog since they're shipped with the app and live
@@ -59,6 +62,42 @@ const CATALOG: MarketplaceEffect[] = [
   { id: 'pultec',      name: 'Pultec EQP-1A',   vendor: 'UAD',             category: 'mastering',  installed: false, price: 299.0, color: '#92400E', blurb: 'Tube program EQ' },
   { id: 'rx-11',       name: 'RX 11 Standard',  vendor: 'iZotope',         category: 'mastering',  installed: false, price: 399.0, color: '#14B8A6', blurb: 'Audio repair suite' },
 ];
+
+// Fallback colour for server entries that don't ship one. The marketplace
+// tile rendering requires a colour so we never hand it `undefined`.
+const DEFAULT_TILE_COLOR = '#475569';
+
+function toMarketplaceEffect(p: MuseHubPlugin): MarketplaceEffect {
+  return {
+    id: p.id,
+    name: p.name,
+    vendor: p.vendor,
+    category: p.category as EffectCategory,
+    // Server doesn't track local install state — derived client-side from
+    // purchasedIds + uninstalledIds in the useMemo below.
+    installed: false,
+    price: p.priceCents / 100,
+    color: p.color ?? DEFAULT_TILE_COLOR,
+    blurb: p.blurb,
+  };
+}
+
+// Module-scope cache so re-opening the modal doesn't re-fetch.
+let catalogCache: MarketplaceEffect[] | null = null;
+
+async function fetchCatalog(): Promise<MarketplaceEffect[]> {
+  if (catalogCache) return catalogCache;
+  try {
+    const { plugins } = await getPlugins();
+    catalogCache = plugins.map(toMarketplaceEffect);
+    return catalogCache;
+  } catch {
+    // Server unreachable — fall back to the hardcoded catalog so the modal
+    // is still demoable offline. We don't cache this so a later open can
+    // try the network again.
+    return CATALOG_FALLBACK;
+  }
+}
 
 type ViewMode = 'tile' | 'list';
 
@@ -132,6 +171,56 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
   // sign-in → confirm → success flow internally.
   const [signInGate, setSignInGate] = useState<string | null>(null);
   const signedIn = useSignedIn();
+  const {
+    activeInstall,
+    pauseActiveInstall,
+    resumeActiveInstall,
+    cancelActiveInstall,
+    installerWizardEffect,
+  } = useMuseHub();
+  // Footer band is only the download progress. When the download finishes
+  // the installer wizard pops automatically and takes over the screen, so
+  // the footer hides without any user action in between.
+  const showInstallToast =
+    activeInstall &&
+    !installerWizardEffect &&
+    activeInstall.phase === 'downloading';
+
+  // If the user signs out while the Owned tab is active (or opens the modal
+  // already signed out with a stale view), snap back to Marketplace — Owned
+  // is hidden in the tab strip and "owned" would silently filter everything
+  // out otherwise.
+  useEffect(() => {
+    if (!signedIn) setView((v) => (v === 'owned' ? 'marketplace' : v));
+  }, [signedIn]);
+
+  // "Uninstalled" only means anything if the user is signed in AND still owns
+  // the effect on the server. Without ownership we shouldn't surface an
+  // "Install" button — that would let a signed-out (or post-refund) user
+  // re-add an effect they don't have a current entitlement to.
+  const isUninstalled = React.useCallback(
+    (id: string) =>
+      signedIn &&
+      (purchasedIds?.has(id) ?? false) &&
+      (uninstalledIds?.has(id) ?? false),
+    [signedIn, purchasedIds, uninstalledIds],
+  );
+
+  // Live catalog from moose-hub, falling back to the hardcoded list for
+  // offline dev. Fetched on first modal open and reused thereafter.
+  const [catalogSource, setCatalogSource] = useState<MarketplaceEffect[]>(
+    () => catalogCache ?? CATALOG_FALLBACK,
+  );
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchCatalog().then((next) => {
+      if (!cancelled) setCatalogSource(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -147,9 +236,9 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
   // uninstalled them, in which case they go back to "Reinstall" affordances.
   const catalog = useMemo(() => {
     if ((!purchasedIds || purchasedIds.size === 0) && (!uninstalledIds || uninstalledIds.size === 0)) {
-      return CATALOG;
+      return catalogSource;
     }
-    return CATALOG.map((e) => {
+    return catalogSource.map((e) => {
       const purchased = purchasedIds?.has(e.id) ?? false;
       const uninstalled = uninstalledIds?.has(e.id) ?? false;
       if (!purchased) return e;
@@ -158,7 +247,7 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
       // logic uses purchasedIds + uninstalledIds to render Reinstall.
       return { ...e, installed: !uninstalled };
     });
-  }, [purchasedIds, uninstalledIds]);
+  }, [catalogSource, purchasedIds, uninstalledIds]);
 
   // Manufacturers list pulled from the full catalog — installed and
   // marketplace items live in the same rail, distinguished only by their
@@ -282,31 +371,33 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
 
         <div className="mp-body">
           <aside className="mp-sidebar">
-            <div
-              className="mp-sidebar__segment"
-              role="tablist"
-              aria-label="Marketplace view"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={view === 'marketplace'}
-                className={`mp-sidebar__segment-tab ${view === 'marketplace' ? 'mp-sidebar__segment-tab--active' : ''}`}
-                onClick={() => setView('marketplace')}
+            {signedIn && (
+              <div
+                className="mp-sidebar__segment"
+                role="tablist"
+                aria-label="Marketplace view"
               >
-                Marketplace
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={view === 'owned'}
-                className={`mp-sidebar__segment-tab ${view === 'owned' ? 'mp-sidebar__segment-tab--active' : ''}`}
-                onClick={() => setView('owned')}
-              >
-                <span>Owned</span>
-                {ownedCount > 0 && <span className="mp-sidebar__segment-count">{ownedCount}</span>}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={view === 'marketplace'}
+                  className={`mp-sidebar__segment-tab ${view === 'marketplace' ? 'mp-sidebar__segment-tab--active' : ''}`}
+                  onClick={() => setView('marketplace')}
+                >
+                  Marketplace
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={view === 'owned'}
+                  className={`mp-sidebar__segment-tab ${view === 'owned' ? 'mp-sidebar__segment-tab--active' : ''}`}
+                  onClick={() => setView('owned')}
+                >
+                  <span>Owned</span>
+                  {ownedCount > 0 && <span className="mp-sidebar__segment-count">{ownedCount}</span>}
+                </button>
+              </div>
+            )}
             <div className="mp-sidebar__section-title">Manufacturers</div>
             <div className="mp-sidebar__list">
               {manufacturers.map((m) => (
@@ -322,7 +413,8 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
             </div>
           </aside>
 
-          <main className="mp-grid-wrap">
+          <main className="mp-main">
+            <div className="mp-grid-wrap">
             {filtered.length === 0 ? (
               <div className="mp-empty">
                 <p>
@@ -404,7 +496,10 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
                             effect={effect}
                             favorite={favorites.has(effect.id)}
                             isCurrent={currentEffect?.id === effect.id}
-                            uninstalled={uninstalledIds?.has(effect.id) ?? false}
+                            currentLocked={
+                              currentEffect?.id === effect.id && !signedIn && !effect.installed
+                            }
+                            uninstalled={isUninstalled(effect.id)}
                             installing={installingIds?.has(effect.id) ?? false}
                             onActivate={() => handleRowClick(effect)}
                             onDetails={() => setDetailId(effect.id)}
@@ -422,8 +517,11 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
                             effect={effect}
                             favorite={favorites.has(effect.id)}
                             isCurrent={currentEffect?.id === effect.id}
+                            currentLocked={
+                              currentEffect?.id === effect.id && !signedIn && !effect.installed
+                            }
                             manage={view === 'owned'}
-                            uninstalled={uninstalledIds?.has(effect.id) ?? false}
+                            uninstalled={isUninstalled(effect.id)}
                             installing={installingIds?.has(effect.id) ?? false}
                             onActivate={() => handleRowClick(effect)}
                             onDetails={() => setDetailId(effect.id)}
@@ -438,6 +536,56 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
                   </section>
                 )}
               </>
+            )}
+            </div>
+            {showInstallToast && activeInstall && (
+              <div
+                className="mp-install-toast"
+                role="status"
+                aria-live="polite"
+                aria-label={`Downloading ${activeInstall.name}`}
+              >
+                <div className="mp-install-toast__label">
+                  {activeInstall.paused ? 'Paused' : 'Downloading 1 Item…'}
+                </div>
+                <div className="mp-install-toast__bar" aria-hidden="true">
+                  <div
+                    className="mp-install-toast__bar-fill"
+                    style={{ width: `${Math.round(activeInstall.progress * 100)}%` }}
+                  />
+                </div>
+                <div className="mp-install-toast__actions">
+                  <button
+                    type="button"
+                    className="mp-install-toast__btn"
+                    onClick={activeInstall.paused ? resumeActiveInstall : pauseActiveInstall}
+                    aria-label={activeInstall.paused ? 'Resume download' : 'Pause download'}
+                    title={activeInstall.paused ? 'Resume' : 'Pause'}
+                  >
+                    {activeInstall.paused ? (
+                      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                        <path d="M2.5 1.5 L8 5 L2.5 8.5 Z" fill="currentColor" />
+                      </svg>
+                    ) : (
+                      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                        <rect x="2.5" y="1.5" width="1.6" height="7" fill="currentColor" />
+                        <rect x="5.9" y="1.5" width="1.6" height="7" fill="currentColor" />
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="mp-install-toast__btn"
+                    onClick={cancelActiveInstall}
+                    aria-label="Cancel download"
+                    title="Cancel"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                      <path d="M2.5 2.5 L7.5 7.5 M7.5 2.5 L2.5 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             )}
           </main>
         </div>
@@ -457,7 +605,7 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
           <EffectDetail
             effect={detail}
             destinationName={destinationName}
-            uninstalled={uninstalledIds?.has(detail.id) ?? false}
+            uninstalled={isUninstalled(detail.id)}
             installing={installingIds?.has(detail.id) ?? false}
             onClose={() => setDetailId(null)}
             onAddEffect={() => {
@@ -478,8 +626,13 @@ export const MarketplaceModal: React.FC<MarketplaceModalProps> = ({
               destinationName={destinationName}
               onCancel={() => setSignInGate(null)}
               onPurchase={() => {
-                // Hand off to the host: deduct wallet, mark as installed.
+                // Hand off to the host (debits the wallet + creates the
+                // entitlement, then opens the installer wizard). Drop the
+                // sign-in prompt right away so the wizard owns the screen
+                // — the prompt's "Purchase complete" panel would just
+                // stack behind the wizard.
                 onPurchase?.(gatedEffect);
+                setSignInGate(null);
               }}
               onAddAfterPurchase={() => {
                 onAddEffect(gatedEffect);
@@ -627,6 +780,10 @@ const EffectCard: React.FC<{
   effect: MarketplaceEffect;
   favorite: boolean;
   isCurrent?: boolean;
+  /** Currently applied effect that the user can't actually use right now
+   *  (signed out + non-built-in plugin). Surfaces as "Sign in to use"
+   *  instead of "Current" so the badge tells the truth. */
+  currentLocked?: boolean;
   /** Owned but not currently installed locally — show an Install button
    *  instead of the price chip. */
   uninstalled?: boolean;
@@ -641,6 +798,7 @@ const EffectCard: React.FC<{
   effect,
   favorite,
   isCurrent = false,
+  currentLocked = false,
   uninstalled = false,
   installing = false,
   onActivate,
@@ -680,7 +838,12 @@ const EffectCard: React.FC<{
           </span>
         )}
         {isCurrent ? (
-          <span className="mp-card__tag mp-card__tag--current">Current</span>
+          <span
+            className={`mp-card__tag mp-card__tag--current${currentLocked ? ' mp-card__tag--current-locked' : ''}`}
+            title={currentLocked ? 'Sign in to your MuseHub account to use this effect' : undefined}
+          >
+            {currentLocked ? 'Sign in to use' : 'Current'}
+          </span>
         ) : installing ? (
           <span className="mp-card__tag mp-card__tag--installing">Installing…</span>
         ) : uninstalled ? (
@@ -748,6 +911,8 @@ const EffectListRow: React.FC<{
   effect: MarketplaceEffect;
   favorite: boolean;
   isCurrent?: boolean;
+  /** See EffectCard.currentLocked. */
+  currentLocked?: boolean;
   /** When true, render as a management row (Update / Uninstall / Reinstall)
    *  instead of the browse row (price chip / Installed badge). */
   manage?: boolean;
@@ -766,6 +931,7 @@ const EffectListRow: React.FC<{
   effect,
   favorite,
   isCurrent = false,
+  currentLocked = false,
   manage = false,
   uninstalled = false,
   installing = false,
@@ -903,7 +1069,12 @@ const EffectListRow: React.FC<{
           )}
         </div>
       ) : isCurrent ? (
-        <span className="mp-row__tag mp-row__tag--current">Current</span>
+        <span
+          className={`mp-row__tag mp-row__tag--current${currentLocked ? ' mp-row__tag--current-locked' : ''}`}
+          title={currentLocked ? 'Sign in to your MuseHub account to use this effect' : undefined}
+        >
+          {currentLocked ? 'Sign in to use' : 'Current'}
+        </span>
       ) : installing ? (
         <span className="mp-row__tag mp-row__tag--installing">Installing…</span>
       ) : uninstalled ? (

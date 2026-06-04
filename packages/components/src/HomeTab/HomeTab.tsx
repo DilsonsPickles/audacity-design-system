@@ -32,6 +32,13 @@ export interface HomeTabProps {
   onCreateAccount?: () => void;
   onSignIn?: () => void;
   onSignOut?: () => void;
+  /** Called when the user clicks "Manage account" on the built-in
+   *  audio.com card. If omitted, opens https://audio.com in a new tab. */
+  onManageAccount?: () => void;
+  /** Called when the user picks "View in audio.com" from a cloud project's
+   *  context menu (right-click on the thumbnail or kebab menu). Receives
+   *  the project id. If omitted, the menu item is a no-op. */
+  onViewProjectOnCloud?: (projectId: string) => void;
   onNewProject?: (projectId: string) => void;
   onOpenProject?: (projectId: string) => void;
   onOpenOther?: () => void;
@@ -55,6 +62,8 @@ export function HomeTab({
   onCreateAccount,
   onSignIn,
   onSignOut,
+  onManageAccount,
+  onViewProjectOnCloud,
   onNewProject,
   onOpenProject,
   onOpenOther,
@@ -999,7 +1008,7 @@ export function HomeTab({
                         <div className="home-tab__accounts-actions">
                           {isSignedIn ? (
                             <>
-                              <Button variant="primary" size="default" onClick={() => window.open('https://audio.com', '_blank')}>
+                              <Button variant="primary" size="default" onClick={onManageAccount ?? (() => window.open('https://audio.com', '_blank'))}>
                                 Manage account
                               </Button>
                               <Button variant="secondary" size="default" onClick={onSignOut}>
@@ -1073,7 +1082,7 @@ export function HomeTab({
             <ContextMenuItem
               label="View in audio.com"
               onClick={() => {
-                console.log('View in audio.com:', contextMenu.itemId);
+                onViewProjectOnCloud?.(contextMenu.itemId);
                 setContextMenu(null);
               }}
               onClose={() => setContextMenu(null)}

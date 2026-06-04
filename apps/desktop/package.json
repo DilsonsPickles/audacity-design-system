@@ -1,0 +1,63 @@
+{
+  "name": "@audacity-ui/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron shell that hosts the Audacity 4 sandbox as a native app.",
+  "main": "src/main.cjs",
+  "scripts": {
+    "dev": "concurrently --raw --kill-others-on-fail \"pnpm --filter @audacity-ui/sandbox dev\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RUN_AS_NODE= electron .\"",
+    "dev:electron": "cross-env ELECTRON_RUN_AS_NODE= electron .",
+    "build:renderer": "pnpm --filter @audacity-ui/sandbox build",
+    "build": "pnpm build:renderer && electron-builder",
+    "build:mac": "pnpm build:renderer && electron-builder --mac",
+    "build:win": "pnpm build:renderer && electron-builder --win",
+    "build:linux": "pnpm build:renderer && electron-builder --linux"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "32.3.3",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.audacity.desktop",
+    "productName": "Audacity 4",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../sandbox/dist",
+        "to": "renderer"
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [],
+    "buildDependenciesFromSource": false,
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
+    "publish": null,
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "linux": {
+      "target": [{ "target": "AppImage", "arch": ["x64"] }]
+    }
+  }
+}

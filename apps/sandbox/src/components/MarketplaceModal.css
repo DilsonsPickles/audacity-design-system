@@ -338,6 +338,69 @@
   gap: 4px;
 }
 
+/* In-progress install indicator, anchored to the bottom of the main pane
+   as a sibling of .mp-grid-wrap (not inside it), so it spans edge-to-edge
+   without fighting the grid's padding. Subtle tint + top border read it
+   as its own band. */
+.mp-install-toast {
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.mp-install-toast__label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.01em;
+}
+
+.mp-install-toast__bar {
+  position: relative;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mp-install-toast__bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #8B5CF6;
+  border-radius: 999px;
+  transition: width 80ms linear;
+}
+
+.mp-install-toast__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.mp-install-toast__btn {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 0;
+}
+
+.mp-install-toast__btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+
 /* Installed / MuseHub segmented control at the top of the rail. */
 .mp-source-tabs {
   display: grid;
@@ -521,7 +584,18 @@
 
 /* ---- Tile grid ------------------------------------------------------ */
 
+/* The main pane is a column: a scrollable card grid on top, and an
+   optional full-bleed install footer underneath. .mp-grid-wrap keeps its
+   own padding so the toast can span the full width naturally. */
+.mp-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
 .mp-grid-wrap {
+  flex: 1 1 auto;
   padding: 18px;
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -837,6 +911,15 @@
 .mp-card__tag--current {
   background: rgba(34, 197, 94, 0.85);
   color: #052E16;
+}
+
+/* "Current but unusable" — applied to the track, but the user is signed out
+   of MuseHub so the plugin can't render. Amber instead of green to read as
+   warning rather than confirmation. */
+.mp-card__tag--current-locked,
+.mp-row__tag--current-locked {
+  background: rgba(245, 158, 11, 0.85);
+  color: #1F1300;
 }
 
 /* Row + card highlight for the currently-selected effect when replacing. */

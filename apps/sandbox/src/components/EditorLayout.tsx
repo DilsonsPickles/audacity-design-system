@@ -8,6 +8,7 @@ import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor
 import type { SpectrogramScale, WaveformRulerFormat, PanelHeaderTab } from '@dilsonspickles/components';
 import { MixerPanel, type MixerPanelChannel } from '@dilsonspickles/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
+import { getAllEffects } from '@audacity-ui/core';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
 import { useAudioEngine, MIDI_INSTRUMENTS } from '../contexts/AudioEngineContext';
@@ -158,15 +159,15 @@ export function EditorLayout(props: EditorLayoutProps) {
   // shared context so the picker, slot caret menus and marketplace modal all
   // stay in sync without prop-drilling.
   const {
+    signedIn: museHubSignedIn,
     purchasedEffects,
     installedEffects,
     uninstalledIds,
     installingIds,
     disabledPluginIds,
-    spend,
     addToLibrary,
     uninstallEffect,
-    reinstallEffect,
+    startDownload,
   } = useMuseHub();
   const purchasedIds = React.useMemo(
     () => new Set(purchasedEffects.map((e) => e.id)),
@@ -366,8 +367,27 @@ export function EditorLayout(props: EditorLayoutProps) {
       {/* Effects Panel - Hidden on export tab */}
       {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
         const trackIndex = effectsPanel.trackIndex;
-        const currentTrackEffects = state.tracks[trackIndex]?.effects || [];
+        const rawTrackEffects = state.tracks[trackIndex]?.effects || [];
         const trackEffectsEnabled = state.tracks[trackIndex]?.effectsEnabled ?? true;
+
+        // Mark effects whose underlying plugin is gone. We distinguish two
+        // cases so the slot label tells the user *why* the effect isn't
+        // playable — and what they can do about it:
+        //   - Signed out of MuseHub → "(sign in to use)". Re-auth is the
+        //     fix; there's no install action available to a signed-out user.
+        //   - Signed in but plugin not installed → "(missing)". The user
+        //     has a session, so the marketplace can offer a reinstall.
+        // Only the rendered name is mutated — the underlying track state
+        // keeps the clean name so signing back in restores the slot.
+        const builtInIds = new Set(getAllEffects().map((e) => e.id));
+        const installedIds = new Set(installedEffects.map((e) => e.id));
+        const markMissing = <T extends { id: string; name: string }>(e: T): T => {
+          if (builtInIds.has(e.id) || installedIds.has(e.id)) return e;
+          const suffix = museHubSignedIn ? '(missing)' : '(sign in to use)';
+          return { ...e, name: `⚠ ${e.name} ${suffix}` };
+        };
+        const currentTrackEffects = rawTrackEffects.map(markMissing);
+        const masterEffectsFlagged = state.masterEffects.map(markMissing);
 
         return (
           <EffectsPanel
@@ -432,7 +452,7 @@ export function EditorLayout(props: EditorLayoutProps) {
               disabledPluginIds,
             }}
             masterSection={{
-              effects: state.masterEffects,
+              effects: masterEffectsFlagged,
               allEnabled: state.masterEffectsEnabled,
               onToggleAll: (enabled) => {
                 dispatch({ type: 'TOGGLE_ALL_MASTER_EFFECTS', payload: enabled });
@@ -1828,11 +1848,24 @@ export function EditorLayout(props: EditorLayoutProps) {
       purchasedIds={purchasedIds}
       uninstalledIds={uninstalledIds}
       installingIds={installingIds}
-      onPurchase={(effect) => {
-        // Mock entitlement: deduct the wallet and append the effect to the
-        // shared library so picker menus + Plugin Manager all update.
-        spend(effect.price ?? 0);
-        addToLibrary({ id: effect.id, name: effect.name, vendor: effect.vendor });
+      onPurchase={async (effect) => {
+        // Two-step: server-side purchase, then kick off the download phase.
+        // The download progress shows in the marketplace footer; once it
+        // finishes the footer surfaces a "Launch installer" button that
+        // opens the actual installer wizard. If purchase rejects, the
+        // download never starts.
+        const purchased = {
+          id: effect.id,
+          name: effect.name,
+          vendor: effect.vendor,
+        };
+        try {
+          await addToLibrary(purchased);
+        } catch {
+          // addToLibrary surfaces its own toast on failure.
+          return;
+        }
+        startDownload(purchased);
       }}
       onUninstallEffect={(effect) => {
         // Owned-view "Uninstall" — remove the local install so the effect
@@ -1841,7 +1874,14 @@ export function EditorLayout(props: EditorLayoutProps) {
         uninstallEffect(effect.id);
       }}
       onReinstallEffect={(effect) => {
-        reinstallEffect(effect.id);
+        // Reinstall mirrors the purchase flow — kick off the download in
+        // the marketplace footer, the user launches the installer wizard
+        // when it completes.
+        startDownload({
+          id: effect.id,
+          name: effect.name,
+          vendor: effect.vendor,
+        });
       }}
       onOpenPluginManager={() => setIsPluginManagerOpen(true)}
     />

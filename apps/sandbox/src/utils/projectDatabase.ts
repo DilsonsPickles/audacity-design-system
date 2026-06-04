@@ -15,6 +15,7 @@ export interface StoredProject {
   isUploading?: boolean;
   data?: {
     tracks: any[]; // Use any to avoid type conflicts between core and local Track types
+    masterEffects?: any[];
     playheadPosition: number;
     audioBuffers?: Record<string, ArrayBuffer>; // WAV data keyed by clip ID
   };
