@@ -2,7 +2,7 @@ import React from 'react';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, type StoredProject } from '@dilsonspickles/components';
 import {
   getProject as adieuGetProject,
   saveProject as adieuSaveProject,
@@ -164,8 +164,17 @@ function CanvasDemoContent() {
   // Blocking modal shown while a cloud project is being fetched + hydrated.
   // Cloud loads pull the full payload (incl. audio buffers) from adieu, which
   // can take seconds — without a modal the user can interact with stale state
-  // mid-hydration.
-  const [isLoadingCloudProject, setIsLoadingCloudProject] = React.useState(false);
+  // mid-hydration. Progress is phase-based (mirrors the save toast pattern):
+  // each await in the load flow bumps the percentage and updates the message.
+  const [cloudLoadProgress, setCloudLoadProgress] = React.useState<{
+    progress: number;
+    message: string;
+  } | null>(null);
+  // Cancel is cooperative: we set this ref, the in-flight load checks it
+  // between awaits and bails before touching app state. The pending fetch
+  // still resolves in the background (we don't have an AbortSignal plumbed
+  // through adieu-client yet), but its result is discarded.
+  const cloudLoadCancelledRef = React.useRef(false);
 
   const [isCloudProject, setIsCloudProject] = React.useState(false);
   const [cloudProjectName, setCloudProjectName] = React.useState('');
@@ -366,7 +375,7 @@ function CanvasDemoContent() {
   const [snapEnabled, setSnapEnabled] = React.useState(false);
   const [snapMode, setSnapMode] = React.useState<import('./components/TransportToolbar').SnapMode>('musical');
   const [showMixer, setShowMixer] = React.useState(true);
-  const [mixerPanelOpen, setMixerPanelOpen] = React.useState(true);
+  const [mixerPanelOpen, setMixerPanelOpen] = React.useState(false);
 
   // Listen for close-mixer-panel events from the bottom drawer
   React.useEffect(() => {
@@ -1489,12 +1498,19 @@ function CanvasDemoContent() {
               // The lists are presented exclusively (no merged view) so this
               // dispatch is unambiguous.
               const isCloud = cloudProjectIds.has(projectId);
-              if (isCloud) setIsLoadingCloudProject(true);
+              if (isCloud) {
+                cloudLoadCancelledRef.current = false;
+                setCloudLoadProgress({ progress: 5, message: 'Connecting to audio.com…' });
+              }
+              const bailIfCancelled = () => isCloud && cloudLoadCancelledRef.current;
               try {
+              if (isCloud) setCloudLoadProgress({ progress: 10, message: 'Downloading project…' });
               const project = isCloud
                 ? await loadCloudProjectAsStored(projectId)
                 : await getProject(projectId);
+              if (bailIfCancelled()) return;
               if (project) {
+                if (isCloud) setCloudLoadProgress({ progress: 60, message: 'Decoding audio…' });
                 setCurrentProjectId(projectId);
 
                 // Restore cloud project status (project-specific)
@@ -1503,6 +1519,7 @@ function CanvasDemoContent() {
                 // Restore tracks state from project data, or reset to empty if none
                 if (project.data?.tracks) {
                   console.log('Restoring tracks:', project.data.tracks.length);
+                  if (isCloud) setCloudLoadProgress({ progress: 75, message: 'Restoring tracks…' });
                   dispatch({ type: 'SET_TRACKS', payload: project.data.tracks });
 
                   // If the user is signed out of MuseHub, any effects in the
@@ -1539,8 +1556,16 @@ function CanvasDemoContent() {
 
                 // Restore audio buffers from saved WAV data
                 if (project.data?.audioBuffers) {
+                  if (isCloud) {
+                    const clipCount = Object.keys(project.data.audioBuffers).length;
+                    setCloudLoadProgress({
+                      progress: 88,
+                      message: `Loading ${clipCount} audio clip${clipCount === 1 ? '' : 's'}…`,
+                    });
+                  }
                   const audioManager = audioManagerRef.current;
                   await audioManager.importBuffersFromWav(project.data.audioBuffers);
+                  if (bailIfCancelled()) return;
                   // Reload clips for playback now that buffers are available
                   if (project.data.tracks) {
                     audioManager.loadClips(project.data.tracks, 0);
@@ -1551,11 +1576,16 @@ function CanvasDemoContent() {
                 // Always start playhead at 0 on project open
                 dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
 
+                if (isCloud) setCloudLoadProgress({ progress: 100, message: 'Done' });
                 setActiveMenuItem('project');
               } else {
               }
               } finally {
-                if (isCloud) setIsLoadingCloudProject(false);
+                if (isCloud) {
+                  // Brief hold at 100% so the user sees the bar fill before it
+                  // disappears; matches the save-toast dismiss delay.
+                  setTimeout(() => setCloudLoadProgress(null), 250);
+                }
               }
             }}
             onOpenOther={handleOpenFromComputer}
@@ -1686,13 +1716,31 @@ function CanvasDemoContent() {
       <ToastContainer />
 
       <Dialog
-        isOpen={isLoadingCloudProject}
-        title="Loading project…"
+        isOpen={cloudLoadProgress !== null}
+        title="Loading project"
         closeOnClickOutside={false}
         closeOnEscape={false}
+        minHeight={0}
+        footer={
+          <Footer
+            rightContent={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  cloudLoadCancelledRef.current = true;
+                  setCloudLoadProgress(null);
+                  setActiveMenuItem('home');
+                }}
+              >
+                Cancel
+              </Button>
+            }
+          />
+        }
       >
-        <div style={{ padding: '8px 4px', fontSize: '14px', lineHeight: 1.5 }}>
-          Fetching audio and project data from the cloud. This may take a moment.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ fontSize: '14px' }}>{cloudLoadProgress?.message ?? ''}</div>
+          <ProgressBar value={cloudLoadProgress?.progress ?? 0} width="100%" />
         </div>
       </Dialog>
 
