@@ -13,14 +13,23 @@
     },
     "./style.css": "./dist/index.css",
     "./dist/index.css": "./dist/index.css",
-    "./dist/*.png": "./dist/*.png"
+    "./dist/*.png": "./dist/*.png",
+    "./*.css": "./dist/*.css",
+    "./*": {
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs",
+      "require": "./dist/*.js"
+    }
   },
+  "sideEffects": [
+    "**/*.css"
+  ],
   "files": [
     "dist",
     "AGENTS.md"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "NODE_OPTIONS='--max-old-space-size=8192' tsup",
     "dev": "tsup --watch",
     "lint": "echo 'No linting configured yet'",
     "test": "vitest run",
