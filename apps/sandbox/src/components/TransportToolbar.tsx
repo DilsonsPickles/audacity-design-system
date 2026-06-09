@@ -495,7 +495,7 @@ export function TransportToolbar({
             <ToolButton icon="volume" ariaLabel="Playback volume settings" onClick={() => {}} />
           </ToolbarButtonGroup>
 
-          <div style={{ marginLeft: 8 }}>
+          <div style={{ marginLeft: 8, flex: '1 1 360px', maxWidth: 360, minWidth: 120, display: 'flex' }}>
           <MasterMeter
             levelLeft={masterLevelLeft}
             levelRight={masterLevelRight}

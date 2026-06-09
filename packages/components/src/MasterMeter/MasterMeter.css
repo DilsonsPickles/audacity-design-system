@@ -5,8 +5,10 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  width: 360px;
-  flex-shrink: 0;
+  /* Fills its container so the meter can grow/shrink with available space.
+     The toolbar wrapper caps its max width at 360px and floors it around
+     120px, which is where the dB ticks start crowding. */
+  width: 100%;
   user-select: none;
 }
 
