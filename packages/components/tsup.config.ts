@@ -47,4 +47,10 @@ export default defineConfig({
     '.woff2': 'file',
   },
   publicDir: false,
+  // tsup strips `import './Foo.css'` from JS output and emits the CSS as a
+  // sidecar. That breaks per-component imports for consumers because the
+  // JS no longer triggers CSS loading. The post-build script walks dist/
+  // and re-prepends the CSS import for each entry that has a matching
+  // sidecar, so consumer bundlers pick the CSS up automatically.
+  onSuccess: 'node scripts/attach-css-imports.mjs',
 });
