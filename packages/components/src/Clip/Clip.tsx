@@ -6,7 +6,23 @@ import { ClipBody, ClipBodyVariant, ClipBodyChannelMode } from '../ClipBody/Clip
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { MidiClipBody } from '../MidiClipBody/MidiClipBody';
 import type { EnvelopePointData } from '../utils/envelope';
+import '../assets/fonts/musescore-icon.css';
 import './Clip.css';
+
+// ---- Handle icons ---------------------------------------------------------
+// MusescoreIcon font glyphs. Codepoints come from design.
+
+const TrimLeftIcon = () => (
+  <span className="musescore-icon" aria-hidden="true">{'\uF4B1'}</span>
+);
+
+const TrimRightIcon = () => (
+  <span className="musescore-icon" aria-hidden="true">{'\uF4B0'}</span>
+);
+
+const StretchIcon = () => (
+  <span className="musescore-icon" aria-hidden="true">{'\uF475'}</span>
+);
 
 const EMPTY_NUMBER_ARRAY: number[] = [];
 
@@ -72,6 +88,10 @@ export interface ClipProps {
   onMenuClick?: (x: number, y: number) => void;
   /** Callback when dragging left or right edge to trim clip */
   onTrimEdge?: (params: { edge: 'left' | 'right'; clientX: number }) => void;
+  /** Callback when dragging the time-stretch handle (the second handle that
+   *  sits below the trim handle on either side of a selected clip). Wiring is
+   *  optional — pass omit to render the handles but no-op the interaction. */
+  onStretchEdge?: (params: { edge: 'left' | 'right'; clientX: number }) => void;
   /** Whether clip is within a time selection (for vibrant color rendering) */
   inTimeSelection?: boolean;
   /** Clip start time in seconds (for calculating time selection overlay position) */
@@ -134,6 +154,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   onHeaderClick,
   onMenuClick,
   onTrimEdge,
+  onStretchEdge,
   inTimeSelection = false,
   clipStartTime = 0,
   timeSelectionRange = null,
@@ -146,6 +167,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
   const [trimEdge, setTrimEdge] = useState<'left' | 'right' | null>(null);
+  const [stretchEdge, setStretchEdge] = useState<'left' | 'right' | null>(null);
 
   const isTruncated = height <= MIN_CLIP_HEIGHT;
   const showHeader = !isTruncated || isHovering;
@@ -213,6 +235,37 @@ const ClipComponent: React.FC<ClipProps> = ({
     };
   }, [trimEdge, onTrimEdge]);
 
+  // Visible handles (rendered when `selected`). Mouse-down on a handle starts
+  // a drag — the same pattern as the invisible edge trim above. Stretch is
+  // wired symmetrically; if `onStretchEdge` is absent the handles still
+  // render but produce no edit, so the layout can be reviewed visually
+  // before the audio side is hooked up.
+  const handleVisibleTrimMouseDown = (edge: 'left' | 'right') => (e: React.MouseEvent) => {
+    if (!onTrimEdge) return;
+    e.stopPropagation();
+    setTrimEdge(edge);
+  };
+  const handleStretchMouseDown = (edge: 'left' | 'right') => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setStretchEdge(edge);
+  };
+
+  React.useEffect(() => {
+    if (!stretchEdge) return;
+
+    const onMove = (e: MouseEvent) => {
+      onStretchEdge?.({ edge: stretchEdge, clientX: e.clientX });
+    };
+    const onUp = () => setStretchEdge(null);
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [stretchEdge, onStretchEdge]);
+
   return (
     <div
       className={className}
@@ -224,6 +277,7 @@ const ClipComponent: React.FC<ClipProps> = ({
       onMouseLeave={() => setIsHovering(false)}
       onMouseMove={handleMouseMove}
     >
+      <div className="clip-display__inner">
       {showHeader && (
         <div
           style={isTruncated ? { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 } : undefined}
@@ -301,35 +355,55 @@ const ClipComponent: React.FC<ClipProps> = ({
         />
       )}
 
-      {/* Trim handles */}
-      {onTrimEdge && (
+      </div>
+
+      {/* Icon-button handles that sit just outside the clip's left/right
+          edges when the clip is selected. Vertically anchored below the
+          clip header — trim on top, stretch below. Each button shows its
+          own inline-SVG glyph (brackets for trim, clock for stretch) and
+          uses one of the PNG cursors from src/assets/cursors/ on hover so
+          the cursor previews the action.
+          Trim buttons render only when onTrimEdge is wired (matches the
+          original contract); stretch buttons always render but no-op if
+          onStretchEdge is absent. */}
+      {selected && (
         <>
-          {/* Left edge trim handle */}
-          <div
-            onMouseDown={handleTrimMouseDown('left')}
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: `${TRIM_HANDLE_WIDTH}px`,
-              height: '100%',
-              cursor: 'ew-resize',
-              zIndex: 20,
-            }}
-          />
-          {/* Right edge trim handle */}
-          <div
-            onMouseDown={handleTrimMouseDown('right')}
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              width: `${TRIM_HANDLE_WIDTH}px`,
-              height: '100%',
-              cursor: 'ew-resize',
-              zIndex: 20,
-            }}
-          />
+          {onTrimEdge && (
+            <button
+              type="button"
+              className="clip-display__handle clip-display__handle--trim-left"
+              aria-label="Trim left edge"
+              onMouseDown={handleVisibleTrimMouseDown('left')}
+            >
+              <TrimLeftIcon />
+            </button>
+          )}
+          {onTrimEdge && (
+            <button
+              type="button"
+              className="clip-display__handle clip-display__handle--trim-right"
+              aria-label="Trim right edge"
+              onMouseDown={handleVisibleTrimMouseDown('right')}
+            >
+              <TrimRightIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            className="clip-display__handle clip-display__handle--stretch-left"
+            aria-label="Stretch left edge"
+            onMouseDown={handleStretchMouseDown('left')}
+          >
+            <StretchIcon />
+          </button>
+          <button
+            type="button"
+            className="clip-display__handle clip-display__handle--stretch-right"
+            aria-label="Stretch right edge"
+            onMouseDown={handleStretchMouseDown('right')}
+          >
+            <StretchIcon />
+          </button>
         </>
       )}
     </div>
