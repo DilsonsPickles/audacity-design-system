@@ -550,9 +550,9 @@ export const darkTheme: ThemeTokens = {
       secondary: '#8B8C96',      // Muted tick marks (minor ticks)
     },
     grid: {
-      measure: '#3B3E4B',        // Grid line at measure boundaries
-      major: '#3B3E4B',          // Major grid lines (bars / major time intervals)
-      minor: '#323543',          // Minor grid lines (beats / division lines)
+      measure: '#2F3539',        // Grid line at measure boundaries
+      major: '#262C32',          // Major grid lines (beats — Canvas maps tier 'beat' here)
+      minor: '#323543',          // Minor grid lines (subdivision)
     },
   },
 

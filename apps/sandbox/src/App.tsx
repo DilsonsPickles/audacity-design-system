@@ -760,10 +760,14 @@ function CanvasDemoContent() {
     const scrollLeft = e.currentTarget.scrollLeft;
     const scrollTop = e.currentTarget.scrollTop;
 
-    // Sync vertical scroll with track headers immediately (DOM-only, no React)
+    // Sync vertical scroll with track headers immediately (DOM-only, no React).
+    // Round to an integer so touchpad-driven sub-pixel scrollTop values don't
+    // leave the two scrollers off by a fractional pixel — that fractional gap
+    // shows up as a 1px drift between the canvas tracks and their side-panel
+    // headers because browsers round each independently.
     if (trackHeaderScrollRef.current && isScrollingSyncRef.current !== 'canvas') {
       isScrollingSyncRef.current = 'header';
-      trackHeaderScrollRef.current.scrollTop = scrollTop;
+      trackHeaderScrollRef.current.scrollTop = Math.round(scrollTop);
       requestAnimationFrame(() => {
         if (isScrollingSyncRef.current === 'header') isScrollingSyncRef.current = null;
       });
@@ -786,10 +790,11 @@ function CanvasDemoContent() {
   const handleTrackHeaderScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop;
 
-    // Sync vertical scroll with canvas (skip if this was triggered by sync)
+    // Sync vertical scroll with canvas (skip if this was triggered by sync).
+    // Same round-to-integer as the other direction to avoid 1px drift.
     if (scrollContainerRef.current && isScrollingSyncRef.current !== 'header') {
       isScrollingSyncRef.current = 'canvas';
-      scrollContainerRef.current.scrollTop = scrollTop;
+      scrollContainerRef.current.scrollTop = Math.round(scrollTop);
       requestAnimationFrame(() => {
         if (isScrollingSyncRef.current === 'canvas') isScrollingSyncRef.current = null;
       });
@@ -1303,10 +1308,21 @@ function CanvasDemoContent() {
         rightContent={
           activeMenuItem !== 'export' ? (
             <>
-              <span style={{ fontSize: '13px', color: '#3d3e42', marginRight: '8px' }}>Workspace</span>
+              <span style={{ fontSize: '13px', color: baseTheme.foreground.text.primary, marginRight: '8px' }}>Workspace</span>
               <ToolbarGroup ariaLabel="Workspace controls" tabGroupId="project-toolbar-workspace">
                 <select
-                  style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid #d4d5d9', borderRadius: '4px', backgroundColor: '#fff' }}
+                  style={{
+                    // Matches the "Snap subdivision" button in TransportToolbar
+                    // so the two workspace controls feel like one family.
+                    height: 24,
+                    fontSize: 12,
+                    padding: '0 8px',
+                    borderRadius: 2,
+                    border: 'none',
+                    backgroundColor: baseTheme.background.control.button.secondary.idle,
+                    color: baseTheme.foreground.text.primary,
+                    cursor: 'pointer',
+                  }}
                   value={workspace}
                   onChange={(e) => {
                     const newWorkspace = e.target.value as Workspace;

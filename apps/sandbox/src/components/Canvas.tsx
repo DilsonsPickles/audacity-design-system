@@ -510,7 +510,7 @@ export function Canvas({
   }, [bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width]);
 
   return (
-    <div className="canvas-container" style={{ backgroundColor: bgColor, height: `${totalHeight}px`, overflow: 'clip', overflowClipMargin: '2px', cursor: 'text' } as React.CSSProperties}>
+    <div className="canvas-container" style={{ backgroundColor: bgColor, height: `${totalHeight}px`, minHeight: `${viewportHeight}px`, overflow: 'clip', overflowClipMargin: '2px', cursor: 'text' } as React.CSSProperties}>
       {/* Beat/measure grid — rendered behind tracks */}
       {(gridLines.length > 0 || measureBands.length > 0) && (
         <svg
