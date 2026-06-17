@@ -5,7 +5,8 @@
   "description": "Electron shell that hosts the Audacity 4 sandbox as a native app.",
   "main": "src/main.cjs",
   "scripts": {
-    "dev": "concurrently --raw --kill-others-on-fail \"pnpm --filter @audacity-ui/sandbox dev\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RUN_AS_NODE= electron .\"",
+    "dev": "wait-on http://localhost:5173 && cross-env ELECTRON_RUN_AS_NODE= electron .",
+    "dev:standalone": "concurrently --raw --kill-others-on-fail \"pnpm --filter @audacity-ui/sandbox dev\" \"wait-on http://localhost:5173 && cross-env ELECTRON_RUN_AS_NODE= electron .\"",
     "dev:electron": "cross-env ELECTRON_RUN_AS_NODE= electron .",
     "build:renderer": "pnpm --filter @audacity-ui/sandbox build",
     "build": "pnpm build:renderer && electron-builder",
