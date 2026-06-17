@@ -177,13 +177,60 @@ export function directLogin(email: string, password: string): Promise<DirectToke
   return directAuth({ mode: 'signin', email, password });
 }
 
-/** Create an account + sign in in a single round-trip. Writes tokens on success. */
-export function directSignup(
+// ---- Signup (email-verified, two-step) ------------------------------------
+// moose-hub's /api/auth/direct-token only supports sign-in. Account creation
+// is a verify-email-then-create flow:
+//   1. startSignup(email, password, name) — stores a pending row server-side
+//      and emails a 6-digit code. Password is held server-side until verify.
+//   2. verifySignup(email, password, code) — confirms the code, creates the
+//      user, then immediately exchanges email+password for OAuth tokens via
+//      direct-token (the verify endpoint itself returns only the user record,
+//      not tokens, hence the second hop).
+//   3. resendSignupCode(email) — re-issues the code if the user lost the
+//      first email.
+
+async function postSignupJson(
+  path: string,
+  body: Record<string, string>,
+): Promise<void> {
+  const res = await fetch(`${MUSEHUB_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw makeAuthError(data.error ?? 'signup_failed');
+  }
+}
+
+/** Begin account creation. Server sends a 6-digit verification code by email. */
+export function startSignup(
   email: string,
   password: string,
   name: string,
+): Promise<void> {
+  return postSignupJson('/api/auth/signup/start', { email, password, name });
+}
+
+/**
+ * Confirm the emailed code, create the user, and sign in (writes tokens on
+ * success). Reuses the email+password the caller already collected for the
+ * signin hop so the user is logged in by the time this resolves.
+ */
+export async function verifySignup(
+  email: string,
+  password: string,
+  code: string,
 ): Promise<DirectTokenResponse> {
-  return directAuth({ mode: 'signup', email, password, name });
+  await postSignupJson('/api/auth/signup/verify', { email, code });
+  return directAuth({ mode: 'signin', email, password });
+}
+
+/** Re-send the verification code (rate-limited server-side). */
+export function resendSignupCode(email: string): Promise<void> {
+  return postSignupJson('/api/auth/signup/resend', { email });
 }
 
 // ---- OAuth (authorization code + PKCE) ------------------------------------

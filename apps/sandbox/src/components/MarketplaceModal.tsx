@@ -872,9 +872,9 @@ const EffectCard: React.FC<{
               e.stopPropagation();
               onBuy?.();
             }}
-            aria-label={`Buy ${effect.name} for $${effect.price}`}
+            aria-label={effect.price === 0 ? `Get ${effect.name} for free` : `Buy ${effect.name} for $${effect.price}`}
           >
-            ${effect.price}
+            {effect.price === 0 ? 'Free' : `$${effect.price}`}
           </button>
         )}
         <button
@@ -1099,9 +1099,9 @@ const EffectListRow: React.FC<{
             e.stopPropagation();
             onBuy?.();
           }}
-          aria-label={`Buy ${effect.name} for $${effect.price}`}
+          aria-label={effect.price === 0 ? `Get ${effect.name} for free` : `Buy ${effect.name} for $${effect.price}`}
         >
-          ${effect.price}
+          {effect.price === 0 ? 'Free' : `$${effect.price}`}
         </button>
       )}
       <button
