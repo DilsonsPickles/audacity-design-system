@@ -1,6 +1,6 @@
 {
   "name": "@dilsonspickles/components",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "UI component library for Audacity Design System",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
