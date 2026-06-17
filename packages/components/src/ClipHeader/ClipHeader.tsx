@@ -1,7 +1,6 @@
 import React from 'react';
 import type { ClipColor } from '../types/clip';
 import { Icon } from '../Icon';
-import { useTheme } from '../ThemeProvider';
 import '../assets/fonts/musescore-icon.css';
 import './ClipHeader.css';
 
@@ -81,10 +80,12 @@ export const ClipHeader: React.FC<ClipHeaderProps> = ({
   timeSelectionRange = null,
   pixelsPerSecond = 100,
 }) => {
-  const { theme } = useTheme();
-
   const style = {
-    '--clip-header-text': theme.foreground.text.primary,
+    // Clip background tiles use the same brand palette in both themes, so
+    // the header text needs to stay dark in dark mode to keep contrast.
+    // Hardcoded to match light theme's foreground.text.primary instead of
+    // following the theme token (which flips to a light value in dark mode).
+    '--clip-header-text': '#14151A',
   } as React.CSSProperties;
 
   const className = [
