@@ -177,10 +177,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   const addButtonTabIndex = useTabOrder('add-track');
 
   const style = {
-    '--tcsp-bg': theme.background.surface.elevated,
-    '--tcsp-header-bg': theme.background.surface.elevated,
+    '--tcsp-bg': theme.background.trackHeader.parent,
+    '--tcsp-header-bg': theme.background.trackHeader.parent,
     '--tcsp-title-color': theme.foreground.text.primary,
-    '--tcsp-list-bg': theme.background.surface.elevated,
+    '--tcsp-list-bg': theme.background.trackHeader.parent,
+    '--tcsp-border': theme.border.onSurface,
     '--tcsp-focus-outline': theme.border.focus,
   } as React.CSSProperties;
 

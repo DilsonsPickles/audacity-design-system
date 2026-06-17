@@ -295,9 +295,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   const { theme } = useTheme();
 
   const style = {
-    '--tcp-bg-idle': theme.background.surface.subtle,
-    '--tcp-bg-hover': theme.background.surface.hover,
-    '--tcp-bg-active': theme.background.surface.default,
+    '--tcp-bg-idle': theme.background.trackHeader.idle,
+    '--tcp-bg-hover': theme.background.trackHeader.hover,
+    '--tcp-bg-active': theme.background.trackHeader.selected,
     '--tcp-text-primary': theme.foreground.text.primary,
     '--tcp-icon-default': theme.foreground.icon.primary,
     '--tcp-focus-color': theme.border.focus,

@@ -197,11 +197,14 @@ export const lightTheme: ThemeTokens = {
       idle: '#E3E3E8',           // Light gray idle state
       hover: '#D9D9DE',          // Slightly darker on hover
       selected: '#D0D0D5',
+      parent: '#E3E3E8',         // Parent panel that holds the track header rows
     },
 
     panel: {
       ruler: '#262932',          // Ruler background (dark even in light theme)
     },
+
+    toolbar: '#F8F8F9',          // Main + project toolbar surface
 
     toast: '#14151A',            // Dark background for toast notifications
   },

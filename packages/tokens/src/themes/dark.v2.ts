@@ -24,7 +24,7 @@ export const darkTheme: ThemeTokens = {
     },
 
     canvas: {
-      default: '#1a1b1e',        // Main audio canvas (very dark)
+      default: '#171F25',        // Main audio canvas (very dark)
       track: {
         idle: 'rgba(255, 255, 255, 0.03)',   // Track idle (semi-transparent so grid lines show through)
         selected: 'rgba(255, 255, 255, 0.08)', // Track selected
@@ -45,9 +45,9 @@ export const darkTheme: ThemeTokens = {
           disabled: '#4b5563',   // Desaturated gray
         },
         secondary: {
-          idle: '#373a40',       // Secondary button (medium gray)
-          hover: '#4c5058',      // Lighter on hover
-          active: '#2d2f34',     // Darker when pressed
+          idle: '#515A63',       // Secondary button (medium gray)
+          hover: '#5B656F',      // Lighter on hover
+          active: '#46505A',     // Darker when pressed
           disabled: '#2e3035',   // Very dark gray
         },
         ghost: {
@@ -98,7 +98,7 @@ export const darkTheme: ThemeTokens = {
       },
 
       slider: {
-        track: '#373a40',        // Medium gray track
+        track: '#171F25',        // Track background
         thumb: {
           idle: '#4a90e2',       // Blue thumb
           hover: '#5ba3ff',      // Lighter on hover
@@ -194,14 +194,17 @@ export const darkTheme: ThemeTokens = {
     },
 
     trackHeader: {
-      idle: '#2c2e33',           // Dark gray idle state
-      hover: '#373a40',          // Slightly lighter on hover
-      selected: '#4c5058',       // Even lighter when selected
+      idle: '#32383E',           // Dark gray idle state
+      hover: '#373E45',          // Slightly lighter on hover
+      selected: '#3D444B',       // Lighter still when selected/active
+      parent: '#252B31',         // Parent panel that holds the track header rows
     },
 
     panel: {
-      ruler: '#1f2024',          // Ruler background (darker)
+      ruler: '#252B31',          // Timeline ruler background
     },
+
+    toolbar: '#2E353C',          // Main + project toolbar surface
 
     toast: '#e4e5e7',            // Light background for toast notifications
   },
@@ -244,8 +247,8 @@ export const darkTheme: ThemeTokens = {
     success: '#22c55e',          // Green success border
     warning: '#f59e0b',          // Amber warning border
     divider: '#2d2f34',          // Divider/separator color
-    onElevated: '#373a40',       // Border on elevated surfaces (ruler, dialogs)
-    onSurface: '#4c5058',        // Border on default surfaces (toolbars, panels)
+    onElevated: '#373E44',       // Border on elevated surfaces (timeline ruler, dialogs)
+    onSurface: '#434A50',        // Border on default surfaces (toolbars, panels)
     input: {
       idle: '#4c5058',           // Input border default
       hover: '#5f6369',          // Lighter on hover

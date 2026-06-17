@@ -1,5 +1,6 @@
 .track-control-side-panel {
   background: var(--tcsp-bg);
+  border-right: 1px solid var(--tcsp-border);
 }
 
 .track-control-side-panel .side-panel__content {

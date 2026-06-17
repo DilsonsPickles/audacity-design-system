@@ -161,7 +161,7 @@ export function TimelineRuler({
   const [cursor, setCursor] = useState('default');
 
   // Use theme tokens as defaults if not provided
-  const bgColor = backgroundColor ?? theme.background.surface.elevated;
+  const bgColor = backgroundColor ?? theme.background.panel.ruler;
   const txtColor = textColor ?? theme.foreground.text.primary;
   const lnColor = lineColor ?? theme.border.onElevated;
   const tckColor = tickColor ?? theme.audio.timeline.tickMajor;

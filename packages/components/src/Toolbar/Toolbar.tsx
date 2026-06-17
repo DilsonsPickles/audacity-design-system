@@ -84,8 +84,8 @@ export function Toolbar({
   }, [enableTabGroup, children, rightContent, initTabIndices]);
 
   const style = {
-    '--toolbar-bg': theme.background.surface.default,
-    '--toolbar-border': theme.border.default,
+    '--toolbar-bg': theme.background.toolbar,
+    '--toolbar-border': theme.border.onSurface,
     '--toolbar-divider': theme.border.divider,
   } as React.CSSProperties;
 

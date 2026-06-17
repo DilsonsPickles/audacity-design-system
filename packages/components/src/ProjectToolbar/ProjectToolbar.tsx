@@ -60,8 +60,8 @@ export function ProjectToolbar({
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   const style = {
-    '--toolbar-bg': theme.background.surface.default,
-    '--toolbar-border': theme.border.default,
+    '--toolbar-bg': theme.background.toolbar,
+    '--toolbar-border': theme.border.onSurface,
     '--toolbar-text': theme.foreground.text.tertiary,
     '--toolbar-hover': theme.background.surface.hover,
     '--toolbar-active-text': theme.foreground.text.primary,

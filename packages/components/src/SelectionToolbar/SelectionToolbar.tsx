@@ -136,8 +136,8 @@ export function SelectionToolbar({
   }, [initTabIndices]);
 
   const style = {
-    '--selection-toolbar-bg': theme.background.surface.default,
-    '--selection-toolbar-border': theme.border.default,
+    '--selection-toolbar-bg': theme.background.toolbar,
+    '--selection-toolbar-border': theme.border.onSurface,
     '--selection-toolbar-text': theme.foreground.text.primary,
     '--selection-toolbar-divider': theme.border.divider,
   } as React.CSSProperties;

@@ -268,6 +268,8 @@ export interface ThemeTokens {
       idle: string;
       hover: string;
       selected: string;
+      /** Background of the parent container that holds the track header rows. */
+      parent: string;
     };
 
     /** Panel backgrounds (rulers, sidebars) */
@@ -275,6 +277,11 @@ export interface ThemeTokens {
       /** Ruler background */
       ruler: string;
     };
+
+    /** Toolbar surface (main tool toolbar + project toolbar). Distinct from
+     *  `surface.default` so the toolbars can carry a slightly different
+     *  shade from generic panels/dialogs without re-skinning everything. */
+    toolbar: string;
 
     /** Toast notification background */
     toast: string;
