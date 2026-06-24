@@ -142,6 +142,7 @@ export * from './PlayheadCursor';
 export * from './ProjectToolbar';
 export * from './Toolbar';
 export * from './ToolbarGroup';
+export * from './TransportToolbar';
 export * from './TrackControlSidePanel';
 export * from './EffectsPanel';
 export * from './PanelHeader';

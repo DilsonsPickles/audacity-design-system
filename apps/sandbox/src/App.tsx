@@ -23,7 +23,7 @@ import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineConte
 import { AppContextMenus } from './components/AppContextMenus';
 import { AppDialogs } from './components/AppDialogs';
 import { InstallerWizardDialog } from './components/InstallerWizardDialog';
-import { TransportToolbar } from './components/TransportToolbar';
+import { TransportToolbar } from '@dilsonspickles/components';
 import { EditorLayout } from './components/EditorLayout';
 const TokenReview = React.lazy(() =>
   import('./pages/TokenReview').then(m => ({ default: m.TokenReview }))
@@ -373,7 +373,7 @@ function CanvasDemoContent() {
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [snapEnabled, setSnapEnabled] = React.useState(false);
-  const [snapMode, setSnapMode] = React.useState<import('./components/TransportToolbar').SnapMode>('musical');
+  const [snapMode, setSnapMode] = React.useState<import('@dilsonspickles/components').SnapMode>('musical');
   const [showMixer, setShowMixer] = React.useState(true);
   const [mixerPanelOpen, setMixerPanelOpen] = React.useState(false);
 

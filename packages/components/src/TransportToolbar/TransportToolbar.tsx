@@ -1,5 +1,18 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, BpmStepper, TimeSignatureSelector, type TimeSignature, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@dilsonspickles/components';
+import { Toolbar, ToolbarButtonGroup } from '../Toolbar/Toolbar';
+import { TransportButton } from '../TransportButton';
+import { ToolButton } from '../ToolButton';
+import { ToggleToolButton } from '../ToggleToolButton';
+import { TimeCode, type TimeCodeFormat } from '../TimeCode';
+import { BpmStepper } from '../BpmStepper';
+import { TimeSignatureSelector, type TimeSignature } from '../TimeSignatureSelector';
+import { Button } from '../Button';
+import { Icon } from '../Icon';
+import { ContextMenu } from '../ContextMenu';
+import { ContextMenuItem } from '../ContextMenuItem';
+import { Checkbox } from '../Checkbox';
+import { MasterMeter } from '../MasterMeter';
+import { useTheme } from '../ThemeProvider';
 import type { SnapGrid } from '@audacity-ui/core';
 
 export type SnapMode =
@@ -100,7 +113,7 @@ function SplitRecordButton({
   disabled: boolean;
   onRecord: () => void;
   onCaretClick: () => void;
-  caretRef: React.RefObject<HTMLButtonElement | null>;
+  caretRef: React.Ref<HTMLButtonElement>;
 }) {
   const { theme } = useTheme();
   const [mainState, setMainState] = React.useState<'idle' | 'hover' | 'pressed'>('idle');
