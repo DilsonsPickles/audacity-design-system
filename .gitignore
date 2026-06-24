@@ -13,6 +13,8 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+release/
+tsup.config.bundled_*.mjs
 
 # Next.js app has its own .gitignore
 # See clip-envelope/.gitignore for Next.js specific ignores
