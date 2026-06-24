@@ -22,6 +22,8 @@ export interface UsePlaybackControlsReturn {
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
   trackMeterLevels: Map<number, number>;
   setTrackMeterLevels: React.Dispatch<React.SetStateAction<Map<number, number>>>;
+  /** Master output meter level on a 0-100 scale (post-mix, post-volume). */
+  masterMeterLevel: number;
 }
 
 /**
@@ -47,6 +49,8 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
 
   // Track meter levels during playback (trackIndex -> level 0-100)
   const [trackMeterLevels, setTrackMeterLevels] = useState<Map<number, number>>(new Map());
+  // Master output meter — single post-mix level 0-100.
+  const [masterMeterLevel, setMasterMeterLevel] = useState(0);
 
   // Initialize audio playback manager
   useEffect(() => {
@@ -67,6 +71,12 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
         next.set(trackIndex, level);
         return next;
       });
+    });
+
+    // Master output meter — fires once per animation frame with the
+    // post-mix level. Used by the master playback meter UI.
+    audioManager.setMasterMeterUpdateCallback((level) => {
+      setMasterMeterLevel(level);
     });
 
     // Cleanup on unmount
@@ -185,5 +195,6 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     audioManagerRef,
     trackMeterLevels,
     setTrackMeterLevels,
+    masterMeterLevel,
   };
 }

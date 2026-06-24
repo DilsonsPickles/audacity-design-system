@@ -23,6 +23,12 @@ export class AudioPlaybackManager {
   private animationFrameId: number | null = null;
   private onPositionUpdate?: (position: number) => void;
   private onMeterUpdate?: (trackIndex: number, level: number) => void;
+  // Dedicated master output meter that sees the summed signal of every
+  // track on its way to the destination. Per-track meters historically
+  // dropped to silence after the first audio buffer; this gives the
+  // playback UI a reliable post-mix level reading.
+  private masterMeter: Tone.Meter | null = null;
+  private onMasterMeterUpdate?: (level: number) => void;
   private loopEnabled: boolean = false;
   private loopStart: number | null = null;
   private loopEnd: number | null = null;
@@ -215,6 +221,16 @@ export class AudioPlaybackManager {
     this.meters.forEach(meter => meter.dispose());
     this.trackGains.clear();
     this.meters.clear();
+    if (this.masterMeter) {
+      this.masterMeter.dispose();
+      this.masterMeter = null;
+    }
+
+    // Rebuild a single master meter that all tracks pass through on the
+    // way to the destination, so the playback UI can read a reliable
+    // post-mix level. Default smoothing keeps it readable at 60 fps.
+    this.masterMeter = new Tone.Meter({ smoothing: 0.8 });
+    this.masterMeter.toDestination();
 
     // Create gain nodes and meters for each track
     tracks.forEach((track, trackIndex) => {
@@ -238,9 +254,13 @@ export class AudioPlaybackManager {
           lastNode = effect;
         });
 
-        // Connect to meter and destination
+        // Chain the per-track meter inline: lastNode → meter → masterMeter →
+        // destination. Connecting the per-track meter as a dead-end branch
+        // (no downstream) made Web Audio optimize it away after the first
+        // buffer, so its getValue() collapsed to -∞. Threading it through
+        // the master keeps signal flowing and the meter alive.
         lastNode.connect(meter);
-        lastNode.toDestination();
+        meter.connect(this.masterMeter);
 
         this.trackGains.set(trackIndex, gain);
         this.meters.set(trackIndex, meter);
@@ -521,6 +541,14 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * Set callback for master output meter updates. Level is the post-mix
+   * signal level on a 0-100 scale (where 100 ≈ 0 dB FS).
+   */
+  setMasterMeterUpdateCallback(callback: (level: number) => void): void {
+    this.onMasterMeterUpdate = callback;
+  }
+
+  /**
    * Set the gain for a specific track in dB.
    * This affects both the audible output and the meter reading.
    */
@@ -601,6 +629,18 @@ export class AudioPlaybackManager {
         });
       }
 
+      // Master output meter — taps the summed signal of all tracks.
+      if (this.onMasterMeterUpdate && this.masterMeter) {
+        const raw = this.masterMeter.getValue();
+        const dbValue = typeof raw === 'number'
+          ? raw
+          : Array.isArray(raw) && raw.length > 0
+            ? Math.max(...raw)
+            : -Infinity;
+        const linearValue = Math.max(0, Math.min(100, ((dbValue + 60) / 60) * 100));
+        this.onMasterMeterUpdate(linearValue);
+      }
+
       this.animationFrameId = requestAnimationFrame(updatePosition);
     };
 
@@ -628,6 +668,10 @@ export class AudioPlaybackManager {
     this.volumes.forEach(volume => volume.dispose());
     this.trackGains.forEach(gain => gain.dispose());
     this.meters.forEach(meter => meter.dispose());
+    if (this.masterMeter) {
+      this.masterMeter.dispose();
+      this.masterMeter = null;
+    }
 
     // Dispose MIDI synths and scheduled events
     this.scheduledMidiEvents.forEach(id => Tone.getTransport().clear(id));

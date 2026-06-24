@@ -100,6 +100,16 @@ export interface TransportToolbarProps {
   masterRecentPeakRight?: number;
   masterVolume?: number;
   onMasterVolumeChange?: (volume: number) => void;
+
+  /**
+   * Current orientation of the master meter. When 'vertical' the toolbar
+   * hides the meter (the consumer renders it elsewhere, e.g. as a side
+   * panel) but the volume settings button + its context menu remain.
+   * @default 'horizontal'
+   */
+  meterOrientation?: 'horizontal' | 'vertical';
+  /** Called when the user picks a new orientation from the volume menu. */
+  onMeterOrientationChange?: (orientation: 'horizontal' | 'vertical') => void;
 }
 
 function SplitRecordButton({
@@ -196,6 +206,7 @@ export function TransportToolbar({
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
   masterLevelLeft = -60, masterLevelRight = -60, masterClippedLeft = false, masterClippedRight = false,
   masterRecentPeakLeft, masterRecentPeakRight, masterVolume = 1, onMasterVolumeChange,
+  meterOrientation: meterOrientationProp, onMeterOrientationChange,
 }: TransportToolbarProps) {
   const { theme } = useTheme();
   const [recordMenuOpen, setRecordMenuOpen] = React.useState(false);
@@ -204,6 +215,28 @@ export function TransportToolbar({
   const [snapMenuOpen, setSnapMenuOpen] = React.useState(false);
   const [snapMenuPos, setSnapMenuPos] = React.useState({ x: 0, y: 0 });
   const snapButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  // Volume settings menu — drives meter orientation choice. Kept as internal
+  // state since the orientation is a presentation concern of this toolbar.
+  const [volumeMenuOpen, setVolumeMenuOpen] = React.useState(false);
+  const [volumeMenuPos, setVolumeMenuPos] = React.useState({ x: 0, y: 0 });
+  const volumeButtonRef = React.useRef<HTMLDivElement>(null);
+  // Uncontrolled fallback so the menu still works if the consumer hasn't
+  // wired up `meterOrientation` / `onMeterOrientationChange` yet.
+  const [internalOrientation, setInternalOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
+  const meterOrientation = meterOrientationProp ?? internalOrientation;
+  const setMeterOrientation = (next: 'horizontal' | 'vertical') => {
+    if (onMeterOrientationChange) onMeterOrientationChange(next);
+    else setInternalOrientation(next);
+  };
+
+  const handleVolumeButtonClick = () => {
+    if (volumeButtonRef.current) {
+      const rect = volumeButtonRef.current.getBoundingClientRect();
+      setVolumeMenuPos({ x: rect.left, y: rect.bottom + 2 });
+    }
+    setVolumeMenuOpen(true);
+  };
 
 
   const handleRecordCaretClick = () => {
@@ -605,18 +638,50 @@ export function TransportToolbar({
               meter's controls, so it must stay glued to the meter — they
               wrap together as a single unit. */}
           <ToolbarButtonGroup gap={6}>
-            <ToolButton icon="volume" ariaLabel="Playback volume settings" onClick={() => {}} />
-            <MasterMeter
-              levelLeft={masterLevelLeft}
-              levelRight={masterLevelRight}
-              clippedLeft={masterClippedLeft}
-              clippedRight={masterClippedRight}
-              recentPeakLeft={masterRecentPeakLeft}
-              recentPeakRight={masterRecentPeakRight}
-              volume={masterVolume}
-              onVolumeChange={onMasterVolumeChange}
-            />
+            <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
+              <ToolButton
+                icon="volume"
+                ariaLabel="Playback volume settings"
+                onClick={handleVolumeButtonClick}
+              />
+            </div>
+            {meterOrientation === 'horizontal' && (
+              <MasterMeter
+                levelLeft={masterLevelLeft}
+                levelRight={masterLevelRight}
+                clippedLeft={masterClippedLeft}
+                clippedRight={masterClippedRight}
+                recentPeakLeft={masterRecentPeakLeft}
+                recentPeakRight={masterRecentPeakRight}
+                volume={masterVolume}
+                onVolumeChange={onMasterVolumeChange}
+              />
+            )}
           </ToolbarButtonGroup>
+
+          <ContextMenu
+            isOpen={volumeMenuOpen}
+            onClose={() => setVolumeMenuOpen(false)}
+            x={volumeMenuPos.x}
+            y={volumeMenuPos.y}
+          >
+            <ContextMenuItem
+              label="Horizontal meter"
+              checked={meterOrientation === 'horizontal'}
+              onClick={() => {
+                setMeterOrientation('horizontal');
+                setVolumeMenuOpen(false);
+              }}
+            />
+            <ContextMenuItem
+              label="Vertical meter"
+              checked={meterOrientation === 'vertical'}
+              onClick={() => {
+                setMeterOrientation('vertical');
+                setVolumeMenuOpen(false);
+              }}
+            />
+          </ContextMenu>
 
         </>
       )}

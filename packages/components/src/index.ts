@@ -28,6 +28,7 @@ export * from './ToggleButton';
 export * from './ToolButton';
 export * from './TrackMeter';
 export * from './MasterMeter';
+export * from './MasterMeterVertical';
 export * from './MixerFaderHandle';
 export * from './MixerFader';
 export * from './MixerEffect';

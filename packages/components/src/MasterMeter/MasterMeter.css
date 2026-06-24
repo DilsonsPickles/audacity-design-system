@@ -51,7 +51,10 @@
   overflow: hidden;
 }
 
-/* Level fill */
+/* Level fill — no CSS transition. The level prop arrives at 60fps from
+   the audio engine; an interpolating transition would interrupt itself
+   every frame before completing, making the bar look frozen. Letting it
+   jump produces the smooth-looking VU motion you'd expect. */
 .master-meter__fill {
   position: absolute;
   top: 0;
@@ -59,7 +62,6 @@
   height: 100%;
   background: var(--mm-fill);
   border-radius: 1px;
-  transition: width 0.05s linear;
 }
 
 /* Recent peak thin line */

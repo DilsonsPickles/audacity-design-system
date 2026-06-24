@@ -2,7 +2,7 @@ import React from 'react';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, Dropdown, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, Dropdown, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
 import {
   getProject as adieuGetProject,
   saveProject as adieuSaveProject,
@@ -409,6 +409,7 @@ function CanvasDemoContent() {
     | { kind: 'bottom' }
     | { kind: 'floating'; x: number; y: number };
   const [toolbarPosition, setToolbarPosition] = React.useState<ToolbarPosition>({ kind: 'top' });
+  const [meterOrientation, setMeterOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
   const dragStateRef = React.useRef<{ offsetX: number; offsetY: number } | null>(null);
 
   const handleToolbarGripperMouseDown = React.useCallback(
@@ -559,6 +560,7 @@ function CanvasDemoContent() {
   const {
     isPlaying, setIsPlaying, handlePlay, handleStop,
     audioManagerRef, trackMeterLevels, setTrackMeterLevels: _setTrackMeterLevels,
+    masterMeterLevel,
   } = usePlaybackControls({
     state, dispatch, recordingManagerRef, scrollContainerRef,
     pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead, isProgrammaticScrollRef,
@@ -579,32 +581,18 @@ function CanvasDemoContent() {
     setMasterVolume(vol);
     audioManagerRef.current.setMasterVolume(vol);
   }, []);
+  // Master meter — read directly from the dedicated master Tone.Meter in
+  // the audio engine (post-mix, post-master-volume). The audio engine
+  // applies its own smoothing, so the displayed value tracks the audio
+  // continuously instead of dipping to −60 between samples.
   const masterLevelLeft = React.useMemo(() => {
-    if (trackMeterLevels.size === 0) return -60;
-    // Convert track levels (0-100) to dB, combine as RMS-like sum
-    let sumLinear = 0;
-    trackMeterLevels.forEach((level) => {
-      const linear = level / 100;
-      sumLinear += linear * linear;
-    });
-    const rms = Math.sqrt(sumLinear / trackMeterLevels.size);
-    if (rms <= 0) return -60;
-    const db = 20 * Math.log10(rms * masterVolume);
+    if (masterMeterLevel <= 0) return -60;
+    const db = (masterMeterLevel / 100) * 60 - 60;
     return Math.max(-60, Math.min(0, db));
-  }, [trackMeterLevels, masterVolume]);
-  const masterLevelRight = React.useMemo(() => {
-    // For now, simulate slight stereo difference
-    if (trackMeterLevels.size === 0) return -60;
-    let sumLinear = 0;
-    trackMeterLevels.forEach((level) => {
-      const linear = level / 100;
-      sumLinear += linear * linear;
-    });
-    const rms = Math.sqrt(sumLinear / trackMeterLevels.size) * 0.95;
-    if (rms <= 0) return -60;
-    const db = 20 * Math.log10(rms * masterVolume);
-    return Math.max(-60, Math.min(0, db));
-  }, [trackMeterLevels, masterVolume]);
+  }, [masterMeterLevel]);
+  // Slight stereo simulation until the audio engine exposes per-channel
+  // levels — same dB, 0.5 dB attenuated on the right.
+  const masterLevelRight = React.useMemo(() => Math.max(-60, masterLevelLeft - 0.5), [masterLevelLeft]);
 
   // Loop region
   const {
@@ -1357,6 +1345,8 @@ function CanvasDemoContent() {
       masterClippedRight={masterLevelRight >= 0}
       masterVolume={masterVolume}
       onMasterVolumeChange={handleMasterVolumeChange}
+      meterOrientation={meterOrientation}
+      onMeterOrientationChange={setMeterOrientation}
       onGripperMouseDown={handleToolbarGripperMouseDown}
       onExportLoopRegionClick={() => {
         if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
@@ -1665,6 +1655,8 @@ function CanvasDemoContent() {
           />
         </div>
       ) : (
+        <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }}>
+        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <EditorLayout
           state={state}
           dispatch={dispatch}
@@ -1727,6 +1719,20 @@ function CanvasDemoContent() {
           marketplaceModal={marketplaceModal}
           setMarketplaceModal={setMarketplaceModal}
         />
+        </div>
+        {meterOrientation === 'vertical' && (
+          <div style={{ width: 64, flexShrink: 0 }}>
+            <MasterMeterVertical
+              levelLeft={masterLevelLeft}
+              levelRight={masterLevelRight}
+              clippedLeft={masterLevelLeft >= 0}
+              clippedRight={masterLevelRight >= 0}
+              volume={masterVolume}
+              onVolumeChange={handleMasterVolumeChange}
+            />
+          </div>
+        )}
+        </div>
       )}
 
       {/* Selection Toolbar - Hidden in Home view */}
