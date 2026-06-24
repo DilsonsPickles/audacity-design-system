@@ -117,7 +117,7 @@ function cloudSummaryToStored(p: AdieuProjectSummary): StoredProject {
   };
 }
 
-type Workspace = 'classic' | 'spectral-editing';
+type Workspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
 
 function CanvasDemoContent() {
   const { theme: baseTheme } = useTheme();
@@ -1439,7 +1439,9 @@ function CanvasDemoContent() {
                 <Dropdown
                   value={workspace}
                   options={[
+                    { value: 'music', label: 'Music' },
                     { value: 'classic', label: 'Classic' },
+                    { value: 'modern', label: 'Modern' },
                     { value: 'spectral-editing', label: 'Spectral editing' },
                   ]}
                   onChange={(next) => {

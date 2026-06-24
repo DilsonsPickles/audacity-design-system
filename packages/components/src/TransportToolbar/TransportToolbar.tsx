@@ -28,7 +28,7 @@ export type SnapMode =
   | 'video-25fps'
   | 'cdda-75fps';
 
-type Workspace = 'classic' | 'spectral-editing';
+export type Workspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
 
 export interface TransportToolbarProps {
   activeMenuItem: 'home' | 'project' | 'export' | 'debug';
@@ -407,6 +407,62 @@ export function TransportToolbar({
             </>
           )}
 
+          {workspace === 'modern' && (
+            <>
+              <ToolbarButtonGroup gap={2}>
+                <ToggleToolButton
+                  icon="automation"
+                  ariaLabel="Clip envelope"
+                  isActive={envelopeMode}
+                  onClick={onToggleEnvelope}
+                />
+                <ToolButton icon="split" ariaLabel="Cut / Split" onClick={() => {}} />
+                <ToggleToolButton
+                  icon="waveform"
+                  ariaLabel="Spectral view"
+                  isActive={spectrogramMode}
+                  onClick={onToggleSpectrogram}
+                />
+              </ToolbarButtonGroup>
+
+              <ToolbarButtonGroup gap={2}>
+                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
+                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
+                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
+              </ToolbarButtonGroup>
+
+              <ToolbarButtonGroup gap={2}>
+                <ToolButton icon="trim" ariaLabel="Trim" />
+                <ToolButton icon="silence" ariaLabel="Silence" />
+              </ToolbarButtonGroup>
+            </>
+          )}
+
+          {workspace === 'music' && (
+            <>
+              <ToolbarButtonGroup gap={2}>
+                <ToggleToolButton
+                  icon="automation"
+                  ariaLabel="Clip envelope"
+                  isActive={envelopeMode}
+                  onClick={onToggleEnvelope}
+                />
+                <ToolButton icon="split" ariaLabel="Cut / Split" onClick={() => {}} />
+              </ToolbarButtonGroup>
+
+              <ToolbarButtonGroup gap={2}>
+                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
+                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
+                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
+              </ToolbarButtonGroup>
+
+              <ToolbarButtonGroup gap={2}>
+                <ToolButton icon="trim" ariaLabel="Trim" />
+                <ToolButton icon="silence" ariaLabel="Silence" />
+              </ToolbarButtonGroup>
+            </>
+          )}
+
 
           <ToolbarButtonGroup gap={2}>
             <TimeCode
@@ -417,21 +473,25 @@ export function TransportToolbar({
             />
           </ToolbarButtonGroup>
 
-          <ToolbarButtonGroup gap={2}>
-            <BpmStepper
-              value={bpm}
-              onChange={(next) => onBpmChange?.(next)}
-              min={20}
-              max={300}
-            />
-          </ToolbarButtonGroup>
+          {workspace === 'music' && (
+            <>
+              <ToolbarButtonGroup gap={2}>
+                <BpmStepper
+                  value={bpm}
+                  onChange={(next) => onBpmChange?.(next)}
+                  min={20}
+                  max={300}
+                />
+              </ToolbarButtonGroup>
 
-          <ToolbarButtonGroup gap={2}>
-            <TimeSignatureSelector
-              value={{ numerator: beatsPerMeasure, denominator: noteValue }}
-              onChange={(next) => onTimeSignatureChange?.(next)}
-            />
-          </ToolbarButtonGroup>
+              <ToolbarButtonGroup gap={2}>
+                <TimeSignatureSelector
+                  value={{ numerator: beatsPerMeasure, denominator: noteValue }}
+                  onChange={(next) => onTimeSignatureChange?.(next)}
+                />
+              </ToolbarButtonGroup>
+            </>
+          )}
 
 
           <ToolbarButtonGroup gap={8}>

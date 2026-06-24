@@ -28,6 +28,7 @@ export type IconName =
   | 'copy'
   | 'paste'
   | 'cut'
+  | 'split'
   | 'spectrogram'
   | 'cog'
   | 'trash'
@@ -89,6 +90,7 @@ const ICON_MAP: Record<IconName, string> = {
   copy: '\uF398',
   paste: '\uF399',
   cut: '\uF39A',
+  split: '\uF494',
   spectrogram: '\uF442',
   cog: '\uEF55',
   trash: '\uEF2C',
