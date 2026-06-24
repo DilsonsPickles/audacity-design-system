@@ -2,14 +2,24 @@
 
 .master-meter {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
+  align-items: center;
   /* Fills its container so the meter can grow/shrink with available space.
      The toolbar wrapper caps its max width at 360px and floors it around
      120px, which is where the dB ticks start crowding. */
   width: 100%;
   user-select: none;
+}
+
+/* The meter+scale column. Sits alongside the resize grip so the grip can
+   center against the whole control's height instead of stretching the
+   bars row. */
+.master-meter__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
 }
 
 /* Row containing meter bars + clip indicators */
@@ -106,27 +116,39 @@
   background: var(--mm-clip);
 }
 
-/* dB scale below the meter */
-.master-meter__scale {
-  position: relative;
-  height: 6px;
-  margin-right: 8px; /* align with meter bars (not clip indicators) */
+/* Resize grip icon at the right edge of the meter — vertically centered
+   against the full control (meter row + dB scale together), per Figma. */
+.master-meter__resize-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 28px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--mm-text);
+  cursor: ew-resize;
+  user-select: none;
+  overflow: hidden;
 }
 
-/* Individual tick + label */
-.master-meter__tick {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
+/* dB scale below the meter. margin-right reserves space for the clip
+   indicators (6px) + their flex gap (2px) so the scale exactly covers the
+   bar width above. The resize grip lives outside .master-meter__main so it
+   doesn't factor into this offset. */
+.master-meter__scale {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
+  height: 8px;
+  margin-right: 8px;
 }
 
 .master-meter__tick-label {
   font-size: 9px;
-  line-height: 6px;
-  height: 6px;
+  line-height: 8px;
   color: var(--mm-text);
   white-space: nowrap;
 }

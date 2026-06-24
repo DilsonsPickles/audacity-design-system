@@ -80,8 +80,8 @@ function createWindow(url) {
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
-    minWidth: 1100,
-    minHeight: 700,
+    minWidth: 480,
+    minHeight: 320,
     title: 'Audacity 4',
     backgroundColor: '#1D1D1F',
     // Default native title bar — the renderer's own toolbar lives just

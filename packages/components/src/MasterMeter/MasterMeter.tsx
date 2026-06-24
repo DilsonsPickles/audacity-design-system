@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
+import '../assets/fonts/musescore-icon.css';
 import './MasterMeter.css';
 
 export interface MasterMeterProps {
@@ -19,12 +20,37 @@ export interface MasterMeterProps {
   volume?: number;
   /** Callback when volume slider changes */
   onVolumeChange?: (volume: number) => void;
+  /**
+   * Initial meter width in pixels. The component owns the live width state
+   * (resize is built in), so this only seeds the initial value. Default 360.
+   */
+  defaultWidth?: number;
+  /** Minimum meter width during resize. Default 160. */
+  minWidth?: number;
+  /**
+   * Disable the resize grip + behavior entirely. Useful when the meter sits
+   * in a layout that already controls its width externally.
+   */
+  resizable?: boolean;
+  /**
+   * Override the default drag handler. When provided the component will
+   * forward the mousedown event instead of running its built-in drag loop —
+   * the caller is then responsible for the full lifecycle.
+   */
+  onResizeMouseDown?: (event: React.MouseEvent) => void;
   /** Additional CSS class */
   className?: string;
 }
 
-/** dB tick marks to render */
-const DB_TICKS = [-60, -54, -48, -42, -36, -30, -24, -18, -12, -6, 0];
+/** dB tick tiers, sparse → dense. The widest tier that fits without
+ *  crowding gets rendered; the 6-label tier matches Figma at default width. */
+const DB_TICKS_TIERS: readonly (readonly number[])[] = [
+  [-60, -30, 0],
+  [-60, -48, -36, -24, -12, 0],
+  [-60, -54, -48, -42, -36, -30, -24, -18, -12, -6, 0],
+];
+/** Minimum scale width (px) per tier index — keep labels from butting up. */
+const DB_TICKS_MIN_WIDTHS = [0, 220, 440];
 const DB_MIN = -60;
 const DB_MAX = 0;
 
@@ -55,13 +81,87 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
   recentPeakRight,
   volume = 1,
   onVolumeChange,
+  defaultWidth = 360,
+  minWidth = 160,
+  resizable = true,
+  onResizeMouseDown,
   className = '',
 }) => {
   const { theme } = useTheme();
+  const rootRef = React.useRef<HTMLDivElement>(null);
   const trackRef = React.useRef<HTMLDivElement>(null);
+  const scaleRef = React.useRef<HTMLDivElement>(null);
   const draggingRef = React.useRef(false);
   const onVolumeChangeRef = React.useRef(onVolumeChange);
   onVolumeChangeRef.current = onVolumeChange;
+
+  // The component owns its own width when resizable. Drag → grow into free
+  // space within the nearest `.toolbar__content` (if any); window resize →
+  // clamp back down if the container shrank.
+  const [width, setWidth] = React.useState(defaultWidth);
+
+  const handleResizeMouseDownInternal = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const root = rootRef.current;
+    if (!root) return;
+    const startX = e.clientX;
+    const startWidth = root.getBoundingClientRect().width;
+    const container = root.closest('.toolbar__content') as HTMLElement | null;
+    const onMove = (ev: MouseEvent) => {
+      const maxAvailable = container
+        ? container.getBoundingClientRect().right - root.getBoundingClientRect().left
+        : Infinity;
+      const next = Math.max(
+        minWidth,
+        Math.min(maxAvailable, startWidth + (ev.clientX - startX)),
+      );
+      setWidth(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [minWidth]);
+
+  // If the toolbar narrows past what fits, shrink the meter so it doesn't
+  // get pushed onto a second row. We only clamp DOWN; growing back is left
+  // to the user via the grip.
+  React.useEffect(() => {
+    if (!resizable) return;
+    const root = rootRef.current;
+    const container = root?.closest('.toolbar__content') as HTMLElement | null;
+    if (!root || !container) return;
+    const observer = new ResizeObserver(() => {
+      const available = container.getBoundingClientRect().right - root.getBoundingClientRect().left;
+      setWidth((current) => (current > available ? Math.max(minWidth, available) : current));
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [resizable, minWidth]);
+
+  const gripMouseDown = onResizeMouseDown ?? handleResizeMouseDownInternal;
+
+  // Pick the densest tick tier that fits without crowding. The scale grows
+  // with the meter, so wider meters unlock more labels.
+  const [tierIndex, setTierIndex] = React.useState(1);
+  React.useEffect(() => {
+    const el = scaleRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      let next = 0;
+      for (let i = DB_TICKS_MIN_WIDTHS.length - 1; i >= 0; i--) {
+        if (width >= DB_TICKS_MIN_WIDTHS[i]) { next = i; break; }
+      }
+      setTierIndex(next);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const ticks = DB_TICKS_TIERS[tierIndex];
 
   const leftPercent = dbToPercent(levelLeft);
   const rightPercent = dbToPercent(levelRight);
@@ -114,10 +214,12 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
     '--mm-text': theme.foreground.text.primary,
     '--mm-thumb-bg': theme.background.control.slider.handle.background,
     '--mm-thumb-border': theme.background.control.slider.handle.border,
+    ...(resizable ? { width: `${width}px` } : null),
   } as React.CSSProperties;
 
   return (
-    <div className={`master-meter ${className}`} style={style}>
+    <div ref={rootRef} className={`master-meter ${className}`} style={style}>
+      <div className="master-meter__main">
       {/* Meter bars + slider track */}
       <div className="master-meter__row">
         <div
@@ -184,18 +286,29 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
         </div>
       </div>
 
-      {/* dB scale labels */}
-      <div className="master-meter__scale">
-        {DB_TICKS.map((db) => (
-          <div
-            key={db}
-            className="master-meter__tick"
-            style={{ left: `${dbToPercent(db)}%` }}
-          >
-            <span className="master-meter__tick-label">{db}</span>
-          </div>
+      {/* dB scale labels — flex `space-between` anchors the first label flush
+          at the left edge and the last flush at the right, matching the bar
+          coordinate system above. */}
+      <div ref={scaleRef} className="master-meter__scale">
+        {ticks.map((db) => (
+          <span key={db} className="master-meter__tick-label">{db}</span>
         ))}
       </div>
+      </div>
+
+      {/* Resize grip — sibling of the meter+scale column so it can stay
+          centered against the full control rather than stretching the row.
+          Uses the built-in drag handler unless the consumer overrides it. */}
+      {resizable && (
+      <span
+        className="master-meter__resize-grip musescore-icon"
+        aria-hidden="true"
+        role="presentation"
+        onMouseDown={gripMouseDown}
+      >
+        {'\uF347'}
+      </span>
+      )}
     </div>
   );
 };

@@ -2,7 +2,7 @@ import React from 'react';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ProjectToolbar, GhostButton, ToolbarGroup, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, Dropdown, type StoredProject } from '@dilsonspickles/components';
 import {
   getProject as adieuGetProject,
   saveProject as adieuSaveProject,
@@ -397,8 +397,58 @@ function CanvasDemoContent() {
 
   // Timeline ruler format options
   const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
-  const [bpm] = React.useState(120);
-  const [beatsPerMeasure] = React.useState(4);
+  const [bpm, setBpm] = React.useState(120);
+
+  // Tools toolbar position — gripper-drag detaches it and the user can drop
+  // anywhere. Releasing near the top / bottom edge snaps to a dock; anywhere
+  // else commits a floating position. Snap thresholds are intentionally
+  // generous (1.5× toolbar height) so the user gets a free dock without
+  // having to land precisely on the edge.
+  type ToolbarPosition =
+    | { kind: 'top' }
+    | { kind: 'bottom' }
+    | { kind: 'floating'; x: number; y: number };
+  const [toolbarPosition, setToolbarPosition] = React.useState<ToolbarPosition>({ kind: 'top' });
+  const dragStateRef = React.useRef<{ offsetX: number; offsetY: number } | null>(null);
+
+  const handleToolbarGripperMouseDown = React.useCallback(
+    (e: React.MouseEvent, rect: DOMRect) => {
+      dragStateRef.current = {
+        offsetX: e.clientX - rect.left,
+        offsetY: e.clientY - rect.top,
+      };
+      // Immediately flip to floating at the toolbar's current rect so the
+      // first mousemove doesn't jump — the toolbar stays under the cursor.
+      setToolbarPosition({ kind: 'floating', x: rect.left, y: rect.top });
+
+      const SNAP_PX = 72;
+      const onMove = (ev: MouseEvent) => {
+        const state = dragStateRef.current;
+        if (!state) return;
+        setToolbarPosition({
+          kind: 'floating',
+          x: ev.clientX - state.offsetX,
+          y: ev.clientY - state.offsetY,
+        });
+      };
+      const onUp = (ev: MouseEvent) => {
+        dragStateRef.current = null;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        if (ev.clientY < SNAP_PX) {
+          setToolbarPosition({ kind: 'top' });
+        } else if (ev.clientY > window.innerHeight - SNAP_PX) {
+          setToolbarPosition({ kind: 'bottom' });
+        }
+        // else: leave it floating at the last position
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    },
+    [],
+  );
+  const [beatsPerMeasure, setBeatsPerMeasure] = React.useState(4);
+  const [noteValue, setNoteValue] = React.useState(4);
 
   // Context menu state (from context) — only destructure what App.tsx uses directly
   const {
@@ -1245,6 +1295,82 @@ function CanvasDemoContent() {
     });
   }, []);
 
+  // Tools toolbar — defined once so we can render it at the top or the
+  // bottom of the layout based on `toolToolbarDock`. The gripper inside
+  // calls `onDockChange` on drag-release.
+  const transportToolbarElement = (
+    <TransportToolbar
+      activeMenuItem={activeMenuItem}
+      workspace={workspace}
+      isPlaying={isPlaying}
+      isRecording={state.isRecording}
+      onPlay={handlePlay}
+      onStop={handleStop}
+      onRecord={handleRecord}
+      useSplitRecordButton={useSplitRecordButton}
+      rollInTimeEnabled={rollInTimeEnabled}
+      onToggleRollInTime={() => setRollInTimeEnabled(!rollInTimeEnabled)}
+      snapEnabled={snapEnabled}
+      onToggleSnap={() => setSnapEnabled(!snapEnabled)}
+      snapSubdivision={state.canvasSnap.subdivision}
+      onSnapSubdivisionChange={(subdivision) => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, subdivision } })}
+      snapTriplet={state.canvasSnap.triplet ?? false}
+      onToggleSnapTriplet={() => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, triplet: !state.canvasSnap.triplet } })}
+      snapMode={snapMode}
+      onSnapModeChange={setSnapMode}
+      loopRegionEnabled={loopRegionEnabled}
+      loopRegionStart={loopRegionStart}
+      loopRegionEnd={loopRegionEnd}
+      setLoopRegionEnabled={setLoopRegionEnabled}
+      setLoopRegionStart={setLoopRegionStart}
+      setLoopRegionEnd={setLoopRegionEnd}
+      timeSelection={state.timeSelection}
+      bpm={bpm}
+      onBpmChange={setBpm}
+      beatsPerMeasure={beatsPerMeasure}
+      noteValue={noteValue}
+      onTimeSignatureChange={(sig) => {
+        setBeatsPerMeasure(sig.numerator);
+        setNoteValue(sig.denominator);
+      }}
+      envelopeMode={state.envelopeMode}
+      spectrogramMode={state.spectrogramMode}
+      onToggleEnvelope={handleToggleEnvelope}
+      onToggleSpectrogram={handleToggleSpectrogram}
+      onZoomIn={zoomIn}
+      onZoomOut={zoomOut}
+      onZoomToSelection={zoomToSelection}
+      onZoomToFitProject={zoomToFitProject}
+      onZoomToggle={zoomToggle}
+      currentTime={currentTime}
+      timeCodeFormat={timeCodeFormat}
+      onTimeCodeChange={(newTime) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime })}
+      onTimeCodeFormatChange={setTimeCodeFormat}
+      onShareClick={() => setIsShareDialogOpen(true)}
+      onExportAudioClick={() => {
+        setInitialExportType('full-project');
+        setIsExportModalOpen(true);
+      }}
+      masterLevelLeft={masterLevelLeft}
+      masterLevelRight={masterLevelRight}
+      masterClippedLeft={masterLevelLeft >= 0}
+      masterClippedRight={masterLevelRight >= 0}
+      masterVolume={masterVolume}
+      onMasterVolumeChange={handleMasterVolumeChange}
+      onGripperMouseDown={handleToolbarGripperMouseDown}
+      onExportLoopRegionClick={() => {
+        if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
+          setAlertDialogTitle('No loop region');
+          setAlertDialogMessage('Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.');
+          setAlertDialogOpen(true);
+          return;
+        }
+        setInitialExportType('loop-region');
+        setIsExportModalOpen(true);
+      }}
+    />
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       {!IS_ELECTRON && (
@@ -1310,52 +1436,22 @@ function CanvasDemoContent() {
             <>
               <span style={{ fontSize: '13px', color: baseTheme.foreground.text.primary, marginRight: '8px' }}>Workspace</span>
               <ToolbarGroup ariaLabel="Workspace controls" tabGroupId="project-toolbar-workspace">
-                <select
-                  style={{
-                    // Matches the "Snap subdivision" button in TransportToolbar
-                    // so the two workspace controls feel like one family.
-                    height: 24,
-                    fontSize: 12,
-                    padding: '0 8px',
-                    borderRadius: 2,
-                    border: 'none',
-                    backgroundColor: baseTheme.background.control.button.secondary.idle,
-                    color: baseTheme.foreground.text.primary,
-                    cursor: 'pointer',
-                  }}
+                <Dropdown
                   value={workspace}
-                  onChange={(e) => {
-                    const newWorkspace = e.target.value as Workspace;
+                  options={[
+                    { value: 'classic', label: 'Classic' },
+                    { value: 'spectral-editing', label: 'Spectral editing' },
+                  ]}
+                  onChange={(next) => {
+                    const newWorkspace = next as Workspace;
                     setWorkspace(newWorkspace);
-
-                    // When switching to spectral editing, enable spectrogram mode
                     if (newWorkspace === 'spectral-editing') {
-                      // SET_SPECTROGRAM_MODE will save current viewModes and set all tracks to spectrogram
                       dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
                     } else if (newWorkspace === 'classic') {
-                      // When switching back to classic, disable spectrogram mode
-                      // This will restore tracks to their saved viewModes from before spectral mode
                       dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
                     }
                   }}
-                  onKeyDown={(e) => {
-                    // On Enter, trigger the select to show options (workaround for browsers where Enter doesn't open dropdown)
-                    if (e.key === 'Enter') {
-                      const target = e.target as HTMLSelectElement;
-                      // Show picker is a modern API to programmatically open the dropdown
-                      if ('showPicker' in target) {
-                        try {
-                          (target as any).showPicker();
-                        } catch (err) {
-                          // showPicker() might fail in some contexts, fallback to native behavior
-                        }
-                      }
-                    }
-                  }}
-                >
-                  <option value="classic">Classic</option>
-                  <option value="spectral-editing">Spectral editing</option>
-                </select>
+                />
                 <GhostButton icon="undo" ariaLabel="Undo" />
                 <GhostButton icon="redo" ariaLabel="Redo" />
               </ToolbarGroup>
@@ -1363,69 +1459,7 @@ function CanvasDemoContent() {
           ) : null
         }
       />
-      <TransportToolbar
-        activeMenuItem={activeMenuItem}
-        workspace={workspace}
-        isPlaying={isPlaying}
-        isRecording={state.isRecording}
-        onPlay={handlePlay}
-        onStop={handleStop}
-        onRecord={handleRecord}
-        useSplitRecordButton={useSplitRecordButton}
-        rollInTimeEnabled={rollInTimeEnabled}
-        onToggleRollInTime={() => setRollInTimeEnabled(!rollInTimeEnabled)}
-        snapEnabled={snapEnabled}
-        onToggleSnap={() => setSnapEnabled(!snapEnabled)}
-        snapSubdivision={state.canvasSnap.subdivision}
-        onSnapSubdivisionChange={(subdivision) => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, subdivision } })}
-        snapTriplet={state.canvasSnap.triplet ?? false}
-        onToggleSnapTriplet={() => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, triplet: !state.canvasSnap.triplet } })}
-        snapMode={snapMode}
-        onSnapModeChange={setSnapMode}
-        loopRegionEnabled={loopRegionEnabled}
-        loopRegionStart={loopRegionStart}
-        loopRegionEnd={loopRegionEnd}
-        setLoopRegionEnabled={setLoopRegionEnabled}
-        setLoopRegionStart={setLoopRegionStart}
-        setLoopRegionEnd={setLoopRegionEnd}
-        timeSelection={state.timeSelection}
-        bpm={bpm}
-        beatsPerMeasure={beatsPerMeasure}
-        envelopeMode={state.envelopeMode}
-        spectrogramMode={state.spectrogramMode}
-        onToggleEnvelope={handleToggleEnvelope}
-        onToggleSpectrogram={handleToggleSpectrogram}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onZoomToSelection={zoomToSelection}
-        onZoomToFitProject={zoomToFitProject}
-        onZoomToggle={zoomToggle}
-        currentTime={currentTime}
-        timeCodeFormat={timeCodeFormat}
-        onTimeCodeChange={(newTime) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime })}
-        onTimeCodeFormatChange={setTimeCodeFormat}
-        onShareClick={() => setIsShareDialogOpen(true)}
-        onExportAudioClick={() => {
-          setInitialExportType('full-project');
-          setIsExportModalOpen(true);
-        }}
-        masterLevelLeft={masterLevelLeft}
-        masterLevelRight={masterLevelRight}
-        masterClippedLeft={masterLevelLeft >= 0}
-        masterClippedRight={masterLevelRight >= 0}
-        masterVolume={masterVolume}
-        onMasterVolumeChange={handleMasterVolumeChange}
-        onExportLoopRegionClick={() => {
-          if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
-            setAlertDialogTitle('No loop region');
-            setAlertDialogMessage('Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.');
-            setAlertDialogOpen(true);
-            return;
-          }
-          setInitialExportType('loop-region');
-          setIsExportModalOpen(true);
-        }}
-      />
+      {toolbarPosition.kind === 'top' && transportToolbarElement}
 
       {/* Hidden file input for "Open from Computer" — triggered programmatically. */}
       <input
@@ -1727,6 +1761,24 @@ function CanvasDemoContent() {
             });
           }}
         />
+      )}
+
+      {toolbarPosition.kind === 'bottom' && transportToolbarElement}
+
+      {toolbarPosition.kind === 'floating' && (
+        <div
+          style={{
+            position: 'fixed',
+            left: toolbarPosition.x,
+            top: toolbarPosition.y,
+            zIndex: 9000,
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.15)',
+            borderRadius: 4,
+            overflow: 'hidden',
+          }}
+        >
+          {transportToolbarElement}
+        </div>
       )}
 
       {/* Toast Container */}

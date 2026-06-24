@@ -20,17 +20,28 @@
   flex-shrink: 0;
   background-color: var(--toolbar-bg);
   border-bottom: 1px solid var(--toolbar-border);
-  padding: 0 var(--toolbar-padding-x);
+  padding: 4px var(--toolbar-padding-x);
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Left/main content area */
+/* Left/main content area. flex-wrap lets the toolbar grow taller instead
+   of overflowing horizontally when the window narrows. row-gap matches the
+   horizontal gap so wrapped rows breathe. */
 .toolbar__content {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--toolbar-gap);
+  row-gap: 4px;
   flex: 1;
+  min-width: 0;
+}
+
+/* Anything sitting directly inside the wrapping area must keep its natural
+   width — otherwise flex would shrink items instead of triggering a wrap. */
+.toolbar__content > * {
+  flex-shrink: 0;
 }
 
 /* Right content area */
@@ -54,8 +65,59 @@
   background-color: var(--toolbar-divider);
 }
 
-/* Button group container */
+/* Button group container. flex-shrink: 0 keeps groups intact when the toolbar
+   narrows — buttons wrap to the next row instead of compressing. */
 .toolbar__button-group {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+}
+
+/* When a gripper is shown the toolbar sits flush with the left edge — the
+   gripper's own 24px width provides the visual padding. */
+.toolbar--has-gripper {
+  padding-left: 0;
+}
+
+/* Gripper handle (left edge). Matches Figma: 24px wide container, 14px icon,
+   primary icon color. */
+.toolbar__gripper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 100%;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--toolbar-gripper-color, var(--toolbar-divider));
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.toolbar__gripper:active,
+.toolbar__gripper--dragging {
+  cursor: grabbing;
+  color: var(--focus-color, #677ce4);
+}
+
+/* Drop-target indicator shown while the user drags the gripper. Sits at
+   the top or bottom of the viewport depending on the cursor's half. */
+.toolbar__dock-indicator {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 9999;
+  pointer-events: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.toolbar__dock-indicator[data-target-dock="top"] {
+  top: 0;
+}
+
+.toolbar__dock-indicator[data-target-dock="bottom"] {
+  bottom: 0;
 }

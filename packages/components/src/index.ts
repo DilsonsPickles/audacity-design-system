@@ -63,6 +63,8 @@ export * from './LabeledCheckbox';
 export * from './Radio';
 export * from './LabeledRadio';
 export * from './NumberStepper';
+export * from './BpmStepper';
+export * from './TimeSignatureSelector';
 export * from './ChannelMappingDialog';
 export * from './CustomScrollbar';
 export * from './Tooltip';

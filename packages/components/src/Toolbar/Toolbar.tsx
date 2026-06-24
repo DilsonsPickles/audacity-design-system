@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
+import '../assets/fonts/musescore-icon.css';
 import './Toolbar.css';
 
 export interface ToolbarProps {
@@ -37,6 +38,20 @@ export interface ToolbarProps {
    * @default 'transport-toolbar'
    */
   tabGroupId?: string;
+  /**
+   * Show a gripper handle on the left edge of the toolbar. Fires
+   * `onGripperMouseDown` when the user presses on it; the parent owns
+   * the rest of the drag lifecycle (positioning, snap zones, etc.).
+   * @default false
+   */
+  showGripper?: boolean;
+  /**
+   * Called when the user mouses down on the gripper. Receives the raw
+   * mouse event plus the toolbar's bounding rect at press time, so the
+   * parent can compute a cursor-to-toolbar offset for free positioning.
+   * The toolbar itself doesn't move — the parent decides where to render.
+   */
+  onGripperMouseDown?: (event: React.MouseEvent, toolbarRect: DOMRect) => void;
 }
 
 /**
@@ -55,9 +70,20 @@ export function Toolbar({
   enableTabGroup = false,
   startTabIndex: _startTabIndexProp,
   tabGroupId = 'transport-toolbar',
+  showGripper = false,
+  onGripperMouseDown,
 }: ToolbarProps) {
   const { theme } = useTheme();
   const toolbarRef = useRef<HTMLDivElement>(null);
+
+  const handleGripperMouseDown = (e: React.MouseEvent) => {
+    if (!onGripperMouseDown) return;
+    const rect = toolbarRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onGripperMouseDown(e, rect);
+  };
 
   const toolbarFilter = React.useCallback((el: HTMLElement) => {
     // Skip elements inside role="group" (TimeCode internal buttons)
@@ -87,18 +113,29 @@ export function Toolbar({
     '--toolbar-bg': theme.background.toolbar,
     '--toolbar-border': theme.border.onSurface,
     '--toolbar-divider': theme.border.divider,
+    '--toolbar-gripper-color': theme.foreground.text.primary,
   } as React.CSSProperties;
 
   return (
     <div
       ref={toolbarRef}
-      className={`toolbar ${className}`}
-      style={{ height: `${height}px`, ...style }}
+      className={`toolbar${showGripper ? ' toolbar--has-gripper' : ''} ${className}`}
+      style={{ minHeight: `${height}px`, ...style }}
       role={enableTabGroup ? containerProps.role : undefined}
       aria-label={enableTabGroup ? containerProps['aria-label'] : undefined}
       onKeyDown={enableTabGroup ? onKeyDown : undefined}
       onBlur={enableTabGroup ? onBlur : undefined}
     >
+      {showGripper && (
+        <span
+          className="toolbar__gripper musescore-icon"
+          aria-hidden="true"
+          role="presentation"
+          onMouseDown={handleGripperMouseDown}
+        >
+          {'\uF3A2'}
+        </span>
+      )}
       <div className="toolbar__content">
         {children}
       </div>

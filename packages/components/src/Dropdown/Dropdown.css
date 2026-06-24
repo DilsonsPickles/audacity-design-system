@@ -29,7 +29,13 @@
   transition: border-color 0.15s ease;
 }
 
+/* Clicks shouldn't trigger the focus ring — only keyboard nav. Use
+   :focus-visible so mouse interaction stays clean. */
 .dropdown__trigger:focus {
+  outline: none;
+}
+
+.dropdown__trigger:focus-visible {
   outline: none;
   border-color: var(--focus-color);
   box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-color);

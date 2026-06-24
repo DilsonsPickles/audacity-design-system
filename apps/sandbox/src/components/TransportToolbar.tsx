@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@dilsonspickles/components';
+import { Toolbar, ToolbarButtonGroup, TransportButton, ToolButton, ToggleToolButton, TimeCode, TimeCodeFormat, BpmStepper, TimeSignatureSelector, type TimeSignature, Button, Icon, ContextMenu, ContextMenuItem, Checkbox, MasterMeter, useTheme } from '@dilsonspickles/components';
 import type { SnapGrid } from '@audacity-ui/core';
 
 export type SnapMode =
@@ -48,7 +48,11 @@ export interface TransportToolbarProps {
   setLoopRegionEnd: React.Dispatch<React.SetStateAction<number | null>>;
   timeSelection: { startTime: number; endTime: number } | null;
   bpm: number;
+  onBpmChange?: (bpm: number) => void;
   beatsPerMeasure: number;
+  noteValue?: number;
+  onTimeSignatureChange?: (signature: TimeSignature) => void;
+  onGripperMouseDown?: (event: React.MouseEvent, toolbarRect: DOMRect) => void;
 
   // Mode toggles
   envelopeMode: boolean;
@@ -171,7 +175,8 @@ export function TransportToolbar({
   isPlaying, isRecording, onPlay, onStop, onRecord, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
-  timeSelection, bpm, beatsPerMeasure,
+  timeSelection, bpm, onBpmChange, beatsPerMeasure, noteValue = 4, onTimeSignatureChange,
+  onGripperMouseDown,
   envelopeMode, spectrogramMode, onToggleEnvelope, onToggleSpectrogram,
   onZoomIn, onZoomOut, onZoomToSelection, onZoomToFitProject, onZoomToggle,
   currentTime, timeCodeFormat, onTimeCodeChange, onTimeCodeFormatChange,
@@ -186,6 +191,7 @@ export function TransportToolbar({
   const [snapMenuOpen, setSnapMenuOpen] = React.useState(false);
   const [snapMenuPos, setSnapMenuPos] = React.useState({ x: 0, y: 0 });
   const snapButtonRef = React.useRef<HTMLButtonElement>(null);
+
 
   const handleRecordCaretClick = () => {
     if (caretRef.current) {
@@ -215,8 +221,20 @@ export function TransportToolbar({
 
   if (activeMenuItem === 'home') return null;
 
+  const settingsCog = (
+    <ToolbarButtonGroup gap={2}>
+      <ToolButton icon="cog" ariaLabel="Settings" onClick={() => {}} />
+    </ToolbarButtonGroup>
+  );
+
   return (
-    <Toolbar tabGroupId="tool-toolbar" enableTabGroup>
+    <Toolbar
+      tabGroupId="tool-toolbar"
+      enableTabGroup
+      showGripper
+      onGripperMouseDown={onGripperMouseDown}
+      rightContent={activeMenuItem === 'export' ? undefined : settingsCog}
+    >
       {activeMenuItem === 'export' ? (
         <>
           <ToolbarButtonGroup gap={2}>
@@ -386,6 +404,22 @@ export function TransportToolbar({
             />
           </ToolbarButtonGroup>
 
+          <ToolbarButtonGroup gap={2}>
+            <BpmStepper
+              value={bpm}
+              onChange={(next) => onBpmChange?.(next)}
+              min={20}
+              max={300}
+            />
+          </ToolbarButtonGroup>
+
+          <ToolbarButtonGroup gap={2}>
+            <TimeSignatureSelector
+              value={{ numerator: beatsPerMeasure, denominator: noteValue }}
+              onChange={(next) => onTimeSignatureChange?.(next)}
+            />
+          </ToolbarButtonGroup>
+
 
           <ToolbarButtonGroup gap={8}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: theme.foreground.text.primary, whiteSpace: 'nowrap', userSelect: 'none' }}>
@@ -492,27 +526,25 @@ export function TransportToolbar({
 
           <ToolbarButtonGroup gap={2}>
             <ToolButton icon="microphone" ariaLabel="Microphone settings" onClick={() => {}} />
-            <ToolButton icon="volume" ariaLabel="Playback volume settings" onClick={() => {}} />
           </ToolbarButtonGroup>
 
-          <div style={{ marginLeft: 8, flex: '1 1 360px', maxWidth: 360, minWidth: 120, display: 'flex' }}>
-          <MasterMeter
-            levelLeft={masterLevelLeft}
-            levelRight={masterLevelRight}
-            clippedLeft={masterClippedLeft}
-            clippedRight={masterClippedRight}
-            recentPeakLeft={masterRecentPeakLeft}
-            recentPeakRight={masterRecentPeakRight}
-            volume={masterVolume}
-            onVolumeChange={onMasterVolumeChange}
-          />
-          </div>
+          {/* Playback meter cluster: the volume settings button hosts the
+              meter's controls, so it must stay glued to the meter — they
+              wrap together as a single unit. */}
+          <ToolbarButtonGroup gap={6}>
+            <ToolButton icon="volume" ariaLabel="Playback volume settings" onClick={() => {}} />
+            <MasterMeter
+              levelLeft={masterLevelLeft}
+              levelRight={masterLevelRight}
+              clippedLeft={masterClippedLeft}
+              clippedRight={masterClippedRight}
+              recentPeakLeft={masterRecentPeakLeft}
+              recentPeakRight={masterRecentPeakRight}
+              volume={masterVolume}
+              onVolumeChange={onMasterVolumeChange}
+            />
+          </ToolbarButtonGroup>
 
-          <div style={{ marginLeft: 'auto' }}>
-            <ToolbarButtonGroup gap={2}>
-              <ToolButton icon="cog" ariaLabel="Settings" onClick={() => {}} />
-            </ToolbarButtonGroup>
-          </div>
         </>
       )}
     </Toolbar>
