@@ -1,5 +1,4 @@
 import type { TracksState, TracksAction } from '../../contexts/TracksContext';
-import { scrollIntoViewIfNeeded } from '@dilsonspickles/components';
 
 export interface DeleteHandlerDeps {
   state: TracksState;
@@ -185,102 +184,17 @@ function handleDeleteClips(deps: DeleteHandlerDeps): void {
   });
 
   if (clipsToDelete.length > 0) {
-    // Determine where to move focus after deletion
-    let shouldMoveFocus = false;
-    let focusTrackIndex = 0;
-    let focusClipId: number | null = null;
-
-    if (focusedClipInfo) {
-      const track = state.tracks[focusedClipInfo.trackIndex];
-      const deletedClip = track.clips.find(c => c.id === focusedClipInfo.clipId)
-        || track.midiClips?.find(c => c.id === focusedClipInfo.clipId);
-
-      if (deletedClip) {
-        focusTrackIndex = focusedClipInfo.trackIndex;
-
-        // Find nearest remaining clip by start time (audio + midi)
-        const remainingClips = [
-          ...track.clips.filter(
-            c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo!.trackIndex)
-          ),
-          ...(track.midiClips || []).filter(
-            c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === focusedClipInfo!.trackIndex)
-          ),
-        ];
-
-        if (remainingClips.length > 0) {
-          shouldMoveFocus = true;
-          let nearest = remainingClips[0];
-          let nearestDist = Math.abs(nearest.start - deletedClip.start);
-          for (const c of remainingClips) {
-            const dist = Math.abs(c.start - deletedClip.start);
-            if (dist < nearestDist) {
-              nearest = c;
-              nearestDist = dist;
-            }
-          }
-          focusClipId = nearest.id;
-        } else {
-          // No clips left on this track — find nearest clip on the next available track
-          const trackCount = state.tracks.length;
-          for (let offset = 1; offset < trackCount; offset++) {
-            const candidates = [
-              focusedClipInfo.trackIndex + offset,
-              focusedClipInfo.trackIndex - offset,
-            ];
-            for (const ti of candidates) {
-              if (ti < 0 || ti >= trackCount) continue;
-              const otherRemaining = [
-                ...state.tracks[ti].clips.filter(
-                  c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === ti)
-                ),
-                ...(state.tracks[ti].midiClips || []).filter(
-                  c => !clipsToDelete.some(item => item.clipId === c.id && item.trackIndex === ti)
-                ),
-              ];
-              if (otherRemaining.length > 0) {
-                let nearest = otherRemaining[0];
-                let nearestDist = Math.abs(nearest.start - deletedClip.start);
-                for (const c of otherRemaining) {
-                  const dist = Math.abs(c.start - deletedClip.start);
-                  if (dist < nearestDist) {
-                    nearest = c;
-                    nearestDist = dist;
-                  }
-                }
-                focusTrackIndex = ti;
-                focusClipId = nearest.id;
-                shouldMoveFocus = true;
-                break;
-              }
-            }
-            if (shouldMoveFocus) break;
-          }
-        }
-      }
-    }
-
-    // Delete all clips
+    // Delete all clips. We intentionally don't auto-move focus to a
+    // neighbouring clip — the previous "nearest remaining clip" jump felt
+    // arbitrary. The browser will drop focus to <body> when the focused
+    // clip element is removed; users can arrow-key back into a clip when
+    // they want to keep editing.
     clipsToDelete.forEach(({ trackIndex, clipId }) => {
       dispatch({
         type: 'DELETE_CLIP',
         payload: { trackIndex, clipId: typeof clipId === 'string' ? Number(clipId) : clipId },
       });
     });
-
-    // Move focus to nearest clip after deletion completes
-    if (shouldMoveFocus && focusClipId !== null) {
-      setTimeout(() => {
-        const clipEl = document.querySelector(
-          `[data-track-index="${focusTrackIndex}"] [data-clip-id="${focusClipId}"]`
-        ) as HTMLElement;
-        if (clipEl) {
-          clipEl.focus({ preventScroll: true });
-          scrollIntoViewIfNeeded(clipEl);
-        }
-      }, 50);
-    }
-
     return;
   }
 
@@ -293,5 +207,13 @@ function handleDeleteClips(deps: DeleteHandlerDeps): void {
     if (!anyClipsSelected) {
       dispatch({ type: 'DELETE_TRACKS', payload: state.selectedTrackIndices });
     }
+    return;
+  }
+
+  // Priority 5: Nothing selected, but a track is focused (e.g. via arrow-key
+  // navigation). Treat focus as the deletion target — otherwise pressing
+  // Delete on a freshly-focused track quietly does nothing.
+  if (state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined) {
+    dispatch({ type: 'DELETE_TRACK', payload: state.focusedTrackIndex });
   }
 }

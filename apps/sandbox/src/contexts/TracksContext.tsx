@@ -390,7 +390,11 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
         ...state,
         tracks: newTracks,
         focusedTrackIndex: newFocused,
-        selectedTrackIndices: newFocused !== null ? [newFocused] : [],
+        // Selection is a deliberate user action; don't infer it on delete.
+        // Drop any stale selection that referred to the deleted track.
+        selectedTrackIndices: state.selectedTrackIndices
+          .filter((i) => i !== action.payload)
+          .map((i) => (i > action.payload ? i - 1 : i)),
       };
     }
 
@@ -404,7 +408,11 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
       return {
         ...state,
         tracks: remainingTracks,
-        selectedTrackIndices: newFocused !== null ? [newFocused] : [],
+        // Drop deleted indices from the selection set rather than
+        // auto-selecting the new focused track.
+        selectedTrackIndices: state.selectedTrackIndices
+          .filter((i) => !indicesToDelete.has(i))
+          .map((i) => i - [...indicesToDelete].filter((d) => d < i).length),
         focusedTrackIndex: newFocused,
       };
     }

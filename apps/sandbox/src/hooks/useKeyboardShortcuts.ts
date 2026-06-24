@@ -103,6 +103,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           handleEscape(playheadDeps);
           return;
         }
+        // Fallback: clear keyboard focus. Lets users "reset tabbing" so
+        // the next Tab starts from the top of the page again, and removes
+        // the focus outline from whatever was last focused.
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active !== document.body && typeof active.blur === 'function') {
+          e.preventDefault();
+          active.blur();
+          isKeyboardNavigatingRef.current = false;
+          return;
+        }
       }
 
       // --- Home/End ---
@@ -154,8 +164,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
       }
 
-      // --- L: Loop region ---
-      if (e.key === 'l' || e.key === 'L') {
+      // --- L: Loop region (bare key, no Cmd/Ctrl — those are reserved for
+      //     other shortcuts like Cmd+Shift+L for new label track) ---
+      if ((e.key === 'l' || e.key === 'L') && !e.metaKey && !e.ctrlKey) {
         const target = e.target as HTMLElement;
         const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
           target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';
@@ -251,6 +262,111 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         e.preventDefault();
         handlePaste(clipboardDeps);
         return;
+      }
+
+      // --- Ctrl+T / Ctrl+Shift+T / Ctrl+Shift+L: Create new tracks ---
+      // Cmd+T  → new mono audio track
+      // Cmd+Shift+T → new stereo audio track
+      // Cmd+Shift+L → new label track
+      // Pick a non-colliding id and a non-colliding numeric suffix from
+      // existing tracks (length+1 collides after you delete a middle track).
+      const nextIdAfterDeletes = (state.tracks.reduce(
+        (max: number, t: any) => (t.id > max ? t.id : max),
+        0,
+      ) + 1);
+      const nextNameNumber = (prefix: string) => {
+        const pattern = new RegExp(`^${prefix} (\\d+)$`);
+        const usedNumbers = state.tracks
+          .map((t: any) => {
+            const m = pattern.exec(t.name ?? '');
+            return m ? parseInt(m[1], 10) : NaN;
+          })
+          .filter((n: number) => !isNaN(n));
+        if (usedNumbers.length === 0) return 1;
+        return Math.max(...usedNumbers) + 1;
+      };
+      if ((e.metaKey || e.ctrlKey) && (e.key === 't' || e.key === 'T')) {
+        e.preventDefault();
+        const prefix = e.shiftKey ? 'Stereo' : 'Audio';
+        const baseTrack: any = {
+          id: nextIdAfterDeletes,
+          name: `${prefix} ${nextNameNumber(prefix)}`,
+          type: 'audio',
+          height: 114,
+          clips: [],
+        };
+        if (e.shiftKey) baseTrack.channelSplitRatio = 0.5; // stereo signifier
+        dispatch({ type: 'ADD_TRACK', payload: baseTrack });
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
+        e.preventDefault();
+        dispatch({
+          type: 'ADD_TRACK',
+          payload: {
+            id: nextIdAfterDeletes,
+            name: `Label ${nextNameNumber('Label')}`,
+            type: 'label',
+            height: 76, // matches the AddTrackFlyout default in EditorLayout
+            clips: [],
+          } as any,
+        });
+        return;
+      }
+
+      // --- Ctrl+D: Duplicate focused track ---
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
+        const focused = state.focusedTrackIndex;
+        if (focused === null || focused === undefined) return;
+        e.preventDefault();
+        const src = state.tracks[focused];
+        if (!src) return;
+        // Re-id clips so they don't collide with the source.
+        let nextClipId = Date.now();
+        const clonedClips = (src.clips ?? []).map((c: any) => ({
+          ...c,
+          id: nextClipId++,
+          sourceClipId: c.sourceClipId ?? c.id,
+        }));
+        dispatch({
+          type: 'ADD_TRACK',
+          payload: {
+            ...src,
+            id: nextIdAfterDeletes,
+            name: `${src.name} copy`,
+            clips: clonedClips,
+          } as any,
+        });
+        return;
+      }
+
+      // --- Ctrl+W: Close (delete) focused track ---
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'w' || e.key === 'W')) {
+        const focused = state.focusedTrackIndex;
+        if (focused === null || focused === undefined) return;
+        e.preventDefault();
+        dispatch({ type: 'DELETE_TRACK', payload: focused });
+        return;
+      }
+
+      // --- Cmd/Ctrl+Delete: Always delete the focused clip ---
+      // Skips the priority cascade (labels → time → clips → tracks). Useful
+      // when, e.g., a track is the most-recently-selected thing but you
+      // want to delete the clip you've actually got focused.
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'Delete' || e.key === 'Backspace')) {
+        const activeElement = document.activeElement as HTMLElement | null;
+        const clipIdStr = activeElement?.getAttribute('data-clip-id');
+        const trackIndexStr = activeElement?.getAttribute('data-track-index');
+        if (clipIdStr !== null && clipIdStr !== undefined && trackIndexStr !== null && trackIndexStr !== undefined) {
+          e.preventDefault();
+          const clipId = !isNaN(Number(clipIdStr)) ? Number(clipIdStr) : clipIdStr;
+          dispatch({
+            type: 'DELETE_CLIP',
+            payload: { trackIndex: parseInt(trackIndexStr, 10), clipId: typeof clipId === 'string' ? Number(clipId) : clipId },
+          });
+          return;
+        }
+        // No focused clip — fall through to the normal priority cascade.
       }
 
       // --- Delete/Backspace ---
