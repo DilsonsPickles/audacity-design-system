@@ -36,6 +36,13 @@ export interface Clip {
   deletedRegions?: DeletedRegion[]; // Sorted, non-overlapping deleted regions
   color?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
   groupId?: string;
+  /**
+   * Original clip id that owns the audio buffer. When a clip is split,
+   * the right segment gets a new id but should still play from the
+   * same source buffer — `sourceClipId` carries that mapping forward
+   * so the audio engine can look the buffer up by source.
+   */
+  sourceClipId?: number;
 }
 
 export interface Effect {
@@ -1335,6 +1342,8 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
           };
 
           // Right segment gets a fresh id; trimStart advances by skipped audio length.
+          // `sourceClipId` is carried forward (or set to the original id on
+          // first split) so the audio engine can find the shared buffer.
           const rightSegment: Clip = {
             ...clip,
             id: nextId++,
@@ -1342,6 +1351,7 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
             duration: originalEnd - mutation.rightStart,
             trimStart: originalTrimStart + (mutation.rightStart - clip.start),
             fullDuration,
+            sourceClipId: clip.sourceClipId ?? clip.id,
           };
 
           newClips.push(leftSegment, rightSegment);

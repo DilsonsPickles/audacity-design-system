@@ -270,7 +270,29 @@ export class AudioPlaybackManager {
     // Create players for all clips that have audio buffers
     tracks.forEach((track, trackIndex) => {
       track.clips.forEach((clip: any) => {
-        const buffer = this.audioBuffers.get(String(clip.id));
+        // Split right-segments carry `sourceClipId` pointing back to the
+        // original clip that owns the audio buffer. Fall back to id for
+        // unsplit clips.
+        let bufferKey = String(clip.sourceClipId ?? clip.id);
+        let buffer = this.audioBuffers.get(bufferKey);
+        // Fallback: if no buffer for this clip, search siblings on the
+        // same track. Split right-segments share `waveform` array refs
+        // with the original, so a strict identity match lets us locate
+        // the source buffer even if `sourceClipId` wasn't set.
+        if (!buffer && clip.waveform) {
+          for (const sibling of track.clips) {
+            if (sibling === clip) continue;
+            if (sibling.waveform === clip.waveform) {
+              const siblingKey = String(sibling.sourceClipId ?? sibling.id);
+              const siblingBuffer = this.audioBuffers.get(siblingKey);
+              if (siblingBuffer) {
+                bufferKey = siblingKey;
+                buffer = siblingBuffer;
+                break;
+              }
+            }
+          }
+        }
         if (buffer) {
           // Only create players for clips that should play from the current start time
           if (clip.start + clip.duration > startTime) {
@@ -283,10 +305,11 @@ export class AudioPlaybackManager {
               const trackGain = this.trackGains.get(trackIndex);
               const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
-              // Sync player to transport and schedule it
-              // The .sync() mechanism automatically handles the Transport position offset
-              // We only need to specify the timeline start position and buffer offset (trimStart)
-              player.sync().start(clip.start, trimStart);
+              // Sync player to transport and schedule it. The duration arg
+              // is required so split segments only play their own slice —
+              // otherwise the player runs to the end of the source buffer
+              // and you hear the whole original clip even after a split.
+              player.sync().start(clip.start, trimStart, clip.duration);
 
               this.players.set(String(clip.id), player);
             } else {
