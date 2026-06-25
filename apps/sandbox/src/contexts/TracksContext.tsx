@@ -422,9 +422,26 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
       const newFocusedTrackIndex = action.payload.length > 0 && state.focusedTrackIndex === null
         ? 0
         : state.focusedTrackIndex;
+      // Dedup ids: a previously-saved project (or any caller) may carry
+      // colliding track.ids, which would crash React's keyed reconciliation.
+      // First-seen wins; later collisions get bumped to running max+1.
+      const seenIds = new Set<number>();
+      let runningMaxId = action.payload.reduce(
+        (max, t) => (t.id > max ? t.id : max),
+        0,
+      );
+      const dedupedTracks = action.payload.map((track) => {
+        if (!seenIds.has(track.id)) {
+          seenIds.add(track.id);
+          return track;
+        }
+        runningMaxId += 1;
+        seenIds.add(runningMaxId);
+        return { ...track, id: runningMaxId };
+      });
       // Assign colors to tracks that don't have one
       let colorIdx = 0;
-      const coloredTracks = action.payload.map((track) => {
+      const coloredTracks = dedupedTracks.map((track) => {
         if (track.color) return track;
         const color = TRACK_COLOR_PALETTE[colorIdx % TRACK_COLOR_PALETTE.length];
         colorIdx++;
@@ -446,7 +463,13 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
     case 'ADD_TRACK': {
       const track = action.payload;
       const color = track.color ?? TRACK_COLOR_PALETTE[state.nextTrackColorIndex % TRACK_COLOR_PALETTE.length];
-      const newTracks = [...state.tracks, { ...track, color }];
+      // Defense in depth: if the caller passed an id that already exists
+      // (collisions caused React duplicate-key warnings), bump to max+1.
+      const existingIds = new Set(state.tracks.map((t) => t.id));
+      const safeId = existingIds.has(track.id)
+        ? state.tracks.reduce((max, t) => (t.id > max ? t.id : max), 0) + 1
+        : track.id;
+      const newTracks = [...state.tracks, { ...track, id: safeId, color }];
       return {
         ...state,
         tracks: newTracks,
