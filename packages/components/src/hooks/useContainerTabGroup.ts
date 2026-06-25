@@ -71,7 +71,12 @@ function getFocusables(
   const all = container.querySelectorAll<HTMLElement>(selector);
   return Array.from(all).filter((el) => {
     if (filter && !filter(el)) return false;
-    return !isElementHidden(el);
+    if (isElementHidden(el)) return false;
+    // Skip disabled elements — `.focus()` is a no-op on them, which would
+    // otherwise leave arrow-key navigation stuck on the previous item.
+    if ((el as HTMLButtonElement | HTMLInputElement | HTMLSelectElement).disabled) return false;
+    if (el.getAttribute('aria-disabled') === 'true') return false;
+    return true;
   });
 }
 

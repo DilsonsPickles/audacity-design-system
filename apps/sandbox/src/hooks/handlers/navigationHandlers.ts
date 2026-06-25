@@ -185,7 +185,19 @@ export function handleEnterSelection(e: KeyboardEvent, deps: NavigationHandlerDe
     } else if (e.metaKey || e.ctrlKey) {
       toggleTrackSelection(state.focusedTrackIndex, state.selectedTrackIndices, dispatch);
     } else {
-      selectTrackExclusive(state.focusedTrackIndex, dispatch);
+      // Pressing Enter on a track that's already (exclusively) selected
+      // toggles it OFF — same intuition as "Enter selects, Enter again
+      // deselects". With Shift/Cmd held the earlier branches handle the
+      // range/toggle cases instead.
+      const isOnlySelection =
+        state.selectedTrackIndices.length === 1 &&
+        state.selectedTrackIndices[0] === state.focusedTrackIndex;
+      if (isOnlySelection) {
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
+        setSelectionAnchor(null);
+      } else {
+        selectTrackExclusive(state.focusedTrackIndex, dispatch);
+      }
     }
   }
 }
