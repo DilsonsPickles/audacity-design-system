@@ -601,11 +601,9 @@ export function EditorLayout(props: EditorLayoutProps) {
               }
             });
           }}
-          onMoveTrackUp={(trackIndex) => {
-            console.log('Move track up:', trackIndex);
+          onMoveTrackUp={() => {
           }}
-          onMoveTrackDown={(trackIndex) => {
-            console.log('Move track down:', trackIndex);
+          onMoveTrackDown={() => {
           }}
           onTrackViewChange={(trackIndex, viewMode) => {
             dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });

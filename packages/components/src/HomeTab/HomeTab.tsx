@@ -497,7 +497,6 @@ export function HomeTab({
                             isUploading={project.isUploading}
                             isCurrent={project.id === currentProjectId}
                             onClick={() => {
-                              console.log('Open project:', project.id);
                               if (onOpenProject) {
                                 onOpenProject(project.id);
                               }
@@ -548,7 +547,6 @@ export function HomeTab({
                           <button
                             className="home-tab__list-item"
                             onClick={() => {
-                              console.log('Open project:', project.id);
                               if (onOpenProject) {
                                 onOpenProject(project.id);
                               }
@@ -841,7 +839,6 @@ export function HomeTab({
                             <button
                               className="home-tab__list-item home-tab__list-item--audio"
                               onClick={() => {
-                                console.log('Open audio file:', audioFile.id);
                               }}
                             >
                               <div className="home-tab__list-item-audio-name">
@@ -974,7 +971,6 @@ export function HomeTab({
                             description={plugin.description}
                             imageUrl={plugin.imageUrl}
                             onActionClick={() => {
-                              console.log(`Install plugin: ${plugin.name}`);
                             }}
                           />
                         ))}
@@ -1091,7 +1087,6 @@ export function HomeTab({
           <ContextMenuItem
             label="Open"
             onClick={() => {
-              console.log('Open:', contextMenu.itemId);
               setContextMenu(null);
             }}
             onClose={() => setContextMenu(null)}
@@ -1109,7 +1104,6 @@ export function HomeTab({
           <ContextMenuItem
             label="Rename"
             onClick={() => {
-              console.log('Rename:', contextMenu.itemId);
               setContextMenu(null);
             }}
             onClose={() => setContextMenu(null)}
@@ -1117,7 +1111,6 @@ export function HomeTab({
           <ContextMenuItem
             label="Duplicate"
             onClick={() => {
-              console.log('Duplicate:', contextMenu.itemId);
               setContextMenu(null);
             }}
             onClose={() => setContextMenu(null)}
@@ -1126,7 +1119,6 @@ export function HomeTab({
             <ContextMenuItem
               label="Download"
               onClick={() => {
-                console.log('Download:', contextMenu.itemId);
                 setContextMenu(null);
               }}
               onClose={() => setContextMenu(null)}

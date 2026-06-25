@@ -195,23 +195,12 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
 
     const projectDuration = projectEnd - projectStart;
 
-    console.log('Zoom to Fit:', {
-      projectStart,
-      projectEnd,
-      projectDuration,
-      viewportWidth: scrollContainerRef.current?.clientWidth,
-    });
 
     // Calculate pixels per second to fit the entire project in the viewport
     // Use full viewport width
     const viewportWidth = scrollContainerRef.current?.clientWidth || 800;
     const newPixelsPerSecond = viewportWidth / projectDuration;
 
-    console.log('Calculated zoom:', {
-      newPixelsPerSecond,
-      min: MIN_ZOOM,
-      max: maxPixelsPerSecond,
-    });
 
     // Apply zoom level constraints
     const constrainedZoom = Math.max(MIN_ZOOM, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
@@ -220,7 +209,6 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
     // Scroll to the start of the project
     const scrollPosition = projectStart * constrainedZoom;
 
-    console.log('Scroll position:', scrollPosition);
 
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = scrollPosition;

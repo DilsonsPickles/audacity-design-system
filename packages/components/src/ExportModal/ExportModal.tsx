@@ -436,7 +436,6 @@ export function ExportModal({
 
   const handleBrowseFolder = () => {
     // In a real implementation, this would open a file browser
-    console.log('Browse for folder');
   };
 
   const style = {

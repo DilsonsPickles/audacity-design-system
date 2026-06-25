@@ -42,7 +42,6 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
   // Handler for creating a new project
   const createNewProject = useCallback(async () => {
     const projectId = `project-${Date.now()}`;
-    console.log('Creating new project:', projectId);
 
     const newProject = {
       id: projectId,
@@ -63,7 +62,6 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
 
     // Save to IndexedDB
     await saveProject(newProject);
-    console.log('New project saved to IndexedDB:', projectId);
 
     // Reset state to start fresh
     dispatch({ type: 'RESET_STATE' });

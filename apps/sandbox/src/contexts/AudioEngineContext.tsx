@@ -171,7 +171,6 @@ export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       // Generate impulse response asynchronously
       reverb.generate().then(() => {
-        console.log(`Reverb ${effectId} impulse response generated`);
       });
     }
 
@@ -208,7 +207,6 @@ export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const startAudio = async () => {
     await Tone.start();
-    console.log('Audio context started');
   };
 
   const updateEffectChains = (tracks: any[], masterEffects: any[]) => {
@@ -238,7 +236,6 @@ export const AudioEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
       playbackManager.setTrackEffectChain(trackIndex, trackChain);
     });
 
-    console.log('Effect chains updated', { masterChain: masterChain.length, trackCount: tracks.length });
   };
 
   const playMidiNote = useCallback((pitch: number, duration = 0.3, instrumentId?: string) => {

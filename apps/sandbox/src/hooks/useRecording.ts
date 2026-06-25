@@ -62,7 +62,6 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         setIsMicMonitoring(true);
       } catch (error) {
         // Mic access denied or not available - silently fail
-        console.log('Microphone monitoring not available:', error);
       }
     };
 
@@ -184,7 +183,6 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
             await recordingManagerRef.current.startMonitoring();
             setIsMicMonitoring(true);
           } catch (error) {
-            console.log('Failed to restart monitoring:', error);
           }
         };
 

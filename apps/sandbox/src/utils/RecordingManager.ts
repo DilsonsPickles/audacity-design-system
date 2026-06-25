@@ -20,9 +20,6 @@ export interface RecordingManagerCallbacks {
   onRecordingWaveformUpdate?: (waveformData: number[], waveformRms: number[], sampleRate: number) => void;
 }
 
-// Fixed sample rate for all recordings (typical browser default)
-const SAMPLE_RATE = 44100;
-
 export class RecordingManager {
   private recorder: any = null; // Tone.Recorder type issues with strict mode
   private meter: any = null; // Tone.Meter type issues with strict mode
@@ -43,7 +40,6 @@ export class RecordingManager {
   // Wall-clock of the last React dispatch — used to throttle visual
   // updates to LIVE_DISPATCH_HZ without dropping incoming audio samples.
   private lastDispatchAt = 0;
-  private actualSampleRate = SAMPLE_RATE; // Track actual sample rate from AudioContext
 
   constructor(callbacks: RecordingManagerCallbacks) {
     this.callbacks = callbacks;
@@ -59,10 +55,6 @@ export class RecordingManager {
       // Request microphone access
       this.userMedia = new (Tone as any).UserMedia();
       await this.userMedia.open();
-
-      // Get actual sample rate from AudioContext
-      this.actualSampleRate = (Tone as any).context.sampleRate || SAMPLE_RATE;
-      console.log(`Recording with sample rate: ${this.actualSampleRate} Hz`);
 
       // Wait for mic to be ready
       await new Promise(resolve => setTimeout(resolve, 100));

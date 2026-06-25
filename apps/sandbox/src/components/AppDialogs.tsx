@@ -269,12 +269,6 @@ export function AppDialogs(props: AppDialogsProps) {
         const effectDef = allEffects.find(e => e.name === effectDialog.effectName);
         const isThirdParty = effectDef?.provider !== 'Audacity';
 
-        console.log('Effect Dialog:', {
-          effectName: effectDialog.effectName,
-          effectDef,
-          provider: effectDef?.provider,
-          isThirdParty
-        });
 
         return (
           <EffectDialogContextMenu
@@ -283,21 +277,16 @@ export function AppDialogs(props: AppDialogsProps) {
             y={effectContextMenu.y}
             onClose={() => setEffectContextMenu({ ...effectContextMenu, isOpen: false })}
             onSavePreset={() => {
-              console.log('Save preset clicked');
             }}
             onDeletePreset={() => {
-              console.log('Delete preset clicked');
             }}
             canDelete={false}
             factoryPresets={['Default', 'Heavy', 'Light', 'Room', 'Hall', 'Cathedral']}
-            onSelectFactoryPreset={(preset) => {
-              console.log('Factory preset selected:', preset);
+            onSelectFactoryPreset={() => {
             }}
             onImport={() => {
-              console.log('Import clicked');
             }}
             onExport={() => {
-              console.log('Export clicked');
             }}
             onShowVendorUI={() => {
               setShowVendorUI(!showVendorUI);
@@ -846,8 +835,7 @@ export function AppDialogs(props: AppDialogsProps) {
       <ExportModal
         isOpen={dialogs.isExportModalOpen}
         onClose={() => dialogs.setIsExportModalOpen(false)}
-        onExport={(settings: ExportSettings) => {
-          console.log('Export settings:', settings);
+        onExport={(_settings: ExportSettings) => {
         }}
         onEditMetadata={() => {
         }}
@@ -908,9 +896,7 @@ export function AppDialogs(props: AppDialogsProps) {
         onImport={() => {}}
         onExport={() => {}}
         onAddLabel={async () => {
-          console.log('onAddLabel called');
           const labelTrackIndex = tracks.findIndex((t: any) => t.clips.length === 0);
-          console.log('labelTrackIndex:', labelTrackIndex);
 
           if (labelTrackIndex === -1) {
             const trackName = window.prompt('Enter label track name:', 'Label Track');
@@ -1056,8 +1042,7 @@ export function AppDialogs(props: AppDialogsProps) {
       <VSTEffectOptionsDialog
         isOpen={dialogs.isVSTOptionsDialogOpen}
         onClose={() => dialogs.setIsVSTOptionsDialogOpen(false)}
-        onConfirm={(bufferSize, latencyCompensation) => {
-          console.log('VST Options confirmed:', { bufferSize, latencyCompensation });
+        onConfirm={() => {
         }}
       />
 

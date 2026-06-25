@@ -771,13 +771,11 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
     }
 
     case 'UPDATE_TRACK_VIEW': {
-      console.log('[Reducer] UPDATE_TRACK_VIEW:', action.payload);
       const newTracks = [...state.tracks];
       newTracks[action.payload.index] = {
         ...newTracks[action.payload.index],
         viewMode: action.payload.viewMode,
       };
-      console.log('[Reducer] Track', action.payload.index, 'viewMode now:', newTracks[action.payload.index].viewMode);
 
       return {
         ...state,

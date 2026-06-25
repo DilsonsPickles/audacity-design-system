@@ -62,17 +62,6 @@ async function loadCloudProjectAsStored(
 ): Promise<StoredProject | null> {
   try {
     const project = await adieuGetProject(id);
-    // [save-debug] Confirm effects survive the round-trip.
-    const dbg = project.data as any;
-    console.log('[save-debug] loaded from adieu', {
-      projectId: id,
-      trackEffects: (dbg?.tracks ?? []).map((t: any, i: number) => ({
-        i,
-        name: t.name,
-        effects: (t.effects ?? []).map((e: any) => ({ id: e.id, name: e.name })),
-      })),
-      masterEffects: (dbg?.masterEffects ?? []).map((e: any) => ({ id: e.id, name: e.name })),
-    });
     const ts = Date.parse(project.updatedAt) || Date.now();
     // Cloud payload encodes audioBuffers as base64 strings; decode to
     // ArrayBuffers so downstream code (audioManager.importBuffersFromWav)
@@ -638,7 +627,6 @@ function CanvasDemoContent() {
     const loadProjects = async () => {
       const projects = await getProjects();
       setIndexedDBProjects(projects);
-      console.log('Initial load - projects from IndexedDB:', projects.length);
     };
     loadProjects();
   }, []);
@@ -1020,7 +1008,6 @@ function CanvasDemoContent() {
 
         toast.updateProgress(toastId, 70, 'Building waveform...');
         const duration = audioBuffer.duration;
-        console.log(`[Import] File: ${file.name}, size: ${file.size}, decoded duration: ${duration}s, channels: ${audioBuffer.numberOfChannels}, sampleRate: ${audioBuffer.sampleRate}, samples: ${audioBuffer.length}`);
         const isStereo = audioBuffer.numberOfChannels >= 2;
 
         // Pick a target track — use first selected audio track, or first audio track
@@ -1138,15 +1125,6 @@ function CanvasDemoContent() {
 
       toast.updateProgress(syncToastId, 60, 'Uploading…');
       // [save-debug] Confirm effects are present in the upload payload.
-      console.log('[save-debug] uploading to adieu', {
-        projectId: currentProjectId,
-        trackEffects: state.tracks.map((t: any, i: number) => ({
-          i,
-          name: t.name,
-          effects: (t.effects ?? []).map((e: any) => ({ id: e.id, name: e.name })),
-        })),
-        masterEffects: state.masterEffects.map((e: any) => ({ id: e.id, name: e.name })),
-      });
       await adieuSaveProject(currentProjectId, {
         title,
         data: {
@@ -1400,7 +1378,6 @@ function CanvasDemoContent() {
             // Load projects from IndexedDB
             const projects = await getProjects();
             setIndexedDBProjects(projects);
-            console.log('Loaded projects from IndexedDB:', projects.length);
           }
           // Auto-create a new project if navigating to project tab with no active project
           if (item === 'project' && !currentProjectId) {
@@ -1541,7 +1518,6 @@ function CanvasDemoContent() {
               setActiveMenuItem('project');
             }}
             onOpenProject={async (projectId) => {
-              console.log('Opening existing project:', projectId);
               // Cloud projects come from moose-hub; locals from IndexedDB.
               // The lists are presented exclusively (no merged view) so this
               // dispatch is unambiguous.
@@ -1566,7 +1542,6 @@ function CanvasDemoContent() {
 
                 // Restore tracks state from project data, or reset to empty if none
                 if (project.data?.tracks) {
-                  console.log('Restoring tracks:', project.data.tracks.length);
                   if (isCloud) setCloudLoadProgress({ progress: 75, message: 'Restoring tracks…' });
                   dispatch({ type: 'SET_TRACKS', payload: project.data.tracks });
 
@@ -1618,7 +1593,6 @@ function CanvasDemoContent() {
                   if (project.data.tracks) {
                     audioManager.loadClips(project.data.tracks, 0);
                   }
-                  console.log('Restored audio buffers for', Object.keys(project.data.audioBuffers).length, 'clips');
                 }
 
                 // Always start playhead at 0 on project open

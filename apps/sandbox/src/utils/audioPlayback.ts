@@ -24,7 +24,6 @@ export class AudioPlaybackManager {
    */
   async initialize(): Promise<void> {
     await Tone.start();
-    console.log('Tone.js initialized');
   }
 
   /**
