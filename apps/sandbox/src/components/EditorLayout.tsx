@@ -1143,7 +1143,17 @@ export function EditorLayout(props: EditorLayoutProps) {
                       } else if (modifiers.metaKey || modifiers.ctrlKey) {
                         toggleTrackSelection(trackIndex, state.selectedTrackIndices, dispatch);
                       } else {
-                        selectTrackExclusive(trackIndex, dispatch);
+                        // Plain Enter: select the track, or deselect if it's
+                        // already the sole selection (toggle-off).
+                        const isOnlySelection =
+                          state.selectedTrackIndices.length === 1 &&
+                          state.selectedTrackIndices[0] === trackIndex;
+                        if (isOnlySelection) {
+                          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
+                          setSelectionAnchor(null);
+                        } else {
+                          selectTrackExclusive(trackIndex, dispatch);
+                        }
                       }
                     }}
                     onShiftTabFromTrack={(trackIndex) => {

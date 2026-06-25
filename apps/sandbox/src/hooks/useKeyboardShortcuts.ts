@@ -213,15 +213,18 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // --- ArrowLeft/Right: Playhead movement ---
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      // --- J / K: Playhead movement (replaces ArrowLeft/Right which now
+      //     belong to arrow-key navigation inside toolbars/lists). ---
+      if (e.key === 'j' || e.key === 'J' || e.key === 'k' || e.key === 'K') {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
         if (e.defaultPrevented) return;
         const target = e.target as HTMLElement;
-        if (target.closest('[role="toolbar"], [role="menubar"], [role="menu"]') || target.hasAttribute('data-clip-id')) {
-          return;
-        }
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
+          target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';
+        if (isTextInput) return;
         e.preventDefault();
-        handlePlayheadMove(e, e.key === 'ArrowLeft', 0.1, playheadDeps);
+        const isLeftward = e.key === 'j' || e.key === 'J';
+        handlePlayheadMove(e, isLeftward, 0.1, playheadDeps);
         return;
       }
 
@@ -235,10 +238,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         const target = e.target as HTMLElement;
         const interactiveElements = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'];
         const hasRole = target.getAttribute('role');
+        // `.track` is intentionally NOT considered interactive here —
+        // when keyboard focus lands on a track element we want Enter to
+        // select / deselect it (handleEnterSelection toggles when the
+        // focused track is already the sole selection).
         const isInteractive = interactiveElements.includes(target.tagName) ||
           hasRole === 'button' || hasRole === 'checkbox' ||
           hasRole === 'menuitem' || hasRole === 'menuitemcheckbox' || hasRole === 'menuitemradio' ||
-          hasRole === 'group' || target.classList.contains('track');
+          hasRole === 'group';
         if (isInteractive) return;
 
         e.preventDefault();
