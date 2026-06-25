@@ -77,6 +77,46 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   // installs, so without this ref it would commit the wrong value).
   const latestHeightRef = useRef(height);
   latestHeightRef.current = height;
+  // Tracks a running release-spring animation so a new resize gesture
+  // cancels it cleanly.
+  const snapAnimationRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (snapAnimationRef.current !== null) {
+        cancelAnimationFrame(snapAnimationRef.current);
+      }
+    };
+  }, []);
+
+  /** Spring the height from `from` to `target` with a small overshoot
+   *  bounce. Calls onHeightChange on each frame and onResizeEnd once
+   *  the spring settles. */
+  const springToTarget = (from: number, target: number) => {
+    const SPRING_DURATION_MS = 280;
+    const distance = target - from;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const t = Math.min((now - startTime) / SPRING_DURATION_MS, 1);
+      // Damped sinusoid — 1 - e^(-5t) · cos(10t).
+      // At t=0 → 0 (start); first overshoot ~21% around t≈0.31;
+      // decays to ~1 by t=1 with a tiny residual wobble.
+      const eased = t >= 1 ? 1 : 1 - Math.exp(-5 * t) * Math.cos(10 * t);
+      const current = from + distance * eased;
+      setHeight(current);
+      onHeightChange?.(current);
+      if (t < 1) {
+        snapAnimationRef.current = requestAnimationFrame(tick);
+      } else {
+        setHeight(target);
+        onHeightChange?.(target);
+        onResizeEnd?.(target);
+        snapAnimationRef.current = null;
+      }
+    };
+    snapAnimationRef.current = requestAnimationFrame(tick);
+  };
 
   // Add document-level event listeners for dragging beyond component bounds
   useEffect(() => {
@@ -96,34 +136,9 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           newHeight = Math.min(maxHeight, newHeight);
         }
 
-        // Sticky snap targets — the value is *pulled* toward the
-        // closest target with a quadratic easing inside a 12px window.
-        // At the edge of the window the pull is zero (no jump entering
-        // or leaving), and it ramps up smoothly toward the centre.
-        // That gives a "magnetic" feel without the visible 1–3px snap
-        // jumps a hard threshold would produce.
-        //
-        // Targets:
-        //  • 71  — slider just starts to fit
-        //  • 102 — effect button just starts to fit on audio tracks
-        //  • initialHeight — the track's default ("home") height
-        const SNAP_WINDOW = 12;
-        const snapTargets = [71, 102, initialHeight];
-        let strongestPull = 0;
-        let pullTarget = newHeight;
-        for (const target of snapTargets) {
-          const dist = Math.abs(newHeight - target);
-          if (dist < SNAP_WINDOW) {
-            const ratio = 1 - dist / SNAP_WINDOW; // 0 at edge → 1 at centre
-            const pull = ratio * ratio; // ease-in — soft at edges, firm at centre
-            if (pull > strongestPull) {
-              strongestPull = pull;
-              pullTarget = target;
-            }
-          }
-        }
-        newHeight = newHeight + (pullTarget - newHeight) * strongestPull;
-
+        // No snap-pull during the drag — the track follows the cursor
+        // freely. Snap is deferred to mouseup and animated as a spring
+        // (see handleDocumentMouseUp) for a "bounce home" feel.
         setHeight(newHeight);
         onHeightChange?.(newHeight);
       }
@@ -132,7 +147,29 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     const handleDocumentMouseUp = () => {
       setIsResizing(false);
       resizeStartRef.current = null;
-      onResizeEnd?.(latestHeightRef.current);
+      const released = latestHeightRef.current;
+
+      // Pick the closest snap target inside the catch window. Targets:
+      //  • 71  — slider just starts to fit
+      //  • 102 — effect button just starts to fit on audio tracks
+      //  • initialHeight — the track's default ("home") height
+      const SNAP_CATCH_WINDOW = 14;
+      const snapTargets = [71, 102, initialHeight];
+      let nearest: number | null = null;
+      let nearestDist = SNAP_CATCH_WINDOW;
+      for (const target of snapTargets) {
+        const dist = Math.abs(released - target);
+        if (dist < nearestDist) {
+          nearest = target;
+          nearestDist = dist;
+        }
+      }
+
+      if (nearest !== null && nearest !== released) {
+        springToTarget(released, nearest);
+      } else {
+        onResizeEnd?.(released);
+      }
     };
 
     document.addEventListener('mousemove', handleDocumentMouseMove);
@@ -186,6 +223,12 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     if (activeEdge) {
       e.preventDefault();
       e.stopPropagation();
+      // If a release-spring is still animating from a previous drag,
+      // cancel it so the new drag starts from the current value.
+      if (snapAnimationRef.current !== null) {
+        cancelAnimationFrame(snapAnimationRef.current);
+        snapAnimationRef.current = null;
+      }
       setIsResizing(true);
       resizeStartRef.current = { y: e.clientY, height, edge: activeEdge };
       onResizeStart?.();
