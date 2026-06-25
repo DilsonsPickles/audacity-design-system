@@ -89,10 +89,30 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           newHeight = Math.min(maxHeight, newHeight);
         }
 
-        // Soft snap to default height
-        const SNAP_THRESHOLD = 6;
-        if (Math.abs(newHeight - initialHeight) <= SNAP_THRESHOLD) {
-          newHeight = initialHeight;
+        // Soft snaps. The default-height snap uses a slightly wider
+        // window than the feature-boundary snaps so two adjacent targets
+        // (e.g. 102 and the 114 default) don't overlap. Closest target
+        // wins when multiple are within range.
+        const SNAP_THRESHOLD_DEFAULT = 6;
+        const SNAP_THRESHOLD_FEATURE = 4;
+        // 102: effect button just starts to fit on audio tracks.
+        // 71: track-level slider just starts to fit.
+        const featureSnapTargets = [71, 102];
+        let bestTarget: number | null = null;
+        let bestDist = Infinity;
+        if (Math.abs(newHeight - initialHeight) <= SNAP_THRESHOLD_DEFAULT) {
+          bestTarget = initialHeight;
+          bestDist = Math.abs(newHeight - initialHeight);
+        }
+        for (const target of featureSnapTargets) {
+          const dist = Math.abs(newHeight - target);
+          if (dist <= SNAP_THRESHOLD_FEATURE && dist < bestDist) {
+            bestTarget = target;
+            bestDist = dist;
+          }
+        }
+        if (bestTarget !== null) {
+          newHeight = bestTarget;
         }
 
         setHeight(newHeight);
