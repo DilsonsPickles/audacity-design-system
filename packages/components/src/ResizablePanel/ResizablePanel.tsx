@@ -93,6 +93,8 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
    *  bounce. Calls onHeightChange on each frame and onResizeEnd once
    *  the spring settles. */
   const springToTarget = (from: number, target: number) => {
+    // eslint-disable-next-line no-console
+    console.log('[ResizablePanel] spring start', { from, target });
     const SPRING_DURATION_MS = 280;
     const distance = target - from;
     const startTime = performance.now();
@@ -156,7 +158,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       //  • 71  — slider just starts to fit
       //  • 102 — effect button just starts to fit on audio tracks
       //  • initialHeight — the track's default ("home") height
-      const SNAP_CATCH_WINDOW = 14;
+      const SNAP_CATCH_WINDOW = 18;
       const snapTargets = [71, 102, initialHeight];
       let nearest: number | null = null;
       let nearestDist = SNAP_CATCH_WINDOW;
@@ -167,6 +169,9 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           nearestDist = dist;
         }
       }
+
+      // eslint-disable-next-line no-console
+      console.log('[ResizablePanel] mouseup', { released, snapTargets, nearest, willSpring: nearest !== null && nearest !== released });
 
       if (nearest !== null && nearest !== released) {
         springToTarget(released, nearest);
