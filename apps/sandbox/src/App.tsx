@@ -1443,8 +1443,8 @@ function CanvasDemoContent() {
           onChange: (next: string) => handleWorkspacePick(next as Workspace),
         } : undefined}
         historyActions={activeMenuItem !== 'export' ? {
-          onUndo: () => {},
-          onRedo: () => {},
+          onUndo: () => dispatch({ type: 'UNDO' }),
+          onRedo: () => dispatch({ type: 'REDO' }),
         } : undefined}
       />
       {toolbarPosition.kind === 'top' && transportToolbarElement}

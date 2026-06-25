@@ -268,6 +268,18 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
+      // --- Ctrl+Z / Ctrl+Shift+Z: Undo / Redo (also Ctrl+Y as redo alias) ---
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        dispatch({ type: e.shiftKey ? 'REDO' : 'UNDO' });
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault();
+        dispatch({ type: 'REDO' });
+        return;
+      }
+
       // --- Ctrl+C: Copy ---
       if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
         e.preventDefault();

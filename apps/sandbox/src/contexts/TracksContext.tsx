@@ -150,6 +150,13 @@ export interface StereoChannelResizeDragState {
 // State interface
 export interface TracksState {
   tracks: Track[];
+  /** Undo history: snapshots of the `tracks` array prior to a destructive
+   *  action. Kept on `TracksState` so the reducer can manage it without
+   *  pulling in a separate store. Capped at MAX_UNDO_HISTORY. */
+  past: Track[][];
+  /** Redo stack — snapshots that an UNDO has surfaced and a subsequent
+   *  destructive action would clear. */
+  future: Track[][];
   selectedTrackIndices: number[];
   focusedTrackIndex: number | null;
   selectedLabelIds: string[]; // Array of selected label IDs (format: "trackIndex-labelId")
@@ -193,6 +200,8 @@ export interface TracksState {
 // Action types
 export type TracksAction =
   | { type: 'RESET_STATE' }
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
   | { type: 'SET_TRACKS'; payload: Track[] }
   | { type: 'ADD_TRACK'; payload: Track }
   | { type: 'UPDATE_TRACK'; payload: { index: number; track: Partial<Track> } }
@@ -283,6 +292,8 @@ export type TracksAction =
 // Initial state
 const initialState: TracksState = {
   tracks: [],
+  past: [],
+  future: [],
   selectedTrackIndices: [],
   focusedTrackIndex: null,
   selectedLabelIds: [],
@@ -337,8 +348,72 @@ export function expandSelectionToGroups(tracks: Track[]): Track[] {
   }));
 }
 
+// --- Undo / Redo plumbing -----------------------------------------------
+const MAX_UNDO_HISTORY = 50;
+/** Action types that produce an undo entry. Anything that mutates the
+ *  `tracks` array in a user-visible way. UI-only actions (selection,
+ *  focus, mode toggles, playhead, time selection, etc.) are intentionally
+ *  excluded so the undo stack only carries meaningful edits. */
+const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
+  'ADD_TRACK',
+  'UPDATE_TRACK',
+  'DELETE_TRACK',
+  'DELETE_TRACKS',
+  'ADD_CLIP',
+  'DELETE_CLIP',
+  'UPDATE_CLIP',
+  'APPLY_CLIP_PLACEMENT',
+  'DELETE_TIME_RANGE',
+  'UPDATE_CLIP_ENVELOPE_POINTS',
+  'ADD_LABEL',
+  'UPDATE_LABEL',
+  'ADD_TRACK_EFFECT',
+  'REMOVE_TRACK_EFFECT',
+  'UPDATE_TRACK_EFFECT',
+]);
+
 // Reducer
 export function tracksReducer(state: TracksState, action: TracksAction): TracksState {
+  // UNDO / REDO swap the `tracks` array against the past/future stacks
+  // without touching the rest of the state (selection, focus, playhead
+  // stay where the user left them).
+  if (action.type === 'UNDO') {
+    if (state.past.length === 0) return state;
+    const previousTracks = state.past[state.past.length - 1];
+    return {
+      ...state,
+      tracks: previousTracks,
+      past: state.past.slice(0, -1),
+      future: [state.tracks, ...state.future].slice(0, MAX_UNDO_HISTORY),
+    };
+  }
+  if (action.type === 'REDO') {
+    if (state.future.length === 0) return state;
+    const nextTracks = state.future[0];
+    return {
+      ...state,
+      tracks: nextTracks,
+      past: [...state.past, state.tracks].slice(-MAX_UNDO_HISTORY),
+      future: state.future.slice(1),
+    };
+  }
+
+  // Snapshot the current tracks before running the reducer if this is an
+  // undoable action. We only push to `past` when the reducer actually
+  // mutates tracks (checked below).
+  const before = state.tracks;
+  const next = innerReducer(state, action);
+  if (UNDOABLE_ACTIONS.has(action.type) && next.tracks !== before) {
+    return {
+      ...next,
+      past: [...state.past, before].slice(-MAX_UNDO_HISTORY),
+      future: [], // new edit invalidates any redo stack
+    };
+  }
+  return next;
+}
+
+function innerReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
     case 'RESET_STATE':
       return initialState;
@@ -361,6 +436,10 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
         nextTrackColorIndex: colorIdx,
         // Auto-focus first track when loading tracks, unless already focused
         focusedTrackIndex: newFocusedTrackIndex,
+        // SET_TRACKS is a bulk replace (project load / reset) — drop history
+        // so undo can't roll back across an unrelated project state.
+        past: [],
+        future: [],
       };
     }
 
