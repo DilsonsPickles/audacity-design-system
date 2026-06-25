@@ -95,25 +95,45 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     };
   }, []);
 
-  /** Spring the height from `from` to `target` with a small overshoot
-   *  bounce. Heights are quantised to whole pixels each frame so the
-   *  layout never thrashes on sub-pixel values, and consecutive frames
-   *  with the same rounded value skip the React state update — that
-   *  cuts the number of re-renders during the spring by ~half. */
+  /** Two-phase spring from `from` to `target`.
+   *
+   *  The natural overshoot of a damped sinusoid scales with the
+   *  distance travelled, so a 4-pixel snap (e.g. 75 → 71) ends up
+   *  with sub-pixel overshoot that's effectively invisible. Instead
+   *  we drive the height in two cubic ease-out phases:
+   *
+   *    Phase 1 (35% of duration): from → target + sign · overshootPx
+   *    Phase 2 (65% of duration): overshoot peak → target
+   *
+   *  `overshootPx` is clamped to [3, 8] px so every snap, large or
+   *  small, gets a visible bounce without huge springs looking
+   *  rubbery. Heights are quantised to whole pixels so the layout
+   *  never thrashes on sub-pixel values, and consecutive frames with
+   *  the same rounded value skip the React state update. */
   const springToTarget = (from: number, target: number) => {
-    const SPRING_DURATION_MS = 220;
+    const SPRING_DURATION_MS = 260;
+    const PHASE_1_PORTION = 0.35;
     const distance = target - from;
+    const direction = Math.sign(distance) || 1;
+    const overshootPx = Math.min(8, Math.max(3, Math.abs(distance) * 0.15));
+    const overshootPeak = target + direction * overshootPx;
     const startTime = performance.now();
     let lastEmitted = Math.round(from);
 
+    const easeOutCubic = (p: number) => 1 - Math.pow(1 - p, 3);
+
     const tick = (now: number) => {
       const t = Math.min((now - startTime) / SPRING_DURATION_MS, 1);
-      // Damped sinusoid — 1 - e^(-6t) · cos(8t).
-      // First (and only meaningful) overshoot ≈ 9% of the distance
-      // around t≈0.39, then settles cleanly to 1 by t=1. Softer feel
-      // than the original 10rad/s curve, no second wobble.
-      const eased = t >= 1 ? 1 : 1 - Math.exp(-6 * t) * Math.cos(8 * t);
-      const raw = from + distance * eased;
+      let raw: number;
+      if (t < PHASE_1_PORTION) {
+        const p = t / PHASE_1_PORTION;
+        raw = from + (overshootPeak - from) * easeOutCubic(p);
+      } else if (t < 1) {
+        const p = (t - PHASE_1_PORTION) / (1 - PHASE_1_PORTION);
+        raw = overshootPeak + (target - overshootPeak) * easeOutCubic(p);
+      } else {
+        raw = target;
+      }
       const rounded = Math.round(raw);
 
       if (t < 1) {
