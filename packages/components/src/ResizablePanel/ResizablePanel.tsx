@@ -184,14 +184,23 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
     const handleDocumentMouseUp = () => {
       setIsResizing(false);
+      // Read the height the drag started from BEFORE clearing the ref,
+      // so the anchor-bounce-back logic below can tell which side of
+      // the forbidden range the user came from.
+      const dragStartHeight = resizeStartRef.current?.height;
       resizeStartRef.current = null;
       const released = latestHeightRef.current;
 
       // 71 (slider just fits) and 112 (effect button has breathing
       // room) bracket a forbidden range — there's no valid layout
-      // between them, because the slider is visible without the
-      // effect button having any space. On release inside that range
-      // we always spring out to whichever side is closer.
+      // between them, because the slider would be visible without
+      // the effect button having any space.
+      //
+      // Inside the forbidden range, we bounce back to whichever side
+      // the drag *started* from — not the midpoint. So a small tug
+      // up from 71 settles back at 71; the user has to actually drag
+      // close to 112 (i.e. out of the forbidden range) to commit to
+      // the larger height.
       //
       // Outside the forbidden range, the regular closest-within-window
       // logic applies for 71, 112, and the home (initialHeight at mount).
@@ -201,10 +210,21 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       let nearest: number | null = null;
 
       if (released > FORBIDDEN_LOW && released < FORBIDDEN_HIGH) {
-        nearest =
-          released - FORBIDDEN_LOW <= FORBIDDEN_HIGH - released
-            ? FORBIDDEN_LOW
-            : FORBIDDEN_HIGH;
+        // Anchor = whichever boundary the drag started closer to.
+        // Fall back to midpoint rule if we somehow don't have a start
+        // height (shouldn't happen but be safe).
+        if (dragStartHeight !== undefined) {
+          nearest =
+            Math.abs(dragStartHeight - FORBIDDEN_LOW)
+              <= Math.abs(dragStartHeight - FORBIDDEN_HIGH)
+              ? FORBIDDEN_LOW
+              : FORBIDDEN_HIGH;
+        } else {
+          nearest =
+            released - FORBIDDEN_LOW <= FORBIDDEN_HIGH - released
+              ? FORBIDDEN_LOW
+              : FORBIDDEN_HIGH;
+        }
       } else {
         let nearestDist = SNAP_CATCH_WINDOW;
         // Home is last so it wins ties against 112 — releasing right
