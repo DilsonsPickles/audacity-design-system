@@ -6,11 +6,13 @@
  * container-focus bars: blue for mouse, black/white for keyboard) can
  * stay consistent across whichever event eventually sets focus.
  *
- * Mouse down → mode flips to 'mouse'.
- * Tab key down → mode flips to 'keyboard'.
- * Arrow / Home / End / Escape — left as-is; they're navigation that
- * inherits whichever mode was last established. Clicking after a Tab
- * goes back to mouse; Tabbing after a click goes back to keyboard.
+ * Mode transitions:
+ *   - Mouse down → 'mouse'.
+ *   - Tab key down → 'keyboard'.
+ *   - Escape → 'mouse' (the user has exited keyboard nav; subsequent
+ *     arrow navigation should show the relaxed blue outline, not the
+ *     keyboard Tab bars, until the next Tab re-enters keyboard mode).
+ *   - Arrow / Home / End — inherit whichever mode was last established.
  *
  * Listeners are installed once on first import.
  */
@@ -27,6 +29,8 @@ const ensureInstalled = () => {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Tab') {
       mode = 'keyboard';
+    } else if (e.key === 'Escape') {
+      mode = 'mouse';
     }
   }, true);
 };
