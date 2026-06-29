@@ -1,0 +1,112 @@
+name: Desktop Release
+
+# Builds the @audacity-ui/desktop Electron app for macOS, Windows and
+# Linux when a `desktop-v*` tag is pushed (e.g. `desktop-v0.2.0`) and
+# attaches the resulting DMG / NSIS installer / AppImage to a GitHub
+# Release.
+#
+# Manual runs are also supported via workflow_dispatch — useful for
+# producing a build without cutting a release tag.
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Optional tag/name to label the build (workflow_dispatch only). Leave blank for an untagged build.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write   # needed to create a GitHub Release + upload assets
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_glob: 'apps/desktop/release/*.dmg'
+            build_script: 'build:mac'
+          - os: windows-latest
+            artifact_glob: 'apps/desktop/release/*.exe'
+            build_script: 'build:win'
+          - os: ubuntu-latest
+            artifact_glob: 'apps/desktop/release/*.AppImage'
+            build_script: 'build:linux'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The desktop app loads pre-built artifacts from
+      # packages/components/dist (via the workspace dep) and from the
+      # sandbox renderer build, so build those first.
+      - name: Build workspace packages
+        run: pnpm --filter './packages/*' -r build
+
+      - name: Build desktop (renderer + Electron)
+        # `pnpm --filter @audacity-ui/desktop run <script>` lets each
+        # platform pick its own electron-builder target.
+        run: pnpm --filter @audacity-ui/desktop run ${{ matrix.build_script }}
+        env:
+          # electron-builder honours CSC_IDENTITY_AUTO_DISCOVERY=false
+          # to skip code-signing on macOS when no cert is configured.
+          # We're not signing yet, so explicitly disable to avoid the
+          # builder hanging on keychain lookups.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only auto-publish on tag pushes. Manual workflow_dispatch runs
+    # produce artifacts you can download from the Actions summary
+    # without creating a Release.
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts into one directory
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' \) -exec cp {} release/ \;
+          ls -lh release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: release/*
