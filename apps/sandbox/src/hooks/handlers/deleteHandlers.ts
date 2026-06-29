@@ -138,82 +138,72 @@ function handleDeleteTimeSelection(deps: DeleteHandlerDeps): void {
 function handleDeleteClips(deps: DeleteHandlerDeps): void {
   const { state, dispatch, isKeyboardNavigating } = deps;
 
-  // Only track focused clip for focus-after-delete when using keyboard navigation
-  let focusedClipInfo: { clipId: string | number; trackIndex: number } | null = null;
+  // Read the focused clip from the DOM (only meaningful when the user
+  // is keyboard-navigating — clicks give clips invisible focus that
+  // shouldn't count as a "you are here" signal for delete).
+  let focusedClipInfo: { clipId: number; trackIndex: number } | null = null;
   if (isKeyboardNavigating) {
     const activeElement = document.activeElement;
     if (activeElement) {
       const clipIdStr = activeElement.getAttribute('data-clip-id');
       const trackIndexStr = activeElement.getAttribute('data-track-index');
       if (clipIdStr !== null && trackIndexStr !== null) {
-        const clipId = !isNaN(Number(clipIdStr)) ? Number(clipIdStr) : clipIdStr;
-        focusedClipInfo = { clipId, trackIndex: parseInt(trackIndexStr, 10) };
+        const clipId = Number(clipIdStr);
+        if (!isNaN(clipId)) {
+          focusedClipInfo = { clipId, trackIndex: parseInt(trackIndexStr, 10) };
+        }
       }
     }
   }
 
-  // Collect all clips to delete (union of focused + selected)
-  const clipsToDelete: Array<{ trackIndex: number; clipId: string | number }> = [];
-
-  if (focusedClipInfo) {
-    clipsToDelete.push(focusedClipInfo);
-  }
-
-  // Add all selected clips (audio + midi)
+  // Collect the selected-clip set.
+  const selectedClips: Array<{ trackIndex: number; clipId: number }> = [];
   state.tracks.forEach((track, trackIndex) => {
     track.clips.forEach((clip) => {
-      if (clip.selected) {
-        const isDuplicate = clipsToDelete.some(
-          item => item.clipId === clip.id && item.trackIndex === trackIndex
-        );
-        if (!isDuplicate) {
-          clipsToDelete.push({ trackIndex, clipId: clip.id });
-        }
-      }
+      if (clip.selected) selectedClips.push({ trackIndex, clipId: clip.id as number });
     });
     track.midiClips?.forEach((clip) => {
-      if (clip.selected) {
-        const isDuplicate = clipsToDelete.some(
-          item => item.clipId === clip.id && item.trackIndex === trackIndex
-        );
-        if (!isDuplicate) {
-          clipsToDelete.push({ trackIndex, clipId: clip.id });
-        }
-      }
+      if (clip.selected) selectedClips.push({ trackIndex, clipId: clip.id as number });
     });
   });
 
+  // Model 3 decision:
+  //   - focused ∈ selection      → delete the selection (batch intent)
+  //   - focused ∉ selection      → delete only the focused clip
+  //   - no focused, has selection → delete the selection
+  //   - nothing focused, nothing selected → fall through to track delete
+  let clipsToDelete: Array<{ trackIndex: number; clipId: number }> = [];
+  if (focusedClipInfo) {
+    const focusedIsSelected = selectedClips.some(
+      (c) => c.clipId === focusedClipInfo!.clipId && c.trackIndex === focusedClipInfo!.trackIndex,
+    );
+    clipsToDelete = focusedIsSelected ? selectedClips : [focusedClipInfo];
+  } else if (selectedClips.length > 0) {
+    clipsToDelete = selectedClips;
+  }
+
   if (clipsToDelete.length > 0) {
-    // Delete all clips. We intentionally don't auto-move focus to a
-    // neighbouring clip — the previous "nearest remaining clip" jump felt
-    // arbitrary. The browser will drop focus to <body> when the focused
-    // clip element is removed; users can arrow-key back into a clip when
-    // they want to keep editing.
     clipsToDelete.forEach(({ trackIndex, clipId }) => {
-      dispatch({
-        type: 'DELETE_CLIP',
-        payload: { trackIndex, clipId: typeof clipId === 'string' ? Number(clipId) : clipId },
-      });
+      dispatch({ type: 'DELETE_CLIP', payload: { trackIndex, clipId } });
     });
     return;
   }
 
-  // Priority 4: If there are selected tracks (and no labels/clips/time selected), delete the tracks
-  if (state.selectedTrackIndices.length > 0) {
-    const anyClipsSelected = state.tracks.some(track =>
-      track.clips.some(clip => clip.selected) || track.midiClips?.some(clip => clip.selected)
-    );
-
-    if (!anyClipsSelected) {
+  // No clips to delete — fall through to track-level Model 3.
+  //   - focused track ∈ selectedTrackIndices → delete the track selection
+  //   - focused track ∉ selectedTrackIndices → delete only the focused track
+  //   - no focused track, has selection → delete the selection
+  const focused = state.focusedTrackIndex;
+  if (focused !== null && focused !== undefined) {
+    const focusedInSelection = state.selectedTrackIndices.includes(focused);
+    if (focusedInSelection && state.selectedTrackIndices.length > 0) {
       dispatch({ type: 'DELETE_TRACKS', payload: state.selectedTrackIndices });
+    } else {
+      dispatch({ type: 'DELETE_TRACK', payload: focused });
     }
     return;
   }
-
-  // Priority 5: Nothing selected, but a track is focused (e.g. via arrow-key
-  // navigation). Treat focus as the deletion target — otherwise pressing
-  // Delete on a freshly-focused track quietly does nothing.
-  if (state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined) {
-    dispatch({ type: 'DELETE_TRACK', payload: state.focusedTrackIndex });
+  if (state.selectedTrackIndices.length > 0) {
+    dispatch({ type: 'DELETE_TRACKS', payload: state.selectedTrackIndices });
   }
 }
