@@ -6,6 +6,7 @@ import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeIn
 import { generateSpeechWaveform } from '../utils/waveform';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
+import { getInputMode } from '../utils/inputMode';
 import { scrollIntoViewIfNeeded } from '../utils/scrollIntoViewIfNeeded';
 import { useTheme } from '../ThemeProvider/ThemeProvider';
 import './Track.css';
@@ -830,18 +831,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     setHasKeyboardFocus(true);
     onFocusChange?.(true);
 
-    // Notify if the container itself (not a child) received focus via Tab.
-    // Mouse clicks and arrow-key track-to-track navigation both give
-    // invisible DOM focus — don't show the black/white "container-
-    // focused" bars; the consumer's blue outline already conveys the
-    // focused track.
+    // Container-focused (black/white bars) only when DOM focus is on
+    // the container itself AND the user is in keyboard-input mode.
+    // Mouse mode keeps the blue outline regardless of how the focus
+    // event was triggered (click, arrow nav from a mouse-focused
+    // track, programmatic focus). Arrow nav inherits the prior mode
+    // so a Tab → next track → Up/Down → another track keeps the
+    // black/white bars throughout.
     const fromMouse = focusFromMouseRef.current;
     focusFromMouseRef.current = false;
     const node = trackRef.current;
-    const fromNav = !!(node && node.hasAttribute('data-focus-from-nav'));
-    if (node && fromNav) node.removeAttribute('data-focus-from-nav');
+    if (node && node.hasAttribute('data-focus-from-nav')) {
+      node.removeAttribute('data-focus-from-nav');
+    }
 
-    const containerHasFocus = e.target === trackRef.current && !fromMouse && !fromNav;
+    const containerHasFocus =
+      e.target === trackRef.current
+      && !fromMouse
+      && getInputMode() === 'keyboard';
     setIsContainerFocused(containerHasFocus);
     onContainerFocusChange?.(containerHasFocus);
   };
