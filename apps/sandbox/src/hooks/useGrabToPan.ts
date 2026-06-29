@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
-/** Hold-H grab-to-pan, à la Photoshop's hand tool.
+/** Hold-Cmd (or Ctrl on Windows/Linux) grab-to-pan.
  *
- *  Spacebar is reserved exclusively for playback in this app, so the
- *  pan modifier is H instead. Hold H (outside any text field) and
- *  left-click-drag scrolls the canvas in both axes. Other canvas
- *  interactions (clip select, time selection, split, etc.) are
- *  intercepted in the capture phase so they don't fight the pan.
+ *  Hold the platform modifier and left-click-drag the canvas scroll
+ *  container to scroll it in both axes. Cmd is heavily used in
+ *  combination shortcuts (Cmd+S, Cmd+Z, etc.) so the cursor only
+ *  flips to "grab" while the modifier is held — it doesn't change
+ *  app state. The actual pan only kicks in on a left-button mousedown
+ *  inside the scroll container; everything else (Cmd+key combos, the
+ *  browser's own shortcuts) continues to work normally.
  *
  *  Returns flags the caller can use to set the cursor: `grab` while
  *  just holding, `grabbing` while actively dragging.
@@ -16,7 +18,7 @@ export interface UseGrabToPanArgs {
 }
 
 export interface UseGrabToPanResult {
-  /** True while H is held down. Cursor should show `grab`. */
+  /** True while the pan modifier (Cmd/Ctrl) is held down. */
   isModifierHeld: boolean;
   /** True while the user is actively dragging in pan mode.
    *  Cursor should show `grabbing` and other canvas interactions
@@ -36,39 +38,38 @@ export function useGrabToPan({
     clientY: number;
   } | null>(null);
 
-  // H key press/release.
+  // Cmd / Ctrl press/release. We treat either as the modifier so
+  // both macOS (Cmd) and Windows/Linux (Ctrl) work without any
+  // platform sniffing.
   useEffect(() => {
+    const isPanModifierKey = (e: KeyboardEvent) =>
+      e.key === 'Meta' || e.key === 'Control';
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'h' && e.key !== 'H') return;
-      // Don't capture H when modifiers are also held — leaves Cmd+H,
-      // Alt+H, etc. available for other shortcuts the OS or app uses.
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        const isTextField =
-          target.tagName === 'TEXTAREA' ||
-          (target.tagName === 'INPUT' &&
-            ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes(
-              (target as HTMLInputElement).type,
-            )) ||
-          target.isContentEditable;
-        if (isTextField) return;
-      }
-      e.preventDefault();
+      if (!isPanModifierKey(e)) return;
       if (e.repeat) return;
       setIsModifierHeld(true);
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.key !== 'h' && e.key !== 'H') return;
+      if (!isPanModifierKey(e)) return;
+      setIsModifierHeld(false);
+    };
+
+    // Some OS/browser interactions (alt-tab, switching apps with the
+    // modifier still down) can leave us thinking the key is held when
+    // it isn't. Clearing on blur keeps the cursor sane.
+    const onBlur = () => {
       setIsModifierHeld(false);
     };
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
     };
   }, []);
 
