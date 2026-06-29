@@ -110,29 +110,42 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           handleEscape(playheadDeps);
           return;
         }
-        // Fallback: anchor focus to the currently focused track. A bare
-        // blur() left document.activeElement on <body>, and the browser
-        // would resume Tab from a stale cursor position — sometimes
-        // landing on the timeline ruler, sometimes on the side panel,
-        // depending on what was focused before Escape. Putting focus on
-        // the focused-track container makes the next Tab deterministic
-        // (it walks from this track into its clips).
+        // Progressive Escape:
+        //   - DOM focus is on a track container (BW outline)
+        //       → exit keyboard nav entirely. Blur, and the next Tab
+        //         starts the user from a clean state.
+        //   - DOM focus is on something inside a track (clip, handle,
+        //     etc.) and a track is logically focused
+        //       → anchor DOM focus to the focused-track container so
+        //         the next Tab is deterministic (this case is mostly
+        //         already handled by the clip's local Escape handler,
+        //         but keep as a fallback for paths that don't have one).
+        //   - Otherwise → blur whatever's focused.
+        const active = document.activeElement as HTMLElement | null;
+        if (
+          state.focusedTrackIndex !== null
+          && state.focusedTrackIndex !== undefined
+          && active
+          && active.classList.contains('track')
+        ) {
+          // Already on a track container — Escape exits.
+          e.preventDefault();
+          active.blur();
+          isKeyboardNavigatingRef.current = false;
+          return;
+        }
         if (state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined) {
           const trackEl = document.querySelector(
             `.track-wrapper[data-track-index="${state.focusedTrackIndex}"] .track`,
           ) as HTMLElement | null;
           if (trackEl) {
             e.preventDefault();
-            // Mark as nav-driven so the receiving track shows the blue
-            // outline, not the black/white container-focus bars.
-            trackEl.setAttribute('data-focus-from-nav', '1');
             trackEl.focus();
             isKeyboardNavigatingRef.current = false;
             return;
           }
         }
         // No focused track to land on — fall back to clearing focus.
-        const active = document.activeElement as HTMLElement | null;
         if (active && active !== document.body && typeof active.blur === 'function') {
           e.preventDefault();
           active.blur();
