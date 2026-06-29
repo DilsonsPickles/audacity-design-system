@@ -310,7 +310,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       }
 
       // --- Comma/Period: Large playhead jumps ---
-      if (e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>') {
+      // Skip when Cmd/Ctrl is held — Cmd+, is reserved for opening
+      // Preferences (handled higher up). Shift is still allowed
+      // because handlePlayheadMove uses it to extend the selection.
+      if ((e.key === ',' || e.key === '.' || e.key === '<' || e.key === '>')
+          && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         const isLeftward = e.key === ',' || e.key === '<';
         handlePlayheadMove(e, isLeftward, 1.0, playheadDeps);
