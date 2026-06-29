@@ -1,58 +1,48 @@
 import { useEffect, useRef, useState } from 'react';
 
-/** Spacebar-hold grab-to-pan, à la Figma / Photoshop.
+/** Hold-H grab-to-pan, à la Photoshop's hand tool.
  *
- *  Holding Space (without focus in a text field) turns the canvas
- *  scroll container into a "grab" surface — left-click and drag
- *  scrolls it horizontally and vertically.
+ *  Spacebar is reserved exclusively for playback in this app, so the
+ *  pan modifier is H instead. Hold H (outside any text field) and
+ *  left-click-drag scrolls the canvas in both axes. Other canvas
+ *  interactions (clip select, time selection, split, etc.) are
+ *  intercepted in the capture phase so they don't fight the pan.
  *
- *  Spacebar in this codebase is also the play/pause shortcut. To keep
- *  both behaviours without colliding, the playback toggle is deferred
- *  to keyup, and is suppressed if the user actually dragged the
- *  canvas while space was held. So:
- *    - tap-and-release Space → fires `onSpaceTap` (play/pause)
- *    - hold Space + drag    → pans, no playback toggle
- *
- *  Returns flags the caller can use to set the cursor style: `grab`
- *  while just holding, `grabbing` while actively panning.
+ *  Returns flags the caller can use to set the cursor: `grab` while
+ *  just holding, `grabbing` while actively dragging.
  */
 export interface UseGrabToPanArgs {
   scrollContainerRef: React.RefObject<HTMLElement | null>;
-  /** Fired on Space keyup if no pan drag occurred during the hold. */
-  onSpaceTap: () => void;
 }
 
 export interface UseGrabToPanResult {
-  /** True while Space is held down. Cursor should show `grab`. */
+  /** True while H is held down. Cursor should show `grab`. */
   isModifierHeld: boolean;
   /** True while the user is actively dragging in pan mode.
    *  Cursor should show `grabbing` and other canvas interactions
-   *  (clip selection, time selection, etc.) should be suppressed. */
+   *  should be suppressed. */
   isPanning: boolean;
 }
 
 export function useGrabToPan({
   scrollContainerRef,
-  onSpaceTap,
 }: UseGrabToPanArgs): UseGrabToPanResult {
   const [isModifierHeld, setIsModifierHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
-  const panDidOccurRef = useRef(false);
   const panStartRef = useRef<{
     scrollLeft: number;
     scrollTop: number;
     clientX: number;
     clientY: number;
   } | null>(null);
-  // Stable callback ref so the keyup listener doesn't need to be
-  // re-bound every time the caller's `onSpaceTap` identity changes.
-  const onSpaceTapRef = useRef(onSpaceTap);
-  onSpaceTapRef.current = onSpaceTap;
 
-  // Spacebar press/release.
+  // H key press/release.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== 'Space') return;
+      if (e.key !== 'h' && e.key !== 'H') return;
+      // Don't capture H when modifiers are also held — leaves Cmd+H,
+      // Alt+H, etc. available for other shortcuts the OS or app uses.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target) {
         const isTextField =
@@ -64,23 +54,14 @@ export function useGrabToPan({
           target.isContentEditable;
         if (isTextField) return;
       }
-      // Block the browser's default Space behaviour (page scroll, button activation).
       e.preventDefault();
       if (e.repeat) return;
       setIsModifierHeld(true);
-      panDidOccurRef.current = false;
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code !== 'Space') return;
-      setIsModifierHeld((wasHeld) => {
-        if (wasHeld && !panDidOccurRef.current) {
-          // Pure tap — fire the playback toggle.
-          onSpaceTapRef.current();
-        }
-        return false;
-      });
-      panDidOccurRef.current = false;
+      if (e.key !== 'h' && e.key !== 'H') return;
+      setIsModifierHeld(false);
     };
 
     document.addEventListener('keydown', onKeyDown);
@@ -91,9 +72,9 @@ export function useGrabToPan({
     };
   }, []);
 
-  // Mouse drag → scroll the container. Only active while the modifier
-  // is held; re-binding when it toggles attaches and detaches the
-  // capture-phase listener cleanly.
+  // Mouse drag → scroll the container. Only active while H is held;
+  // re-binding when it toggles attaches and detaches the capture-phase
+  // listener cleanly.
   useEffect(() => {
     if (!isModifierHeld) return;
     const container = scrollContainerRef.current;
@@ -107,7 +88,6 @@ export function useGrabToPan({
         clientX: e.clientX,
         clientY: e.clientY,
       };
-      panDidOccurRef.current = true;
       setIsPanning(true);
       // Beat clip / selection / split handlers that listen on the same
       // mousedown event — pan mode owns this click.

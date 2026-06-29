@@ -5,7 +5,7 @@ import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';
 import { handleDelete } from './handlers/deleteHandlers';
-import { handleRecordToggle, handleEffectsToggle, handleLoopToggle } from './handlers/transportHandlers';
+import { handleSpacebar, handleRecordToggle, handleEffectsToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
 
@@ -132,9 +132,19 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Spacebar handling lives in useGrabToPan now: it fires playback
-      // on key-UP, and only if the user didn't drag the canvas during
-      // the hold (Figma-style grab-to-pan).
+      // --- Spacebar ---
+      if (e.key === ' ') {
+        const target = e.target as HTMLElement;
+        const isTextField = target.tagName === 'TEXTAREA' ||
+          (target.tagName === 'INPUT' && ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes((target as HTMLInputElement).type)) ||
+          target.isContentEditable;
+
+        if (!isTextField) {
+          e.preventDefault();
+          handleSpacebar(transportDeps);
+          return;
+        }
+      }
 
       // --- R: Record ---
       if (e.key === 'r' || e.key === 'R') {

@@ -620,15 +620,11 @@ function CanvasDemoContent() {
     audioManagerRef,
   });
 
-  // Hold-space to grab-pan the canvas (Figma / Photoshop style).
-  // Space-tap (no drag) still toggles playback; the hook owns that
-  // decision via keyup-with-no-pan detection.
+  // Hold-H to grab-pan the canvas (Photoshop's hand-tool key). Space
+  // stays reserved for play/pause; H is otherwise unbound so it
+  // doesn't collide with anything.
   const { isModifierHeld: isPanModifierHeld, isPanning } = useGrabToPan({
     scrollContainerRef,
-    onSpaceTap: () => {
-      if (state.isRecording) handleStopRecording();
-      else handlePlay();
-    },
   });
 
   // Sync playhead position with TimeCode display
