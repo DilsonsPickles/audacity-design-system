@@ -582,24 +582,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             if (e.key === 'Enter') {
               e.preventDefault();
               e.stopPropagation();
-              // Plain Enter on an already-selected clip drills into the
-              // trim/stretch handles — Tab inside the clip then cycles
-              // through them; Escape returns to the clip. Selection-
-              // toggle modifiers (Shift, Cmd/Ctrl) keep their existing
-              // meaning.
-              if (
-                clip.selected
-                && !e.shiftKey && !e.metaKey && !e.ctrlKey
-              ) {
-                const firstHandle = (e.currentTarget as HTMLElement)
-                  .querySelector<HTMLButtonElement>('[data-clip-handle]');
-                if (firstHandle) {
-                  firstHandle.focus();
-                  return;
-                }
-              }
               // Pass actual modifier keys to support different selection modes:
-              // - Plain Enter (clip not yet selected): select this clip
+              // - Plain Enter: toggle selection (deselect if single clip selected)
               // - Shift+Enter: range selection
               // - Cmd/Ctrl+Enter: toggle in/out of multi-selection
               onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);

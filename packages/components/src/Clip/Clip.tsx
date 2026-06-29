@@ -254,33 +254,9 @@ const ClipComponent: React.FC<ClipProps> = ({
     setStretchEdge(edge);
   };
 
-  /** Tab cycles between handles within a single clip's drill-in mode;
-   *  Escape returns focus to the parent clip element. The clip itself
-   *  is what's tabbable in the main tab order — Tab from a clip walks
-   *  to the next clip as before, NOT into the handles. To reach the
-   *  handles, the user presses Enter on a selected clip. */
-  const handleHandleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      const clipEl = (e.currentTarget as HTMLElement).closest('[data-clip-id]') as HTMLElement | null;
-      clipEl?.focus();
-      return;
-    }
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      e.stopPropagation();
-      const clipEl = (e.currentTarget as HTMLElement).closest('[data-clip-id]');
-      const handles = Array.from(
-        clipEl?.querySelectorAll<HTMLButtonElement>('[data-clip-handle]') ?? [],
-      );
-      if (handles.length === 0) return;
-      const currentIndex = handles.indexOf(e.currentTarget);
-      const direction = e.shiftKey ? -1 : 1;
-      const nextIndex = (currentIndex + direction + handles.length) % handles.length;
-      handles[nextIndex].focus();
-    }
-  };
+  // Clip handles are mouse-only affordances; their trim/stretch
+  // actions are reachable via dedicated keyboard shortcuts, so we
+  // don't add a separate keyboard path through the buttons themselves.
 
   React.useEffect(() => {
     if (!stretchEdge) return;
@@ -408,21 +384,16 @@ const ClipComponent: React.FC<ClipProps> = ({
           onStretchEdge is absent. */}
       {selected && (
         <>
-          {/* Handles render in spatial left-to-right / trim-before-stretch
-              order so a Tab cycle inside the clip's drill-in mode goes
-              trim-L → stretch-L → trim-R → stretch-R → wrap. They are
-              tabIndex=-1 — out of the main tab order — and reachable
-              only by pressing Enter on the selected clip. Escape
-              returns focus to the clip. */}
+          {/* Mouse-only handles. tabIndex={-1} keeps them out of the
+              main tab order; the equivalent actions are reachable via
+              dedicated keyboard shortcuts. */}
           {onTrimEdge && (
             <button
               type="button"
               tabIndex={-1}
               className="clip-display__handle clip-display__handle--trim-left"
               aria-label="Trim left edge"
-              data-clip-handle="trim-left"
               onMouseDown={handleVisibleTrimMouseDown('left')}
-              onKeyDown={handleHandleKeyDown}
             >
               <TrimLeftIcon />
             </button>
@@ -432,9 +403,7 @@ const ClipComponent: React.FC<ClipProps> = ({
             tabIndex={-1}
             className="clip-display__handle clip-display__handle--stretch-left"
             aria-label="Stretch left edge"
-            data-clip-handle="stretch-left"
             onMouseDown={handleStretchMouseDown('left')}
-            onKeyDown={handleHandleKeyDown}
           >
             <StretchIcon />
           </button>
@@ -444,9 +413,7 @@ const ClipComponent: React.FC<ClipProps> = ({
               tabIndex={-1}
               className="clip-display__handle clip-display__handle--trim-right"
               aria-label="Trim right edge"
-              data-clip-handle="trim-right"
               onMouseDown={handleVisibleTrimMouseDown('right')}
-              onKeyDown={handleHandleKeyDown}
             >
               <TrimRightIcon />
             </button>
@@ -456,9 +423,7 @@ const ClipComponent: React.FC<ClipProps> = ({
             tabIndex={-1}
             className="clip-display__handle clip-display__handle--stretch-right"
             aria-label="Stretch right edge"
-            data-clip-handle="stretch-right"
             onMouseDown={handleStretchMouseDown('right')}
-            onKeyDown={handleHandleKeyDown}
           >
             <StretchIcon />
           </button>
