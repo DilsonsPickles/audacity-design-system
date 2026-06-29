@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
-import { scrollIntoViewIfNeeded } from '@dilsonspickles/components';
+import { scrollIntoViewIfNeeded, usePreferences } from '@dilsonspickles/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';
@@ -40,6 +40,7 @@ export interface UseKeyboardShortcutsOptions {
  * Routes key events to domain-specific handler modules.
  */
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
+  const { preferences } = usePreferences();
   const {
     state,
     dispatch,
@@ -80,7 +81,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
   useEffect(() => {
     const transportDeps = { state, handlePlay, handleRecord, handleStopRecording, setEffectsPanel, toggleLoopRegion };
-    const navDeps = { state, dispatch, selectionAnchor, setSelectionAnchor, selectionAnchorRef, selectionEdgesRef, isFlatNavigation, scrollPlayheadIntoView };
+    const navDeps = { state, dispatch, selectionAnchor, setSelectionAnchor, selectionAnchorRef, selectionEdgesRef, isFlatNavigation, scrollPlayheadIntoView, trackSelectionMode: preferences.trackSelectionMode };
     const playheadDeps = { state, dispatch, selectionAnchorRef, selectionEdgesRef, scrollPlayheadIntoView };
     const clipboardDeps = { state, dispatch, clipboard, setClipboard, audioManagerRef };
 
@@ -436,5 +437,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     dispatch,
     isFlatNavigation,
     toggleLoopRegion,
+    preferences.trackSelectionMode,
   ]);
 }

@@ -10,6 +10,7 @@ export interface NavigationHandlerDeps {
   selectionEdgesRef: React.MutableRefObject<{ startTime: number; endTime: number } | null>;
   isFlatNavigation: boolean;
   scrollPlayheadIntoView: () => void;
+  trackSelectionMode: 'classic' | 'follows-focus';
 }
 
 /** Home/End: jump playhead with optional Shift to extend time selection */
@@ -101,7 +102,11 @@ export function handleF6(e: KeyboardEvent, _deps: NavigationHandlerDeps): void {
 
 /** ArrowUp/Down: move track focus with optional Shift for range selection */
 export function handleTrackFocus(e: KeyboardEvent, deps: NavigationHandlerDeps): void {
-  const { state, dispatch, selectionAnchor, setSelectionAnchor } = deps;
+  const { state, dispatch, selectionAnchor, setSelectionAnchor, trackSelectionMode } = deps;
+
+  // Cmd/Ctrl held = "peek" decouple modifier in follows-focus mode:
+  // focus moves but selection is left alone.
+  const decouple = e.metaKey || e.ctrlKey;
 
   if (state.focusedTrackIndex !== null) {
     const delta = e.key === 'ArrowDown' ? 1 : -1;
@@ -123,12 +128,41 @@ export function handleTrackFocus(e: KeyboardEvent, deps: NavigationHandlerDeps):
           newSelection.push(i);
         }
         dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      } else if (trackSelectionMode === 'follows-focus' && !decouple) {
+        // Plain arrow in follows-focus mode: selection moves with focus.
+        dispatch({ type: 'SELECT_TRACK', payload: newIndex });
+        setSelectionAnchor(newIndex);
       } else {
         setSelectionAnchor(null);
       }
+
+      // Focus the new track DOM element so subsequent arrows go through
+      // the Track's own keydown (which knows about Option+Arrow reorder
+      // etc.) instead of bouncing through this global handler each time.
+      setTimeout(() => {
+        const target = document.querySelector(
+          `.track-wrapper[data-track-index="${newIndex}"] .track`,
+        ) as HTMLElement | null;
+        if (target) {
+          target.setAttribute('data-focus-from-nav', '1');
+          target.focus();
+        }
+      }, 0);
     }
   } else if (state.tracks.length > 0) {
     dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
+    if (trackSelectionMode === 'follows-focus' && !decouple) {
+      dispatch({ type: 'SELECT_TRACK', payload: 0 });
+    }
+    setTimeout(() => {
+      const target = document.querySelector(
+        `.track-wrapper[data-track-index="0"] .track`,
+      ) as HTMLElement | null;
+      if (target) {
+        target.setAttribute('data-focus-from-nav', '1');
+        target.focus();
+      }
+    }, 0);
   }
 }
 
