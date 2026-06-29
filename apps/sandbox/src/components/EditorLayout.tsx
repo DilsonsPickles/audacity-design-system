@@ -1417,7 +1417,29 @@ export function EditorLayout(props: EditorLayoutProps) {
                       ) as HTMLElement;
                       if (rulerEl) {
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: target });
-                        rulerEl.focus();
+                        // Focus the ruler with preventScroll — the ruler
+                        // panel positions itself via CSS transform driven
+                        // by scrollY, not native scrolling, so a default
+                        // scroll-into-view would shift the ruler column
+                        // out of alignment with the tracks. Instead we
+                        // scroll the canvas container manually; its
+                        // scrollY prop then flows back into the ruler
+                        // transform on the next render.
+                        rulerEl.focus({ preventScroll: true });
+                        const scrollEl = scrollContainerRef.current;
+                        if (scrollEl) {
+                          const trackTop = state.tracks
+                            .slice(0, target)
+                            .reduce((sum, t) => sum + ((t.height || 114) + 2), 0);
+                          const trackHeight = state.tracks[target].height || 114;
+                          const viewportTop = scrollEl.scrollTop;
+                          const viewportBottom = viewportTop + scrollEl.clientHeight;
+                          if (trackTop < viewportTop) {
+                            scrollEl.scrollTop = Math.max(0, trackTop - 8);
+                          } else if (trackTop + trackHeight > viewportBottom) {
+                            scrollEl.scrollTop = trackTop + trackHeight - scrollEl.clientHeight + 8;
+                          }
+                        }
                         return;
                       }
                     }
