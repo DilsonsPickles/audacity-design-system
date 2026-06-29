@@ -58,6 +58,13 @@ export function useClipMouseDown({
     // Ignore right-click (button 2) to allow context menus
     if (e.button !== 0) return;
 
+    // Cmd / Ctrl is the grab-to-pan modifier — clicks with it held
+    // shouldn't select or drag clips. The capture-phase pan listener
+    // also stops the event, but this is a belt-and-braces guard in
+    // case anything has already wired into the React mousedown by
+    // the time we get here.
+    if (e.metaKey || e.ctrlKey) return;
+
     if (!containerRef.current) {
       containerPropsOnMouseDown?.(e);
       return;

@@ -793,14 +793,15 @@ function CanvasDemoContent() {
         return;
       }
 
-      // Shift + wheel: translate vertical wheel into horizontal pan.
-      // Browsers / trackpads do this inconsistently, so we do it
-      // explicitly. Only kicks in when the input is a pure vertical
-      // gesture (deltaX == 0) so a real horizontal swipe with shift
-      // held isn't doubled.
-      if (e.shiftKey && e.deltaY !== 0 && e.deltaX === 0) {
+      // Shift + wheel: lock scrolling to horizontal. Whichever axis
+      // dominates (vertical swipe or wheel input — usually deltaY)
+      // gets mapped to horizontal scroll. Trackpads emit small
+      // perpendicular jitter so we can't gate on deltaX === 0; instead
+      // we just take the larger-magnitude axis as the user's intent.
+      if (e.shiftKey && (e.deltaY !== 0 || e.deltaX !== 0)) {
+        const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
         e.preventDefault();
-        el.scrollLeft += e.deltaY;
+        el.scrollLeft += delta;
       }
     };
 
