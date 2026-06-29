@@ -45,6 +45,10 @@ export function useContainerClick({
 }: ContainerClickConfig) {
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Cmd / Ctrl is the grab-to-pan modifier — clicks with it held
+    // shouldn't move the playhead or change track focus.
+    if (e.metaKey || e.ctrlKey) return;
+
     // Only update playhead and track focus if we're not dragging
     const wasJustDragging = selectionWasJustDragging();
     if (wasJustDragging && !e.shiftKey) {

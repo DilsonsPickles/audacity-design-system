@@ -340,6 +340,11 @@ export function useAudioSelection(
     // Ignore right-click (button 2) to allow context menus
     if (e.button !== 0) return;
 
+    // Cmd / Ctrl is the grab-to-pan modifier in the host app — clicks
+    // with it held shouldn't start a time / spectral selection (and
+    // therefore shouldn't end up moving the playhead on mouseup).
+    if (e.metaKey || e.ctrlKey) return;
+
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;

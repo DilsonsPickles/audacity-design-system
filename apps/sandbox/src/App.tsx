@@ -790,6 +790,17 @@ function CanvasDemoContent() {
         requestAnimationFrame(() => {
           isZoomingRef.current = false;
         });
+        return;
+      }
+
+      // Shift + wheel: translate vertical wheel into horizontal pan.
+      // Browsers / trackpads do this inconsistently, so we do it
+      // explicitly. Only kicks in when the input is a pure vertical
+      // gesture (deltaX == 0) so a real horizontal swipe with shift
+      // held isn't doubled.
+      if (e.shiftKey && e.deltaY !== 0 && e.deltaX === 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
       }
     };
 
