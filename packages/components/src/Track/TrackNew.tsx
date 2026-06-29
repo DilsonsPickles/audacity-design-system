@@ -987,6 +987,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             }
             return; // Don't run clip navigation when container itself is focused
           }
+          // Suppress arrow-key clip-to-clip navigation when the focused
+          // clip was focused via mouse (data-focus-mouse). Arrow nav
+          // between clips is a keyboard-driven feature: it kicks in
+          // once the user has visibly entered keyboard mode (the first
+          // Tab from a mouse-focused clip strips the marker, see the
+          // clip's own onKeyDown above). So clicking a clip to select
+          // it and then hitting Right Arrow no longer moves focus.
+          const activeEl = document.activeElement as HTMLElement | null;
+          if (activeEl?.hasAttribute('data-focus-mouse')) return;
           // Delegate to clip navigation hook for child elements
           clipNavKeyDown(e);
         }}
