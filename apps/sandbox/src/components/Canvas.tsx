@@ -950,7 +950,7 @@ export function Canvas({
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 4)}
                 trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 4)}
-                onTrackNavigateVertical={(direction, shiftKey, altKey) => {
+                onTrackNavigateVertical={(direction, shiftKey, decouple) => {
                   const targetIndex = trackIndex + direction;
                   if (targetIndex < 0 || targetIndex >= tracks.length) return;
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
@@ -966,10 +966,10 @@ export function Canvas({
                     const newSelection: number[] = [];
                     for (let i = start; i <= end; i++) newSelection.push(i);
                     dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  } else if (preferences.trackSelectionMode === 'follows-focus' && !altKey) {
+                  } else if (preferences.trackSelectionMode === 'follows-focus' && !decouple) {
                     // Plain arrow in follows-focus mode: selection moves
-                    // with focus. Holding Alt/Option decouples — focus
-                    // moves alone so the user can peek around without
+                    // with focus. Cmd held = "decouple": focus moves
+                    // alone so the user can peek around without
                     // disturbing the current selection.
                     dispatch({ type: 'SELECT_TRACK', payload: targetIndex });
                     setSelectionAnchor?.(targetIndex);
@@ -1377,12 +1377,6 @@ export function Canvas({
                       newSelection.push(i);
                     }
                     dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  } else if (e.altKey) {
-                    // Option/Alt+Click is the "decouple" modifier in
-                    // follows-focus mode: focus moves (handled above)
-                    // but the selection is left alone, so the user can
-                    // peek around without disturbing the current
-                    // selection.
                   } else if (preferences.trackSelectionMode === 'follows-focus') {
                     // Selection-follows-focus mode: a plain click replaces
                     // the selection with just this track (matches the new

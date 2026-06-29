@@ -316,14 +316,6 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       onToggleSelection?.();
       return;
     }
-    // Alt/Option+Click: "peek" — leave the selection alone, just give
-    // this track focus. Lets the user look around without disturbing
-    // the current selection in follows-focus mode.
-    if (e.altKey) {
-      // No selection change. Focus is handled by the consumer's
-      // onMouseDown / DOM focus on this element.
-      return;
-    }
     // Regular click: Select only this track
     onClick?.();
   };

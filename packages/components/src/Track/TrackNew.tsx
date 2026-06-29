@@ -248,7 +248,12 @@ export interface TrackProps {
    * Callback when ArrowUp/Down is pressed while the track container itself is focused.
    * Direction: 1 = down, -1 = up.
    */
-  onTrackNavigateVertical?: (direction: 1 | -1, shiftKey?: boolean, altKey?: boolean) => void;
+  /** Vertical arrow nav between tracks.
+   *  - direction: -1 (up) or 1 (down)
+   *  - shiftKey: extend the range selection
+   *  - decouple: hold Cmd/Ctrl — focus moves but selection is left
+   *    alone (peek) in follows-focus mode. */
+  onTrackNavigateVertical?: (direction: 1 | -1, shiftKey?: boolean, decouple?: boolean) => void;
 
   /**
    * Callback when Cmd+ArrowUp/Down is pressed on the track container to reorder the track.
@@ -914,16 +919,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               onContainerEnter?.({ metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey });
               return;
             }
-            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
-              // Cmd+Arrow: reorder track
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+              // Option/Alt+Arrow: reorder track (moved off Cmd so Cmd
+              // can act as the focus-decouple modifier instead).
               e.preventDefault();
               e.stopPropagation();
               onTrackReorder?.(e.key === 'ArrowDown' ? 1 : -1);
-            } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.metaKey && !e.ctrlKey) {
-              // Plain / Shift / Alt+Arrow: navigate between tracks
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+              // Plain / Shift / Cmd+Arrow: navigate between tracks.
+              //   Plain → follows-focus moves selection with focus
+              //   Shift → extend range
+              //   Cmd   → peek (focus moves, selection stays put)
               e.preventDefault();
               e.stopPropagation();
-              onTrackNavigateVertical?.(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey, e.altKey);
+              onTrackNavigateVertical?.(
+                e.key === 'ArrowDown' ? 1 : -1,
+                e.shiftKey,
+                e.metaKey || e.ctrlKey,
+              );
             } else if (e.key === 'Tab' && !e.shiftKey) {
               e.preventDefault();
               e.stopPropagation();
