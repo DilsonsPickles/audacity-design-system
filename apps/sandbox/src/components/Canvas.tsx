@@ -294,6 +294,8 @@ export function Canvas({
     tracks,
     pixelsPerSecond,
     clipContentOffset: CLIP_CONTENT_OFFSET,
+    snapEnabled,
+    snapOptions,
   });
 
   // Clip time-stretching - visual only (mirrors trimming).
@@ -306,6 +308,8 @@ export function Canvas({
     tracks,
     pixelsPerSecond,
     clipContentOffset: CLIP_CONTENT_OFFSET,
+    snapEnabled,
+    snapOptions,
   });
 
   // Label dragging - extracted to custom hook (handles mouseup internally)

@@ -269,8 +269,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // --- J / K: Playhead movement (replaces ArrowLeft/Right which now
-      //     belong to arrow-key navigation inside toolbars/lists). ---
+      // --- J / K: Playhead jump to project start / end.
+      //   - Plain J → jump to 0
+      //   - Plain K → jump to the end of the furthest-right clip
+      //   - Shift+J / Shift+K → 0.1s nudge (preserved for fine
+      //     positioning; Shift turns the jump into a step)
       if (e.key === 'j' || e.key === 'J' || e.key === 'k' || e.key === 'K') {
         if (e.metaKey || e.ctrlKey || e.altKey) return;
         if (e.defaultPrevented) return;
@@ -280,7 +283,27 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (isTextInput) return;
         e.preventDefault();
         const isLeftward = e.key === 'j' || e.key === 'J';
-        handlePlayheadMove(e, isLeftward, 0.1, playheadDeps);
+        if (e.shiftKey) {
+          // Fine nudge (the previous default behaviour).
+          handlePlayheadMove(e, isLeftward, 0.1, playheadDeps);
+        } else {
+          // Jump to project bounds.
+          let targetTime = 0;
+          if (!isLeftward) {
+            for (const t of state.tracks) {
+              for (const c of t.clips) {
+                const end = c.start + c.duration;
+                if (end > targetTime) targetTime = end;
+              }
+              for (const c of (t.midiClips || [])) {
+                const end = c.start + c.duration;
+                if (end > targetTime) targetTime = end;
+              }
+            }
+          }
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: targetTime });
+          scrollPlayheadIntoView();
+        }
         return;
       }
 

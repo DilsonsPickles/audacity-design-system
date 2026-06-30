@@ -871,14 +871,39 @@ export function EditorLayout(props: EditorLayoutProps) {
                   });
                 }
                 // Arrow keys nudge the playhead while the timeline
-                // ruler is focused. Step is 0.1s, matching J/K
-                // elsewhere; Shift accelerates to 1s.
+                // ruler is focused. With snap on, each press lands on
+                // the next/previous grid division; with snap off, step
+                // is 0.1s (Shift accelerates to 1s).
                 if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                   e.preventDefault();
                   e.stopPropagation();
-                  const step = e.shiftKey ? 1 : 0.1;
-                  const delta = e.key === 'ArrowLeft' ? -step : step;
-                  const next = Math.max(0, state.playheadPosition + delta);
+                  const direction = e.key === 'ArrowLeft' ? -1 : 1;
+                  let next: number;
+                  if (snapEnabled) {
+                    // Snap the *current* playhead to its nearest grid
+                    // line, then step one grid unit in the requested
+                    // direction. Falls through to the unsnapped step
+                    // if snap math degenerates.
+                    const snapBase = snapToGrid(state.playheadPosition, {
+                      timeFormat: timelineFormat,
+                      bpm,
+                      beatsPerMeasure,
+                      snap: state.canvasSnap,
+                      pixelsPerSecond,
+                    });
+                    const stepCandidate = snapToGrid(snapBase + direction * 0.001, {
+                      timeFormat: timelineFormat,
+                      bpm,
+                      beatsPerMeasure,
+                      snap: state.canvasSnap,
+                      pixelsPerSecond,
+                    });
+                    const gridStep = Math.abs(stepCandidate - snapBase) || 0.1;
+                    next = Math.max(0, snapBase + direction * gridStep);
+                  } else {
+                    const step = e.shiftKey ? 1 : 0.1;
+                    next = Math.max(0, state.playheadPosition + direction * step);
+                  }
                   dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: next });
                 }
               }}

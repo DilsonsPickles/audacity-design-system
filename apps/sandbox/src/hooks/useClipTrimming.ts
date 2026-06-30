@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { useTracksDispatch } from '../contexts/TracksContext';
 import { resolveOverlap, ClipPlacement } from '../utils/resolveOverlap';
+import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
 export interface ClipTrimState {
   trackIndex: number;
@@ -19,6 +20,10 @@ export interface UseClipTrimmingOptions {
   pixelsPerSecond: number;
   clipContentOffset: number;
   onTrimStatusChange?: (isTrimming: boolean) => void;
+  /** When true, snap the trimmed edge to the user's grid. Alt held
+   *  during the drag temporarily disables snap for fine adjustments. */
+  snapEnabled?: boolean;
+  snapOptions?: SnapOptions;
 }
 
 export interface UseClipTrimmingReturn {
@@ -38,6 +43,8 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
     pixelsPerSecond,
     clipContentOffset,
     onTrimStatusChange,
+    snapEnabled = false,
+    snapOptions,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -70,8 +77,12 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
         || (tracks[trimState.trackIndex]?.midiClips || []).find((c: any) => c.id === trimState.clipId);
       if (!draggedClip) return;
 
-      // Calculate mouse position in timeline
-      const mouseTime = Math.max(0, (x - clipContentOffset) / pixelsPerSecond);
+      // Calculate mouse position in timeline. Apply the user's snap
+      // grid unless Alt is held (escape hatch for fine adjustments).
+      const rawMouseTime = Math.max(0, (x - clipContentOffset) / pixelsPerSecond);
+      const mouseTime = (snapEnabled && snapOptions && !e.altKey)
+        ? Math.max(0, snapToGrid(rawMouseTime, snapOptions))
+        : rawMouseTime;
 
       // Get initial state for all selected clips from stored Map
       const allClipsInitialState = trimState.allClipsInitialState;
@@ -353,7 +364,7 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [tracks, pixelsPerSecond, clipContentOffset, dispatch, onTrimStatusChange, containerRef]);
+  }, [tracks, pixelsPerSecond, clipContentOffset, dispatch, onTrimStatusChange, containerRef, snapEnabled, snapOptions]);
 
   return {
     clipTrimStateRef,

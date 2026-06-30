@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useTracksDispatch } from '../contexts/TracksContext';
+import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
 /**
  * Hook for visual-only time stretching of clips.
@@ -37,6 +38,8 @@ export interface UseClipStretchingOptions {
   tracks: any[];
   pixelsPerSecond: number;
   clipContentOffset: number;
+  snapEnabled?: boolean;
+  snapOptions?: SnapOptions;
 }
 
 export interface UseClipStretchingReturn {
@@ -53,7 +56,7 @@ const MAX_STRETCH = 10;
 export function useClipStretching(
   options: UseClipStretchingOptions,
 ): UseClipStretchingReturn {
-  const { containerRef, pixelsPerSecond, clipContentOffset } = options;
+  const { containerRef, pixelsPerSecond, clipContentOffset, snapEnabled = false, snapOptions } = options;
   const dispatch = useTracksDispatch();
   const clipStretchStateRef = useRef<ClipStretchState | null>(null);
   const justStretchedRef = useRef(false);
@@ -75,7 +78,10 @@ export function useClipStretching(
 
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      const mouseTime = Math.max(0, (x - clipContentOffset) / pixelsPerSecond);
+      const rawMouseTime = Math.max(0, (x - clipContentOffset) / pixelsPerSecond);
+      const mouseTime = (snapEnabled && snapOptions && !e.altKey)
+        ? Math.max(0, snapToGrid(rawMouseTime, snapOptions))
+        : rawMouseTime;
 
       // Compute the drag ratio from the DRAGGED clip's new vs initial
       // duration, then apply that same ratio to every selected clip.
@@ -143,7 +149,7 @@ export function useClipStretching(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [pixelsPerSecond, clipContentOffset, dispatch, containerRef]);
+  }, [pixelsPerSecond, clipContentOffset, dispatch, containerRef, snapEnabled, snapOptions]);
 
   return { clipStretchStateRef, startClipStretch, cancelStretch, wasJustStretching };
 }
