@@ -1,6 +1,6 @@
 {
   "name": "@audacity-ui/desktop",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Electron shell that hosts the Audacity 4 sandbox as a native app.",
   "main": "src/main.cjs",
@@ -52,8 +52,12 @@
       "category": "public.app-category.music",
       "target": [
         { "target": "dmg", "arch": ["arm64", "x64"] }
-      ]
+      ],
+      "identity": null,
+      "gatekeeperAssess": false
     },
+    "afterSign": null,
+    "afterPack": "scripts/mac-adhoc-sign.cjs",
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }]
     },

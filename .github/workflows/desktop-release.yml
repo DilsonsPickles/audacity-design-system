@@ -109,4 +109,28 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          append_body: true
+          body: |
+            ## macOS install note
+
+            The macOS build is ad-hoc signed (no Apple Developer ID /
+            notarisation yet), so Gatekeeper marks it "damaged" on first
+            launch. Pick one:
+
+            - **Right-click the app → Open → Open** (one-time bypass), or
+            - Run this once in Terminal after copying the app to
+              `/Applications`:
+
+              ```sh
+              xattr -d com.apple.quarantine "/Applications/Audacity 4.app"
+              ```
+
+              If that still won't open, fall back to:
+
+              ```sh
+              xattr -cr "/Applications/Audacity 4.app"
+              ```
+
+            Proper signing + notarisation will replace this once a
+            Developer ID is provisioned.
           files: release/*
