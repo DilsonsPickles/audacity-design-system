@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme, scrollIntoViewIfNeeded } from '@dilsonspickles/components';
+import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme, scrollIntoViewIfNeeded, announce, formatTimeForA11y } from '@dilsonspickles/components';
 import type { SpectrogramScale } from '@dilsonspickles/components';
 import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
@@ -1010,6 +1010,7 @@ export function Canvas({
                 width={width}
                 tabIndex={isFlatNavigation ? 0 : (trackBase + 2 + trackIndex * 4)}
                 trackTabIndex={isFlatNavigation ? 0 : (trackBase + trackIndex * 4)}
+                trackName={track.name}
                 onTrackNavigateVertical={(direction, shiftKey, decouple) => {
                   const targetIndex = trackIndex + direction;
                   if (targetIndex < 0 || targetIndex >= tracks.length) return;
@@ -1240,6 +1241,22 @@ export function Canvas({
                       },
                     });
                   }
+                  // Screen-reader announcement of the resulting duration.
+                  // The focused clip's aria-label updates with the new
+                  // duration on re-render but VoiceOver doesn't re-read
+                  // the focused element's label automatically — push it
+                  // through the live region so each keyboard trim is
+                  // audible. Use the originating clip's new duration.
+                  const focused = uniqueTargets.find(
+                    (t) => t.trackIndex === trackIndex && t.clip.id === clipId,
+                  ) ?? uniqueTargets[0];
+                  if (focused) {
+                    const finalDuration = Math.max(
+                      0.1,
+                      focused.clip.duration - deltaSeconds,
+                    );
+                    announce(`Clip is now ${formatTimeForA11y(finalDuration)} long`);
+                  }
                 }}
                 onClipStretch={(clipId, edge, deltaSeconds) => {
                   // Keyboard time-stretch (Alt+Arrow). Sign convention
@@ -1289,6 +1306,19 @@ export function Canvas({
                         newStart: edge === 'left' ? currentStart + deltaSeconds : undefined,
                       },
                     });
+                  }
+                  // Announce the resulting duration of the originating
+                  // clip — VoiceOver won't re-read the focused element's
+                  // label on its own after the stretch reducer runs.
+                  const focused = uniqueTargets.find(
+                    (t) => t.trackIndex === trackIndex && t.clip.id === clipId,
+                  ) ?? uniqueTargets[0];
+                  if (focused) {
+                    const finalDuration = Math.max(
+                      0.1,
+                      focused.clip.duration - deltaSeconds,
+                    );
+                    announce(`Clip stretched to ${formatTimeForA11y(finalDuration)}`);
                   }
                 }}
                 onEnvelopePointsChange={(clipId, points) => {

@@ -10,6 +10,7 @@ import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext
 import { getInputMode } from '../utils/inputMode';
 import { scrollIntoViewIfNeeded } from '../utils/scrollIntoViewIfNeeded';
 import { useTheme } from '../ThemeProvider/ThemeProvider';
+import { formatTimeForA11y } from '../utils/announce';
 import './Track.css';
 
 const EMPTY_NUMBER_ARRAY: number[] = [];
@@ -247,6 +248,13 @@ export interface TrackProps {
   trackTabIndex?: number;
 
   /**
+   * Human-readable name of the track, surfaced to screen readers when
+   * the track container itself receives focus. Without it VoiceOver
+   * falls back to reading every child clip's label, which is noisy.
+   */
+  trackName?: string;
+
+  /**
    * Callback when ArrowUp/Down is pressed while the track container itself is focused.
    * Direction: 1 = down, -1 = up.
    */
@@ -358,6 +366,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onChannelSplitRatioChange,
   spectrogramScale,
   trackTabIndex,
+  trackName,
   onTrackNavigateVertical,
   onTrackReorder,
   onContainerFocusChange,
@@ -511,14 +520,26 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           data-first-clip={isFirstClip}
           style={{
             position: 'absolute',
-            left: `${clipX}px`,
+            // Round to integer pixels so the wrapper's accessibility
+            // rect (which macOS VoiceOver uses to draw the focus frame)
+            // doesn't drift sub-pixel against the painted clip — the
+            // browser paints at pixel boundaries and AX uses the layout
+            // rect, and any sub-pixel mismatch showed up as a focus
+            // ring offset from the visible clip.
+            left: `${Math.round(clipX)}px`,
             top: 0,
+            // Explicit width/height so the focusable wrapper's bounding
+            // box matches the visible Clip child. Without these the
+            // wrapper can collapse and VoiceOver draws the frame around
+            // a near-zero rect.
+            width: `${Math.round(clipWidth)}px`,
+            height: `${height}px`,
             zIndex: isDragging ? 10 : 2, // Dragged clips float above all others; above clip header recess (z-index: 1) otherwise
             opacity: isDragging ? 0.5 : undefined,
           }}
           tabIndex={isFlatNavigation ? 0 : (isFirstClip && tabIndex !== undefined ? tabIndex : -1)}
           role="button"
-          aria-label={`${clip.name} clip`}
+          aria-label={`${clip.name} clip, starts at ${formatTimeForA11y(clip.start)}, ${formatTimeForA11y(clip.duration)} long`}
           onMouseEnter={() => onHoverClip?.(clip.id as number)}
           onMouseLeave={() => onHoverClip?.(null)}
           onMouseDown={(e) => {
@@ -953,6 +974,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           opacity: isMuted ? 0.5 : 1,
         }}
         tabIndex={trackTabIndex ?? -1}
+        role="group"
+        aria-label={`${trackName ?? `Track ${trackIndex + 1}`}, ${isLabelTrack ? 'label track' : isMidiTrack ? 'MIDI track' : 'audio track'}`}
         onMouseDown={(e) => {
           // Let the browser focus the .track div so Tab continues from here.
           // The ref tells handleTrackFocus to suppress the red container outline.

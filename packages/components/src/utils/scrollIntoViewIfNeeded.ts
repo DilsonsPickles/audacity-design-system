@@ -27,6 +27,13 @@ export function scrollIntoViewIfNeeded(
     elRect.bottom <= cRect.bottom + tolerance;
 
   if (!fullyVisible) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    // `inline: 'nearest'` rather than 'center' — centring the focused
+    // clip horizontally forces a large scroll for every Tab arrival,
+    // and VoiceOver computes its focus-frame at the moment focus
+    // moves, before the smooth scroll catches up. That leaves the
+    // frame misaligned from the visible clip. 'nearest' scrolls only
+    // enough to bring the clip onto the edge of the viewport, so the
+    // frame ends up close to where the clip actually paints.
+    element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }
 }
