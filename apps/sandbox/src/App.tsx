@@ -824,6 +824,17 @@ function CanvasDemoContent() {
         const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
         e.preventDefault();
         el.scrollLeft += delta;
+        return;
+      }
+
+      // Plain trackpad / wheel — pan in both axes simultaneously so
+      // diagonal two-finger swipes move the canvas freely. We do this
+      // explicitly because Electron / some browsers axis-lock the
+      // native scroll, which made diagonal panning feel sticky.
+      if (e.deltaX !== 0 || e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaX;
+        el.scrollTop += e.deltaY;
       }
     };
 
