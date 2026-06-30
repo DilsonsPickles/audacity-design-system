@@ -613,14 +613,23 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           if (overlapping.length > 0) {
             e.preventDefault();
             const delta = isLeftward ? -0.1 : 0.1;
-            // Make the overlapping set the active selection so the
-            // existing MOVE_SELECTED_CLIPS reducer moves them in one
-            // shot and they stay selected for follow-up gestures.
-            dispatch({ type: 'SELECT_CLIPS', payload: overlapping });
-            dispatch({
-              type: 'MOVE_SELECTED_CLIPS',
-              payload: { deltaSeconds: delta },
-            });
+            // Move each overlapping clip without changing the user's
+            // current selection — MOVE_CLIP just nudges the clip's
+            // start, no SELECT side-effect like MOVE_SELECTED_CLIPS
+            // would have.
+            for (const { trackIndex: ti, clipId } of overlapping) {
+              const clip = state.tracks[ti]?.clips.find((c: any) => c.id === clipId);
+              if (!clip) continue;
+              dispatch({
+                type: 'MOVE_CLIP',
+                payload: {
+                  clipId: clipId as number,
+                  fromTrackIndex: ti,
+                  toTrackIndex: ti,
+                  newStartTime: Math.max(0, (clip as any).start + delta),
+                },
+              });
+            }
             // Slide the time-selection by the same delta so it stays
             // anchored to the clips it moved.
             dispatch({
