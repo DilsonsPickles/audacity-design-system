@@ -11,6 +11,8 @@ import { useClipStretching } from '../hooks/useClipStretching';
 import { useLabelDragging } from '../hooks/useLabelDragging';
 import { useClipMouseDown } from '../hooks/useClipMouseDown';
 import { useContainerClick } from '../hooks/useContainerClick';
+import { resolveOverlap, type ClipPlacement } from '../utils/resolveOverlap';
+import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { LabelRenderer } from './LabelRenderer';
 import { calculateTrackYOffset } from '../utils/trackLayout';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT, CLIP_HEADER_HEIGHT } from '../constants/canvas';
@@ -200,7 +202,7 @@ export function Canvas({
 }: CanvasProps) {
   const { theme } = useTheme();
   const { preferences } = usePreferences();
-  const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode, focusedTrackIndex, splitMode } = useTracksState();
+  const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode, focusedTrackIndex, splitMode, playheadPosition } = useTracksState();
   const { spectralSelection, setSpectralSelection } = useSpectralSelection();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -250,6 +252,12 @@ export function Canvas({
   // Track if we just selected a clip on mouse down to prevent immediate deselection on click
   const justSelectedOnMouseDownRef = useRef(false);
 
+  // Parallel state flag that mirrors the module-scoped
+  // pendingClipMoveResolution ref, so React can lift the moving
+  // clip's z-index while the Cmd hold is in progress. State
+  // triggers re-render; a ref alone can't.
+  const [isCmdArrowMoving, setIsCmdArrowMoving] = useState(false);
+
   // Snap options for grid snapping
   const snapOptions: SnapOptions | undefined = snapEnabled ? {
     timeFormat,
@@ -296,6 +304,24 @@ export function Canvas({
     }
     return new Set<number>([dragState.clip.id]);
   }, [isDraggingClips, clipDragStateRef]);
+
+  // Every selected clip while Cmd/Ctrl is held during a Cmd+Arrow
+  // clip nudge. Used to lift z-index only — the ghost 50% opacity
+  // that mouse-drag applies is intentionally omitted so keyboard
+  // moves render the clip solidly on top of anything it passes over.
+  const raisedClipIds = React.useMemo(() => {
+    if (!isCmdArrowMoving) return new Set<number>();
+    const ids = new Set<number>();
+    tracks.forEach((t) => {
+      t.clips.forEach((c: any) => {
+        if (c.selected) ids.add(c.id);
+      });
+      (t.midiClips || []).forEach((c: any) => {
+        if (c.selected) ids.add(c.id);
+      });
+    });
+    return ids;
+  }, [isCmdArrowMoving, tracks]);
 
   // Clip trimming - extracted to custom hook
   const {
@@ -437,6 +463,46 @@ export function Canvas({
     onHeightChange?.(totalHeight);
   }, [totalHeight, onHeightChange]);
 
+  // Cmd/Ctrl release → apply the deferred overlap resolution from any
+  // Cmd+Arrow clip moves. We build the intent from the *current* clip
+  // positions (post-nudge) so only the final resting places are
+  // reconciled with underlying clips — nothing in between gets eaten.
+  useEffect(() => {
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key !== 'Meta' && e.key !== 'Control') return;
+      if (!pendingClipMoveResolution.current) return;
+      pendingClipMoveResolution.current = false;
+      setIsCmdArrowMoving(false);
+
+      const intent: ClipPlacement[] = [];
+      const movingIds = new Set<number>();
+      tracks.forEach((t, tIndex) => {
+        t.clips.forEach((c: any) => {
+          if (c.selected) {
+            intent.push({
+              clipId: c.id,
+              trackIndex: tIndex,
+              start: c.start,
+              duration: c.duration,
+            });
+            movingIds.add(c.id);
+          }
+        });
+      });
+      if (intent.length === 0) return;
+
+      const resolution = resolveOverlap(tracks as any, intent, movingIds);
+      if (resolution.mutations.length > 0) {
+        dispatch({
+          type: 'APPLY_CLIP_PLACEMENT',
+          payload: { placements: [], mutations: resolution.mutations },
+        });
+      }
+    };
+    document.addEventListener('keyup', onKeyUp);
+    return () => document.removeEventListener('keyup', onKeyUp);
+  }, [tracks, dispatch]);
+
   // Check if any track has spectrogram or split view enabled
   const hasSpectralView = spectrogramMode || tracks.some(track =>
     track.viewMode === 'spectrogram' || track.viewMode === 'split'
@@ -469,6 +535,22 @@ export function Canvas({
       onTimeSelectionFinalized: (sel) => {
         if (sel) {
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
+          // Park DOM focus on the focused track's .track container so
+          // subsequent Tab / Shift+Tab presses hit that track's own
+          // routing (ruler → next track, panel, etc.) instead of
+          // starting from wherever the pointer left focus — commonly
+          // body, which sends Tab off to unrelated toolbar controls.
+          requestAnimationFrame(() => {
+            const active = document.activeElement as HTMLElement | null;
+            const alreadyInTracks = active
+              && active.closest('.track-wrapper, .track-control-panel, [data-track-ruler-index]');
+            if (alreadyInTracks) return;
+            if (focusedTrackIndex === null || focusedTrackIndex === undefined) return;
+            const trackEl = document.querySelector<HTMLElement>(
+              `.track-wrapper[data-track-index="${focusedTrackIndex}"] .track`,
+            );
+            trackEl?.focus({ preventScroll: true });
+          });
         }
       },
       onSelectedTracksChange: (trackIndices) => dispatch({ type: 'SET_SELECTED_TRACKS', payload: trackIndices }),
@@ -544,6 +626,8 @@ export function Canvas({
     pixelsPerSecond,
     dispatch,
     setSpectralSelection,
+    timeSelection,
+    selectedTrackIndices,
     TOP_GAP,
     TRACK_GAP,
     DEFAULT_TRACK_HEIGHT,
@@ -761,6 +845,33 @@ export function Canvas({
         }}
         onMouseDown={(e) => {
           lastMouseButtonRef.current = e.button;
+
+          // Shift+Click on the canvas background extends the current
+          // playhead into a time range selection (handled on click,
+          // not mousedown, so the underlying time-selection hook
+          // doesn't start a drag we then have to clean up). We still
+          // preventDefault on mousedown to keep selection-text drag
+          // from kicking off, and we remember to skip the click that
+          // would normally reposition the playhead.
+          if (
+            !splitMode
+            && e.button === 0
+            && e.shiftKey
+            && !e.metaKey
+            && !e.ctrlKey
+            && !e.altKey
+            && !(e.target as HTMLElement).closest('[data-clip-id]')
+          ) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const ti = resolveTrackIndexFromY(y);
+            if (ti !== null) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }
+
           // --- Split tool intercept (legacy bubble path; kept as a no-op
           //     fallback — the capture handler above takes care of it). ---
           if (splitMode && e.button === 0) {
@@ -850,6 +961,108 @@ export function Canvas({
         }}
         onClick={(e) => {
           if (splitMode) return;
+
+          // Body-click clip deselection: clicking the body of any
+          // clip that isn't currently selected drops the existing
+          // clip selection. Clicking the body of an already-
+          // selected clip (or anywhere outside a clip) doesn't
+          // touch the selection here — header clicks own the
+          // additive / range / toggle paths via ClipHeader's
+          // onClick (which stopPropagation, so we never see them).
+          if (!e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            const bodyClipEl = (e.target as HTMLElement).closest('[data-clip-id]') as HTMLElement | null;
+            if (bodyClipEl) {
+              const cid = Number(bodyClipEl.getAttribute('data-clip-id'));
+              const ti = Number(bodyClipEl.getAttribute('data-track-index'));
+              const t = tracks[ti];
+              const clip = t?.clips.find((c) => c.id === cid)
+                || (t?.midiClips || []).find((c: any) => c.id === cid);
+              if (clip && !(clip as any).selected) {
+                dispatch({ type: 'DESELECT_ALL_CLIPS' });
+              }
+            }
+          }
+
+          // Shift+Click → build a time range from the existing playhead
+          // to the click point, spanning the focused track to the
+          // clicked track. Runs here (not on mousedown) so it sits
+          // after the time-selection hook's mouseup logic and our work
+          // doesn't get wiped out.
+          if (
+            e.shiftKey
+            && !e.metaKey
+            && !e.ctrlKey
+            && !e.altKey
+            && !(e.target as HTMLElement).closest('[data-clip-id]')
+          ) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const ti = resolveTrackIndexFromY(y);
+            if (ti !== null) {
+              const time = Math.max(0, (x - leftPadding) / pixelsPerSecond);
+              const anchorTime = playheadPosition;
+              const startTime = Math.min(anchorTime, time);
+              const endTime = Math.max(anchorTime, time);
+              const anchorTrack = focusedTrackIndex ?? ti;
+              const trackStart = Math.min(anchorTrack, ti);
+              const trackEnd = Math.max(anchorTrack, ti);
+              const selectedTracks: number[] = [];
+              for (let i = trackStart; i <= trackEnd; i++) selectedTracks.push(i);
+              dispatch({
+                type: 'SET_TIME_SELECTION',
+                payload: { startTime, endTime },
+              });
+              dispatch({
+                type: 'SET_SELECTED_TRACKS',
+                payload: selectedTracks,
+              });
+              dispatch({ type: 'SET_FOCUSED_TRACK', payload: ti });
+              return;
+            }
+          }
+
+          // Single-clip lockout: only when the click coordinates fall
+          // INSIDE the single clip's bounds — clicks elsewhere in the
+          // row (empty space to the left / right) should still
+          // reposition the playhead. We hit-test by coordinates so
+          // overlays (envelope layer, canvas waveform, etc.) don't
+          // make the guard miss. Track focus / selection still need
+          // to follow the click — the lockout only stops the
+          // playhead from snapping, not the track from being made
+          // active — so we dispatch those updates before bailing.
+          {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const cx = e.clientX - rect.left;
+            const cy = e.clientY - rect.top;
+            const ti = resolveTrackIndexFromY(cy);
+            if (ti !== null) {
+              const t = tracks[ti];
+              if (t) {
+                const total = t.clips.length + (t.midiClips?.length ?? 0);
+                if (total === 1) {
+                  const only = t.clips[0] || t.midiClips?.[0];
+                  if (only) {
+                    const clipLeft = CLIP_CONTENT_OFFSET + only.start * pixelsPerSecond;
+                    const clipRight = clipLeft + only.duration * pixelsPerSecond;
+                    if (cx >= clipLeft && cx <= clipRight) {
+                      // Preserve the multi-track chord if this track
+                      // is already part of it; otherwise collapse to
+                      // just this track.
+                      const trackInSel = selectedTrackIndices.includes(ti);
+                      if (!trackInSel) {
+                        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [ti] });
+                        setSelectionAnchor?.(null);
+                      }
+                      dispatch({ type: 'SET_FOCUSED_TRACK', payload: ti });
+                      onTrackFocusChange?.(ti, true);
+                      return;
+                    }
+                  }
+                }
+              }
+            }
+          }
           handleContainerClick(e);
         }}
         onContextMenu={(e) => {
@@ -1067,15 +1280,55 @@ export function Canvas({
                     }
                   }, 0);
                 }}
-                onTrackReorder={(direction) => {
+                onTrackReorder={(direction, wasContainerFocused) => {
+                  // If the focused track is part of a multi-track
+                  // selection, move every selected track in lockstep
+                  // — the user expects the group to travel together.
+                  // Otherwise just shift the focused track.
+                  const focusedInSelection = selectedTrackIndices.includes(trackIndex);
+                  const tracksToMove = focusedInSelection && selectedTrackIndices.length > 1
+                    ? [...selectedTrackIndices].sort((a, b) => a - b)
+                    : [trackIndex];
+
+                  // Bounds check the whole group — if any member would
+                  // fall off the top / bottom, abort the entire reorder
+                  // so relative spacing is preserved.
+                  const minIdx = tracksToMove[0];
+                  const maxIdx = tracksToMove[tracksToMove.length - 1];
+                  if (minIdx + direction < 0 || maxIdx + direction >= tracks.length) return;
+
                   const targetIndex = trackIndex + direction;
-                  if (targetIndex < 0 || targetIndex >= tracks.length) return;
-                  // Pre-set container focus on the target index so panel/ruler stay red
-                  onTrackContainerFocusChange?.(targetIndex, true);
-                  dispatch({
-                    type: 'MOVE_TRACK',
-                    payload: { fromIndex: trackIndex, toIndex: targetIndex },
-                  });
+                  // Only carry the container-focused indicator over to
+                  // the target position when it was actually set — i.e.
+                  // the user had Tab-focused the track. Otherwise the
+                  // pre-emptive update would flip the side panel into
+                  // the keyboard (black/white) mode for a track that
+                  // was in mouse (blue) mode, mismatching the wrapper.
+                  if (wasContainerFocused) {
+                    onTrackContainerFocusChange?.(targetIndex, true);
+                  }
+
+                  // Dispatch MOVE_TRACK per selected track. Order matters:
+                  // when moving UP, process ascending so each slot is
+                  // freed before the next member shifts into it; when
+                  // moving DOWN, process descending for the same reason.
+                  const order = direction === -1
+                    ? tracksToMove
+                    : [...tracksToMove].reverse();
+                  for (const from of order) {
+                    dispatch({
+                      type: 'MOVE_TRACK',
+                      payload: { fromIndex: from, toIndex: from + direction },
+                    });
+                  }
+
+                  // Each MOVE_TRACK sets focusedTrackIndex to its own
+                  // toIndex, so after the batch the focused-track
+                  // pointer is on whichever member was moved last
+                  // rather than on the originally focused track. Re-
+                  // pin it explicitly to the focused track's new row.
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
+
                   setTimeout(() => {
                     const target = document.querySelector(
                       `.track-wrapper[data-track-index="${targetIndex}"] .track`
@@ -1099,6 +1352,7 @@ export function Canvas({
                 hoveredClipId={track.type === 'midi' ? hoveredMidiClipId : undefined}
                 onHoverClip={track.type === 'midi' ? onHoverMidiClip : undefined}
                 draggingClipIds={draggingClipIds}
+                raisedClipIds={raisedClipIds}
                 onClipMove={(clipId, deltaSeconds) => {
                   const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
                   if (!clip) return;
@@ -1113,6 +1367,13 @@ export function Canvas({
                     type: 'MOVE_SELECTED_CLIPS',
                     payload: { deltaSeconds },
                   });
+                  // Defer overlap resolution to when the user releases
+                  // Cmd/Ctrl — otherwise a Cmd+Arrow nudge across
+                  // several clips would leave a trail of eaten
+                  // neighbors between the start and end position.
+                  pendingClipMoveResolution.current = true;
+                  setIsCmdArrowMoving(true);
+
                   // Scroll focused clip into view
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -1135,6 +1396,20 @@ export function Canvas({
                     type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
                     payload: { direction: direction as 1 | -1 },
                   });
+                  // Defer overlap resolution to Cmd/Ctrl release — see
+                  // onClipMove above for the same rationale.
+                  pendingClipMoveResolution.current = true;
+                  setIsCmdArrowMoving(true);
+                  // Follow the focused clip with the track-focus state.
+                  // The MOVE_SELECTED_CLIPS_TO_TRACK reducer remaps the
+                  // selected-tracks set but leaves focusedTrackIndex
+                  // where it was — without this, the focused-track
+                  // indicator stays on the source row even though the
+                  // user just moved themselves off it.
+                  const newTrackIndex = trackIndex + direction;
+                  if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
+                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
+                  }
                   // Focus the clip on the new track and scroll into view
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -1185,6 +1460,21 @@ export function Canvas({
                   // No track with clips found — don't move focus
                 }}
                 onClipTrim={(clipId, edge, deltaSeconds) => {
+                  // Pressing [ or ] on a focused clip always makes
+                  // it the selected clip — even when the trim
+                  // itself hits a source boundary and the reducer
+                  // no-ops. Selection is the "you're operating on
+                  // this" signal, independent of whether the edge
+                  // actually moved.
+                  const focusedClip = tracks[trackIndex]?.clips.find((c: any) => c.id === clipId)
+                    || (tracks[trackIndex]?.midiClips || []).find((c: any) => c.id === clipId);
+                  if (focusedClip && !(focusedClip as any).selected) {
+                    dispatch({
+                      type: 'SELECT_CLIP',
+                      payload: { trackIndex, clipId: clipId as number },
+                    });
+                  }
+
                   // Collect every selected clip (audio + MIDI). If the
                   // shortcut was triggered on a not-yet-selected clip we
                   // still trim that one. The same canvas-time delta is
@@ -1213,6 +1503,15 @@ export function Canvas({
                     return true;
                   });
 
+                  // Track each moving clip's final position so we can
+                  // build an overlap-resolution intent after the trims
+                  // are dispatched. This mirrors the mouse-trim path:
+                  // once the trim moves an edge into a neighbor, the
+                  // neighbor gets non-destructively eaten (trim / split
+                  // / delete) the same way it does on drop.
+                  const trimIntent: ClipPlacement[] = [];
+                  const movingIds = new Set<number>();
+
                   for (const { trackIndex: ti, clip } of uniqueTargets) {
                     const stretch = (clip as any).stretchFactor ?? 1;
                     const currentTrimStart = (clip as any).trimStart || 0;
@@ -1226,27 +1525,53 @@ export function Canvas({
                     let newTrimStart = currentTrimStart;
                     let newDuration = currentDuration;
                     let newStart = currentStart;
+                    // Cap the delta up front to what's actually
+                    // available on the affected side. This prevents
+                    // the classic "overshoot" bug where newTrimStart
+                    // clamps to 0 but newDuration still reflects the
+                    // uncapped delta, leaving the clip showing empty
+                    // source at the edge.
+                    let effectiveDelta = deltaSeconds;
 
                     if (edge === 'left') {
-                      if (deltaSeconds < 0 && isAtMaxDuration) continue;
-                      newTrimStart = currentTrimStart + deltaSeconds / stretch;
-                      newDuration = Math.max(0.1, currentDuration - deltaSeconds);
-                      newStart = currentStart + deltaSeconds;
-                      const maxDuration = (fullDuration - newTrimStart) * stretch;
-                      if (newDuration > maxDuration) {
-                        newDuration = maxDuration;
-                        newTrimStart = fullDuration - newDuration / stretch;
-                        newStart = currentStart + (newTrimStart - currentTrimStart) * stretch;
+                      if (deltaSeconds < 0) {
+                        // Extending left — can't reveal more than the
+                        // source already hides on that side.
+                        const availableCanvas = currentTrimStart * stretch;
+                        effectiveDelta = Math.max(deltaSeconds, -availableCanvas);
+                        if (availableCanvas <= 0.0005) continue;
+                      } else {
+                        // Shrinking left — can't cross the right edge.
+                        const maxShrink = Math.max(0, currentDuration - 0.1);
+                        effectiveDelta = Math.min(deltaSeconds, maxShrink);
                       }
+                      newTrimStart = currentTrimStart + effectiveDelta / stretch;
+                      newDuration = Math.max(0.1, currentDuration - effectiveDelta);
+                      newStart = currentStart + effectiveDelta;
                     } else {
-                      if (deltaSeconds < 0 && isAtMaxDuration) continue;
-                      newDuration = Math.max(0.1, currentDuration - deltaSeconds);
-                      const maxDuration = (fullDuration - currentTrimStart) * stretch;
-                      newDuration = Math.min(newDuration, maxDuration);
+                      if (deltaSeconds < 0) {
+                        // Extending right — cap to available tail.
+                        const availableCanvas = (fullDuration - currentTrimStart) * stretch - currentDuration;
+                        effectiveDelta = Math.max(deltaSeconds, -availableCanvas);
+                        if (availableCanvas <= 0.0005 || isAtMaxDuration) continue;
+                      } else {
+                        // Shrinking right — can't cross the left edge.
+                        const maxShrink = Math.max(0, currentDuration - 0.1);
+                        effectiveDelta = Math.min(deltaSeconds, maxShrink);
+                      }
+                      newDuration = Math.max(0.1, currentDuration - effectiveDelta);
                     }
 
                     newTrimStart = Math.max(0, newTrimStart);
-
+                    // Skip the dispatch when nothing actually changed
+                    // (e.g. a delta so small it round-tripped to zero).
+                    if (
+                      Math.abs(newTrimStart - currentTrimStart) < 0.0005
+                      && Math.abs(newDuration - currentDuration) < 0.0005
+                      && Math.abs(newStart - currentStart) < 0.0005
+                    ) {
+                      continue;
+                    }
                     dispatch({
                       type: 'TRIM_CLIP',
                       payload: {
@@ -1257,6 +1582,29 @@ export function Canvas({
                         newStart: edge === 'left' ? newStart : undefined,
                       },
                     });
+
+                    // Record the final position for the overlap pass.
+                    trimIntent.push({
+                      clipId: clip.id as number,
+                      trackIndex: ti,
+                      start: edge === 'left' ? newStart : currentStart,
+                      duration: newDuration,
+                    });
+                    movingIds.add(clip.id as number);
+                  }
+
+                  // Second pass: eat any neighboring clips the trim
+                  // pushed into. resolveOverlap uses the current
+                  // tracks (with untouched underlying positions) and
+                  // the moving clips' new positions from trimIntent.
+                  if (trimIntent.length > 0) {
+                    const resolution = resolveOverlap(tracks as any, trimIntent, movingIds);
+                    if (resolution.mutations.length > 0) {
+                      dispatch({
+                        type: 'APPLY_CLIP_PLACEMENT',
+                        payload: { placements: [], mutations: resolution.mutations },
+                      });
+                    }
                   }
                   // Screen-reader announcement of the resulting duration.
                   // The focused clip's aria-label updates with the new
@@ -1546,6 +1894,16 @@ export function Canvas({
                   // When track background is clicked, set it as focused
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
 
+                  // Body click semantics: if the clicked track is
+                  // already part of a multi-track selection, leave
+                  // the selection intact (the user's chord built via
+                  // Cmd+click headers stays alive). If it isn't part
+                  // of the selection, treat the body click like a
+                  // normal track-row click and select it.
+                  const clickedOnClip = !!(e.target as HTMLElement).closest('[data-clip-id]');
+                  const trackInSelection = selectedTrackIndices.includes(trackIndex);
+                  const preserveSelection = clickedOnClip && trackInSelection;
+
                   // If Shift is held, extend/contract selection (range selection)
                   if (e.shiftKey) {
                     // Use the first selected track as anchor if no anchor is set
@@ -1562,15 +1920,17 @@ export function Canvas({
                       newSelection.push(i);
                     }
                     dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  } else if (preferences.trackSelectionMode === 'follows-focus') {
-                    // Selection-follows-focus mode: a plain click replaces
-                    // the selection with just this track (matches the new
-                    // focus). Modifiers above already handled the
-                    // multi-select cases.
+                  } else if (preferences.trackSelectionMode === 'follows-focus' && !preserveSelection) {
+                    // Selection-follows-focus mode: a plain click
+                    // collapses the selection to just this track,
+                    // unless we're inside a body click on a track
+                    // that's already part of the current multi-
+                    // track selection (chord workflow).
                     dispatch({ type: 'SELECT_TRACK', payload: trackIndex });
                     setSelectionAnchor(trackIndex);
-                  } else {
-                    // Classic mode: plain click only changes focus.
+                  } else if (!preserveSelection) {
+                    // Classic mode (empty-row click, or body click on
+                    // an unselected track): clear the anchor.
                     setSelectionAnchor(null);
                   }
                 }}

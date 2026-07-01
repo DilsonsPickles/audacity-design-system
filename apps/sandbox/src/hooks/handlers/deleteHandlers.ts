@@ -189,7 +189,14 @@ function handleDeleteClips(deps: DeleteHandlerDeps): void {
     // by start time, then immediate previous), falling back to the
     // nearest clip on an adjacent track when the originating track
     // empties out entirely.
-    const focusTarget = findNextClipFocusTarget(state, clipsToDelete, focusedClipInfo);
+    //
+    // Only do the transfer when the user is keyboard-navigating —
+    // a mouse-driven delete (e.g. via context menu, or Delete key
+    // after clicking) shouldn't suddenly drop focus onto a
+    // nearby clip the user wasn't watching.
+    const focusTarget = isKeyboardNavigating
+      ? findNextClipFocusTarget(state, clipsToDelete, focusedClipInfo)
+      : null;
 
     clipsToDelete.forEach(({ trackIndex, clipId }) => {
       dispatch({ type: 'DELETE_CLIP', payload: { trackIndex, clipId } });

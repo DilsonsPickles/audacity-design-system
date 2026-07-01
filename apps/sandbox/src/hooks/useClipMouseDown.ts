@@ -22,6 +22,12 @@ interface ClipMouseDownConfig {
   DEFAULT_TRACK_HEIGHT: number;
   CLIP_HEADER_HEIGHT: number;
   onDragStart?: () => void;
+  /** Active time selection — when the dragged clip overlaps this, the
+   * drag picks up every overlapping clip on the selected tracks. */
+  timeSelection?: { startTime: number; endTime: number; renderOnCanvas?: boolean } | null;
+  /** Tracks the time selection scope is constrained to. Empty list
+   * falls back to every track. */
+  selectedTrackIndices?: number[];
 }
 
 /**
@@ -46,6 +52,8 @@ export function useClipMouseDown({
   pixelsPerSecond,
   dispatch,
   setSpectralSelection,
+  timeSelection,
+  selectedTrackIndices,
   TOP_GAP,
   TRACK_GAP,
   DEFAULT_TRACK_HEIGHT,
@@ -64,6 +72,16 @@ export function useClipMouseDown({
     // case anything has already wired into the React mousedown by
     // the time we get here.
     if (e.metaKey || e.ctrlKey) return;
+
+    // Each fresh mousedown is a new gesture, so clear the "consume the
+    // upcoming click" flags. Without this, a previous drag whose mouseup
+    // landed off-element (and therefore fired no click) leaves the
+    // refs stuck true — silently eating the next clip click and forcing
+    // the user to click a second time. Setting these in mousedown (before
+    // we re-set them below) is safe because the click handler only
+    // checks them after this gesture's own mouseup.
+    didDragRef.current = false;
+    justSelectedOnMouseDownRef.current = false;
 
     if (!containerRef.current) {
       containerPropsOnMouseDown?.(e);
@@ -111,6 +129,74 @@ export function useClipMouseDown({
 
             // Only start drag from the clip header area
             if (y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
+              // If the user is dragging a clip that sits inside the
+              // current time selection, pull every other clip the
+              // selection touches (on the selection's tracks) into the
+              // same drag group so they move together — the dragged
+              // clip becomes the leader, but the whole "time-bracketed"
+              // group rides along. The time selection itself slides
+              // with the group at mouseup via the existing finalize
+              // logic.
+              const EPS = 0.0001;
+              const clipOverlapsSelection =
+                !!timeSelection
+                && clip.start < timeSelection.endTime - EPS
+                && clip.start + clip.duration > timeSelection.startTime + EPS;
+              const scopedTrackIndices = (selectedTrackIndices && selectedTrackIndices.length > 0)
+                ? selectedTrackIndices
+                : tracks.map((_, idx) => idx);
+              const trackInSelectionScope = scopedTrackIndices.includes(trackIndex);
+
+              if (timeSelection && clipOverlapsSelection && trackInSelectionScope) {
+                const members: Array<{ clipId: number; trackIndex: number; startTime: number }> = [];
+                for (const ti of scopedTrackIndices) {
+                  const t = tracks[ti];
+                  if (!t) continue;
+                  for (const c of t.clips) {
+                    if (
+                      c.start < timeSelection.endTime - EPS
+                      && c.start + c.duration > timeSelection.startTime + EPS
+                    ) {
+                      members.push({ clipId: c.id, trackIndex: ti, startTime: c.start });
+                    }
+                  }
+                }
+                // Make sure the dragged clip is in the group even if a
+                // floating-point edge case would have excluded it.
+                if (!members.some((m) => m.clipId === clip.id && m.trackIndex === trackIndex)) {
+                  members.push({ clipId: clip.id, trackIndex, startTime: clip.start });
+                }
+
+                // Promote every overlapping clip to selected so the
+                // existing multi-clip drag path picks them up, then
+                // hide the time-selection bracket — once the drag
+                // starts the bracket has done its job, and clearing
+                // it also prevents MOVE_CLIP's reducer from sliding
+                // it once per member (which would compound the shift).
+                dispatch({
+                  type: 'SELECT_CLIPS',
+                  payload: members.map((m) => ({
+                    trackIndex: m.trackIndex,
+                    clipId: m.clipId,
+                  })),
+                });
+                dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+
+                clipDragStateRef.current = {
+                  clip,
+                  trackIndex,
+                  offsetX: x - clipX,
+                  initialX: x,
+                  initialTrackIndex: trackIndex,
+                  initialStartTime: clip.start,
+                  selectedClipsInitialPositions: members,
+                };
+                didDragRef.current = false;
+                onDragStart?.();
+                e.stopPropagation();
+                return;
+              }
+
               // If clicking on an unselected clip, select it exclusively first
               // and only include this clip in the drag
               let selectedClipsInitialPositions;
@@ -180,6 +266,19 @@ export function useClipMouseDown({
               onDragStart?.();
 
               // Only block propagation for header clicks (drag initiation)
+              e.stopPropagation();
+              return;
+            }
+
+            // Single-clip lockout: when the clicked clip is the sole
+            // clip on its track, the body is a passive surface —
+            // clicking it shouldn't kick off a time-selection drag,
+            // which would clear the time selection and snap the
+            // playhead at mouseup. The click event has a matching
+            // guard in Canvas's onClick.
+            const trackClipCount = tracks[trackIndex].clips.length
+              + (tracks[trackIndex].midiClips?.length ?? 0);
+            if (trackClipCount === 1) {
               e.stopPropagation();
               return;
             }

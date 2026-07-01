@@ -208,10 +208,14 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
         pos => pos.clipId === dragState.clip.id
       );
 
+      // Vertical delta from the leader clip's initial track — used both
+      // to position multi-clip members and to recompute the active-tracks
+      // set when the leader crosses a track boundary.
+      let deltaTrack = newTrackIndex - dragState.initialTrackIndex;
+
       if (hasMultipleSelected && isDraggedClipSelected) {
         // Calculate the delta from the dragged clip's INITIAL position
         let deltaTime = newStartTime - dragState.initialStartTime;
-        const deltaTrack = newTrackIndex - dragState.initialTrackIndex;
 
         // Find the leftmost clip in the selection
         const leftmostClipStartTime = Math.min(
@@ -223,9 +227,22 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
           deltaTime = -leftmostClipStartTime;
         }
 
+        // Clamp deltaTrack to the group's bounds so the topmost clip
+        // doesn't push past 0 (and the bottommost past tracks.length-1)
+        // by collapsing siblings onto a single track. The whole group
+        // stops moving vertically the moment any member would clip.
+        const groupInitialTracks = dragState.selectedClipsInitialPositions!.map(
+          (pos: { trackIndex: number }) => pos.trackIndex,
+        );
+        const topmostInitialTrack = Math.min(...groupInitialTracks);
+        const bottommostInitialTrack = Math.max(...groupInitialTracks);
+        const minAllowedDeltaTrack = -topmostInitialTrack;
+        const maxAllowedDeltaTrack = (tracks.length - 1) - bottommostInitialTrack;
+        deltaTrack = Math.max(minAllowedDeltaTrack, Math.min(maxAllowedDeltaTrack, deltaTrack));
+
         // Move all selected clips by the same delta from their INITIAL positions
         dragState.selectedClipsInitialPositions!.forEach((initialPos: { clipId: number; trackIndex: number; startTime: number }) => {
-          const targetTrackIndex = Math.max(0, Math.min(tracks.length - 1, initialPos.trackIndex + deltaTrack));
+          const targetTrackIndex = initialPos.trackIndex + deltaTrack;
           const targetStartTime = initialPos.startTime + deltaTime;
 
           // Find the current track index of this clip (it may have moved already)
@@ -261,11 +278,30 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
         });
       }
 
-      // Update drag state if track changed
+      // Update drag state if track changed.
       if (newTrackIndex !== dragState.trackIndex) {
         dragState.trackIndex = newTrackIndex;
-        // Update selected track when clip moves to a different track
-        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [newTrackIndex] });
+        if (hasMultipleSelected && isDraggedClipSelected) {
+          // Replace the active-tracks set with the union of destination
+          // tracks for every moving clip — the user expects the tracks
+          // that now host the dragged clips to be active, not the ones
+          // the clips just vacated.
+          const destTracks = new Set<number>();
+          dragState.selectedClipsInitialPositions!.forEach((initialPos: { trackIndex: number }) => {
+            const target = Math.max(0, Math.min(tracks.length - 1, initialPos.trackIndex + deltaTrack));
+            destTracks.add(target);
+          });
+          dispatch({
+            type: 'SET_SELECTED_TRACKS',
+            payload: [...destTracks].sort((a, b) => a - b),
+          });
+        } else {
+          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [newTrackIndex] });
+        }
+        // Move the focused-track state along with the leader clip so
+        // keyboard focus and the focus ring follow the drag instead of
+        // stranding on the originating track.
+        dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
       }
     };
 

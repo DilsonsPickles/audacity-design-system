@@ -121,6 +121,15 @@ export interface ClipProps {
   midiNotes?: MidiNote[];
   /** Force header hover state (e.g. when hovering the corresponding clip strip in piano roll) */
   forceHeaderHover?: boolean;
+  /** When set, briefly renders a shake bar on the given edge. Cleared
+   *  by the caller after the animation duration; each transition
+   *  from null → 'left' | 'right' restarts the animation. */
+  shakeEdge?: 'left' | 'right' | null;
+  /** Monotonically-increasing counter that bumps whenever the shake
+   *  is retriggered — used as the shake element's React key so a
+   *  fresh DOM node is created and the CSS animation restarts, even
+   *  when the same edge is hit twice in quick succession. */
+  shakeToken?: number;
 }
 
 /**
@@ -171,11 +180,29 @@ const ClipComponent: React.FC<ClipProps> = ({
   spectrogramScale,
   midiNotes,
   forceHeaderHover = false,
+  shakeEdge = null,
+  shakeToken = 0,
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
   const [trimEdge, setTrimEdge] = useState<'left' | 'right' | null>(null);
   const [stretchEdge, setStretchEdge] = useState<'left' | 'right' | null>(null);
+  const outerRef = React.useRef<HTMLDivElement>(null);
+
+  // Restart the source-boundary shake animation on every trigger.
+  // The CSS keyframes are wired via [data-shake-edge], but changing
+  // an attribute doesn't restart a running animation. We disable the
+  // animation inline, then re-enable on the next animation frame —
+  // no synchronous reflow, so the keypress itself stays snappy.
+  React.useEffect(() => {
+    if (!shakeEdge || !outerRef.current) return;
+    const el = outerRef.current;
+    el.style.animation = 'none';
+    const rafId = requestAnimationFrame(() => {
+      el.style.animation = '';
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [shakeEdge, shakeToken]);
 
   const isTruncated = height <= MIN_CLIP_HEIGHT;
   const showHeader = !isTruncated || isHovering;
@@ -280,11 +307,13 @@ const ClipComponent: React.FC<ClipProps> = ({
 
   return (
     <div
+      ref={outerRef}
       className={className}
       style={{ width: `${width}px`, height: `${height}px`, position: 'relative' }}
       data-color={color}
       data-state={state}
       data-selected={selected}
+      data-shake-edge={shakeEdge || undefined}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseMove={handleMouseMove}
@@ -314,11 +343,12 @@ const ClipComponent: React.FC<ClipProps> = ({
             timeSelectionRange={timeSelectionRange}
             pixelsPerSecond={pixelsPerSecond}
             onClick={(e) => {
-              // Cmd / Ctrl is the host app's grab-to-pan modifier —
-              // don't treat header clicks as additive selection.
-              if (e.metaKey || e.ctrlKey) return;
+              // The clip header is the only surface that registers
+              // selection clicks (plain, shift+range, cmd+toggle) —
+              // body clicks with modifiers are intentionally no-ops
+              // so the body stays a pure time-selection / pan surface.
               e.stopPropagation();
-              onHeaderClick?.(e.shiftKey, false);
+              onHeaderClick?.(e.shiftKey, e.metaKey || e.ctrlKey);
             }}
             onMenuClick={(e) => {
               e.stopPropagation();

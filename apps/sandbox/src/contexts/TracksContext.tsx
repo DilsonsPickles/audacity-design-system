@@ -876,14 +876,33 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
     case 'SELECT_CLIP_RANGE': {
       const { trackIndex, clipId } = action.payload;
 
-      // If no last selected clip, or last selected clip is on different track, behave like SELECT_CLIP
-      if (!state.lastSelectedClip || state.lastSelectedClip.trackIndex !== trackIndex) {
+      // Helper: look up a clip on a given track, in either audio or midi pool.
+      const findClipOn = (ti: number, cid: number) => {
+        const t = state.tracks[ti];
+        if (!t) return null;
+        const audio = t.clips.find(c => c.id === cid);
+        if (audio) return audio;
+        return (t.midiClips || []).find(c => c.id === cid) || null;
+      };
+
+      const targetClip = findClipOn(trackIndex, clipId);
+
+      // With no anchor (or the anchor's clip has disappeared), the shift-click
+      // collapses to a plain single-clip selection and becomes the new anchor.
+      const anchorRef = state.lastSelectedClip;
+      const anchorClip = anchorRef ? findClipOn(anchorRef.trackIndex, anchorRef.clipId) : null;
+
+      if (!targetClip || !anchorRef || !anchorClip) {
         const newTracks = state.tracks.map((track, tIndex) => ({
           ...track,
           clips: track.clips.map(clip => ({
             ...clip,
-            selected: tIndex === trackIndex && clip.id === clipId
-          }))
+            selected: tIndex === trackIndex && clip.id === clipId,
+          })),
+          midiClips: track.midiClips?.map(clip => ({
+            ...clip,
+            selected: tIndex === trackIndex && clip.id === clipId,
+          })),
         }));
 
         const expandedTracks = expandSelectionToGroups(newTracks);
@@ -902,51 +921,36 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         };
       }
 
-      // Get clips on the same track and sort by start time
-      const track = state.tracks[trackIndex];
-      const sortedClips = [...track.clips].sort((a, b) => a.start - b.start);
+      // Box-select: build the invisible bounding rectangle that spans both
+      // the anchor and the shift-clicked clip, then mark every clip whose
+      // time range overlaps the box and whose track is inside the band as
+      // selected. Works in any direction (right+down, left+up, same track,
+      // etc.) because we use min/max on both axes.
+      const timeStart = Math.min(anchorClip.start, targetClip.start);
+      const timeEnd = Math.max(
+        anchorClip.start + anchorClip.duration,
+        targetClip.start + targetClip.duration,
+      );
+      const trackMin = Math.min(anchorRef.trackIndex, trackIndex);
+      const trackMax = Math.max(anchorRef.trackIndex, trackIndex);
+      const EPS = 0.0001;
 
-      // Find indices of the last selected clip and the newly clicked clip
-      const lastClipIndex = sortedClips.findIndex(c => c.id === state.lastSelectedClip!.clipId);
-      const newClipIndex = sortedClips.findIndex(c => c.id === clipId);
-
-      if (lastClipIndex === -1 || newClipIndex === -1) {
-        // Fallback to single selection if clips not found
-        const newTracks = state.tracks.map((track, tIndex) => ({
-          ...track,
-          clips: track.clips.map(clip => ({
-            ...clip,
-            selected: tIndex === trackIndex && clip.id === clipId
-          }))
-        }));
-
-        const expandedTracks = expandSelectionToGroups(newTracks);
-        const sti: number[] = [];
-        expandedTracks.forEach((t, idx) => {
-          if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) sti.push(idx);
-        });
-
-        return {
-          ...state,
-          tracks: expandedTracks,
-          selectedTrackIndices: sti.length > 0 ? sti : [trackIndex],
-          focusedTrackIndex: trackIndex,
-          selectedLabelIds: [],
-          lastSelectedClip: { trackIndex, clipId },
-        };
-      }
-
-      // Select all clips between (inclusive) the last selected and newly clicked
-      const startIndex = Math.min(lastClipIndex, newClipIndex);
-      const endIndex = Math.max(lastClipIndex, newClipIndex);
-      const clipsToSelect = new Set(sortedClips.slice(startIndex, endIndex + 1).map(c => c.id));
+      const clipInBox = (c: { start: number; duration: number }, tIndex: number) =>
+        tIndex >= trackMin
+        && tIndex <= trackMax
+        && c.start < timeEnd - EPS
+        && c.start + c.duration > timeStart + EPS;
 
       const newTracks = state.tracks.map((track, tIndex) => ({
         ...track,
         clips: track.clips.map(clip => ({
           ...clip,
-          selected: tIndex === trackIndex && clipsToSelect.has(clip.id)
-        }))
+          selected: clipInBox(clip, tIndex),
+        })),
+        midiClips: track.midiClips?.map(clip => ({
+          ...clip,
+          selected: clipInBox(clip, tIndex),
+        })),
       }));
 
       const expandedTracks = expandSelectionToGroups(newTracks);
@@ -961,8 +965,9 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: sti.length > 0 ? sti : [trackIndex],
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [],
-        // Keep lastSelectedClip as the anchor for future range selections
-        lastSelectedClip: state.lastSelectedClip,
+        // Preserve the anchor so chained shift-clicks always extend from
+        // the original selection point, not the most recent one.
+        lastSelectedClip: anchorRef,
       };
     }
 
@@ -1085,19 +1090,42 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
 
     case 'MOVE_SELECTED_CLIPS': {
       const { deltaSeconds } = action.payload;
+
+      // Find the leftmost selected clip. Clamp the group's shared
+      // delta so that clip never crosses time 0 — otherwise a
+      // leftward move where the leftmost clip hits 0 would
+      // individually clamp only that clip and collapse the others
+      // into it, breaking the group's relative spacing.
+      let leftmostStart = Infinity;
       let firstSelectedClip: { start: number; duration: number } | null = null;
+      state.tracks.forEach(track => {
+        track.clips.forEach(clip => {
+          if (clip.selected) {
+            if (clip.start < leftmostStart) leftmostStart = clip.start;
+            if (!firstSelectedClip) firstSelectedClip = clip;
+          }
+        });
+        track.midiClips?.forEach(clip => {
+          if (clip.selected) {
+            if (clip.start < leftmostStart) leftmostStart = clip.start;
+            if (!firstSelectedClip) firstSelectedClip = clip;
+          }
+        });
+      });
+
+      const clampedDelta = leftmostStart !== Infinity && leftmostStart + deltaSeconds < 0
+        ? -leftmostStart
+        : deltaSeconds;
 
       const newTracks = state.tracks.map(track => ({
         ...track,
         clips: track.clips.map(clip => {
           if (!clip.selected) return clip;
-          if (!firstSelectedClip) firstSelectedClip = clip;
-          return { ...clip, start: Math.max(0, clip.start + deltaSeconds) };
+          return { ...clip, start: clip.start + clampedDelta };
         }),
         midiClips: track.midiClips?.map(clip => {
           if (!clip.selected) return clip;
-          if (!firstSelectedClip) firstSelectedClip = clip;
-          return { ...clip, start: Math.max(0, clip.start + deltaSeconds) };
+          return { ...clip, start: clip.start + clampedDelta };
         }),
       }));
 
@@ -1106,18 +1134,18 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
       if (state.timeSelection) {
         newTimeSelection = {
           ...state.timeSelection,
-          startTime: state.timeSelection.startTime + deltaSeconds,
-          endTime: state.timeSelection.endTime + deltaSeconds,
+          startTime: state.timeSelection.startTime + clampedDelta,
+          endTime: state.timeSelection.endTime + clampedDelta,
         };
       }
 
       // Update clip duration indicator for the first selected clip
       let newClipDurationIndicator = state.clipDurationIndicator;
       if (firstSelectedClip) {
-        const newStart = Math.max(0, firstSelectedClip.start + deltaSeconds);
+        const newStart = (firstSelectedClip as { start: number }).start + clampedDelta;
         newClipDurationIndicator = {
           startTime: newStart,
-          endTime: newStart + firstSelectedClip.duration,
+          endTime: newStart + (firstSelectedClip as { start: number; duration: number }).duration,
         };
       }
 

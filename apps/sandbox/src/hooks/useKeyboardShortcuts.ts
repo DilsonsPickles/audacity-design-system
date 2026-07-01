@@ -8,6 +8,7 @@ import { handleDelete } from './handlers/deleteHandlers';
 import { handleSpacebar, handleRecordToggle, handleEffectsToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
+import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 
 export interface ClipboardState {
   clips: any[];
@@ -564,7 +565,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //     playhead.
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         if (e.defaultPrevented) return;
-        if (e.altKey) return; // Alt+Arrow is reserved for stretch / reorder
+        // Alt+Shift+Arrow is the clip time-stretch chord (handled by
+        // the clip's own onKeyDown). Everything else with Alt is
+        // fair game: plain Alt+Arrow is the fast playhead nudge.
+        if (e.altKey && e.shiftKey) return;
         const target = e.target as HTMLElement;
         const tag = target.tagName;
         // Skip when the focused element owns arrow keys for its own
@@ -612,46 +616,67 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           }
           if (overlapping.length > 0) {
             e.preventDefault();
-            const delta = isLeftward ? -0.1 : 0.1;
-            // Move each overlapping clip without changing the user's
-            // current selection — MOVE_CLIP just nudges the clip's
-            // start, no SELECT side-effect like MOVE_SELECTED_CLIPS
-            // would have.
-            for (const { trackIndex: ti, clipId } of overlapping) {
-              const clip = state.tracks[ti]?.clips.find((c: any) => c.id === clipId);
-              if (!clip) continue;
-              dispatch({
-                type: 'MOVE_CLIP',
-                payload: {
-                  clipId: clipId as number,
-                  fromTrackIndex: ti,
-                  toTrackIndex: ti,
-                  newStartTime: Math.max(0, (clip as any).start + delta),
-                },
-              });
-            }
-            // Slide the time-selection by the same delta so it stays
-            // anchored to the clips it moved.
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                startTime: Math.max(0, startTime + delta),
-                endTime: Math.max(0, endTime + delta),
-              },
+            // Alt = fast (1s), plain = fine (0.1s). Matches the
+            // playhead-nudge and focused-clip Cmd+Arrow conventions.
+            const step = e.altKey ? 1.0 : 0.1;
+            const delta = isLeftward ? -step : step;
+            // Mirror the drag-into-time-selection behaviour: promote
+            // every overlapping clip to selected and drop the time
+            // selection, then move the group as one. Subsequent
+            // Cmd+Arrow presses move the same group without needing
+            // to re-find overlappers — the selection is now what
+            // "the group" means.
+            const anyUnselected = overlapping.some(({ trackIndex: ti, clipId }) => {
+              const c = state.tracks[ti]?.clips.find((cc: any) => cc.id === clipId);
+              return c && !(c as any).selected;
             });
+            if (anyUnselected) {
+              dispatch({
+                type: 'SELECT_CLIPS',
+                payload: overlapping.map(({ trackIndex, clipId }) => ({
+                  trackIndex,
+                  clipId,
+                })),
+              });
+              dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            }
+            dispatch({
+              type: 'MOVE_SELECTED_CLIPS',
+              payload: { deltaSeconds: delta },
+            });
+            // Signal Canvas's Cmd/Ctrl keyup handler to run
+            // resolveOverlap once the modifier is released.
+            pendingClipMoveResolution.current = true;
             return;
           }
         }
 
-        // Cmd+Arrow is now strictly "move the thing under the
-        // gesture" — focused clip, time-selection clips, otherwise
-        // do nothing. The 1 s playhead jump lives on , / . so that
-        // shortcut never silently changes meaning.
+        // Cmd+Arrow is "move the thing under the gesture" — focused
+        // clip, time-selection clips, or the current clip selection
+        // (which is what a first-press-with-time-selection promoted
+        // itself to). No fallback playhead jump; , / . and Alt+Arrow
+        // own that.
         if (cmdHeld) {
+          const hasSelectedClip = state.tracks.some((t: any) =>
+            t.clips.some((c: any) => c.selected)
+            || (t.midiClips || []).some((c: any) => c.selected),
+          );
+          if (hasSelectedClip) {
+            e.preventDefault();
+            const step = e.altKey ? 1.0 : 0.1;
+            const delta = isLeftward ? -step : step;
+            dispatch({
+              type: 'MOVE_SELECTED_CLIPS',
+              payload: { deltaSeconds: delta },
+            });
+            pendingClipMoveResolution.current = true;
+          }
           return;
         }
         e.preventDefault();
-        handlePlayheadMove(e, isLeftward, 0.1, playheadDeps);
+        // Alt = fast playhead (1 s); plain = fine playhead (0.1 s).
+        const nudgeAmount = e.altKey ? 1.0 : 0.1;
+        handlePlayheadMove(e, isLeftward, nudgeAmount, playheadDeps);
         return;
       }
 

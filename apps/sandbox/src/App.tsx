@@ -983,9 +983,14 @@ function CanvasDemoContent() {
         return { startTime, endTime };
       }
     }
-    // Show time selection, or clip duration indicator if no time selection exists
-    return state.timeSelection || state.clipDurationIndicator;
-  }, [spectralSelection, state.timeSelection, state.clipDurationIndicator, state.tracks]);
+    // Show only the user-drawn time selection in the ruler — never a
+    // selected clip's auto-generated duration indicator. Keyboard nudges
+    // (MOVE_CLIP / MOVE_SELECTED_CLIPS) still write to
+    // state.clipDurationIndicator internally, but we deliberately don't
+    // surface it; a selected clip's bounds shouldn't masquerade as a
+    // time range in the ruler.
+    return state.timeSelection;
+  }, [spectralSelection, state.timeSelection, state.tracks]);
 
   // Project management
   const { createNewProject, handleSaveToComputer, openProjectFromFile } = useProjectManagement({

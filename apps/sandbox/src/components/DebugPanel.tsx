@@ -492,7 +492,7 @@ export function DebugPanel({
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
-                <strong>Classic</strong> — focus and selection are independent. Arrow keys move focus only; Shift+Click / Cmd+Click change selection. Option+Arrow reorders tracks.
+                <strong>Classic</strong> — focus and selection are independent. Arrow keys move focus only; Shift+Click / Cmd+Click change selection. Cmd+Arrow reorders tracks.
               </span>
             </label>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
@@ -504,7 +504,7 @@ export function DebugPanel({
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
-                <strong>Selection follows focus</strong> — plain clicks and arrow keys move focus AND replace selection. Hold <em>Cmd</em> on Arrow / Enter to decouple: peek without changing selection (Cmd+Arrow), or toggle non-contiguously (Cmd+Enter, Cmd+Click on a side-panel header). Shift extends a contiguous range. Option+Arrow reorders tracks.
+                <strong>Selection follows focus</strong> — plain clicks and arrow keys move focus AND replace selection. Hold <em>Alt</em> on Arrow to peek (focus moves, selection stays). Hold <em>Cmd</em> on Enter to toggle non-contiguously (Cmd+Enter, Cmd+Click on a side-panel header). Shift extends a contiguous range. Cmd+Arrow reorders tracks.
               </span>
             </label>
           </div>

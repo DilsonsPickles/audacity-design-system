@@ -112,6 +112,17 @@ export function useContainerClick({
         containerPropsOnClick(e);
       }
 
+      // Detect whether the click landed inside a clip body. Body
+      // clicks change track selection differently from empty-row
+      // clicks: when the clicked track is already part of a multi-
+      // track selection (built via Cmd+click on headers), the
+      // selection stays intact. When it isn't, the click collapses
+      // the selection to just this track (so the user's focus
+      // and selection stay aligned with where they clicked).
+      const clickTarget = (e.target as HTMLElement).closest('[data-clip-id]');
+      const clickedOnClip = !!clickTarget;
+      const clickedTrackInSelection = selectedTrackIndices.includes(clickedTrackIndex);
+
       // Clicked on a track - handle selection based on Shift key
       if (e.shiftKey) {
         // Shift+Click: Range selection
@@ -128,8 +139,10 @@ export function useContainerClick({
           newSelection.push(i);
         }
         dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-      } else {
-        // Normal click - select only clicked track
+      } else if (!clickedOnClip || !clickedTrackInSelection) {
+        // Either an empty-row click, or a body click on a track
+        // that isn't part of the current multi-track selection —
+        // collapse to just this track.
         dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
         // Clear anchor
         setSelectionAnchor(null);

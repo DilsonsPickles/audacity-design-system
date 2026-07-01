@@ -269,9 +269,13 @@ export interface TrackProps {
 
   /**
    * Callback when Cmd+ArrowUp/Down is pressed on the track container to reorder the track.
-   * Direction: 1 = move down, -1 = move up.
+   * Direction: 1 = move down, -1 = move up. The `wasContainerFocused`
+   * flag tells the host whether the .track div was in the keyboard
+   * (black/white) focus mode at the time of the reorder — the host
+   * uses it to decide whether to carry that mode over to the new
+   * track position.
    */
-  onTrackReorder?: (direction: 1 | -1) => void;
+  onTrackReorder?: (direction: 1 | -1, wasContainerFocused: boolean) => void;
 
   /**
    * Callback when the track container itself gains or loses keyboard focus.
@@ -314,6 +318,13 @@ export interface TrackProps {
    * Set of clip ids currently being dragged. Drawn at reduced opacity and elevated z-index.
    */
   draggingClipIds?: ReadonlySet<number>;
+  /**
+   * Set of clip ids that should render on top of siblings without
+   * the mouse-drag ghost opacity. Used by keyboard clip nudges
+   * (Cmd+Arrow) so the moving clip sits solidly over anything it
+   * passes over during the hold, then settles once Cmd is released.
+   */
+  raisedClipIds?: ReadonlySet<number>;
 
 }
 
@@ -380,6 +391,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   hoveredClipId,
   onHoverClip,
   draggingClipIds,
+  raisedClipIds,
 }) => {
   const { theme } = useTheme();
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
@@ -390,6 +402,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [isContainerFocused, setIsContainerFocused] = React.useState(false);
   const [isDraggingDivider, setIsDraggingDivider] = React.useState(false);
   const [dividerHover, setDividerHover] = React.useState(false);
+  // Which clip (if any) should render the source-boundary shake bar,
+  // and on which edge. Each trigger increments `token` so the shake
+  // element remounts even when the same edge is retriggered before
+  // the animation completes.
+  const [shakeState, setShakeState] = React.useState<{ clipId: string | number; edge: 'left' | 'right'; token: number } | null>(null);
+  const shakeTimeoutRef = React.useRef<number | null>(null);
   const trackRef = React.useRef<HTMLDivElement>(null);
   const focusFromMouseRef = React.useRef(false);
   const trackClickXRef = React.useRef<number | null>(null);
@@ -514,6 +532,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const clipSelected = (clip as any).selected || false;
       const isClipHovered = hoveredClipId != null && clip.id === hoveredClipId;
       const isDragging = draggingClipIds?.has(clip.id as number) ?? false;
+      const isRaised = raisedClipIds?.has(clip.id as number) ?? false;
 
       return (
         <div
@@ -537,7 +556,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // a near-zero rect.
             width: `${Math.round(clipWidth)}px`,
             height: `${height}px`,
-            zIndex: isDragging ? 10 : 2, // Dragged clips float above all others; above clip header recess (z-index: 1) otherwise
+            // Dragged and Cmd+Arrow-raised clips float above siblings
+            // (mouse drag also dims to a 50% ghost; keyboard raise
+            // stays solid so the moving clip reads as "still there").
+            zIndex: isDragging || isRaised ? 10 : 2,
             opacity: isDragging ? 0.5 : undefined,
           }}
           tabIndex={isFlatNavigation ? 0 : (isFirstClip && tabIndex !== undefined ? tabIndex : -1)}
@@ -554,32 +576,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             (e.currentTarget as HTMLElement).setAttribute('data-focus-mouse', '');
           }}
           onClick={(e) => {
-            // Handle clicks on the clip body — header clicks are handled by ClipHeader's onClick
-            // which calls e.stopPropagation(), so this only fires for body clicks.
-            // Skip clip selection if the user dragged (e.g. time selection).
-            const downPos = mouseDownPosRef.current;
+            // The clip body is a pass-through for time-selection / pan
+            // gestures — modifier-clicks intentionally do not register
+            // as clip selection here. Header clicks (handled by
+            // ClipHeader's onClick, which stops propagation) are the
+            // only path to plain / shift+range / cmd+toggle selection.
+            // We still consume mouseDownPosRef so a body drag doesn't
+            // leave stale state for the next click.
             mouseDownPosRef.current = null;
-            if (downPos) {
-              const dx = e.clientX - downPos.x;
-              const dy = e.clientY - downPos.y;
-              if (dx * dx + dy * dy > 9) return; // >3px = drag, not click
-            }
-            // Cmd / Ctrl on a clip body toggles the clip in/out of the
-            // selection (additive multi-select). Cmd is also the
-            // canvas-background grab-to-pan modifier, but pan only
-            // engages on a drag — a quick click without movement
-            // falls through to here and should manipulate selection.
-            if (e.metaKey || e.ctrlKey) {
-              e.stopPropagation();
-              onClipClick?.(clip.id, false, true);
-              return;
-            }
-            // Body clicks place the cursor (handled by time selection system),
-            // not select the clip. Only Shift body clicks trigger clip selection.
-            if (e.shiftKey) {
-              e.stopPropagation();
-              onClipClick?.(clip.id, true, false);
-            }
+            void e;
           }}
           onFocus={(e) => {
             if (clipFocusFromMouseRef.current) {
@@ -640,10 +645,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
-            // Move clip horizontally with Cmd+Arrow Left/Right
+            // Move clip horizontally with Cmd+Arrow Left/Right.
+            // Alt acts as the speed modifier — same convention as the
+            // playhead nudge: plain = 0.1s, Alt = 1s.
             if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey) {
               e.preventDefault();
-              const moveAmount = 0.1; // Move by 0.1 seconds
+              const moveAmount = e.altKey ? 1.0 : 0.1;
               const delta = e.key === 'ArrowRight' ? moveAmount : -moveAmount;
               onClipMove?.(clip.id, delta);
               return;
@@ -679,40 +686,121 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
-            // Expand clip with Shift+Arrow keys (trim with Cmd+Shift+Arrow).
-            // Skip when Alt is held — that combo belongs to the stretch
-            // branch above so trim doesn't double-fire.
-            if (e.shiftKey && !e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            // Clip-edge editor lives on the bracket keys now (the
+            // Shift+Arrow / Cmd+Shift+Arrow trim shortcuts have been
+            // removed to keep arrows purely for matrix nav):
+            //   [        → extend the left edge outward
+            //   ]        → extend the right edge outward
+            //   Shift+[  → shrink the left edge inward
+            //   Shift+]  → shrink the right edge inward
+            // Sign convention matches onClipTrim: positive delta
+            // shrinks, negative delta grows.
+            //
+            // Match against e.code, e.key, AND e.keyCode so keyboard
+            // layout quirks don't stop the shortcut from firing.
+            const isBracketLeft = e.code === 'BracketLeft'
+              || e.key === '[' || e.key === '{'
+              || (e as any).keyCode === 219;
+            const isBracketRight = e.code === 'BracketRight'
+              || e.key === ']' || e.key === '}'
+              || (e as any).keyCode === 221;
+            if ((isBracketLeft || isBracketRight) && !e.metaKey && !e.ctrlKey && !e.altKey) {
               e.preventDefault();
-              const trimAmount = 0.1; // Trim by 0.1 seconds
-              const isTrimming = e.metaKey || e.ctrlKey;
-              // For expand (Shift only): ArrowLeft → left, ArrowRight → right
-              // For trim (Cmd+Shift): ArrowLeft → right, ArrowRight → left
-              const edge = isTrimming
-                ? (e.key === 'ArrowLeft' ? 'right' : 'left')
-                : (e.key === 'ArrowLeft' ? 'left' : 'right');
-              const delta = isTrimming ? trimAmount : -trimAmount; // Negative delta = expand
+              e.stopPropagation();
+              const editAmount = 0.1;
+              const edge = isBracketLeft ? 'left' : 'right';
+              const isExtending = !e.shiftKey;
+              const delta = e.shiftKey ? editAmount : -editAmount;
+
+              // Boundary check: if the user is trying to EXTEND (not
+              // shrink) and there's no more source audio to reveal
+              // on that side, don't dispatch the trim — fire the
+              // shake animation so the shortcut isn't silent.
+              // Mirrors the "cap the delta to available" logic in
+              // Canvas.onClipTrim: `available` is measured in canvas
+              // seconds, matching how the delta is applied.
+              const BOUNDARY_EPS = 0.0005;
+              const stretch = (clip as any).stretchFactor ?? 1;
+              const trimStart = (clip as any).trimStart ?? 0;
+              const fullDuration = (clip as any).fullDuration
+                ?? (trimStart + clip.duration / stretch);
+              const availableLeft = trimStart * stretch;
+              const availableRight = (fullDuration - trimStart) * stretch - clip.duration;
+              const blocked = isExtending && (
+                (edge === 'left' && availableLeft <= BOUNDARY_EPS)
+                || (edge === 'right' && availableRight <= BOUNDARY_EPS)
+              );
+
+              if (blocked) {
+                // Bump the shake state so React remounts the shake
+                // element (each token change → fresh DOM node → fresh
+                // animation). Clear after the animation completes.
+                setShakeState((prev) => ({
+                  clipId: clip.id,
+                  edge,
+                  token: (prev?.token ?? 0) + 1,
+                }));
+                if (shakeTimeoutRef.current !== null) {
+                  window.clearTimeout(shakeTimeoutRef.current);
+                }
+                shakeTimeoutRef.current = window.setTimeout(() => {
+                  setShakeState(null);
+                  shakeTimeoutRef.current = null;
+                }, 460);
+              }
+
+              // Fire onClipTrim regardless of the blocked-shake state
+              // so Canvas can select the focused clip. Canvas has its
+              // own boundary check and will skip the actual TRIM_CLIP
+              // dispatch when there's nothing to reveal.
               onClipTrim?.(clip.id, edge, delta);
               return;
             }
 
-            // Shift+Tab: go to panel controls. Skipped in flat-nav
-            // mode — Tab is the sole navigation primitive and the
-            // browser's natural tab order moves the user back through
-            // each preceding clip / control.
-            if (!isFlatNavigation && e.key === 'Tab' && e.shiftKey) {
-              e.preventDefault();
-              e.stopPropagation();
-              onEnterPanel?.();
-              return;
-            }
+            // Tab / Shift+Tab: track-scoped clip navigation.
+            //   Track flow (both directions):
+            //     [track header] ↔ clip 1 ↔ clip 2 ↔ … ↔ clip N ↔ [next track header]
+            //   • Shift+Tab on the FIRST clip → THIS track's header
+            //   • Tab on the LAST clip       → NEXT track's header
+            //   • Elsewhere → step to the neighbouring clip in DOM order
+            //   Arrow keys stay reserved for matrix nav (playhead +
+            //   track focus).
+            if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+              const currentEl = e.currentTarget as HTMLElement;
+              const isFirstOnTrack = clipIndex === 0;
+              const isLastOnTrack = clipIndex === sortedClips.length - 1;
 
-            // Tab from last clip: navigate to ruler (or next track).
-            // Also skipped in flat-nav mode for the same reason.
-            if (!isFlatNavigation && e.key === 'Tab' && !e.shiftKey && onTabFromLastClip && clipIndex === sortedClips.length - 1) {
-              e.preventDefault();
-              e.stopPropagation();
-              onTabFromLastClip();
+              if (e.shiftKey && isFirstOnTrack) {
+                e.preventDefault();
+                e.stopPropagation();
+                onEnterPanel?.();
+                return;
+              }
+
+              if (!e.shiftKey && isLastOnTrack && onTabFromLastClip) {
+                e.preventDefault();
+                e.stopPropagation();
+                onTabFromLastClip();
+                return;
+              }
+
+              const allClips = Array.from(
+                document.querySelectorAll<HTMLElement>('[data-clip-id]'),
+              );
+              const currentIdx = allClips.indexOf(currentEl);
+              if (currentIdx !== -1) {
+                const targetIdx = e.shiftKey ? currentIdx - 1 : currentIdx + 1;
+                const target = allClips[targetIdx];
+                if (target) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  target.focus();
+                  return;
+                }
+                // No more clips in this direction — let the browser
+                // move focus to the next tabbable element (ruler,
+                // side panel button, etc.).
+              }
               return;
             }
 
@@ -722,26 +810,30 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
-            // Navigate vertically between tracks with arrow up/down (without Cmd or Shift).
-            // Suppressed when the clip was focused via mouse — arrow nav is a
-            // keyboard-mode feature, the first Tab strips data-focus-mouse and
-            // arrow nav resumes from there.
+            // Plain Arrow Up/Down on a focused clip: move TRACK focus
+            // to the row above / below. The clip loses focus, the
+            // track row gains it — matches the "arrows always move
+            // around the matrix plane" model. Skipped in mouse-focus
+            // mode.
             if (
               (e.key === 'ArrowDown' || e.key === 'ArrowUp')
-              && !e.metaKey && !e.ctrlKey && !e.shiftKey
+              && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey
               && !(e.currentTarget as HTMLElement).hasAttribute('data-focus-mouse')
             ) {
               e.preventDefault();
-              e.stopPropagation(); // Prevent global useKeyboardShortcuts from also handling this
+              e.stopPropagation();
               const direction = e.key === 'ArrowDown' ? 1 : -1;
-              onClipNavigateVertical?.(clip.id, direction);
+              onTrackNavigateVertical?.(direction, false, false);
               return;
             }
 
-            // ArrowLeft/Right without modifiers: handled by useContainerTabGroup on the track container
+            // Plain Arrow Left/Right: fall through to the global
+            // playhead-nudge handler (matrix X-axis nav).
           }}
         >
           <Clip
+            shakeEdge={shakeState?.clipId === clip.id ? shakeState.edge : null}
+            shakeToken={shakeState?.clipId === clip.id ? shakeState.token : 0}
             color={clipStyle === 'classic' ? 'classic' : ((clip as any).color || trackColor)}
             name={clip.name}
             width={clipWidth}
@@ -1010,27 +1102,41 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               onContainerEnter?.({ metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey });
               return;
             }
-            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-              // Option/Alt+Arrow: reorder track (moved off Cmd so Cmd
-              // can act as the focus-decouple modifier instead).
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+              // Cmd/Ctrl+Arrow: reorder track up / down. Pass the
+              // current container-focused state along so the parent
+              // only carries that indicator over to the new position
+              // when it was actually set (which only happens after a
+              // Tab-driven keyboard focus, not after a mouse click).
               e.preventDefault();
               e.stopPropagation();
-              onTrackReorder?.(e.key === 'ArrowDown' ? 1 : -1);
+              onTrackReorder?.(e.key === 'ArrowDown' ? 1 : -1, isContainerFocused);
             } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-              // Plain / Shift / Cmd+Arrow: navigate between tracks.
+              // Plain / Shift+Arrow: navigate between tracks.
               //   Plain → follows-focus moves selection with focus
               //   Shift → extend range
-              //   Cmd   → peek (focus moves, selection stays put)
+              // (Peek mode via Alt is gone — Alt is now reserved for
+              // clip-land navigation, not a focus-decouple modifier.)
               e.preventDefault();
               e.stopPropagation();
               onTrackNavigateVertical?.(
                 e.key === 'ArrowDown' ? 1 : -1,
                 e.shiftKey,
-                e.metaKey || e.ctrlKey,
+                false,
               );
             } else if (!isFlatNavigation && e.key === 'Tab' && !e.shiftKey) {
               e.preventDefault();
               e.stopPropagation();
+              // Empty track (no clips): treat Tab as if we're already
+              // past the last clip — hand off to onTabFromLastClip so
+              // focus jumps to the ruler / next track instead of
+              // getting parked in this track's panel with no way to
+              // reach the panel controls that would normally come
+              // after (the flow assumes clips exist between them).
+              if (sortedClips.length === 0 && onTabFromLastClip) {
+                onTabFromLastClip();
+                return;
+              }
               if (!isContainerFocused && trackClickXRef.current !== null) {
                 // Invisible focus from mouse click — Tab to nearest
                 // clip on the track. When the track has no clips,
@@ -1078,15 +1184,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             return; // Don't run clip navigation when container itself is focused
           }
           // Suppress arrow-key clip-to-clip navigation when the focused
-          // clip was focused via mouse (data-focus-mouse). Arrow nav
-          // between clips is a keyboard-driven feature: it kicks in
-          // once the user has visibly entered keyboard mode (the first
-          // Tab from a mouse-focused clip strips the marker, see the
-          // clip's own onKeyDown above). So clicking a clip to select
-          // it and then hitting Right Arrow no longer moves focus.
+          // clip was focused via mouse. Only relevant for Home / End
+          // (which useContainerTabGroup still owns); arrow keys are
+          // reserved for matrix nav (playhead + track focus) and
+          // don't reach clipNavKeyDown here.
           const activeEl = document.activeElement as HTMLElement | null;
           if (activeEl?.hasAttribute('data-focus-mouse')) return;
-          // Delegate to clip navigation hook for child elements
+
+          // Plain / modified arrows are all reserved for matrix
+          // navigation now — clip-to-clip stepping lives on Tab /
+          // Shift+Tab, handled in the clip's own onKeyDown. Do NOT
+          // delegate arrow keys to clipNavKeyDown.
+          if (
+            e.key === 'ArrowLeft' || e.key === 'ArrowRight'
+            || e.key === 'ArrowUp' || e.key === 'ArrowDown'
+          ) {
+            return;
+          }
+          // Home / End still delegate for clip-list bookends.
           clipNavKeyDown(e);
         }}
         onFocus={handleTrackFocus}

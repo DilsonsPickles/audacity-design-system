@@ -278,8 +278,34 @@ export function EditorLayout(props: EditorLayoutProps) {
         targetEl = document.querySelector<HTMLElement>(
           `[data-clip-id="${overlapping[0].id}"][data-track-index="${fti}"]`,
         );
-      } else {
+      } else if (trackEl && document.activeElement !== trackEl) {
+        // Focus the track container so subsequent Tab presses hit
+        // TrackNew's own routing (which advances to ruler / next
+        // track). We ONLY do this when focus isn't already there —
+        // otherwise we'd re-focus the same element and create a
+        // Tab dead-end.
         targetEl = trackEl;
+      } else {
+        // Focus is already on the empty track's .track (typical after
+        // a mouse-drawn selection). Advance the same way we do from
+        // the last clip of a populated track: prefer this track's
+        // ruler, else the next track's panel.
+        const rulerEl = showVerticalRulers
+          && state.tracks[fti]?.type !== 'label'
+          && state.tracks[fti]?.type !== 'midi'
+          ? document.querySelector<HTMLElement>(`[data-track-ruler-index="${fti}"]`)
+          : null;
+        if (rulerEl) {
+          targetEl = rulerEl;
+        } else {
+          const nextIndex = fti + 1;
+          if (nextIndex < state.tracks.length) {
+            const panels = document.querySelectorAll('[aria-label*="track controls"]');
+            const nextPanel = panels[nextIndex];
+            const firstButton = nextPanel?.querySelector('button') as HTMLElement | null;
+            if (firstButton) targetEl = firstButton;
+          }
+        }
       }
       if (!targetEl) return;
 
@@ -1081,6 +1107,16 @@ export function EditorLayout(props: EditorLayoutProps) {
                     y: rect.bottom,
                   });
                 }
+                // ArrowUp/Down: swallow while the ruler is focused so
+                // the global "single-item region → jump into track
+                // list" handler doesn't steal focus. The ruler is a
+                // matrix-X-only surface — Up / Down have no meaning
+                // here, so we consume the event and leave focus put.
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
                 // Arrow keys nudge the playhead while the timeline
                 // ruler is focused. With snap on, each press lands on
                 // the next/previous grid division; with snap off, step
@@ -1375,14 +1411,15 @@ export function EditorLayout(props: EditorLayoutProps) {
                         setTimeSelectionContextMenu({ isOpen: true, x, y, trackIndex, trackType: track?.type });
                       }
                     }}
-                    onTrackFocusChange={(trackIndex, hasFocus) => {
-                      // Track focus follows clip focus: when a clip in
-                      // a different track receives focus, the track
-                      // focus outline tags along so the side panel and
-                      // ruler stay in sync with where the user is.
-                      if (hasFocus) {
-                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
-                      }
+                    onTrackFocusChange={(_trackIndex, _hasFocus) => {
+                      // Track focus no longer follows clip focus —
+                      // each focus state stands on its own. The
+                      // container-focus path (onTrackContainerFocusChange)
+                      // is the only thing that sets focusedTrackIndex
+                      // now, so keyboard nav landing on the track row
+                      // itself still updates the side panel / ruler,
+                      // while landing on a clip leaves the track focus
+                      // state where it was.
                       setControlPanelHasFocus(null);
                     }}
                     onTrackContainerFocusChange={(trackIndex, hasFocus) => {
@@ -1462,26 +1499,35 @@ export function EditorLayout(props: EditorLayoutProps) {
                       }
                     }}
                     onTabFromLastClip={(trackIndex) => {
-                      // If rulers are visible and this track is audio, focus the ruler
+                      // Tab off the last clip → focus THIS track's
+                      // vertical ruler as the next stop in the
+                      // per-track flow: [header] → clip 1 → … →
+                      // clip N → [ruler] → [next header]. The
+                      // ruler's own onTabFromRuler picks up from
+                      // here and moves to the next track's panel.
                       if (showVerticalRulers && state.tracks[trackIndex]?.type !== 'label' && state.tracks[trackIndex]?.type !== 'midi') {
                         const rulerEl = document.querySelector(
                           `[data-track-ruler-index="${trackIndex}"]`
-                        ) as HTMLElement;
+                        ) as HTMLElement | null;
                         if (rulerEl) {
                           rulerEl.focus();
                           return;
                         }
                       }
-                      // Otherwise, focus next track's container
+                      // No ruler (hidden, or label/midi track) —
+                      // skip straight to the next track's control
+                      // panel.
                       const nextIndex = trackIndex + 1;
                       if (nextIndex < state.tracks.length) {
-                        // Tabbing into the next track moves both:
-                        //   - the blue track-focus outline (focusedTrackIndex)
-                        //   - and in follows-focus mode, the selection
-                        // so the visible focus ring and the selection
-                        // stay aligned. The DOM .focus() also fires so
-                        // the keyboard-Tab black/white outline shows on
-                        // the track container (no data-focus-from-nav).
+                        const panels = document.querySelectorAll('[aria-label*="track controls"]');
+                        const nextPanel = panels[nextIndex];
+                        if (nextPanel) {
+                          const firstButton = nextPanel.querySelector('button') as HTMLElement | null;
+                          firstButton?.focus();
+                          return;
+                        }
+                        // Fall back to focusing the track container
+                        // if the panel can't be found.
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
                         if (preferences.trackSelectionMode === 'follows-focus') {
                           dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
@@ -1605,15 +1651,19 @@ export function EditorLayout(props: EditorLayoutProps) {
                 cursorY={isOverTrack ? mouseCursorY : undefined}
                 rulerTabIndices={rulerTabIndices}
                 onTabFromRuler={(trackIndex) => {
-                  // Focus next track's container, or selection toolbar if last audio track
+                  // Tab off the ruler → focus the NEXT track's
+                  // container (.track div). The per-track flow is
+                  // [header] → clips → [ruler] → [next track row],
+                  // from which the user can then Tab into that
+                  // track's own header / clips as they wish.
                   let nextIndex = trackIndex + 1;
-                  // Skip label tracks (they have no focusable ruler)
+                  // Skip label / midi tracks (they have no focusable ruler)
                   while (nextIndex < state.tracks.length && (state.tracks[nextIndex].type === 'label' || state.tracks[nextIndex].type === 'midi')) {
                     nextIndex++;
                   }
                   if (nextIndex < state.tracks.length) {
                     // Move all three focus signals to the next track:
-                    // the blue outline (focusedTrackIndex), selection
+                    // blue outline (focusedTrackIndex), selection
                     // (in follows-focus mode), and DOM focus.
                     dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
                     if (preferences.trackSelectionMode === 'follows-focus') {
