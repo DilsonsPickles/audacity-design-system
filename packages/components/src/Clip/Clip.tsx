@@ -249,12 +249,27 @@ const ClipComponent: React.FC<ClipProps> = ({
     }
   };
 
-  // Handle global mouse move and up for trim
+  // Handle global mouse move and up for trim.
+  //
+  // onTrimEdge / onStretchEdge get a fresh inline function every render
+  // (TrackNew builds them per-clip), so listing them as effect deps
+  // caused the listener to detach + re-attach on every mousemove during
+  // a drag. That churn made it easy for a mouseup to slip through
+  // between the removeEventListener and the following addEventListener,
+  // leaving `trimEdge` set forever and every subsequent mousemove
+  // re-triggering trim — the "sticky mouse" the user was hitting.
+  // Stashing the callback in a ref lets the effect only re-run when the
+  // drag actually starts or ends.
+  const onTrimEdgeRef = React.useRef(onTrimEdge);
+  React.useEffect(() => {
+    onTrimEdgeRef.current = onTrimEdge;
+  }, [onTrimEdge]);
+
   React.useEffect(() => {
     if (!trimEdge) return;
 
     const handleMouseMoveGlobal = (e: MouseEvent) => {
-      onTrimEdge?.({ edge: trimEdge, clientX: e.clientX });
+      onTrimEdgeRef.current?.({ edge: trimEdge, clientX: e.clientX });
     };
 
     const handleMouseUp = () => {
@@ -268,7 +283,7 @@ const ClipComponent: React.FC<ClipProps> = ({
       document.removeEventListener('mousemove', handleMouseMoveGlobal);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [trimEdge, onTrimEdge]);
+  }, [trimEdge]);
 
   // Visible handles (rendered when `selected`). Mouse-down on a handle starts
   // a drag — the same pattern as the invisible edge trim above. Stretch is
@@ -289,11 +304,19 @@ const ClipComponent: React.FC<ClipProps> = ({
   // actions are reachable via dedicated keyboard shortcuts, so we
   // don't add a separate keyboard path through the buttons themselves.
 
+  // Same rationale as onTrimEdgeRef above — onStretchEdge is inline
+  // per render, so stash it in a ref to keep this effect from
+  // re-registering listeners on every mousemove.
+  const onStretchEdgeRef = React.useRef(onStretchEdge);
+  React.useEffect(() => {
+    onStretchEdgeRef.current = onStretchEdge;
+  }, [onStretchEdge]);
+
   React.useEffect(() => {
     if (!stretchEdge) return;
 
     const onMove = (e: MouseEvent) => {
-      onStretchEdge?.({ edge: stretchEdge, clientX: e.clientX });
+      onStretchEdgeRef.current?.({ edge: stretchEdge, clientX: e.clientX });
     };
     const onUp = () => setStretchEdge(null);
 
@@ -303,7 +326,7 @@ const ClipComponent: React.FC<ClipProps> = ({
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };
-  }, [stretchEdge, onStretchEdge]);
+  }, [stretchEdge]);
 
   return (
     <div

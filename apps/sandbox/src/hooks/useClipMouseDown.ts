@@ -270,20 +270,11 @@ export function useClipMouseDown({
               return;
             }
 
-            // Single-clip lockout: when the clicked clip is the sole
-            // clip on its track, the body is a passive surface —
-            // clicking it shouldn't kick off a time-selection drag,
-            // which would clear the time selection and snap the
-            // playhead at mouseup. The click event has a matching
-            // guard in Canvas's onClick.
-            const trackClipCount = tracks[trackIndex].clips.length
-              + (tracks[trackIndex].midiClips?.length ?? 0);
-            if (trackClipCount === 1) {
-              e.stopPropagation();
-              return;
-            }
-
-            // Body clicks: pass through to time selection handler
+            // Body clicks: pass through to time selection handler so
+            // the click can move the playhead / start a time-selection
+            // drag. The old single-clip lockout that blocked this
+            // path has been removed — clicking inside a clip should
+            // always place the playhead.
             containerPropsOnMouseDown?.(e);
             return;
           }

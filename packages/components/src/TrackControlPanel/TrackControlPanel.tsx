@@ -3,7 +3,7 @@ import { useTheme } from '../ThemeProvider';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
-import { Icon } from '../Icon';
+import { Icon, type IconName } from '../Icon';
 import { PanKnob } from '../PanKnob';
 import { Slider } from '../Slider';
 import { ToggleButton } from '../ToggleButton';
@@ -36,6 +36,13 @@ export interface TrackControlPanelProps {
   instrument?: string;
   /** Called when user changes the instrument */
   onInstrumentChange?: (id: string) => void;
+  /** Explicit user-picked icon that overrides the trackType default.
+   *  When omitted, the icon is derived from `trackType`. */
+  icon?: IconName;
+  /** Called with the user's new pick when they choose an icon from
+   *  the header icon-button flyout. When omitted, the icon button
+   *  stays inert (no flyout is offered). */
+  onIconChange?: (icon: IconName) => void;
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
   onToggleSelection?: () => void; // Cmd/Ctrl+Click to toggle
@@ -87,6 +94,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   instruments,
   instrument,
   onInstrumentChange,
+  icon,
+  onIconChange,
   onMenuClick,
   onClick,
   onToggleSelection,
@@ -183,8 +192,10 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   const actualState = state !== 'idle' ? state : (isHovered ? 'hover' : 'idle');
 
-  // Determine track icon based on type
-  const getTrackIcon = () => {
+  // Determine track icon: explicit user pick wins, otherwise fall
+  // back to the trackType default.
+  const getTrackIcon = (): IconName => {
+    if (icon) return icon;
     switch (trackType) {
       case 'label':
         return 'label';
@@ -197,6 +208,75 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         return 'microphone';
     }
   };
+
+  // Icon picker flyout state. Anchored to the icon button and dismissed
+  // on outside-click / Escape / selection. Curated to a small set of
+  // sensible track-role icons rather than the full Icon library so
+  // the grid stays scan-able.
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const iconButtonRef = React.useRef<HTMLButtonElement>(null);
+  const iconPickerRef = React.useRef<HTMLDivElement>(null);
+  const ICON_CHOICES: IconName[] = [
+    'microphone',
+    'keyboard',
+    'midi',
+    'label',
+    'metronome',
+    'mixer',
+    'waveform',
+    'spectrogram',
+    'automation',
+    'volume',
+    'plug',
+    'cog',
+  ];
+  const ICON_PICKER_COLS = 4;
+  // Cursor within the flyout grid — separate from the current
+  // committed icon so the user can hover-preview with arrow keys
+  // without dispatching an onIconChange until they hit Enter / Space.
+  const [iconPickerCursor, setIconPickerCursor] = useState(0);
+  const iconPickerItemRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+
+  // When the flyout opens, seed the cursor to the currently-active
+  // icon (or 0 when there is no match) and move DOM focus onto it
+  // so arrow keys work from the first tick.
+  React.useEffect(() => {
+    if (!iconPickerOpen) return;
+    const currentIdx = ICON_CHOICES.findIndex((c) => c === getTrackIcon());
+    const startIdx = currentIdx >= 0 ? currentIdx : 0;
+    setIconPickerCursor(startIdx);
+    // Focus is asynchronous relative to setState — schedule after the
+    // paint so the ref has actually been populated for the new item.
+    requestAnimationFrame(() => {
+      iconPickerItemRefs.current[startIdx]?.focus();
+    });
+    // Intentionally only re-run when the flyout toggles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iconPickerOpen]);
+
+  React.useEffect(() => {
+    if (!iconPickerOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        iconPickerRef.current?.contains(target)
+        || iconButtonRef.current?.contains(target)
+      ) return;
+      setIconPickerOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIconPickerOpen(false);
+        iconButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [iconPickerOpen]);
 
   const isLabelTrack = trackType === 'label';
   const isMidiTrack = trackType === 'midi';
@@ -464,13 +544,140 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         {/* Header */}
         <div className="track-control-panel__header">
           <div className="track-control-panel__track-name">
+            <span style={{ position: 'relative' }}>
             <button
+              ref={iconButtonRef}
               className="track-control-panel__icon-button"
-              aria-label={`${trackName} track type`}
+              aria-label={onIconChange ? `Change ${trackName} icon` : `${trackName} track type`}
+              aria-haspopup={onIconChange ? 'menu' : undefined}
+              aria-expanded={onIconChange ? iconPickerOpen : undefined}
               tabIndex={childTabIndex}
+              onClick={(e) => {
+                if (!onIconChange) return;
+                e.stopPropagation();
+                setIconPickerOpen((v) => !v);
+              }}
             >
               <Icon name={getTrackIcon()} size={16} className="track-control-panel__icon" />
             </button>
+            {onIconChange && iconPickerOpen && (
+              <div
+                ref={iconPickerRef}
+                role="menu"
+                aria-label="Choose track icon"
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: 4,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 28px)',
+                  gap: 4,
+                  padding: 8,
+                  background: theme.background.surface.elevated,
+                  border: `1px solid ${theme.border.default}`,
+                  borderRadius: 6,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                  zIndex: 500,
+                }}
+              >
+                {ICON_CHOICES.map((choice, idx) => {
+                  const active = getTrackIcon() === choice;
+                  const focused = iconPickerCursor === idx;
+                  const moveCursor = (nextIdx: number) => {
+                    const clamped = Math.max(0, Math.min(ICON_CHOICES.length - 1, nextIdx));
+                    setIconPickerCursor(clamped);
+                    iconPickerItemRefs.current[clamped]?.focus();
+                  };
+                  return (
+                    <button
+                      key={choice}
+                      ref={(el) => { iconPickerItemRefs.current[idx] = el; }}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      aria-label={choice}
+                      // Roving tabindex: only the cursor row is in the
+                      // tab sequence so Shift+Tab out of the flyout
+                      // lands back on the trigger cleanly.
+                      tabIndex={focused ? 0 : -1}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onIconChange(choice);
+                        setIconPickerOpen(false);
+                        iconButtonRef.current?.focus();
+                      }}
+                      onKeyDown={(e) => {
+                        // Grid navigation. Left/Right wrap within the
+                        // list; Up/Down clamp so pressing Down on the
+                        // last row stays put rather than jumping to
+                        // the first row of a different column.
+                        if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const next = idx + 1 >= ICON_CHOICES.length ? 0 : idx + 1;
+                          moveCursor(next);
+                          return;
+                        }
+                        if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const next = idx - 1 < 0 ? ICON_CHOICES.length - 1 : idx - 1;
+                          moveCursor(next);
+                          return;
+                        }
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveCursor(idx + ICON_PICKER_COLS);
+                          return;
+                        }
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveCursor(idx - ICON_PICKER_COLS);
+                          return;
+                        }
+                        if (e.key === 'Home') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveCursor(0);
+                          return;
+                        }
+                        if (e.key === 'End') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveCursor(ICON_CHOICES.length - 1);
+                          return;
+                        }
+                        // Enter / Space activation is handled by
+                        // native button semantics — the click handler
+                        // above commits the pick.
+                      }}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: active ? theme.background.surface.hover : 'transparent',
+                        border: active
+                          ? `1px solid ${theme.border.focus}`
+                          : `1px solid transparent`,
+                        borderRadius: 4,
+                        color: theme.foreground.text.primary,
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                    >
+                      <Icon name={choice} size={16} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            </span>
             {isRenaming ? (
               <input
                 ref={renameInputRef}

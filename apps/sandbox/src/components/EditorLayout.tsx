@@ -14,6 +14,7 @@ import { useContextMenus } from '../contexts/ContextMenuContext';
 import { useAudioEngine, MIDI_INSTRUMENTS } from '../contexts/AudioEngineContext';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 import { snapToGrid } from '../utils/snapToGrid';
+import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 
 export interface EditorLayoutProps {
   // State
@@ -776,10 +777,14 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
           showMidiOption={true}
           onDeleteTrack={(trackIndex) => {
-            dispatch({
-              type: 'DELETE_TRACK',
-              payload: trackIndex,
-            });
+            const t = state.tracks[trackIndex] as any;
+            const hasContent = t
+              && ((t.clips?.length ?? 0) > 0 || (t.midiClips?.length ?? 0) > 0);
+            confirmTrackDelete(
+              1,
+              () => dispatch({ type: 'DELETE_TRACK', payload: trackIndex }),
+              { skipDialog: !hasContent },
+            );
           }}
           onDuplicateTrack={(trackIndex) => {
             const trackIndices = state.selectedTrackIndices.includes(trackIndex)
@@ -824,8 +829,20 @@ export function EditorLayout(props: EditorLayoutProps) {
           onTrackViewChange={(trackIndex, viewMode) => {
             dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });
           }}
-          trackColors={state.tracks.map((t: any) => t.clips[0]?.color)}
+          // Prefer the track's own color when it's set — falling back
+          // to the first clip's color keeps the swatch showing the
+          // right hue for legacy state where a user-picked colour
+          // never made it into track.color.
+          trackColors={state.tracks.map((t: any) => t.color ?? t.clips[0]?.color)}
           onTrackColorChange={(trackIndex, color) => {
+            // Update the track's own colour too — handlePaste reads
+            // state.tracks[destTrackIndex].color to stamp pasted clips,
+            // so a track whose colour lives only on its clips would
+            // stamp pastes with the stale palette default.
+            dispatch({
+              type: 'UPDATE_TRACK',
+              payload: { index: trackIndex, track: { color } },
+            });
             const track = state.tracks[trackIndex];
             track?.clips.forEach((clip: any) => {
               dispatch({
@@ -863,6 +880,10 @@ export function EditorLayout(props: EditorLayoutProps) {
                 key={track.id}
                 trackName={track.name}
                 trackType={trackType}
+                icon={track.icon as any}
+                onIconChange={(nextIcon) => {
+                  dispatch({ type: 'UPDATE_TRACK', payload: { index, track: { icon: nextIcon } } });
+                }}
                 onRename={(newName) => {
                   dispatch({ type: 'UPDATE_TRACK', payload: { index, track: { name: newName } } });
                 }}

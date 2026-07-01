@@ -9,6 +9,7 @@ import { handleSpacebar, handleRecordToggle, handleEffectsToggle, handleLoopTogg
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
+import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 
 export interface ClipboardState {
   clips: any[];
@@ -390,6 +391,70 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (target.hasAttribute('data-track-ruler-index')) {
           return;
         }
+        // If a clip is currently selected but doesn't have DOM focus
+        // (typical after clicking a clip header or a Tab that moved
+        // focus elsewhere), treat the selected clip's track as the
+        // "current" track and step to the prev / next one. Beats
+        // silently jumping to the first / last track via the
+        // single-item-group fallback below.
+        //
+        // Skipped when:
+        //   - Shift is held: Shift+Arrow is track-selection extend,
+        //     handled by TrackNew.onKeyDown on the .track container.
+        //     Stealing it here would collapse the selection to a
+        //     single track on every press.
+        //   - Focus is already on a .track container: TrackNew's own
+        //     onKeyDown handles arrows and doesn't need this fallback.
+        //   - Focus owns arrows for its own value adjustment
+        //     (slider / knob / text input).
+        {
+          const tag = target.tagName;
+          const isTrackContainer = target.classList?.contains('track');
+          const ownsArrows = e.shiftKey
+            || isTrackContainer
+            || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+            || target.getAttribute('role') === 'slider'
+            || target.getAttribute('contenteditable') === 'true'
+            || target.closest('.track-control-panel');
+          if (!ownsArrows) {
+            let selectedClipTrack: number | null = null;
+            outer: for (let ti = 0; ti < state.tracks.length; ti++) {
+              const t = state.tracks[ti] as any;
+              for (const c of t.clips || []) {
+                if (c.selected) { selectedClipTrack = ti; break outer; }
+              }
+              for (const c of t.midiClips || []) {
+                if (c.selected) { selectedClipTrack = ti; break outer; }
+              }
+            }
+            if (selectedClipTrack !== null) {
+              const dir = e.key === 'ArrowDown' ? 1 : -1;
+              const nextIndex = selectedClipTrack + dir;
+              if (nextIndex >= 0 && nextIndex < state.tracks.length) {
+                e.preventDefault();
+                dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
+                if (preferences.trackSelectionMode === 'follows-focus') {
+                  dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
+                  setSelectionAnchor(nextIndex);
+                }
+                setTimeout(() => {
+                  const trackEl = document.querySelector(
+                    `.track-wrapper[data-track-index="${nextIndex}"] .track`,
+                  ) as HTMLElement | null;
+                  if (trackEl) {
+                    trackEl.setAttribute('data-focus-from-nav', '1');
+                    trackEl.focus();
+                  }
+                }, 0);
+                return;
+              }
+              // At an edge — still preventDefault so the browser
+              // doesn't scroll while we hold at the boundary.
+              e.preventDefault();
+              return;
+            }
+          }
+        }
         const groupAncestor = target.closest(
           '[role="toolbar"], [role="group"], [role="menubar"], [role="region"], [role="menu"]',
         ) as HTMLElement | null;
@@ -565,10 +630,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //     playhead.
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         if (e.defaultPrevented) return;
-        // Alt+Shift+Arrow is the clip time-stretch chord (handled by
-        // the clip's own onKeyDown). Everything else with Alt is
-        // fair game: plain Alt+Arrow is the fast playhead nudge.
-        if (e.altKey && e.shiftKey) return;
+        // Alt+Shift+Arrow on a focused clip is the time-stretch chord
+        // — the clip's own onKeyDown handles it and calls
+        // preventDefault, which the defaultPrevented check above
+        // catches. Outside a focused clip, Alt+Shift+Arrow is the
+        // large-step selection extend (Alt = fast, Shift = extend).
         const target = e.target as HTMLElement;
         const tag = target.tagName;
         // Skip when the focused element owns arrow keys for its own
@@ -655,8 +721,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         // clip, time-selection clips, or the current clip selection
         // (which is what a first-press-with-time-selection promoted
         // itself to). No fallback playhead jump; , / . and Alt+Arrow
-        // own that.
-        if (cmdHeld) {
+        // own that. Skipped when Shift is also held so
+        // Cmd+Shift+Arrow can reach the selection-reduce path in
+        // handlePlayheadMove below.
+        if (cmdHeld && !e.shiftKey) {
           const hasSelectedClip = state.tracks.some((t: any) =>
             t.clips.some((c: any) => c.selected)
             || (t.midiClips || []).some((c: any) => c.selected),
@@ -1136,7 +1204,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         const focused = state.focusedTrackIndex;
         if (focused === null || focused === undefined) return;
         e.preventDefault();
-        dispatch({ type: 'DELETE_TRACK', payload: focused });
+        const t = state.tracks[focused] as any;
+        const hasContent = t
+          && ((t.clips?.length ?? 0) > 0 || (t.midiClips?.length ?? 0) > 0);
+        confirmTrackDelete(
+          1,
+          () => dispatch({ type: 'DELETE_TRACK', payload: focused }),
+          { skipDialog: !hasContent },
+        );
         return;
       }
 

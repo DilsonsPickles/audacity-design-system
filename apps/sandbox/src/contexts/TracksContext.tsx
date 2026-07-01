@@ -74,6 +74,11 @@ export interface Track {
   muted?: boolean; // Whether the track is muted
   soloed?: boolean; // Whether the track is soloed
   instrument?: string; // MIDI instrument id (e.g. 'synth', 'fm-synth')
+  /** User-picked header icon. When absent the icon is derived from
+   *  `type` (mic for audio, midi for MIDI, etc). Kept as a loose
+   *  string here so we don't need to import IconName across every
+   *  reducer / test — TrackControlPanel narrows it at render time. */
+  icon?: string;
 }
 
 /** Expanded color palette for tracks — each new track cycles through these */

@@ -21,7 +21,17 @@ export function handlePlayheadMove(
   const { state, dispatch, selectionAnchorRef, selectionEdgesRef, scrollPlayheadIntoView } = deps;
 
   if (e.shiftKey) {
-    // EXTEND mode (Shift): extend selection edges outward
+    // SHIFT: adjust selection edges. Cmd/Ctrl toggles reduce mode
+    //   Shift+ArrowLeft/Right          → extend the near / far edge outward
+    //   Cmd+Shift+ArrowLeft/Right      → shrink from that edge inward
+    // Alt is the speed modifier (1s vs 0.1s) — already applied via
+    // the caller's moveAmount.
+    const reduce = e.metaKey || e.ctrlKey;
+
+    // In reduce mode with no existing selection there's nothing to
+    // shrink — bail so we don't spuriously initialise one.
+    if (reduce && !state.timeSelection) return;
+
     const playheadOutsideSelection = state.timeSelection && (
       state.playheadPosition < state.timeSelection.startTime - 0.001 ||
       state.playheadPosition > state.timeSelection.endTime + 0.001
@@ -29,7 +39,18 @@ export function handlePlayheadMove(
 
     if (!state.timeSelection || playheadOutsideSelection) {
       dispatch({ type: 'DESELECT_ALL_CLIPS' });
-      if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
+      // Scope the selection to the focused track if it isn't already
+      // part of the track selection — mirrors the mouse-drag
+      // behaviour so the keyboard-driven Shift+Arrow feels the same.
+      // Falls back to selecting every track when nothing's focused
+      // (kept for the "wide selection from ambient state" case).
+      const focused = state.focusedTrackIndex;
+      if (
+        focused !== null && focused !== undefined
+        && !state.selectedTrackIndices.includes(focused)
+      ) {
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [focused] });
+      } else if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
         const allTrackIndices = state.tracks.map((_, idx) => idx);
         dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
       }
@@ -44,10 +65,28 @@ export function handlePlayheadMove(
     }
 
     if (isLeftward) {
-      selectionEdgesRef.current.startTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
+      if (reduce) {
+        // Shrink from the LEFT: move startTime rightward, clamp to
+        // endTime so the edges can't cross.
+        selectionEdgesRef.current.startTime = Math.min(
+          selectionEdgesRef.current.endTime,
+          selectionEdgesRef.current.startTime + moveAmount,
+        );
+      } else {
+        selectionEdgesRef.current.startTime = Math.max(0, selectionEdgesRef.current.startTime - moveAmount);
+      }
       dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: selectionEdgesRef.current.startTime });
     } else {
-      selectionEdgesRef.current.endTime = selectionEdgesRef.current.endTime + moveAmount;
+      if (reduce) {
+        // Shrink from the RIGHT: move endTime leftward, clamp to
+        // startTime.
+        selectionEdgesRef.current.endTime = Math.max(
+          selectionEdgesRef.current.startTime,
+          selectionEdgesRef.current.endTime - moveAmount,
+        );
+      } else {
+        selectionEdgesRef.current.endTime = selectionEdgesRef.current.endTime + moveAmount;
+      }
     }
 
     dispatch({

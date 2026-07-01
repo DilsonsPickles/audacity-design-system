@@ -1,4 +1,5 @@
 import type { TracksState, TracksAction } from '../../contexts/TracksContext';
+import { confirmTrackDelete } from '../../utils/confirmTrackDelete';
 
 export interface DeleteHandlerDeps {
   state: TracksState;
@@ -219,18 +220,38 @@ function handleDeleteClips(deps: DeleteHandlerDeps): void {
   //   - focused track ∈ selectedTrackIndices → delete the track selection
   //   - focused track ∉ selectedTrackIndices → delete only the focused track
   //   - no focused track, has selection → delete the selection
+  // All track deletes go through confirmTrackDelete first.
+  const hasContent = (idx: number): boolean => {
+    const t = state.tracks[idx] as any;
+    if (!t) return false;
+    return (t.clips?.length ?? 0) > 0 || (t.midiClips?.length ?? 0) > 0;
+  };
   const focused = state.focusedTrackIndex;
   if (focused !== null && focused !== undefined) {
     const focusedInSelection = state.selectedTrackIndices.includes(focused);
     if (focusedInSelection && state.selectedTrackIndices.length > 0) {
-      dispatch({ type: 'DELETE_TRACKS', payload: state.selectedTrackIndices });
+      const indices = state.selectedTrackIndices;
+      confirmTrackDelete(
+        indices.length,
+        () => dispatch({ type: 'DELETE_TRACKS', payload: indices }),
+        { skipDialog: !indices.some(hasContent) },
+      );
     } else {
-      dispatch({ type: 'DELETE_TRACK', payload: focused });
+      confirmTrackDelete(
+        1,
+        () => dispatch({ type: 'DELETE_TRACK', payload: focused }),
+        { skipDialog: !hasContent(focused) },
+      );
     }
     return;
   }
   if (state.selectedTrackIndices.length > 0) {
-    dispatch({ type: 'DELETE_TRACKS', payload: state.selectedTrackIndices });
+    const indices = state.selectedTrackIndices;
+    confirmTrackDelete(
+      indices.length,
+      () => dispatch({ type: 'DELETE_TRACKS', payload: indices }),
+      { skipDialog: !indices.some(hasContent) },
+    );
   }
 }
 

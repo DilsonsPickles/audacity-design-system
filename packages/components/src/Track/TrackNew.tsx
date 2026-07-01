@@ -686,13 +686,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
-            // Clip-edge editor lives on the bracket keys now (the
-            // Shift+Arrow / Cmd+Shift+Arrow trim shortcuts have been
-            // removed to keep arrows purely for matrix nav):
-            //   [        → extend the left edge outward
-            //   ]        → extend the right edge outward
-            //   Shift+[  → shrink the left edge inward
-            //   Shift+]  → shrink the right edge inward
+            // Clip-edge editor on the bracket keys. Shift picks the
+            // edge; the specific bracket picks the direction:
+            //   [        → RIGHT edge moves LEFT   (contract)
+            //   ]        → RIGHT edge moves RIGHT  (extend)
+            //   Shift+[  → LEFT edge moves LEFT    (extend)
+            //   Shift+]  → LEFT edge moves RIGHT   (contract)
             // Sign convention matches onClipTrim: positive delta
             // shrinks, negative delta grows.
             //
@@ -708,9 +707,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.preventDefault();
               e.stopPropagation();
               const editAmount = 0.1;
-              const edge = isBracketLeft ? 'left' : 'right';
-              const isExtending = !e.shiftKey;
-              const delta = e.shiftKey ? editAmount : -editAmount;
+              // Shift → LEFT edge, plain → RIGHT edge.
+              const edge: 'left' | 'right' = e.shiftKey ? 'left' : 'right';
+              // On the RIGHT edge: [ contracts (shrink), ] extends.
+              // On the LEFT  edge: [ extends,  ] contracts.
+              const isExtending = edge === 'right' ? isBracketRight : isBracketLeft;
+              const delta = isExtending ? -editAmount : editAmount;
 
               // Boundary check: if the user is trying to EXTEND (not
               // shrink) and there's no more source audio to reveal
@@ -746,7 +748,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 shakeTimeoutRef.current = window.setTimeout(() => {
                   setShakeState(null);
                   shakeTimeoutRef.current = null;
-                }, 460);
+                }, 180);
               }
 
               // Fire onClipTrim regardless of the blocked-shake state
@@ -794,7 +796,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 if (target) {
                   e.preventDefault();
                   e.stopPropagation();
-                  target.focus();
+                  // preventScroll: the browser's default focus-scroll is
+                  // instant and races the smooth scroll our onFocus
+                  // handler queues via scrollIntoViewIfNeeded — worse,
+                  // it lands the clip in view so the "already visible"
+                  // check short-circuits and no smooth scroll happens at
+                  // all. Skipping the default lets our smooth pan run.
+                  target.focus({ preventScroll: true });
                   return;
                 }
                 // No more clips in this direction — let the browser
@@ -834,7 +842,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           <Clip
             shakeEdge={shakeState?.clipId === clip.id ? shakeState.edge : null}
             shakeToken={shakeState?.clipId === clip.id ? shakeState.token : 0}
-            color={clipStyle === 'classic' ? 'classic' : ((clip as any).color || trackColor)}
+            // Render always uses the track's colour rather than each
+            // clip's own `color` field. MOVE_CLIP / paste / initial
+            // seeding all try to keep `clip.color` in sync with the
+            // destination track, but any one of those paths drifting
+            // out of sync (drop-below-creates-track, a stale palette
+            // default cached on `state.tracks[i].color`, an older
+            // pasted clip carrying its source colour) shows up as a
+            // clip on a yellow track rendering blue. Sourcing colour
+            // from the track — the same value that drives the header
+            // and swatch — keeps every clip on a track visually
+            // consistent by construction.
+            color={clipStyle === 'classic' ? 'classic' : trackColor}
             name={clip.name}
             width={clipWidth}
             height={height}
@@ -1158,7 +1177,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                     }
                   });
                   trackClickXRef.current = null;
-                  (clipElements[nearestIdx] as HTMLElement).focus();
+                  // preventScroll — same rationale as the clip-to-clip
+                  // Tab handler above; let scrollIntoViewIfNeeded run
+                  // the smooth pan without the browser stealing it.
+                  (clipElements[nearestIdx] as HTMLElement).focus({ preventScroll: true });
                 } else {
                   // No clips → promote to keyboard-focus on the track
                   // itself so the user can see the focus state, then

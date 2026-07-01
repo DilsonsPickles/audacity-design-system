@@ -80,10 +80,31 @@ export function useClipStretching(
 
   const wasJustStretching = () => justStretchedRef.current;
 
+  // Same "sticky mouseup" hazard as useClipTrimming — every stretch
+  // dispatch changes `tracks`, which would otherwise rebind these
+  // document listeners on every mousemove. Read live values from refs
+  // so the effect binds once.
+  const tracksRef = useRef(tracks);
+  const pixelsPerSecondRef = useRef(pixelsPerSecond);
+  const clipContentOffsetRef = useRef(clipContentOffset);
+  const snapEnabledRef = useRef(snapEnabled);
+  const snapOptionsRef = useRef(snapOptions);
+  useEffect(() => { tracksRef.current = tracks; }, [tracks]);
+  useEffect(() => { pixelsPerSecondRef.current = pixelsPerSecond; }, [pixelsPerSecond]);
+  useEffect(() => { clipContentOffsetRef.current = clipContentOffset; }, [clipContentOffset]);
+  useEffect(() => { snapEnabledRef.current = snapEnabled; }, [snapEnabled]);
+  useEffect(() => { snapOptionsRef.current = snapOptions; }, [snapOptions]);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current || !clipStretchStateRef.current) return;
       const s = clipStretchStateRef.current;
+
+      const tracks = tracksRef.current;
+      const pixelsPerSecond = pixelsPerSecondRef.current;
+      const clipContentOffset = clipContentOffsetRef.current;
+      const snapEnabled = snapEnabledRef.current;
+      const snapOptions = snapOptionsRef.current;
 
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -191,7 +212,9 @@ export function useClipStretching(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [tracks, pixelsPerSecond, clipContentOffset, dispatch, containerRef, snapEnabled, snapOptions]);
+    // Intentionally bind once — live values come from refs above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, containerRef]);
 
   return {
     clipStretchStateRef,

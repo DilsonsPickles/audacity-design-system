@@ -56,6 +56,7 @@ export interface UseAudioSelectionReturn {
     ref: RefObject<HTMLElement>;
     onMouseDown: (e: React.MouseEvent<HTMLElement>) => void;
     onMouseMove: (e: React.MouseEvent<HTMLElement>) => void;
+    onMouseLeave: (e: React.MouseEvent<HTMLElement>) => void;
     onClick: (e: React.MouseEvent<HTMLElement>) => void;
     style: {
       cursor: string;
@@ -401,6 +402,14 @@ export function useAudioSelection(
     }
   }, [timeSelection]);
 
+  const handleMouseLeave = useCallback((_e: React.MouseEvent<HTMLElement>) => {
+    // Reset the cursor to default when the pointer leaves the canvas.
+    // Prevents a hover-triggered `ew-resize` (near a time-selection
+    // edge) from staying stuck if the pointer never crosses back over
+    // an area that would re-run handleMouseMove.
+    timeSelection.resetCursor();
+  }, [timeSelection]);
+
   // Factory functions for track and clip props
   const getTrackProps = useCallback((trackIndex: number) => ({
     onTrackClick: () => trackSelection.handleTrackClick(trackIndex),
@@ -420,6 +429,7 @@ export function useAudioSelection(
       ref: containerRef,
       onMouseDown: handleMouseDown,
       onMouseMove: handleMouseMove,
+      onMouseLeave: handleMouseLeave,
       onClick: handleClick,
       style: {
         cursor: currentCursor,

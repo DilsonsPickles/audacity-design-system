@@ -32,6 +32,9 @@ export interface UseClipTrimmingReturn {
   clipTrimStateRef: React.MutableRefObject<ClipTrimState | null>;
   startClipTrim: (trimState: ClipTrimState) => void;
   cancelTrim: () => void;
+  /** True for the tick after mouseup so click handlers running on the
+   *  same gesture can bail out. Mirrors `wasJustStretching`. */
+  wasJustTrimming: () => boolean;
   /** Time (in seconds) the active trim has snapped to, or null when no
    *  trim is active / snap is off / Alt is held. */
   snapGuidelineTime: number | null;
@@ -58,10 +61,13 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
   const dispatch = useTracksDispatch();
   const clipTrimStateRef = useRef<ClipTrimState | null>(null);
   const snapHysteresisRef = useRef<{ cursorXAtEngage: number } | null>(null);
+  const justTrimmedRef = useRef(false);
   const SNAP_THRESHOLD_PX = 6;
   const SNAP_RELEASE_PX = 10;
   const [snapGuidelineTime, setSnapGuidelineTime] = useState<number | null>(null);
   const [snapGuidelineKind, setSnapGuidelineKind] = useState<SnapGuidelineKind | null>(null);
+
+  const wasJustTrimming = () => justTrimmedRef.current;
 
   const startClipTrim = (trimState: ClipTrimState) => {
     clipTrimStateRef.current = trimState;
@@ -75,10 +81,34 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
     setSnapGuidelineKind(null);
   };
 
+  // Every trim mousemove dispatches TRIM_CLIP, which updates `tracks`.
+  // Listing `tracks` (and other frequently-changing values) as effect
+  // deps meant the document mousemove / mouseup listeners were
+  // removed + re-added on every trim tick — a mouseup arriving between
+  // removeEventListener and addEventListener could be silently lost,
+  // leaving the trim state stuck and the next mousemove re-triggering
+  // trim. Read the live values through refs so the effect binds once.
+  const tracksRef = useRef(tracks);
+  const pixelsPerSecondRef = useRef(pixelsPerSecond);
+  const clipContentOffsetRef = useRef(clipContentOffset);
+  const snapEnabledRef = useRef(snapEnabled);
+  const snapOptionsRef = useRef(snapOptions);
+  useEffect(() => { tracksRef.current = tracks; }, [tracks]);
+  useEffect(() => { pixelsPerSecondRef.current = pixelsPerSecond; }, [pixelsPerSecond]);
+  useEffect(() => { clipContentOffsetRef.current = clipContentOffset; }, [clipContentOffset]);
+  useEffect(() => { snapEnabledRef.current = snapEnabled; }, [snapEnabled]);
+  useEffect(() => { snapOptionsRef.current = snapOptions; }, [snapOptions]);
+
   // Document-level mouse move and up for clip trimming
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current || !clipTrimStateRef.current) return;
+
+      const tracks = tracksRef.current;
+      const pixelsPerSecond = pixelsPerSecondRef.current;
+      const clipContentOffset = clipContentOffsetRef.current;
+      const snapEnabled = snapEnabledRef.current;
+      const snapOptions = snapOptionsRef.current;
 
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -377,6 +407,8 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
       const trimState = clipTrimStateRef.current;
       if (!trimState) return;
 
+      const tracks = tracksRef.current;
+
       // Build intent from final positions of all clips that were being trimmed
       // (every selected clip on every track).
       const intent: ClipPlacement[] = [];
@@ -404,6 +436,14 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
 
       snapHysteresisRef.current = null;
       cancelTrim();
+
+      // Tell the canvas click handler not to deselect on the click event
+      // the browser is about to fire on the LCA of mousedown + mouseup.
+      // Mirrors the flag useClipStretching sets.
+      justTrimmedRef.current = true;
+      setTimeout(() => {
+        justTrimmedRef.current = false;
+      }, 0);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -413,12 +453,16 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [tracks, pixelsPerSecond, clipContentOffset, dispatch, onTrimStatusChange, containerRef, snapEnabled, snapOptions]);
+    // Intentionally bind once — see the refs above for how live values
+    // are threaded in without churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, containerRef]);
 
   return {
     clipTrimStateRef,
     startClipTrim,
     cancelTrim,
+    wasJustTrimming,
     snapGuidelineTime,
     snapGuidelineKind,
   };

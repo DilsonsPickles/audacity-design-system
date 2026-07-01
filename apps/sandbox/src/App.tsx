@@ -23,6 +23,7 @@ import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineConte
 import { AppContextMenus } from './components/AppContextMenus';
 import { AppDialogs } from './components/AppDialogs';
 import { InstallerWizardDialog } from './components/InstallerWizardDialog';
+import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { TransportToolbar } from '@dilsonspickles/components';
 import { EditorLayout } from './components/EditorLayout';
 const TokenReview = React.lazy(() =>
@@ -169,6 +170,18 @@ function CanvasDemoContent() {
   const [isCloudProject, setIsCloudProject] = React.useState(false);
   const [cloudProjectName, setCloudProjectName] = React.useState('');
   const [projectName, setProjectName] = React.useState('');
+  // Track-delete confirmation: shows the styled Dialog when a delete
+  // is requested via confirmTrackDelete(). onConfirm runs the actual
+  // dispatch, letting each call site stay decoupled from UI plumbing.
+  const [trackDeleteConfirm, setTrackDeleteConfirm] = React.useState<
+    { count: number; onConfirm: () => void } | null
+  >(null);
+  React.useEffect(() => {
+    setTrackDeleteConfirmHandler((count, onConfirm) => {
+      setTrackDeleteConfirm({ count, onConfirm });
+    });
+    return () => setTrackDeleteConfirmHandler(null);
+  }, []);
   const [cloudAudioFiles, setCloudAudioFiles] = React.useState<Array<{
     id: string;
     title: string;
@@ -2060,6 +2073,40 @@ function CanvasDemoContent() {
         </div>
       )}
       <InstallerWizardDialog />
+      {trackDeleteConfirm && (
+        <Dialog
+          isOpen={true}
+          title={trackDeleteConfirm.count === 1 ? 'Delete track?' : `Delete ${trackDeleteConfirm.count} tracks?`}
+          onClose={() => setTrackDeleteConfirm(null)}
+          width={420}
+          footer={
+            <Footer
+              primaryText="Delete"
+              secondaryText="Cancel"
+              onPrimaryClick={() => {
+                const cb = trackDeleteConfirm.onConfirm;
+                setTrackDeleteConfirm(null);
+                cb();
+              }}
+              onSecondaryClick={() => setTrackDeleteConfirm(null)}
+            />
+          }
+        >
+          <p
+            style={{
+              margin: 0,
+              fontFamily: "'Inter', sans-serif",
+              fontSize: '14px',
+              lineHeight: '18px',
+              fontWeight: 400,
+            }}
+          >
+            {trackDeleteConfirm.count === 1
+              ? 'This track and all clips on it will be removed. This can be undone with Cmd+Z.'
+              : `These ${trackDeleteConfirm.count} tracks and all clips on them will be removed. This can be undone with Cmd+Z.`}
+          </p>
+        </Dialog>
+      )}
     </div>
   );
 }

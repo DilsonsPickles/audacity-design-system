@@ -5,6 +5,7 @@ import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@dilsonspickles/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
+import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 
 export interface AppContextMenusProps {
   // Spectrogram
@@ -291,18 +292,40 @@ export function AppContextMenus({
           onDelete={() => {
             if (trackContextMenu) {
               const deletedIdx = trackContextMenu.trackIndex;
-              dispatch({
-                type: 'DELETE_TRACK',
-                payload: deletedIdx,
-              });
+              const t = tracks[deletedIdx];
+              const hasContent = t
+                && ((t.clips?.length ?? 0) > 0 || (t.midiClips?.length ?? 0) > 0);
+              // Close the context menu first so it doesn't sit behind
+              // the confirmation dialog.
               setTrackContextMenu(null);
-              // The trigger button vanishes with the track — fall back
-              // to the nearest remaining track's menu button.
-              restoreTrackMenuFocus(deletedIdx);
+              confirmTrackDelete(
+                1,
+                () => {
+                  dispatch({
+                    type: 'DELETE_TRACK',
+                    payload: deletedIdx,
+                  });
+                  // The trigger button vanishes with the track — fall
+                  // back to the nearest remaining track's menu button.
+                  restoreTrackMenuFocus(deletedIdx);
+                },
+                { skipDialog: !hasContent },
+              );
             }
           }}
           onColorChange={(color) => {
             if (trackContextMenu) {
+              // Keep the track's own colour in sync — otherwise a
+              // subsequent paste onto this track reads the stale
+              // palette default from state.tracks[i].color and stamps
+              // the pasted clip with the wrong hue.
+              dispatch({
+                type: 'UPDATE_TRACK',
+                payload: {
+                  index: trackContextMenu.trackIndex,
+                  track: { color: color as any },
+                },
+              });
               const track = tracks[trackContextMenu.trackIndex];
               track?.clips.forEach((clip: any) => {
                 dispatch({

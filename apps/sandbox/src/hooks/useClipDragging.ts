@@ -15,6 +15,13 @@ export interface UseClipDraggingOptions {
   onDragStatusChange?: (isDragging: boolean) => void;
   snapEnabled?: boolean;
   snapOptions?: SnapOptions;
+  /** Called when the drag settles in the empty space below all tracks.
+   *  Returns a fresh track template (id, name, type, height, clips: [])
+   *  the hook will `ADD_TRACK`-dispatch. Called `count` times so name
+   *  numbering can advance without collisions.
+   *  When omitted, drop-below is disabled and the drag clamps to the
+   *  last existing track as before. */
+  buildTrackForDrop?: (indexAmongNew: number, sourceTrackIndex: number) => any;
 }
 
 export type SnapGuidelineKind = 'grid' | 'alignment';
@@ -46,11 +53,25 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
     onDragStatusChange,
     snapEnabled = false,
     snapOptions,
+    buildTrackForDrop,
   } = options;
 
   const dispatch = useTracksDispatch();
   const clipDragStateRef = useRef<ClipDragState | null>(null);
   const didDragRef = useRef(false);
+  // Last pointer Y (in container-local space) captured during
+  // mousemove — mouseup reads this to detect drops below all tracks
+  // without needing the mouseup event's own clientY.
+  const lastPointerYRef = useRef<number | null>(null);
+  // Provisional-track bookkeeping. As soon as the drag needs to reach
+  // past the last row, we dispatch ADD_TRACK so the user sees a real
+  // row appear under their cursor; when they drag back up we
+  // DELETE_TRACK the ones no longer needed. `originalTracksLenRef`
+  // freezes the pre-drag length so shrink logic never eats a track
+  // that existed before the gesture.
+  const provisionalCountRef = useRef(0);
+  const originalTracksLenRef = useRef(0);
+  const provisionalDragInitializedRef = useRef(false);
   const [snapGuidelineTime, setSnapGuidelineTime] = useState<number | null>(null);
   const [snapGuidelineKind, setSnapGuidelineKind] = useState<SnapGuidelineKind | null>(null);
 
@@ -71,6 +92,10 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
     clipDragStateRef.current = null;
     didDragRef.current = false;
     snapHysteresisRef.current = null;
+    lastPointerYRef.current = null;
+    provisionalCountRef.current = 0;
+    originalTracksLenRef.current = 0;
+    provisionalDragInitializedRef.current = false;
     setSnapGuidelineTime(null);
     setSnapGuidelineKind(null);
     if (containerRef.current) {
@@ -90,6 +115,18 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
 
       const dragState = clipDragStateRef.current;
       didDragRef.current = true; // Mark that dragging has occurred
+      lastPointerYRef.current = y;
+
+      // First mousemove of this drag: freeze the pre-drag track count
+      // so grow / shrink can compute deltas against a stable baseline.
+      // We initialize here (rather than at drag-start) because
+      // useClipMouseDown sets clipDragStateRef directly without going
+      // through startClipDrag.
+      if (!provisionalDragInitializedRef.current) {
+        originalTracksLenRef.current = tracks.length;
+        provisionalCountRef.current = 0;
+        provisionalDragInitializedRef.current = true;
+      }
 
       // Calculate raw new start time.
       const rawStart = Math.max(0, (x - dragState.offsetX - clipContentOffset) / pixelsPerSecond);
@@ -139,9 +176,13 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       setSnapGuidelineTime(guideline);
       setSnapGuidelineKind(guidelineKind);
 
-      // Determine destination track first.
+      // Determine destination track first. If the pointer is past the
+      // bottom of the last row, `newTrackIndex` extends into virtual
+      // territory (tracks.length + rowsBelow); we'll later dispatch
+      // ADD_TRACK to materialise those rows so the user can see them
+      // under the cursor.
       let currentY = topGap;
-      let newTrackIndex = dragState.trackIndex;
+      let newTrackIndex = -1;
       for (let i = 0; i < tracks.length; i++) {
         const trackHeight = tracks[i].height || defaultTrackHeight;
         if (y >= currentY && y < currentY + trackHeight) {
@@ -149,6 +190,15 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
           break;
         }
         currentY += trackHeight + trackGap;
+      }
+      if (newTrackIndex === -1) {
+        if (buildTrackForDrop && y > currentY - trackGap) {
+          const rowStride = defaultTrackHeight + trackGap;
+          const rowsBelow = Math.max(0, Math.floor((y - currentY) / rowStride));
+          newTrackIndex = tracks.length + rowsBelow;
+        } else {
+          newTrackIndex = dragState.trackIndex;
+        }
       }
 
       // Build moving-clip-id set for snap (don't snap to ourselves).
@@ -213,6 +263,44 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       // set when the leader crosses a track boundary.
       let deltaTrack = newTrackIndex - dragState.initialTrackIndex;
 
+      // Group bounds needed both to clamp the move and to size any
+      // provisional tracks we need to append below.
+      const groupInitialTracks = (hasMultipleSelected && isDraggedClipSelected)
+        ? dragState.selectedClipsInitialPositions!.map(
+            (pos: { trackIndex: number }) => pos.trackIndex,
+          )
+        : [dragState.initialTrackIndex];
+      const topmostInitialTrack = Math.min(...groupInitialTracks);
+      const bottommostInitialTrack = Math.max(...groupInitialTracks);
+
+      // Grow provisional tracks if the desired delta pushes the group's
+      // bottom past the last existing row and buildTrackForDrop is
+      // wired. The dispatch batches ahead of MOVE_CLIP so by the time
+      // the move lands, the target index exists in the reducer's state.
+      if (buildTrackForDrop) {
+        const desiredMaxTargetIndex = bottommostInitialTrack + deltaTrack;
+        const neededProvisional = Math.max(
+          0,
+          desiredMaxTargetIndex - (originalTracksLenRef.current - 1),
+        );
+        if (neededProvisional > provisionalCountRef.current) {
+          for (let i = provisionalCountRef.current; i < neededProvisional; i++) {
+            const template = buildTrackForDrop(i, dragState.initialTrackIndex);
+            if (template) {
+              dispatch({ type: 'ADD_TRACK', payload: template });
+            }
+          }
+          provisionalCountRef.current = neededProvisional;
+        }
+      }
+
+      // Effective row count for clamping. Includes any provisional
+      // tracks we've queued this tick — those dispatches have already
+      // hit the reducer so the state at MOVE_CLIP-processing time
+      // reflects them, even though our `tracks` closure is still stale.
+      const effectiveTracksLength =
+        originalTracksLenRef.current + provisionalCountRef.current;
+
       if (hasMultipleSelected && isDraggedClipSelected) {
         // Calculate the delta from the dragged clip's INITIAL position
         let deltaTime = newStartTime - dragState.initialStartTime;
@@ -227,17 +315,11 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
           deltaTime = -leftmostClipStartTime;
         }
 
-        // Clamp deltaTrack to the group's bounds so the topmost clip
-        // doesn't push past 0 (and the bottommost past tracks.length-1)
-        // by collapsing siblings onto a single track. The whole group
-        // stops moving vertically the moment any member would clip.
-        const groupInitialTracks = dragState.selectedClipsInitialPositions!.map(
-          (pos: { trackIndex: number }) => pos.trackIndex,
-        );
-        const topmostInitialTrack = Math.min(...groupInitialTracks);
-        const bottommostInitialTrack = Math.max(...groupInitialTracks);
+        // Clamp deltaTrack: top stays at 0; bottom is either the
+        // pre-drag last row (no provisional path) or the last row
+        // including any provisional tracks we just grew into.
         const minAllowedDeltaTrack = -topmostInitialTrack;
-        const maxAllowedDeltaTrack = (tracks.length - 1) - bottommostInitialTrack;
+        const maxAllowedDeltaTrack = (effectiveTracksLength - 1) - bottommostInitialTrack;
         deltaTrack = Math.max(minAllowedDeltaTrack, Math.min(maxAllowedDeltaTrack, deltaTrack));
 
         // Move all selected clips by the same delta from their INITIAL positions
@@ -266,16 +348,26 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
           });
         });
       } else {
-        // Move only the dragged clip
+        // Single-clip drag: clamp to the effective row range so we
+        // never point MOVE_CLIP at a row that doesn't exist yet
+        // (even after the provisional grow above).
+        const singleClipTargetIndex = Math.max(
+          0,
+          Math.min(effectiveTracksLength - 1, newTrackIndex),
+        );
+        // Snap deltaTrack to what actually got applied so the
+        // focus / selection update below matches reality.
+        deltaTrack = singleClipTargetIndex - dragState.initialTrackIndex;
         dispatch({
           type: 'MOVE_CLIP',
           payload: {
             clipId: dragState.clip.id,
             fromTrackIndex: dragState.trackIndex,
-            toTrackIndex: newTrackIndex,
+            toTrackIndex: singleClipTargetIndex,
             newStartTime,
           },
         });
+        newTrackIndex = singleClipTargetIndex;
       }
 
       // Update drag state if track changed.
@@ -288,7 +380,7 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
           // the clips just vacated.
           const destTracks = new Set<number>();
           dragState.selectedClipsInitialPositions!.forEach((initialPos: { trackIndex: number }) => {
-            const target = Math.max(0, Math.min(tracks.length - 1, initialPos.trackIndex + deltaTrack));
+            const target = Math.max(0, Math.min(effectiveTracksLength - 1, initialPos.trackIndex + deltaTrack));
             destTracks.add(target);
           });
           dispatch({
@@ -303,6 +395,36 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
         // stranding on the originating track.
         dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
       }
+
+      // Shrink: if the user has dragged back up and one or more
+      // provisional tracks are no longer needed, drop them from the
+      // end. Runs AFTER the MOVE_CLIP dispatches above so the reducer
+      // sees the clips already vacated those rows and the DELETE_TRACKs
+      // target genuinely empty tracks.
+      if (buildTrackForDrop && provisionalCountRef.current > 0) {
+        const maxOccupiedTargetIndex = bottommostInitialTrack + deltaTrack;
+        const stillNeeded = Math.max(
+          0,
+          maxOccupiedTargetIndex - (originalTracksLenRef.current - 1),
+        );
+        if (stillNeeded < provisionalCountRef.current) {
+          const excess = provisionalCountRef.current - stillNeeded;
+          for (let i = 0; i < excess; i++) {
+            // Delete the highest-indexed provisional track each
+            // iteration. After DELETE_TRACK removes the last row the
+            // next iteration's target (one lower) is the new last row.
+            const deleteIndex =
+              originalTracksLenRef.current + provisionalCountRef.current - 1 - i;
+            dispatch({ type: 'DELETE_TRACK', payload: deleteIndex });
+          }
+          provisionalCountRef.current = stillNeeded;
+          // DELETE_TRACK overwrites focusedTrackIndex in the reducer
+          // (it can't tell "you were focused elsewhere, please stay").
+          // Restore the leader's track so the focus ring stays with the
+          // drag rather than snapping to the deleted row's neighbour.
+          dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
+        }
+      }
     };
 
     const handleMouseUp = () => {
@@ -312,13 +434,19 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       const wasDragging = didDragRef.current;
 
       if (wasDragging) {
-        // Build intent from current positions of moving clips.
         const movingIds = new Set<number>(
           dragState.selectedClipsInitialPositions && dragState.selectedClipsInitialPositions.length > 1
             ? dragState.selectedClipsInitialPositions.map((p: { clipId: number }) => p.clipId)
             : [dragState.clip.id]
         );
 
+        // Standard settle: resolve any overlap the drag created against
+        // the existing tracks and commit as APPLY_CLIP_PLACEMENT. Any
+        // provisional tracks the mousemove path materialised will be
+        // in `tracks` here — if they're occupied they behave like
+        // regular rows for overlap resolution; if they were vacated
+        // by an upward drag they're empty and the safety-net below
+        // trims them.
         const intent: ClipPlacement[] = [];
         for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
           for (const clip of tracks[trackIndex].clips) {
@@ -337,6 +465,28 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
         if (resolution.mutations.length > 0) {
           dispatch({ type: 'APPLY_CLIP_PLACEMENT', payload: resolution });
         }
+
+        // Safety net: if any of the provisional tracks we added during
+        // the drag are still empty at mouseup (nothing landed on them),
+        // remove them. The shrink logic in mousemove only fires when
+        // the pointer moves back up above them; a fast release right
+        // above a provisional row leaves it untouched otherwise.
+        if (provisionalCountRef.current > 0) {
+          for (
+            let i = originalTracksLenRef.current + provisionalCountRef.current - 1;
+            i >= originalTracksLenRef.current;
+            i--
+          ) {
+            const t = tracks[i] as any;
+            const isEmpty =
+              t
+              && (t.clips?.length ?? 0) === 0
+              && (t.midiClips?.length ?? 0) === 0;
+            if (isEmpty) {
+              dispatch({ type: 'DELETE_TRACK', payload: i });
+            }
+          }
+        }
       }
 
       cancelDrag();
@@ -351,7 +501,7 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [tracks, pixelsPerSecond, clipContentOffset, topGap, trackGap, defaultTrackHeight, dispatch, onDragStatusChange, containerRef, snapEnabled, snapOptions]);
+  }, [tracks, pixelsPerSecond, clipContentOffset, topGap, trackGap, defaultTrackHeight, dispatch, onDragStatusChange, containerRef, snapEnabled, snapOptions, buildTrackForDrop]);
 
   return {
     clipDragStateRef,

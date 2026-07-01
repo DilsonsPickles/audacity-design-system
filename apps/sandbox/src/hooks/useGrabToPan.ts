@@ -95,9 +95,9 @@ export function useGrabToPan({
     };
   }, [isModifierHeld, isPanning]);
 
-  // Mouse drag → scroll the container. Only active while H is held;
-  // re-binding when it toggles attaches and detaches the capture-phase
-  // listener cleanly.
+  // Mouse drag → scroll the container. Only active while the pan
+  // modifier is held; re-binding when it toggles attaches and detaches
+  // the capture-phase listener cleanly.
   useEffect(() => {
     if (!isModifierHeld) return;
     const container = scrollContainerRef.current;
