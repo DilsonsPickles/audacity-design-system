@@ -79,10 +79,9 @@ export function useContainerClick({
     const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
 
     if (y > totalTracksHeight) {
-      // Clicked in empty space below tracks - maintain focus and selection
-
-      // DON'T call containerPropsOnClick here - it would clear track selection
-      // Prevent default to avoid blurring the currently focused element
+      // Clicked in empty space below all tracks — maintain the
+      // currently focused track. Prevent default so we don't blur
+      // whatever DOM element was focused.
       e.preventDefault();
 
       // Determine which track to focus - use keyboardFocusedTrack if available,
@@ -90,16 +89,10 @@ export function useContainerClick({
       const trackToFocus = keyboardFocusedTrack ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : null);
 
       if (trackToFocus !== null && trackToFocus !== undefined) {
-        // Keep the focused track focused
         dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackToFocus });
         onTrackFocusChange?.(trackToFocus, true);
-        // Also maintain track selection - re-select the currently selected tracks
-        if (selectedTrackIndices.length > 0) {
-          dispatch({ type: 'SET_SELECTED_TRACKS', payload: selectedTrackIndices });
-        }
 
-        // Re-focus the track element to maintain keyboard focus
-        // Find the track element by data attribute and focus it
+        // Re-focus the track element so keyboard navigation resumes there.
         const trackElement = document.querySelector(`[data-track-index="${trackToFocus}"] .track`);
         if (trackElement && trackElement instanceof HTMLElement) {
           trackElement.focus();
@@ -112,26 +105,18 @@ export function useContainerClick({
         containerPropsOnClick(e);
       }
 
-      // Detect whether the click landed inside a clip body. Body
-      // clicks change track selection differently from empty-row
-      // clicks: when the clicked track is already part of a multi-
-      // track selection (built via Cmd+click on headers), the
-      // selection stays intact. When it isn't, the click collapses
-      // the selection to just this track (so the user's focus
-      // and selection stay aligned with where they clicked).
-      const clickTarget = (e.target as HTMLElement).closest('[data-clip-id]');
-      const clickedOnClip = !!clickTarget;
-      const clickedTrackInSelection = selectedTrackIndices.includes(clickedTrackIndex);
-
-      // Clicked on a track - handle selection based on Shift key
+      // Track selection on canvas clicks is now an explicit gesture
+      // only: Shift+Click extends a range; plain clicks just move
+      // focus / playhead and leave the selection where the user last
+      // put it (side panel, Cmd+click, keyboard, etc.). Matches the
+      // clip-vs-track decoupling — the canvas is for clip / time
+      // work, not for reshuffling the track selection.
       if (e.shiftKey) {
-        // Shift+Click: Range selection
         const anchor = selectionAnchor ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : clickedTrackIndex);
         if (selectionAnchor === null) {
           setSelectionAnchor(anchor);
         }
 
-        // Calculate range selection from anchor to clicked track
         const start = Math.min(anchor, clickedTrackIndex);
         const end = Math.max(anchor, clickedTrackIndex);
         const newSelection: number[] = [];
@@ -139,14 +124,8 @@ export function useContainerClick({
           newSelection.push(i);
         }
         dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-      } else if (!clickedOnClip || !clickedTrackInSelection) {
-        // Either an empty-row click, or a body click on a track
-        // that isn't part of the current multi-track selection —
-        // collapse to just this track.
-        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
-        // Clear anchor
-        setSelectionAnchor(null);
       }
+
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });
       onTrackFocusChange?.(clickedTrackIndex, true);
     }

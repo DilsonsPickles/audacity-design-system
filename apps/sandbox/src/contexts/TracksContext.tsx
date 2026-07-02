@@ -821,18 +821,15 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
 
       const expandedTracks = expandSelectionToGroups(newTracks);
 
-      // Derive selectedTrackIndices from the expanded selection (groups may span tracks).
-      const expandedSelectedTrackIndices: number[] = [];
-      expandedTracks.forEach((t, idx) => {
-        if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) {
-          expandedSelectedTrackIndices.push(idx);
-        }
-      });
+      // Track selection is intentionally decoupled from clip
+      // selection — selecting a clip no longer promotes its track
+      // into the selection set. Callers that want the classic
+      // "clip select selects track" behaviour dispatch
+      // SET_SELECTED_TRACKS themselves.
 
       return {
         ...state,
         tracks: expandedTracks,
-        selectedTrackIndices: expandedSelectedTrackIndices.length > 0 ? expandedSelectedTrackIndices : [trackIndex],
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [],
         timeSelection: null,
@@ -857,20 +854,15 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         })),
       }));
       const expandedTracks = expandSelectionToGroups(newTracks);
-      const expandedSelectedTrackIndices: number[] = [];
-      expandedTracks.forEach((t, idx) => {
-        if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) {
-          expandedSelectedTrackIndices.push(idx);
-        }
-      });
       const last = action.payload[action.payload.length - 1];
+      // Track selection intentionally left untouched — clip
+      // selection no longer implies track selection.
       return {
         ...state,
         tracks: expandedTracks,
-        selectedTrackIndices: expandedSelectedTrackIndices,
         focusedTrackIndex: last ? last.trackIndex : state.focusedTrackIndex,
         selectedLabelIds: [],
-        // Clear the time selection — multi-track selection has no single
+        // Clear the time selection — a batch clip select has no single
         // representative range to mirror in the ruler.
         timeSelection: null,
         clipDurationIndicator: null,
@@ -911,15 +903,11 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         }));
 
         const expandedTracks = expandSelectionToGroups(newTracks);
-        const sti: number[] = [];
-        expandedTracks.forEach((t, idx) => {
-          if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) sti.push(idx);
-        });
+        // Track selection untouched — see SELECT_CLIP.
 
         return {
           ...state,
           tracks: expandedTracks,
-          selectedTrackIndices: sti.length > 0 ? sti : [trackIndex],
           focusedTrackIndex: trackIndex,
           selectedLabelIds: [],
           lastSelectedClip: { trackIndex, clipId },
@@ -959,15 +947,11 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
       }));
 
       const expandedTracks = expandSelectionToGroups(newTracks);
-      const sti: number[] = [];
-      expandedTracks.forEach((t, idx) => {
-        if (t.clips.some(c => c.selected) || t.midiClips?.some(c => c.selected)) sti.push(idx);
-      });
+      // Track selection untouched — see SELECT_CLIP.
 
       return {
         ...state,
         tracks: expandedTracks,
-        selectedTrackIndices: sti.length > 0 ? sti : [trackIndex],
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [],
         // Preserve the anchor so chained shift-clicks always extend from
@@ -1221,15 +1205,13 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         }
       }
 
-      // Update selectedTrackIndices to reflect new track positions
-      const newSelectedTrackIndices = [...new Set(
-        selectedEntries.map(e => e.trackIndex + direction)
-      )].sort((a, b) => a - b);
+      // Track selection intentionally left untouched — moving clips
+      // between tracks does not promote destination tracks into the
+      // selection set. Matches the SELECT_CLIP / drag decoupling.
 
       return {
         ...state,
         tracks: newTracks,
-        selectedTrackIndices: newSelectedTrackIndices,
       };
     }
 
@@ -1266,11 +1248,7 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
 
       const expandedTracks = expandSelectionToGroups(newTracks);
 
-      // Update selectedTrackIndices based on which tracks have selected clips
-      const tracksWithSelection = expandedTracks
-        .map((track, idx) => ({ idx, hasSelection: track.clips.some(c => c.selected) || track.midiClips?.some(c => c.selected) }))
-        .filter(t => t.hasSelection)
-        .map(t => t.idx);
+      // Track selection intentionally left untouched — see SELECT_CLIP.
 
       // Determine if the clip was selected (not deselected)
       const wasClipSelected = (expandedTracks[trackIndex]?.clips.find(c => c.id === clipId)?.selected
@@ -1279,7 +1257,6 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
       return {
         ...state,
         tracks: expandedTracks,
-        selectedTrackIndices: tracksWithSelection,
         selectedLabelIds: [], // Clear label selection when toggling clip
         timeSelection: null,
         clipDurationIndicator: null,
@@ -1726,10 +1703,9 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         midiClips: track.midiClips?.map(clip => ({ ...clip, selected: false })),
       }));
 
-      // Calculate time selection and track selection from selected labels
+      // If exactly one label is selected, mirror its time range on
+      // the ruler (matches clip-selection behaviour).
       let newTimeSelection: TimeSelection | null = null;
-      const selectedTrackIndices: number[] = [];
-
       if (action.payload.length > 0) {
         const selectedLabels: Label[] = [];
         state.tracks.forEach((track, trackIndex) => {
@@ -1737,15 +1713,9 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
             const labelKeyId = `${trackIndex}-${label.id}`;
             if (action.payload.includes(labelKeyId)) {
               selectedLabels.push(label);
-              // Add this track to selected tracks if not already included
-              if (!selectedTrackIndices.includes(trackIndex)) {
-                selectedTrackIndices.push(trackIndex);
-              }
             }
           });
         });
-
-        // Only create time selection if exactly ONE label is selected (like clips)
         if (selectedLabels.length === 1) {
           const label = selectedLabels[0];
           newTimeSelection = {
@@ -1755,16 +1725,19 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         }
       }
 
-      // Set focused track to the first selected track (if any)
-      const newFocusedTrack = selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : null;
-
+      // Track selection and focus are intentionally NOT touched here.
+      // Clearing labels (SET_SELECTED_LABELS: []) used to reset
+      // selectedTrackIndices to [] which — combined with the
+      // follows-focus effect in App.tsx — rewrote the selection to
+      // whatever track had focus, leaking through as "clicking
+      // another track deselects the previous track". Label selection
+      // is now orthogonal to track selection, matching the clip /
+      // track decoupling.
       return {
         ...state,
         selectedLabelIds: action.payload,
         tracks: newTracks,
         timeSelection: newTimeSelection,
-        selectedTrackIndices,
-        focusedTrackIndex: newFocusedTrack,
       };
     }
 

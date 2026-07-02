@@ -147,8 +147,16 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
     '--panel-header-border': theme.border.default,
     '--panel-canvas-bg': theme.background.canvas.default,
     '--panel-grid-border': '#323644',
-    '--panel-track-idle': theme.background.canvas.default,
-    '--panel-track-selected': theme.background.canvas.track.selected,
+    // Solid pre-composited equivalents of the canvas track overlays.
+    // The vertical ruler doesn't render a grid underneath so it
+    // paints solid values that match what the canvas track pixel
+    // composites to when the overlay hits the dark canvas floor.
+    // Header (spacer) sits a shade darker than the body in every
+    // state so the header vs body hierarchy stays legible.
+    '--panel-track-idle': '#31333F',
+    '--panel-track-selected': '#454752',
+    '--panel-track-spacer-idle': '#2A2C36',
+    '--panel-track-spacer-selected': '#3A3C46',
   } as React.CSSProperties;
 
   return (
@@ -193,6 +201,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
             <div
               ref={(el) => (trackRefs.current[index] = el)}
               className={`vertical-ruler-panel__track ${
+                track.selected ? 'vertical-ruler-panel__track--selected' : ''
+              } ${
                 track.focused ? 'vertical-ruler-panel__track--focused' : ''
               } ${track.containerFocused ? 'vertical-ruler-panel__track--container-focused' : ''}`}
               style={{ height: `${track.height}px` }}

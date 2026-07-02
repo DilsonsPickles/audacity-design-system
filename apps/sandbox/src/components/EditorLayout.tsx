@@ -963,6 +963,53 @@ export function EditorLayout(props: EditorLayoutProps) {
                     dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
                   }
                 }}
+                onDragReorderDrop={(clientY) => {
+                  // Resolve the drop Y to a track index by hit-testing
+                  // every visible panel. If the pointer landed above
+                  // the first row or below the last, clamp.
+                  const panels = document.querySelectorAll<HTMLElement>('[aria-label*="track controls"]');
+                  let target = -1;
+                  for (let i = 0; i < panels.length; i++) {
+                    const rect = panels[i].getBoundingClientRect();
+                    if (clientY >= rect.top && clientY <= rect.bottom) {
+                      target = i;
+                      break;
+                    }
+                    if (clientY < rect.top && target === -1) {
+                      target = i;
+                      break;
+                    }
+                  }
+                  if (target === -1) target = panels.length - 1;
+                  if (target < 0 || target === index) return;
+                  dispatch({
+                    type: 'MOVE_TRACK',
+                    payload: { fromIndex: index, toIndex: target },
+                  });
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: target });
+                }}
+                onReorderVertical={(direction) => {
+                  // Cmd+Arrow on the track panel header: reorder
+                  // this track's row within the track list, using
+                  // the same MOVE_TRACK path the canvas .track
+                  // container uses. Aborts silently at the edges.
+                  const dir = direction === 'up' ? -1 : 1;
+                  const target = index + dir;
+                  if (target < 0 || target >= state.tracks.length) return;
+                  dispatch({
+                    type: 'MOVE_TRACK',
+                    payload: { fromIndex: index, toIndex: target },
+                  });
+                  // Focus follows the moved row so subsequent
+                  // Cmd+Arrows accumulate.
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: target });
+                  // Move DOM focus to the newly positioned panel so
+                  // the next keydown fires from the right instance.
+                  requestAnimationFrame(() => {
+                    const panels = document.querySelectorAll('[aria-label*="track controls"]');
+                    (panels[target] as HTMLElement | undefined)?.focus?.();
+                  });
+                }}
                 onNavigateVertical={(direction, shiftKey) => {
                   const nextIndex = direction === 'up' ? index - 1 : index + 1;
                   if (nextIndex >= 0 && nextIndex < state.tracks.length) {
@@ -1333,15 +1380,19 @@ export function EditorLayout(props: EditorLayoutProps) {
             </div>
           </div>
 
-          {/* Fixed Vertical Ruler Header (next to timeline ruler) */}
+          {/* Fixed Vertical Ruler Header (next to timeline ruler) —
+              sits in the top-right corner where the timeline ruler
+              meets the vertical amplitude ruler. Colour-matched to
+              the timeline rail so the whole top strip reads as one
+              continuous surface. */}
           {showVerticalRulers && (
             <div style={{
               width: '64px',
               height: '40px',
               flexShrink: 0,
-              backgroundColor: theme.background.surface.elevated,
-              borderLeft: `1px solid ${theme.border.default}`,
-              borderBottom: `1px solid ${theme.border.default}`,
+              backgroundColor: theme.background.panel.timeline,
+              borderLeft: `1px solid ${theme.border.onElevated}`,
+              borderBottom: `1px solid ${theme.border.onElevated}`,
             }} />
           )}
         </div>

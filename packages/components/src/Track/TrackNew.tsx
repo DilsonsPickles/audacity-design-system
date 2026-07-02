@@ -821,15 +821,19 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // Plain Arrow Up/Down on a focused clip: move TRACK focus
             // to the row above / below. The clip loses focus, the
             // track row gains it — matches the "arrows always move
-            // around the matrix plane" model. Skipped in mouse-focus
-            // mode.
+            // around the matrix plane" model.
+            //
+            // Pressing an arrow is itself keyboard navigation, so we
+            // clear the mouse-focus attribute before dispatching (any
+            // subsequent redraw shows the visible focus ring on the
+            // destination track).
             if (
               (e.key === 'ArrowDown' || e.key === 'ArrowUp')
               && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey
-              && !(e.currentTarget as HTMLElement).hasAttribute('data-focus-mouse')
             ) {
               e.preventDefault();
               e.stopPropagation();
+              (e.currentTarget as HTMLElement).removeAttribute('data-focus-mouse');
               const direction = e.key === 'ArrowDown' ? 1 : -1;
               onTrackNavigateVertical?.(direction, false, false);
               return;
@@ -981,7 +985,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const fromMouse = focusFromMouseRef.current;
     focusFromMouseRef.current = false;
     const node = trackRef.current;
-    if (node && node.hasAttribute('data-focus-from-nav')) {
+    // `data-focus-from-nav` is stamped by the arrow-nav path (Canvas
+    // sets it right before .focus() lands on the target track). It
+    // signals "the user is arrow-walking, not Tab-walking, so paint
+    // the blue arrow-focus outline instead of the container-focused
+    // black/white bars". We consume the attribute here so any later
+    // Tab-driven focus into the same track re-picks the Tab style.
+    const fromArrowNav = !!(node && node.hasAttribute('data-focus-from-nav'));
+    if (fromArrowNav) {
       node.removeAttribute('data-focus-from-nav');
     }
 
@@ -1015,9 +1026,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       }
     }
 
+    // Blue arrow-nav outline overrides the black/white container
+    // outline: arrow keys walking off a focused clip onto a new
+    // track shouldn't flip that track's style into Tab-nav mode.
     const containerHasFocus =
       e.target === trackRef.current
       && !fromMouse
+      && !fromArrowNav
       && getInputMode() === 'keyboard';
     setIsContainerFocused(containerHasFocus);
     onContainerFocusChange?.(containerHasFocus);

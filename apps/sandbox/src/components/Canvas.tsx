@@ -632,19 +632,23 @@ export function Canvas({
           });
         }
       },
+      // Time-selection drags DO update track selection so the user's
+      // scope (which tracks the range covers, which tracks a Delete
+      // or Cmd+Arrow will act on) follows the drag naturally. A plain
+      // click (< 5px) is not a drag — useTimeSelection snapshots
+      // `initialSelectedTracks` on startDrag and restores it on
+      // mouseup when didActuallyDrag is false, so canvas clicks still
+      // leave the pre-existing selection intact.
       onSelectedTracksChange: (trackIndices) => dispatch({ type: 'SET_SELECTED_TRACKS', payload: trackIndices }),
       onFocusedTrackChange: (trackIndex) => {
         // Don't clear focus when clicking empty space - maintain current focus
         if (trackIndex !== null) {
           dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
           onTrackFocusChange?.(trackIndex, true); // Update keyboard focus state in App.tsx
-          // Starting a time selection on a focused-but-unselected
-          // track should promote that track into the selection so
-          // the selection scope covers where the user is drawing.
-          // Skipped when the track is already part of the selection.
-          if (!selectedTrackIndices.includes(trackIndex)) {
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
-          }
+          // Track selection intentionally left untouched. Canvas
+          // gestures move focus only; explicit gestures (side panel
+          // click, Shift+Click, Cmd+click) are what change the track
+          // selection set.
         }
         // If trackIndex is null (clicked empty space), do nothing - keep current focus
       },
@@ -672,7 +676,10 @@ export function Canvas({
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
         }
       },
-      onTrackSelect: (trackIndex) => dispatch({ type: 'SELECT_TRACK', payload: trackIndex }),
+      // Track selection is now decoupled from click gestures — a track
+      // click only moves focus. Any future wiring of useAudioSelection's
+      // getTrackProps().onTrackClick will inherit that model.
+      onTrackSelect: (trackIndex) => dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex }),
       onClipSelect: (trackIndex, clipId) => dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clipId as number } }),
     }
   );
@@ -1264,20 +1271,17 @@ export function Canvas({
                     return;
                   }
 
-                  // Regular click handling
-                  // Deselect all clips
+                  // Regular click on empty track background:
+                  //  - Clear clip selection (canvas clicks outside a
+                  //    clip drop clip focus).
+                  //  - Move focus to the clicked track (blue outline
+                  //    follows the click).
+                  //  - Clear label selection.
+                  //  - Track selection itself is NOT touched — it's
+                  //    an explicit gesture (side panel, Shift+Click,
+                  //    Cmd+click).
                   dispatch({ type: 'DESELECT_ALL_CLIPS' });
-
-                  // Normal click - select only this track
-                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
-                  // Clear anchor
-                  if (setSelectionAnchor) {
-                    setSelectionAnchor(null);
-                  }
-
-                  // Set this track as focused
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
-                  // Clear label selections
                   dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
                 }
               }}
@@ -1493,6 +1497,35 @@ export function Canvas({
                   // rather than on the originally focused track. Re-
                   // pin it explicitly to the focused track's new row.
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
+
+                  // Sync selection with the reorder:
+                  //  - Focus was in the multi-track group → the
+                  //    whole group moved, remap each old index by
+                  //    +direction so the same set stays selected.
+                  //  - Focus was outside the group (user moved to
+                  //    an unrelated track and reordered it) → the
+                  //    stale multi-selection no longer describes
+                  //    the user's intent; collapse to the moved
+                  //    track's new row so subsequent actions
+                  //    operate on it.
+                  if (focusedInSelection && selectedTrackIndices.length > 1) {
+                    dispatch({
+                      type: 'SET_SELECTED_TRACKS',
+                      payload: tracksToMove.map((i) => i + direction),
+                    });
+                  } else {
+                    // Focus is on a track that isn't part of the
+                    // current clip / track selection. The user has
+                    // effectively started a new gesture — clear the
+                    // stale clip selection too, otherwise the
+                    // highlighted clips on tracks the user no longer
+                    // cares about linger and future shortcuts
+                    // (Delete, Cmd+Arrow horizontal, etc.) act on
+                    // them instead of the reordered track.
+                    dispatch({ type: 'DESELECT_ALL_CLIPS' });
+                    dispatch({ type: 'SET_SELECTED_TRACKS', payload: [targetIndex] });
+                    setSelectionAnchor?.(targetIndex);
+                  }
 
                   setTimeout(() => {
                     const target = document.querySelector(
@@ -2044,28 +2077,18 @@ export function Canvas({
                   });
                 }}
                 onTrackClick={(e) => {
-                  // When track background is clicked, set it as focused
+                  // Plain click: move focus only. Track selection is
+                  // now sticky — a canvas click doesn't collapse the
+                  // selection to the clicked row. Shift+Click still
+                  // extends a range from the anchor (explicit
+                  // gesture).
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
 
-                  // Body click semantics: if the clicked track is
-                  // already part of a multi-track selection, leave
-                  // the selection intact (the user's chord built via
-                  // Cmd+click headers stays alive). If it isn't part
-                  // of the selection, treat the body click like a
-                  // normal track-row click and select it.
-                  const clickedOnClip = !!(e.target as HTMLElement).closest('[data-clip-id]');
-                  const trackInSelection = selectedTrackIndices.includes(trackIndex);
-                  const preserveSelection = clickedOnClip && trackInSelection;
-
-                  // If Shift is held, extend/contract selection (range selection)
                   if (e.shiftKey) {
-                    // Use the first selected track as anchor if no anchor is set
                     const anchor = selectionAnchor ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : trackIndex);
                     if (selectionAnchor === null) {
                       setSelectionAnchor(anchor);
                     }
-
-                    // Calculate range selection from anchor to clicked track
                     const start = Math.min(anchor, trackIndex);
                     const end = Math.max(anchor, trackIndex);
                     const newSelection: number[] = [];
@@ -2073,18 +2096,6 @@ export function Canvas({
                       newSelection.push(i);
                     }
                     dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  } else if (preferences.trackSelectionMode === 'follows-focus' && !preserveSelection) {
-                    // Selection-follows-focus mode: a plain click
-                    // collapses the selection to just this track,
-                    // unless we're inside a body click on a track
-                    // that's already part of the current multi-
-                    // track selection (chord workflow).
-                    dispatch({ type: 'SELECT_TRACK', payload: trackIndex });
-                    setSelectionAnchor(trackIndex);
-                  } else if (!preserveSelection) {
-                    // Classic mode (empty-row click, or body click on
-                    // an unselected track): clear the anchor.
-                    setSelectionAnchor(null);
                   }
                 }}
               />

@@ -195,7 +195,7 @@ export const darkTheme: ThemeTokens = {
 
     trackHeader: {
       idle: '#32383E',           // Dark gray idle state
-      hover: '#373E45',          // Slightly lighter on hover
+      hover: '#32383E',          // Hover intentionally matches idle — hover state disabled while we settle the idle/selected contrast
       selected: '#3D444B',       // Lighter still when selected/active
       parent: '#252B31',         // Parent panel that holds the track header rows
     },

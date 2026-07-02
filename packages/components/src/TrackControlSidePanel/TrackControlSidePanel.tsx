@@ -188,7 +188,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     '--tcsp-header-bg': theme.background.trackHeader.parent,
     '--tcsp-title-color': theme.foreground.text.primary,
     '--tcsp-list-bg': theme.background.trackHeader.parent,
-    '--tcsp-border': theme.border.onSurface,
+    // The side panel sits on the recessed rail, not the default app
+    // surface, so we source its outline from `onElevated` (which
+    // moved alongside the darker rail) rather than `onSurface`
+    // (which is calibrated for the light toolbar background).
+    '--tcsp-border': theme.border.onElevated,
     '--tcsp-focus-outline': theme.border.focus,
   } as React.CSSProperties;
 

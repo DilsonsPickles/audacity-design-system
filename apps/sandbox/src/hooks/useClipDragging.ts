@@ -373,26 +373,11 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       // Update drag state if track changed.
       if (newTrackIndex !== dragState.trackIndex) {
         dragState.trackIndex = newTrackIndex;
-        if (hasMultipleSelected && isDraggedClipSelected) {
-          // Replace the active-tracks set with the union of destination
-          // tracks for every moving clip — the user expects the tracks
-          // that now host the dragged clips to be active, not the ones
-          // the clips just vacated.
-          const destTracks = new Set<number>();
-          dragState.selectedClipsInitialPositions!.forEach((initialPos: { trackIndex: number }) => {
-            const target = Math.max(0, Math.min(effectiveTracksLength - 1, initialPos.trackIndex + deltaTrack));
-            destTracks.add(target);
-          });
-          dispatch({
-            type: 'SET_SELECTED_TRACKS',
-            payload: [...destTracks].sort((a, b) => a - b),
-          });
-        } else {
-          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [newTrackIndex] });
-        }
-        // Move the focused-track state along with the leader clip so
-        // keyboard focus and the focus ring follow the drag instead of
-        // stranding on the originating track.
+        // Track selection is intentionally decoupled from clip
+        // selection — moving clips to another track no longer
+        // promotes destination tracks into the selection. The focused
+        // track still follows the leader clip so keyboard focus / the
+        // focus ring stay attached to the drag.
         dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
       }
 

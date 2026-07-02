@@ -316,10 +316,18 @@ export function useTimeSelection({
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      const { mode, startX } = dragStateRef.current;
+      const { mode, startX, initialSelectedTracks } = dragStateRef.current;
 
       // Only set wasDragging flag if we actually moved the mouse (not just a click)
       const didActuallyDrag = Math.abs(x - startX) > 5; // 5px threshold for accidental movement
+
+      // Plain click: restore the pre-drag track selection so any
+      // mousemove-driven update that snuck in gets undone. Skipped
+      // for resize-* modes (they operate on an existing selection
+      // and shouldn't touch the track set).
+      if (!didActuallyDrag && mode === 'create' && initialSelectedTracks) {
+        onSelectedTracksChange(initialSelectedTracks);
+      }
 
       if (didActuallyDrag) {
         // Set flag to prevent click handlers from firing immediately after drag
@@ -455,6 +463,13 @@ export function useTimeSelection({
         mode: 'create',
         startedInsideClip,
         startedBelowAllTracks,
+        // Snapshot the pre-drag track selection. On mouseup, if the
+        // gesture never crossed the drag threshold (i.e. it was a
+        // plain click), we restore this — any mousemove-driven
+        // `onSelectedTracksChange` fired mid-motion is treated as
+        // provisional and undone. This keeps track selection sticky
+        // across canvas clicks.
+        initialSelectedTracks: currentSelectedTracks,
         fixedTimeBounds, // Store the fixed time bounds from spectral conversion
       };
 

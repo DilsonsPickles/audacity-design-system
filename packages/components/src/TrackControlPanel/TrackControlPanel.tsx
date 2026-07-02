@@ -54,6 +54,15 @@ export interface TrackControlPanelProps {
   tabIndex?: number;
   onFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down', shiftKey?: boolean) => void;
+  /** Cmd/Ctrl+ArrowUp/Down on the focused header — reorders this
+   *  track's row in the track list rather than moving focus. Wired
+   *  by the host (EditorLayout) to dispatch MOVE_TRACK. */
+  onReorderVertical?: (direction: 'up' | 'down') => void;
+  /** Fires on drag-and-drop of the header. `clientY` is the pointer
+   *  Y at drop; the host uses that to locate the target row and
+   *  dispatch MOVE_TRACK. Only fires when the drag crosses the
+   *  threshold — plain clicks stay clicks. */
+  onDragReorderDrop?: (clientY: number) => void;
   onTabOut?: () => void;
   /** Callback when Shift+Tab is pressed to return focus to the track container */
   onShiftTabOut?: () => void;
@@ -107,6 +116,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   tabIndex,
   onFocusChange,
   onNavigateVertical,
+  onReorderVertical,
+  onDragReorderDrop,
   onTabOut,
   onShiftTabOut,
   containerFocused = false,
@@ -180,6 +191,58 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     focusReturnRef.current = true;
     setIsRenaming(false);
   };
+
+  // Drag-to-reorder gesture on the panel header. Cleanly excludes
+  // interactive controls (knobs, sliders, buttons, inputs) so the
+  // user can still adjust them without triggering a drag. On drop,
+  // fires `onDragReorderDrop(clientY)` — the host resolves that Y
+  // to a track index and dispatches MOVE_TRACK.
+  const DRAG_REORDER_THRESHOLD = 6;
+  const dragReorderStartRef = React.useRef<{ y: number; active: boolean } | null>(null);
+  const justDragReorderedRef = React.useRef(false);
+  const [isDragReordering, setIsDragReordering] = React.useState(false);
+
+  const isInteractiveTarget = (el: EventTarget | null): boolean => {
+    if (!(el instanceof HTMLElement)) return false;
+    return !!el.closest(
+      'button, input, select, textarea, [role="slider"], [role="button"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]',
+    );
+  };
+
+  const handleDragReorderMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    if (!onDragReorderDrop) return;
+    if (isInteractiveTarget(e.target)) return;
+    dragReorderStartRef.current = { y: e.clientY, active: false };
+  };
+
+  React.useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const start = dragReorderStartRef.current;
+      if (!start) return;
+      if (!start.active && Math.abs(e.clientY - start.y) > DRAG_REORDER_THRESHOLD) {
+        start.active = true;
+        setIsDragReordering(true);
+      }
+    };
+    const onUp = (e: MouseEvent) => {
+      const start = dragReorderStartRef.current;
+      dragReorderStartRef.current = null;
+      if (!start) return;
+      if (start.active) {
+        setIsDragReordering(false);
+        justDragReorderedRef.current = true;
+        setTimeout(() => { justDragReorderedRef.current = false; }, 0);
+        onDragReorderDrop?.(e.clientY);
+      }
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [onDragReorderDrop]);
 
   const cancelRename = () => {
     setRenameDraft(trackName);
@@ -431,6 +494,15 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && (isPanelFocused || focusFromMouseRef.current)) {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
+        // Cmd/Ctrl+Arrow reorders THIS track's row instead of just
+        // moving focus. Matches the canvas track container's
+        // reorder shortcut so the gesture is available from either
+        // side of the app.
+        if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && onReorderVertical) {
+          e.stopPropagation();
+          onReorderVertical(e.key === 'ArrowUp' ? 'up' : 'down');
+          return;
+        }
         onNavigateVertical?.(e.key === 'ArrowUp' ? 'up' : 'down', e.shiftKey);
       }
       // ArrowLeft/Right with invisible focus: do nothing (don't cycle children)
@@ -509,6 +581,14 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   } as React.CSSProperties;
 
   const handleClick = (e: React.MouseEvent) => {
+    // A drag-reorder that just committed synthesises a click on the
+    // panel — suppress it so the header isn't also treated as a
+    // "select this track" click.
+    if (justDragReorderedRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
     // Shift+Click: Range selection (select all tracks between last selected and clicked)
     if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
       onRangeSelection?.();
@@ -528,7 +608,15 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   return (
     <div
       className={`track-control-panel track-control-panel--${actualState} track-control-panel--${height} ${isFocused ? 'track-control-panel--focused' : ''} ${containerFocused ? 'track-control-panel--container-focused' : ''} ${isLabelTrack ? 'track-control-panel--label' : ''} ${className}`}
-      onMouseDown={() => { focusFromMouseRef.current = true; }}
+      onMouseDown={(e) => {
+        focusFromMouseRef.current = true;
+        handleDragReorderMouseDown(e);
+      }}
+      style={
+        isDragReordering
+          ? { ...style, opacity: 0.7, cursor: 'grabbing' }
+          : style
+      }
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
@@ -538,7 +626,6 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      style={style}
     >
       <div className="track-control-panel__main">
         {/* Header */}
