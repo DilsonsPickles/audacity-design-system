@@ -204,9 +204,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       }
 
       // --- Home/End ---
+      // Playhead → project start / end. Skipped only when focus is
+      // inside an actual toolbar or menubar (where the browser's
+      // native Home/End walks between items). Track panels use
+      // role="group" too, but we want the playhead shortcut to work
+      // there — so `[role="group"]` is intentionally NOT in the
+      // early-exit list.
       if (e.key === 'Home' || e.key === 'End') {
         const target = e.target as HTMLElement;
-        if (target.closest('[role="toolbar"], [role="group"], [role="menubar"]')) {
+        if (target.closest('[role="toolbar"], [role="menubar"]')) {
           return;
         }
         e.preventDefault();
@@ -512,11 +518,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // --- J / K: Playhead jump to project start / end.
-      //   - Plain J → jump to 0
-      //   - Plain K → jump to the end of the furthest-right clip
-      //   - Shift+J / Shift+K → 0.1s nudge (preserved for fine
-      //     positioning; Shift turns the jump into a step)
+      // --- J / K: Playhead jump.
+      //   - Plain J   → previous clip edge on the focused track
+      //   - Plain K   → next     clip edge on the focused track
+      //   - Shift+J   → start of the earliest clip on the focused
+      //                 track (or project 0 as a fresh-load fallback)
+      //   - Shift+K   → end   of the latest   clip on the focused
+      //                 track (or project end as a fresh-load fallback)
       if (e.key === 'j' || e.key === 'J' || e.key === 'k' || e.key === 'K') {
         if (e.metaKey || e.ctrlKey || e.altKey) return;
         if (e.defaultPrevented) return;
@@ -531,10 +539,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         const trackForBounds =
           fti !== null && fti !== undefined ? state.tracks[fti] : null;
 
-        if (e.shiftKey) {
-          // Shift+J / Shift+K → jump the playhead to the previous /
-          // next clip edge (start or end of any clip) on the focused
-          // track. Provides "snap to clip boundary" navigation.
+        if (!e.shiftKey) {
+          // Plain J / K → jump the playhead to the previous / next
+          // clip edge (start or end of any clip) on the focused
+          // track. Snap-to-clip-boundary navigation.
           if (!trackForBounds) return;
           const allClips = [
             ...(trackForBounds.clips || []),
@@ -573,10 +581,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           return;
         }
 
-        // Plain J / K → jump to the edge of the focused track's clip
-        // cluster:
-        //   J → start of the earliest clip on that track
-        //   K → end of the latest clip on that track
+        // Shift+J / Shift+K → jump to the outer edge of the focused
+        // track's clip cluster:
+        //   Shift+J → start of the earliest clip on that track
+        //   Shift+K → end of the latest clip on that track
         // Falls back to the equivalent project-wide bound when no
         // track is focused, so the shortcut still does something
         // sensible from a fresh load.
