@@ -5,10 +5,11 @@ import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';
 import { handleDelete } from './handlers/deleteHandlers';
-import { handleSpacebar, handleRecordToggle, handleEffectsToggle, handleLoopToggle } from './handlers/transportHandlers';
+import { handleSpacebar, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
 import { handleTrackCreation } from './handlers/trackCreationHandlers';
+import { handleEffectsKey } from './handlers/effectsPanelHandlers';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 
@@ -255,45 +256,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //   the user had before opening it (a clip, the track wrapper,
       //   a button — whatever).
       if (e.key === 'e' || e.key === 'E') {
-        const target = e.target as HTMLElement;
-        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
-          target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';
-        if (isTextInput) return;
-        if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-        e.preventDefault();
-
-        if (effectsPanel?.isOpen) {
-          const origin = effectsPanelFocusOriginRef.current;
-          effectsPanelFocusOriginRef.current = null;
-          const fallbackTrackIndex = effectsPanel.trackIndex;
-          setEffectsPanel(null);
-          setTimeout(() => {
-            // Guard against the element being detached (e.g. clip was
-            // deleted while the panel was open). Fall back to the
-            // track wrapper of the panel's owning track.
-            if (origin && document.contains(origin)) {
-              origin.focus();
-              return;
-            }
-            const trackEl = document.querySelector<HTMLElement>(
-              `.track-wrapper[data-track-index="${fallbackTrackIndex}"] .track`,
-            );
-            if (trackEl) {
-              trackEl.setAttribute('data-focus-from-nav', '1');
-              trackEl.focus();
-            }
-          }, 0);
-          return;
-        }
-
-        // Capture whatever the user is focused on RIGHT NOW, before
-        // the panel takes focus — that's what we restore when E
-        // closes it.
-        effectsPanelFocusOriginRef.current =
-          document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : null;
-        handleEffectsToggle(transportDeps);
+        handleEffectsKey(e, { effectsPanel, setEffectsPanel, effectsPanelFocusOriginRef, transportDeps });
         return;
       }
 
