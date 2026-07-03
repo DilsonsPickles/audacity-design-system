@@ -36,7 +36,8 @@ For background on any section, follow the deep-dive doc links at the bottom.
 | `ContextMenuContext.tsx` | Context-menu visibility and positioning (wraps `useContextMenuState` hook); manages 8 menu types |
 | `SpectralSelectionContext.tsx` | Spectral selection read/write — 6 properties |
 | `AudioEngineContext.tsx` | Audio engine service (refs + methods, no React state) |
-| `PreferencesContext.tsx` | User preferences (not yet decomposed into domain-specific contexts — see known debt) |
+
+User preferences state is the exception — it lives in the components package, not here: `packages/components/src/contexts/PreferencesContext.tsx` (consumed app-wide via `usePreferences`; not yet decomposed into domain-specific contexts — see known debt).
 
 ---
 
@@ -88,7 +89,7 @@ These are not-yet-decomposed monoliths. They work but are prime targets for futu
 | `apps/sandbox/src/components/EditorLayout.tsx` | Full editor chrome — toolbar, track panel, ruler, transport bar all in one component; not yet split by region |
 | `apps/sandbox/src/components/Canvas.tsx` | Track/clip/label rendering coordinator and interaction dispatcher; multiple concerns not yet separated |
 | `apps/sandbox/src/contexts/TracksContext.tsx` | Monolithic tracks reducer; all track and clip mutations live here; decomposition into domain reducers is planned |
-| `apps/sandbox/src/components/PreferencesModal.tsx` | Preferences UI; all preference panels in one file |
+| `packages/components/src/PreferencesModal/PreferencesModal.tsx` | Preferences UI; all preference panels in one file |
 
 ---
 
