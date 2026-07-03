@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { tracksReducer, type TracksState, type Clip } from '../TracksContext';
+import { tracksReducer, initialState, type TracksState, type Clip } from '../TracksContext';
 
 const baseState = (clips: Partial<Clip>[]): TracksState => ({
+  ...initialState,
   tracks: [{
     id: 1,
     name: 't',

@@ -304,7 +304,7 @@ export type TracksAction =
   | { type: 'ADD_MIDI_CLIP'; payload: { trackIndex: number; clip: import('@audacity-ui/core').MidiClip } };
 
 // Initial state
-const initialState: TracksState = {
+export const initialState: TracksState = {
   tracks: [],
   past: [],
   future: [],

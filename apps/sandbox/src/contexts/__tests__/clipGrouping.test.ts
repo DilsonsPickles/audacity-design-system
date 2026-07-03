@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { expandSelectionToGroups, tracksReducer, type Track, type TracksState, type Clip } from '../TracksContext';
+import { expandSelectionToGroups, tracksReducer, initialState, type Track, type TracksState, type Clip } from '../TracksContext';
 
 const track = (clips: Array<Partial<{ id: number; selected: boolean; groupId: string }>>): Track => ({
   id: 1,
@@ -71,6 +71,7 @@ describe('expandSelectionToGroups', () => {
 });
 
 const baseState = (clips: Partial<Clip>[]): TracksState => ({
+  ...initialState,
   tracks: [{
     id: 1,
     name: 't',
@@ -213,6 +214,7 @@ describe('SELECT_CLIP auto-expansion', () => {
 
   it('selecting a grouped clip expands selection across tracks', () => {
     const state: TracksState = {
+      ...initialState,
       tracks: [
         { id: 1, name: 't1', clips: [
           { id: 1, name: '', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' } as any,
@@ -229,7 +231,10 @@ describe('SELECT_CLIP auto-expansion', () => {
     });
     expect(next.tracks[0].clips[0].selected).toBe(true);
     expect(next.tracks[1].clips[0].selected).toBe(true);
-    expect(next.selectedTrackIndices).toEqual(expect.arrayContaining([0, 1]));
+    // Selection axes are intentionally decoupled (see SELECT_CLIP in
+    // TracksContext): expanding a grouped clip's selection across tracks must
+    // NOT promote those tracks into selectedTrackIndices.
+    expect(next.selectedTrackIndices).toEqual([]);
   });
 
   it('selecting an ungrouped clip behaves as before (single selection)', () => {
