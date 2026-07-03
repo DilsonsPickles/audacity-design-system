@@ -51,7 +51,12 @@ A single "start here" index for agents. Sections:
 
 CLAUDE.md links to this map as the canonical navigation entry point.
 
-### A3. Prune stale root docs
+### A3. Remove the astro website; keep the component export package
+- **Delete `apps/astro-website/`.** It contains only `dist/`, `public/`, and `node_modules` — no source, no `package.json` — and nothing in the repo imports it. Confirmed safe to remove.
+- **Clean the workspace globs** in `pnpm-workspace.yaml`: remove the dead `apps/demo/*` entry (the phantom submodule) at the same time.
+- **Explicitly keep `packages/components`** — the component export package (published as `@dilsonspickles/components`) is unaffected by the astro removal and stays exactly as-is. Reflect the reduced app set (now 4 apps) in CLAUDE.md and codebase-map.
+
+### A4. Prune stale root docs
 Candidates: `THEME_MIGRATION_TODO.md`, `REMAINING_THEME_MIGRATIONS.md`, `CHANNEL_MAPPING_IMPLEMENTATION.md`, `EAR_SVGS.md`, `KEYBOARD_SHORTCUTS.md`.
 - **Verify each is actually complete/superseded before touching it** (grep for referenced code, check if the work landed).
 - Done work → delete. Live work → leave and note in codebase-map. Uncertain → leave and flag for the user.
@@ -92,4 +97,4 @@ The new sub-reducer layout becomes the "Where state lives" example in `codebase-
 - All changes isolated on the feature branch.
 
 ## Sequencing
-A1–A3 (docs) can proceed immediately and independently. Part B lands, then A2/A1 are updated to reflect the new reducer structure (so docs describe the improved code, per "both together").
+A1–A4 (docs + astro removal) can proceed immediately and independently. Part B lands, then A2/A1 are updated to reflect the new reducer structure (so docs describe the improved code, per "both together").
