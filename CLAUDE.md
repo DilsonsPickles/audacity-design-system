@@ -2,11 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Navigation
+
+Start with **`docs/codebase-map.md`** — the canonical "where does X live" index for this monorepo. Prefer it over hunting through directories.
+
 ## Repository Overview
 
-This is a **pnpm monorepo** for the Audacity Design System - a collection of reusable UI components for audio editing applications. The repository is transitioning from a single prototype to a modular design system architecture.
+This is a **pnpm monorepo** for the Audacity Design System - a collection of reusable UI components for audio editing applications.
 
-**Current State**: Active monorepo with published packages. The sandbox app (`apps/sandbox/`) uses the published components from the packages.
+**Current State**: Active monorepo with published packages. The sandbox app (`apps/sandbox/`) is the full Audacity UI implementation and uses components from the packages.
+
+## Apps (`apps/`)
+
+| App | Description |
+|-----|-------------|
+| `sandbox` | Vite + React 19 dev app — the full Audacity UI implementation lives here. Package name `@audacity-ui/sandbox`. Dev server on port 5173. |
+| `desktop` | Electron wrapper that loads the built sandbox (`apps/desktop/src/main.cjs`, `preload.cjs`). |
+| `docs` | Storybook site for component documentation. |
+| `static-smoke` | Minimal standalone-render regression page. |
+
+## Packages (`packages/`)
+
+| Package | Description |
+|---------|-------------|
+| `@audacity-ui/core` | Core TypeScript types and accessibility utilities. |
+| `@audacity-ui/tokens` | Design tokens (themes, colors). |
+| `@dilsonspickles/components` | UI component library (100+ components including ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, etc.). |
+| `@audacity-ui/audio` | Tone.js audio playback (`packages/audio/src/AudioPlaybackManager.ts`). |
 
 ## Development Commands
 
@@ -20,6 +42,9 @@ pnpm build
 
 # Watch all packages in development mode
 pnpm dev
+
+# Run sandbox app only
+pnpm sandbox
 
 # Lint all packages
 pnpm lint
@@ -38,9 +63,9 @@ pnpm dev
 
 ### Sandbox Application
 ```bash
-# Run the sandbox app
+# Run the sandbox app (port 5173)
 cd apps/sandbox
-pnpm dev  # Runs on http://localhost:3000
+pnpm dev
 pnpm build
 pnpm lint
 ```
@@ -59,7 +84,7 @@ pnpm test:watch
 pnpm test:coverage
 
 # Run tests for a single package
-cd packages/components && pnpm test
+pnpm --filter @audacity-ui/sandbox test
 ```
 
 ### Stack
@@ -125,25 +150,6 @@ afterEach(cleanup);
 
 ## Architecture
 
-### Monorepo Structure
-
-- **`packages/`** - Published npm packages (use tsup for builds)
-  - `@audacity-ui/core` - Core TypeScript types and interfaces
-  - `@audacity-ui/tokens` - Design tokens (themes, colors)
-  - `@dilsonspickles/components` - UI components (ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, etc.)
-  - *(Planned)* `@audacity-ui/audio-components` - Complex audio editing components
-
-- **`apps/sandbox/`** - Vite + React development application
-  - Main testing ground for the design system components
-  - Uses React 19, TypeScript 5
-  - Imports all components from `packages/` for testing and development
-
-- **`docs/`** - Architecture documentation
-  - `design-system-architecture.md` - Complete design system roadmap
-  - `automation-overlay-states.md` - Visual state documentation
-  - `clip-styling-states.md` - Clip styling state matrix
-  - `label-interactions.md` - Label selection, deletion, and track expansion behavior
-
 ### Key Components in `packages/components/`
 
 **Clip Rendering:**
@@ -160,7 +166,6 @@ afterEach(cleanup);
   - Renders clips using ClipDisplay components
   - Positions EnvelopeInteractionLayers at track level as siblings to clips
   - Tracks hidden points per clip during drag (eating behavior)
-  - ~200 lines (vs ~1000 in old canvas-based Track component)
 
 **Envelope Interaction:**
 - `EnvelopeInteractionLayer.tsx` - Transparent overlay for envelope editing
@@ -184,22 +189,22 @@ afterEach(cleanup);
   - Dual rulers (frequency on top, amplitude on bottom) for split view mode
   - Dual amplitude rulers (left/right channels) for stereo waveform mode
 
-### Key Components in `apps/sandbox/` (New Architecture)
+### Key Components in `apps/sandbox/`
 
 **Main Canvas:**
-- `Canvas.tsx` - Main rendering coordinator (~788 lines, reduced from 2,121 lines via refactoring)
+- `Canvas.tsx` - Main rendering coordinator (large — see `docs/codebase-map.md`)
   - Manages track layout, time selection, spectral selection
   - Coordinates TrackNew components, label rendering, and overlays
   - Uses custom hooks for modular interaction handling
   - Wraps labels in overflow container to clip without hiding focus outline
 
 **Custom Hooks:**
-- `useClipDragging.ts` - Handles clip dragging with multi-select support (~180 lines)
-- `useClipTrimming.ts` - Handles clip left/right edge trimming (~175 lines)
-- `useLabelDragging.ts` - Handles label drag interactions (~100 lines)
+- `useClipDragging.ts` - Handles clip dragging with multi-select support
+- `useClipTrimming.ts` - Handles clip left/right edge trimming
+- `useLabelDragging.ts` - Handles label drag interactions
 
 **Label Rendering:**
-- `LabelRenderer.tsx` - Dedicated component for rendering labels (~420 lines)
+- `LabelRenderer.tsx` - Dedicated component for rendering labels
   - Renders label ears (resize handles), stalks, and banners
   - Handles all label mouse interactions (resize, drag, selection)
   - Implements label expansion behavior (click to expand to all tracks)
@@ -225,44 +230,13 @@ afterEach(cleanup);
 - Parent track wrapper uses `overflow: visible` to preserve focus outline
 - Focus outline rendered outside element bounds (not clipped by overflow hidden)
 
-### Key Components in `apps/sandbox/` (Main Application)
-
-**Main Canvas:**
-- `Canvas.tsx` - Main rendering coordinator (~788 lines, reduced from 2,121 lines via refactoring)
-  - Manages track layout, time selection, spectral selection
-  - Coordinates TrackNew components, label rendering, and overlays
-  - Uses custom hooks for modular interaction handling
-  - Wraps labels in overflow container to clip without hiding focus outline
-
-**Custom Hooks:**
-- `useClipDragging.ts` - Handles clip dragging with multi-select support (~180 lines)
-- `useClipTrimming.ts` - Handles clip left/right edge trimming (~175 lines)
-- `useLabelDragging.ts` - Handles label drag interactions (~100 lines)
-
-**Label Rendering:**
-- `LabelRenderer.tsx` - Dedicated component for rendering labels (~420 lines)
-  - Renders label ears (resize handles), stalks, and banners
-  - Handles all label mouse interactions (resize, drag, selection)
-  - Implements label expansion behavior (click to expand to all tracks)
-  - Uses absolute positioning with proper z-index management
-
 ### Audio Rendering Architecture
 
 **Non-Linear dB Scale:**
 - Uses cubic power curve (x³) for visual dB positioning
 - 0dB positioned at ~2/3 down the clip height
 - Range: -60dB to +12dB, with -∞ at bottom 1px
-- Functions: `dbToYNonLinear()`, `yToDbNonLinear()` in ClipEnvelopeEditor.tsx
-
-**Canvas Rendering Order (TrackCanvas.tsx):**
-1. Clip background (track-specific colors)
-2. Clip header (with rounded corners)
-3. Envelope fill (automation overlay)
-4. Time selection overlay (if present)
-5. Automation overlay within selection (if in envelope mode)
-6. Waveform (scaled by envelope curve)
-7. Envelope line and control points
-8. Clip borders
+- Functions: `dbToYNonLinear()`, `yToDbNonLinear()` in `packages/components/src/Track/Track.tsx`
 
 **Automation Overlay States:**
 There are 6 distinct overlay states based on envelope mode, selection, and time selection. See `docs/automation-overlay-states.md` for the complete state matrix.
@@ -281,7 +255,7 @@ Clips have 10 combined visual states based on:
 
 See `docs/clip-styling-states.md` for the complete state matrix.
 
-### Envelope Interaction Model (New Architecture)
+### Envelope Interaction Model
 
 **Simplified Interaction Model:**
 - **Click near line (0-4px)**: Add new control point at click position
@@ -307,8 +281,7 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 5. Passes hidden indices to `ClipDisplay` → `ClipBody`
 6. `ClipBody` filters envelope rendering to exclude hidden points
 
-**Constants:**
-- `TRACK_HEIGHT = 114` (default)
+**Constants** (in `packages/components/src/EnvelopeInteractionLayer/EnvelopeInteractionLayer.tsx`):
 - `CLIP_HEADER_HEIGHT = 20`
 - `CLICK_THRESHOLD = 10` (pixels for detecting clicks on points)
 - `ENVELOPE_LINE_FAR_THRESHOLD = 4` (max distance from line for interaction)
@@ -316,15 +289,16 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - `SNAP_THRESHOLD_TIME = 0.05` (snap within 0.05 seconds)
 - `TIME_EPSILON = 0.001` (for detecting clip origin)
 
+Default track height: `DEFAULT_TRACK_HEIGHT = 114` (defined in `apps/sandbox/src/constants/canvas.ts`)
+
 ## Important Patterns
 
 ### State Management
-- **Controlled Components**: TrackCanvas is fully controlled by ClipEnvelopeEditor
 - **Ref-Based Drag State**: All drag operations use refs to avoid re-render during drag
 - **Cursor Updates**: `updateCursor()` called on mouse move to set hover states and cursor style
 
 ### Theme System
-- Centralized in `@audacity-ui/tokens` (package) and `clip-envelope/app/theme.ts` (legacy)
+- Centralized in `@audacity-ui/tokens` package
 - Themes define colors for every visual state (see `Theme` interface)
 - Track-specific colors: Blue (track1), Violet (track2), Magenta (track3)
 
@@ -333,31 +307,24 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - Canvas cleared and redrawn on every state change
 - Drawing optimizations: batch operations, avoid unnecessary clears
 
-## Migration Notes
+## Current Development Status
 
-**Current Development Status:**
 - ✅ Monorepo infrastructure setup (pnpm workspaces)
-- ✅ `@audacity-ui/core` package created with types and accessibility utilities
-- ✅ `@audacity-ui/tokens` package created with theme tokens
-- ✅ `@dilsonspickles/components` package created with full UI component library
-- ✅ Sandbox app (`apps/sandbox/`) actively using all published components
-- ✅ **Canvas.tsx refactored** - Reduced from 2,121 to 788 lines (62.8% reduction)
-  - ✅ Extracted clip dragging logic to `useClipDragging` hook
-  - ✅ Extracted clip trimming logic to `useClipTrimming` hook
-  - ✅ Extracted label dragging logic to `useLabelDragging` hook
-  - ✅ Extracted label rendering to `LabelRenderer` component
-  - ✅ Extracted label layout utilities to `labelLayout.ts`
-  - ✅ Removed 619 lines of dead code
+- ✅ `@audacity-ui/core` package — types and accessibility utilities
+- ✅ `@audacity-ui/tokens` package — theme tokens
+- ✅ `@dilsonspickles/components` package — full UI component library
+- ✅ `@audacity-ui/audio` package — Tone.js audio playback
+- ✅ Sandbox app (`apps/sandbox/`) — full Audacity UI implementation
+- ✅ `desktop` app — Electron wrapper of sandbox
 - ✅ **Track type system** - Audio vs label tracks properly differentiated
 - ✅ **Vertical rulers** - Dual rulers for split view (frequency + amplitude)
 - ✅ **Effects panel** - Complete with tab navigation and grid keyboard navigation
 - ✅ **Accessibility** - Tab groups, roving tabindex, composite widgets, WCAG compliance
-- ⏳ No `@audacity-ui/audio-components` package yet (complex audio components still in main package)
+- ✅ Canvas.tsx decomposed — clip dragging, clip trimming, label dragging, and label rendering extracted to dedicated hooks/components
 
 **Next Steps (per roadmap):**
-1. Extract complex audio-specific components to `@audacity-ui/audio-components`
-2. Setup Storybook in `apps/docs/` for component documentation
-3. Publish packages to npm registry
+1. Setup Storybook stories in `apps/docs/` for component documentation
+2. Publish packages to npm registry
 
 **When Extracting Components:**
 - Prefer controlled component pattern (consumer manages state)
@@ -373,19 +340,21 @@ See `docs/clip-styling-states.md` for the complete state matrix.
 - `packages/components/src/hooks/useTabGroup.ts` - Per-item roving tabindex hook (ProjectToolbar, EffectsPanel)
 - `packages/components/src/hooks/useContainerTabGroup.ts` - Container-level roving tabindex hook (Toolbar, SelectionToolbar, TrackNew clips)
 - `packages/tokens/src/index.ts` - Theme definitions and tokens
-- `packages/components/src/` - Full component library (100+ components)
+- `packages/audio/src/AudioPlaybackManager.ts` - Tone.js audio playback manager
 
 **Sandbox Application:**
 - `apps/sandbox/src/App.tsx` - Main application component
-- `apps/sandbox/src/components/Canvas.tsx` - Main canvas coordinator (~788 lines, down from 2,121)
-- `apps/sandbox/src/components/LabelRenderer.tsx` - Label rendering component (~420 lines)
-- `apps/sandbox/src/hooks/useClipDragging.ts` - Clip dragging hook (~180 lines)
-- `apps/sandbox/src/hooks/useClipTrimming.ts` - Clip trimming hook (~175 lines)
-- `apps/sandbox/src/hooks/useLabelDragging.ts` - Label dragging hook (~100 lines)
-- `apps/sandbox/src/utils/labelLayout.ts` - Label layout utilities (~130 lines)
+- `apps/sandbox/src/components/Canvas.tsx` - Main canvas coordinator (large — see `docs/codebase-map.md`)
+- `apps/sandbox/src/components/LabelRenderer.tsx` - Label rendering component
+- `apps/sandbox/src/hooks/useClipDragging.ts` - Clip dragging hook
+- `apps/sandbox/src/hooks/useClipTrimming.ts` - Clip trimming hook
+- `apps/sandbox/src/hooks/useLabelDragging.ts` - Label dragging hook
+- `apps/sandbox/src/utils/labelLayout.ts` - Label layout utilities
 - `apps/sandbox/src/contexts/TracksContext.tsx` - Track state management with track type system
+- `apps/sandbox/src/constants/canvas.ts` - Canvas layout constants (e.g. `DEFAULT_TRACK_HEIGHT`)
 
 **Documentation:**
+- `docs/codebase-map.md` - Canonical "where does X live" index (see Navigation section above)
 - `docs/design-system-architecture.md` - Design system plan
 - `docs/automation-overlay-states.md` - 6 automation overlay states
 - `docs/clip-styling-states.md` - 10 clip styling states
@@ -399,23 +368,22 @@ See `docs/clip-styling-states.md` for the complete state matrix.
   - Outputs: CJS (`dist/index.js`), ESM (`dist/index.mjs`), Types (`dist/index.d.ts`)
   - Config in each `package.json` via `build` script
 
-- **Demo**: Uses Next.js 16 with Turbopack
-  - Config: `apps/demo/clip-envelope/next.config.js`
-  - Tailwind CSS 4 via `@tailwindcss/postcss`
+- **Sandbox**: Vite + React 19 (`apps/sandbox/vite.config.ts`)
+
+- **Desktop**: Electron wrapping the built sandbox output
 
 ## Version Control
 
-- Repository renamed from `clip-envelopes-prototype` to `audacity-design-system`
+- Repository originally named `clip-envelopes-prototype`
 - Default branch: `master`
-- Git submodule: `apps/demo/clip-envelope` (separate git repo)
 - `.gitignore` excludes: `node_modules/`, `dist/`, `pnpm-lock.yaml`, `.claude/`
 
 ## Package Publishing (Future)
 
-Packages will be published under `@audacity-ui/*` scope to npm registry:
+Packages will be published under their current scoped names to the npm registry:
 - `@audacity-ui/core`
 - `@audacity-ui/tokens`
 - `@dilsonspickles/components`
-- `@audacity-ui/audio-components`
+- `@audacity-ui/audio`
 
-Use independent versioning (each package has own version number).
+Use independent versioning (each package has its own version number).
