@@ -1,5 +1,5 @@
 import type { TracksState, TracksAction, Track } from '../TracksContext';
-import { TRACK_COLOR_PALETTE } from '../TracksContext';
+import { TRACK_COLOR_PALETTE } from './shared';
 
 export function tracksDomainReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {

@@ -1,5 +1,5 @@
 import type { TracksState, TracksAction, Label, TimeSelection } from '../TracksContext';
-import { expandSelectionToGroups } from '../TracksContext';
+import { expandSelectionToGroups } from './shared';
 
 export function selectionReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
