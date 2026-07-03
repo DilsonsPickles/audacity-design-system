@@ -528,7 +528,11 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
 }
 
 function innerReducer(state: TracksState, action: TracksAction): TracksState {
-  // Route selection-domain actions to their sub-reducer
+  // Pure domain routing. Every action is mapped to exactly one domain by
+  // ACTION_DOMAIN (compiler-enforced exhaustive); each domain owns its slice
+  // of the reducer logic in ./reducers/. The 'history' domain's UNDO/REDO are
+  // handled by the outer tracksReducer before this runs and never reach here;
+  // only RESET_STATE does.
   switch (ACTION_DOMAIN[action.type]) {
     case 'selection': return selectionReducer(state, action);
     case 'view': return viewReducer(state, action);
@@ -538,14 +542,8 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
     case 'tracks': return tracksDomainReducer(state, action);
     case 'clips': return clipsReducer(state, action);
     case 'envelope': return envelopeReducer(state, action);
-  }
-
-  switch (action.type) {
-    case 'RESET_STATE':
-      return initialState;
-
-    default:
-      return state;
+    case 'history': return action.type === 'RESET_STATE' ? initialState : state;
+    default: return state;
   }
 }
 

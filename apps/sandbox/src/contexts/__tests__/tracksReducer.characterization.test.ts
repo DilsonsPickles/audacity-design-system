@@ -16,7 +16,6 @@ import {
   type Track,
   type Clip,
   type TracksState,
-  type TracksAction,
 } from '../TracksContext';
 
 // ---- factories ----------------------------------------------------------------
