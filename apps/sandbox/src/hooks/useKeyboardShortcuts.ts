@@ -8,6 +8,7 @@ import { handleDelete } from './handlers/deleteHandlers';
 import { handleSpacebar, handleRecordToggle, handleEffectsToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
+import { handleTrackCreation } from './handlers/trackCreationHandlers';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 
@@ -1042,49 +1043,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       // Cmd+T  → new mono audio track
       // Cmd+Shift+T → new stereo audio track
       // Cmd+Shift+L → new label track
-      // Pick a non-colliding id and a non-colliding numeric suffix from
-      // existing tracks (length+1 collides after you delete a middle track).
-      const nextIdAfterDeletes = (state.tracks.reduce(
-        (max: number, t: any) => (t.id > max ? t.id : max),
-        0,
-      ) + 1);
-      const nextNameNumber = (prefix: string) => {
-        const pattern = new RegExp(`^${prefix} (\\d+)$`);
-        const usedNumbers = state.tracks
-          .map((t: any) => {
-            const m = pattern.exec(t.name ?? '');
-            return m ? parseInt(m[1], 10) : NaN;
-          })
-          .filter((n: number) => !isNaN(n));
-        if (usedNumbers.length === 0) return 1;
-        return Math.max(...usedNumbers) + 1;
-      };
-      if ((e.metaKey || e.ctrlKey) && (e.key === 't' || e.key === 'T')) {
-        e.preventDefault();
-        const prefix = e.shiftKey ? 'Stereo' : 'Audio';
-        const baseTrack: any = {
-          id: nextIdAfterDeletes,
-          name: `${prefix} ${nextNameNumber(prefix)}`,
-          type: 'audio',
-          height: 114,
-          clips: [],
-        };
-        if (e.shiftKey) baseTrack.channelSplitRatio = 0.5; // stereo signifier
-        dispatch({ type: 'ADD_TRACK', payload: baseTrack });
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
-        e.preventDefault();
-        dispatch({
-          type: 'ADD_TRACK',
-          payload: {
-            id: nextIdAfterDeletes,
-            name: `Label ${nextNameNumber('Label')}`,
-            type: 'label',
-            height: 76, // matches the AddTrackFlyout default in EditorLayout
-            clips: [],
-          } as any,
-        });
+      // The outer guard matches exactly the keys handled by trackCreationHandlers:
+      // t/T (any modifier combo) and l/L only when Shift is held (so plain Cmd+L
+      // still falls through to later handlers as it did before).
+      if ((e.metaKey || e.ctrlKey) && (e.key === 't' || e.key === 'T' || ((e.key === 'l' || e.key === 'L') && e.shiftKey))) {
+        handleTrackCreation(e, { state, dispatch });
         return;
       }
 
@@ -1178,6 +1141,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         for (const t of state.tracks) {
           for (const c of t.clips) if ((c as any).id >= nextClipId) nextClipId = (c as any).id + 1;
         }
+        const nextIdAfterDeletes = (state.tracks.reduce(
+          (max: number, t: any) => (t.id > max ? t.id : max),
+          0,
+        ) + 1);
         let nextTrackId = nextIdAfterDeletes;
 
         for (const ti of trackIndices) {
