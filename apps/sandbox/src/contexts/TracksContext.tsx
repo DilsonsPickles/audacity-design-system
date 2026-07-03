@@ -5,6 +5,8 @@ import { ACTION_DOMAIN } from './reducers/domains';
 import { selectionReducer } from './reducers/selectionReducer';
 import { viewReducer } from './reducers/viewReducer';
 import { recordingReducer } from './reducers/recordingReducer';
+import { effectsReducer } from './reducers/effectsReducer';
+import { midiReducer } from './reducers/midiReducer';
 
 // TODO: Import proper Track and Clip types from @audacity-ui/core once they're defined
 interface EnvelopePoint {
@@ -528,6 +530,8 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
     case 'selection': return selectionReducer(state, action);
     case 'view': return viewReducer(state, action);
     case 'recording': return recordingReducer(state, action);
+    case 'effects': return effectsReducer(state, action);
+    case 'midi': return midiReducer(state, action);
   }
 
   switch (action.type) {
@@ -1406,114 +1410,6 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
       return { ...state, tracks: newTracks, timeSelection: newTimeSelection };
     }
 
-    // Track effects actions
-    case 'ADD_TRACK_EFFECT': {
-      const { trackIndex, effect } = action.payload;
-      const newTracks = [...state.tracks];
-      newTracks[trackIndex] = {
-        ...newTracks[trackIndex],
-        effects: [...(newTracks[trackIndex].effects || []), effect],
-      };
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'UPDATE_TRACK_EFFECT': {
-      const { trackIndex, effectIndex, updates } = action.payload;
-      const newTracks = [...state.tracks];
-      const effects = newTracks[trackIndex].effects || [];
-      newTracks[trackIndex] = {
-        ...newTracks[trackIndex],
-        effects: effects.map((effect, idx) =>
-          idx === effectIndex ? { ...effect, ...updates } : effect
-        ),
-      };
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'REMOVE_TRACK_EFFECT': {
-      const { trackIndex, effectIndex } = action.payload;
-      const newTracks = [...state.tracks];
-      const effects = newTracks[trackIndex].effects || [];
-      newTracks[trackIndex] = {
-        ...newTracks[trackIndex],
-        effects: effects.filter((_, idx) => idx !== effectIndex),
-      };
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'REORDER_TRACK_EFFECTS': {
-      const { trackIndex, fromIndex, toIndex } = action.payload;
-      const newTracks = [...state.tracks];
-      const effects = [...(newTracks[trackIndex].effects || [])];
-      const [movedEffect] = effects.splice(fromIndex, 1);
-      effects.splice(toIndex, 0, movedEffect);
-      newTracks[trackIndex] = {
-        ...newTracks[trackIndex],
-        effects,
-      };
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'TOGGLE_ALL_TRACK_EFFECTS': {
-      const { trackIndex, enabled } = action.payload;
-      const newTracks = [...state.tracks];
-      newTracks[trackIndex] = {
-        ...newTracks[trackIndex],
-        effectsEnabled: enabled,
-      };
-      return { ...state, tracks: newTracks };
-    }
-
-    // Master effects actions
-    case 'SET_MASTER_EFFECTS': {
-      return {
-        ...state,
-        masterEffects: action.payload,
-      };
-    }
-
-    case 'ADD_MASTER_EFFECT': {
-      return {
-        ...state,
-        masterEffects: [...state.masterEffects, action.payload],
-      };
-    }
-
-    case 'UPDATE_MASTER_EFFECT': {
-      const { effectIndex, updates } = action.payload;
-      return {
-        ...state,
-        masterEffects: state.masterEffects.map((effect, idx) =>
-          idx === effectIndex ? { ...effect, ...updates } : effect
-        ),
-      };
-    }
-
-    case 'REMOVE_MASTER_EFFECT': {
-      return {
-        ...state,
-        masterEffects: state.masterEffects.filter((_, idx) => idx !== action.payload),
-      };
-    }
-
-    case 'REORDER_MASTER_EFFECTS': {
-      const { fromIndex, toIndex } = action.payload;
-      const newMasterEffects = [...state.masterEffects];
-      const [movedEffect] = newMasterEffects.splice(fromIndex, 1);
-      newMasterEffects.splice(toIndex, 0, movedEffect);
-      return {
-        ...state,
-        masterEffects: newMasterEffects,
-      };
-    }
-
-    case 'TOGGLE_ALL_MASTER_EFFECTS': {
-      return {
-        ...state,
-        masterEffectsEnabled: action.payload,
-      };
-    }
-
     case 'MOVE_TRACK': {
       const { fromIndex, toIndex } = action.payload;
       if (toIndex < 0 || toIndex >= state.tracks.length) return state;
@@ -1544,158 +1440,6 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
         selectedTrackIndices: newSelected,
       };
     }
-
-    // Piano Roll / MIDI actions
-    case 'SET_PIANO_ROLL_OPEN': {
-      const trackIdx = action.payload.trackIndex ?? state.pianoRollTrackIndex;
-      const clipIdx = action.payload.clipIndex ?? state.pianoRollClipIndex;
-      // When opening, scroll to the clip's global start position
-      let scrollX = state.pianoRollScrollX;
-      if (action.payload.open && trackIdx !== null && clipIdx !== null) {
-        const midiClip = state.tracks[trackIdx]?.midiClips?.[clipIdx];
-        if (midiClip) {
-          scrollX = midiClip.start * state.pianoRollPixelsPerSecond;
-        }
-      }
-      return {
-        ...state,
-        pianoRollOpen: action.payload.open,
-        pianoRollTrackIndex: trackIdx,
-        pianoRollClipIndex: clipIdx,
-        pianoRollScrollX: scrollX,
-      };
-    }
-
-    case 'SET_PIANO_ROLL_SNAP':
-      return { ...state, pianoRollSnap: action.payload };
-
-    case 'SET_PIANO_ROLL_TIME_BASIS':
-      return { ...state, pianoRollTimeBasis: action.payload };
-
-    case 'ADD_MIDI_CLIP': {
-      const { trackIndex, clip } = action.payload;
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      track.midiClips = [...(track.midiClips || []), clip];
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'ADD_MIDI_NOTE': {
-      const { trackIndex, clipIndex, note } = action.payload;
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      const midiClips = [...(track.midiClips || [])];
-      midiClips[clipIndex] = {
-        ...midiClips[clipIndex],
-        notes: [...midiClips[clipIndex].notes, note],
-      };
-      track.midiClips = midiClips;
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'DELETE_MIDI_NOTES': {
-      const { trackIndex, clipIndex, noteIds } = action.payload;
-      const idSet = new Set(noteIds);
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      const midiClips = [...(track.midiClips || [])];
-      midiClips[clipIndex] = {
-        ...midiClips[clipIndex],
-        notes: midiClips[clipIndex].notes.filter(n => !idSet.has(n.id)),
-      };
-      track.midiClips = midiClips;
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'UPDATE_MIDI_NOTE': {
-      const { trackIndex, clipIndex, noteId, updates } = action.payload;
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      const midiClips = [...(track.midiClips || [])];
-      midiClips[clipIndex] = {
-        ...midiClips[clipIndex],
-        notes: midiClips[clipIndex].notes.map(n =>
-          n.id === noteId ? { ...n, ...updates } : n
-        ),
-      };
-      track.midiClips = midiClips;
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'SELECT_MIDI_NOTE': {
-      const { trackIndex, clipIndex, noteId, additive } = action.payload;
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      const midiClips = [...(track.midiClips || [])];
-      midiClips[clipIndex] = {
-        ...midiClips[clipIndex],
-        notes: midiClips[clipIndex].notes.map(n => ({
-          ...n,
-          selected: n.id === noteId ? true : (additive ? n.selected : false),
-        })),
-      };
-      track.midiClips = midiClips;
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'DESELECT_ALL_MIDI_NOTES': {
-      const { trackIndex, clipIndex } = action.payload;
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      const midiClips = [...(track.midiClips || [])];
-      midiClips[clipIndex] = {
-        ...midiClips[clipIndex],
-        notes: midiClips[clipIndex].notes.map(n => ({ ...n, selected: false })),
-      };
-      track.midiClips = midiClips;
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'RESIZE_MIDI_NOTE': {
-      const { trackIndex, clipIndex, noteId, newDuration } = action.payload;
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      const midiClips = [...(track.midiClips || [])];
-      midiClips[clipIndex] = {
-        ...midiClips[clipIndex],
-        notes: midiClips[clipIndex].notes.map(n =>
-          n.id === noteId ? { ...n, duration: newDuration } : n
-        ),
-      };
-      track.midiClips = midiClips;
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'SELECT_MIDI_NOTES': {
-      const { trackIndex, clipIndex, noteIds, additive } = action.payload;
-      const idSet = new Set(noteIds);
-      const newTracks = [...state.tracks];
-      const track = { ...newTracks[trackIndex] };
-      const midiClips = [...(track.midiClips || [])];
-      midiClips[clipIndex] = {
-        ...midiClips[clipIndex],
-        notes: midiClips[clipIndex].notes.map(n => ({
-          ...n,
-          selected: idSet.has(n.id) ? true : (additive ? n.selected : false),
-        })),
-      };
-      track.midiClips = midiClips;
-      newTracks[trackIndex] = track;
-      return { ...state, tracks: newTracks };
-    }
-
-    case 'SET_PIANO_ROLL_PIXELS_PER_SECOND':
-      return { ...state, pianoRollPixelsPerSecond: action.payload };
-
-    case 'SET_PIANO_ROLL_SCROLL_X':
-      return { ...state, pianoRollScrollX: action.payload };
 
     default:
       return state;
