@@ -88,7 +88,7 @@ export const TRACK_COLOR_PALETTE = [
   'blue', 'violet', 'magenta', 'teal', 'cyan', 'green', 'orange', 'red', 'yellow',
 ] as const;
 
-interface TimeSelection {
+export interface TimeSelection {
   startTime: number;
   endTime: number;
   renderOnCanvas?: boolean; // If false, only show in ruler (e.g., when clip is selected)

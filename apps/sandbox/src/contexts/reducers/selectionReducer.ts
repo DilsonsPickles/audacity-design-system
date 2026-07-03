@@ -1,12 +1,5 @@
-import type { TracksState, TracksAction, Label } from '../TracksContext';
+import type { TracksState, TracksAction, Label, TimeSelection } from '../TracksContext';
 import { expandSelectionToGroups } from '../TracksContext';
-
-// Local TimeSelection type (mirrors the one in TracksContext, which is not exported)
-interface TimeSelection {
-  startTime: number;
-  endTime: number;
-  renderOnCanvas?: boolean;
-}
 
 export function selectionReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
