@@ -31,13 +31,31 @@ For background on any section, follow the deep-dive doc links at the bottom.
 
 | File | What it owns |
 |---|---|
-| `TracksContext.tsx` | Hub for all track/clip state — large reducer pattern with 28+ state props and 68+ actions; most audio-editing state flows through here |
+| `TracksContext.tsx` | Hub for all track/clip state. Holds the state shape, the `TracksProvider`, and the outer `tracksReducer` (which owns UNDO/REDO + undo-history coalescing). Domain mutation logic is **not** here — it lives in `contexts/reducers/` (see below). Most audio-editing state flows through here |
 | `DialogContext.tsx` | Dialog open/close state (wraps `useDialogState` hook); replaces prop drilling of ~15 dialog states |
 | `ContextMenuContext.tsx` | Context-menu visibility and positioning (wraps `useContextMenuState` hook); manages 8 menu types |
 | `SpectralSelectionContext.tsx` | Spectral selection read/write — 6 properties |
 | `AudioEngineContext.tsx` | Audio engine service (refs + methods, no React state) |
 
 User preferences state is the exception — it lives in the components package, not here: `packages/components/src/contexts/PreferencesContext.tsx` (consumed app-wide via `usePreferences`; not yet decomposed into domain-specific contexts — see known debt).
+
+### Tracks reducer — domain split (`apps/sandbox/src/contexts/reducers/`)
+
+`tracksReducer` is two layers: the **outer** wrapper in `TracksContext.tsx` (undo/redo + coalescing) delegates all domain logic to `innerReducer`, which is pure routing — it maps each action to one domain via `domains.ts` and calls that domain's sub-reducer. To change how an action behaves, edit its domain reducer; to add an action, add it to the `TracksAction` union, map it in `domains.ts` (the `Record<TracksAction['type'], Domain>` type fails the build if you forget), and handle it in the domain reducer.
+
+| File | Domain / responsibility |
+|---|---|
+| `domains.ts` | `ACTION_DOMAIN` — the action→domain routing table (compiler-enforced exhaustive) |
+| `tracksDomainReducer.ts` | Track add/update/delete/move/height/view/ruler/spectrogram |
+| `clipsReducer.ts` | Clip add/update/delete/move/trim/stretch/placement, group/ungroup, labels, time-range cut |
+| `selectionReducer.ts` | Clip/track/label selection, focus, hovered point |
+| `envelopeReducer.ts` | Envelope points + envelope mode toggles |
+| `effectsReducer.ts` | Track + master effects chains |
+| `midiReducer.ts` | Piano-roll + MIDI note/clip actions |
+| `viewReducer.ts` | View modes, playhead, time selection, cut mode, snap |
+| `recordingReducer.ts` | Recording start/stop/meters |
+
+Behavior is locked by `__tests__/tracksReducer.characterization.test.ts` and `__tests__/reducerRouting.test.ts`.
 
 ---
 
@@ -88,7 +106,6 @@ These are not-yet-decomposed monoliths. They work but are prime targets for futu
 | `apps/sandbox/src/App.tsx` | Application root — wires up provider tree and top-level routing; accumulates bootstrap concerns |
 | `apps/sandbox/src/components/EditorLayout.tsx` | Full editor chrome — toolbar, track panel, ruler, transport bar all in one component; not yet split by region |
 | `apps/sandbox/src/components/Canvas.tsx` | Track/clip/label rendering coordinator and interaction dispatcher; multiple concerns not yet separated |
-| `apps/sandbox/src/contexts/TracksContext.tsx` | Monolithic tracks reducer; all track and clip mutations live here; decomposition into domain reducers is planned |
 | `packages/components/src/PreferencesModal/PreferencesModal.tsx` | Preferences UI; all preference panels in one file |
 
 ---

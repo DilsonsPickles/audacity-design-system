@@ -295,6 +295,7 @@ Other layout constants:
 ## Important Patterns
 
 ### State Management
+- **Tracks reducer domain split**: `TracksContext.tsx` holds the state shape, `TracksProvider`, and the outer `tracksReducer` (undo/redo + coalescing). Domain mutation logic lives in `apps/sandbox/src/contexts/reducers/` (one sub-reducer per domain), routed by `reducers/domains.ts`. See `docs/codebase-map.md` → "Tracks reducer — domain split".
 - **Ref-Based Drag State**: All drag operations use refs to avoid re-render during drag
 - **Cursor Updates**: `updateCursor()` called on mouse move to set hover states and cursor style
 
@@ -351,7 +352,7 @@ Other layout constants:
 - `apps/sandbox/src/hooks/useClipTrimming.ts` - Clip trimming hook
 - `apps/sandbox/src/hooks/useLabelDragging.ts` - Label dragging hook
 - `apps/sandbox/src/utils/labelLayout.ts` - Label layout utilities
-- `apps/sandbox/src/contexts/TracksContext.tsx` - Track state management with track type system
+- `apps/sandbox/src/contexts/TracksContext.tsx` - Track state (shape + provider + undo wrapper); domain logic in `contexts/reducers/`
 - `apps/sandbox/src/constants/canvas.ts` - Canvas layout constants (e.g. `DEFAULT_TRACK_HEIGHT`)
 
 **Documentation:**
