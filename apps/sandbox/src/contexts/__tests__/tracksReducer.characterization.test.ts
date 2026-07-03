@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest';
 import {
   tracksReducer,
   initialState,
+  TRACK_COLOR_PALETTE,
   type Track,
   type Clip,
   type TracksState,
@@ -63,7 +64,7 @@ describe('tracksReducer characterization (behavior lock for domain split)', () =
       type: 'ADD_TRACK',
       payload: makeTrack({ id: 9, color: undefined }),
     });
-    expect(next.tracks[0].color).toBeDefined();
+    expect(TRACK_COLOR_PALETTE).toContain(next.tracks[0].color);
   });
 
   it('tracks: DELETE_TRACK removes the track by index', () => {
