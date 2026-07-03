@@ -33,5 +33,13 @@ describe('handleDuplicate', () => {
 
     const types = dispatch.mock.calls.map(c => c[0].type);
     expect(types).toContain('ADD_CLIP');
+
+    // Concrete payload assertion: the duplicate's `start` equals the source clip's
+    // start + duration (i.e. it is placed immediately after the original).
+    // Source: duplicateHandlers.ts line 63 — start: clip.start + clip.duration
+    // Original clip: start=0, duration=3  →  duplicate start must be 3.
+    const addClipCall = dispatch.mock.calls.find(c => c[0].type === 'ADD_CLIP');
+    const dupClip = addClipCall![0].payload.clip;
+    expect(dupClip.start).toBe(3); // 0 (start) + 3 (duration)
   });
 });

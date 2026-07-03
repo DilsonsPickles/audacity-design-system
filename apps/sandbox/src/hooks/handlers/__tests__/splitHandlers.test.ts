@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { handleSplitAtPlayhead } from '../splitHandlers';
+import { handleSplitAtPlayhead, handleSplitAllTracks } from '../splitHandlers';
 import { initialState } from '../../../contexts/TracksContext';
 
 const makeState = (o = {}) => ({ ...initialState, ...o });
@@ -35,5 +35,54 @@ describe('handleSplitAtPlayhead', () => {
 
     const types = dispatch.mock.calls.map(c => c[0].type);
     expect(types).toContain('APPLY_CLIP_PLACEMENT');
+
+    // Concrete payload assertion: the mutation must be type 'split' for clip id 10.
+    // Source: splitHandlers.ts lines 126-132 — mutations.push({ type: 'split', clipId: clip.id, ... })
+    const placementCall = dispatch.mock.calls.find(c => c[0].type === 'APPLY_CLIP_PLACEMENT');
+    const mutation = placementCall![0].payload.mutations[0];
+    expect(mutation.type).toBe('split');
+    expect(mutation.clipId).toBe(10);
+  });
+});
+
+describe('handleSplitAllTracks', () => {
+  it('splits clips on all tracks at the playhead (dispatches APPLY_CLIP_PLACEMENT with split mutations for each track)', () => {
+    // Two tracks, each with a clip spanning the playhead at position 3.
+    // handleSplitAllTracks does NOT read document.activeElement — no DOM staging needed.
+    const state = makeState({
+      playheadPosition: 3,
+      tracks: [
+        { id: 1, name: 'track-a', clips: [
+          { id: 10, name: 'clip-a', start: 0, duration: 8, envelopePoints: [] },
+        ] },
+        { id: 2, name: 'track-b', clips: [
+          { id: 20, name: 'clip-b', start: 1, duration: 10, envelopePoints: [] },
+        ] },
+      ],
+    });
+
+    const dispatch = vi.fn();
+    handleSplitAllTracks(keyEvent({ shiftKey: true }), { state, dispatch });
+
+    const types = dispatch.mock.calls.map(c => c[0].type);
+    expect(types).toContain('APPLY_CLIP_PLACEMENT');
+
+    // Concrete payload assertion: one mutation per clip, each with type: 'split'
+    // and leftEnd / rightStart equal to the playhead (3).
+    // Source: splitHandlers.ts lines 181-188 — mutations.push({ type: 'split', clipId: c.id, leftEnd: playhead, rightStart: playhead })
+    const placementCall = dispatch.mock.calls.find(c => c[0].type === 'APPLY_CLIP_PLACEMENT');
+    const mutations = placementCall![0].payload.mutations as Array<{ type: string; clipId: number; leftEnd: number; rightStart: number }>;
+
+    expect(mutations).toHaveLength(2);
+
+    const mutForClip10 = mutations.find(m => m.clipId === 10);
+    expect(mutForClip10).toBeDefined();
+    expect(mutForClip10!.type).toBe('split');
+    expect(mutForClip10!.leftEnd).toBe(3);
+    expect(mutForClip10!.rightStart).toBe(3);
+
+    const mutForClip20 = mutations.find(m => m.clipId === 20);
+    expect(mutForClip20).toBeDefined();
+    expect(mutForClip20!.type).toBe('split');
   });
 });
