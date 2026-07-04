@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { TrackNew, useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme, scrollIntoViewIfNeeded, announce, formatTimeForA11y } from '@dilsonspickles/components';
 import type { SpectrogramScale } from '@dilsonspickles/components';
-import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
-import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
+import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey, type SnapGrid, type MidiClip } from '@audacity-ui/core';
+import { useTracksState, useTracksDispatch, type Clip } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import { usePreferences } from '@dilsonspickles/components';
 import { useClipDragging } from '../hooks/useClipDragging';
@@ -300,14 +300,14 @@ export function Canvas({
     // track's type / view / channel mode so an audio clip lands on a
     // matching audio row, a MIDI clip on a MIDI row, and so on.
     buildTrackForDrop: (indexAmongNew, sourceTrackIndex) => {
-      const source = tracks[sourceTrackIndex] as any;
+      const source = tracks[sourceTrackIndex];
       const sourceIsMidi = source?.type === 'midi'
         || (source?.midiClips?.length ?? 0) > 0;
       const type = sourceIsMidi ? 'midi' : 'audio';
       const prefix = sourceIsMidi ? 'MIDI' : 'Track';
       const namePattern = new RegExp(`^${prefix} (\\d+)$`);
       const usedNumbers = tracks
-        .map((t: any) => {
+        .map((t) => {
           const m = namePattern.exec(t.name ?? '');
           return m ? parseInt(m[1], 10) : NaN;
         })
@@ -315,7 +315,7 @@ export function Canvas({
       // + indexAmongNew so a multi-clip drop that needs several new
       // tracks in the same dispatch batch gets distinct numbers.
       const nextNameNumber = (usedNumbers.length === 0 ? 0 : Math.max(...usedNumbers)) + 1 + indexAmongNew;
-      const nextId = Math.max(...tracks.map((t: any) => t.id), 0) + 1 + indexAmongNew;
+      const nextId = Math.max(...tracks.map((t) => t.id), 0) + 1 + indexAmongNew;
 
       return {
         id: nextId,
@@ -352,10 +352,10 @@ export function Canvas({
     if (!isCmdArrowMoving) return new Set<number>();
     const ids = new Set<number>();
     tracks.forEach((t) => {
-      t.clips.forEach((c: any) => {
+      t.clips.forEach((c) => {
         if (c.selected) ids.add(c.id);
       });
-      (t.midiClips || []).forEach((c: any) => {
+      (t.midiClips || []).forEach((c) => {
         if (c.selected) ids.add(c.id);
       });
     });
@@ -435,7 +435,7 @@ export function Canvas({
           t.clips.forEach((c) => {
             if (c.selected) combined.set(`${tIndex}:${c.id}`, { trackIndex: tIndex, clipId: c.id });
           });
-          (t.midiClips || []).forEach((c: any) => {
+          (t.midiClips || []).forEach((c) => {
             if (c.selected) combined.set(`${tIndex}:${c.id}`, { trackIndex: tIndex, clipId: c.id });
           });
         });
@@ -488,7 +488,7 @@ export function Canvas({
       const intent: ClipPlacement[] = [];
       const movingIds = new Set<number>();
       tracks.forEach((t, tIndex) => {
-        t.clips.forEach((c: any) => {
+        t.clips.forEach((c) => {
           if (c.selected) {
             intent.push({
               clipId: c.id,
@@ -502,7 +502,7 @@ export function Canvas({
       });
       if (intent.length === 0) return;
 
-      const resolution = resolveOverlap(tracks as any, intent, movingIds);
+      const resolution = resolveOverlap(tracks, intent, movingIds);
       if (resolution.mutations.length > 0) {
         dispatch({
           type: 'APPLY_CLIP_PLACEMENT',
@@ -530,7 +530,7 @@ export function Canvas({
       clipHeaderHeight: 20,
       pixelsPerSecond,
       leftPadding,  // Use leftPadding for alignment with playhead
-      tracks: tracks as any, // Type cast to handle local vs core type mismatch
+      tracks: tracks as any, // justified: local Track/Clip uses `start` while core Track/Clip uses `startTime` — structural mismatch
       defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
       trackGap: TRACK_GAP,
       initialGap: TOP_GAP,
@@ -616,7 +616,7 @@ export function Canvas({
     }
   );
 
-  const containerProps = selection.containerProps as any;
+  const containerProps = selection.containerProps;
 
   // Container click handler - extracted to custom hook
   const handleContainerClick = useContainerClick({
@@ -828,8 +828,8 @@ export function Canvas({
               const ti = Number(bodyClipEl.getAttribute('data-track-index'));
               const t = tracks[ti];
               const clip = t?.clips.find((c) => c.id === cid)
-                || (t?.midiClips || []).find((c: any) => c.id === cid);
-              if (clip && !(clip as any).selected) {
+                || (t?.midiClips || []).find((c) => c.id === cid);
+              if (clip && !clip.selected) {
                 dispatch({ type: 'DESELECT_ALL_CLIPS' });
               }
             }
@@ -924,7 +924,7 @@ export function Canvas({
               const trackIdx = Number(tIdx);
               const track = tracks[trackIdx];
               if (track?.type === 'midi' && track.midiClips) {
-                const clipIndex = track.midiClips.findIndex((mc: any) => String(mc.id) === clipId);
+                const clipIndex = track.midiClips.findIndex((mc) => String(mc.id) === clipId);
                 if (clipIndex >= 0) {
                   onMidiClipDoubleClick(trackIdx, clipIndex);
                 }
@@ -948,14 +948,14 @@ export function Canvas({
           // Solo overrides per-track mute visuals: when any track is
           // soloed, every non-soloed track reads as effectively muted
           // (matches the audio behaviour). Computed once per render.
-          const anySoloed = tracks.some((t: any) => t.soloed);
+          const anySoloed = tracks.some((t) => t.soloed);
           return tracks.map((track, trackIndex) => {
           const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
           const isSelected = selectedTrackIndices.includes(trackIndex);
           const isFocused = focusedTrackIndex === trackIndex;
           const effectivelyMuted =
-            (track as any).muted === true
-            || (anySoloed && (track as any).soloed !== true);
+            track.muted === true
+            || (anySoloed && track.soloed !== true);
 
           // Calculate y position for this track
           const yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
@@ -1030,14 +1030,15 @@ export function Canvas({
             >
               <TrackNew
                 clips={track.type === 'midi'
-                  ? (track.midiClips || []).map((mc: any) => ({
+                  ? (track.midiClips || []).map((mc) => ({
+
                       id: mc.id, name: mc.name, start: mc.start,
                       duration: mc.duration, trimStart: mc.trimStart ?? 0,
                       envelopePoints: [],
                       selected: mc.selected, color: mc.color || track.color,
                       midiNotes: mc.notes,
                     }))
-                  : showRmsInWaveform ? track.clips as any : (track.clips as any).map((clip: any) => ({
+                  : showRmsInWaveform ? track.clips : track.clips.map((clip) => ({
                       ...clip,
                       waveformRms: undefined,
                       waveformLeftRms: undefined,
@@ -1124,8 +1125,8 @@ export function Canvas({
 
                   const focusedTrack = tracks[trackIndex];
                   const focusedHasSelectedClip = !wasContainerFocused && (
-                    focusedTrack?.clips.some((c: any) => c.selected)
-                    || focusedTrack?.midiClips?.some((c: any) => c.selected)
+                    focusedTrack?.clips.some((c) => c.selected)
+                    || focusedTrack?.midiClips?.some((c) => c.selected)
                     || false
                   );
 
@@ -1138,7 +1139,7 @@ export function Canvas({
                   if (!wasContainerFocused && !focusedHasSelectedClip && timeSelection) {
                     const { startTime, endTime } = timeSelection;
                     const EPS = 0.0001;
-                    const focusedOverlaps = (focusedTrack?.clips || []).some((c: any) =>
+                    const focusedOverlaps = (focusedTrack?.clips || []).some((c) =>
                       c.start < endTime - EPS && c.start + c.duration > startTime + EPS,
                     );
                     if (focusedOverlaps) {
@@ -1149,7 +1150,7 @@ export function Canvas({
                       for (const ti of scopedTrackIndices) {
                         const t = tracks[ti];
                         if (!t) continue;
-                        for (const c of (t.clips || []) as any[]) {
+                        for (const c of t.clips) {
                           if (c.start < endTime - EPS && c.start + c.duration > startTime + EPS) {
                             overlapping.push({ trackIndex: ti, clipId: c.id });
                           }
@@ -1408,9 +1409,9 @@ export function Canvas({
                   // no-ops. Selection is the "you're operating on
                   // this" signal, independent of whether the edge
                   // actually moved.
-                  const focusedClip = tracks[trackIndex]?.clips.find((c: any) => c.id === clipId)
-                    || (tracks[trackIndex]?.midiClips || []).find((c: any) => c.id === clipId);
-                  if (focusedClip && !(focusedClip as any).selected) {
+                  const focusedClip = tracks[trackIndex]?.clips.find((c) => c.id === clipId)
+                    || (tracks[trackIndex]?.midiClips || []).find((c) => c.id === clipId);
+                  if (focusedClip && !focusedClip.selected) {
                     dispatch({
                       type: 'SELECT_CLIP',
                       payload: { trackIndex, clipId: clipId as number },
@@ -1422,14 +1423,14 @@ export function Canvas({
                   // still trim that one. The same canvas-time delta is
                   // applied to each clip independently, with per-clip
                   // bounds checks against its own source duration.
-                  const targets: Array<{ trackIndex: number; clip: any }> = [];
+                  const targets: Array<{ trackIndex: number; clip: Clip | MidiClip }> = [];
                   tracks.forEach((t, tIndex) => {
-                    t.clips.forEach((c: any) => {
+                    t.clips.forEach((c) => {
                       if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
                         targets.push({ trackIndex: tIndex, clip: c });
                       }
                     });
-                    (t.midiClips || []).forEach((c: any) => {
+                    (t.midiClips || []).forEach((c) => {
                       if (c.selected) {
                         targets.push({ trackIndex: tIndex, clip: c });
                       }
@@ -1455,12 +1456,12 @@ export function Canvas({
                   const movingIds = new Set<number>();
 
                   for (const { trackIndex: ti, clip } of uniqueTargets) {
-                    const stretch = (clip as any).stretchFactor ?? 1;
-                    const currentTrimStart = (clip as any).trimStart || 0;
+                    const stretch = (clip as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip/MidiClip type
+                    const currentTrimStart = (clip as Clip).trimStart || 0;
                     const currentDuration = clip.duration;
                     const currentStart = clip.start;
                     const fullDuration =
-                      (clip as any).fullDuration || (currentTrimStart + currentDuration / stretch);
+                      (clip as Clip).fullDuration || (currentTrimStart + currentDuration / stretch);
                     const currentMaxDuration = (fullDuration - currentTrimStart) * stretch;
                     const isAtMaxDuration = Math.abs(currentDuration - currentMaxDuration) < 0.001;
 
@@ -1540,7 +1541,7 @@ export function Canvas({
                   // tracks (with untouched underlying positions) and
                   // the moving clips' new positions from trimIntent.
                   if (trimIntent.length > 0) {
-                    const resolution = resolveOverlap(tracks as any, trimIntent, movingIds);
+                    const resolution = resolveOverlap(tracks, trimIntent, movingIds);
                     if (resolution.mutations.length > 0) {
                       dispatch({
                         type: 'APPLY_CLIP_PLACEMENT',
@@ -1571,14 +1572,14 @@ export function Canvas({
                   // from `edge`, negative grows it.
                   // Applied to every selected clip; if the originating
                   // clip isn't currently selected we still stretch it.
-                  const targets: Array<{ trackIndex: number; clip: any }> = [];
+                  const targets: Array<{ trackIndex: number; clip: Clip | MidiClip }> = [];
                   tracks.forEach((t, tIndex) => {
-                    t.clips.forEach((c: any) => {
+                    t.clips.forEach((c) => {
                       if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
                         targets.push({ trackIndex: tIndex, clip: c });
                       }
                     });
-                    (t.midiClips || []).forEach((c: any) => {
+                    (t.midiClips || []).forEach((c) => {
                       if (c.selected) {
                         targets.push({ trackIndex: tIndex, clip: c });
                       }
@@ -1595,7 +1596,7 @@ export function Canvas({
                   for (const { trackIndex: ti, clip } of uniqueTargets) {
                     const currentDuration = clip.duration;
                     const currentStart = clip.start;
-                    const currentStretch = (clip as any).stretchFactor ?? 1;
+                    const currentStretch = (clip as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip/MidiClip type
                     const newDuration = Math.max(0.1, currentDuration - deltaSeconds);
                     const ratio = newDuration / currentDuration;
                     const newStretchFactor = Math.max(
@@ -1713,13 +1714,13 @@ export function Canvas({
                       allTrackClips.forEach(c => {
                         // Include this clip even if it wasn't selected before (we just selected it)
                         if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
-                          const isMidi = isMidiTrack || (t.midiClips || []).some((mc: any) => mc.id === c.id);
-                          const trimStart = (c as any).trimStart || 0;
-                          const stretchFactor = (c as any).stretchFactor ?? 1;
+                          const isMidi = isMidiTrack || (t.midiClips || []).some((mc) => mc.id === c.id);
+                          const trimStart = (c as Clip).trimStart || 0;
+                          const stretchFactor = (c as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip/MidiClip type
                           // fullDuration is the source-audio length. If we don't
                           // have it stored yet, recover it from the visible duration
                           // by dividing by stretchFactor (canvas → source seconds).
-                          const fullDuration = (c as any).fullDuration || (trimStart + c.duration / stretchFactor);
+                          const fullDuration = (c as Clip).fullDuration || (trimStart + c.duration / stretchFactor);
                           const key = `${tIndex}-${c.id}`;
                           allClipsInitialState.set(key, {
                             trimStart,
@@ -1737,7 +1738,7 @@ export function Canvas({
                       trackIndex,
                       clipId: clipId as number,
                       edge,
-                      initialTrimStart: (clip as any).trimStart || 0,
+                      initialTrimStart: (clip as Clip).trimStart || 0,
                       initialDuration: clip.duration,
                       initialClipStart: clip.start,
                       allClipsInitialState,
@@ -1784,11 +1785,11 @@ export function Canvas({
                           isMidi: false,
                           initialDuration: c.duration,
                           initialStart: c.start,
-                          initialStretchFactor: (c as any).stretchFactor ?? 1,
+                          initialStretchFactor: (c as any).stretchFactor ?? 1, // justified: stretchFactor not on Clip type
                         });
                       }
                     });
-                    (t.midiClips || []).forEach((c: any) => {
+                    (t.midiClips || []).forEach((c) => {
                       if (c.selected) {
                         allClipsInitialState.push({
                           trackIndex: tIndex,
@@ -1796,7 +1797,7 @@ export function Canvas({
                           isMidi: true,
                           initialDuration: c.duration,
                           initialStart: c.start,
-                          initialStretchFactor: c.stretchFactor ?? 1,
+                          initialStretchFactor: (c as any).stretchFactor ?? 1, // justified: stretchFactor not on MidiClip type
                         });
                       }
                     });
@@ -1807,7 +1808,7 @@ export function Canvas({
                     edge,
                     initialDuration: clip.duration,
                     initialStart: clip.start,
-                    initialStretchFactor: (clip as any).stretchFactor ?? 1,
+                    initialStretchFactor: (clip as any).stretchFactor ?? 1, // justified: stretchFactor not on Clip type
                     allClipsInitialState,
                   });
                 }}
