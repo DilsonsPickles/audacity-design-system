@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Label } from '../contexts/TracksContext';
+import type { Label, Track, TracksAction } from '../contexts/TracksContext';
 import { calculateLabelRows, calculatePointLabelWidth } from '../utils/labelLayout';
 
 interface LabelRendererProps {
@@ -11,11 +11,11 @@ interface LabelRendererProps {
   selectedLabelIds: string[];
   hoveredEar: string | null;
   hoveredBanner: string | null;
-  tracks: any[];
+  tracks: Track[];
   selectedTrackIndices: number[];
   setHoveredEar: (id: string | null) => void;
   setHoveredBanner: (id: string | null) => void;
-  dispatch: (action: any) => void;
+  dispatch: React.Dispatch<TracksAction>;
 }
 
 export const LabelRenderer: React.FC<LabelRendererProps> = ({
