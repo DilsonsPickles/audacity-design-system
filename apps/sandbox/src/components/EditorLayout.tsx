@@ -18,6 +18,8 @@ import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelect
 import { snapToGrid } from '../utils/snapToGrid';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { usePianoRollSmoothScroll } from '../hooks/usePianoRollSmoothScroll';
+import { useAutoOpenPianoRoll } from '../hooks/useAutoOpenPianoRoll';
+import { useDrawerTabAutoSwitch } from '../hooks/useDrawerTabAutoSwitch';
 
 export interface EditorLayoutProps {
   // Active menu
@@ -434,36 +436,10 @@ export function EditorLayout(props: EditorLayoutProps) {
   }, [isFlatNavigation]);
 
   // Auto-switch drawer active tab when panels open/close
-  const prevMixerRef = React.useRef(showMixer);
-  const prevPianoRollRef = React.useRef(state.pianoRollOpen);
-  React.useEffect(() => {
-    const mixerJustOpened = showMixer && !prevMixerRef.current;
-    const pianoRollJustOpened = state.pianoRollOpen && !prevPianoRollRef.current;
-    if (pianoRollJustOpened) {
-      setDrawerActiveTab('piano-roll');
-    } else if (mixerJustOpened) {
-      setDrawerActiveTab('mixer');
-    } else if (!showMixer && drawerActiveTab === 'mixer' && state.pianoRollOpen) {
-      setDrawerActiveTab('piano-roll');
-    } else if (!state.pianoRollOpen && drawerActiveTab === 'piano-roll' && showMixer) {
-      setDrawerActiveTab('mixer');
-    }
-    prevMixerRef.current = showMixer;
-    prevPianoRollRef.current = state.pianoRollOpen;
-  }, [showMixer, state.pianoRollOpen]);
+  useDrawerTabAutoSwitch({ showMixer, pianoRollOpen: state.pianoRollOpen, drawerActiveTab, setDrawerActiveTab });
 
   // Auto-open/switch piano roll when a MIDI track is focused
-  React.useEffect(() => {
-    const focusedIdx = state.focusedTrackIndex;
-    if (focusedIdx === null) return;
-    const track = state.tracks[focusedIdx];
-    if (track?.type === 'midi') {
-      if (!state.pianoRollOpen || state.pianoRollTrackIndex !== focusedIdx) {
-        const clipIndex = track.midiClips && track.midiClips.length > 0 ? 0 : null;
-        dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex: focusedIdx, clipIndex } });
-      }
-    }
-  }, [state.focusedTrackIndex]);
+  useAutoOpenPianoRoll({ state, dispatch });
 
   // Smooth-scroll piano roll to the selected clip's boundary area
   const { skipPianoRollScrollRef } = usePianoRollSmoothScroll({ state, dispatch });
