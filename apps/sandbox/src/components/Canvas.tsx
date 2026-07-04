@@ -1031,7 +1031,6 @@ export function Canvas({
               <TrackNew
                 clips={track.type === 'midi'
                   ? (track.midiClips || []).map((mc) => ({
-
                       id: mc.id, name: mc.name, start: mc.start,
                       duration: mc.duration, trimStart: mc.trimStart ?? 0,
                       envelopePoints: [],
