@@ -127,6 +127,18 @@ export function GridOverlay(props: GridOverlayProps) {
         pointerEvents: 'none',
       }}
     >
+      {/* Alternating measure bands (zebra striping) — rendered behind the grid
+          lines. Placeholder fill for now; swap for a theme token when picked. */}
+      {measureBands.map(({ x, w }) => (
+        <rect
+          key={`band-${x}`}
+          x={x}
+          y={0}
+          width={w}
+          height={gridHeight}
+          fill="rgba(128, 128, 128, 0.06)"
+        />
+      ))}
       {gridLines.map(({ x, tier }) => (
         <line
           key={x}

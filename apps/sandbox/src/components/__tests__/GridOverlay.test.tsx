@@ -30,4 +30,21 @@ describe('computeGrid', () => {
     for (const l of gridLines) expect(['measure', 'beat']).toContain(l.tier);
     expect(measureBands).toEqual([]);
   });
+
+  it('beats-measures: bands are one-measure-wide and start every OTHER measure (zebra)', () => {
+    const { measureBands } = computeGrid({
+      bpm: 120, beatsPerMeasure: 4, timeFormat: 'beats-measures',
+      pixelsPerSecond: 100, width: 4000, clipContentOffset: CLIP_CONTENT_OFFSET,
+    });
+    // 120bpm, 4/4 → 2s per measure → 200px per measure at 100px/s.
+    const measureWidthPx = 200;
+    expect(measureBands.length).toBeGreaterThan(1);
+    for (const b of measureBands) expect(b.w).toBeCloseTo(measureWidthPx, 5);
+    // consecutive bands are two measures apart (every other measure shaded)
+    const gap = measureBands[1].x - measureBands[0].x;
+    expect(gap).toBeCloseTo(measureWidthPx * 2, 5);
+    // GridOverlay renders these as <rect> behind the grid lines (verified visually;
+    // component-render unit test is blocked by a react-dom/react version mismatch in
+    // the sandbox test env — see branch notes).
+  });
 });
