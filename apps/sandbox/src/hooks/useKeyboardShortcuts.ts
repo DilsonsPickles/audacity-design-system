@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { TracksState, TracksAction } from '../contexts/TracksContext';
+import type { TracksState, TracksAction, Clip } from '../contexts/TracksContext';
 import { scrollIntoViewIfNeeded, usePreferences, announce } from '@dilsonspickles/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
@@ -16,7 +16,7 @@ import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 
 export interface ClipboardState {
-  clips: any[];
+  clips: (Clip & { trackIndex: number })[];
   operation: 'copy' | 'cut';
   timeSelection?: { startTime: number; endTime: number };
 }

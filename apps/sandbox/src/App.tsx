@@ -49,6 +49,7 @@ import { useZoomControls } from './hooks/useZoomControls';
 import { usePlaybackControls } from './hooks/usePlaybackControls';
 import { useRecording } from './hooks/useRecording';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import type { ClipboardState } from './hooks/useKeyboardShortcuts';
 import { useGrabToPan } from './hooks/useGrabToPan';
 import { useProjectManagement } from './hooks/useProjectManagement';
 import { DialogProvider, useDialogs } from './contexts/DialogContext';
@@ -570,11 +571,7 @@ function CanvasDemoContent() {
   const selectionEdgesRef = React.useRef<{ startTime: number; endTime: number } | null>(null);
 
   // Clipboard for copy/cut/paste
-  const [clipboard, setClipboard] = React.useState<{
-    clips: any[]; // Array of clips with trackIndex
-    operation: 'copy' | 'cut';
-    timeSelection?: { startTime: number; endTime: number }; // Optional time range for partial clip copy
-  } | null>(null);
+  const [clipboard, setClipboard] = React.useState<ClipboardState | null>(null);
 
   // Playback controls
   const recordingManagerRef = React.useRef<RecordingManager | null>(null);

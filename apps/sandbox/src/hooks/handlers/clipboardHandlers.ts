@@ -203,11 +203,10 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
         destTrackIndex,
       };
     })
-    // justified: clipData derives from ClipboardState.clips (any[]), so clip is unresolvable without widening scope
-    .filter((item): item is { clip: any; sourceClipId: string | number; destTrackIndex: number } => item !== null);
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   // Group clips by destination track
-  const clipsByTrack = new Map<number, any[]>();
+  const clipsByTrack = new Map<number, (Clip & { trackIndex: number })[]>();
   newClipsWithTracks.forEach(({ clip, destTrackIndex }) => {
     if (!clipsByTrack.has(destTrackIndex)) {
       clipsByTrack.set(destTrackIndex, []);
