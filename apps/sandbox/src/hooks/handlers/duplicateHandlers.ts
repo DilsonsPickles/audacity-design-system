@@ -1,5 +1,5 @@
 import { announce } from '@dilsonspickles/components';
-import type { TracksState, TracksAction } from '../../contexts/TracksContext';
+import type { TracksState, TracksAction, Clip, Track } from '../../contexts/TracksContext';
 
 export interface DuplicateHandlerDeps {
   state: TracksState;
@@ -26,17 +26,17 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
       e.preventDefault();
       const fti = Number(trackIdxAttr);
       const focusedClip = state.tracks[fti]?.clips.find(
-        (c: any) => String(c.id) === clipIdAttr,
+        (c) => String(c.id) === clipIdAttr,
       );
       if (!focusedClip) return;
 
       // Model 3: focused-in-selection → duplicate selection;
       // focused-out-of-selection → duplicate only focused.
-      type ClipTarget = { trackIndex: number; clip: any };
+      type ClipTarget = { trackIndex: number; clip: Clip };
       const targets: ClipTarget[] = [];
-      if ((focusedClip as any).selected) {
-        state.tracks.forEach((t: any, ti: number) => {
-          t.clips.forEach((c: any) => {
+      if (focusedClip.selected) {
+        state.tracks.forEach((t, ti) => {
+          t.clips.forEach((c) => {
             if (c.selected) targets.push({ trackIndex: ti, clip: c });
           });
         });
@@ -47,7 +47,7 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
       // Allocate fresh clip ids in one pass over all tracks.
       let nextClipId = 1;
       for (const t of state.tracks) {
-        for (const c of t.clips) if ((c as any).id >= nextClipId) nextClipId = (c as any).id + 1;
+        for (const c of t.clips) if (c.id >= nextClipId) nextClipId = c.id + 1;
       }
 
       // Each duplicate starts immediately after its source clip
@@ -62,11 +62,11 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
           id: dupId,
           start: clip.start + clip.duration,
           selected: true,
-          sourceClipId: (clip as any).sourceClipId ?? clip.id,
+          sourceClipId: clip.sourceClipId ?? clip.id,
         };
         dispatch({
           type: 'ADD_CLIP',
-          payload: { trackIndex, clip: dup as any },
+          payload: { trackIndex, clip: dup },
         });
         newSelectionIds.push({ trackIndex, clipId: dupId });
       });
@@ -99,10 +99,10 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
 
   let nextClipId = 1;
   for (const t of state.tracks) {
-    for (const c of t.clips) if ((c as any).id >= nextClipId) nextClipId = (c as any).id + 1;
+    for (const c of t.clips) if (c.id >= nextClipId) nextClipId = c.id + 1;
   }
   const nextIdAfterDeletes = (state.tracks.reduce(
-    (max: number, t: any) => (t.id > max ? t.id : max),
+    (max: number, t: Track) => (t.id > max ? t.id : max),
     0,
   ) + 1);
   let nextTrackId = nextIdAfterDeletes;
@@ -110,7 +110,7 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
   for (const ti of trackIndices) {
     const src = state.tracks[ti];
     if (!src) continue;
-    const clonedClips = (src.clips ?? []).map((c: any) => ({
+    const clonedClips = (src.clips ?? []).map((c) => ({
       ...c,
       id: nextClipId++,
       sourceClipId: c.sourceClipId ?? c.id,
@@ -123,7 +123,7 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
         name: `${src.name} copy`,
         clips: clonedClips,
         insertAt: ti + 1,
-      } as any,
+      },
     });
   }
   announce(

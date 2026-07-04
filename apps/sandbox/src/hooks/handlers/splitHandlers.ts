@@ -1,5 +1,5 @@
 import { announce, formatTimeForA11y } from '@dilsonspickles/components';
-import type { TracksState, TracksAction } from '../../contexts/TracksContext';
+import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
 
 export interface SplitHandlerDeps {
   state: TracksState;
@@ -24,21 +24,21 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
 
   const { state, dispatch } = deps;
 
-  type Target = { trackIndex: number; clip: any };
+  type Target = { trackIndex: number; clip: Clip };
   const playhead = state.playheadPosition;
   const EDGE_EPSILON = 0.0001;
 
   const findClipUnderPlayhead = (trackIndex: number) => {
     const t = state.tracks[trackIndex];
     return t?.clips.find(
-      (c: any) =>
+      (c) =>
         playhead > c.start + EDGE_EPSILON
         && playhead < c.start + c.duration - EDGE_EPSILON,
     );
   };
 
   // a) Resolve focus.
-  let focusedClip: { trackIndex: number; clip: any } | null = null;
+  let focusedClip: { trackIndex: number; clip: Clip } | null = null;
   const active = document.activeElement as HTMLElement | null;
   const focusedWrapper = active?.closest('[data-clip-id]') as HTMLElement | null;
   if (focusedWrapper) {
@@ -46,12 +46,12 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
     const trackIdxAttr = focusedWrapper.getAttribute('data-track-index');
     if (clipIdAttr && trackIdxAttr) {
       const ti = Number(trackIdxAttr);
-      const c = state.tracks[ti]?.clips.find((cc: any) => String(cc.id) === clipIdAttr);
+      const c = state.tracks[ti]?.clips.find((cc) => String(cc.id) === clipIdAttr);
       if (c) focusedClip = { trackIndex: ti, clip: c };
     }
   }
   const focusedTrackIndex = state.focusedTrackIndex;
-  let focusedTrackTarget: { trackIndex: number; clip: any } | null = null;
+  let focusedTrackTarget: { trackIndex: number; clip: Clip } | null = null;
   if (
     focusedClip === null
     && focusedTrackIndex !== null
@@ -64,13 +64,13 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
   // b) Is the focused thing part of the selection?
   const selectedTrackIndices = state.selectedTrackIndices || [];
   const hasTrackSelection = selectedTrackIndices.length > 0;
-  const hasClipSelection = state.tracks.some((t: any) => t.clips.some((c: any) => c.selected));
+  const hasClipSelection = state.tracks.some((t) => t.clips.some((c) => c.selected));
 
   const focusInTrackSelection =
     focusedTrackTarget !== null
     && selectedTrackIndices.includes(focusedTrackTarget.trackIndex);
   const focusedClipIsSelected =
-    focusedClip !== null && (focusedClip.clip as any).selected === true;
+    focusedClip !== null && focusedClip.clip.selected === true;
 
   // Special case: there is a selection but no focus anywhere
   // (e.g. user clicked to multi-select then moved away with the
@@ -79,7 +79,7 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
   const noFocus = focusedClip === null && focusedTrackTarget === null;
 
   const targets: Target[] = [];
-  const pushIfNew = (trackIndex: number, clip: any) => {
+  const pushIfNew = (trackIndex: number, clip: Clip) => {
     if (!targets.some((x) => x.trackIndex === trackIndex && x.clip.id === clip.id)) {
       targets.push({ trackIndex, clip });
     }
@@ -92,8 +92,8 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
 
   if (useSelection) {
     // Selected clips
-    state.tracks.forEach((t: any, ti: number) => {
-      t.clips.forEach((c: any) => {
+    state.tracks.forEach((t, ti) => {
+      t.clips.forEach((c) => {
         if (c.selected) pushIfNew(ti, c);
       });
     });
@@ -113,7 +113,8 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
     return;
   }
 
-  const mutations: any[] = [];
+  type SplitMutation = { type: 'split'; clipId: number; trackIndex: number; leftEnd: number; rightStart: number };
+  const mutations: SplitMutation[] = [];
   let lastDescription = '';
   for (const { trackIndex, clip } of targets) {
     const start = clip.start;
@@ -146,7 +147,7 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
   // — the user's "current" clips after the cut.
   dispatch({
     type: 'SELECT_CLIPS',
-    payload: mutations.map((m: any) => ({
+    payload: mutations.map((m) => ({
       trackIndex: m.trackIndex,
       clipId: m.clipId,
     })),
@@ -173,9 +174,10 @@ export function handleSplitAllTracks(e: KeyboardEvent, deps: SplitHandlerDeps): 
 
   const playhead = state.playheadPosition;
   const EDGE_EPSILON = 0.0001;
-  const mutations: any[] = [];
-  state.tracks.forEach((t: any, ti: number) => {
-    t.clips.forEach((c: any) => {
+  type SplitMutation = { type: 'split'; clipId: number; trackIndex: number; leftEnd: number; rightStart: number };
+  const mutations: SplitMutation[] = [];
+  state.tracks.forEach((t, ti) => {
+    t.clips.forEach((c) => {
       if (playhead > c.start + EDGE_EPSILON && playhead < c.start + c.duration - EDGE_EPSILON) {
         mutations.push({
           type: 'split',
@@ -202,7 +204,7 @@ export function handleSplitAllTracks(e: KeyboardEvent, deps: SplitHandlerDeps): 
   // split reducer runs.
   dispatch({
     type: 'SELECT_CLIPS',
-    payload: mutations.map((m: any) => ({
+    payload: mutations.map((m) => ({
       trackIndex: m.trackIndex,
       clipId: m.clipId,
     })),
