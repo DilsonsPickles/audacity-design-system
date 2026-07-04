@@ -76,6 +76,15 @@ Behavior is locked by `__tests__/tracksReducer.characterization.test.ts` and `__
 | `useSplitTool.ts` | Split-mode click-to-split tool — state, Shift-sync + hover effects, and the split mouse-handler branches (extracted from Canvas; wired back into Canvas's guard chain in order) |
 | `useKeyboardShortcuts.ts` | **Keyboard routing hub** — delegates to domain handlers below |
 
+**EditorLayout effect hooks** (extracted from EditorLayout; each a self-contained `useEffect`):
+| File | What it owns |
+|---|---|
+| `usePianoRollSmoothScroll.ts` | RAF ease-out scroll to the selected MIDI clip; returns `skipPianoRollScrollRef` |
+| `useAutoOpenPianoRoll.ts` | Opens the piano roll when a MIDI track gains focus |
+| `useDrawerTabAutoSwitch.ts` | Switches the bottom-drawer tab when mixer/piano-roll open/close |
+| `useTimeSelectionTabHandler.ts` | Global keydown: Tab behavior during a time selection |
+| `useFlatNavTabRouter.ts` | Global keydown: flat-nav Tab interception + DOM-ordered focus routing |
+
 Pure geometry helpers used by Canvas + the split tool live in `apps/sandbox/src/utils/canvasGeometry.ts` (`resolveTrackIndexFromY`, `buildSplitForTrack`).
 
 ### Keyboard handlers (`apps/sandbox/src/hooks/handlers/`)
@@ -114,7 +123,7 @@ These are not-yet-decomposed monoliths. They work but are prime targets for futu
 | File | What it owns |
 |---|---|
 | `apps/sandbox/src/App.tsx` | Application root — wires up provider tree and top-level routing; accumulates bootstrap concerns |
-| `apps/sandbox/src/components/EditorLayout.tsx` | Full editor chrome — toolbar, track panel, ruler, transport bar all in one component; not yet split by region |
+| `apps/sandbox/src/components/EditorLayout.tsx` | Full editor chrome (toolbar, track panel, ruler, transport, drawer). Consumes `TracksContext` directly via `useTracks()` (typed — no `state`/`dispatch` prop-drill); self-contained effects extracted to hooks. Remaining bulk is layout JSX / prop-drilling to already-extracted child components — reducing it needs a selection/focus context (separate project) |
 | `apps/sandbox/src/components/Canvas.tsx` | Track/clip/label interaction dispatcher (renders no `<canvas>`). Grid → `GridOverlay`, split tool → `useSplitTool`, geometry → `utils/canvasGeometry` are now extracted; the remaining bulk is the ~935-line track-map loop wiring props to TrackNew (needs a Context-slicing change to reduce) |
 | `packages/components/src/PreferencesModal/PreferencesModal.tsx` | Preferences UI; all preference panels in one file |
 
