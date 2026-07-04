@@ -1,11 +1,12 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
+import type { SpectralSelection } from '../contexts/SpectralSelectionContext';
 import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
 import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, usePreferences, PianoRollPanel, PanelHeader } from '@dilsonspickles/components';
-import type { SpectrogramScale, WaveformRulerFormat, PanelHeaderTab } from '@dilsonspickles/components';
+import type { SpectrogramScale, WaveformRulerFormat, PanelHeaderTab, ThemeTokens } from '@dilsonspickles/components';
 import { MixerPanel, type MixerPanelChannel } from '@dilsonspickles/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { getAllEffects } from '@audacity-ui/core';
@@ -91,10 +92,10 @@ export interface EditorLayoutProps {
 
   // Ruler time selection
   rulerTimeSelection: { startTime: number; endTime: number } | null | undefined;
-  spectralSelection: any;
+  spectralSelection: SpectralSelection | null;
 
   // Theme
-  theme: any;
+  theme: ThemeTokens;
 
   // Canvas height
   canvasHeight: number;
@@ -223,7 +224,7 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   // Calculate ruler tab indices — one per track, -1 for label tracks
   const rulerTabIndices = React.useMemo(() =>
-    state.tracks.map((track: any, i: number) => {
+    state.tracks.map((track, i: number) => {
       if (track.type === 'label' || track.type === 'midi') return -1;
       return isFlatNavigation ? 0 : (trackBase + 3 + i * 4);
     }),
@@ -261,13 +262,13 @@ export function EditorLayout(props: EditorLayoutProps) {
       if (active?.closest('[data-clip-id]')) return;
       const fti = state.focusedTrackIndex;
       if (fti === null || fti === undefined) return;
-      const track = state.tracks[fti] as any;
+      const track = state.tracks[fti];
       if (!track) return;
 
       const { startTime, endTime } = state.timeSelection;
       const overlapping = (track.clips || [])
-        .filter((c: any) => c.start < endTime && c.start + c.duration > startTime)
-        .sort((a: any, b: any) => a.start - b.start);
+        .filter((c) => c.start < endTime && c.start + c.duration > startTime)
+        .sort((a, b) => a.start - b.start);
 
       const trackEl = document.querySelector<HTMLElement>(
         `.track-wrapper[data-track-index="${fti}"] .track`,
@@ -731,8 +732,8 @@ export function EditorLayout(props: EditorLayoutProps) {
       {/* Track Control Side Panel - Hidden on export tab */}
       {activeMenuItem !== 'export' && (
         <TrackControlSidePanel
-          trackHeights={state.tracks.map((t: any) => t.height || 114)}
-          trackViewModes={state.tracks.map((t: any) => t.viewMode)}
+          trackHeights={state.tracks.map((t) => t.height || 114)}
+          trackViewModes={state.tracks.map((t) => t.viewMode)}
           focusedTrackIndex={state.focusedTrackIndex}
           scrollRef={trackHeaderScrollRef}
           onScroll={onTrackHeaderScroll}
@@ -743,7 +744,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
           onAddTrackType={(type: TrackType) => {
             // Use max(id)+1 — `length+1` collides after a middle track was deleted.
-            const nextTrackId = Math.max(...state.tracks.map((t: any) => t.id), 0) + 1;
+            const nextTrackId = Math.max(...state.tracks.map((t) => t.id), 0) + 1;
             const prefix =
               type === 'label' ? 'Label' :
               type === 'stereo' ? 'Stereo' :
@@ -754,15 +755,15 @@ export function EditorLayout(props: EditorLayoutProps) {
             // so duplicates aren't introduced after deletes.
             const namePattern = new RegExp(`^${prefix} (\\d+)$`);
             const usedNumbers = state.tracks
-              .map((t: any) => {
+              .map((t) => {
                 const m = namePattern.exec(t.name ?? '');
                 return m ? parseInt(m[1], 10) : NaN;
               })
               .filter((n: number) => !isNaN(n));
             const nextNameNumber = usedNumbers.length === 0 ? 1 : Math.max(...usedNumbers) + 1;
 
-            const trackType = type === 'label' ? 'label' : type === 'midi' ? 'midi' : 'audio';
-            const newTrack: any = {
+            const trackType: 'audio' | 'label' | 'midi' = type === 'label' ? 'label' : type === 'midi' ? 'midi' : 'audio';
+            const newTrack = {
               id: nextTrackId,
               name: `${prefix} ${nextNameNumber}`,
               type: trackType,
@@ -775,7 +776,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
           showMidiOption={true}
           onDeleteTrack={(trackIndex) => {
-            const t = state.tracks[trackIndex] as any;
+            const t = state.tracks[trackIndex];
             const hasContent = t
               && ((t.clips?.length ?? 0) > 0 || (t.midiClips?.length ?? 0) > 0);
             confirmTrackDelete(
@@ -793,8 +794,8 @@ export function EditorLayout(props: EditorLayoutProps) {
             // the indices we haven't processed yet.
             trackIndices.sort((a, b) => b - a);
 
-            let nextClipId = Math.max(...state.tracks.flatMap((t: any) => t.clips.map((c: any) => c.id)), 0) + 1;
-            let nextTrackId = Math.max(...state.tracks.map((t: any) => t.id), 0) + 1;
+            let nextClipId = Math.max(...state.tracks.flatMap((t) => t.clips.map((c) => c.id)), 0) + 1;
+            let nextTrackId = Math.max(...state.tracks.map((t) => t.id), 0) + 1;
 
             trackIndices.forEach((idx: number) => {
               const originalTrack = state.tracks[idx];
@@ -803,7 +804,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   ...originalTrack,
                   id: nextTrackId++,
                   name: `${originalTrack.name} (copy)`,
-                  clips: originalTrack.clips.map((clip: any) => ({
+                  clips: originalTrack.clips.map((clip) => ({
                     ...clip,
                     id: nextClipId++,
                   })),
@@ -815,7 +816,7 @@ export function EditorLayout(props: EditorLayoutProps) {
 
                 dispatch({
                   type: 'ADD_TRACK',
-                  payload: duplicatedTrack as any,
+                  payload: duplicatedTrack,
                 });
               }
             });
@@ -831,7 +832,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           // to the first clip's color keeps the swatch showing the
           // right hue for legacy state where a user-picked colour
           // never made it into track.color.
-          trackColors={state.tracks.map((t: any) => t.color ?? t.clips[0]?.color)}
+          trackColors={state.tracks.map((t) => t.color ?? t.clips[0]?.color)}
           onTrackColorChange={(trackIndex, color) => {
             // Update the track's own colour too — handlePaste reads
             // state.tracks[destTrackIndex].color to stamp pasted clips,
@@ -842,7 +843,7 @@ export function EditorLayout(props: EditorLayoutProps) {
               payload: { index: trackIndex, track: { color } },
             });
             const track = state.tracks[trackIndex];
-            track?.clips.forEach((clip: any) => {
+            track?.clips.forEach((clip) => {
               dispatch({
                 type: 'UPDATE_CLIP',
                 payload: { trackIndex, clipId: clip.id, updates: { color } },
@@ -853,7 +854,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             setIsSpectrogramSettingsOpen(true);
           }}
         >
-          {state.tracks.map((track: any, index: number) => {
+          {state.tracks.map((track, index: number) => {
             let trackType: 'mono' | 'stereo' | 'label' | 'midi' = 'mono';
             if (track.type === 'label') {
               trackType = 'label';
@@ -1048,9 +1049,9 @@ export function EditorLayout(props: EditorLayoutProps) {
                   }
                 }}
                 onAddLabelClick={() => {
-                  const allLabels = state.tracks.flatMap((t: any) => t.labels || []);
+                  const allLabels = state.tracks.flatMap((t) => t.labels || []);
                   const nextLabelId = allLabels.length > 0
-                    ? Math.max(...allLabels.map((l: any) => l.id)) + 1
+                    ? Math.max(...allLabels.map((l) => l.id)) + 1
                     : 1;
 
                   const newLabel = {
@@ -1721,7 +1722,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           {showVerticalRulers && (
             <div onContextMenu={handleRulerContextMenu} style={{ display: 'flex', flexShrink: 0 }}>
               <VerticalRulerPanel
-                tracks={state.tracks.map((track: any, index: number) => ({
+                tracks={state.tracks.map((track, index: number) => ({
                   id: track.id.toString(),
                   height: track.height || 114,
                   selected: state.selectedTrackIndices.includes(index),
@@ -1869,7 +1870,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                       const BOTTOM_PAD = 24;
                       const trackTop = state.tracks
                         .slice(0, trackIndex)
-                        .reduce((sum: number, t: any) => sum + ((t.height || 114) + 2), 0);
+                        .reduce((sum: number, t) => sum + ((t.height || 114) + 2), 0);
                       const trackHeight = state.tracks[trackIndex]?.height || 114;
                       const viewportTop = scrollEl.scrollTop;
                       const viewportBottom = viewportTop + scrollEl.clientHeight;
@@ -2002,9 +2003,9 @@ export function EditorLayout(props: EditorLayoutProps) {
 
           {/* Mixer content */}
           {activeTab === 'mixer' && mixerOpen && (() => {
-            const audioTracks = state.tracks.filter((t: any) => t.type !== 'label');
-            const mixerChannels: MixerPanelChannel[] = audioTracks.map((track: any) => {
-              const trackIndex = state.tracks.findIndex((t: any) => t.id === track.id);
+            const audioTracks = state.tracks.filter((t) => t.type !== 'label');
+            const mixerChannels: MixerPanelChannel[] = audioTracks.map((track) => {
+              const trackIndex = state.tracks.findIndex((t) => t.id === track.id);
               const trackGain = track.gain ?? -6;
               const meterLevel = trackMeterLevels.get(trackIndex) ?? 0;
               return {
@@ -2038,7 +2039,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   onSoloToggle: () => {
                     dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { soloed: !track.soloed } } });
                   },
-                  effects: (track.effects || []).map((effect: any, effectIndex: number) => ({
+                  effects: (track.effects || []).map((effect, effectIndex: number) => ({
                     name: effect.name,
                     enabled: effect.enabled,
                     onToggle: () => {
@@ -2073,7 +2074,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   trackName: 'Master',
                   trackColor: theme.accent.secondary,
                   variant: 'stereo',
-                  effects: (state.masterEffects || []).map((effect: any, effectIndex: number) => ({
+                  effects: (state.masterEffects || []).map((effect, effectIndex: number) => ({
                     name: effect.name,
                     enabled: effect.enabled,
                     onToggle: () => {
