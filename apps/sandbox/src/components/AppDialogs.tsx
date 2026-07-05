@@ -1,6 +1,7 @@
 import React from 'react';
-import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroManager, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast } from '@dilsonspickles/components';
+import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroManager, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, type PreferencesState, type StoredProject } from '@dilsonspickles/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
+import type { AccessibilityProfile } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
 import type { Label } from '../contexts/TracksContext';
 import { DebugPanel } from './DebugPanel';
@@ -41,8 +42,8 @@ export interface AppDialogsProps {
   setDontShowSyncAgain: React.Dispatch<React.SetStateAction<boolean>>;
   dontShowSaveModalAgain: boolean;
   setDontShowSaveModalAgain: React.Dispatch<React.SetStateAction<boolean>>;
-  indexedDBProjects: any[];
-  setIndexedDBProjects: React.Dispatch<React.SetStateAction<any[]>>;
+  indexedDBProjects: StoredProject[];
+  setIndexedDBProjects: React.Dispatch<React.SetStateAction<StoredProject[]>>;
 
   // Project state
   projectName: string;
@@ -67,7 +68,7 @@ export interface AppDialogsProps {
   availableAudioOutputs: MediaDeviceInfo[];
 
   // Audio manager ref
-  audioManagerRef: React.RefObject<any>;
+  audioManagerRef: React.RefObject<any>; // justified: AudioPlaybackManager cluster deferred (PlaybackContext blocker)
 
   // Macros
   macros: Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>;
@@ -103,7 +104,7 @@ export interface AppDialogsProps {
 
   // OS preference
   os: 'windows' | 'macos';
-  updatePreference: (key: string, value: any) => void;
+  updatePreference: <K extends keyof PreferencesState>(key: K, value: PreferencesState[K]) => void;
   // Track selection model (debug-only for now)
   trackSelectionMode: 'classic' | 'follows-focus';
 
@@ -112,8 +113,8 @@ export interface AppDialogsProps {
   setDebugTrackCount: React.Dispatch<React.SetStateAction<number>>;
   showFocusDebug: boolean;
   setShowFocusDebug: React.Dispatch<React.SetStateAction<boolean>>;
-  activeProfile: any;
-  profiles: any[];
+  activeProfile: AccessibilityProfile;
+  profiles: AccessibilityProfile[];
   setProfile: (id: string) => void;
   useSplitRecordButton: boolean;
   setUseSplitRecordButton: React.Dispatch<React.SetStateAction<boolean>>;

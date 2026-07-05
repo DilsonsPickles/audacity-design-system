@@ -127,7 +127,7 @@ function CanvasDemoContent() {
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
   const [homeTabKey, setHomeTabKey] = React.useState(0);
   const [currentProjectId, setCurrentProjectId] = React.useState<string | null>(null);
-  const [indexedDBProjects, setIndexedDBProjects] = React.useState<any[]>([]);
+  const [indexedDBProjects, setIndexedDBProjects] = React.useState<StoredProject[]>([]);
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
   const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
   const [selectionTimeCodeFormat, setSelectionTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
