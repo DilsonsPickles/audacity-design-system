@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { lightTheme } from '../../../../packages/tokens/src/themes/light.v2';
 import { darkTheme } from '../../../../packages/tokens/src/themes/dark.v2';
+import type { ClipColorStates } from '../../../../packages/tokens/src/tokens.v2';
 
 type ThemeType = 'light' | 'dark';
 
@@ -211,7 +212,7 @@ export function TokenReview() {
         {/* Audio Tokens - Clip Colors */}
         <TokenSection title="Audio Tokens - Clip Colors (54 pre-computed)">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {Object.entries(theme.audio.clip).filter(([key]) => key !== 'border').map(([colorName, states]: any) => (
+            {(Object.entries(theme.audio.clip).filter(([key]) => key !== 'border') as [string, ClipColorStates][]).map(([colorName, states]) => (
               <div key={colorName}>
                 <h4 style={{
                   fontSize: '14px',
@@ -228,7 +229,7 @@ export function TokenReview() {
                   <ClipColorSwatch label="body" color={states.body} />
                   <ClipColorSwatch label="headerSelected" color={states.headerSelected} />
                   <ClipColorSwatch label="headerSelectedHover" color={states.headerSelectedHover} />
-                  <ClipColorSwatch label="bodySelected" color={states.bodySelected} />
+                  <ClipColorSwatch label="timeSelectionBody" color={states.timeSelectionBody} />
                 </div>
               </div>
             ))}

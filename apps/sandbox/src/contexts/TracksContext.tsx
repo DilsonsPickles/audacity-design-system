@@ -63,7 +63,7 @@ export interface Effect {
   id: string;
   name: string;
   enabled: boolean;
-  parameters?: Record<string, any>; // Effect-specific parameters
+  parameters?: Record<string, unknown>; // open effect-param shape
 }
 
 export interface Track {

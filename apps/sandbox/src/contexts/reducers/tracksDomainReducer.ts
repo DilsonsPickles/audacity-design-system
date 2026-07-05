@@ -165,12 +165,12 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       const TRACK_COLORS = ['blue', 'violet', 'magenta'] as const;
       // Stamp current index-based colors onto clips before reordering
       const newTracks = state.tracks.map((track, i) => {
-        const hasExplicitColors = track.clips.every((c: any) => c.color);
+        const hasExplicitColors = track.clips.every((c) => c.color);
         if (hasExplicitColors) return track;
         const color = TRACK_COLORS[i % TRACK_COLORS.length];
         return {
           ...track,
-          clips: track.clips.map(c => ({ ...c, color: (c as any).color || color })),
+          clips: track.clips.map(c => ({ ...c, color: c.color || color })),
         };
       });
       const [moved] = newTracks.splice(fromIndex, 1);

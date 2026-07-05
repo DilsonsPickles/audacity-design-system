@@ -93,7 +93,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
           duration: 0,
           waveform: [],
           envelopePoints: [],
-          color: (state.tracks[recordingTrackIndex]?.color as any) || 'cyan',
+          color: state.tracks[recordingTrackIndex]?.color || 'cyan',
         },
       },
     });

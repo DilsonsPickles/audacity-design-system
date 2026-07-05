@@ -6,6 +6,8 @@
  * - Ripple Cut: Deletes audio and shifts everything left (ripple effect)
  */
 
+import type { Label } from '../contexts/TracksContext';
+
 export type CutMode = 'split' | 'ripple';
 
 interface EnvelopePoint {
@@ -43,7 +45,7 @@ interface Track {
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number;
   clips: Clip[];
-  labels?: any[];
+  labels?: Label[];
 }
 
 /**

@@ -14,8 +14,8 @@ export interface StoredProject {
   isCloudProject: boolean;
   isUploading?: boolean;
   data?: {
-    tracks: any[]; // Use any to avoid type conflicts between core and local Track types
-    masterEffects?: any[];
+    tracks: unknown[]; // justified: load boundary — deserialized JSON from IndexedDB, caller casts to Track[] after validation
+    masterEffects?: unknown[]; // justified: load boundary — deserialized JSON from IndexedDB, open effect shape
     playheadPosition: number;
     audioBuffers?: Record<string, ArrayBuffer>; // WAV data keyed by clip ID
   };
