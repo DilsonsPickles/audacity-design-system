@@ -1,3 +1,4 @@
+import { announce } from '@dilsonspickles/components';
 import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -215,13 +216,17 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
 
   // Group clips by destination track
   const clipsByTrack = new Map<number, (Clip & { trackIndex: number })[]>();
+  let skippedMidiClips = 0;
   newClipsWithTracks.forEach(({ clip, destTrackIndex }) => {
-    if (!isAudioClip(clip)) return; // skip MIDI clips — no target array yet
+    if (!isAudioClip(clip)) { skippedMidiClips++; return; } // skip MIDI clips — no dedicated paste path yet
     if (!clipsByTrack.has(destTrackIndex)) {
       clipsByTrack.set(destTrackIndex, []);
     }
     clipsByTrack.get(destTrackIndex)!.push(clip);
   });
+  if (skippedMidiClips > 0) {
+    announce("MIDI clips can't be pasted yet");
+  }
 
   // Add clips to their respective tracks
   const updatedTracks = state.tracks.map((track, index) => {

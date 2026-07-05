@@ -324,7 +324,6 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
           // clamp against.
           const fullDuration =
             clip.fullDuration ?? (trimStart + clip.duration / oldStretch);
-          // justified: stretchFactor is audio-only, not on Clip type (MidiClip must NOT get it)
           const updatedClip = {
             ...clip,
             duration: newDuration,

@@ -609,7 +609,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 key={track.id}
                 trackName={track.name}
                 trackType={trackType}
-                icon={track.icon as any}
+                icon={track.icon as any} // justified: Track.icon is a loose string; TrackControlPanel narrows to IconName at render
                 onIconChange={(nextIcon) => {
                   dispatch({ type: 'UPDATE_TRACK', payload: { index, track: { icon: nextIcon } } });
                 }}
@@ -1742,7 +1742,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 id: String(track.id),
                 channelProps: {
                   trackName: track.name,
-                  trackColor: track.color ? (theme.audio.clip as any)[track.color]?.header : undefined,
+                  trackColor: track.color ? (theme.audio.clip as any)[track.color]?.header : undefined, // justified: dynamic string-index into theme tokens (no index signature)
                   variant: track.channelSplitRatio !== undefined ? 'stereo' as const : 'mono' as const,
                   volume: trackGain,
                   pan: track.pan ?? 0,
