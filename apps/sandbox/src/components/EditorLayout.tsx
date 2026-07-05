@@ -93,7 +93,7 @@ export interface EditorLayoutProps {
   setLoopRegionHovering: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Refs
-  audioManagerRef: React.RefObject<any>;
+  audioManagerRef: React.RefObject<any>; // justified: AudioPlaybackManager cluster deferred (PlaybackContext blocker)
 
   // Ruler time selection
   rulerTimeSelection: { startTime: number; endTime: number } | null | undefined;

@@ -10,7 +10,8 @@
     "lint": "pnpm --recursive lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "guard:any": "node scripts/check-any.mjs"
   },
   "keywords": [
     "audacity",

@@ -306,7 +306,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
 
                 // Check if this was triggered by keyboard (Enter/Space)
                 // React synthetic events don't expose nativeEvent.detail, so we check if it's a MouseEvent
-                const isKeyboard = e && (e as any).nativeEvent && (e as any).nativeEvent.detail === 0;
+                const isKeyboard = e && (e as any).nativeEvent && (e as any).nativeEvent.detail === 0; // justified: nativeEvent.detail not on React.MouseEvent type — pending components sweep
                 setAddTrackFlyoutAutoFocus(isKeyboard);
                 setAddTrackFlyoutOpen(!addTrackFlyoutOpen);
               } else if (onAddTrack) {
@@ -337,7 +337,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           const isFocused = child.props.isFocused !== undefined
             ? child.props.isFocused
             : focusedTrackIndex === index;
-          const isContainerFocused = (child.props as any).containerFocused || false;
+          const isContainerFocused = (child.props as any).containerFocused || false; // justified: containerFocused is a non-standard extension on child props — pending components sweep
           return (
             <ResizablePanel
               key={child.key || index}

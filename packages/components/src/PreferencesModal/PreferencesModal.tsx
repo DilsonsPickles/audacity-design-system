@@ -171,7 +171,7 @@ function TabGroupField({
           if (keyEvent.key === ' ' || keyEvent.key === 'Enter') {
             return;
           }
-          onKeyDown(e as any);
+          onKeyDown(e as any); // justified: native Event → React.KeyboardEvent bridge — pending components sweep
         };
         focusableElement.addEventListener('keydown', keydownHandler);
         handlers.push({ type: 'keydown', handler: keydownHandler });
@@ -180,7 +180,7 @@ function TabGroupField({
       // Add focus handler
       if (onFocus) {
         const focusHandler = (e: Event) => {
-          onFocus(e as any);
+          onFocus(e as any); // justified: native Event → React.FocusEvent bridge — pending components sweep
         };
         focusableElement.addEventListener('focus', focusHandler);
         handlers.push({ type: 'focus', handler: focusHandler });
@@ -189,7 +189,7 @@ function TabGroupField({
       // Add blur handler
       if (onBlur) {
         const blurHandler = (e: Event) => {
-          onBlur(e as any);
+          onBlur(e as any); // justified: native Event → React.FocusEvent bridge — pending components sweep
         };
         focusableElement.addEventListener('blur', blurHandler);
         handlers.push({ type: 'blur', handler: blurHandler });
@@ -208,27 +208,27 @@ function TabGroupField({
     if (React.isValidElement(child)) {
       // Check if it's a Dropdown, LabeledInput, LabeledCheckbox, LabeledRadio, NumberStepper, or Button component
       if (child.type === Dropdown) {
-        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex }); // justified: cloneElement with extra props needs <any> — pending components sweep
       }
       // For LabeledInput, we need to pass tabIndex to the underlying input
-      if ((child.type as any).name === 'LabeledInput' || child.type === LabeledInput) {
-        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      if ((child.type as any).name === 'LabeledInput' || child.type === LabeledInput) { // justified: runtime displayName check — pending components sweep
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex }); // justified: cloneElement with extra props needs <any> — pending components sweep
       }
       // For LabeledCheckbox components
-      if ((child.type as any).name === 'LabeledCheckbox' || child.type === LabeledCheckbox) {
-        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      if ((child.type as any).name === 'LabeledCheckbox' || child.type === LabeledCheckbox) { // justified: runtime displayName check — pending components sweep
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex }); // justified: cloneElement with extra props needs <any> — pending components sweep
       }
       // For LabeledRadio components
-      if ((child.type as any).name === 'LabeledRadio' || child.type === LabeledRadio) {
-        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      if ((child.type as any).name === 'LabeledRadio' || child.type === LabeledRadio) { // justified: runtime displayName check — pending components sweep
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex }); // justified: cloneElement with extra props needs <any> — pending components sweep
       }
       // For NumberStepper components
-      if ((child.type as any).name === 'NumberStepper') {
-        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      if ((child.type as any).name === 'NumberStepper') { // justified: runtime displayName check — pending components sweep
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex }); // justified: cloneElement with extra props needs <any> — pending components sweep
       }
       // For Button components
-      if (child.type === Button || (child.type as any).name === 'Button') {
-        return React.cloneElement(child as React.ReactElement<any>, { tabIndex });
+      if (child.type === Button || (child.type as any).name === 'Button') { // justified: runtime displayName check — pending components sweep
+        return React.cloneElement(child as React.ReactElement<any>, { tabIndex }); // justified: cloneElement with extra props needs <any> — pending components sweep
       }
     }
     return child;
@@ -237,7 +237,7 @@ function TabGroupField({
   // Check if children contain LabeledRadio - if so, don't add field classes
   const hasRadio = React.Children.toArray(children).some((child) => {
     if (React.isValidElement(child)) {
-      return (child.type as any).name === 'LabeledRadio' || child.type === LabeledRadio;
+      return (child.type as any).name === 'LabeledRadio' || child.type === LabeledRadio; // justified: runtime displayName check — pending components sweep
     }
     return false;
   });
@@ -1856,7 +1856,7 @@ function PluginsPage({ onOpenPluginManager }: { onOpenPluginManager?: () => void
               <LabeledInput
                 label=""
                 value={preferences[key] as string}
-                onChange={(val) => updatePreference(key, val as any)}
+                onChange={(val) => updatePreference(key, val as any)} // justified: updatePreference is dynamically keyed — pending components sweep
               />
               <Button variant="secondary">
                 Browse

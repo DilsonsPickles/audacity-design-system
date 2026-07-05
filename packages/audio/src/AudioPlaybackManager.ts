@@ -48,7 +48,7 @@ export class AudioPlaybackManager {
    */
   setMasterVolume(volume: number): void {
     const db = volume <= 0 ? -Infinity : 20 * Math.log10(volume);
-    (Tone as any).getDestination().volume.value = db;
+    (Tone as any).getDestination().volume.value = db; // justified: Tone.js types incomplete — pending audio-package sweep
   }
 
   /**
@@ -57,7 +57,7 @@ export class AudioPlaybackManager {
    */
   async setAudioOutputDevice(deviceId: string | null): Promise<void> {
     try {
-      const context = Tone.getContext().rawContext as any;
+      const context = Tone.getContext().rawContext as any; // justified: rawContext not in Tone.js type stubs — pending audio-package sweep
 
       // Check if setSinkId is supported (Chrome/Edge)
       if (typeof context.setSinkId === 'function') {
@@ -208,7 +208,7 @@ export class AudioPlaybackManager {
    * Load and schedule all clips for playback
    * Handles clips with deleted regions by creating multiple player instances per clip
    */
-  loadClips(tracks: any[], startTime: number = 0): void {
+  loadClips(tracks: any[], startTime: number = 0): void { // justified: Track[] not imported into audio package — pending audio-package sweep
     // Clear existing players
     this.players.forEach(player => {
       player.unsync();
@@ -269,7 +269,7 @@ export class AudioPlaybackManager {
 
     // Create players for all clips that have audio buffers
     tracks.forEach((track, trackIndex) => {
-      track.clips.forEach((clip: any) => {
+      track.clips.forEach((clip: any) => { // justified: Clip type not imported into audio package — pending audio-package sweep
         // Split right-segments carry `sourceClipId` pointing back to the
         // original clip that owns the audio buffer. Fall back to id for
         // unsplit clips.
@@ -350,7 +350,7 @@ export class AudioPlaybackManager {
     this.midiSynths.clear();
 
     // Schedule MIDI notes
-    tracks.forEach((track: any, trackIndex: number) => {
+    tracks.forEach((track: any, trackIndex: number) => { // justified: Track type not imported into audio package — pending audio-package sweep
       if (track.type !== 'midi' || !track.midiClips) return;
       const trackGain = this.trackGains.get(trackIndex);
       if (!trackGain) return;
@@ -363,13 +363,13 @@ export class AudioPlaybackManager {
           modulationIndex: 3,
           envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.4 },
         },
-      } as any).connect(trackGain);
+      } as any).connect(trackGain); // justified: Tone.js PolySynth options shape not fully typed — pending audio-package sweep
       this.midiSynths.set(trackIndex, synth);
 
-      track.midiClips.forEach((clip: any) => {
+      track.midiClips.forEach((clip: any) => { // justified: MidiClip type not imported into audio package — pending audio-package sweep
         if (!clip.notes) return;
         const clipEnd = clip.start + clip.duration;
-        clip.notes.forEach((note: any) => {
+        clip.notes.forEach((note: any) => { // justified: MidiNote type not imported into audio package — pending audio-package sweep
           const absTime = clip.start + note.startTime;
           const noteEnd = absTime + note.duration;
           if (noteEnd <= startTime) return; // skip notes that end before playback start
@@ -730,7 +730,7 @@ export class AudioPlaybackManager {
    * Mixdown all clips from the given tracks into a single stereo WAV blob.
    * Applies envelope automation per clip using native OfflineAudioContext.
    */
-  async mixdown(tracks: any[]): Promise<{ blob: Blob; duration: number; waveformData: number[] }> {
+  async mixdown(tracks: any[]): Promise<{ blob: Blob; duration: number; waveformData: number[] }> { // justified: Track[] not imported into audio package — pending audio-package sweep
     await Tone.start();
 
     let totalDuration = 0;

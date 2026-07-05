@@ -1,6 +1,6 @@
 declare module 'tone' {
-  export const context: any;
-  export const Transport: any;
+  export const context: any; // justified: partial Tone.js module stub — pending audio-package sweep
+  export const Transport: any; // justified: partial Tone.js module stub — pending audio-package sweep
   export class Player {
     constructor(url: string);
     start(time?: number): void;

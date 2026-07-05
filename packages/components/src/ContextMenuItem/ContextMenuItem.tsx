@@ -433,7 +433,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
         >
           {React.Children.map(children, child => {
             if (React.isValidElement(child)) {
-              return React.cloneElement(child, { onClose } as any);
+              return React.cloneElement(child, { onClose } as any); // justified: cloneElement with extra props needs cast — pending components sweep
             }
             return child;
           })}

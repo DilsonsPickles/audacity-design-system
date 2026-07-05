@@ -498,8 +498,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const isStereo = Boolean(clip.waveformLeft || clip.waveformRight);
 
       // Use stored fullDuration if available (set by split cut), otherwise calculate it
-      const trimStart = (clip as any).trimStart || 0;
-      const fullDuration = (clip as any).fullDuration || (trimStart + clip.duration);
+      const trimStart = (clip as any).trimStart || 0; // justified: trimStart not on Clip type — pending components sweep
+      const fullDuration = (clip as any).fullDuration || (trimStart + clip.duration); // justified: fullDuration not on Clip type — pending components sweep
 
       if (!waveformData && !isStereo) {
         // Generate mono waveform using FULL duration
@@ -529,7 +529,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         variant = 'waveform';
       }
 
-      const clipSelected = (clip as any).selected || false;
+      const clipSelected = (clip as any).selected || false; // justified: selected not on Clip type — pending components sweep
       const isClipHovered = hoveredClipId != null && clip.id === hoveredClipId;
       const isDragging = draggingClipIds?.has(clip.id as number) ?? false;
       const isRaised = raisedClipIds?.has(clip.id as number) ?? false;
@@ -699,10 +699,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // layout quirks don't stop the shortcut from firing.
             const isBracketLeft = e.code === 'BracketLeft'
               || e.key === '[' || e.key === '{'
-              || (e as any).keyCode === 219;
+              || (e as any).keyCode === 219; // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
             const isBracketRight = e.code === 'BracketRight'
               || e.key === ']' || e.key === '}'
-              || (e as any).keyCode === 221;
+              || (e as any).keyCode === 221; // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
             if ((isBracketLeft || isBracketRight) && !e.altKey) {
               e.preventDefault();
               e.stopPropagation();
@@ -734,9 +734,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // Canvas.onClipTrim: `available` is measured in canvas
               // seconds, matching how the delta is applied.
               const BOUNDARY_EPS = 0.0005;
-              const stretch = (clip as any).stretchFactor ?? 1;
-              const trimStart = (clip as any).trimStart ?? 0;
-              const fullDuration = (clip as any).fullDuration
+              const stretch = (clip as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip type — pending components sweep
+              const trimStart = (clip as any).trimStart ?? 0; // justified: trimStart not on Clip type — pending components sweep
+              const fullDuration = (clip as any).fullDuration // justified: fullDuration not on Clip type — pending components sweep
                 ?? (trimStart + clip.duration / stretch);
               const availableLeft = trimStart * stretch;
               const availableRight = (fullDuration - trimStart) * stretch - clip.duration;
@@ -874,7 +874,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             width={clipWidth}
             height={height}
             selected={clipSelected}
-            inTimeSelection={timeSelection && isSelected && (timeSelection as any).renderOnCanvas !== false ? (
+            inTimeSelection={timeSelection && isSelected && (timeSelection as any).renderOnCanvas !== false ? ( // justified: renderOnCanvas is a non-standard extension on TimeSelection — pending components sweep
               clip.start < timeSelection.endTime && (clip.start + clip.duration) > timeSelection.startTime
             ) : false}
             clipStartTime={clip.start}
@@ -891,9 +891,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             envelope={clip.envelopePoints}
             showEnvelope={envelopeMode}
             clipDuration={clip.duration}
-            clipTrimStart={(clip as any).trimStart || 0}
-            clipFullDuration={(clip as any).fullDuration}
-            clipStretchFactor={(clip as any).stretchFactor ?? 1}
+            clipTrimStart={(clip as any).trimStart || 0} // justified: trimStart not on Clip type — pending components sweep
+            clipFullDuration={(clip as any).fullDuration} // justified: fullDuration not on Clip type — pending components sweep
+            clipStretchFactor={(clip as any).stretchFactor ?? 1} // justified: stretchFactor not on Clip type — pending components sweep
             pixelsPerSecond={pixelsPerSecond}
             hiddenPointIndices={clipHiddenPoints.get(clip.id) ?? EMPTY_NUMBER_ARRAY}
             hoveredPointIndices={clipHoveredPoints.get(clip.id) ?? EMPTY_NUMBER_ARRAY}

@@ -116,6 +116,12 @@ Pure geometry helpers used by Canvas + the split tool live in `apps/sandbox/src/
 
 ---
 
+## `any` Guardrail (`scripts/check-any.mjs`)
+
+A dependency-free Node script that enforces a zero-untracked-`any` policy across `apps/sandbox/src/**` and `packages/*/src/**` (excluding `__tests__`, `*.test.*`, `dist`, and `node_modules`). It flags lines matching `: any\b`, `as any\b`, or `<any[,>]` unless the line also carries a `// justified:` comment explaining why the `any` is intentional (e.g. `// justified: Tone.js types incomplete — pending audio-package sweep`). A clean tree exits 0 and prints a file-count summary; violations exit 1 with `file:line: <line>` output and the message `every \`any\` needs a \`// justified:\` comment — see docs/codebase-map.md`. Run it with `pnpm guard:any` from the repo root. The script is also chained into `apps/sandbox`'s `test` script so it runs on every `pnpm test` invocation. ESLint adoption (`@typescript-eslint/no-explicit-any`) is the natural next step but is out of scope for this slice.
+
+---
+
 ## Big-and-Scary Files (Known Debt)
 
 These are not-yet-decomposed monoliths. They work but are prime targets for future extraction.
