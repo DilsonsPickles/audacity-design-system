@@ -156,9 +156,7 @@ export function AppContextMenus({
                   || (track?.midiClips || []).find((c) => c.id === clipContextMenu.clipId);
 
                 if (clip) {
-                  // justified: clip may be MidiClip (no envelopePoints) but ClipboardState
-                  // intentionally holds both kinds; the cast preserves original any[] behavior
-                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex } as Clip & { trackIndex: number }], operation: 'cut' });
+                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut' });
 
                   dispatch({
                     type: 'DELETE_CLIP',
@@ -180,9 +178,7 @@ export function AppContextMenus({
                   || (track?.midiClips || []).find((c) => c.id === clipContextMenu.clipId);
 
                 if (clip) {
-                  // justified: clip may be MidiClip (no envelopePoints) but ClipboardState
-                  // intentionally holds both kinds; the cast preserves original any[] behavior
-                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex } as Clip & { trackIndex: number }], operation: 'copy' });
+                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
                 }
                 setClipContextMenu(null);
               }

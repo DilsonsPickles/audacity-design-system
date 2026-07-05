@@ -1,4 +1,5 @@
 import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
+import type { MidiClip } from '@audacity-ui/core';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { applySplitCut } from '../../utils/cutOperations';
 import type { ClipboardState } from '../useKeyboardShortcuts';
@@ -205,9 +206,17 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
     })
     .filter((item): item is NonNullable<typeof item> => item !== null);
 
+  // Type guard: discriminate audio clips (have envelopePoints) from MIDI clips (have notes).
+  // Paste currently only supports audio clips into track.clips; MIDI clips are skipped here
+  // pending a dedicated MIDI paste path.
+  function isAudioClip(c: (Clip | MidiClip) & { trackIndex: number }): c is Clip & { trackIndex: number } {
+    return 'envelopePoints' in c;
+  }
+
   // Group clips by destination track
   const clipsByTrack = new Map<number, (Clip & { trackIndex: number })[]>();
   newClipsWithTracks.forEach(({ clip, destTrackIndex }) => {
+    if (!isAudioClip(clip)) return; // skip MIDI clips — no target array yet
     if (!clipsByTrack.has(destTrackIndex)) {
       clipsByTrack.set(destTrackIndex, []);
     }
