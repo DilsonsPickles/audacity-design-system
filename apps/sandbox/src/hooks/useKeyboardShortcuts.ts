@@ -299,7 +299,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           ? state.selectedTrackIndices
           : [fti];
         for (const ti of trackIndices) {
-          const t = state.tracks[ti] as any;
+          const t = state.tracks[ti];
           if (!t) continue;
           const newValue = isSolo ? !(t.soloed ?? false) : !(t.muted ?? false);
           dispatch({
@@ -320,7 +320,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         // Announce so screen-reader users hear the toggle land.
         const action = isSolo ? 'Solo' : 'Mute';
         if (trackIndices.length === 1) {
-          const t = state.tracks[trackIndices[0]] as any;
+          const t = state.tracks[trackIndices[0]];
           const newValue = isSolo ? !(t.soloed ?? false) : !(t.muted ?? false);
           announce(`${action} ${newValue ? 'on' : 'off'}`);
         } else {
@@ -389,7 +389,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           if (!ownsArrows) {
             let selectedClipTrack: number | null = null;
             outer: for (let ti = 0; ti < state.tracks.length; ti++) {
-              const t = state.tracks[ti] as any;
+              const t = state.tracks[ti];
               for (const c of t.clips || []) {
                 if (c.selected) { selectedClipTrack = ti; break outer; }
               }
@@ -510,14 +510,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           if (!trackForBounds) return;
           const allClips = [
             ...(trackForBounds.clips || []),
-            ...((trackForBounds.midiClips as any[]) || []),
+            ...(trackForBounds.midiClips || []),
           ];
           if (allClips.length === 0) return;
           // Collect every edge, dedupe so coincident start/end pairs
           // don't make the playhead stick.
           const edges = Array.from(
             new Set<number>(
-              allClips.flatMap((c: any) => [c.start, c.start + c.duration]),
+              allClips.flatMap((c) => [c.start, c.start + c.duration]),
             ),
           ).sort((a, b) => a - b);
           const playhead = state.playheadPosition;
@@ -556,12 +556,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (trackForBounds) {
           const allClips = [
             ...(trackForBounds.clips || []),
-            ...((trackForBounds.midiClips as any[]) || []),
+            ...(trackForBounds.midiClips || []),
           ];
           if (allClips.length > 0) {
             targetTime = isLeftward
-              ? Math.min(...allClips.map((c: any) => c.start))
-              : Math.max(...allClips.map((c: any) => c.start + c.duration));
+              ? Math.min(...allClips.map((c) => c.start))
+              : Math.max(...allClips.map((c) => c.start + c.duration));
           }
         } else if (!isLeftward) {
           // Project end fallback when no focused track.
@@ -646,7 +646,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           for (const ti of scopedTrackIndices) {
             const t = state.tracks[ti];
             if (!t) continue;
-            for (const c of (t.clips || []) as any[]) {
+            for (const c of t.clips) {
               if (c.start < endTime - EPS && c.start + c.duration > startTime + EPS) {
                 overlapping.push({ trackIndex: ti, clipId: c.id });
               }
@@ -665,8 +665,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             // to re-find overlappers — the selection is now what
             // "the group" means.
             const anyUnselected = overlapping.some(({ trackIndex: ti, clipId }) => {
-              const c = state.tracks[ti]?.clips.find((cc: any) => cc.id === clipId);
-              return c && !(c as any).selected;
+              const c = state.tracks[ti]?.clips.find((cc) => cc.id === clipId);
+              return c && !c.selected;
             });
             if (anyUnselected) {
               dispatch({
@@ -697,9 +697,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         // Cmd+Shift+Arrow can reach the selection-reduce path in
         // handlePlayheadMove below.
         if (cmdHeld && !e.shiftKey) {
-          const hasSelectedClip = state.tracks.some((t: any) =>
-            t.clips.some((c: any) => c.selected)
-            || (t.midiClips || []).some((c: any) => c.selected),
+          const hasSelectedClip = state.tracks.some((t) =>
+            t.clips.some((c) => c.selected)
+            || (t.midiClips || []).some((c) => c.selected),
           );
           if (hasSelectedClip) {
             e.preventDefault();
@@ -838,7 +838,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         const focused = state.focusedTrackIndex;
         if (focused === null || focused === undefined) return;
         e.preventDefault();
-        const t = state.tracks[focused] as any;
+        const t = state.tracks[focused];
         const hasContent = t
           && ((t.clips?.length ?? 0) > 0 || (t.midiClips?.length ?? 0) > 0);
         confirmTrackDelete(
