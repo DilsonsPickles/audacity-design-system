@@ -8,7 +8,8 @@
  *
  * Excludes: __tests__ directories, *.test.* files, dist/, node_modules/
  *
- * Flags lines matching:  : any\b  |  as any\b  |  <any[,>]
+ * Flags lines matching any of:  : any  |  as any  |  <any  |  , any  |  = any  |  | any
+ * (covers Record<string, any>, useState<any[]>, <T = any>, :any, union any)
  * UNLESS the line also contains:  // justified:
  *
  * Exit 0 → clean tree (prints OK + scanned-file count)
@@ -22,7 +23,7 @@ import { fileURLToPath } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = join(__dirname, '..');
 
-const ANY_PATTERN = /: any\b|as any\b|<any[,>]/;
+const ANY_PATTERN = /:\s*any\b|as any\b|<\s*any\b|,\s*any\b|=\s*any\b|\|\s*any\b/;
 const JUSTIFIED_MARKER = '// justified:';
 
 /** Recursively collect .ts/.tsx files, excluding certain dirs/patterns */

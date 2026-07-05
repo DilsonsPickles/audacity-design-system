@@ -95,7 +95,7 @@ export function HomeTab({
   const [pluginsSearchQuery, setPluginsSearchQuery] = React.useState('');
   const [pluginsCategory, setPluginsCategory] = React.useState('all');
   const [pluginsLoading, setPluginsLoading] = React.useState(false);
-  const [availablePlugins, setAvailablePlugins] = React.useState<any[]>([]);
+  const [availablePlugins, setAvailablePlugins] = React.useState<any[]>([]); // justified: plugin registry rows — open shape, pending components sweep
   const pluginsScrollRef = React.useRef<HTMLDivElement>(null);
   const itemsPerPage = 12;
 
