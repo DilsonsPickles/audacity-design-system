@@ -1665,7 +1665,14 @@ function CanvasDemoContent() {
                 // Restore tracks state from project data, or reset to empty if none
                 if (project.data?.tracks) {
                   if (isCloud) setCloudLoadProgress({ progress: 75, message: 'Restoring tracks…' });
-                  dispatch({ type: 'SET_TRACKS', payload: project.data.tracks });
+                  // Runtime hardening: older persisted projects may omit `clips` on a track
+                  // (e.g. label tracks saved before the field was required). Normalise to []
+                  // so Track.clips: Clip[] invariant holds for all downstream consumers.
+                  const normalizedTracks = project.data.tracks.map((t) => ({
+                    ...t,
+                    clips: t.clips ?? [],
+                  }));
+                  dispatch({ type: 'SET_TRACKS', payload: normalizedTracks });
 
                   // If the user is signed out of MuseHub, any effects in the
                   // project that aren't built-in Audacity effects are
