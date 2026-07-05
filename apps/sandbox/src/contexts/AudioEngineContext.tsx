@@ -33,7 +33,7 @@ export const MIDI_INSTRUMENTS: MidiInstrumentDef[] = [
   { id: 'metal', label: 'Metal' },
 ];
 
-interface AudioEngineContextValue {
+export interface AudioEngineContextValue {
   getReverbEffect: (effectId: string) => Tone.Reverb;
   updateReverbParams: (effectId: string, params: { decay?: number; preDelay?: number; wet?: number }) => void;
   removeEffect: (effectId: string) => void;

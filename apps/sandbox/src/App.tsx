@@ -19,6 +19,17 @@ import { saveProject, getProject, getProjects, deleteProject } from './utils/pro
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
 import type { Track } from './contexts/TracksContext';
+
+/** Shape of a cloud audio file entry as stored in localStorage and passed to dialogs. */
+export interface CloudAudioFile {
+  id: string;
+  title: string;
+  dateText: string;
+  duration: string;
+  size: string;
+  blobUrl: string;
+  waveformData: number[];
+}
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineContext';
 import { AppContextMenus } from './components/AppContextMenus';
@@ -184,15 +195,7 @@ function CanvasDemoContent() {
     });
     return () => setTrackDeleteConfirmHandler(null);
   }, []);
-  const [cloudAudioFiles, setCloudAudioFiles] = React.useState<Array<{
-    id: string;
-    title: string;
-    dateText: string;
-    duration: string;
-    size: string;
-    blobUrl: string;
-    waveformData: number[];
-  }>>(() => {
+  const [cloudAudioFiles, setCloudAudioFiles] = React.useState<CloudAudioFile[]>(() => {
     try {
       const saved = localStorage.getItem('cloudAudioFiles');
       return saved ? JSON.parse(saved) : [];

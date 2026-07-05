@@ -4,6 +4,8 @@ import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { AccessibilityProfile } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
 import type { Label } from '../contexts/TracksContext';
+import type { AudioEngineContextValue } from '../contexts/AudioEngineContext';
+import type { CloudAudioFile } from '../App';
 import { DebugPanel } from './DebugPanel';
 import { MissingPluginsModal } from './MissingPluginsModal';
 import { generateWaveform } from '../utils/waveformGenerator';
@@ -28,7 +30,7 @@ export interface AppDialogsProps {
   welcomeDialog: { isOpen: boolean; onClose: () => void };
 
   // Audio engine
-  audioEngine: any;
+  audioEngine: AudioEngineContextValue;
 
   // Cloud state
   isCloudProject: boolean;
@@ -50,8 +52,8 @@ export interface AppDialogsProps {
   setProjectName: React.Dispatch<React.SetStateAction<string>>;
 
   // Cloud audio files
-  cloudAudioFiles: any[];
-  setCloudAudioFiles: React.Dispatch<React.SetStateAction<any[]>>;
+  cloudAudioFiles: CloudAudioFile[];
+  setCloudAudioFiles: React.Dispatch<React.SetStateAction<CloudAudioFile[]>>;
 
   // Vendor UI
   showVendorUI: boolean;
