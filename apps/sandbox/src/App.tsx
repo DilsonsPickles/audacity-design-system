@@ -2,7 +2,7 @@ import React from 'react';
 import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, TimeCodeFormat, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ProjectToolbar, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
 import {
   getProject as adieuGetProject,
   saveProject as adieuSaveProject,
@@ -67,6 +67,11 @@ import { useProjectManagement } from './hooks/useProjectManagement';
 import { DialogProvider, useDialogs } from './contexts/DialogContext';
 import { ContextMenuProvider, useContextMenus } from './contexts/ContextMenuContext';
 import { useLoopRegion } from './hooks/useLoopRegion';
+import { useFocusDebugger } from './hooks/useFocusDebugger';
+import { useMixerPanelListener } from './hooks/useMixerPanelListener';
+import { useTimeCodeFormats } from './hooks/useTimeCodeFormats';
+import { useLocalStorageBackedState } from './hooks/useLocalStorageBackedState';
+import { useInitialTrackSelection } from './hooks/useInitialTrackSelection';
 
 const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
 
@@ -141,9 +146,14 @@ function CanvasDemoContent() {
   const [currentProjectId, setCurrentProjectId] = React.useState<string | null>(null);
   const [indexedDBProjects, setIndexedDBProjects] = React.useState<StoredProject[]>([]);
   const [workspace, setWorkspace] = React.useState<Workspace>('classic');
-  const [timeCodeFormat, setTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
-  const [selectionTimeCodeFormat, setSelectionTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
-  const [durationTimeCodeFormat, setDurationTimeCodeFormat] = React.useState<TimeCodeFormat>('hh:mm:ss');
+  const {
+    timeCodeFormat,
+    setTimeCodeFormat,
+    selectionTimeCodeFormat,
+    setSelectionTimeCodeFormat,
+    durationTimeCodeFormat,
+    setDurationTimeCodeFormat,
+  } = useTimeCodeFormats();
   // Dialog state (from context) — only destructure what App.tsx uses directly
   const {
     isSaveToCloudDialogOpen,
@@ -195,41 +205,25 @@ function CanvasDemoContent() {
     });
     return () => setTrackDeleteConfirmHandler(null);
   }, []);
-  const [cloudAudioFiles, setCloudAudioFiles] = React.useState<CloudAudioFile[]>(() => {
-    try {
-      const saved = localStorage.getItem('cloudAudioFiles');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [cloudAudioFiles, setCloudAudioFiles] = useLocalStorageBackedState<CloudAudioFile[]>(
+    'cloudAudioFiles',
+    [],
+    JSON.stringify,
+    (raw) => { try { return JSON.parse(raw) as CloudAudioFile[]; } catch { return []; } },
+  );
   const [dontShowSyncAgain, setDontShowSyncAgain] = React.useState(false);
-  const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = React.useState(() => {
-    const saved = localStorage.getItem('dontShowSaveModalAgain');
-    return saved === 'true';
-  });
+  const [dontShowSaveModalAgain, setDontShowSaveModalAgain] = useLocalStorageBackedState<boolean>(
+    'dontShowSaveModalAgain',
+    false,
+    String,
+    (raw) => raw === 'true',
+  );
   const [initialExportType, setInitialExportType] = React.useState<string>('full-project');
   const [alertDialogTitle, setAlertDialogTitle] = React.useState('');
   const [alertDialogMessage, setAlertDialogMessage] = React.useState('');
   const [showVendorUI, setShowVendorUI] = React.useState(true);
 
-  // Save dontShowSaveModalAgain to localStorage when it changes
-  React.useEffect(() => {
-    localStorage.setItem('dontShowSaveModalAgain', String(dontShowSaveModalAgain));
-  }, [dontShowSaveModalAgain]);
-
-  // Persist cloud audio files to localStorage
-  React.useEffect(() => {
-    localStorage.setItem('cloudAudioFiles', JSON.stringify(cloudAudioFiles));
-  }, [cloudAudioFiles]);
-
-  // Select and focus track 0 on mount
-  React.useEffect(() => {
-    if (state.tracks.length > 0 && state.selectedTrackIndices.length === 0) {
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [0] });
-      dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
-    }
-  }, []); // Only run on mount
+  useInitialTrackSelection({ state, dispatch });
 
   // Convert EFFECT_REGISTRY to Plugin[] format for PluginManagerDialog
   const [plugins, setPlugins] = React.useState<Plugin[]>(createInitialPlugins);
@@ -375,7 +369,7 @@ function CanvasDemoContent() {
   const [isCloudUploading, setIsCloudUploading] = React.useState(false);
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
-  const [focusedElement, setFocusedElement] = React.useState<string>('None');
+  const focusedElement = useFocusDebugger({ showFocusDebug });
   const controlPointStyle: EnvelopePointStyleKey = 'solidGreenSimple';
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
@@ -383,14 +377,7 @@ function CanvasDemoContent() {
   const [snapEnabled, setSnapEnabled] = React.useState(false);
   const [snapMode, setSnapMode] = React.useState<import('@dilsonspickles/components').SnapMode>('musical');
   const [showMixer, setShowMixer] = React.useState(true);
-  const [mixerPanelOpen, setMixerPanelOpen] = React.useState(false);
-
-  // Listen for close-mixer-panel events from the bottom drawer
-  React.useEffect(() => {
-    const handler = () => setMixerPanelOpen(false);
-    window.addEventListener('close-mixer-panel', handler);
-    return () => window.removeEventListener('close-mixer-panel', handler);
-  }, []);
+  const { mixerPanelOpen, setMixerPanelOpen } = useMixerPanelListener();
   const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
   const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
 
@@ -740,59 +727,6 @@ function CanvasDemoContent() {
       });
     }
   }, [audioSetupMenuAnchor]);
-
-  // Focus and select first track on initial load if there are tracks
-  React.useEffect(() => {
-    if (state.tracks.length > 0 && state.focusedTrackIndex === null) {
-      dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: [0] });
-    }
-  }, []); // Only run on mount
-
-  // Track focused element for accessibility debugging
-  React.useEffect(() => {
-    if (!showFocusDebug) return;
-
-    const handleFocusChange = () => {
-      const activeEl = document.activeElement;
-      if (!activeEl || activeEl === document.body) {
-        setFocusedElement('None');
-        return;
-      }
-
-      // Build a descriptive label for the focused element
-      const tagName = activeEl.tagName.toLowerCase();
-      const ariaLabel = activeEl.getAttribute('aria-label');
-      const label = activeEl.getAttribute('label');
-      const id = activeEl.id;
-      const className = activeEl.className;
-      const textContent = activeEl.textContent?.trim().slice(0, 30);
-
-      let description = `<${tagName}>`;
-      if (ariaLabel) {
-        description = `${ariaLabel} (${tagName})`;
-      } else if (label) {
-        description = `${label} (${tagName})`;
-      } else if (id) {
-        description = `#${id} (${tagName})`;
-      } else if (textContent && textContent.length > 0 && textContent.length < 30) {
-        description = `"${textContent}" (${tagName})`;
-      } else if (className) {
-        const firstClass = className.split(' ')[0];
-        description = `.${firstClass} (${tagName})`;
-      }
-
-      setFocusedElement(description);
-    };
-
-    // Track focus changes
-    document.addEventListener('focusin', handleFocusChange);
-    handleFocusChange(); // Initial call
-
-    return () => {
-      document.removeEventListener('focusin', handleFocusChange);
-    };
-  }, [showFocusDebug]);
 
   // Wheel-to-zoom: Cmd/Ctrl + scroll zooms toward cursor (like piano roll)
   const ppsRef = React.useRef(pixelsPerSecond);
