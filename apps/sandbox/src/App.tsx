@@ -74,6 +74,7 @@ import { importAudio } from './utils/importAudio';
 import { saveCloudProject } from './utils/saveCloudProject';
 import { useProjectAutoSave } from './hooks/useProjectAutoSave';
 import { useCloudProjectCleanup } from './hooks/useCloudProjectCleanup';
+import { PlaybackProvider } from './contexts/PlaybackContext';
 
 const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
 
@@ -534,14 +535,15 @@ function CanvasDemoContent() {
 
   // Playback controls
   const recordingManagerRef = React.useRef<RecordingManager | null>(null);
+  const playback = usePlaybackControls({
+    state, dispatch, recordingManagerRef, scrollContainerRef,
+    pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead, isProgrammaticScrollRef,
+  });
   const {
     isPlaying, setIsPlaying, handlePlay, handleStop,
     audioManagerRef, trackMeterLevels, setTrackMeterLevels: _setTrackMeterLevels,
     masterMeterLevel,
-  } = usePlaybackControls({
-    state, dispatch, recordingManagerRef, scrollContainerRef,
-    pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead, isProgrammaticScrollRef,
-  });
+  } = playback;
 
   // Recording
   const {
@@ -1162,6 +1164,7 @@ function CanvasDemoContent() {
   );
 
   return (
+    <PlaybackProvider value={playback}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       {!IS_ELECTRON && (
         <ApplicationHeader
@@ -1491,7 +1494,6 @@ function CanvasDemoContent() {
           setLoopRegionInteracting={setLoopRegionInteracting}
           loopRegionHovering={loopRegionHovering}
           setLoopRegionHovering={setLoopRegionHovering}
-          audioManagerRef={audioManagerRef}
           rulerTimeSelection={rulerTimeSelection}
           spectralSelection={spectralSelection}
           theme={baseTheme}
@@ -1638,7 +1640,6 @@ function CanvasDemoContent() {
         setSelectedPlaybackDevice={setSelectedPlaybackDevice}
         availableAudioInputs={availableAudioInputs}
         availableAudioOutputs={availableAudioOutputs}
-        audioManagerRef={audioManagerRef}
         macros={macros}
         setMacros={setMacros}
         selectedMacroId={selectedMacroId}
@@ -1782,6 +1783,7 @@ function CanvasDemoContent() {
         </Dialog>
       )}
     </div>
+    </PlaybackProvider>
   );
 }
 

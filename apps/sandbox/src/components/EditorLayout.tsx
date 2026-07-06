@@ -22,6 +22,7 @@ import { useAutoOpenPianoRoll } from '../hooks/useAutoOpenPianoRoll';
 import { useDrawerTabAutoSwitch } from '../hooks/useDrawerTabAutoSwitch';
 import { useTimeSelectionTabHandler } from '../hooks/useTimeSelectionTabHandler';
 import { useFlatNavTabRouter } from '../hooks/useFlatNavTabRouter';
+import { usePlayback } from '../contexts/PlaybackContext';
 
 export interface EditorLayoutProps {
   // Active menu
@@ -92,9 +93,6 @@ export interface EditorLayoutProps {
   loopRegionHovering: boolean;
   setLoopRegionHovering: React.Dispatch<React.SetStateAction<boolean>>;
 
-  // Refs
-  audioManagerRef: React.RefObject<any>; // justified: AudioPlaybackManager cluster deferred (PlaybackContext blocker)
-
   // Ruler time selection
   rulerTimeSelection: { startTime: number; endTime: number } | null | undefined;
   spectralSelection: SpectralSelection | null;
@@ -159,12 +157,13 @@ export function EditorLayout(props: EditorLayoutProps) {
     mouseCursorPosition, setMouseCursorPosition, mouseCursorY, setMouseCursorY, isOverTrack, setIsOverTrack,
     loopRegionEnabled, setLoopRegionEnabled, loopRegionStart, setLoopRegionStart, loopRegionEnd, setLoopRegionEnd,
     loopRegionInteracting, setLoopRegionInteracting, loopRegionHovering, setLoopRegionHovering,
-    audioManagerRef, rulerTimeSelection, spectralSelection,
+    rulerTimeSelection, spectralSelection,
     theme, canvasHeight, setCanvasHeight,
     clickRulerToStartPlayback, punchPointPosition, snapEnabled, isFlatNavigation: _isFlatNavigation,
     showMixer,
   } = props;
 
+  const { audioManagerRef } = usePlayback();
   const { preferences } = usePreferences();
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {

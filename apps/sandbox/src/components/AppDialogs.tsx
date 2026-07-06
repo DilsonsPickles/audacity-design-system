@@ -20,6 +20,7 @@ import {
 } from '../lib/adieu-client';
 import { saveProject as saveProjectLocal, getProjects as getProjectsLocal } from '../utils/projectDatabase';
 import { encodeBufferMap } from '../lib/binary';
+import { usePlayback } from '../contexts/PlaybackContext';
 
 const openAdieu = (path: string) => {
   window.open(`${ADIEU_BASE}${path}`, '_blank', 'noopener,noreferrer');
@@ -68,9 +69,6 @@ export interface AppDialogsProps {
   setSelectedPlaybackDevice: React.Dispatch<React.SetStateAction<string>>;
   availableAudioInputs: MediaDeviceInfo[];
   availableAudioOutputs: MediaDeviceInfo[];
-
-  // Audio manager ref
-  audioManagerRef: React.RefObject<any>; // justified: AudioPlaybackManager cluster deferred (PlaybackContext blocker)
 
   // Macros
   macros: Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>;
@@ -130,6 +128,7 @@ export interface AppDialogsProps {
 export function AppDialogs(props: AppDialogsProps) {
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
+  const { audioManagerRef } = usePlayback();
   const dialogs = useDialogs();
   const { effectDialog, setEffectDialog, effectContextMenu, setEffectContextMenu } = useContextMenus();
   const {
@@ -160,7 +159,6 @@ export function AppDialogs(props: AppDialogsProps) {
     selectedRecordingDevice, setSelectedRecordingDevice,
     selectedPlaybackDevice, setSelectedPlaybackDevice,
     availableAudioInputs, availableAudioOutputs,
-    audioManagerRef,
     macros, setMacros, selectedMacroId, setSelectedMacroId,
     plugins, setPlugins,
     initialExportType, loopRegionEnabled, loopRegionStart, loopRegionEnd,
