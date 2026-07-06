@@ -1,18 +1,15 @@
 import React from 'react';
-import { generateRmsWaveform } from './utils/rmsWaveform';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ProjectToolbar, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, Plugin, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
 import {
   getProject as adieuGetProject,
-  saveProject as adieuSaveProject,
   deleteProject as adieuDeleteProject,
   assetUrl as adieuAssetUrl,
   ADIEU_BASE,
   type AdieuProjectSummary,
 } from './lib/adieu-client';
-import { decodeBufferMap, encodeBufferMap } from './lib/binary';
-import { SignInCancelledError } from './contexts/AdieuContext';
+import { decodeBufferMap } from './lib/binary';
 import { type EnvelopePointStyleKey, getAllEffects } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@dilsonspickles/components';
 import { saveProject, getProject, getProjects, deleteProject } from './utils/projectDatabase';
@@ -72,6 +69,9 @@ import { useMixerPanelListener } from './hooks/useMixerPanelListener';
 import { useTimeCodeFormats } from './hooks/useTimeCodeFormats';
 import { useLocalStorageBackedState } from './hooks/useLocalStorageBackedState';
 import { useInitialTrackSelection } from './hooks/useInitialTrackSelection';
+import { generateTone } from './utils/generateTone';
+import { importAudio } from './utils/importAudio';
+import { saveCloudProject } from './utils/saveCloudProject';
 
 const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
 
@@ -996,234 +996,26 @@ function CanvasDemoContent() {
   );
 
   // Generate tone handler
-  const handleGenerateTone = async () => {
-    if (state.selectedTrackIndices.length === 0) {
-      return;
-    }
-
-    const audioManager = audioManagerRef.current;
-
-    for (const trackIndex of state.selectedTrackIndices) {
-      const newClipId = Date.now() + trackIndex;
-      const duration = 4.0;
-      const startTime = state.playheadPosition;
-      const track = state.tracks[trackIndex];
-      const isStereo = track.channelSplitRatio !== undefined;
-      const { buffer, waveformData } = await audioManager.generateTone(duration, 8000, 'sawtooth', isStereo);
-
-      audioManager.addClipBuffer(newClipId, buffer);
-
-      const newClip = isStereo && typeof waveformData === 'object' && 'left' in waveformData ? {
-        id: newClipId,
-        name: 'Tone',
-        start: startTime,
-        duration: duration,
-        waveformLeft: waveformData.left,
-        waveformRight: waveformData.right,
-        waveformLeftRms: generateRmsWaveform(waveformData.left),
-        waveformRightRms: generateRmsWaveform(waveformData.right),
-        envelopePoints: [],
-      } : {
-        id: newClipId,
-        name: 'Tone',
-        start: startTime,
-        duration: duration,
-        waveform: Array.isArray(waveformData) ? waveformData : [],
-        waveformRms: Array.isArray(waveformData) ? generateRmsWaveform(waveformData) : [],
-        envelopePoints: [],
-      };
-
-      dispatch({
-        type: 'ADD_CLIP',
-        payload: { trackIndex, clip: newClip },
-      });
-    }
-
-    audioManager.loadClips(state.tracks);
-  };
+  const handleGenerateTone = () => generateTone({ state, dispatch, audioManagerRef });
 
   // Import audio file handler
-  const handleImportAudio = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'audio/*';
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-
-      const toastId = toast.progress(`Importing ${file.name}...`);
-
-      try {
-        const audioManager = audioManagerRef.current;
-        await audioManager.initialize();
-
-        toast.updateProgress(toastId, 20, 'Reading file...');
-        const arrayBuffer = await file.arrayBuffer();
-
-        toast.updateProgress(toastId, 40, 'Decoding audio...');
-        // Use a fresh AudioContext for decoding to avoid issues with Tone.js context state
-        const decodeCtx = new AudioContext();
-        const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
-        await decodeCtx.close();
-
-        toast.updateProgress(toastId, 70, 'Building waveform...');
-        const duration = audioBuffer.duration;
-        const isStereo = audioBuffer.numberOfChannels >= 2;
-
-        // Pick a target track — use first selected audio track, or first audio track
-        let trackIndex = state.selectedTrackIndices.find(
-          i => !state.tracks[i]?.type || state.tracks[i]?.type === 'audio'
-        );
-        if (trackIndex === undefined) {
-          trackIndex = state.tracks.findIndex(t => !t.type || t.type === 'audio');
-        }
-        if (trackIndex === -1) {
-          toast.dismiss(toastId);
-          toast.error('No audio track available');
-          return;
-        }
-
-        const newClipId = Date.now();
-        audioManager.addClipBuffer(newClipId, audioBuffer);
-
-        // Use full sample arrays for waveform display (matches recording flow)
-        const leftChannel = Array.from(audioBuffer.getChannelData(0)) as number[];
-        const startTime = state.playheadPosition;
-
-        const clipName = file.name.replace(/\.[^/.]+$/, '');
-
-        const newClip = isStereo ? {
-          id: newClipId,
-          name: clipName,
-          start: startTime,
-          duration,
-          waveformLeft: leftChannel,
-          waveformRight: Array.from(audioBuffer.getChannelData(1)) as number[],
-          waveformLeftRms: generateRmsWaveform(leftChannel),
-          waveformRightRms: generateRmsWaveform(Array.from(audioBuffer.getChannelData(1)) as number[]),
-          envelopePoints: [],
-          fullDuration: duration,
-        } : {
-          id: newClipId,
-          name: clipName,
-          start: startTime,
-          duration,
-          waveform: leftChannel,
-          waveformRms: generateRmsWaveform(leftChannel),
-          envelopePoints: [],
-          fullDuration: duration,
-        };
-
-        toast.updateProgress(toastId, 100, 'Done');
-
-        dispatch({
-          type: 'ADD_CLIP',
-          payload: { trackIndex, clip: newClip },
-        });
-
-        setTimeout(() => {
-          toast.dismiss(toastId);
-          const mins = Math.floor(duration / 60);
-          const secs = Math.floor(duration % 60);
-          toast.success('Import complete', `${clipName} (${mins}:${secs.toString().padStart(2, '0')}) added to track`);
-        }, 500);
-      } catch (err) {
-        toast.dismiss(toastId);
-        toast.error('Import failed', err instanceof Error ? err.message : 'Could not decode audio file');
-      }
-    };
-    input.click();
-  };
+  const handleImportAudio = () => importAudio({ state, dispatch, audioManagerRef });
 
   // Ctrl+S on a cloud project: PUT the current in-memory project state
   // back to adieu (audio buffers + tracks + master effects + thumbnail)
   // and mirror the new snapshot to IndexedDB. Same flow as the initial
   // Save-to-Cloud dialog, minus the naming UI — the title and id are
   // already known.
-  const handleSaveCloudProject = async () => {
-    if (!currentProjectId) return;
-    if (!adieuSignedIn) {
-      try {
-        await adieuSignIn();
-      } catch (err) {
-        if (err instanceof SignInCancelledError) return;
-        toast.error(`Sign-in failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        return;
-      }
-    }
-
-    const syncToastId = toast.progress('Saving to audio.com…');
-    try {
-      const existing = await getProject(currentProjectId);
-      const title = existing?.title || 'Untitled project';
-
-      toast.updateProgress(syncToastId, 10, 'Capturing preview…');
-      let thumbnailDataUrl: string | undefined;
-      if (scrollContainerRef.current) {
-        try {
-          const domtoimage = (await import('dom-to-image-more')).default;
-          thumbnailDataUrl = await domtoimage.toJpeg(scrollContainerRef.current, {
-            quality: 0.8,
-            bgcolor: '#F5F5F7',
-            width: 448,
-            height: 252,
-            style: { transform: 'scale(1)', transformOrigin: 'top left' },
-          });
-        } catch {
-          // Thumbnail is optional.
-        }
-      }
-
-      toast.updateProgress(syncToastId, 30, 'Packaging audio…');
-      const audioBuffersRaw: Record<string, ArrayBuffer> = {};
-      const audioManager = audioManagerRef.current;
-      if (audioManager) {
-        const exported = audioManager.exportBuffersAsWav();
-        for (const [clipId, wav] of exported) audioBuffersRaw[clipId] = wav;
-      }
-      const audioBuffers = encodeBufferMap(audioBuffersRaw);
-
-      toast.updateProgress(syncToastId, 60, 'Uploading…');
-      // [save-debug] Confirm effects are present in the upload payload.
-      await adieuSaveProject(currentProjectId, {
-        title,
-        data: {
-          tracks: state.tracks,
-          masterEffects: state.masterEffects,
-          playheadPosition: state.playheadPosition,
-          audioBuffers,
-        },
-        thumbnailDataUrl,
-      });
-
-      toast.updateProgress(syncToastId, 85, 'Saving locally…');
-      await saveProject({
-        id: currentProjectId,
-        title,
-        dateCreated: existing?.dateCreated ?? Date.now(),
-        dateModified: Date.now(),
-        isCloudProject: true,
-        isUploading: false,
-        thumbnailUrl: thumbnailDataUrl ?? existing?.thumbnailUrl,
-        data: {
-          tracks: state.tracks,
-          masterEffects: state.masterEffects,
-          playheadPosition: state.playheadPosition,
-          audioBuffers: audioBuffersRaw,
-        },
-      });
-      const updated = await getProjects();
-      setIndexedDBProjects(updated);
-      await adieuRefreshProjects().catch(() => {});
-
-      toast.updateProgress(syncToastId, 100, 'Done');
-      setTimeout(() => toast.dismiss(syncToastId), 400);
-      toast.success('Saved to audio.com');
-    } catch (err) {
-      toast.dismiss(syncToastId);
-      toast.error(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    }
-  };
+  const handleSaveCloudProject = () => saveCloudProject({
+    currentProjectId,
+    adieuSignedIn,
+    adieuSignIn,
+    scrollContainerRef,
+    audioManagerRef,
+    state,
+    setIndexedDBProjects,
+    adieuRefreshProjects,
+  });
 
   const menuDefinitions = createMenuDefinitions({
     isCloudProject,
