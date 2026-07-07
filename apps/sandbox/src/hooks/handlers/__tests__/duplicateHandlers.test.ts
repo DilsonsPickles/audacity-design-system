@@ -95,4 +95,68 @@ describe('handleDuplicate', () => {
     expect(dups).toHaveLength(1);
     expect(dups[0].groupId).toBeUndefined();
   });
+
+  it('duplicating a track regroups a same-track group fresh', () => {
+    const state = makeState({
+      focusedTrackIndex: 0,
+      selectedTrackIndices: [],
+      tracks: [{ id: 1, name: 't', clips: [
+        { id: 10, name: 'a', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' },
+        { id: 11, name: 'b', start: 2, duration: 1, envelopePoints: [], groupId: 'g1' },
+      ] }],
+    });
+    const dispatch = vi.fn();
+    handleDuplicate(keyEvent(), { state, dispatch });
+
+    const added = dispatch.mock.calls.find(c => c[0].type === 'ADD_TRACK')![0].payload;
+    expect(added.clips[0].groupId).toBeDefined();
+    expect(added.clips[0].groupId).toBe(added.clips[1].groupId);
+    expect(added.clips[0].groupId).not.toBe('g1');
+  });
+
+  it('duplicating one track of a cross-track group ungroups the copies', () => {
+    const state = makeState({
+      focusedTrackIndex: 0,
+      selectedTrackIndices: [],
+      tracks: [
+        { id: 1, name: 't1', clips: [
+          { id: 10, name: 'a', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' },
+        ] },
+        { id: 2, name: 't2', clips: [
+          { id: 11, name: 'b', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' },
+        ] },
+      ],
+    });
+    const dispatch = vi.fn();
+    handleDuplicate(keyEvent(), { state, dispatch });
+
+    const added = dispatch.mock.calls.find(c => c[0].type === 'ADD_TRACK')![0].payload;
+    expect(added.clips[0].groupId).toBeUndefined();
+  });
+
+  it('duplicating BOTH tracks of a cross-track group keeps the copies grouped (fresh id, spanning both new tracks)', () => {
+    const state = makeState({
+      focusedTrackIndex: 0,
+      selectedTrackIndices: [0, 1],
+      tracks: [
+        { id: 1, name: 't1', clips: [
+          { id: 10, name: 'a', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' },
+        ] },
+        { id: 2, name: 't2', clips: [
+          { id: 11, name: 'b', start: 0, duration: 1, envelopePoints: [], groupId: 'g1' },
+        ] },
+      ],
+    });
+    const dispatch = vi.fn();
+    handleDuplicate(keyEvent(), { state, dispatch });
+
+    const addedTracks = dispatch.mock.calls
+      .filter(c => c[0].type === 'ADD_TRACK')
+      .map(c => c[0].payload);
+    expect(addedTracks).toHaveLength(2);
+    const [gidA, gidB] = [addedTracks[0].clips[0].groupId, addedTracks[1].clips[0].groupId];
+    expect(gidA).toBeDefined();
+    expect(gidA).toBe(gidB);
+    expect(gidA).not.toBe('g1');
+  });
 });

@@ -113,22 +113,39 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
   ) + 1);
   let nextTrackId = nextIdAfterDeletes;
 
+  // Clone every duplicated track's clips first, so group entirety is
+  // judged on the union of everything this one operation copies — a
+  // group spanning two tracks that are BOTH being duplicated is copied
+  // whole and must come out as one fresh group across the new tracks.
+  const perTrack: Array<{ ti: number; src: Track; clones: Clip[] }> = [];
   for (const ti of trackIndices) {
     const src = state.tracks[ti];
     if (!src) continue;
-    const clonedClips = (src.clips ?? []).map((c) => ({
-      ...c,
-      id: nextClipId++,
-      sourceClipId: c.sourceClipId ?? c.id,
-    }));
+    perTrack.push({
+      ti,
+      src,
+      clones: (src.clips ?? []).map((c) => ({
+        ...c,
+        id: nextClipId++,
+        sourceClipId: c.sourceClipId ?? c.id,
+      })),
+    });
+  }
+  const sourceClips = perTrack.flatMap((p) => p.src.clips ?? []);
+  const wholeGroups = computeWholeGroupIds(sourceClips, state.tracks);
+  const regrouped = regroupCopiedClips(perTrack.flatMap((p) => p.clones), wholeGroups);
+
+  let cloneIdx = 0;
+  for (const p of perTrack) {
+    const clonedClips = p.clones.map(() => regrouped[cloneIdx++]);
     dispatch({
       type: 'ADD_TRACK',
       payload: {
-        ...src,
+        ...p.src,
         id: nextTrackId++,
-        name: `${src.name} copy`,
+        name: `${p.src.name} copy`,
         clips: clonedClips,
-        insertAt: ti + 1,
+        insertAt: p.ti + 1,
       },
     });
   }
