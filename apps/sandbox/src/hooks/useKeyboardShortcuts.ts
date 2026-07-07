@@ -362,6 +362,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (target.hasAttribute('data-track-ruler-index')) {
           return;
         }
+        // Focus inside the project toolbar or transport toolbar must
+        // never leak into track-focus movement — arrows there belong
+        // to the toolbar's own roving nav (or nothing at all).
+        if (target.closest('.project-toolbar, .transport-toolbar')) {
+          return;
+        }
+        // Add-new track button — arrows do nothing here.
+        if (target.closest('.track-control-side-panel__add-group')) {
+          return;
+        }
         // If a clip is currently selected but doesn't have DOM focus
         // (typical after clicking a clip header or a Tab that moved
         // focus elsewhere), treat the selected clip's track as the
@@ -615,6 +625,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
         if (target.getAttribute('role') === 'slider') return;
         if (target.getAttribute('contenteditable') === 'true') return;
+        // Focus inside the project toolbar or transport toolbar must
+        // never nudge the playhead — arrows there belong to the
+        // toolbar's own roving nav (or nothing at all).
+        if (target.closest('.project-toolbar, .transport-toolbar')) return;
+        // Add-new track button — arrows do nothing here.
+        if (target.closest('.track-control-side-panel__add-group')) return;
 
         const isLeftward = e.key === 'ArrowLeft';
         const cmdHeld = e.metaKey || e.ctrlKey;

@@ -288,8 +288,15 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         <h2 className="track-control-side-panel__title">Tracks</h2>
         {/* role="group" marks this as an island tab stop so the global
             ArrowUp/Down track-focus handler doesn't steal arrow keys
-            pressed while the Add-new button has focus. */}
-        <div ref={addButtonRef} role="group" aria-label="Add track">
+            pressed while the Add-new button has focus. The class is
+            what the global shortcut handler keys on to no-op every
+            arrow key from within this group. */}
+        <div
+          ref={addButtonRef}
+          role="group"
+          aria-label="Add track"
+          className="track-control-side-panel__add-group"
+        >
 
           <Button
             ref={addButtonElementRef}

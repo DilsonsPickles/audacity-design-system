@@ -283,6 +283,7 @@ export function TransportToolbar({
       showGripper
       onGripperMouseDown={onGripperMouseDown}
       rightContent={activeMenuItem === 'export' ? undefined : settingsCog}
+      className="transport-toolbar"
     >
       {activeMenuItem === 'export' ? (
         <>
