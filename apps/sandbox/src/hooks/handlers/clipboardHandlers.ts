@@ -1,5 +1,6 @@
 import { announce } from '@dilsonspickles/components';
 import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
+import { dissolveDegenerateGroups } from '../../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { applySplitCut } from '../../utils/cutOperations';
@@ -92,7 +93,7 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
         selectedTracks.length > 0 ? selectedTracks : state.tracks.map((_, i) => i)
       );
 
-      dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: tracksAfterCut });
+      dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: dissolveDegenerateGroups(tracksAfterCut) });
       dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     }
     return;
@@ -119,7 +120,7 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
       ),
     }));
 
-    dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: tracksAfterCut });
+    dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: dissolveDegenerateGroups(tracksAfterCut) });
   }
 }
 

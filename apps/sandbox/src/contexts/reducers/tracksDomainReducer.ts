@@ -1,5 +1,5 @@
 import type { TracksState, TracksAction, Track } from '../TracksContext';
-import { TRACK_COLOR_PALETTE } from './shared';
+import { TRACK_COLOR_PALETTE, dissolveDegenerateGroups } from './shared';
 
 export function tracksDomainReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
@@ -130,7 +130,7 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
         : Math.min(action.payload, newTracks.length - 1);
       return {
         ...state,
-        tracks: newTracks,
+        tracks: dissolveDegenerateGroups(newTracks),
         focusedTrackIndex: newFocused,
         // Selection is a deliberate user action; don't infer it on delete.
         // Drop any stale selection that referred to the deleted track.
@@ -149,7 +149,7 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
         : Math.min(lowestDeleted, remainingTracks.length - 1);
       return {
         ...state,
-        tracks: remainingTracks,
+        tracks: dissolveDegenerateGroups(remainingTracks),
         // Drop deleted indices from the selection set rather than
         // auto-selecting the new focused track.
         selectedTrackIndices: state.selectedTrackIndices

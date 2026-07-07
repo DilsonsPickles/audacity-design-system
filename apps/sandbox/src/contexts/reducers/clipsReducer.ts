@@ -1,5 +1,6 @@
 import type { TracksState, TracksAction, Clip } from '../TracksContext';
 import { applyCut } from '../../utils/cutOperations';
+import { dissolveDegenerateGroups } from './shared';
 
 export function clipsReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
@@ -66,7 +67,7 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
 
       return {
         ...state,
-        tracks: newTracks,
+        tracks: dissolveDegenerateGroups(newTracks),
         clipDurationIndicator: newClipDurationIndicator,
         pianoRollClipIndex: newPianoRollClipIndex,
       };
@@ -521,7 +522,7 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
 
       return {
         ...state,
-        tracks: newTracks,
+        tracks: dissolveDegenerateGroups(newTracks),
       };
     }
 

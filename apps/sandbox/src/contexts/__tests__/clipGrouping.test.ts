@@ -331,3 +331,66 @@ describe('dissolveDegenerateGroups', () => {
     expect(dissolveDegenerateGroups(tracks)).toBe(tracks);
   });
 });
+
+describe('group dissolution on delete (source-side corollary)', () => {
+  it('DELETE_CLIP dissolves a group that drops to 1 member', () => {
+    const state = baseState([
+      { id: 1, groupId: 'g1' },
+      { id: 2, groupId: 'g1' },
+      { id: 3 },
+    ]);
+    const next = tracksReducer(state, { type: 'DELETE_CLIP', payload: { trackIndex: 0, clipId: 2 } });
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.groupId).toBeUndefined();
+  });
+
+  it('DELETE_CLIP keeps a group that still has 2 members', () => {
+    const state = baseState([
+      { id: 1, groupId: 'g1' },
+      { id: 2, groupId: 'g1' },
+      { id: 3, groupId: 'g1' },
+    ]);
+    const next = tracksReducer(state, { type: 'DELETE_CLIP', payload: { trackIndex: 0, clipId: 3 } });
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.groupId).toBe('g1');
+    expect(next.tracks[0].clips.find(c => c.id === 2)?.groupId).toBe('g1');
+  });
+
+  it('DELETE_TIME_RANGE dissolves a group whose member was fully removed', () => {
+    // clip 2 occupies [5,6); range [4,7) removes it entirely (split cut mode).
+    const state = {
+      ...baseState([
+        { id: 1, groupId: 'g1', start: 0, duration: 1 },
+        { id: 2, groupId: 'g1', start: 5, duration: 1 },
+      ]),
+      selectedTrackIndices: [0],
+      cutMode: 'split' as const,
+    };
+    const next = tracksReducer(state, { type: 'DELETE_TIME_RANGE', payload: { startTime: 4, endTime: 7 } });
+    expect(next.tracks[0].clips.find(c => c.id === 2)).toBeUndefined();
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.groupId).toBeUndefined();
+  });
+
+  it('DELETE_TRACK dissolves cross-track groups orphaned by the removal', () => {
+    const state = {
+      ...initialState,
+      tracks: [
+        track([{ id: 1, groupId: 'g1' }]),
+        track([{ id: 2, groupId: 'g1' }]),
+      ],
+    } as unknown as TracksState;
+    const next = tracksReducer(state, { type: 'DELETE_TRACK', payload: 1 });
+    expect(next.tracks[0].clips[0].groupId).toBeUndefined();
+  });
+
+  it('DELETE_TRACKS dissolves cross-track groups orphaned by the removal', () => {
+    const state = {
+      ...initialState,
+      tracks: [
+        track([{ id: 1, groupId: 'g1' }]),
+        track([{ id: 2, groupId: 'g1' }]),
+        track([{ id: 3, groupId: 'g1' }]),
+      ],
+    } as unknown as TracksState;
+    const next = tracksReducer(state, { type: 'DELETE_TRACKS', payload: [1, 2] });
+    expect(next.tracks[0].clips[0].groupId).toBeUndefined();
+  });
+});
