@@ -16,7 +16,6 @@ interface ContainerClickConfig {
   selectedTrackIndices: number[];
   selectionAnchor: number | null;
   setSelectionAnchor: (anchor: number | null) => void;
-  keyboardFocusedTrack?: number | null;
 }
 
 /**
@@ -41,7 +40,6 @@ export function useContainerClick({
   selectedTrackIndices,
   selectionAnchor,
   setSelectionAnchor,
-  keyboardFocusedTrack,
 }: ContainerClickConfig) {
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -79,24 +77,13 @@ export function useContainerClick({
     const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
 
     if (y > totalTracksHeight) {
-      // Clicked in empty space below all tracks — maintain the
-      // currently focused track. Prevent default so we don't blur
-      // whatever DOM element was focused.
+      // Clicked in empty space below all tracks — deselect all
+      // tracks but leave focus (both the focusedTrackIndex state
+      // and DOM focus) untouched. preventDefault keeps whatever
+      // element was focused from being blurred.
       e.preventDefault();
-
-      // Determine which track to focus - use keyboardFocusedTrack if available,
-      // otherwise use the first selected track as fallback
-      const trackToFocus = keyboardFocusedTrack ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : null);
-
-      if (trackToFocus !== null && trackToFocus !== undefined) {
-        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackToFocus });
-        onTrackFocusChange?.(trackToFocus, true);
-
-        // Re-focus the track element so keyboard navigation resumes there.
-        const trackElement = document.querySelector(`[data-track-index="${trackToFocus}"] .track`);
-        if (trackElement && trackElement instanceof HTMLElement) {
-          trackElement.focus();
-        }
+      if (selectedTrackIndices.length > 0) {
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
       }
     } else if (clickedTrackIndex !== null) {
       // Call containerProps onClick handler for track clicks (but skip if Shift is held)

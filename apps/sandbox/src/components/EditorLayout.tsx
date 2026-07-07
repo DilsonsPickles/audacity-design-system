@@ -1211,7 +1211,6 @@ export function EditorLayout(props: EditorLayoutProps) {
                     leftPadding={12}
                     snap={state.canvasSnap}
                     snapEnabled={snapEnabled}
-                    keyboardFocusedTrack={state.focusedTrackIndex}
                     showRmsInWaveform={showRmsInWaveform}
                     controlPointStyle={controlPointStyle}
                     viewportHeight={scrollContainerRef.current?.clientHeight || 0}

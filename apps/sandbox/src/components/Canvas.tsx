@@ -60,10 +60,6 @@ export interface CanvasProps {
    */
   onTrackFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
   /**
-   * Index of track that currently has keyboard focus (for showing focus borders)
-   */
-  keyboardFocusedTrack?: number | null;
-  /**
    * Callback when the track container itself gains/loses keyboard focus
    */
   onTrackContainerFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
@@ -182,7 +178,6 @@ export function Canvas({
   onTimeSelectionMenuClick,
   onTrackFocusChange,
   onTrackContainerFocusChange,
-  keyboardFocusedTrack = null,
   showRmsInWaveform = true,
   controlPointStyle = 'default',
   viewportHeight = 0,
@@ -633,7 +628,6 @@ export function Canvas({
     selectedTrackIndices,
     selectionAnchor,
     setSelectionAnchor,
-    keyboardFocusedTrack,
   });
 
   // Clip and label mouse down handler - extracted to custom hook
