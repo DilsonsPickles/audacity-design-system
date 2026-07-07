@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { expandSelectionToGroups, tracksReducer, initialState, type Track, type TracksState, type Clip } from '../TracksContext';
+import { expandSelectionToGroups, dissolveDegenerateGroups, tracksReducer, initialState, type Track, type TracksState, type Clip } from '../TracksContext';
 
 const track = (clips: Array<Partial<{ id: number; selected: boolean; groupId: string }>>): Track => ({
   id: 1,
@@ -288,5 +288,46 @@ describe('SELECT_CLIP_RANGE auto-expansion', () => {
     expect(next.tracks[0].clips.find(c => c.id === 1)?.selected).toBe(true);
     expect(next.tracks[0].clips.find(c => c.id === 2)?.selected).toBe(true);
     expect(next.tracks[0].clips.find(c => c.id === 3)?.selected).toBe(true);
+  });
+});
+
+describe('dissolveDegenerateGroups', () => {
+  it('clears groupId on a group left with one member', () => {
+    const tracks: Track[] = [
+      track([{ id: 1, groupId: 'g1' }, { id: 2 }]),
+    ];
+    const result = dissolveDegenerateGroups(tracks);
+    expect(result[0].clips.find(c => c.id === 1)?.groupId).toBeUndefined();
+  });
+
+  it('leaves groups with 2+ members intact (counted across tracks)', () => {
+    const tracks: Track[] = [
+      track([{ id: 1, groupId: 'g1' }]),
+      track([{ id: 2, groupId: 'g1' }]),
+    ];
+    const result = dissolveDegenerateGroups(tracks);
+    expect(result[0].clips[0].groupId).toBe('g1');
+    expect(result[1].clips[0].groupId).toBe('g1');
+  });
+
+  it('dissolves only the degenerate group when several groups exist', () => {
+    const tracks: Track[] = [
+      track([
+        { id: 1, groupId: 'lone' },
+        { id: 2, groupId: 'pair' },
+        { id: 3, groupId: 'pair' },
+      ]),
+    ];
+    const result = dissolveDegenerateGroups(tracks);
+    expect(result[0].clips.find(c => c.id === 1)?.groupId).toBeUndefined();
+    expect(result[0].clips.find(c => c.id === 2)?.groupId).toBe('pair');
+    expect(result[0].clips.find(c => c.id === 3)?.groupId).toBe('pair');
+  });
+
+  it('returns the same reference when nothing dissolves', () => {
+    const tracks: Track[] = [
+      track([{ id: 1, groupId: 'g1' }, { id: 2, groupId: 'g1' }]),
+    ];
+    expect(dissolveDegenerateGroups(tracks)).toBe(tracks);
   });
 });

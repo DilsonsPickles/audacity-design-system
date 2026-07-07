@@ -11,10 +11,10 @@ import { midiReducer } from './reducers/midiReducer';
 import { tracksDomainReducer } from './reducers/tracksDomainReducer';
 import { clipsReducer } from './reducers/clipsReducer';
 import { envelopeReducer } from './reducers/envelopeReducer';
-import { TRACK_COLOR_PALETTE, expandSelectionToGroups } from './reducers/shared';
+import { TRACK_COLOR_PALETTE, expandSelectionToGroups, dissolveDegenerateGroups } from './reducers/shared';
 
 // Re-exported for consumers that historically imported these from TracksContext.
-export { TRACK_COLOR_PALETTE, expandSelectionToGroups };
+export { TRACK_COLOR_PALETTE, expandSelectionToGroups, dissolveDegenerateGroups };
 
 // TODO: Import proper Track and Clip types from @audacity-ui/core once they're defined
 interface EnvelopePoint {

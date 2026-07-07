@@ -32,3 +32,30 @@ export function expandSelectionToGroups(tracks: Track[]): Track[] {
     ),
   }));
 }
+
+/**
+ * Pure helper: clear `groupId` on every clip belonging to a group with
+ * fewer than 2 members (counted across all tracks). Mirrors the
+ * dissolve-below-two pass inside GROUP_SELECTED_CLIPS, applied after
+ * operations that remove clips from the timeline. Returns the input
+ * unchanged when no group is degenerate.
+ */
+export function dissolveDegenerateGroups(tracks: Track[]): Track[] {
+  const counts = new Map<string, number>();
+  for (const t of tracks) {
+    for (const c of t.clips) {
+      if (c.groupId) counts.set(c.groupId, (counts.get(c.groupId) ?? 0) + 1);
+    }
+  }
+  const degenerate = new Set<string>();
+  for (const [gid, n] of counts) {
+    if (n < 2) degenerate.add(gid);
+  }
+  if (degenerate.size === 0) return tracks;
+  return tracks.map(t => ({
+    ...t,
+    clips: t.clips.map(c =>
+      c.groupId && degenerate.has(c.groupId) ? { ...c, groupId: undefined } : c
+    ),
+  }));
+}
