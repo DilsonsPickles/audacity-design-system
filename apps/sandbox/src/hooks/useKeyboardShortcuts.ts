@@ -20,6 +20,13 @@ export interface ClipboardState {
   clips: ((Clip | MidiClip) & { trackIndex: number })[];
   operation: 'copy' | 'cut';
   timeSelection?: { startTime: number; endTime: number };
+  /**
+   * Source groupIds captured whole (every member, untrimmed) at copy/cut
+   * time. Paste mints one fresh groupId per entry; clips from groups not
+   * listed here paste ungrouped. Computed at copy time so paste stays
+   * deterministic even if the originals change afterwards.
+   */
+  wholeGroupIds?: string[];
 }
 
 export interface UseKeyboardShortcutsOptions {

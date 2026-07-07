@@ -1,5 +1,6 @@
 import { announce } from '@dilsonspickles/components';
 import type { TracksState, TracksAction, Clip, Track } from '../../contexts/TracksContext';
+import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
 
 export interface DuplicateHandlerDeps {
   state: TracksState;
@@ -50,25 +51,30 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
         for (const c of t.clips) if (c.id >= nextClipId) nextClipId = c.id + 1;
       }
 
-      // Each duplicate starts immediately after its source clip
-      // — the user's request. Subsequent clips on the same track
-      // will overlap; resolveOverlap inside MOVE_CLIP / the
-      // placement reducer handles ripple if needed elsewhere.
-      const newSelectionIds: Array<{ trackIndex: number; clipId: number }> = [];
-      targets.forEach(({ trackIndex, clip }) => {
-        const dupId = nextClipId++;
-        const dup = {
+      // Build all duplicates first, then re-group them per the copy
+      // invariant: fresh group iff the whole source group was duplicated,
+      // ungrouped otherwise — never tethered to the originals.
+      const dupTargets = targets.map(({ trackIndex, clip }) => ({
+        trackIndex,
+        clip: {
           ...clip,
-          id: dupId,
+          id: nextClipId++,
           start: clip.start + clip.duration,
           selected: true,
           sourceClipId: clip.sourceClipId ?? clip.id,
-        };
+        },
+      }));
+      const wholeGroups = computeWholeGroupIds(targets.map(t => t.clip), state.tracks);
+      const regrouped = regroupCopiedClips(dupTargets.map(d => d.clip), wholeGroups);
+
+      const newSelectionIds: Array<{ trackIndex: number; clipId: number }> = [];
+      dupTargets.forEach(({ trackIndex }, i) => {
+        const dup = regrouped[i];
         dispatch({
           type: 'ADD_CLIP',
           payload: { trackIndex, clip: dup },
         });
-        newSelectionIds.push({ trackIndex, clipId: dupId });
+        newSelectionIds.push({ trackIndex, clipId: dup.id });
       });
 
       // Make the new duplicates the active selection.
@@ -107,22 +113,39 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
   ) + 1);
   let nextTrackId = nextIdAfterDeletes;
 
+  // Clone every duplicated track's clips first, so group entirety is
+  // judged on the union of everything this one operation copies — a
+  // group spanning two tracks that are BOTH being duplicated is copied
+  // whole and must come out as one fresh group across the new tracks.
+  const perTrack: Array<{ ti: number; src: Track; clones: Clip[] }> = [];
   for (const ti of trackIndices) {
     const src = state.tracks[ti];
     if (!src) continue;
-    const clonedClips = (src.clips ?? []).map((c) => ({
-      ...c,
-      id: nextClipId++,
-      sourceClipId: c.sourceClipId ?? c.id,
-    }));
+    perTrack.push({
+      ti,
+      src,
+      clones: (src.clips ?? []).map((c) => ({
+        ...c,
+        id: nextClipId++,
+        sourceClipId: c.sourceClipId ?? c.id,
+      })),
+    });
+  }
+  const sourceClips = perTrack.flatMap((p) => p.src.clips ?? []);
+  const wholeGroups = computeWholeGroupIds(sourceClips, state.tracks);
+  const regrouped = regroupCopiedClips(perTrack.flatMap((p) => p.clones), wholeGroups);
+
+  let cloneIdx = 0;
+  for (const p of perTrack) {
+    const clonedClips = p.clones.map(() => regrouped[cloneIdx++]);
     dispatch({
       type: 'ADD_TRACK',
       payload: {
-        ...src,
+        ...p.src,
         id: nextTrackId++,
-        name: `${src.name} copy`,
+        name: `${p.src.name} copy`,
         clips: clonedClips,
-        insertAt: ti + 1,
+        insertAt: p.ti + 1,
       },
     });
   }

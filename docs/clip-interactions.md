@@ -64,3 +64,29 @@ endTime = Math.max(...selectedClips.map(c => c.start + c.duration))
 - Both actions also dispatch `SELECT_TRACK` to select the parent track
 - TracksContext reducers calculate and set the `timeSelection` state
 - Timeline ruler displays the time selection as a highlighted region
+
+## Clip-group copy semantics
+
+**Invariant:** copies never share a group with their originals. Copies form a
+fresh group of their own iff every member of the original group was copied
+whole (untrimmed) — otherwise they are ungrouped. A fresh group that would
+have fewer than 2 members dissolves to ungrouped.
+
+| Operation | Group situation | Copies come out |
+|---|---|---|
+| Ctrl+D clip(s) | whole group (selection auto-expands) | fresh group |
+| Duplicate track | group entirely on duplicated track(s) | fresh group |
+| Duplicate track | group spans a non-duplicated track | ungrouped |
+| Copy/cut → paste | whole group in clipboard | fresh group (per paste) |
+| Copy/cut → paste | partial members in clipboard | ungrouped |
+| Time-selection copy/cut → paste | all members covered whole + untrimmed | fresh group |
+| Time-selection copy/cut → paste | any member sliced or omitted | ungrouped |
+| Any | fresh group would have <2 members | ungrouped |
+
+**Source-side corollary:** cut, delete-clip, delete-time-range, delete-track,
+and overlap-resolution deletion (a dropped clip fully covering a group member)
+dissolve any surviving group that drops below 2 members.
+
+Implementation: `apps/sandbox/src/utils/clipGroupCopy.ts` (entirety +
+regrouping), `dissolveDegenerateGroups` in `contexts/reducers/shared.ts`.
+Design doc: `docs/superpowers/specs/2026-07-07-clip-group-copy-semantics-design.md`.

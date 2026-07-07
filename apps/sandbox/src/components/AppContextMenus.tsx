@@ -156,7 +156,7 @@ export function AppContextMenus({
                   || (track?.midiClips || []).find((c) => c.id === clipContextMenu.clipId);
 
                 if (clip) {
-                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut' });
+                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut', wholeGroupIds: [] });
 
                   dispatch({
                     type: 'DELETE_CLIP',
@@ -178,7 +178,7 @@ export function AppContextMenus({
                   || (track?.midiClips || []).find((c) => c.id === clipContextMenu.clipId);
 
                 if (clip) {
-                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy' });
+                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy', wholeGroupIds: [] });
                 }
                 setClipContextMenu(null);
               }

@@ -1,8 +1,10 @@
 import { announce } from '@dilsonspickles/components';
 import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
+import { dissolveDegenerateGroups } from '../../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { applySplitCut } from '../../utils/cutOperations';
+import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
 import type { ClipboardState } from '../useKeyboardShortcuts';
 
 export interface ClipboardHandlerDeps {
@@ -37,7 +39,10 @@ export function handleCopy(deps: ClipboardHandlerDeps): void {
       setClipboard({
         clips: clipsInSelection,
         operation: 'copy',
-        timeSelection: { startTime, endTime }
+        timeSelection: { startTime, endTime },
+        wholeGroupIds: Array.from(
+          computeWholeGroupIds(clipsInSelection, state.tracks, { startTime, endTime })
+        ),
       });
     }
     return;
@@ -54,7 +59,11 @@ export function handleCopy(deps: ClipboardHandlerDeps): void {
   });
 
   if (selectedClips.length > 0) {
-    setClipboard({ clips: selectedClips, operation: 'copy' });
+    setClipboard({
+      clips: selectedClips,
+      operation: 'copy',
+      wholeGroupIds: Array.from(computeWholeGroupIds(selectedClips, state.tracks)),
+    });
   }
 }
 
@@ -81,7 +90,10 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
       setClipboard({
         clips: clipsInSelection,
         operation: 'cut',
-        timeSelection: { startTime, endTime }
+        timeSelection: { startTime, endTime },
+        wholeGroupIds: Array.from(
+          computeWholeGroupIds(clipsInSelection, state.tracks, { startTime, endTime })
+        ),
       });
 
       // Use split cut to trim partially-overlapping clips instead of deleting them
@@ -92,7 +104,7 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
         selectedTracks.length > 0 ? selectedTracks : state.tracks.map((_, i) => i)
       );
 
-      dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: tracksAfterCut });
+      dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: dissolveDegenerateGroups(tracksAfterCut) });
       dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     }
     return;
@@ -109,7 +121,11 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
   });
 
   if (selectedClips.length > 0) {
-    setClipboard({ clips: selectedClips, operation: 'cut' });
+    setClipboard({
+      clips: selectedClips,
+      operation: 'cut',
+      wholeGroupIds: Array.from(computeWholeGroupIds(selectedClips, state.tracks)),
+    });
 
     // Immediately remove the cut clips from tracks
     const tracksAfterCut = state.tracks.map((track, tIndex) => ({
@@ -119,7 +135,7 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
       ),
     }));
 
-    dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: tracksAfterCut });
+    dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: dissolveDegenerateGroups(tracksAfterCut) });
   }
 }
 
@@ -226,6 +242,20 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
   });
   if (skippedMidiClips > 0) {
     announce("MIDI clips can't be pasted yet");
+  }
+
+  // Re-group the pasted set per the copy invariant: one fresh groupId per
+  // source group captured whole at copy time; everything else ungrouped.
+  // Runs on the post-drop set (out-of-range/MIDI clips excluded) so a
+  // whole group whose siblings were dropped dissolves below two.
+  const pastedFlat = Array.from(clipsByTrack.values()).flat();
+  const regrouped = regroupCopiedClips(
+    pastedFlat,
+    new Set(clipboard.wholeGroupIds ?? [])
+  );
+  let regroupIdx = 0;
+  for (const [destIndex, trackClips] of clipsByTrack) {
+    clipsByTrack.set(destIndex, trackClips.map(() => regrouped[regroupIdx++]));
   }
 
   // Add clips to their respective tracks

@@ -23,6 +23,7 @@ import { useDrawerTabAutoSwitch } from '../hooks/useDrawerTabAutoSwitch';
 import { useTimeSelectionTabHandler } from '../hooks/useTimeSelectionTabHandler';
 import { useFlatNavTabRouter } from '../hooks/useFlatNavTabRouter';
 import { usePlayback } from '../contexts/PlaybackContext';
+import { computeWholeGroupIds, regroupCopiedClips } from '../utils/clipGroupCopy';
 
 export interface EditorLayoutProps {
   // Active menu
@@ -526,28 +527,47 @@ export function EditorLayout(props: EditorLayoutProps) {
             let nextClipId = Math.max(...state.tracks.flatMap((t) => t.clips.map((c) => c.id)), 0) + 1;
             let nextTrackId = Math.max(...state.tracks.map((t) => t.id), 0) + 1;
 
-            trackIndices.forEach((idx: number) => {
+            // Clone all clips first so group entirety is judged on the
+            // union of every track duplicated in this one operation
+            // (spec: copies regroup fresh iff the whole group was copied).
+            const perTrack = trackIndices.flatMap((idx: number) => {
               const originalTrack = state.tracks[idx];
-              if (originalTrack) {
-                const duplicatedTrack = {
-                  ...originalTrack,
-                  id: nextTrackId++,
-                  name: `${originalTrack.name} (copy)`,
-                  clips: originalTrack.clips.map((clip) => ({
-                    ...clip,
-                    id: nextClipId++,
-                  })),
-                  // Drop the copy directly after its source so it's
-                  // adjacent in the side panel rather than floating
-                  // at the bottom of the track stack.
-                  insertAt: idx + 1,
-                };
+              if (!originalTrack) return [];
+              return [{
+                idx,
+                originalTrack,
+                clones: originalTrack.clips.map((clip) => ({
+                  ...clip,
+                  id: nextClipId++,
+                })),
+              }];
+            });
+            const wholeGroups = computeWholeGroupIds(
+              perTrack.flatMap((p) => p.originalTrack.clips),
+              state.tracks,
+            );
+            const regrouped = regroupCopiedClips(
+              perTrack.flatMap((p) => p.clones),
+              wholeGroups,
+            );
 
-                dispatch({
-                  type: 'ADD_TRACK',
-                  payload: duplicatedTrack,
-                });
-              }
+            let cloneIdx = 0;
+            perTrack.forEach(({ idx, originalTrack, clones }) => {
+              const duplicatedTrack = {
+                ...originalTrack,
+                id: nextTrackId++,
+                name: `${originalTrack.name} (copy)`,
+                clips: clones.map(() => regrouped[cloneIdx++]),
+                // Drop the copy directly after its source so it's
+                // adjacent in the side panel rather than floating
+                // at the bottom of the track stack.
+                insertAt: idx + 1,
+              };
+
+              dispatch({
+                type: 'ADD_TRACK',
+                payload: duplicatedTrack,
+              });
             });
           }}
           onMoveTrackUp={() => {

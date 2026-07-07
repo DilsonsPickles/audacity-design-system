@@ -99,3 +99,43 @@ describe('APPLY_CLIP_PLACEMENT', () => {
     expect(next.tracks[0].clips.find(c => c.id === 3)).toBeUndefined();
   });
 });
+
+describe('APPLY_CLIP_PLACEMENT — group dissolution', () => {
+  it('dissolves a 2-member group when the delete mutation removes one member', () => {
+    // clips 1 and 2 form a 2-member group; a drop fully covers clip 2 → delete mutation
+    const state = baseState([
+      { id: 1, groupId: 'g1' },
+      { id: 2, groupId: 'g1' },
+    ]);
+    const next = tracksReducer(state, {
+      type: 'APPLY_CLIP_PLACEMENT',
+      payload: {
+        placements: [],
+        mutations: [{ type: 'delete', clipId: 2, trackIndex: 0 }],
+      },
+    });
+    // clip 1 is the lone survivor — groupId must be cleared
+    expect(next.tracks[0].clips).toHaveLength(1);
+    expect(next.tracks[0].clips[0].groupId).toBeUndefined();
+  });
+
+  it('keeps the group intact when a delete removes one of 3 members (2 remain)', () => {
+    // clips 1, 2, 3 form a 3-member group; dropping fully covers clip 3
+    const state = baseState([
+      { id: 1, groupId: 'g1' },
+      { id: 2, groupId: 'g1' },
+      { id: 3, groupId: 'g1' },
+    ]);
+    const next = tracksReducer(state, {
+      type: 'APPLY_CLIP_PLACEMENT',
+      payload: {
+        placements: [],
+        mutations: [{ type: 'delete', clipId: 3, trackIndex: 0 }],
+      },
+    });
+    // 2 survivors — group must be preserved
+    expect(next.tracks[0].clips).toHaveLength(2);
+    expect(next.tracks[0].clips.find(c => c.id === 1)?.groupId).toBe('g1');
+    expect(next.tracks[0].clips.find(c => c.id === 2)?.groupId).toBe('g1');
+  });
+});
