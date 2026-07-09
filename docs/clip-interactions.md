@@ -90,3 +90,29 @@ dissolve any surviving group that drops below 2 members.
 Implementation: `apps/sandbox/src/utils/clipGroupCopy.ts` (entirety +
 regrouping), `dissolveDegenerateGroups` in `contexts/reducers/shared.ts`.
 Design doc: `docs/superpowers/specs/2026-07-07-clip-group-copy-semantics-design.md`.
+
+## Time-selection scope
+
+Time selection and track selection are independent axes. Dragging a time
+selection never changes the track selection; the drag's vertical scope is
+carried on the selection itself (`TimeSelection.tracks`). Keyboard-created
+selections are scoped to the focused track; edits (edge drags, Shift+Arrow
+nudges) preserve the existing scope. Label expansion stamps an all-tracks
+scope; Shift+Click range select stamps the rows it spans.
+
+**Scope resolution** (`apps/sandbox/src/utils/timeSelectionScope.ts`), used
+by delete-time-range, time-selection copy/cut (including clip-group
+whole-capture), Cmd+Arrow promotes, and drag-clip-into-selection:
+`timeSelection.tracks` → `selectedTrackIndices` → operation default
+(all tracks, or the focused track for promotes).
+
+**Scope editing:** Cmd+Click or Cmd+Enter on a track panel row toggles that
+row in/out of an active scope (track selection untouched); with no active
+scope they toggle track selection as before. Deleting or reordering tracks
+remaps the scope; a scope emptied by track deletion clears the selection.
+
+Rendering (`TrackNew`): in-scope rows get the bright band; selected
+out-of-scope rows a subtle white wash; unselected out-of-scope rows the dim
+band.
+
+Design doc: `docs/superpowers/specs/2026-07-09-time-selection-scope-design.md`.
