@@ -303,6 +303,33 @@ export function EditorLayout(props: EditorLayoutProps) {
     setRulerFlyout({ isOpen: true, x: flyoutX, y: flyoutY, mode, trackIndex: targetTrackIndex });
   }, [state.tracks, scrollY]);
 
+  // Cmd+Click / Cmd+Enter on a track panel row. With a scoped time
+  // selection active, the gesture edits the SELECTION SCOPE — which
+  // rows the time selection covers — and leaves the track selection
+  // alone (the two axes are independent). Without one, it falls back
+  // to the classic track-selection toggle.
+  const toggleScopeOrTrackSelection = (index: number) => {
+    const ts = state.timeSelection;
+    if (ts?.tracks?.length) {
+      const nextTracks = ts.tracks.includes(index)
+        ? ts.tracks.filter((i) => i !== index)
+        : [...ts.tracks, index].sort((a, b) => a - b);
+      // Toggling the last row out clears the selection — an empty
+      // scope has nothing left to act on (same rule as track-delete
+      // remapping).
+      dispatch({
+        type: 'SET_TIME_SELECTION',
+        payload: nextTracks.length > 0 ? { ...ts, tracks: nextTracks } : null,
+      });
+      // Plant the anchor at the toggled row so a subsequent
+      // Shift+Enter extends the track selection from here.
+      setSelectionAnchor(index);
+      return;
+    }
+    toggleTrackSelection(index, state.selectedTrackIndices, dispatch);
+    setSelectionAnchor(index);
+  };
+
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
   const scrollBuffer = viewportH > 0 && canvasHeight > viewportH ? Math.round(viewportH * 0.4) : 0;
@@ -864,12 +891,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   // selection, not the app-init default of [0].
                   setSelectionAnchor(index);
                 }}
-                onToggleSelection={() => {
-                  toggleTrackSelection(index, state.selectedTrackIndices, dispatch);
-                  // Cmd+Click also plants the anchor so subsequent
-                  // Shift+Enter extends from the just-toggled row.
-                  setSelectionAnchor(index);
-                }}
+                onToggleSelection={() => toggleScopeOrTrackSelection(index)}
                 onRangeSelection={() => {
                   // Fallback to CURRENT focus rather than
                   // selectedTrackIndices[0]. The old fallback picked
@@ -1308,7 +1330,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                         for (let i = start; i <= end; i++) newSelection.push(i);
                         dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
                       } else if (modifiers.metaKey || modifiers.ctrlKey) {
-                        toggleTrackSelection(trackIndex, state.selectedTrackIndices, dispatch);
+                        toggleScopeOrTrackSelection(trackIndex);
                       } else {
                         // Plain Enter: select the track, or deselect if it's
                         // already the sole selection (toggle-off).
