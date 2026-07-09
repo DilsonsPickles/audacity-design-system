@@ -67,12 +67,15 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
       }));
       const expandedTracks = expandSelectionToGroups(newTracks);
       const last = action.payload[action.payload.length - 1];
-      // Track selection intentionally left untouched — clip
-      // selection no longer implies track selection.
+      // Track selection and focus are intentionally left untouched.
+      // Clip selection no longer implies track selection, and moving
+      // focus to the last clip's track was silently dragging the
+      // user's focus during automatic promotes (e.g. Cmd+Arrow on a
+      // time selection spanning many rows). Callers that want focus
+      // to follow dispatch SET_FOCUSED_TRACK themselves.
       return {
         ...state,
         tracks: expandedTracks,
-        focusedTrackIndex: last ? last.trackIndex : state.focusedTrackIndex,
         selectedLabelIds: [],
         // Clear the time selection — a batch clip select has no single
         // representative range to mirror in the ruler.

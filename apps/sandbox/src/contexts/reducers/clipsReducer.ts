@@ -1,6 +1,7 @@
 import type { TracksState, TracksAction, Clip } from '../TracksContext';
 import { applyCut } from '../../utils/cutOperations';
 import { dissolveDegenerateGroups } from './shared';
+import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
 
 export function clipsReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
@@ -507,10 +508,13 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
     case 'DELETE_TIME_RANGE': {
       const { startTime, endTime } = action.payload;
 
-      // If no tracks are selected, apply cut to all tracks
-      const trackIndicesToCut = state.selectedTrackIndices.length > 0
-        ? state.selectedTrackIndices
-        : state.tracks.map((_, idx) => idx);
+      // Scope: the selection's own tracks (drag/keyboard gesture) →
+      // selectedTrackIndices → all tracks.
+      const trackIndicesToCut = resolveTimeSelectionScope(
+        state.timeSelection,
+        state.selectedTrackIndices,
+        state.tracks.map((_, idx) => idx),
+      );
 
       const newTracks = applyCut(
         state.tracks,
