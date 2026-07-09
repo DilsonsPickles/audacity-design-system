@@ -106,6 +106,10 @@ whole-capture), Cmd+Arrow promotes, and drag-clip-into-selection:
 `timeSelection.tracks` → `selectedTrackIndices` → operation default
 (all tracks, or the focused track for promotes).
 
+"Set selection to loop" (timeline ruler context menu) deliberately creates a
+scopeless selection — it's a timeline-level action, so operations on it fall
+back to `selectedTrackIndices`, then all tracks.
+
 **Scope editing:** Cmd+Click or Cmd+Enter on a track panel row toggles that
 row in/out of an active scope (track selection untouched); with no active
 scope they toggle track selection as before. Deleting or reordering tracks

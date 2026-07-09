@@ -1541,6 +1541,7 @@ function CanvasDemoContent() {
             dispatch({
               type: 'SET_TIME_SELECTION',
               payload: {
+                ...state.timeSelection,
                 startTime: newStart,
                 endTime: endTime,
               }
@@ -1552,6 +1553,7 @@ function CanvasDemoContent() {
             dispatch({
               type: 'SET_TIME_SELECTION',
               payload: {
+                ...state.timeSelection,
                 startTime: startTime,
                 endTime: newEnd,
               }

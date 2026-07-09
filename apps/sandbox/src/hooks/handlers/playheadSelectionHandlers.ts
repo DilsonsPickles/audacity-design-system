@@ -39,21 +39,9 @@ export function handlePlayheadMove(
 
     if (!state.timeSelection || playheadOutsideSelection) {
       dispatch({ type: 'DESELECT_ALL_CLIPS' });
-      // Scope the selection to the focused track if it isn't already
-      // part of the track selection — mirrors the mouse-drag
-      // behaviour so the keyboard-driven Shift+Arrow feels the same.
-      // Falls back to selecting every track when nothing's focused
-      // (kept for the "wide selection from ambient state" case).
-      const focused = state.focusedTrackIndex;
-      if (
-        focused !== null && focused !== undefined
-        && !state.selectedTrackIndices.includes(focused)
-      ) {
-        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [focused] });
-      } else if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
-        const allTrackIndices = state.tracks.map((_, idx) => idx);
-        dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-      }
+      // Track selection is left untouched — the selection's vertical
+      // scope is carried on the SET_TIME_SELECTION payload below
+      // (`tracks`), not on selectedTrackIndices.
       selectionEdgesRef.current = { startTime: state.playheadPosition, endTime: state.playheadPosition };
     }
 
@@ -128,11 +116,6 @@ export function handleDeleteTimeRange(deps: PlayheadSelectionHandlerDeps): void 
 
   if (state.timeSelection) {
     const { startTime, endTime } = state.timeSelection;
-
-    if (state.selectedTrackIndices.length === 0 && state.tracks.length > 0) {
-      const allTrackIndices = state.tracks.map((_, idx) => idx);
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
-    }
 
     dispatch({ type: 'DELETE_TIME_RANGE', payload: { startTime, endTime } });
     dispatch({ type: 'SET_TIME_SELECTION', payload: null });
