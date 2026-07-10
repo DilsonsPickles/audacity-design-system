@@ -4,6 +4,7 @@ import type { TimeSelection } from '@audacity-ui/core';
 import { renderMonoSpectrogram, renderStereoSpectrogram, type SpectrogramScale } from '../utils/spectrogram';
 import { getScaleMinFreq } from '../utils/spectrogramScales';
 import { getEnvelopeGainAtTime, type EnvelopePointData } from '../utils/envelope';
+import { computeWaveformGeometry, makeSelectionColorFns } from './waveformGeometry';
 
 import { EnvelopeOverlay } from '../EnvelopeOverlay/EnvelopeOverlay';
 import { useTheme } from '../ThemeProvider';
@@ -331,17 +332,14 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         const maxAmplitude = (stereoHeight / 2) * 0.9;
 
         // Draw L channel waveform
-        // Calculate sample offset based on trim start
-        // Detect the actual sample rate from the waveform array length
-        const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
-        const detectedSampleRate = waveformLeft.length / fullDuration;
-
-
-        // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
-        // This prevents waveform stretching when trimming
-        const secondsPerPixel = 1 / pixelsPerSecond;
-        const samplesPerPixelL = (secondsPerPixel * detectedSampleRate) / clipStretchFactor;
-        const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
+        const { samplesPerPixel: samplesPerPixelL, trimStartSample } = computeWaveformGeometry({
+          dataLength: waveformLeft.length,
+          clipFullDuration,
+          clipTrimStart,
+          clipDuration,
+          pixelsPerSecond,
+          clipStretchFactor,
+        });
 
         const splitEnvelope = showEnvelope ? envelope : undefined;
         drawChannel(ctx, waveformLeft, canvasWidth, trimStartSample, samplesPerPixelL, lChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelope, clipDuration, false);
@@ -377,16 +375,14 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         const waveformCenterY = splitY + bottomHeight / 2;
         const maxAmplitude = (bottomHeight / 2) * 0.9;
 
-        // Calculate sample offset based on trim start
-        // Detect the actual sample rate from the waveform array length
-        const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
-        const detectedSampleRate = waveformData!.length / fullDuration;
-
-        // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
-        // This prevents waveform stretching when trimming
-        const secondsPerPixel = 1 / pixelsPerSecond;
-        const samplesPerPixel = (secondsPerPixel * detectedSampleRate) / clipStretchFactor;
-        const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
+        const { samplesPerPixel, trimStartSample } = computeWaveformGeometry({
+          dataLength: waveformData!.length,
+          clipFullDuration,
+          clipTrimStart,
+          clipDuration,
+          pixelsPerSecond,
+          clipStretchFactor,
+        });
 
         const splitEnvelopeMono = showEnvelope ? envelope : undefined;
         drawChannel(ctx, waveformData!, canvasWidth, trimStartSample, samplesPerPixel, waveformCenterY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelopeMono, clipDuration, false);
@@ -455,41 +451,24 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       const lMaxAmplitude = lChannelHeight / 2 - 2;
       const rMaxAmplitude = rChannelHeight / 2 - 2;
 
-      // Calculate sample offset based on trim start
-      // Detect the actual sample rate from the waveform array length
-      const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
-      const detectedSampleRate = waveformLeft.length / fullDuration;
+      const { samplesPerPixel, trimStartSample } = computeWaveformGeometry({
+        dataLength: waveformLeft.length,
+        clipFullDuration,
+        clipTrimStart,
+        clipDuration,
+        pixelsPerSecond,
+        clipStretchFactor,
+      });
 
-      // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
-      // This prevents waveform stretching when trimming
-      const secondsPerPixel = 1 / pixelsPerSecond;
-      const samplesPerPixel = (secondsPerPixel * detectedSampleRate) / clipStretchFactor;
-      const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
-
-      // Calculate time selection bounds in pixels (if applicable)
-      let selStartPx = -1;
-      let selEndPx = -1;
-      if (inTimeSelection && timeSelectionRange) {
-        const clipEndTime = clipStartTime + clipDuration;
-        const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
-        const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
-        if (overlapStart < overlapEnd) {
-          selStartPx = (overlapStart - clipStartTime) * pixelsPerSecond;
-          selEndPx = (overlapEnd - clipStartTime) * pixelsPerSecond;
-        }
-      }
-
-      // Get waveform colors from CSS variables (theme tokens)
-      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
-      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim();
-      const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim();
-      const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
-      const selectedRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms-selected`).trim();
-      const timeSelectionRmsColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform-rms`).trim();
-
-      // Color functions for time-selection-aware rendering
-      const getWaveColor = (px: number) => px >= selStartPx && px < selEndPx ? timeSelectionWaveformColor : defaultWaveformColor;
-      const getRmsColor = (px: number) => px >= selStartPx && px < selEndPx ? timeSelectionRmsColor : defaultRmsColor;
+      const { getWaveColor, getRmsColor } = makeSelectionColorFns({
+        computedStyle,
+        colorPrefix: color,
+        inTimeSelection,
+        timeSelectionRange,
+        clipStartTime,
+        clipDuration,
+        pixelsPerSecond,
+      });
 
       // Draw L channel
       drawChannel(ctx, waveformLeft, canvasWidth, trimStartSample, samplesPerPixel, lChannelCenterY, lMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor);
@@ -520,41 +499,24 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       const centerY = canvasHeight / 2;
       const maxAmplitude = canvasHeight / 2 - 2;
 
-      // Calculate sample offset based on trim start
-      // Detect the actual sample rate from the waveform array length
-      const fullDuration = clipFullDuration || (clipTrimStart + clipDuration);
-      const detectedSampleRate = waveformData!.length / fullDuration;
+      const { samplesPerPixel, trimStartSample } = computeWaveformGeometry({
+        dataLength: waveformData!.length,
+        clipFullDuration,
+        clipTrimStart,
+        clipDuration,
+        pixelsPerSecond,
+        clipStretchFactor,
+      });
 
-      // IMPORTANT: Use fixed pixelsPerSecond to maintain constant waveform scale
-      // This prevents waveform stretching when trimming
-      const secondsPerPixel = 1 / pixelsPerSecond;
-      const samplesPerPixel = (secondsPerPixel * detectedSampleRate) / clipStretchFactor;
-      const trimStartSample = Math.floor(clipTrimStart * detectedSampleRate);
-
-      // Calculate time selection bounds in pixels (if applicable)
-      let selStartPx = -1;
-      let selEndPx = -1;
-      if (inTimeSelection && timeSelectionRange) {
-        const clipEndTime = clipStartTime + clipDuration;
-        const overlapStart = Math.max(clipStartTime, timeSelectionRange.startTime);
-        const overlapEnd = Math.min(clipEndTime, timeSelectionRange.endTime);
-        if (overlapStart < overlapEnd) {
-          selStartPx = (overlapStart - clipStartTime) * pixelsPerSecond;
-          selEndPx = (overlapEnd - clipStartTime) * pixelsPerSecond;
-        }
-      }
-
-      // Get waveform colors from CSS variables (theme tokens)
-      const defaultWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform`).trim();
-      const selectedWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-selected`).trim();
-      const timeSelectionWaveformColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform`).trim();
-      const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
-      const selectedRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms-selected`).trim();
-      const timeSelectionRmsColor = computedStyle.getPropertyValue(`--clip-${color}-time-selection-waveform-rms`).trim();
-
-      // Color functions for time-selection-aware rendering
-      const getWaveColor = (px: number) => px >= selStartPx && px < selEndPx ? timeSelectionWaveformColor : defaultWaveformColor;
-      const getRmsColor = (px: number) => px >= selStartPx && px < selEndPx ? timeSelectionRmsColor : defaultRmsColor;
+      const { getWaveColor, getRmsColor } = makeSelectionColorFns({
+        computedStyle,
+        colorPrefix: color,
+        inTimeSelection,
+        timeSelectionRange,
+        clipStartTime,
+        clipDuration,
+        pixelsPerSecond,
+      });
 
       drawChannel(ctx, waveformData!, canvasWidth, trimStartSample, samplesPerPixel, centerY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor);
 
