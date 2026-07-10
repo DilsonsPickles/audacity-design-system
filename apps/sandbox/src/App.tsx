@@ -8,7 +8,6 @@ import type { SpectrogramScale } from '@dilsonspickles/components';
 import { saveProject, getProject, getProjects } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
-import type { Track } from './contexts/TracksContext';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineContext';
 import { AppContextMenus } from './components/AppContextMenus';
@@ -31,7 +30,6 @@ const OAuthCallback = React.lazy(() =>
   import('./components/OAuthCallback').then(m => ({ default: m.OAuthCallback }))
 );
 import { RecordingManager } from './utils/RecordingManager';
-import { createMenuDefinitions } from './data/menuDefinitions';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from './contexts/AdieuContext';
 import { MuseHubHomeAccountCard } from './components/wallet/MuseHubHomeAccountCard';
@@ -63,6 +61,8 @@ import { PlaybackProvider } from './contexts/PlaybackContext';
 import { LoopRegionProvider } from './contexts/LoopRegionContext';
 import { cloudSummaryToStored, type CloudAudioFile } from './utils/cloudProjects';
 import { useProjectLifecycle } from './hooks/useProjectLifecycle';
+import { useMenuDefinitions } from './hooks/useMenuDefinitions';
+import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
 
 const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
 
@@ -786,120 +786,32 @@ function CanvasDemoContent() {
     adieuRefreshProjects,
   });
 
-  const menuDefinitions = createMenuDefinitions({
+  const menuDefinitions = useMenuDefinitions({
     isCloudProject,
     dontShowSaveModalAgain,
-    onImportAudio: handleImportAudio,
-    onSyncToast: handleSaveCloudProject,
-    onShowSaveProjectModal: () => setIsSaveProjectModalOpen(true),
-    onSaveToComputer: handleSaveToComputer,
-    onOpenLabelEditor: () => setIsLabelEditorOpen(true),
-    onOpenPreferences: () => setIsPreferencesModalOpen(true),
-    effectsPanelOpen: effectsPanel?.isOpen ?? false,
+    handleImportAudio,
+    handleSaveCloudProject,
+    setIsSaveProjectModalOpen,
+    handleSaveToComputer,
+    setIsLabelEditorOpen,
+    setIsPreferencesModalOpen,
+    effectsPanel,
+    setEffectsPanel,
     showRmsInWaveform,
+    setShowRmsInWaveform,
     showVerticalRulers,
-    selectedTrackIndices: state.selectedTrackIndices,
-    onToggleEffectsPanel: () => {
-      if (effectsPanel?.isOpen) {
-        setEffectsPanel(null);
-      } else {
-        const trackIndex = state.selectedTrackIndices.length > 0
-          ? state.selectedTrackIndices[0]
-          : 0;
-        setEffectsPanel({
-          isOpen: true,
-          trackIndex,
-          left: 0,
-          top: 0,
-          height: 600,
-          width: 240,
-        });
-      }
-    },
-    onToggleRmsInWaveform: () => setShowRmsInWaveform(!showRmsInWaveform),
-    onToggleVerticalRulers: () => setShowVerticalRulers(!showVerticalRulers),
-    pianoRollOpen: state.pianoRollOpen,
-    onTogglePianoRoll: () => {
-      if (state.pianoRollOpen) {
-        dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
-      } else {
-        // Find first MIDI track to open piano roll for
-        const midiTrackIndex = state.tracks.findIndex((t) => t.type === 'midi');
-        if (midiTrackIndex >= 0) {
-          const clipIndex = state.tracks[midiTrackIndex].midiClips?.length ? 0 : null;
-          dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex: midiTrackIndex, clipIndex } });
-        } else {
-          // Auto-create an empty MIDI track and open piano roll on it.
-          // Use max(id)+1 so the id doesn't collide after a middle track was deleted.
-          const newTrackIndex = state.tracks.length;
-          const nextTrackId = Math.max(...state.tracks.map((t) => t.id), 0) + 1;
-          const midiNamePattern = /^MIDI (\d+)$/;
-          const usedMidiNumbers = state.tracks
-            .map((t) => {
-              const m = midiNamePattern.exec(t.name ?? '');
-              return m ? parseInt(m[1], 10) : NaN;
-            })
-            .filter((n: number) => !isNaN(n));
-          const nextMidiNumber = usedMidiNumbers.length === 0 ? 1 : Math.max(...usedMidiNumbers) + 1;
-          const newTrack: Track = {
-            id: nextTrackId,
-            name: `MIDI ${nextMidiNumber}`,
-            type: 'midi',
-            height: 114,
-            clips: [],
-            midiClips: [],
-          };
-          dispatch({ type: 'ADD_TRACK', payload: newTrack });
-          dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex: newTrackIndex, clipIndex: null } });
-        }
-      }
-    },
+    setShowVerticalRulers,
+    state,
     rollInTimeEnabled,
-    onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),
-    onOpenPluginManager: () => setIsPluginManagerOpen(true),
-    onGenerateTone: handleGenerateTone,
-    onOpenMacroManager: () => setIsMacroManagerOpen(true),
+    setRollInTimeEnabled,
+    setIsPluginManagerOpen,
+    handleGenerateTone,
+    setIsMacroManagerOpen,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
-  // uses. We look up by item label so renaming the in-app menu in
-  // menuDefinitions automatically keeps the native menu in sync (rather
-  // than via brittle array indices).
-  const menuByLabel = React.useMemo(() => {
-    const map = new Map<string, (() => void) | undefined>();
-    for (const items of Object.values(menuDefinitions)) {
-      for (const item of items) {
-        if (item.label) map.set(item.label, item.onClick);
-      }
-    }
-    return map;
-  }, [menuDefinitions]);
-
-  const electronCommandsRef = React.useRef<Record<string, () => void>>({});
-  electronCommandsRef.current = {
-    'file:import': () => menuByLabel.get('Import')?.(),
-    'file:save': () => menuByLabel.get('Save Project')?.(),
-    'edit:labels': () => menuByLabel.get('Edit Labels...')?.(),
-    'edit:preferences': () => menuByLabel.get('Preferences')?.(),
-    'view:toggle-effects': () => menuByLabel.get('Show effects')?.(),
-    'view:toggle-rms': () => menuByLabel.get('Show RMS in waveform')?.(),
-    'view:toggle-rulers': () => menuByLabel.get('Show vertical rulers')?.(),
-    'view:toggle-piano-roll': () => menuByLabel.get('Show piano roll')?.(),
-    'record:toggle-lead-in': () => menuByLabel.get('Enable lead in time')?.(),
-    'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),
-    'generate:tone': () => menuByLabel.get('Tone...')?.(),
-    'tools:manage-macros': () => menuByLabel.get('Manage macros...')?.(),
-  };
-
-  React.useEffect(() => {
-    const api = (window as unknown as {
-      electronMenu?: { onCommand: (cb: (cmd: string) => void) => () => void };
-    }).electronMenu;
-    if (!api) return;
-    return api.onCommand((cmd) => {
-      electronCommandsRef.current[cmd]?.();
-    });
-  }, []);
+  // uses.
+  useElectronMenuBridge({ menuDefinitions });
 
   // Tools toolbar — defined once so we can render it at the top or the
   // bottom of the layout based on `toolToolbarDock`. The gripper inside
