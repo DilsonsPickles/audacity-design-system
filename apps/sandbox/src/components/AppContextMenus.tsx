@@ -5,6 +5,7 @@ import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@dilsonspickles/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
+import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { useTracks } from '../contexts/TracksContext';
 import type { Track, Clip } from '../contexts/TracksContext';
@@ -28,12 +29,6 @@ export interface AppContextMenusProps {
   setShowVerticalRulers: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Loop region
-  loopRegionEnabled: boolean;
-  setLoopRegionEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-  loopRegionStart: number | null;
-  setLoopRegionStart: React.Dispatch<React.SetStateAction<number | null>>;
-  loopRegionEnd: number | null;
-  setLoopRegionEnd: React.Dispatch<React.SetStateAction<number | null>>;
   timeSelection: { startTime: number; endTime: number } | null;
   bpm: number;
   beatsPerMeasure: number;
@@ -56,9 +51,6 @@ export function AppContextMenus({
   pinnedPlayHead, setPinnedPlayHead,
   clickRulerToStartPlayback, setClickRulerToStartPlayback,
   showVerticalRulers, setShowVerticalRulers,
-  loopRegionEnabled, setLoopRegionEnabled,
-  loopRegionStart, setLoopRegionStart,
-  loopRegionEnd, setLoopRegionEnd,
   timeSelection, bpm, beatsPerMeasure,
   onClipboardSet,
   os,
@@ -74,6 +66,11 @@ export function AppContextMenus({
     effectSelectorMenu, setEffectSelectorMenu,
     setEffectDialog,
   } = useContextMenus();
+  const {
+    loopRegionEnabled, setLoopRegionEnabled,
+    loopRegionStart, setLoopRegionStart,
+    loopRegionEnd, setLoopRegionEnd,
+  } = useLoopRegionContext();
 
   // Returns focus to the menu's originating button after it closes.
   // Used by every track-context-menu action that calls

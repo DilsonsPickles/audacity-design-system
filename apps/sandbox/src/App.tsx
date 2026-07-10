@@ -1684,12 +1684,6 @@ function CanvasDemoContent() {
         setClickRulerToStartPlayback={setClickRulerToStartPlayback}
         showVerticalRulers={showVerticalRulers}
         setShowVerticalRulers={setShowVerticalRulers}
-        loopRegionEnabled={loopRegionEnabled}
-        setLoopRegionEnabled={setLoopRegionEnabled}
-        loopRegionStart={loopRegionStart}
-        setLoopRegionStart={setLoopRegionStart}
-        loopRegionEnd={loopRegionEnd}
-        setLoopRegionEnd={setLoopRegionEnd}
         timeSelection={state.timeSelection}
         bpm={bpm}
         beatsPerMeasure={beatsPerMeasure}
