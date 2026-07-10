@@ -75,6 +75,7 @@ import { saveCloudProject } from './utils/saveCloudProject';
 import { useProjectAutoSave } from './hooks/useProjectAutoSave';
 import { useCloudProjectCleanup } from './hooks/useCloudProjectCleanup';
 import { PlaybackProvider } from './contexts/PlaybackContext';
+import { LoopRegionProvider } from './contexts/LoopRegionContext';
 
 const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
 
@@ -574,6 +575,12 @@ function CanvasDemoContent() {
   const masterLevelRight = React.useMemo(() => Math.max(-60, masterLevelLeft - 0.5), [masterLevelLeft]);
 
   // Loop region
+  const loopRegion = useLoopRegion({
+    audioManagerRef,
+    timeSelection: state.timeSelection,
+    bpm,
+    beatsPerMeasure,
+  });
   const {
     loopRegionEnabled, setLoopRegionEnabled,
     loopRegionStart, setLoopRegionStart,
@@ -581,12 +588,7 @@ function CanvasDemoContent() {
     loopRegionInteracting, setLoopRegionInteracting,
     loopRegionHovering, setLoopRegionHovering,
     toggleLoopRegion,
-  } = useLoopRegion({
-    audioManagerRef,
-    timeSelection: state.timeSelection,
-    bpm,
-    beatsPerMeasure,
-  });
+  } = loopRegion;
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -1165,6 +1167,7 @@ function CanvasDemoContent() {
 
   return (
     <PlaybackProvider value={playback}>
+    <LoopRegionProvider value={loopRegion}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       {!IS_ELECTRON && (
         <ApplicationHeader
@@ -1785,6 +1788,7 @@ function CanvasDemoContent() {
         </Dialog>
       )}
     </div>
+    </LoopRegionProvider>
     </PlaybackProvider>
   );
 }
