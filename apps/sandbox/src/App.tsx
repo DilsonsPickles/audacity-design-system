@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ProjectToolbar, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@dilsonspickles/components';
@@ -14,8 +14,9 @@ import { AppContextMenus } from './components/AppContextMenus';
 import { AppDialogs } from './components/AppDialogs';
 import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
-import { TransportToolbar } from '@dilsonspickles/components';
 import { EditorLayout } from './components/EditorLayout';
+import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
+import { ProjectToolbarContainer } from './components/ProjectToolbarContainer';
 const TokenReview = React.lazy(() =>
   import('./pages/TokenReview').then(m => ({ default: m.TokenReview }))
 );
@@ -101,7 +102,7 @@ function CanvasDemoContent() {
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
     setIsPluginManagerOpen, setIsMacroManagerOpen,
-    setAlertDialogOpen, setIsDebugPanelOpen,
+    setAlertDialogOpen,
     showMissingPlugins,
   } = useDialogs();
 
@@ -401,9 +402,9 @@ function CanvasDemoContent() {
     beatsPerMeasure,
   });
   const {
-    loopRegionEnabled, setLoopRegionEnabled,
-    loopRegionStart, setLoopRegionStart,
-    loopRegionEnd, setLoopRegionEnd,
+    loopRegionEnabled,
+    loopRegionStart,
+    loopRegionEnd,
     toggleLoopRegion,
   } = loopRegion;
 
@@ -815,72 +816,47 @@ function CanvasDemoContent() {
 
   // Tools toolbar — defined once so we can render it at the top or the
   // bottom of the layout based on `toolToolbarDock`. The gripper inside
-  // calls `onDockChange` on drag-release.
-  const transportToolbarElement = (
-    <TransportToolbar
-      activeMenuItem={activeMenuItem}
-      workspace={workspace}
-      isPlaying={isPlaying}
-      isRecording={state.isRecording}
-      onPlay={handlePlay}
-      onStop={handleStop}
-      onRecord={handleRecord}
-      useSplitRecordButton={useSplitRecordButton}
-      rollInTimeEnabled={rollInTimeEnabled}
-      onToggleRollInTime={() => setRollInTimeEnabled(!rollInTimeEnabled)}
-      snapEnabled={snapEnabled}
-      onToggleSnap={() => setSnapEnabled(!snapEnabled)}
-      snapSubdivision={state.canvasSnap.subdivision}
-      onSnapSubdivisionChange={(subdivision) => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, subdivision } })}
-      snapTriplet={state.canvasSnap.triplet ?? false}
-      onToggleSnapTriplet={() => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, triplet: !state.canvasSnap.triplet } })}
-      snapMode={snapMode}
-      onSnapModeChange={setSnapMode}
-      loopRegionEnabled={loopRegionEnabled}
-      loopRegionStart={loopRegionStart}
-      loopRegionEnd={loopRegionEnd}
-      setLoopRegionEnabled={setLoopRegionEnabled}
-      setLoopRegionStart={setLoopRegionStart}
-      setLoopRegionEnd={setLoopRegionEnd}
-      timeSelection={state.timeSelection}
-      bpm={bpm}
-      onBpmChange={setBpm}
-      beatsPerMeasure={beatsPerMeasure}
-      noteValue={noteValue}
-      onTimeSignatureChange={(sig) => {
+  // calls `onDockChange` on drag-release. Grouped into cohesive object
+  // props consumed by TransportToolbarContainer (loop-region props are
+  // read from LoopRegionContext by the container itself).
+  const transportToolbarProps: TransportToolbarContainerProps = {
+    transport: {
+      activeMenuItem,
+      workspace,
+      isPlaying,
+      isRecording: state.isRecording,
+      onPlay: handlePlay,
+      onStop: handleStop,
+      onRecord: handleRecord,
+      useSplitRecordButton,
+      rollInTimeEnabled,
+      onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),
+      timeSelection: state.timeSelection,
+      bpm,
+      onBpmChange: setBpm,
+      beatsPerMeasure,
+      noteValue,
+      onTimeSignatureChange: (sig) => {
         setBeatsPerMeasure(sig.numerator);
         setNoteValue(sig.denominator);
-      }}
-      envelopeMode={state.envelopeMode}
-      spectrogramMode={state.spectrogramMode}
-      splitMode={state.splitMode}
-      onToggleEnvelope={handleToggleEnvelope}
-      onToggleSpectrogram={handleToggleSpectrogram}
-      onToggleSplit={() => dispatch({ type: 'SET_SPLIT_MODE', payload: !state.splitMode })}
-      onZoomIn={zoomIn}
-      onZoomOut={zoomOut}
-      onZoomToSelection={zoomToSelection}
-      onZoomToFitProject={zoomToFitProject}
-      onZoomToggle={zoomToggle}
-      currentTime={currentTime}
-      timeCodeFormat={timeCodeFormat}
-      onTimeCodeChange={(newTime) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime })}
-      onTimeCodeFormatChange={setTimeCodeFormat}
-      onShareClick={() => setIsShareDialogOpen(true)}
-      onExportAudioClick={() => {
+      },
+      envelopeMode: state.envelopeMode,
+      spectrogramMode: state.spectrogramMode,
+      splitMode: state.splitMode,
+      onToggleEnvelope: handleToggleEnvelope,
+      onToggleSpectrogram: handleToggleSpectrogram,
+      onToggleSplit: () => dispatch({ type: 'SET_SPLIT_MODE', payload: !state.splitMode }),
+      onZoomIn: zoomIn,
+      onZoomOut: zoomOut,
+      onZoomToSelection: zoomToSelection,
+      onZoomToFitProject: zoomToFitProject,
+      onZoomToggle: zoomToggle,
+      onShareClick: () => setIsShareDialogOpen(true),
+      onExportAudioClick: () => {
         setInitialExportType('full-project');
         setIsExportModalOpen(true);
-      }}
-      masterLevelLeft={masterLevelLeft}
-      masterLevelRight={masterLevelRight}
-      masterClippedLeft={masterLevelLeft >= 0}
-      masterClippedRight={masterLevelRight >= 0}
-      masterVolume={masterVolume}
-      onMasterVolumeChange={handleMasterVolumeChange}
-      meterOrientation={meterOrientation}
-      onMeterOrientationChange={setMeterOrientation}
-      onGripperMouseDown={handleToolbarGripperMouseDown}
-      onExportLoopRegionClick={() => {
+      },
+      onExportLoopRegionClick: () => {
         if (!loopRegionEnabled || loopRegionStart === null || loopRegionEnd === null) {
           setAlertDialogTitle('No loop region');
           setAlertDialogMessage('Export audio in loop region requires an active loop in the project. Please go back, create a loop and try again.');
@@ -889,9 +865,37 @@ function CanvasDemoContent() {
         }
         setInitialExportType('loop-region');
         setIsExportModalOpen(true);
-      }}
-    />
-  );
+      },
+    },
+    snap: {
+      snapEnabled,
+      onToggleSnap: () => setSnapEnabled(!snapEnabled),
+      snapSubdivision: state.canvasSnap.subdivision,
+      onSnapSubdivisionChange: (subdivision) => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, subdivision } }),
+      snapTriplet: state.canvasSnap.triplet ?? false,
+      onToggleSnapTriplet: () => dispatch({ type: 'SET_CANVAS_SNAP', payload: { ...state.canvasSnap, triplet: !state.canvasSnap.triplet } }),
+      snapMode,
+      onSnapModeChange: setSnapMode,
+    },
+    timecode: {
+      currentTime,
+      timeCodeFormat,
+      onTimeCodeChange: (newTime) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: newTime }),
+      onTimeCodeFormatChange: setTimeCodeFormat,
+    },
+    masterMeter: {
+      masterVolume,
+      handleMasterVolumeChange,
+      masterLevelLeft,
+      masterLevelRight,
+      meterOrientation,
+      onMeterOrientationChange: setMeterOrientation,
+    },
+    gripper: {
+      onGripperMouseDown: handleToolbarGripperMouseDown,
+    },
+  };
+  const transportToolbarElement = <TransportToolbarContainer {...transportToolbarProps} />;
 
   return (
     <PlaybackProvider value={playback}>
@@ -903,71 +907,19 @@ function CanvasDemoContent() {
           menuDefinitions={menuDefinitions}
         />
       )}
-      <ProjectToolbar
-        activeItem={activeMenuItem}
-        onMenuItemClick={async (item) => {
-          setActiveMenuItem(item);
-          // Force HomeTab to remount and reload projects when navigating back to home
-          if (item === 'home') {
-            setHomeTabKey(prev => prev + 1);
-            // Load projects from IndexedDB
-            const projects = await getProjects();
-            setIndexedDBProjects(projects);
-          }
-          // Auto-create a new project if navigating to project tab with no active project
-          if (item === 'project' && !currentProjectId) {
-            await createNewProject();
-            // Reload projects list so HomeTab will have the fresh project when user navigates back
-            const projects = await getProjects();
-            setIndexedDBProjects(projects);
-          }
-          if (item === 'debug') {
-            setIsDebugPanelOpen(true);
-          }
-        }}
-        showDebugMenu={true}
-        centerActions={activeMenuItem !== 'export' ? [
-          ...(showMixer ? [{
-            icon: 'mixer' as const,
-            label: 'Mixer',
-            onClick: () => setMixerPanelOpen(prev => !prev),
-          }] : []),
-          {
-            icon: 'cog' as const,
-            label: 'Audio setup',
-            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              setAudioSetupMenuAnchor({ x: rect.left, y: rect.bottom + 4 });
-            },
-          },
-          {
-            icon: 'cloud' as const,
-            label: 'Share audio',
-            onClick: () => setIsShareDialogOpen(true),
-          },
-          {
-            icon: 'plugins' as const,
-            label: 'Get effects',
-            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              setMarketplaceModal({ open: true, anchorRect: rect });
-            },
-          },
-        ] : undefined}
-        workspaceSelector={activeMenuItem !== 'export' ? {
-          value: workspace,
-          options: [
-            { value: 'music', label: 'Music' },
-            { value: 'classic', label: 'Classic' },
-            { value: 'modern', label: 'Modern' },
-            { value: 'spectral-editing', label: 'Spectral editing' },
-          ],
-          onChange: (next: string) => handleWorkspacePick(next as Workspace),
-        } : undefined}
-        historyActions={activeMenuItem !== 'export' ? {
-          onUndo: () => dispatch({ type: 'UNDO' }),
-          onRedo: () => dispatch({ type: 'REDO' }),
-        } : undefined}
+      <ProjectToolbarContainer
+        activeMenuItem={activeMenuItem}
+        setActiveMenuItem={setActiveMenuItem}
+        setHomeTabKey={setHomeTabKey}
+        setIndexedDBProjects={setIndexedDBProjects}
+        currentProjectId={currentProjectId}
+        createNewProject={createNewProject}
+        showMixer={showMixer}
+        setMixerPanelOpen={setMixerPanelOpen}
+        setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}
+        setMarketplaceModal={setMarketplaceModal}
+        workspace={workspace}
+        onWorkspacePick={handleWorkspacePick}
       />
       {toolbarPosition.kind === 'top' && transportToolbarElement}
 
