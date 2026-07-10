@@ -4,7 +4,7 @@ import type { SpectrogramScale } from '@dilsonspickles/components';
 import { ENVELOPE_POINT_STYLES, type EnvelopePointStyleKey, type SnapGrid, type MidiClip } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch, type Clip } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
-import { usePreferences } from '@dilsonspickles/components';
+import { useEditingBehaviorPrefs, useAppearancePrefs } from '@dilsonspickles/components';
 import { useClipDragging } from '../hooks/useClipDragging';
 import { useClipTrimming } from '../hooks/useClipTrimming';
 import { useClipStretching } from '../hooks/useClipStretching';
@@ -202,7 +202,8 @@ export function Canvas({
   onHoverMidiClip,
 }: CanvasProps) {
   const { theme } = useTheme();
-  const { preferences } = usePreferences();
+  const { trackSelectionMode } = useEditingBehaviorPrefs();
+  const { clipStyle } = useAppearancePrefs();
   const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode, focusedTrackIndex, splitMode, playheadPosition } = useTracksState();
   const { spectralSelection, setSpectralSelection } = useSpectralSelection();
   const dispatch = useTracksDispatch();
@@ -1118,7 +1119,7 @@ export function Canvas({
                     const newSelection: number[] = [];
                     for (let i = start; i <= end; i++) newSelection.push(i);
                     dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                  } else if (preferences.trackSelectionMode === 'follows-focus' && !decouple) {
+                  } else if (trackSelectionMode === 'follows-focus' && !decouple) {
                     // Plain arrow in follows-focus mode: selection moves
                     // with focus. Cmd held = "decouple": focus moves
                     // alone so the user can peek around without
@@ -1320,7 +1321,7 @@ export function Canvas({
 
                 timeSelection={timeSelection && (timeSelection.renderOnCanvas !== false) ? timeSelection : null}
                 isTimeSelectionDragging={selection.selection.isDragging}
-                clipStyle={preferences.clipStyle}
+                clipStyle={clipStyle}
                 color={track.color}
                 recordingClipId={recordingClipId}
                 onFocusChange={(hasFocus) => onTrackFocusChange?.(trackIndex, hasFocus)}

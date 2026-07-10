@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction, Clip } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
-import { scrollIntoViewIfNeeded, usePreferences, announce } from '@dilsonspickles/components';
+import { scrollIntoViewIfNeeded, useEditingBehaviorPrefs, announce } from '@dilsonspickles/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';
@@ -56,7 +56,7 @@ export interface UseKeyboardShortcutsOptions {
  * Routes key events to domain-specific handler modules.
  */
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
-  const { preferences } = usePreferences();
+  const { trackSelectionMode } = useEditingBehaviorPrefs();
   const {
     state,
     dispatch,
@@ -103,7 +103,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
   useEffect(() => {
     const transportDeps = { state, handlePlay, handleRecord, handleStopRecording, setEffectsPanel, toggleLoopRegion };
-    const navDeps = { state, dispatch, selectionAnchor, setSelectionAnchor, selectionAnchorRef, selectionEdgesRef, isFlatNavigation, scrollPlayheadIntoView, trackSelectionMode: preferences.trackSelectionMode };
+    const navDeps = { state, dispatch, selectionAnchor, setSelectionAnchor, selectionAnchorRef, selectionEdgesRef, isFlatNavigation, scrollPlayheadIntoView, trackSelectionMode };
     const playheadDeps = { state, dispatch, selectionAnchorRef, selectionEdgesRef, scrollPlayheadIntoView };
     const clipboardDeps = { state, dispatch, clipboard, setClipboard, audioManagerRef };
 
@@ -422,7 +422,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
               if (nextIndex >= 0 && nextIndex < state.tracks.length) {
                 e.preventDefault();
                 dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                if (preferences.trackSelectionMode === 'follows-focus') {
+                if (trackSelectionMode === 'follows-focus') {
                   dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
                   setSelectionAnchor(nextIndex);
                 }
@@ -478,7 +478,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           e.preventDefault();
           const targetIndex = e.key === 'ArrowDown' ? 0 : state.tracks.length - 1;
           dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
-          if (preferences.trackSelectionMode === 'follows-focus') {
+          if (trackSelectionMode === 'follows-focus') {
             dispatch({ type: 'SELECT_TRACK', payload: targetIndex });
             setSelectionAnchor(targetIndex);
           }
@@ -928,7 +928,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     dispatch,
     isFlatNavigation,
     toggleLoopRegion,
-    preferences.trackSelectionMode,
+    trackSelectionMode,
     effectsPanel,
   ]);
 }

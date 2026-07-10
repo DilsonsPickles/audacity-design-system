@@ -5,7 +5,7 @@ import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, usePreferences, PianoRollPanel, PanelHeader } from '@dilsonspickles/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, PianoRollPanel, PanelHeader } from '@dilsonspickles/components';
 import type { SpectrogramScale, WaveformRulerFormat, PanelHeaderTab, ThemeTokens } from '@dilsonspickles/components';
 import { MixerPanel, type MixerPanelChannel } from '@dilsonspickles/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
@@ -157,7 +157,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   } = useLoopRegionContext();
 
   const { audioManagerRef } = usePlayback();
-  const { preferences } = usePreferences();
+  const { trackSelectionMode } = useEditingBehaviorPrefs();
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
     effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
@@ -925,7 +925,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   const nextIndex = index + 1;
                   if (nextIndex < state.tracks.length) {
                     dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                    if (preferences.trackSelectionMode === 'follows-focus') {
+                    if (trackSelectionMode === 'follows-focus') {
                       dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
                       setSelectionAnchor(nextIndex);
                     }
@@ -1403,7 +1403,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                         // Fall back to focusing the track container
                         // if the panel can't be found.
                         dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                        if (preferences.trackSelectionMode === 'follows-focus') {
+                        if (trackSelectionMode === 'follows-focus') {
                           dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
                           setSelectionAnchor(nextIndex);
                         }
@@ -1540,7 +1540,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     // blue outline (focusedTrackIndex), selection
                     // (in follows-focus mode), and DOM focus.
                     dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                    if (preferences.trackSelectionMode === 'follows-focus') {
+                    if (trackSelectionMode === 'follows-focus') {
                       dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
                       setSelectionAnchor(nextIndex);
                     }

@@ -7,7 +7,7 @@
 // and triggers it at the Installation step.
 
 import React from 'react';
-import { usePreferences } from '@dilsonspickles/components';
+import { useGeneralPrefs } from '@dilsonspickles/components';
 import { useMuseHub } from '../contexts/MuseHubContext';
 import './InstallerWizardDialog.css';
 
@@ -31,8 +31,8 @@ const WIN_LABELS: Record<Step, string> = {
 };
 
 export const InstallerWizardDialog: React.FC = () => {
-  const { preferences } = usePreferences();
-  const os = preferences.operatingSystem;
+  const { operatingSystem } = useGeneralPrefs();
+  const os = operatingSystem;
   const {
     installerWizardEffect: effect,
     closeInstallerWizard,
