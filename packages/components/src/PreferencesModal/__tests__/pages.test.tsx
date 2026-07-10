@@ -7,6 +7,10 @@ import { PreferencesProvider } from '../../contexts/PreferencesContext';
 import { EditingPage } from '../pages/EditingPage';
 import { ShortcutsPage } from '../pages/ShortcutsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
+import { GeneralPage } from '../pages/GeneralPage';
+import { AppearancePage } from '../pages/AppearancePage';
+import { PluginsPage } from '../pages/PluginsPage';
+import { CloudPage } from '../pages/CloudPage';
 
 afterEach(cleanup);
 
@@ -47,5 +51,41 @@ describe('preferences pages render', () => {
     );
     expect(container.querySelector('.preferences-page')).toBeTruthy();
     expect(container.textContent).toContain('Test Page');
+  });
+
+  it('GeneralPage renders', () => {
+    const { container } = render(
+      <Providers>
+        <GeneralPage />
+      </Providers>
+    );
+    expect(container.querySelector('.preferences-page')).toBeTruthy();
+  });
+
+  it('AppearancePage renders', () => {
+    const { container } = render(
+      <Providers>
+        <AppearancePage />
+      </Providers>
+    );
+    expect(container.querySelector('.preferences-page')).toBeTruthy();
+  });
+
+  it('PluginsPage renders', () => {
+    const { container } = render(
+      <Providers>
+        <PluginsPage />
+      </Providers>
+    );
+    expect(container.querySelector('.preferences-page')).toBeTruthy();
+  });
+
+  it('CloudPage renders', () => {
+    const { container } = render(
+      <Providers>
+        <CloudPage />
+      </Providers>
+    );
+    expect(container.querySelector('.preferences-page')).toBeTruthy();
   });
 });
