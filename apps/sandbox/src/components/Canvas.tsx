@@ -21,6 +21,8 @@ import { LabelRenderer } from './LabelRenderer';
 import { GridOverlay } from './GridOverlay';
 import { calculateTrackYOffset } from '../utils/trackLayout';
 import { resolveTrackIndexFromY } from '../utils/canvasGeometry';
+import { computeCanvasHeights } from '../utils/canvasLayout';
+import { resolveSnapGuideline } from '../utils/snapGuideline';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT, CLIP_HEADER_HEIGHT } from '../constants/canvas';
 import type { SnapOptions } from '../utils/snapToGrid';
 import './Canvas.css';
@@ -393,10 +395,11 @@ export function Canvas({
 
   // Whichever drag is active reports its snap target; we render at
   // most one guideline. Cyan for grid snap, yellow for alignment snap.
-  const snapGuidelineTime =
-    dragSnapGuidelineTime ?? trimSnapGuidelineTime ?? stretchSnapGuidelineTime;
-  const snapGuidelineKind =
-    dragSnapGuidelineKind ?? trimSnapGuidelineKind ?? stretchSnapGuidelineKind;
+  const { time: snapGuidelineTime, kind: snapGuidelineKind } = resolveSnapGuideline(
+    { time: dragSnapGuidelineTime, kind: dragSnapGuidelineKind },
+    { time: trimSnapGuidelineTime, kind: trimSnapGuidelineKind },
+    { time: stretchSnapGuidelineTime, kind: stretchSnapGuidelineKind }
+  );
   const snapGuidelineColor = snapGuidelineKind === 'grid' ? '#22D3EE' : '#FFD60A';
   const snapGuidelineShadow = snapGuidelineKind === 'grid'
     ? '0 0 4px rgba(34, 211, 238, 0.6)'
@@ -454,13 +457,16 @@ export function Canvas({
   });
 
   // Calculate total height based on all tracks + 2px gaps (top + between tracks)
-  const tracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
-  const totalHeight = tracksHeight;
   // Height of the canvas-container element, including the empty
   // bottom buffer so gridlines extend through the scroll-buffer
   // area below the last track. minHeight still pins to the viewport
   // when there are very few tracks.
-  const containerHeight = totalHeight + bottomBuffer;
+  const { totalHeight, containerHeight } = computeCanvasHeights(tracks, {
+    topGap: TOP_GAP,
+    trackGap: TRACK_GAP,
+    defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
+    bottomBuffer,
+  });
 
   // --- Split tool (state + effects + handlers extracted to useSplitTool) ---
   // splitTool is wired into the container event handlers below.
