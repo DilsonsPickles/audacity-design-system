@@ -6,6 +6,44 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Start with **`docs/codebase-map.md`** — the canonical "where does X live" index for this monorepo. Prefer it over hunting through directories.
 
+## Working Here — Agent Onboarding
+
+This codebase is deliberately kept agent-ready: typed (no unguarded `any`), tested, and mapped. Keep it that way.
+
+### Gates — run before every commit
+
+```bash
+pnpm --filter @audacity-ui/sandbox test        # sandbox suite
+pnpm --filter @dilsonspickles/components test  # components suite
+npx tsc --noEmit                               # inside whichever package you touched
+node scripts/check-any.mjs                     # from repo root
+```
+
+**The baseline is fully green** (as of 2026-07-11: sandbox 290 passed, components 75 passed, 0 tsc errors in both, guard 0 violations). If a gate fails, your change caused it — do not assume pre-existing breakage. Every `any` (including `as any`, `Record<string, any>`, etc.) needs a `// justified: <reason>` comment or the guard fails.
+
+### Load-bearing conventions — violating these causes real bugs
+
+- **Ref-mirror for document listeners**: hooks that bind document-level `mousemove`/`mouseup`/`keyup` listeners bind ONCE and mirror frequently-changing props into refs (`useEffect(() => { ref.current = val }, [val])`) so the handler reads live state without re-binding. See the explanatory comment in `apps/sandbox/src/hooks/useClipTrimming.ts` (~lines 85–96). Exception: self-cleaning attach-on-mousedown/remove-on-mouseup handlers (e.g. `useDraggableToolbar`) don't need it.
+- **App.tsx hook order is a dependency chain** — never reorder: `recordingManagerRef` → `usePlaybackControls` (creates `audioManagerRef`) → `useRecording` → `useLoopRegion` → `useKeyboardShortcuts`. Also: `useCanvasScrollSync` must come after `useZoomControls`.
+- **Provider order**: `PreferencesProvider` sits ABOVE `ThemeProvider` (`preferences.theme` gates `ThemedApp`); `LoopRegionProvider` sits inside `PlaybackProvider` (its consumers use `usePlayback().audioManagerRef`).
+- **Canvas Shift+Click time-range logic lives on `click`, not `mousedown`** (it must fire after `useAudioSelection`'s mouseup). In `useCanvasPointerHandlers`, `onMouseMove`/`onMouseLeave` must keep chaining `containerProps.*` or the ew-resize hover cursor strands.
+- **ClipBody perf contract**: the pixel redraw is keyed on `useDeferredValue(height)` (`drawHeight`); CSS sizing uses the live `height`. Never swap these. No allocations inside per-pixel draw loops.
+- **`useKeyboardShortcuts` is an order-coupled guard chain** — handlers early-return in sequence; insert new handlers deliberately, don't append blindly.
+- **`pendingClipMoveResolution`** is a module-scoped singleton ref shared by Canvas, `useCmdArrowMove`, `useTrackKeyboardHandlers`, and `useKeyboardShortcuts` — import it, never recreate it.
+- **Accessibility profile ids** are `'au4-tab-groups'` and `'wcag-flat'`. Unknown ids silently fall back to flat navigation — always pass a real id (this exact footgun silently broke the TrackNew tests for months).
+- **Preferences persistence**: ONE localStorage key (`'audacity-preferences'`), whole-blob JSON, merge-on-load (`{ ...defaults, ...stored }`). Hot consumers use the domain slice hooks (`useGeneralPrefs` / `useAppearancePrefs` / `useEditingBehaviorPrefs`); the preferences modal uses the full `usePreferences`.
+
+### Refactoring discipline
+
+- Behavior-preserving is the default. Move code VERBATIM; disclose any deliberate change in the commit message.
+- Deliberately-unwired UI exists — do not "fix" it in passing: the PreferencesModal footer Reset button is a stub; several EditingPage/AudioSettingsPage/SpectralDisplayPage controls are intentionally not persisted; the Music and Advanced-options nav items have no pages.
+
+### Product rules (user decisions — never violate)
+
+- Time-stretch applies to AUDIO clips only; `MidiClip` never gets `stretchFactor`.
+- Clip-group copies never tether to original groups: a fresh group is created iff a whole group is copied whole; otherwise copies are ungrouped.
+- Time-selection drags never mutate track selection; the selection's vertical scope lives on `TimeSelection.tracks`, resolved via scope → `selectedTrackIndices` → all tracks.
+
 ## Repository Overview
 
 This is a **pnpm monorepo** for the Audacity Design System - a collection of reusable UI components for audio editing applications.
@@ -85,6 +123,10 @@ pnpm test:coverage
 
 # Run tests for a single package
 pnpm --filter @audacity-ui/sandbox test
+pnpm --filter @dilsonspickles/components test
+
+# Run a single test file (from inside the package)
+npx vitest run TrackNew
 ```
 
 ### Stack
@@ -105,7 +147,7 @@ packages/components/src/
 
 ### Writing Component Tests
 
-**Required providers** — Components using hooks (`useContainerTabGroup`, `useTheme`, etc.) need context wrappers:
+**Required providers** — Components using hooks (`useContainerTabGroup`, `useTheme`, `usePreferences`, etc.) need context wrappers. IMPORTANT: pass a REAL profile id to `AccessibilityProfileProvider` — omitting it (or passing an unknown id) silently falls back to flat navigation and roving-tabindex assertions will fail mysteriously:
 ```tsx
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
@@ -113,13 +155,14 @@ import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfil
 function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
-      <AccessibilityProfileProvider>
+      <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
         {children}
       </AccessibilityProfileProvider>
     </ThemeProvider>
   );
 }
 ```
+Components reading preferences additionally need `PreferencesProvider` (outermost — see `packages/components/src/PreferencesModal/__tests__/pages.test.tsx` for a working example).
 
 **Scoped queries** — Always query from the `container` returned by `render()`, not from `document`. React 19 + jsdom does not reliably clean up between tests, so `document.querySelector` can return stale elements from previous renders:
 ```tsx
@@ -192,16 +235,20 @@ afterEach(cleanup);
 ### Key Components in `apps/sandbox/`
 
 **Main Canvas:**
-- `Canvas.tsx` - Main rendering coordinator (large — see `docs/codebase-map.md`)
-  - Manages track layout, time selection, spectral selection
-  - Coordinates TrackNew components, label rendering, and overlays
-  - Uses custom hooks for modular interaction handling
+- `Canvas.tsx` - Rendering coordinator (~770 lines after decomposition — see `docs/codebase-map.md`)
+  - Wires interaction hooks together and assembles selection/overlay state
+  - Per-track rendering lives in `components/canvas/CanvasTrackList.tsx` (TrackNew wiring + clip handler bodies + ~10 tracks-reducer dispatch types — deliberate, mirrors pre-decomposition Canvas)
+  - Overlays are presentational components in `components/canvas/` (SnapGuideline, SplitPreviewLine, MarqueeRect)
   - Wraps labels in overflow container to clip without hiding focus outline
 
-**Custom Hooks:**
-- `useClipDragging.ts` - Handles clip dragging with multi-select support
-- `useClipTrimming.ts` - Handles clip left/right edge trimming
-- `useLabelDragging.ts` - Handles label drag interactions
+**Custom Hooks (interaction):**
+- `useClipDragging.ts` / `useClipTrimming.ts` / `useClipStretching.ts` - Mouse clip editing (ref-mirror pattern)
+- `useLabelDragging.ts` - Label drag interactions
+- `useCanvasPointerHandlers.ts` - The canvas container's nine mouse handlers (click/selection/context-menu/double-click)
+- `useTrackKeyboardHandlers.ts` - Track navigate/reorder keyboard handling
+- `useCmdArrowMove.ts` - Cmd/Ctrl-release overlap resolution for keyboard clip moves
+- `useCanvasScrollSync.ts` - Wheel-zoom + two-pane scroll echo-absorb sync
+- App-level: `useProjectLifecycle`, `useMenuDefinitions`, `useElectronMenuBridge`, `usePlugins`, `useDraggableToolbar`, `useMasterMeter`, `useAudioDeviceMenu` (see codebase-map for the full list)
 
 **Label Rendering:**
 - `LabelRenderer.tsx` - Dedicated component for rendering labels
@@ -322,7 +369,9 @@ Other layout constants:
 - ✅ **Vertical rulers** - Dual rulers for split view (frequency + amplitude)
 - ✅ **Effects panel** - Complete with tab navigation and grid keyboard navigation
 - ✅ **Accessibility** - Tab groups, roving tabindex, composite widgets, WCAG compliance
-- ✅ Canvas.tsx decomposed — clip dragging, clip trimming, label dragging, and label rendering extracted to dedicated hooks/components
+- ✅ **Type campaign** — whole-app `any` elimination, enforced by `scripts/check-any.mjs` (every `any` carries `// justified:`)
+- ✅ **Structural decomposition** (fable5-finalize, 2026-07-11) — App.tsx 1864→1244, Canvas.tsx 1959→771, PreferencesModal 1979→210; LoopRegionContext + preference domain slices extracted; per-page modal files
+- ✅ **Green test/type baseline** — both packages fully green (no pre-existing failures to work around)
 
 **Next Steps (per roadmap):**
 1. Setup Storybook stories in `apps/docs/` for component documentation
@@ -345,14 +394,14 @@ Other layout constants:
 - `packages/audio/src/AudioPlaybackManager.ts` - Tone.js audio playback manager
 
 **Sandbox Application:**
-- `apps/sandbox/src/App.tsx` - Main application component
-- `apps/sandbox/src/components/Canvas.tsx` - Main canvas coordinator (large — see `docs/codebase-map.md`)
+- `apps/sandbox/src/App.tsx` - Application shell: context header, routing state, provider tree, JSX assembly (~1244 lines; orchestration extracted to hooks — see codebase-map)
+- `apps/sandbox/src/components/Canvas.tsx` - Canvas coordinator (~770 lines); per-track render in `components/canvas/CanvasTrackList.tsx`
 - `apps/sandbox/src/components/LabelRenderer.tsx` - Label rendering component
-- `apps/sandbox/src/hooks/useClipDragging.ts` - Clip dragging hook
-- `apps/sandbox/src/hooks/useClipTrimming.ts` - Clip trimming hook
-- `apps/sandbox/src/hooks/useLabelDragging.ts` - Label dragging hook
+- `apps/sandbox/src/components/{Transport,Project}ToolbarContainer.tsx` - Toolbar wiring containers
+- `apps/sandbox/src/hooks/` - Interaction + app-orchestration hooks (deps-object + typed-return convention; see codebase-map for the full table)
 - `apps/sandbox/src/utils/labelLayout.ts` - Label layout utilities
 - `apps/sandbox/src/contexts/TracksContext.tsx` - Track state (shape + provider + undo wrapper); domain logic in `contexts/reducers/`
+- `apps/sandbox/src/contexts/PlaybackContext.tsx` / `LoopRegionContext.tsx` - Value-provider contexts (App calls the hook, provides the return object)
 - `apps/sandbox/src/constants/canvas.ts` - Canvas layout constants (e.g. `DEFAULT_TRACK_HEIGHT`)
 
 **Documentation:**
