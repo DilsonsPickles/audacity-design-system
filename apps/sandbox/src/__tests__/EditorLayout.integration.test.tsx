@@ -764,3 +764,151 @@ describe('Track management', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Focus routing (EditorLayout.tsx onTabOut/onShiftTabOut ~906-947,
+// onShiftTabFromTrack ~1338-1374, onTabFromLastClip ~1375-1420,
+// onRulerNavigateVertical ~1579-1617, onTabFromRuler/onShiftTabFromRuler
+// ~1527-1578). These are the manual `document.querySelector` focus walks
+// Task 1.1 will extract to utils — this net protects their DOM-query
+// selector strings (`[aria-label*="track controls"]`, `[data-track-index]`,
+// `[data-track-ruler-index]`, `[data-first-clip="true"]`, `[data-clip-id]`)
+// and the cross-block `timelineRulerRef` hand-off between the track-panel
+// column and the ruler column.
+//
+// Default accessibility profile is 'au4' (hierarchical tab nav, not flat),
+// so these handlers are live — see AccessibilityProfileProvider's
+// initialProfileId default and AU4_TAB_GROUPS_PROFILE's
+// tabNavigation: 'hierarchical' (packages/core/src/accessibility/profiles.ts).
+// showVerticalRulers defaults to true (App.tsx), so `[data-track-ruler-index]`
+// elements are focusable throughout.
+//
+// Generate Tracks seeds 4 audio tracks (ids 1-4, clip ids 1/11/21/31 — see
+// generateTracks()'s comment above), one clip per track, each clip being
+// that track's [data-first-clip="true"].
+// ---------------------------------------------------------------------------
+
+describe('Focus routing', () => {
+  it('Tab off a track-control-panel child (not the panel itself) jumps straight to that track\'s first clip — TrackControlPanel.onTabOut', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+
+    // Focus a child control INSIDE track 0's panel via direct .focus() (not
+    // a mouse click) — TrackControlPanel's childTabIndex is -1 in the
+    // default (non-flat) profile, so children are only reachable
+    // programmatically or via arrow-key roving, never native Tab. Using
+    // .focus() (rather than fireEvent.click, which would set
+    // focusFromMouseRef and reroute the very next Tab into an "outline
+    // reveal" no-op per TrackControlPanel.tsx ~473) lands on the
+    // `!isPanelFocused` branch that calls onTabOut directly.
+    const menuButton = trackMenuButton(container, 0);
+    act(() => {
+      menuButton.focus();
+    });
+    expect(document.activeElement).toBe(menuButton);
+
+    fireEvent.keyDown(menuButton, { key: 'Tab' });
+
+    // Track 0 has one clip (id 1) — its only clip is data-first-clip="true"
+    // — onTabOut's has-clips branch fires before the ruler/next-track
+    // fallbacks are ever reached.
+    expect(document.activeElement).toBe(clipEl(container, 1));
+  });
+
+  it('Shift+Tab from the FIRST track container focuses the timeline ruler via the shared timelineRulerRef — onShiftTabFromTrack', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+
+    const track0 = container.querySelector('.track-wrapper[data-track-index="0"] .track') as HTMLElement;
+    expect(track0).toBeTruthy();
+    act(() => {
+      track0.focus();
+    });
+    expect(document.activeElement).toBe(track0);
+
+    fireEvent.keyDown(track0, { key: 'Tab', shiftKey: true });
+
+    // trackIndex 0 - 1 = -1 < 0 → onShiftTabFromTrack's "first track" branch
+    // focuses timelineRulerRef.current directly — the cross-block ref
+    // hand-off from the track-panel column to the ruler column.
+    const ruler = container.querySelector('[aria-label="Timeline ruler"]');
+    expect(document.activeElement).toBe(ruler);
+  });
+
+  it('ArrowDown on track 0\'s vertical ruler moves focus to track 1\'s ruler and scrolls the canvas container — onRulerNavigateVertical', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+
+    const ruler0 = container.querySelector('[data-track-ruler-index="0"]') as HTMLElement;
+    expect(ruler0).toBeTruthy();
+    act(() => {
+      ruler0.focus();
+    });
+    expect(document.activeElement).toBe(ruler0);
+
+    // jsdom never lays out real geometry — the scroll container's
+    // clientHeight is always 0, so the "track bottom below viewport
+    // bottom" branch (trackTop + trackHeight > viewportBottom) is always
+    // taken, making the scrollTop write deterministic rather than
+    // incidental. `.canvas-scroll-container` is scrollContainerRef's own
+    // className (EditorLayout.tsx ~1211) — same element the handler writes
+    // scrollTop on.
+    const scrollEl = container.querySelector('.canvas-scroll-container') as HTMLElement;
+    expect(scrollEl).toBeTruthy();
+    expect(scrollEl.scrollTop).toBe(0);
+
+    fireEvent.keyDown(ruler0, { key: 'ArrowDown' });
+
+    const ruler1 = container.querySelector('[data-track-ruler-index="1"]') as HTMLElement;
+    expect(document.activeElement).toBe(ruler1);
+    expect(scrollEl.scrollTop).toBeGreaterThan(0);
+  });
+
+  it('Tab off the ruler focuses the NEXT track\'s container; Shift+Tab from the ruler returns to THIS track\'s last clip — onTabFromRuler / onShiftTabFromRuler', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+
+    const ruler0 = container.querySelector('[data-track-ruler-index="0"]') as HTMLElement;
+    act(() => {
+      ruler0.focus();
+    });
+
+    fireEvent.keyDown(ruler0, { key: 'Tab' });
+    const track1 = container.querySelector('.track-wrapper[data-track-index="1"] .track');
+    expect(document.activeElement).toBe(track1);
+
+    // Shift+Tab back from ruler 0 lands on track 0's only clip (id 1) —
+    // its own last (and only) clip, not track 1's.
+    act(() => {
+      ruler0.focus();
+    });
+    fireEvent.keyDown(ruler0, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(clipEl(container, 1));
+  });
+
+  it('Tab off the last clip on a track focuses that SAME track\'s ruler (not the next track) — onTabFromLastClip', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+
+    // Clip 1 is track 0's only (and therefore last) clip.
+    act(() => {
+      clipEl(container, 1).focus();
+    });
+    expect(document.activeElement).toBe(clipEl(container, 1));
+
+    fireEvent.keyDown(clipEl(container, 1), { key: 'Tab' });
+
+    const ruler0 = container.querySelector('[data-track-ruler-index="0"]');
+    expect(document.activeElement).toBe(ruler0);
+  });
+});
