@@ -5,10 +5,9 @@ import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, EffectsPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs } from '@dilsonspickles/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs } from '@dilsonspickles/components';
 import type { SpectrogramScale, WaveformRulerFormat, ThemeTokens } from '@dilsonspickles/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
-import { getAllEffects } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
@@ -30,6 +29,7 @@ import { buildNewTrack, buildDuplicatedTracks } from '../utils/trackManagement';
 import { LoopRegionStalks } from './editor/LoopRegionStalks';
 import { PunchPointIndicator } from './editor/PunchPointIndicator';
 import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
+import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import {
   findTrackControlPanelByIndex,
   findFirstButtonInTrackControlPanel,
@@ -312,153 +312,21 @@ export function EditorLayout(props: EditorLayoutProps) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
     <div style={STYLE_FLEX_ROW_OVERFLOW}>
       {/* Effects Panel - Hidden on export tab */}
-      {activeMenuItem !== 'export' && effectsPanel?.isOpen && (() => {
-        const trackIndex = effectsPanel.trackIndex;
-        const rawTrackEffects = state.tracks[trackIndex]?.effects || [];
-        const trackEffectsEnabled = state.tracks[trackIndex]?.effectsEnabled ?? true;
-
-        // Mark effects whose underlying plugin is gone. We distinguish two
-        // cases so the slot label tells the user *why* the effect isn't
-        // playable — and what they can do about it:
-        //   - Signed out of MuseHub → "(sign in to use)". Re-auth is the
-        //     fix; there's no install action available to a signed-out user.
-        //   - Signed in but plugin not installed → "(missing)". The user
-        //     has a session, so the marketplace can offer a reinstall.
-        // Only the rendered name is mutated — the underlying track state
-        // keeps the clean name so signing back in restores the slot.
-        const builtInIds = new Set(getAllEffects().map((e) => e.id));
-        const installedIds = new Set(installedEffects.map((e) => e.id));
-        const markMissing = <T extends { id: string; name: string }>(e: T): T => {
-          if (builtInIds.has(e.id) || installedIds.has(e.id)) return e;
-          const suffix = museHubSignedIn ? '(missing)' : '(sign in to use)';
-          return { ...e, name: `⚠ ${e.name} ${suffix}` };
-        };
-        const currentTrackEffects = rawTrackEffects.map(markMissing);
-        const masterEffectsFlagged = state.masterEffects.map(markMissing);
-
-        return (
-          <EffectsPanel
-            isOpen={effectsPanel.isOpen}
-            mode="sidebar"
-            trackSection={{
-              trackName: state.tracks[trackIndex]?.name || 'Track',
-              effects: currentTrackEffects,
-              allEnabled: trackEffectsEnabled,
-              onToggleAll: (enabled) => {
-                dispatch({ type: 'TOGGLE_ALL_TRACK_EFFECTS', payload: { trackIndex, enabled } });
-              },
-              onEffectToggle: (index, enabled) => {
-                dispatch({
-                  type: 'UPDATE_TRACK_EFFECT',
-                  payload: { trackIndex, effectIndex: index, updates: { enabled } }
-                });
-              },
-              onEffectChange: (index, _effectId) => {
-                const effect = currentTrackEffects[index];
-                setEffectDialog({
-                  isOpen: true,
-                  effectId: effect.id,
-                  effectName: effect.name,
-                  trackIndex,
-                  effectIndex: index,
-                  triggerElement: document.activeElement as HTMLElement,
-                });
-              },
-              onEffectsReorder: (fromIndex, toIndex) => {
-                dispatch({
-                  type: 'REORDER_TRACK_EFFECTS',
-                  payload: { trackIndex, fromIndex, toIndex }
-                });
-              },
-              onAddEffect: (e) => {
-                const target = e?.currentTarget as HTMLElement | undefined;
-                const rect = target?.getBoundingClientRect();
-                setEffectPicker({
-                  open: true,
-                  x: rect ? rect.right + 4 : 0,
-                  y: rect ? rect.top : 0,
-                  trackIndex,
-                  anchorRect: rect ?? null,
-                });
-              },
-              onContextMenu: (_e) => {
-              },
-              onRemoveEffect: (index) => {
-                dispatch({ type: 'REMOVE_TRACK_EFFECT', payload: { trackIndex, effectIndex: index } });
-              },
-              onReplaceEffect: (index, effectName) => {
-                dispatch({
-                  type: 'UPDATE_TRACK_EFFECT',
-                  payload: { trackIndex, effectIndex: index, updates: { name: effectName } }
-                });
-              },
-              onChangeEffect: (index, anchor) => {
-                setMarketplaceModal({ open: true, trackIndex, anchorRect: anchor, replaceIndex: index });
-              },
-              purchasedEffects: installedEffects,
-              disabledPluginIds,
-            }}
-            masterSection={{
-              effects: masterEffectsFlagged,
-              allEnabled: state.masterEffectsEnabled,
-              onToggleAll: (enabled) => {
-                dispatch({ type: 'TOGGLE_ALL_MASTER_EFFECTS', payload: enabled });
-              },
-              onEffectToggle: (index, enabled) => {
-                dispatch({
-                  type: 'UPDATE_MASTER_EFFECT',
-                  payload: { effectIndex: index, updates: { enabled } }
-                });
-              },
-              onEffectChange: (index, _effectId) => {
-                const effect = state.masterEffects[index];
-                setEffectDialog({
-                  isOpen: true,
-                  effectId: effect.id,
-                  effectName: effect.name,
-                  trackIndex: undefined,
-                  effectIndex: index,
-                  triggerElement: document.activeElement as HTMLElement,
-                });
-              },
-              onEffectsReorder: (fromIndex, toIndex) => {
-                dispatch({
-                  type: 'REORDER_MASTER_EFFECTS',
-                  payload: { fromIndex, toIndex }
-                });
-              },
-              onAddEffect: (e) => {
-                const target = e?.currentTarget as HTMLElement | undefined;
-                const rect = target?.getBoundingClientRect();
-                setEffectPicker({
-                  open: true,
-                  x: rect ? rect.right + 4 : 0,
-                  y: rect ? rect.top : 0,
-                  trackIndex: undefined,
-                  anchorRect: rect ?? null,
-                });
-              },
-              onContextMenu: (_e) => {
-              },
-              onRemoveEffect: (index) => {
-                dispatch({ type: 'REMOVE_MASTER_EFFECT', payload: index });
-              },
-              onReplaceEffect: (index, effectName) => {
-                dispatch({
-                  type: 'UPDATE_MASTER_EFFECT',
-                  payload: { effectIndex: index, updates: { name: effectName } }
-                });
-              },
-              onChangeEffect: (index, anchor) => {
-                setMarketplaceModal({ open: true, trackIndex: undefined, anchorRect: anchor, replaceIndex: index });
-              },
-              purchasedEffects: installedEffects,
-              disabledPluginIds,
-            }}
-            onClose={() => setEffectsPanel(null)}
-          />
-        );
-      })()}
+      {activeMenuItem !== 'export' && effectsPanel?.isOpen && (
+        <TrackEffectsPanel
+          effectsPanel={effectsPanel}
+          tracks={state.tracks}
+          masterEffects={state.masterEffects}
+          masterEffectsEnabled={state.masterEffectsEnabled}
+          museHubSignedIn={museHubSignedIn}
+          installedEffects={installedEffects}
+          disabledPluginIds={disabledPluginIds}
+          setEffectPicker={setEffectPicker}
+          setEffectDialog={setEffectDialog}
+          setEffectsPanel={setEffectsPanel}
+          setMarketplaceModal={setMarketplaceModal}
+        />
+      )}
 
       {/* Track Control Side Panel - Hidden on export tab */}
       {activeMenuItem !== 'export' && (
