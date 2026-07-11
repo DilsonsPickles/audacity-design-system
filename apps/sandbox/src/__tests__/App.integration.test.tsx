@@ -14,6 +14,46 @@ import { renderApp } from './integrationHarness';
 
 vi.mock('@audacity-ui/audio', () => audioMockFactory());
 
+// useRecording (apps/sandbox/src/hooks/useRecording.ts) constructs its own
+// sandbox-local RecordingManager (apps/sandbox/src/utils/RecordingManager.ts)
+// on mount and calls startMonitoring() — this is a SEPARATE boundary from
+// '@audacity-ui/audio' above (RecordingManager imports the real 'tone'
+// package directly, it isn't reached through the audio package), so mocking
+// '@audacity-ui/audio' alone doesn't stop it. Left unmocked, every renderApp()
+// in this file makes a real `new Tone.UserMedia()` call, which throws
+// synchronously in jsdom ("param must be an AudioParam" — jsdom has no
+// AudioParam) deep inside Tone's Gain/Volume construction; useRecording's
+// try/catch swallows it, so tests still pass, but every render dumps a full
+// Tone.js stack trace to stderr. That's noise today, but it's also a latent
+// footgun: the tests are only "safe" because Tone happens to fail fast and
+// synchronously in this environment — if a future Tone.js version changes
+// that (e.g. starts failing async, or succeeds and spins up a real
+// setInterval-driven meter loop), these tests would start leaking timers or
+// hanging. Mocking the class at the RecordingManager module boundary (rather
+// than mocking 'tone' itself) is the narrower, more robust fix: it matches
+// the audioMock.ts pattern (mock at the boundary the app calls, not the
+// third-party internals), and it only needs to satisfy the handful of
+// methods useRecording/usePlaybackControls/useAudioDeviceMenu actually call
+// on the instance, not Tone's entire Recorder/Meter/UserMedia/Waveform
+// surface.
+vi.mock('../utils/RecordingManager', () => ({
+  RecordingManager: class RecordingManagerMock {
+    async startMonitoring(): Promise<void> {}
+    async startRecording(): Promise<void> {}
+    async stopRecording(): Promise<void> {}
+    getIsMonitoring(): boolean {
+      return false;
+    }
+    dispose(): void {}
+    static async getAudioInputDevices(): Promise<MediaDeviceInfo[]> {
+      return [];
+    }
+    static async getAudioOutputDevices(): Promise<MediaDeviceInfo[]> {
+      return [];
+    }
+  },
+}));
+
 afterEach(cleanup);
 
 describe('App boot', () => {

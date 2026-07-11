@@ -38,8 +38,8 @@ export { audioMockFactory, type AudioSpies } from './audioMock';
 
 /**
  * Stubs browser APIs jsdom doesn't implement that the app touches during a
- * render. Extend ONLY when a render error demands it — see
- * task-1-report.md for the error each addition here was added to fix.
+ * render. Extend ONLY when a render error demands it — each stub below
+ * notes the render-time error it fixes.
  */
 export function installJsdomStubs(): void {
   if (!('ResizeObserver' in window)) {
@@ -48,11 +48,18 @@ export function installJsdomStubs(): void {
       unobserve() {}
       disconnect() {}
     }
-    // jsdom has no ResizeObserver implementation.
+    // jsdom has no ResizeObserver implementation — without this, any
+    // component that calls `new ResizeObserver(...)` (e.g. size-tracking
+    // hooks in TrackNew/EditorLayout) throws "ResizeObserver is not
+    // defined" during render.
     (window as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
   }
 
   if (!window.matchMedia) {
+    // jsdom has no matchMedia implementation — without this, code that
+    // queries prefers-color-scheme / prefers-reduced-motion (theme +
+    // accessibility profile detection) throws "window.matchMedia is not a
+    // function" during render.
     window.matchMedia = ((query: string) => ({
       matches: false,
       media: query,
@@ -66,10 +73,16 @@ export function installJsdomStubs(): void {
   }
 
   if (!Element.prototype.scrollTo) {
+    // jsdom elements have no scrollTo — without this, code that scrolls
+    // the canvas/track panel into view on navigation throws
+    // "element.scrollTo is not a function".
     Element.prototype.scrollTo = () => {};
   }
 
   if (!Element.prototype.scrollIntoView) {
+    // jsdom elements have no scrollIntoView — without this, focus-driven
+    // scroll (e.g. keyboard track/clip navigation) throws
+    // "element.scrollIntoView is not a function".
     Element.prototype.scrollIntoView = () => {};
   }
 }
@@ -106,11 +119,16 @@ export function renderApp(): RenderResult & { audioSpies: AudioSpies } {
   );
   installJsdomStubs();
   const manager = getLastAudioManager();
-  manager?.clearAll();
+  if (!manager) {
+    throw new Error(
+      "renderApp(): no audio manager mock found — did you forget vi.mock('@audacity-ui/audio', () => audioMockFactory())?",
+    );
+  }
+  manager.clearAll();
 
   const result = render(<App />);
 
-  return { ...result, audioSpies: manager?.proxy ?? {} };
+  return { ...result, audioSpies: manager.proxy };
 }
 
 interface CanvasHarnessProps {
@@ -152,8 +170,13 @@ function CanvasHarness({ tracks, canvasProps }: CanvasHarnessProps) {
  * Accessibility with the real 'au4-tab-groups' profile, Tracks seeded via
  * `TracksProvider`'s `initialTracks`, SpectralSelection). Tracks/clips
  * appear as `[data-clip-id]` elements once rendered.
+ *
+ * Clears localStorage first, same as `renderApp()` — `PreferencesProvider`
+ * is in this harness's tree too, so without this a preferences blob
+ * written by an earlier test in the same file would bleed in here.
  */
 export function renderCanvas(tracks: Track[], canvasProps?: Partial<CanvasProps>): RenderResult {
+  window.localStorage.clear();
   installJsdomStubs();
   return render(<CanvasHarness tracks={tracks} canvasProps={canvasProps} />);
 }
