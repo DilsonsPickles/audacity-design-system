@@ -6,6 +6,7 @@ HTMLCanvasElement.prototype.getContext = (() => {
   return function () {
     return {
       fillRect: noop,
+      strokeRect: noop,
       clearRect: noop,
       getImageData: () => ({ data: new Array(4) }),
       putImageData: noop,
