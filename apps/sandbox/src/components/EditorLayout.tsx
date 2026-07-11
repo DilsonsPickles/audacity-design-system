@@ -18,6 +18,8 @@ import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelect
 import { snapToGrid } from '../utils/snapToGrid';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { usePianoRollSmoothScroll } from '../hooks/usePianoRollSmoothScroll';
+import { useMeasuredWidth } from '../hooks/useMeasuredWidth';
+import { useRulerFlyout } from '../hooks/useRulerFlyout';
 import { useAutoOpenPianoRoll } from '../hooks/useAutoOpenPianoRoll';
 import { useDrawerTabAutoSwitch } from '../hooks/useDrawerTabAutoSwitch';
 import { useTimeSelectionTabHandler } from '../hooks/useTimeSelectionTabHandler';
@@ -216,16 +218,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   // Measured viewport width of the ruler wrapper. Passed to TimelineRuler
   // as `viewportWidth` so its canvas stays sharp on HiDPI displays — the
   // project-sized `width` is kept only for legacy scroll-extent math.
-  const [rulerViewportWidth, setRulerViewportWidth] = React.useState<number>(0);
-  React.useLayoutEffect(() => {
-    const el = timelineRulerRef.current;
-    if (!el) return;
-    const update = () => setRulerViewportWidth(el.clientWidth);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const rulerViewportWidth = useMeasuredWidth(timelineRulerRef);
 
   // Tab order for ruler focus
   const { activeProfile } = useAccessibilityProfile();
@@ -254,59 +247,13 @@ export function EditorLayout(props: EditorLayoutProps) {
   // Smooth-scroll piano roll to the selected clip's boundary area
   const { skipPianoRollScrollRef } = usePianoRollSmoothScroll({ state, dispatch });
 
-  // Ruler flyout state
-  const rulerTriggerRef = React.useRef<HTMLElement | null>(null);
-  const [rulerFlyout, setRulerFlyout] = React.useState<{ isOpen: boolean; x: number; y: number; mode: 'waveform' | 'spectrogram'; trackIndex: number } | null>(null);
-  const [halfWave, setHalfWave] = React.useState(false);
   const [hoveredMidiClipId, setHoveredMidiClipId] = React.useState<number | null>(null);
 
-  const handleRulerContextMenu = React.useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    // Determine mode based on which track the cursor is over
-    // For now, check if any track at the click position is in spectrogram mode
-    const clickY = e.clientY;
-    const panelRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const relativeY = clickY - panelRect.top + scrollY;
-
-    const trackGap = 2; // matches VerticalRulerPanel trackGap default
-    let accumulatedHeight = trackGap; // tracks container has paddingTop of trackGap
-    let mode: 'waveform' | 'spectrogram' = 'waveform';
-    let targetTrackIndex = 0;
-    for (let i = 0; i < state.tracks.length; i++) {
-      const track = state.tracks[i];
-      const trackHeight = track.height || 114;
-      if (relativeY >= accumulatedHeight && relativeY < accumulatedHeight + trackHeight) {
-        targetTrackIndex = i;
-        if (track.viewMode === 'spectrogram') {
-          mode = 'spectrogram';
-        } else if (track.viewMode === 'split') {
-          // Determine which half of the split the click is in
-          const yInTrack = relativeY - accumulatedHeight;
-          const spacerHeight = trackHeight > 44 ? 20 : 0;
-          const splitRatio = track.channelSplitRatio ?? 0.5;
-          const topHeight = (trackHeight - spacerHeight) * splitRatio;
-          mode = yInTrack < spacerHeight + topHeight ? 'spectrogram' : 'waveform';
-        } else {
-          mode = 'waveform';
-        }
-        break;
-      }
-      accumulatedHeight += trackHeight + trackGap;
-    }
-
-    // Position flyout 24px to the left of the ruler panel, vertically centered on click
-    const flyoutWidth = 200;
-    const flyoutHeight = mode === 'waveform' ? 242 : 280; // approximate heights
-    const flyoutX = panelRect.left - flyoutWidth - 16;
-    let flyoutY = e.clientY - flyoutHeight / 2;
-
-    // Clamp to viewport
-    const vh = window.innerHeight;
-    if (flyoutY + flyoutHeight > vh - 10) flyoutY = vh - flyoutHeight - 10;
-    if (flyoutY < 10) flyoutY = 10;
-
-    setRulerFlyout({ isOpen: true, x: flyoutX, y: flyoutY, mode, trackIndex: targetTrackIndex });
-  }, [state.tracks, scrollY]);
+  // Ruler flyout state
+  const {
+    rulerFlyout, setRulerFlyout, rulerTriggerRef, halfWave, setHalfWave,
+    handleRulerContextMenu, openRulerFlyoutForTrack,
+  } = useRulerFlyout({ tracks: state.tracks, scrollY });
 
   // Cmd+Click / Cmd+Enter on a track panel row. With a scoped time
   // selection active, the gesture edits the SELECTION SCOPE — which
@@ -1431,21 +1378,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   }
                 }}
                 onRulerActivate={(trackIndex, rect) => {
-                  // Store trigger element for focus restoration on close
-                  rulerTriggerRef.current = findTrackRulerByIndex(document, trackIndex);
-                  // Determine mode for flyout
-                  const track = state.tracks[trackIndex];
-                  const mode: 'waveform' | 'spectrogram' =
-                    track?.viewMode === 'spectrogram' ? 'spectrogram' : 'waveform';
-                  // Position flyout to the left of the ruler
-                  const flyoutWidth = 200;
-                  const flyoutHeight = mode === 'waveform' ? 242 : 280;
-                  const flyoutX = rect.left - flyoutWidth - 16;
-                  let flyoutY = rect.top + rect.height / 2 - flyoutHeight / 2;
-                  const vh = window.innerHeight;
-                  if (flyoutY + flyoutHeight > vh - 10) flyoutY = vh - flyoutHeight - 10;
-                  if (flyoutY < 10) flyoutY = 10;
-                  setRulerFlyout({ isOpen: true, x: flyoutX, y: flyoutY, mode, trackIndex });
+                  openRulerFlyoutForTrack(trackIndex, rect);
                 }}
                 onRulerFocus={(trackIndex) => {
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
