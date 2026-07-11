@@ -69,7 +69,6 @@ export interface EditorLayoutProps {
   showRmsInWaveform: boolean;
   controlPointStyle: EnvelopePointStyleKey;
   spectrogramScale: SpectrogramScale;
-  setSpectrogramScale: React.Dispatch<React.SetStateAction<SpectrogramScale>>;
   showVerticalRulers: boolean;
 
   // Playback
@@ -82,7 +81,6 @@ export interface EditorLayoutProps {
   // Selection
   selectionAnchor: number | null;
   setSelectionAnchor: React.Dispatch<React.SetStateAction<number | null>>;
-  controlPanelHasFocus: number | null;
   setControlPanelHasFocus: React.Dispatch<React.SetStateAction<number | null>>;
 
   // Track container focus (which track has its .track container focused, if any)
@@ -116,9 +114,6 @@ export interface EditorLayoutProps {
 
   // Snap to grid
   snapEnabled?: boolean;
-
-  // Flat navigation mode
-  isFlatNavigation: boolean;
 
   // Mixer panel
   showMixer?: boolean;
@@ -154,14 +149,14 @@ export function EditorLayout(props: EditorLayoutProps) {
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
-    showRmsInWaveform, controlPointStyle, spectrogramScale, setSpectrogramScale: _setSpectrogramScale, showVerticalRulers,
+    showRmsInWaveform, controlPointStyle, spectrogramScale, showVerticalRulers,
     isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
-    selectionAnchor, setSelectionAnchor, controlPanelHasFocus: _controlPanelHasFocus, setControlPanelHasFocus,
+    selectionAnchor, setSelectionAnchor, setControlPanelHasFocus,
     containerFocusedTrack, setContainerFocusedTrack,
     mouseCursorPosition, setMouseCursorPosition, mouseCursorY, setMouseCursorY, isOverTrack, setIsOverTrack,
     rulerTimeSelection, spectralSelection,
     theme, canvasHeight, setCanvasHeight,
-    clickRulerToStartPlayback, punchPointPosition, snapEnabled, isFlatNavigation: _isFlatNavigation,
+    clickRulerToStartPlayback, punchPointPosition, snapEnabled,
     showMixer,
   } = props;
 

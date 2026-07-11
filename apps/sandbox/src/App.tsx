@@ -312,8 +312,11 @@ function CanvasDemoContent() {
   // Track the anchor point for range selection (Shift+Arrow)
   const [selectionAnchor, setSelectionAnchor] = React.useState<number | null>(null);
 
-  // Track whether the control panel specifically has focus (for the inset outline)
-  const [controlPanelHasFocus, setControlPanelHasFocus] = React.useState<number | null>(null);
+  // Track whether the control panel specifically has focus. Only the
+  // setter is consumed (EditorLayout's useTrackPanelHandlers writes it via
+  // onFocusChange) — the read side was the now-removed EditorLayoutProps
+  // `controlPanelHasFocus` prop, which EditorLayout never read.
+  const [, setControlPanelHasFocus] = React.useState<number | null>(null);
 
   // Track whether the track container (.track div) has keyboard focus
   const [containerFocusedTrack, setContainerFocusedTrack] = React.useState<number | null>(null);
@@ -861,7 +864,6 @@ function CanvasDemoContent() {
           showRmsInWaveform={showRmsInWaveform}
           controlPointStyle={controlPointStyle}
           spectrogramScale={spectrogramScale}
-          setSpectrogramScale={setSpectrogramScale}
           showVerticalRulers={showVerticalRulers}
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}
@@ -872,7 +874,6 @@ function CanvasDemoContent() {
           snapEnabled={snapEnabled}
           selectionAnchor={selectionAnchor}
           setSelectionAnchor={setSelectionAnchor}
-          controlPanelHasFocus={controlPanelHasFocus}
           setControlPanelHasFocus={setControlPanelHasFocus}
           containerFocusedTrack={containerFocusedTrack}
           setContainerFocusedTrack={setContainerFocusedTrack}
@@ -888,7 +889,6 @@ function CanvasDemoContent() {
           canvasHeight={canvasHeight}
           setCanvasHeight={setCanvasHeight}
           clickRulerToStartPlayback={clickRulerToStartPlayback}
-          isFlatNavigation={isFlatNavigation}
           showMixer={mixerPanelOpen}
           marketplaceModal={marketplaceModal}
           setMarketplaceModal={setMarketplaceModal}
