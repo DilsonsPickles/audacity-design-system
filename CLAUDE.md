@@ -243,6 +243,13 @@ afterEach(cleanup);
   - Overlays are presentational components in `components/canvas/` (SnapGuideline, SplitPreviewLine, MarqueeRect)
   - Wraps labels in overflow container to clip without hiding focus outline
 
+**Editor Layout:**
+- `EditorLayout.tsx` - Editor chrome composition root (~1180 lines after decomposition — see `docs/codebase-map.md`)
+  - Context wiring (`useTracks`, `usePlayback`, `useLoopRegionContext`, `useContextMenus`, `useMuseHub`) + layout scaffolding (effects panel / track control side panel / timeline ruler row / canvas + rulers row / bottom drawer / menus-modals) + `Canvas`/`TrackControlPanel`/`VerticalRulerPanel` prop assembly
+  - Presentational blocks extracted to `components/editor/` (LoopRegionStalks, PunchPointIndicator, EditorBottomDrawer, TrackEffectsPanel)
+  - Interaction bundles extracted to hooks (useMeasuredWidth, useRulerFlyout, useTimelineRulerInteractions, useTrackPanelHandlers)
+  - Pure focus-routing DOM queries and track add/duplicate math extracted to `utils/focusRouting.ts` / `utils/trackManagement.ts`
+
 **Custom Hooks (interaction):**
 - `useClipDragging.ts` / `useClipTrimming.ts` / `useClipStretching.ts` - Mouse clip editing (ref-mirror pattern)
 - `useLabelDragging.ts` - Label drag interactions
@@ -373,6 +380,7 @@ Other layout constants:
 - ✅ **Accessibility** - Tab groups, roving tabindex, composite widgets, WCAG compliance
 - ✅ **Type campaign** — whole-app `any` elimination, enforced by `scripts/check-any.mjs` (every `any` carries `// justified:`)
 - ✅ **Structural decomposition** (fable5-finalize, 2026-07-11) — App.tsx 1864→1244, Canvas.tsx 1959→771, PreferencesModal 1979→210; LoopRegionContext + preference domain slices extracted; per-page modal files
+- ✅ **EditorLayout decomposition** (2026-07-11/12) — EditorLayout.tsx 2170→1183 (composition root: context wiring + layout scaffolding + Canvas/TrackControlPanel prop assembly); `components/editor/` (LoopRegionStalks, PunchPointIndicator, EditorBottomDrawer, TrackEffectsPanel), interaction hooks (useMeasuredWidth, useRulerFlyout, useTimelineRulerInteractions, useTrackPanelHandlers), and pure utils (focusRouting, trackManagement) extracted — see `docs/codebase-map.md`
 - ✅ **Green test/type baseline** — both packages fully green (no pre-existing failures to work around)
 
 **Next Steps (per roadmap):**
@@ -398,6 +406,7 @@ Other layout constants:
 **Sandbox Application:**
 - `apps/sandbox/src/App.tsx` - Application shell: context header, routing state, provider tree, JSX assembly (~1244 lines; orchestration extracted to hooks — see codebase-map)
 - `apps/sandbox/src/components/Canvas.tsx` - Canvas coordinator (~770 lines); per-track render in `components/canvas/CanvasTrackList.tsx`
+- `apps/sandbox/src/components/EditorLayout.tsx` - Editor chrome composition root (~1180 lines; presentational/hook/util pieces extracted to `components/editor/` — see codebase-map)
 - `apps/sandbox/src/components/LabelRenderer.tsx` - Label rendering component
 - `apps/sandbox/src/components/{Transport,Project}ToolbarContainer.tsx` - Toolbar wiring containers
 - `apps/sandbox/src/hooks/` - Interaction + app-orchestration hooks (deps-object + typed-return convention; see codebase-map for the full table)
