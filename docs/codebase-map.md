@@ -137,6 +137,8 @@ Pure geometry helpers used by Canvas + the split tool live in `apps/sandbox/src/
 | `apps/sandbox/src/components/canvas/MarqueeRect.tsx` | Right-drag marquee-selection rectangle overlay |
 | `apps/sandbox/src/components/canvas/SnapGuideline.tsx` | 1px vertical guideline shown at the snap target during trim/stretch |
 | `apps/sandbox/src/components/canvas/SplitPreviewLine.tsx` | Split-tool hover preview line (single track, or all tracks with Shift held) |
+| `apps/sandbox/src/components/editor/LoopRegionStalks.tsx` | Two vertical stalks marking loop-region start/end; used in both the timeline ruler row and the canvas row of `EditorLayout.tsx` (differ only in `height`) |
+| `apps/sandbox/src/components/editor/PunchPointIndicator.tsx` | 1px vertical line marking the punch-in (roll-in recording) point; same ruler/canvas dedup as `LoopRegionStalks` |
 | `apps/sandbox/src/components/ProjectToolbarContainer.tsx` | Wires `ProjectToolbar` — project menu (home/project/export/debug), mixer/audio-setup/marketplace triggers |
 | `apps/sandbox/src/components/TransportToolbarContainer.tsx` | Wires `TransportToolbar` — playback/mode toggles, zoom, snap, timecode, master meter, toolbar-gripper drag |
 | `packages/components/src/PreferencesModal/PreferencesModal.tsx` | 210-line scaffold — tab list + active-page routing — delegating to 10 page components in `PreferencesModal/pages/` (`GeneralPage`, `AppearancePage`, `AudioSettingsPage`, `PlaybackRecordingPage`, `SpectralDisplayPage`, `EditingPage`, `PluginsPage`, `CloudPage`, `ShortcutsPage`, `PlaceholderPage`) plus shared `TabGroupField.tsx`, `types.ts`, `menuItems.ts` |

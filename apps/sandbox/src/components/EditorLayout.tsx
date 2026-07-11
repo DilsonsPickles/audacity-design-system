@@ -25,6 +25,8 @@ import { useFlatNavTabRouter } from '../hooks/useFlatNavTabRouter';
 import { usePlayback } from '../contexts/PlaybackContext';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { buildNewTrack, buildDuplicatedTracks } from '../utils/trackManagement';
+import { LoopRegionStalks } from './editor/LoopRegionStalks';
+import { PunchPointIndicator } from './editor/PunchPointIndicator';
 import {
   findTrackControlPanelByIndex,
   findFirstButtonInTrackControlPanel,
@@ -1021,50 +1023,21 @@ export function EditorLayout(props: EditorLayoutProps) {
               />
               {/* Loop region stalks in ruler */}
               {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
-                <>
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${12 + loopRegionStart * pixelsPerSecond}px`,
-                      top: 0,
-                      width: '2px',
-                      height: '40px',
-                      backgroundColor: loopRegionEnabled
-                        ? theme.audio.timeline.loopRegionBorder
-                        : theme.audio.timeline.loopRegionBorderInactive,
-                      pointerEvents: 'none',
-                      zIndex: 100,
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${12 + loopRegionEnd * pixelsPerSecond}px`,
-                      top: 0,
-                      width: '2px',
-                      height: '40px',
-                      backgroundColor: loopRegionEnabled
-                        ? theme.audio.timeline.loopRegionBorder
-                        : theme.audio.timeline.loopRegionBorderInactive,
-                      pointerEvents: 'none',
-                      zIndex: 100,
-                    }}
-                  />
-                </>
+                <LoopRegionStalks
+                  loopRegionStart={loopRegionStart}
+                  loopRegionEnd={loopRegionEnd}
+                  loopRegionEnabled={loopRegionEnabled}
+                  pixelsPerSecond={pixelsPerSecond}
+                  height="40px"
+                  theme={theme}
+                />
               )}
               {/* Punch point indicator in ruler */}
               {punchPointPosition != null && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${12 + punchPointPosition * pixelsPerSecond}px`,
-                    top: 0,
-                    width: 1,
-                    height: '100%',
-                    backgroundColor: '#FF2672',
-                    zIndex: 99,
-                    pointerEvents: 'none',
-                  }}
+                <PunchPointIndicator
+                  punchPointPosition={punchPointPosition}
+                  pixelsPerSecond={pixelsPerSecond}
+                  height="100%"
                 />
               )}
               {/* Playhead icon only in ruler */}
@@ -1325,51 +1298,22 @@ export function EditorLayout(props: EditorLayoutProps) {
                 />
                 {/* Punch point indicator (roll-in recording) */}
                 {punchPointPosition != null && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${12 + punchPointPosition * pixelsPerSecond}px`,
-                      top: 0,
-                      width: 1,
-                      height: Math.max(canvasHeight + scrollBuffer, viewportH),
-                      backgroundColor: '#FF2672',
-                      zIndex: 99,
-                      pointerEvents: 'none',
-                    }}
+                  <PunchPointIndicator
+                    punchPointPosition={punchPointPosition}
+                    pixelsPerSecond={pixelsPerSecond}
+                    height={Math.max(canvasHeight + scrollBuffer, viewportH)}
                   />
                 )}
                 {/* Loop region stalks */}
                 {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
-                  <>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${12 + loopRegionStart * pixelsPerSecond}px`,
-                        top: 0,
-                        width: '2px',
-                        height: `${Math.max(canvasHeight + scrollBuffer, viewportH)}px`,
-                        backgroundColor: loopRegionEnabled
-                          ? theme.audio.timeline.loopRegionBorder
-                          : theme.audio.timeline.loopRegionBorderInactive,
-                        pointerEvents: 'none',
-                        zIndex: 100,
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${12 + loopRegionEnd * pixelsPerSecond}px`,
-                        top: 0,
-                        width: '2px',
-                        height: `${Math.max(canvasHeight + scrollBuffer, viewportH)}px`,
-                        backgroundColor: loopRegionEnabled
-                          ? theme.audio.timeline.loopRegionBorder
-                          : theme.audio.timeline.loopRegionBorderInactive,
-                        pointerEvents: 'none',
-                        zIndex: 100,
-                      }}
-                    />
-                  </>
+                  <LoopRegionStalks
+                    loopRegionStart={loopRegionStart}
+                    loopRegionEnd={loopRegionEnd}
+                    loopRegionEnabled={loopRegionEnabled}
+                    pixelsPerSecond={pixelsPerSecond}
+                    height={`${Math.max(canvasHeight + scrollBuffer, viewportH)}px`}
+                    theme={theme}
+                  />
                 )}
               </div>
             </div>
