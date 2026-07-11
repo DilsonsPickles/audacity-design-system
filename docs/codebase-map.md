@@ -149,6 +149,21 @@ A dependency-free Node script that enforces a zero-untracked-`any` policy across
 
 ---
 
+## Integration Tests
+
+The sandbox app contains two integration test suites driven by a shared harness:
+
+| File | What it covers |
+|---|---|
+| `apps/sandbox/src/__tests__/integrationHarness.tsx` | Shared test harness — renders the full `App` with a minimal default project, providing setUp/tearDown and helper methods for driving the UI. Isolates the audio engine mock via a custom `MockAudioEngine` to suppress real playback during tests. Used by both integration suites. |
+| `apps/sandbox/src/__tests__/audioMock.ts` | Audio engine mock — stubs `Tone.Synth`, `Tone.Sampler`, and playback state. Returns predictable durations so integration tests can assert on playhead position and clip rendering without network delays. |
+| `apps/sandbox/src/__tests__/App.integration.test.tsx` | Full-app integration suite — tests global features (preferences, menus, playback, project lifecycle, keyboard shortcuts). Run with `pnpm --filter @audacity-ui/sandbox test`. Currently ~150 tests. |
+| `apps/sandbox/src/__tests__/Canvas.integration.test.tsx` | Canvas/track/clip integration suite — tests interaction flows (track selection, clip dragging, envelope editing, trim/stretch, label operations). Run with `pnpm --filter @audacity-ui/sandbox test`. Currently ~150 tests. |
+
+Total: ~300 sandbox integration tests + ~75 component unit tests; run all with `pnpm test` from the repo root.
+
+---
+
 ## Big-and-Scary Files (Known Debt)
 
 These are not-yet-decomposed monoliths. They work but are prime targets for future extraction.

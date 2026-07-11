@@ -19,6 +19,8 @@ npx tsc --noEmit                               # inside whichever package you to
 node scripts/check-any.mjs                     # from repo root
 ```
 
+CI runs these same gates on every push/PR — `.github/workflows/test.yml`.
+
 **The baseline is fully green** (as of 2026-07-11: sandbox 290 passed, components 75 passed, 0 tsc errors in both, guard 0 violations). If a gate fails, your change caused it — do not assume pre-existing breakage. Every `any` (including `as any`, `Record<string, any>`, etc.) needs a `// justified: <reason>` comment or the guard fails.
 
 ### Load-bearing conventions — violating these causes real bugs
