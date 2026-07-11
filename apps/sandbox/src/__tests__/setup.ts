@@ -18,6 +18,7 @@ HTMLCanvasElement.prototype.getContext = (() => {
       beginPath: noop,
       moveTo: noop,
       lineTo: noop,
+      arcTo: noop,
       closePath: noop,
       stroke: noop,
       translate: noop,
