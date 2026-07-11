@@ -31,6 +31,9 @@ importers:
         specifier: ^4.21.2
         version: 4.22.2
     devDependencies:
+      '@audacity-ui/sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
       concurrently:
         specifier: ^9.1.0
         version: 9.2.1

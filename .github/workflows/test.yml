@@ -32,7 +32,9 @@ jobs:
         run: pnpm install
 
       - name: Build packages
-        run: pnpm build
+        # Sandbox + its workspace deps only (core, tokens, components, audio) —
+        # the test gates don't need the electron-builder/docs/static-smoke builds.
+        run: pnpm --filter "@audacity-ui/sandbox..." build
 
       - name: Type check packages/components
         run: npx tsc --noEmit
