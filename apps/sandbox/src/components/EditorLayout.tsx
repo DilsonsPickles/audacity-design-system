@@ -20,6 +20,7 @@ import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { usePianoRollSmoothScroll } from '../hooks/usePianoRollSmoothScroll';
 import { useMeasuredWidth } from '../hooks/useMeasuredWidth';
 import { useRulerFlyout } from '../hooks/useRulerFlyout';
+import { useTimelineRulerInteractions } from '../hooks/useTimelineRulerInteractions';
 import { useAutoOpenPianoRoll } from '../hooks/useAutoOpenPianoRoll';
 import { useDrawerTabAutoSwitch } from '../hooks/useDrawerTabAutoSwitch';
 import { useTimeSelectionTabHandler } from '../hooks/useTimeSelectionTabHandler';
@@ -254,6 +255,30 @@ export function EditorLayout(props: EditorLayoutProps) {
     rulerFlyout, setRulerFlyout, rulerTriggerRef, halfWave, setHalfWave,
     handleRulerContextMenu, openRulerFlyoutForTrack,
   } = useRulerFlyout({ tracks: state.tracks, scrollY });
+
+  // Timeline-ruler wrapper interactions: keyboard nudge/escape/context-menu,
+  // mouse-cursor time tracking, click-to-play, right-click context menu.
+  const {
+    onKeyDown: onRulerKeyDown, onMouseMove: onRulerMouseMove, onMouseLeave: onRulerMouseLeave,
+    onClick: onRulerClick, onContextMenu: onRulerContextMenu,
+  } = useTimelineRulerInteractions({
+    timelineRulerRef,
+    playheadPosition: state.playheadPosition,
+    canvasSnap: state.canvasSnap,
+    snapEnabled,
+    timelineFormat,
+    bpm,
+    beatsPerMeasure,
+    pixelsPerSecond,
+    scrollX,
+    clickRulerToStartPlayback,
+    tracks: state.tracks,
+    audioManagerRef,
+    setIsPlaying,
+    setMouseCursorPosition,
+    setTimelineRulerContextMenu,
+    dispatch,
+  });
 
   // Cmd+Click / Cmd+Enter on a track panel row. With a scoped time
   // selection active, the gesture edits the SELECTION SCOPE — which
@@ -828,120 +853,12 @@ export function EditorLayout(props: EditorLayoutProps) {
               tabIndex={useTabOrder('timeline-ruler')}
               role="region"
               aria-label="Timeline ruler"
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  (e.currentTarget as HTMLElement).blur();
-                }
-                if (e.key === 'F10' && e.shiftKey) {
-                  e.preventDefault();
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setTimelineRulerContextMenu({
-                    isOpen: true,
-                    x: rect.left + rect.width / 2,
-                    y: rect.bottom,
-                  });
-                }
-                // ArrowUp/Down: swallow while the ruler is focused so
-                // the global "single-item region → jump into track
-                // list" handler doesn't steal focus. The ruler is a
-                // matrix-X-only surface — Up / Down have no meaning
-                // here, so we consume the event and leave focus put.
-                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return;
-                }
-                // Arrow keys nudge the playhead while the timeline
-                // ruler is focused. With snap on, each press lands on
-                // the next/previous grid division; with snap off, step
-                // is 0.1s (Shift accelerates to 1s).
-                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const direction = e.key === 'ArrowLeft' ? -1 : 1;
-                  let next: number;
-                  if (snapEnabled) {
-                    // Snap the *current* playhead to its nearest grid
-                    // line, then step one grid unit in the requested
-                    // direction. Falls through to the unsnapped step
-                    // if snap math degenerates.
-                    const snapBase = snapToGrid(state.playheadPosition, {
-                      timeFormat: timelineFormat,
-                      bpm,
-                      beatsPerMeasure,
-                      snap: state.canvasSnap,
-                      pixelsPerSecond,
-                    });
-                    const stepCandidate = snapToGrid(snapBase + direction * 0.001, {
-                      timeFormat: timelineFormat,
-                      bpm,
-                      beatsPerMeasure,
-                      snap: state.canvasSnap,
-                      pixelsPerSecond,
-                    });
-                    const gridStep = Math.abs(stepCandidate - snapBase) || 0.1;
-                    next = Math.max(0, snapBase + direction * gridStep);
-                  } else {
-                    const step = e.shiftKey ? 1 : 0.1;
-                    next = Math.max(0, state.playheadPosition + direction * step);
-                  }
-                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: next });
-                }
-              }}
+              onKeyDown={onRulerKeyDown}
               style={STYLE_FULL_WIDTH_RELATIVE}
-              onMouseMove={(e) => {
-                if (timelineRulerRef.current) {
-                  const rect = timelineRulerRef.current.getBoundingClientRect();
-                  const x = e.clientX - rect.left + scrollX;
-                  const CLIP_CONTENT_OFFSET = 12;
-                  const timePosition = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
-                  setMouseCursorPosition(timePosition >= 0 ? timePosition : undefined);
-                }
-              }}
-              onMouseLeave={() => {
-                setMouseCursorPosition(undefined);
-              }}
-              onClick={async (e) => {
-                if (!clickRulerToStartPlayback || !timelineRulerRef.current) return;
-
-                const rect = timelineRulerRef.current.getBoundingClientRect();
-                const x = e.clientX - rect.left + scrollX;
-                const CLIP_CONTENT_OFFSET = 12;
-                let clickedTime = (x - CLIP_CONTENT_OFFSET) / pixelsPerSecond;
-
-                if (snapEnabled) {
-                  clickedTime = snapToGrid(clickedTime, {
-                    timeFormat: timelineFormat,
-                    bpm,
-                    beatsPerMeasure,
-                    snap: state.canvasSnap,
-                    pixelsPerSecond,
-                  });
-                }
-
-                if (clickedTime >= 0) {
-                  dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: clickedTime });
-
-                  const audioManager = audioManagerRef.current;
-
-                  if (audioManager.getIsPlaying()) {
-                    audioManager.stop();
-                    setIsPlaying(false);
-                  }
-
-                  audioManager.loadClips(state.tracks, clickedTime);
-                  await audioManager.play(clickedTime);
-                  setIsPlaying(true);
-                }
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setTimelineRulerContextMenu({
-                  isOpen: true,
-                  x: e.clientX,
-                  y: e.clientY,
-                });
-              }}
+              onMouseMove={onRulerMouseMove}
+              onMouseLeave={onRulerMouseLeave}
+              onClick={onRulerClick}
+              onContextMenu={onRulerContextMenu}
             >
               <TimelineRuler
                 pixelsPerSecond={pixelsPerSecond}
