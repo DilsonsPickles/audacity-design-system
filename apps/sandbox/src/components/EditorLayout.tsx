@@ -1,5 +1,4 @@
 import React from 'react';
-import { flushSync } from 'react-dom';
 import type { SpectralSelection } from '../contexts/SpectralSelectionContext';
 import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
@@ -12,7 +11,7 @@ import { useTracks } from '../contexts/TracksContext';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
 import { useAudioEngine, MIDI_INSTRUMENTS } from '../contexts/AudioEngineContext';
-import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
+import { selectTrackExclusive } from '../utils/trackSelection';
 import { snapToGrid } from '../utils/snapToGrid';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { usePianoRollSmoothScroll } from '../hooks/usePianoRollSmoothScroll';
@@ -30,12 +29,11 @@ import { LoopRegionStalks } from './editor/LoopRegionStalks';
 import { PunchPointIndicator } from './editor/PunchPointIndicator';
 import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
+import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
 import {
   findTrackControlPanelByIndex,
   findFirstButtonInTrackControlPanel,
   findLastButtonInTrackControlPanel,
-  resolveTrackDropIndex,
-  findFirstClipInTrack,
   findLastClipInTrack,
   findTrackRulerByIndex,
   findTrackContainerByIndex,
@@ -280,29 +278,42 @@ export function EditorLayout(props: EditorLayoutProps) {
     dispatch,
   });
 
-  // Cmd+Click / Cmd+Enter on a track panel row. With a scoped time
-  // selection active, the gesture edits the SELECTION SCOPE — which
-  // rows the time selection covers — and leaves the track selection
-  // alone (the two axes are independent). Without one, it falls back
-  // to the classic track-selection toggle.
-  const toggleScopeOrTrackSelection = (index: number) => {
-    toggleTrackSelection(index, state.selectedTrackIndices, dispatch);
-    // If there's an active time selection, keep its scope in sync with
-    // the new track selection so the selection visual appears on the
-    // newly added (or disappears from the removed) track.
-    const ts = state.timeSelection;
-    if (ts) {
-      const currentScope = ts.tracks ?? state.selectedTrackIndices;
-      const newScope = currentScope.includes(index)
-        ? currentScope.filter((i) => i !== index)
-        : [...currentScope, index].sort((a, b) => a - b);
-      dispatch({
-        type: 'SET_TIME_SELECTION',
-        payload: newScope.length > 0 ? { ...ts, tracks: newScope } : null,
-      });
-    }
-    setSelectionAnchor(index);
-  };
+  // Per-track control-panel handlers (mute/solo, focus/reorder/nav,
+  // menu/click/selection, tab-out routing) — see useTrackPanelHandlers.
+  // `toggleScopeOrTrackSelection` is the single copy consumed by both the
+  // TrackControlPanel `onToggleSelection` wiring below and Canvas's
+  // `onContainerEnter` Cmd/Ctrl+Enter branch further down this file.
+  const {
+    toggleScopeOrTrackSelection,
+    onMuteToggle: onTrackMuteToggle,
+    onSoloToggle: onTrackSoloToggle,
+    onEffectsClick: onTrackEffectsClick,
+    onFocusChange: onTrackPanelFocusChange,
+    onDragReorderDrop: onTrackDragReorderDrop,
+    onReorderVertical: onTrackReorderVertical,
+    onNavigateVertical: onTrackPanelNavigateVertical,
+    onAddLabelClick: onTrackAddLabelClick,
+    onMenuClick: onTrackMenuClick,
+    onClick: onTrackPanelClick,
+    onRangeSelection: onTrackRangeSelection,
+    onTabOut: onTrackPanelTabOut,
+    onShiftTabOut: onTrackPanelShiftTabOut,
+  } = useTrackPanelHandlers({
+    tracks: state.tracks,
+    selectedTrackIndices: state.selectedTrackIndices,
+    timeSelection: state.timeSelection,
+    playheadPosition: state.playheadPosition,
+    showVerticalRulers,
+    trackSelectionMode,
+    selectionAnchor,
+    setSelectionAnchor,
+    setControlPanelHasFocus,
+    audioManagerRef,
+    effectsPanel,
+    setEffectsPanel,
+    trackMenuTriggerRef,
+    setTrackContextMenu,
+  });
 
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
@@ -475,232 +486,29 @@ export function EditorLayout(props: EditorLayoutProps) {
                 }
                 meterClipped={state.recordingPeakLevel > 100}
                 meterStyle="default"
-                onMuteToggle={(e) => {
-                  // Cmd/Ctrl+click: exclusive mute — mute this track
-                  // (unconditionally), clear every other track's mute.
-                  if (e.metaKey || e.ctrlKey) {
-                    dispatch({ type: 'SET_TRACK_MUTED_EXCLUSIVE', payload: index });
-                    state.tracks.forEach((t, i) => {
-                      if (i === index) {
-                        audioManagerRef.current.setTrackMuted(i, true);
-                      } else {
-                        audioManagerRef.current.setTrackGain(i, t.gain ?? 75);
-                      }
-                    });
-                    return;
-                  }
-                  // Plain click: toggle this track's mute in place.
-                  const newMuted = !(track.muted ?? false);
-                  dispatch({ type: 'UPDATE_TRACK', payload: { index, track: { muted: newMuted } } });
-                  if (newMuted) {
-                    audioManagerRef.current.setTrackMuted(index, true);
-                  } else {
-                    audioManagerRef.current.setTrackGain(index, track.gain ?? 75);
-                  }
-                }}
-                onSoloToggle={(e) => {
-                  // Cmd/Ctrl+click: exclusive solo — solo this track
-                  // (unconditionally), clear every other track's solo.
-                  if (e.metaKey || e.ctrlKey) {
-                    dispatch({ type: 'SET_TRACK_SOLOED_EXCLUSIVE', payload: index });
-                    return;
-                  }
-                  // Plain click: toggle this track's solo — adds/removes
-                  // it from the solo pool without touching other tracks.
-                  dispatch({ type: 'UPDATE_TRACK', payload: { index, track: { soloed: !(track.soloed ?? false) } } });
-                }}
-                onEffectsClick={() => {
-                  const isCurrentlyOpen = effectsPanel?.isOpen && effectsPanel.trackIndex === index;
-                  setEffectsPanel(isCurrentlyOpen ? null : {
-                    isOpen: true,
-                    trackIndex: index,
-                    left: 0,
-                    top: 0,
-                    height: 0,
-                    width: 0,
-                  });
-                }}
+                onMuteToggle={(e) => onTrackMuteToggle(e, index, track)}
+                onSoloToggle={(e) => onTrackSoloToggle(e, index, track)}
+                onEffectsClick={() => onTrackEffectsClick(index)}
                 instruments={track.type === 'midi' ? MIDI_INSTRUMENTS : undefined}
                 instrument={track.instrument}
                 onInstrumentChange={track.type === 'midi' ? (id: string) => {
                   dispatch({ type: 'UPDATE_TRACK', payload: { index, track: { instrument: id } } });
                 } : undefined}
                 tabIndex={-1}
-                onFocusChange={(hasFocus) => {
-                  setControlPanelHasFocus(hasFocus ? index : null);
-                  if (hasFocus) {
-                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
-                  }
-                }}
-                onDragReorderDrop={(clientY) => {
-                  // Resolve the drop Y to a track index by hit-testing
-                  // every visible panel. If the pointer landed above
-                  // the first row or below the last, clamp.
-                  const target = resolveTrackDropIndex(document, clientY);
-                  if (target < 0 || target === index) return;
-                  dispatch({
-                    type: 'MOVE_TRACK',
-                    payload: { fromIndex: index, toIndex: target },
-                  });
-                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: target });
-                }}
-                onReorderVertical={(direction) => {
-                  // Cmd+Arrow on the track panel header: reorder
-                  // this track's row within the track list, using
-                  // the same MOVE_TRACK path the canvas .track
-                  // container uses. Aborts silently at the edges.
-                  const dir = direction === 'up' ? -1 : 1;
-                  const target = index + dir;
-                  if (target < 0 || target >= state.tracks.length) return;
-                  dispatch({
-                    type: 'MOVE_TRACK',
-                    payload: { fromIndex: index, toIndex: target },
-                  });
-                  // Focus follows the moved row so subsequent
-                  // Cmd+Arrows accumulate.
-                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: target });
-                  // Move DOM focus to the newly positioned panel so
-                  // the next keydown fires from the right instance.
-                  requestAnimationFrame(() => {
-                    findTrackControlPanelByIndex(document, target)?.focus?.();
-                  });
-                }}
-                onNavigateVertical={(direction, shiftKey) => {
-                  const nextIndex = direction === 'up' ? index - 1 : index + 1;
-                  if (nextIndex >= 0 && nextIndex < state.tracks.length) {
-                    flushSync(() => {
-                      dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                    });
-
-                    if (shiftKey) {
-                      // Shift+Arrow: extend/contract track selection.
-                      // Anchor persists across the chain.
-                      const anchor = selectionAnchor ?? index;
-                      if (selectionAnchor === null) {
-                        setSelectionAnchor(index);
-                      }
-                      const start = Math.min(anchor, nextIndex);
-                      const end = Math.max(anchor, nextIndex);
-                      const newSelection: number[] = [];
-                      for (let i = start; i <= end; i++) newSelection.push(i);
-                      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                    }
-                    // Plain arrow-nav: intentionally NOT clearing the
-                    // anchor. A stale selectedTrackIndices[0] fallback
-                    // was the source of "Shift+Enter after nav selects
-                    // the wrong range". The anchor is now only reset
-                    // by explicit "reset intent" gestures (plain click,
-                    // plain Enter, exclusive-select), so a
-                    // just-established anchor survives the walk to
-                    // where the user wants to extend.
-
-                    const nextPanel = findTrackControlPanelByIndex(document, nextIndex);
-                    if (nextPanel) {
-                      nextPanel.focus();
-                      nextPanel.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'nearest',
-                      });
-                    }
-                  }
-                }}
-                onAddLabelClick={() => {
-                  const allLabels = state.tracks.flatMap((t) => t.labels || []);
-                  const nextLabelId = allLabels.length > 0
-                    ? Math.max(...allLabels.map((l) => l.id)) + 1
-                    : 1;
-
-                  const newLabel = {
-                    id: nextLabelId,
-                    trackIndex: index,
-                    text: '',
-                    startTime: state.timeSelection?.startTime ?? state.playheadPosition,
-                    endTime: state.timeSelection?.endTime ?? state.playheadPosition,
-                  };
-
-                  dispatch({
-                    type: 'ADD_LABEL',
-                    payload: { trackIndex: index, label: newLabel }
-                  });
-                }}
-                onMenuClick={(e) => {
-                  const button = e.currentTarget;
-                  if (trackMenuTriggerRef) {
-                    trackMenuTriggerRef.current = button as HTMLElement;
-                  }
-                  const rect = button.getBoundingClientRect();
-                  setTrackContextMenu({
-                    isOpen: true,
-                    x: rect.right - 20,
-                    y: rect.top + 10,
-                    trackIndex: index,
-                    openedViaKeyboard: true,
-                  });
-                }}
+                onFocusChange={(hasFocus) => onTrackPanelFocusChange(hasFocus, index)}
+                onDragReorderDrop={(clientY) => onTrackDragReorderDrop(clientY, index)}
+                onReorderVertical={(direction) => onTrackReorderVertical(direction, index)}
+                onNavigateVertical={(direction, shiftKey) => onTrackPanelNavigateVertical(direction, shiftKey, index)}
+                onAddLabelClick={() => onTrackAddLabelClick(index)}
+                onMenuClick={(e) => onTrackMenuClick(e, index)}
                 state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
                 height={heightState}
                 trackHeight={trackHeight}
-                onClick={() => {
-                  selectTrackExclusive(index, dispatch);
-                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
-                  dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-                  // Anchor the just-clicked track so a subsequent
-                  // Shift+Enter from another track extends the range
-                  // from HERE — the user's most recent explicit
-                  // selection, not the app-init default of [0].
-                  setSelectionAnchor(index);
-                }}
+                onClick={() => onTrackPanelClick(index)}
                 onToggleSelection={() => toggleScopeOrTrackSelection(index)}
-                onRangeSelection={() => {
-                  // Fallback to CURRENT focus rather than
-                  // selectedTrackIndices[0]. The old fallback picked
-                  // up the app-init `[0]` selection as an implicit
-                  // anchor, so Shift+Enter down to the bottom track
-                  // silently spanned from track 0 → last (i.e., "all
-                  // tracks selected") without the user ever having
-                  // established that anchor.
-                  const anchor = selectionAnchor ?? index;
-                  if (selectionAnchor === null) {
-                    setSelectionAnchor(anchor);
-                  }
-
-                  const start = Math.min(anchor, index);
-                  const end = Math.max(anchor, index);
-                  const newSelection: number[] = [];
-                  for (let i = start; i <= end; i++) {
-                    newSelection.push(i);
-                  }
-                  dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                }}
-                onTabOut={() => {
-                  const firstClip = findFirstClipInTrack(document, index);
-                  if (firstClip) {
-                    firstClip.focus();
-                    return;
-                  }
-                  // No clips — skip to ruler or next track
-                  if (showVerticalRulers && state.tracks[index]?.type !== 'label' && state.tracks[index]?.type !== 'midi') {
-                    const rulerEl = findTrackRulerByIndex(document, index);
-                    if (rulerEl) {
-                      rulerEl.focus();
-                      return;
-                    }
-                  }
-                  const nextIndex = index + 1;
-                  if (nextIndex < state.tracks.length) {
-                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                    if (trackSelectionMode === 'follows-focus') {
-                      dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
-                      setSelectionAnchor(nextIndex);
-                    }
-                    findTrackContainerByIndex(document, nextIndex)?.focus();
-                  } else {
-                    findSelectionToolbarFirstGroup(document)?.focus();
-                  }
-                }}
-                onShiftTabOut={() => {
-                  findTrackContainerByIndex(document, index)?.focus();
-                }}
+                onRangeSelection={() => onTrackRangeSelection(index)}
+                onTabOut={() => onTrackPanelTabOut(index)}
+                onShiftTabOut={() => onTrackPanelShiftTabOut(index)}
               />
             );
           })}
