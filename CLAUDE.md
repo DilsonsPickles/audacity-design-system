@@ -417,6 +417,7 @@ Other layout constants:
 
 **Documentation:**
 - `docs/codebase-map.md` - Canonical "where does X live" index (see Navigation section above)
+- `docs/backlog.md` - Known follow-ups (confirmed bugs preserved during refactors, pending decisions, refactor tail) — check it before "fixing" a quirk in passing; it may be deliberate and tracked
 - `docs/design-system-architecture.md` - Design system plan
 - `docs/automation-overlay-states.md` - 6 automation overlay states
 - `docs/clip-styling-states.md` - 10 clip styling states
