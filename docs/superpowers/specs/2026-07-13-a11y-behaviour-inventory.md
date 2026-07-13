@@ -49,7 +49,7 @@
 
 ### Track tab-order stride = 4 (container +0, [unused +1], clips +2, ruler +3)
 - **Behaviour:** Per track `i`, tab stops are: `.track` container = `trackBase + i*4`; clips group start = `trackBase + 2 + i*4`; per-track vertical ruler = `trackBase + 3 + i*4`. The `+1` slot is reserved but **not assigned** to any positive-tabIndex element. The side-panel `TrackControlPanel` is `tabIndex={-1}` (NOT a tab stop). `trackBase = useTabOrder('tracks') = 100`.
-- **Status:** VERIFIED
+- **Status:** VERIFIED (spot-checked — live DOM with 4 tracks: container=100/104/108/112, clip=102/106/110/114, ruler=103/107/111/115; the `+1` slot unused; all `.track-control-panel` side panels `tabIndex=-1`; add-track=98, timeline-ruler=99)
 - **Code:** container/clips `apps/sandbox/src/components/canvas/CanvasTrackList.tsx:250` (clips `trackBase+2+trackIndex*4`), `:251` (`trackTabIndex = trackBase+trackIndex*4`); ruler `apps/sandbox/src/components/EditorLayout.tsx:226`; panel `-1` `apps/sandbox/src/components/EditorLayout.tsx:492`; base `apps/sandbox/src/components/EditorLayout.tsx:220`
 - **Profile-gated:** in flat mode all of these become `0` (same file lines, `isFlatNavigation ? 0 : …`).
 - **Note:** Resolves Conflict 1. The `profiles.ts:219` comment ("stride 4 … container +0, panel +1, clips +2, ruler +3") is correct on the stride but its "panel +1" is misleading — the panel is not a live tab stop.
@@ -110,7 +110,7 @@
 
 ### Clip — Cmd/Ctrl+Left/Right = move clip horizontally
 - **Behaviour:** Moves the clip by ±0.1s (Alt = ±1s). `onClipMove`.
-- **Status:** VERIFIED
+- **Status:** VERIFIED (spot-checked — Cmd+ArrowRight on a focused clip moved its start 2.7s→2.8s, +10px)
 - **Code:** `packages/components/src/Track/TrackNew.tsx:659`
 - **Profile-gated:** no (config exists but is not consulted — see foundational facts). Docs claim AU4-only; that gate is inert.
 
@@ -122,13 +122,13 @@
 
 ### Clip — Cmd/Ctrl release = overlap resolution
 - **Behaviour:** Cmd+Arrow nudges set the module-scoped `pendingClipMoveResolution.current=true`; on Meta/Control **keyup**, `useCmdArrowMove` reconciles the moved clips' final resting positions against neighbours (`resolveOverlap` → `APPLY_CLIP_PLACEMENT`). Resolution fires on release, not per-nudge.
-- **Status:** VERIFIED
+- **Status:** VERIFIED (spot-checked — after Cmd+ArrowRight nudges left clip 1 overlapping clip 32 mid-move, dispatching `keyup{key:'Meta'}` on document reconciled the neighbour: clip 32 start 3.8s→3.9s / 1.2s→1.1s. Nothing moved during the nudges; resolution fired only on release.)
 - **Code:** `apps/sandbox/src/hooks/useCmdArrowMove.ts:52`; flag `apps/sandbox/src/utils/pendingClipMoveResolution.ts:9`; write sites `apps/sandbox/src/hooks/useKeyboardShortcuts.ts:717` & `:742`
 - **Profile-gated:** no. (Resolves Conflict 10.)
 
 ### Clip — edge editing lives on BRACKET keys, not Shift+Arrow
 - **Behaviour:** `[` = right edge moves left (contract); `]` = right edge moves right (extend); `Shift+[` = left edge moves left (extend); `Shift+]` = left edge moves right (contract); step 0.1s; blocked-extend triggers a shake animation. Adding Cmd/Ctrl converts trim→stretch on the same edge/direction. Matched via `e.code`/`e.key`/`keyCode`.
-- **Status:** VERIFIED
+- **Status:** VERIFIED (spot-checked — on a focused clip: `[` shrank the RIGHT edge (width −10px, left unchanged); `Shift+]` moved the LEFT edge right (left +10px, width −10px). On a clip already at full source, plain `]` was boundary-blocked (no change) while `Cmd+]` extended it 4.5s→4.6s — proving Cmd takes the stretch path, which ignores the source boundary that trim respects.)
 - **Code:** `packages/components/src/Track/TrackNew.tsx:708`
 - **Profile-gated:** no.
 - **Note:** The docs claim clip trim is on **Shift+Arrow / Cmd+Shift+Arrow**. In code there is **no** Shift+Arrow clip-trim handler; trim/extend is the bracket family. See discrepancy report.
@@ -153,14 +153,14 @@
 
 ### Clip — plain ArrowLeft/Right = playhead (NOT clip cycling)
 - **Behaviour:** Plain Arrow Left/Right on a clip is deliberately NOT handled locally and NOT delegated to the clip roving hook — it falls through to the global playhead nudge. Clip-to-clip stepping is on **Tab / Shift+Tab**, not arrows.
-- **Status:** VERIFIED
+- **Status:** VERIFIED (spot-checked — plain ArrowLeft and ArrowRight on a focused clip left focus on that same clip; no clip-to-clip focus change)
 - **Code:** clip falls through (comment) `packages/components/src/Track/TrackNew.tsx:862`; container returns for all arrows `:1257`; only Home/End delegate `:1263`
 - **Profile-gated:** no.
 - **Note:** Docs say ArrowLeft/Right cycles clips via `useContainerTabGroup`. Not true in current code — see discrepancy report.
 
 ### Clip — Tab / Shift+Tab = clip-to-clip / panel handoff
 - **Behaviour:** Tab steps to the next clip in DOM order; on the last clip Tab hands off via `onTabFromLastClip` (ruler/next track). Shift+Tab on the first clip returns to the track panel (`onEnterPanel`); elsewhere steps to the previous clip. First Tab after a mouse-focus reveals the outline.
-- **Status:** VERIFIED
+- **Status:** VERIFIED (spot-checked — after splitting clip 1 into two on one track: Tab from clip 1 → clip 32 (next clip), Tab from clip 32 (last) → Track 1 amplitude ruler, Shift+Tab from clip 32 → clip 1 (prev), Shift+Tab from first clip → Track 1 panel icon button)
 - **Code:** `packages/components/src/Track/TrackNew.tsx:790`
 - **Profile-gated:** no (behaviour differs implicitly because flat mode makes each clip its own native tab stop).
 
@@ -263,11 +263,11 @@
 
 ### Track Control Panel (side panel) — manual two-level nav, panel is NOT a canvas tab stop
 - **Behaviour:** Container `role="group"`, `tabIndex={-1}` in the live layout. Manual `handleKeyDown`:
-  - Panel focused: Enter selects/toggles the track (Shift+Enter range, Cmd/Ctrl+Enter toggle, plain-Enter-on-selected deselects); Shift+F10/ContextMenu opens the track menu; ArrowUp/Down navigate between track headers (Cmd/Ctrl+Arrow reorders this track); ArrowRight → focus first child, ArrowLeft → focus last child; Tab → focus icon button (enter children); Shift+Tab → out to container.
-  - Child focused: all four arrows cycle children **with wrap** (last→first, first→last) — they do **NOT** return to the panel; Escape returns to the panel; Tab (non-Shift) → out to clips; Shift+Tab → out to container.
+  - Panel focused: Enter selects/toggles the track (Shift+Enter range, Cmd/Ctrl+Enter toggle, plain-Enter-on-selected deselects); Shift+F10/ContextMenu opens the track menu; ArrowUp/Down navigate between track headers (Cmd/Ctrl+Arrow reorders this track); **ArrowLeft/ArrowRight are no-ops** (they do NOT enter children — the `isPanelFocused` branch at `:530` returns before the first-child branch at `:583` can run); Tab → focus icon button (this is the only way INTO the children); Shift+Tab → out to container.
+  - Child focused: all four arrows cycle children **with wrap** (last→first, first→last) — they do **NOT** return to the panel; the panel's own Escape handler (`:466`) focuses the panel, but because it does not `stopPropagation` the global Escape cascade (`useKeyboardShortcuts.ts:188`) then re-anchors focus to the `.track` canvas container when a `focusedTrackIndex` is set — so the observed resting place after Escape is the track container, not the panel; Tab (non-Shift) → out to clips; Shift+Tab → out to container.
   - Pan/Volume use a "slot" model: arrow lands on the slot, Enter pushes focus into the knob/slider, Escape/Enter pops back. Disabled in flat mode.
-- **Status:** VERIFIED
-- **Code:** `packages/components/src/TrackControlPanel/TrackControlPanel.tsx:380` (handler), Enter `:426`, menu `:450`, Escape `:466`, Tab-into-children `:491`, child-out `:516`, arrow track nav + reorder `:530`, **child wrap** `:597`, slot model `:392`; live `tabIndex={-1}` at `apps/sandbox/src/components/EditorLayout.tsx:492`
+- **Status:** VERIFIED (spot-checked — CORRECTED: panel-focused ArrowLeft/ArrowRight left focus on the panel (no child entry); Tab from focused panel → "Change Track N icon" child; child-focused ArrowRight cycled icon→rename→menu→Pan; Escape from a child landed on the `.track` container, not the panel. See discrepancy report.)
+- **Code:** `packages/components/src/TrackControlPanel/TrackControlPanel.tsx:380` (handler), Enter `:426`, menu `:450`, Escape `:466` (no stopPropagation → global cascade `useKeyboardShortcuts.ts:188` re-anchors to `.track`), Tab-into-children `:491`, panel-focused arrows return early `:530`, child-out `:516`, arrow track nav + reorder `:530`, **child wrap** `:597`, dead first-child branch `:583`, slot model `:392`; live `tabIndex={-1}` at `apps/sandbox/src/components/EditorLayout.tsx:492`
 - **Profile-gated:** flat → children each get `tabIndex=0` (`childTabIndex`), manual arrow/slot nav suppressed.
 - **Note:** Resolves Conflict 9 — the "after last child → back to panel" doc claim is wrong; children wrap child-to-child. Panel returns to via Escape only.
 
@@ -285,9 +285,9 @@
 
 ### Application header menubar — arrow nav, WINDOWS variant only
 - **Behaviour:** In the Windows variant the menu bar is `role="menubar"`; ArrowRight/Down = next item, ArrowLeft/Up = previous (both wrap); Tab/Shift+Tab pass through; roving tabIndex (first item = `file-menu`=1, rest -1; flat → all get the menu tabIndex). The **macOS variant renders no menu bar** (traffic lights + app name only). `os` comes from `preferences.operatingSystem`.
-- **Status:** VERIFIED
-- **Code:** menubar keydown `packages/components/src/ApplicationHeader/ApplicationHeader.tsx:159`; role `:252`; tabIndex `:262`; macOS no-menubar branch `:183`; wired `apps/sandbox/src/App.tsx:757`
-- **Profile-gated:** flat → all menu buttons tab-stops; arrows suppressed. Also conditioned on `os==='windows'`.
+- **Status:** VERIFIED (spot-checked, partial — the running app defaults to `os='windows'` (`PreferencesContext.tsx:78`; localStorage `audacity-preferences.operatingSystem='windows'`; Debug panel exposes a Windows/macOS toggle), and Windows chrome is live (observed `.dialog-header--windows` on modals). The menubar itself could NOT be rendered in the preview: `App.tsx:756` gates `ApplicationHeader` behind `!IS_ELECTRON`, and the preview browser's UA contains `Electron/…` so `IS_ELECTRON` is true and the header is suppressed. In a normal (non-Electron) browser with the default os=windows, the `role="menubar"` renders; the desktop Electron app suppresses it in favour of the native OS menu. Menubar arrow-nav remains code-verified only.)
+- **Code:** menubar keydown `packages/components/src/ApplicationHeader/ApplicationHeader.tsx:159`; role `:252`; tabIndex `:262`; macOS no-menubar branch `:183`; wired `apps/sandbox/src/App.tsx:757`; render gate `apps/sandbox/src/App.tsx:756` (`!IS_ELECTRON`, defined `:27`)
+- **Profile-gated:** flat → all menu buttons tab-stops; arrows suppressed. Also conditioned on `os==='windows'` AND `!IS_ELECTRON`.
 - **Note:** Docs say ArrowLeft/Right; code also handles Up/Down and only exists in the Windows variant.
 
 ---
@@ -303,16 +303,17 @@
 
 ### Export/modal roving — arrows within group, Tab between groups, Escape closes
 - **Behaviour:** Within each group Arrow Up/Down (and Left/Right) rove with wrap (AU4 `export-*`/`file`/`audio-options`/`rendering`/`footer` are `wrap:true`), Home/End; Tab moves between groups; Escape closes (documented behaviour of the modal shell).
-- **Status:** VERIFIED (roving mechanics via `useTabGroup`); modal-Escape UNCLEAR from these files alone
-- **Code:** mechanics `packages/components/src/hooks/useTabGroup.ts:202`; config `packages/core/src/accessibility/profiles.ts:165`
+- **Status:** VERIFIED (roving mechanics via `useTabGroup`); modal-Escape RESOLVED = **NOT wired** (spot-checked); dropdown focus-restoration RESOLVED = wired (spot-checked)
+- **Code:** mechanics `packages/components/src/hooks/useTabGroup.ts:202`; config `packages/core/src/accessibility/profiles.ts:165`; modal close paths `packages/components/src/ExportModal/ExportModal.tsx:449` (overlay onClick), `:455` (DialogHeader X), `:1123` (Cancel); dropdown Escape+focus-restore `packages/components/src/Dropdown/Dropdown.tsx:125` (Escape) & `:132` (`triggerRef.current.focus()`)
 - **Profile-gated:** flat disables arrows.
-- **Note:** The export-modal doc says groups use `wrap:false`; the actual AU4 profile sets `wrap:true` for these groups. Doc's escape/dropdown-focus-restoration details were not fully traced to code here → Task 2 spot-check.
+- **Note:** The export-modal doc says groups use `wrap:false`; the actual AU4 profile sets `wrap:true` for these groups. **Spot-check findings:** (1) The `ExportModal` has NO Escape handler — Escape does NOT close it (verified live: Escape dispatched at modal root, overlay, focused button, and document all left the modal open). It closes only via overlay-click, the DialogHeader X, or the Cancel button. (2) The nested `Dropdown` DOES restore focus to its trigger on Escape (code `Dropdown.tsx:125-134`; live: Enter opened the listbox, Escape closed it — the exact focus landing was inconclusive under synthetic dispatch because focus was not inside the dropdown menu). Live roving observed: within each `TabGroupField` group the first control is `tabIndex=0`, the rest `-1`.
 
 ### Preferences modal — tab groups
 - **Behaviour:** Uses `preferences-content` (region id) and `dialog-footer` (roving footer buttons via `TabGroupField`/`useTabGroup`); the audio/playback/spectral sections use their own groupIds listed in `profiles.ts`.
-- **Status:** VERIFIED (that these IDs/groups are wired); per-control detail UNCLEAR
+- **Status:** VERIFIED (that these IDs/groups are wired); per-control detail RESOLVED (spot-checked)
 - **Code:** `packages/components/src/PreferencesModal/PreferencesModal.tsx:132` (content), `:162` (dialog-footer); field wrapper `packages/components/src/PreferencesModal/TabGroupField.tsx:37`; profile groups `packages/core/src/accessibility/profiles.ts:88`
 - **Profile-gated:** flat → sequential.
+- **Note (spot-check):** The `dialog-footer` IS roving — live it showed "Reset preferences" `tabIndex=0`, "Cancel"/"OK" `tabIndex=-1`, and ArrowRight cycled Reset → Cancel → OK. The content-area controls are sequential (`tabIndex=0` in DOM order — sampled: language buttons, path input, Browse, checkboxes). The left-hand section nav items are all `role="tab"`, `tabIndex=0`. (Like the ExportModal, Escape did not close the Preferences modal in the live app; it closes via the DialogHeader controls / Cancel.)
 
 ### Cmd/Ctrl+, — open Preferences
 - **Behaviour:** Opens the preferences modal (`onOpenPreferences`), consuming the comma so the playhead-jump handler never sees it.
@@ -322,9 +323,10 @@
 
 ### Context menus — Shift+F10 / ContextMenu open; menu is `role="menu"`
 - **Behaviour:** Clip and track Shift+F10/ContextMenu open the respective context menu and (per the clip/panel handlers) place it for keyboard use. Menu internals render via `Menu`/`ContextMenu` components with `role="menu"`.
-- **Status:** VERIFIED (open trigger); intra-menu arrow nav UNCLEAR from files read
+- **Status:** VERIFIED (open trigger); intra-menu arrow nav RESOLVED = VERIFIED (spot-checked)
 - **Code:** clip `packages/components/src/Track/TrackNew.tsx:645`; panel `packages/components/src/TrackControlPanel/TrackControlPanel.tsx:450`
 - **Profile-gated:** no.
+- **Note (spot-check):** Shift+F10 on a focused clip opened the `role="menu"` `.clip-context-menu` (14 `role="menuitem"` items). With focus on a menu item, ArrowDown stepped Rename clip → Clip color → Cut → Copy and ArrowUp reversed — intra-menu arrow navigation works. (Under synthetic keyboard open, focus did not auto-enter the menu; a real render likely focuses the first item.)
 
 ---
 
