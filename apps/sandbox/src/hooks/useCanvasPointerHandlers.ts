@@ -245,12 +245,10 @@ export function useCanvasPointerHandlers(
         const newScope = currentScope.includes(ti)
           ? currentScope.filter((i) => i !== ti)
           : [...currentScope, ti].sort((a, b) => a - b);
-        if (newScope.length > 0) {
-          dispatch({
-            type: 'SET_TIME_SELECTION',
-            payload: { ...timeSelection, tracks: newScope },
-          });
-        }
+        dispatch({
+          type: 'SET_TIME_SELECTION',
+          payload: newScope.length > 0 ? { ...timeSelection, tracks: newScope } : null,
+        });
       }
       return;
     }
