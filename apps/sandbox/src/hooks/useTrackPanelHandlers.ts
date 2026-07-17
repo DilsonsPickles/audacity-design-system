@@ -91,12 +91,11 @@ export function useTrackPanelHandlers(
   const dispatch = useTracksDispatch();
 
   const toggleScopeOrTrackSelection = (index: number) => {
-    toggleTrackSelection(index, selectedTrackIndices, dispatch);
-    // If there's an active time selection, keep its scope in sync with
-    // the new track selection so the selection visual appears on the
-    // newly added (or disappears from the removed) track.
     const ts = timeSelection;
     if (ts) {
+      // Time-selection mode: extend or contract the row scope only.
+      // selectedTrackIndices stays empty (invariant: track selection and
+      // time selection cannot coexist).
       const currentScope = ts.tracks ?? selectedTrackIndices;
       const newScope = currentScope.includes(index)
         ? currentScope.filter((i) => i !== index)
@@ -105,6 +104,9 @@ export function useTrackPanelHandlers(
         type: 'SET_TIME_SELECTION',
         payload: newScope.length > 0 ? { ...ts, tracks: newScope } : null,
       });
+    } else {
+      // Track-selection mode: toggle the clicked track in/out of the selection set.
+      toggleTrackSelection(index, selectedTrackIndices, dispatch);
     }
     setSelectionAnchor(index);
   };
