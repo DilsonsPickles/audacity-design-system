@@ -20,6 +20,7 @@
 
 import { MUSEHUB_BASE, adoptTokens as museHubAdoptTokens } from './musehub-client';
 import { ADIEU_BASE, adoptTokens as adieuAdoptTokens } from './adieu-client';
+import { toast } from '@dilsonspickles/components';
 
 const MUSEID_BASE_URL: string =
   (import.meta.env.VITE_MUSEID_BASE_URL as string | undefined) ??
@@ -171,6 +172,21 @@ function clearTokens(): void {
 
 export function hasToken(): boolean {
   return readTokens() !== null;
+}
+
+/** Local-only rollback: clears the muse token store WITHOUT calling the
+ *  server-side revoke endpoint (contrast `logout()` below, which is a
+ *  deliberate user-initiated sign-out and appropriately revokes
+ *  server-side too). Task 6.4 review Bug 2: OAuthCallback.tsx's
+ *  handleMuseIdCallback writes muse tokens on a successful code exchange,
+ *  then awaits getUserInfo() to establish the session/profile. If THAT
+ *  throws, the tokens are still technically valid (the fault is in
+ *  establishing the session, not the tokens themselves) but the UI is about
+ *  to show "Sign-in failed" — so `hasToken()` must go back to false or the
+ *  app is incoherent (error shown, yet signed in on next load). This is the
+ *  "clear-tokens/sign-out-local path" that fix calls for. */
+export function clearLocalSession(): void {
+  clearTokens();
 }
 
 /** Current Muse ID access token, if signed in — used by the service
@@ -500,6 +516,55 @@ export async function exchangeAndAdoptServices(
     }
   }
   return failures;
+}
+
+const SERVICE_ADOPT_FAILURE_KEY = 'muse-id-pending-service-adopt-failures';
+
+const SERVICE_LABELS: Record<ServiceName, string> = {
+  'moose-hub': 'MuseHub',
+  adieu: 'audio.com',
+};
+
+/** Task 6.4 review Bug 1: OAuthCallback.tsx's handleMuseIdCallback calls
+ *  exchangeAndAdoptServices above and, on a non-empty failures list, must
+ *  tell the user rather than silently redirecting as if everything
+ *  succeeded (the Muse sign-in itself DID succeed, so this is a non-fatal
+ *  notice, not a rollback — contrast clearLocalSession/Bug 2 above, which
+ *  IS a rollback, for a genuinely different failure). OAuthCallback.tsx
+ *  then does `window.location.replace('/')`, a real navigation that wipes
+ *  all in-memory state (including the toast singleton's queue) before the
+ *  fresh page — and its toast — can render, so the notice has to survive
+ *  the round-trip via sessionStorage. `notifyPendingServiceAdoptFailure`
+ *  below, called once from App.tsx on mount, reads it back and shows the
+ *  toast. Mirrors MuseIdContext.exchangeAndAdoptAll's own `setError`
+ *  on failures for the in-app (non-redirect) counterpart. */
+export function setPendingServiceAdoptFailureNotice(services: ServiceName[]): void {
+  if (typeof window === 'undefined' || services.length === 0) return;
+  window.sessionStorage.setItem(SERVICE_ADOPT_FAILURE_KEY, JSON.stringify(services));
+}
+
+/** Reads, clears, and surfaces (via `toast.warning`) the notice set by
+ *  `setPendingServiceAdoptFailureNotice`, if any. Safe to call
+ *  unconditionally on every app mount — a no-op when nothing is pending. */
+export function notifyPendingServiceAdoptFailure(): void {
+  if (typeof window === 'undefined') return;
+  const raw = window.sessionStorage.getItem(SERVICE_ADOPT_FAILURE_KEY);
+  window.sessionStorage.removeItem(SERVICE_ADOPT_FAILURE_KEY);
+  if (!raw) return;
+
+  let services: ServiceName[];
+  try {
+    services = JSON.parse(raw) as ServiceName[];
+  } catch {
+    return;
+  }
+  if (!Array.isArray(services) || services.length === 0) return;
+
+  const names = services.map((s) => SERVICE_LABELS[s]).join(', ');
+  toast.warning(
+    'Signed in to Muse ID',
+    `Couldn't connect: ${names} — try again from Accounts`,
+  );
 }
 
 // ---- Browser-first OAuth (authorization code + PKCE) — Task 6.4 -----------

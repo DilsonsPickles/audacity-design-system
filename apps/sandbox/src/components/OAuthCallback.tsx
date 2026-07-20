@@ -4,8 +4,13 @@ import {
   isBrowserAuthorizePending,
   completeBrowserAuthorize,
   clearBrowserAuthorizeState,
+  clearLocalSession,
   getUserInfo,
   exchangeAndAdoptServices,
+  setPendingServiceAdoptFailureNotice,
+  MuseIdAuthError,
+  type MuseIdTokens,
+  type MuseIdUserInfo,
 } from '../lib/muse-id-client';
 
 type Status = 'pending' | 'error';
@@ -39,14 +44,65 @@ async function handleMuseIdCallback(): Promise<void> {
   // Verifies state, exchanges code->muse tokens, writes them. Throws (and
   // has already cleared sessionStorage) on state mismatch or a failed
   // exchange — no partial Muse session is left behind.
-  const tokens = await completeBrowserAuthorize(code, returnedState);
+  let tokens: MuseIdTokens;
+  try {
+    tokens = await completeBrowserAuthorize(code, returnedState);
+  } catch (err) {
+    // Bug 3 (Task 6.4 review): a state mismatch or missing PKCE verifier
+    // means this callback can't actually be a valid muse-id browser-first
+    // return. The most likely real-world cause is a STALE
+    // `muse-id-oauth-pending` marker: the user started a muse-id sign-in,
+    // abandoned it (closed the tab, hit Back) before returning here, and
+    // this `/oauth/callback` hit is actually moose-hub's own OAuth return
+    // sharing the same route. completeBrowserAuthorize has already cleared
+    // the marker by this point regardless of outcome, so falling through to
+    // moose-hub's own handler — instead of hard-failing with a muse-id
+    // error a moose-hub sign-in had nothing to do with — is the robust
+    // move. (See musehub-client.ts's startAuthorize for the other half of
+    // this fix: it also proactively clears a stale marker before a moose-hub
+    // flow even begins.) Any other completeBrowserAuthorize failure (e.g.
+    // `exchange_failed`, a real muse-id token-exchange error) is a genuine
+    // muse-id failure and must propagate as-is.
+    if (
+      err instanceof MuseIdAuthError &&
+      (err.code === 'oauth_state_mismatch' || err.code === 'oauth_missing_verifier')
+    ) {
+      await handleCallback();
+      return;
+    }
+    throw err;
+  }
 
-  // Establishes the Muse session's profile/linkedServices, then runs the
-  // same exchange-and-adopt-both-services flow MuseIdContext uses after an
-  // in-app sign-in — see exchangeAndAdoptServices's doc comment for why
-  // this is the plain (non-context) counterpart.
-  const info = await getUserInfo();
-  await exchangeAndAdoptServices(tokens.accessToken, info.linkedServices);
+  // Establishes the Muse session's profile/linkedServices. Bug 2 (Task 6.4
+  // review): muse tokens are already written at this point (by
+  // completeBrowserAuthorize above) — if THIS step fails, the session/
+  // profile was never established, so roll the just-written tokens back
+  // before letting the error propagate (OAuthCallback shows "Sign-in
+  // failed"). Without this, hasToken() would report signed-in even though
+  // the UI just told the user sign-in failed.
+  let info: MuseIdUserInfo;
+  try {
+    info = await getUserInfo();
+  } catch (err) {
+    clearLocalSession();
+    throw err;
+  }
+
+  // Runs the same exchange-and-adopt-both-services flow MuseIdContext uses
+  // after an in-app sign-in — see exchangeAndAdoptServices's doc comment
+  // for why this is the plain (non-context) counterpart. Bug 1 (Task 6.4
+  // review): the Muse sign-in above already succeeded (tokens are valid,
+  // the session is established), so a partial/total failure to adopt a
+  // LINKED service's own tokens must NOT look like a silent full success —
+  // but it also shouldn't roll back or block the Muse sign-in that did
+  // work. Queue a non-fatal notice (surfaced by App.tsx after the redirect
+  // below) instead; contrast the getUserInfo failure above, which DOES roll
+  // back, because that failure means the Muse session itself was never
+  // established.
+  const failures = await exchangeAndAdoptServices(tokens.accessToken, info.linkedServices);
+  if (failures.length > 0) {
+    setPendingServiceAdoptFailureNotice(failures);
+  }
 }
 
 export function OAuthCallback() {

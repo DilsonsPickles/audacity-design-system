@@ -34,6 +34,7 @@ import { RecordingManager } from './utils/RecordingManager';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from './contexts/AdieuContext';
 import { MuseIdProvider, useMuseId } from './contexts/MuseIdContext';
+import { notifyPendingServiceAdoptFailure } from './lib/muse-id-client';
 import { MuseHubHomeAccountCard } from './components/wallet/MuseHubHomeAccountCard';
 import { AdieuHomeAccountCard } from './components/wallet/AdieuHomeAccountCard';
 import { MuseIdHomeAccountCard } from './components/museid/MuseIdHomeAccountCard';
@@ -145,6 +146,14 @@ function CanvasDemoContent() {
       setTrackDeleteConfirm({ count, onConfirm });
     });
     return () => setTrackDeleteConfirmHandler(null);
+  }, []);
+  // Task 6.4 review Bug 1: surfaces the "couldn't connect: X" notice
+  // OAuthCallback.tsx may have queued (sessionStorage-backed — see
+  // setPendingServiceAdoptFailureNotice's doc comment) before its
+  // window.location.replace('/') reload landed here. No-ops when nothing
+  // is pending; mount-once is correct since the notice is one-shot.
+  React.useEffect(() => {
+    notifyPendingServiceAdoptFailure();
   }, []);
   const [cloudAudioFiles, setCloudAudioFiles] = useLocalStorageBackedState<CloudAudioFile[]>(
     'cloudAudioFiles',

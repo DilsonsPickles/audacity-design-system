@@ -9,9 +9,18 @@
 // to the client modules directly.
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from '@dilsonspickles/components';
 import { OAuthCallback } from '../OAuthCallback';
-import { createMuseIdMock, type MuseIdMockControls } from '../../__tests__/museIdMock';
-import { hasToken as museIdHasToken } from '../../lib/muse-id-client';
+import {
+  createMuseIdMock,
+  type MuseIdMockControls,
+  MUSEID_BASE,
+  MOOSEHUB_BASE,
+} from '../../__tests__/museIdMock';
+import {
+  hasToken as museIdHasToken,
+  notifyPendingServiceAdoptFailure,
+} from '../../lib/muse-id-client';
 import { hasToken as museHubHasToken } from '../../lib/musehub-client';
 import { hasToken as adieuHasToken } from '../../lib/adieu-client';
 
@@ -154,5 +163,130 @@ describe('OAuthCallback — muse-id browser-first return (Task 6.4)', () => {
     // Proves the request actually went out (through musehub-client.ts),
     // i.e. this test exercised real code, not a silent no-op.
     expect(mock.fetchMock).toHaveBeenCalled();
+  });
+});
+
+// Task 6.4 adversarial review follow-up: three failure paths the original
+// tests above didn't exercise (see .superpowers/sdd/task-6.4-fix-report.md
+// for the full writeup of each bug and its fix).
+describe('OAuthCallback — Task 6.4 review fixes', () => {
+  it('Bug 1: a service-exchange failure still completes Muse sign-in but queues a non-fatal notice (not a silent full success)', async () => {
+    mock.seedMuseUser({
+      email: 'a.dawson@mu.se',
+      password: 'irrelevant',
+      name: 'Alex',
+      linkedServices: ['moose-hub', 'adieu'],
+    });
+    mock.seedServiceUser('moose-hub', { email: 'a.dawson@mu.se', name: 'Alex' });
+    mock.seedServiceUser('adieu', { email: 'a.dawson@mu.se', name: 'Alex' });
+    mock.seedAuthCode('good-code', 'a.dawson@mu.se');
+    // Only moose-hub's exchange fails — adieu's must still succeed
+    // independently (exchangeAndAdoptServices runs each service on its own).
+    mock.failNext(`${MOOSEHUB_BASE}/api/auth/muse-exchange`);
+
+    seedPendingBrowserAuthorize('expected-state');
+    setCallbackUrl('?code=good-code&state=expected-state');
+    const replaceSpy = mockLocationReplace();
+
+    render(<OAuthCallback />);
+
+    // Muse sign-in itself succeeded (tokens valid, session established)
+    // despite the partial service-adopt failure — it still redirects as a
+    // completed sign-in, not an error screen.
+    await waitFor(() => expect(replaceSpy).toHaveBeenCalledWith('/'));
+    expect(museIdHasToken()).toBe(true);
+    expect(adieuHasToken()).toBe(true);
+    // The service whose exchange failed must NOT silently look signed-in.
+    expect(museHubHasToken()).toBe(false);
+
+    // Not a silent success: a notice was queued (sessionStorage-backed, to
+    // survive the window.location.replace('/') reload) for App.tsx to
+    // surface via toast.warning on mount.
+    const warnSpy = vi.spyOn(toast, 'warning').mockImplementation(() => 'toast-id');
+    notifyPendingServiceAdoptFailure();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[1]).toContain('MuseHub');
+    expect(warnSpy.mock.calls[0]?.[1]).not.toContain('audio.com');
+
+    // One-shot: the notice is consumed, so a second call surfaces nothing.
+    warnSpy.mockClear();
+    notifyPendingServiceAdoptFailure();
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("Bug 2: a getUserInfo failure after tokens are written rolls the muse tokens back (distinct from Bug 1's notify-only)", async () => {
+    mock.seedMuseUser({ email: 'a.dawson@mu.se', password: 'irrelevant', name: 'Alex' });
+    mock.seedAuthCode('good-code', 'a.dawson@mu.se');
+    // completeBrowserAuthorize (code -> muse tokens) succeeds and writes
+    // tokens; the NEXT step, establishing the session/profile, fails.
+    mock.failNext(`${MUSEID_BASE}/api/oauth/userinfo`);
+
+    seedPendingBrowserAuthorize('expected-state');
+    setCallbackUrl('?code=good-code&state=expected-state');
+    const replaceSpy = mockLocationReplace();
+
+    render(<OAuthCallback />);
+
+    await screen.findByText('Sign-in failed');
+    expect(replaceSpy).not.toHaveBeenCalled();
+
+    // "Sign-in failed" must mean actually-not-signed-in: the tokens
+    // completeBrowserAuthorize already wrote are rolled back because the
+    // session was never established (contrast Bug 1, where the Muse
+    // session DID get established and tokens are correctly kept).
+    expect(museIdHasToken()).toBe(false);
+  });
+
+  it('Bug 3: a stale muse-id pending marker does not misroute a legitimate moose-hub callback into a spurious muse-id failure', async () => {
+    // Simulates an ABANDONED earlier muse-id browser-first attempt: the
+    // pending marker plus a state that belongs to that abandoned attempt
+    // (not to the callback that's about to arrive) are still sitting in
+    // sessionStorage — e.g. the user closed the muse-id tab or hit Back.
+    seedPendingBrowserAuthorize('stale-muse-id-state');
+
+    // A legitimate, independent moose-hub OAuth return lands on the same
+    // shared /oauth/callback route.
+    window.sessionStorage.setItem('musehub-oauth-verifier', 'hub-verifier');
+    window.sessionStorage.setItem('musehub-oauth-state', 'hub-state');
+    setCallbackUrl('?code=hub-code&state=hub-state');
+
+    // museIdMock doesn't model moose-hub's own /api/oauth/token route —
+    // force a clean failure there (mirrors the existing "falls through...
+    // when no muse-id flow is pending" test above) so this test asserts
+    // ROUTING, not a mock gap.
+    mock.failNext(`${MOOSEHUB_BASE}/api/oauth/token`);
+    const replaceSpy = mockLocationReplace();
+
+    render(<OAuthCallback />);
+
+    await screen.findByText('Sign-in failed');
+    expect(replaceSpy).not.toHaveBeenCalled();
+
+    // The failure must be moose-hub's own (a 500 from its token endpoint),
+    // NOT muse-id's "OAuth state mismatch" — proving the callback fell
+    // through to musehub-client's handleCallback rather than hard-failing
+    // inside the muse-id handler.
+    expect(screen.getByText(/Token exchange failed/)).toBeTruthy();
+    expect(screen.queryByText(/state mismatch/i)).toBeNull();
+
+    // Proves the request actually reached moose-hub's own token endpoint...
+    expect(
+      mock.fetchMock.mock.calls.some(([input]) =>
+        String(input).startsWith(`${MOOSEHUB_BASE}/api/oauth/token`),
+      ),
+    ).toBe(true);
+    // ...and never redeemed the code against muse-id's.
+    expect(
+      mock.fetchMock.mock.calls.some(([input]) =>
+        String(input).startsWith(`${MUSEID_BASE}/api/oauth/token`),
+      ),
+    ).toBe(false);
+
+    // The stale marker is gone either way (completeBrowserAuthorize clears
+    // it unconditionally before the mismatch is even detected).
+    expect(window.sessionStorage.getItem('muse-id-oauth-pending')).toBeNull();
+    expect(museIdHasToken()).toBe(false);
+    expect(museHubHasToken()).toBe(false);
   });
 });

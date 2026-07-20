@@ -287,6 +287,25 @@ export interface AuthorizeFlow {
  * over it, so iframes/popups can't see it even if they share sessionStorage.
  */
 export async function startAuthorize(): Promise<AuthorizeFlow> {
+  // Task 6.4 review Bug 3: clear any STALE muse-id browser-first marker
+  // before this flow even begins. If a user previously started a muse-id
+  // sign-in (startBrowserAuthorize in muse-id-client.ts) and abandoned it
+  // — closed the tab, hit Back — before returning to the shared
+  // `/oauth/callback` route, `muse-id-oauth-pending` is left set to '1' for
+  // the rest of the tab session. Without this clear, THIS flow's own
+  // `/oauth/callback` return would be misrouted into OAuthCallback.tsx's
+  // muse-id handler (isBrowserAuthorizePending() checks that key first) and
+  // fail with a spurious muse-id error. This is the proactive half of the
+  // fix; OAuthCallback.tsx's handleMuseIdCallback has the reactive half — a
+  // state-mismatch/missing-verifier failure there falls through to this
+  // module's own handleCallback() instead of hard-failing, so a marker that
+  // slips past this clear (e.g. a moose-hub flow already in flight when the
+  // marker was set) still recovers. Deliberately a raw string duplicate of
+  // muse-id-client.ts's OAUTH_PENDING_KEY rather than an import — see that
+  // constant's neighboring comments for why these two client files don't
+  // import each other in this direction.
+  window.sessionStorage.removeItem('muse-id-oauth-pending');
+
   const verifier = randomBase64Url(32);
   const state = randomBase64Url(16);
   const challenge = await sha256Base64Url(verifier);
