@@ -46,6 +46,18 @@
 - [ ] `linkedServices` included in userinfo. Integration tests for the ladder pieces muse-id owns.
 - [ ] Gates + commits. Update README endpoint table.
 
+### Task 1.4: muse-id passwords + sign-in (spec amendment 2026-07-13)
+
+Muse ID gains a password (siblings both have one; enables password managers + later passkeys). Codes stay for signup verification / reset only. See spec §"Auth surface: where the user signs up vs signs in".
+
+- [ ] Migration: `User.passwordHash String` (**required** — every Muse ID has one; there are no seed users so no backfill problem). Verify no existing rows before making it non-null; if the dev DB has rows from manual testing, wipe rather than backfill.
+- [ ] `lib/password.ts`: copy moose-hub's verbatim (bcryptjs cost 10, `hashPassword`/`verifyPassword`). NOTE: `bcryptjs` is already a dependency in muse-id — a prior review flagged it as dead weight; it is now load-bearing, so do NOT prune it.
+- [ ] `POST /api/auth/complete`: accept + require `password` (min length 8, house policy — mirror the siblings' `password_too_short` 400 error shape); hash before storing. Keep ALL existing caller-binding (session `pendingEmail` marker + its expiry), P2002 handling, and link recording exactly as-is.
+- [ ] `POST /api/auth/signin`: new route mirroring moose-hub's `direct-token` (`{ email, password, client_id }` → validate client, bcrypt compare, mint tokens + set session; `invalid_credentials` 401 for BOTH unknown-email and wrong-password — no enumeration oracle).
+- [ ] `/api/auth/verify` existing-user branch: today it signs the user in on a correct code. Keep it (it is now the *password-reset/new-device* path rather than the routine one) — but confirm it cannot be used to bypass the password for a user who has one. If it can, gate it behind an explicit `purpose: 'reset'` param and require a password set in the same call. Report which way you resolved it.
+- [ ] Tests: signup-with-password happy path; password too short; signin correct/wrong password/unknown email (identical 401 shape — assert byte-identity like the `start` enumeration test); the verify-branch resolution above; existing 99 tests stay green.
+- [ ] Gates: `pnpm test`, `pnpm build`, `npx tsc --noEmit`. Conventional commits; push.
+
 ### Task 2.1: moose-hub integration (branch `feat/muse-exchange`)
 
 - [ ] Migration: `museId String? @unique` on User; `passwordHash String?` nullable; guard `direct-token`/login against null-passwordHash users (401 `invalid_credentials` — same as wrong password; test).

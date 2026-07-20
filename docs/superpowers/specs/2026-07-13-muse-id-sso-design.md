@@ -37,12 +37,28 @@ POST /api/auth/muse-exchange   { muse_access_token, legacy_access_token? }
 
 Flow: introspect `muse_access_token` server-side against muse-id (S2S) → resolve the local user (by museId link → by legacy token if provided [live-session linking] → by verified-email match → JIT-provision) → mint the service's OWN opaque access+refresh pair via existing `tokens.ts` → return the service's standard token payload. Everything downstream (scopes, refresh rotation, revocation, both sandbox clients post-exchange) is untouched.
 
+### Auth surface: where the user signs up vs signs in (amended 2026-07-13)
+
+Muse ID has a **password** (the siblings both do; it makes password managers and the later passkey upgrade coherent). Emailed codes remain for signup verification, password reset, and future new-device checks — NOT for routine sign-in.
+
+The app uses different mechanisms for the two moments, because the trade-off inverts between them:
+
+| Moment | Mechanism | Why |
+|---|---|---|
+| **Sign-up** (no account yet) | **In-app** — the existing `start`→`verify`→`complete` flow, password set at `complete` | A first-time user has no browser session to leverage, so a bounce is pure cost at the highest-drop-off moment (auth appears mid-task: saving to cloud / buying a plugin, not at launch). No existing credential to phish. First-party app ↔ first-party IdP is the recognised exception to "never collect credentials in-app", and is exactly what moose-hub/adieu already do with their direct-token grants. |
+| **Sign-in** (returning) | **Browser-first** (`/authorize` + loopback per RFC 8252), with a visible "sign in here instead" in-app fallback | This is where SSO stickiness pays: a live muse-id cookie from audio.com/musehub.com turns sign-in into one click, no typing. Password managers fill it. The fallback guarantees nobody is stranded if the browser round-trip fails. |
+
+Consequences: the 30-day refresh token means a signed-up user re-authenticates rarely, so the browser path naturally gets *better* over time (they'll have picked up a web session by then) without anyone being forced through it early. `/authorize` must exist for the **passkey** upgrade path later — passkeys are bound to the browser/OS credential store and cannot be collected in-app.
+
+Note: moose-hub already seeds an `audacity-electron` OAuth client with a `127.0.0.1/callback` loopback redirect (RFC 8252), so the desktop bounce is pre-anticipated on the RP side.
+
 ### muse-id service surface
 
 Public (consumed by the sandbox):
 - `POST /api/auth/start` `{ email }` → always `{ ok: true }` (sends/mocks a 6-digit code; identical response whether accounts exist — anti-enumeration). Fixed code `000000` when `MOCK_EMAIL_CODES=1`.
 - `POST /api/auth/verify` `{ email, code }` → on success: if Muse ID exists → session + tokens (sign-in); if not → `{ status: 'new', discovery }` where `discovery` lists linkable service accounts found by email (safe: email is now proven). Max 5 attempts, 15-min TTL (PendingSignup pattern from moose-hub).
-- `POST /api/auth/complete` `{ email, name, avatarChoice?, links: [{service, method: 'email-match'|'session', legacy_access_token?}] }` → creates the Muse ID, executes links, returns muse tokens + profile.
+- `POST /api/auth/complete` `{ email, name, password, avatarChoice?, links: [{service, method: 'email-match'|'session', legacy_access_token?}] }` → creates the Muse ID **with a password** (bcrypt, cost 10, min length 8 — house policy from the siblings), executes links, returns muse tokens + profile. Caller-bound to the verify step by the `pendingEmail` session marker.
+- `POST /api/auth/signin` `{ email, password, client_id }` → email+password grant → tokens + session (mirrors the siblings' `direct-token` route). **No code required on sign-in** — codes are for signup, password reset, and (future) new-device only.
 - `GET /api/oauth/userinfo` (Bearer) → `{ sub, email, name, avatarUrl, linkedServices: [...] }`.
 - `POST /api/link` (Bearer) `{ service, legacy_access_token }` → session-proof or credential-proof linking after creation (settings / deferred prompts).
 - `POST /api/unlink` (Bearer) `{ service }`.
@@ -52,7 +68,7 @@ Server-to-server (RP secret per service via env, `Authorization: Bearer <RP_SECR
 - `POST /api/s2s/introspect` `{ token }` → `{ active, sub, email, name }` (RFC 7662-ish).
 - muse-id → services: `GET /api/internal/lookup?email=` on each service (new internal route there, same RP secret) → `{ exists, userId?, display: { name, summary } }` where `summary` is the found-your-accounts card copy (e.g. `"wallet $12.40 · 5 plugins"` / `"7 cloud projects"`). Called only after verification, from `/api/auth/verify`.
 
-Data model (Prisma): `User` (id cuid, email unique, name, avatarUrl?, createdAt — **no passwordHash**; Muse ID is code-based in the mock), `PendingVerification` (email PK, codeHash, expiresAt, attempts, lastSentAt), `LinkedAccount` (id, userId, service enum('moose-hub','adieu'), serviceUserId, linkedAt, @@unique([userId, service]), @@unique([service, serviceUserId])), `AccessToken`/`RefreshToken`/`OAuthClient` (as siblings). Seed: OAuth client `audacity-web-demo`; NO seed users (creation is the demo).
+Data model (Prisma): `User` (id cuid, email unique, name, avatarUrl?, **passwordHash** (bcryptjs cost 10, as siblings), createdAt), `PendingVerification` (email PK, codeHash, expiresAt, attempts, lastSentAt), `LinkedAccount` (id, userId, service enum('moose-hub','adieu'), serviceUserId, linkedAt, @@unique([userId, service]), @@unique([service, serviceUserId])), `AccessToken`/`RefreshToken`/`OAuthClient` (as siblings). Seed: OAuth client `audacity-web-demo`; NO seed users (creation is the demo).
 
 ### Relying-party changes (each of moose-hub, adieu)
 
