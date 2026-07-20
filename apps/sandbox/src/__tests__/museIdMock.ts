@@ -48,6 +48,10 @@ interface ServiceUserRecord {
   email: string;
   name: string;
   avatarUrl?: string;
+  /** Non-financial "recognition card" item count (task 5.3's disclosure
+   *  rule: masked email + a non-financial summary, NEVER a monetary
+   *  value). Defaults to 0 when not seeded. */
+  itemCount: number;
 }
 
 interface TokenOwner {
@@ -80,6 +84,24 @@ let idCounter = 0;
 function nextId(prefix: string): string {
   idCounter += 1;
   return `${prefix}-${idCounter}`;
+}
+
+// Simplified mock of each real RP's lib/maskEmail.ts (task 5.2): keeps at
+// most 3 leading local-part characters visible, never the whole local part.
+// Not required to be byte-identical to the real helper — this mock only
+// needs to prove the sandbox never renders a bare/unmasked email or a
+// monetary value on a pre-link recognition card.
+function maskEmailMock(email: string): string {
+  const at = email.indexOf('@');
+  const local = at === -1 ? email : email.slice(0, at);
+  const domain = at === -1 ? '' : email.slice(at);
+  const visible = local.slice(0, Math.max(0, Math.min(3, local.length - 1)));
+  return `${visible}•••${domain}`;
+}
+
+function summaryForService(service: ServiceName, itemCount: number): string {
+  const noun = service === 'moose-hub' ? 'plugin' : 'cloud project';
+  return `${itemCount} ${noun}${itemCount === 1 ? '' : 's'}`;
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -117,8 +139,13 @@ export interface MuseIdMockControls {
     linkedServices?: ServiceName[];
   }): void;
   /** Pre-seeds an existing service account so discovery/email-match linking
-   *  has something to find. */
-  seedServiceUser(service: ServiceName, input: { email: string; id?: string; name: string }): void;
+   *  has something to find. `itemCount` drives the recognition card's
+   *  non-financial summary (e.g. "4 plugins") — task 5.3/5.2's disclosure
+   *  rule. */
+  seedServiceUser(
+    service: ServiceName,
+    input: { email: string; id?: string; name: string; itemCount?: number },
+  ): void;
   /** Mints a valid `service`-kind access token for `email` WITHOUT going
    *  through `/api/auth/muse-exchange` — i.e. without marking the service
    *  linked at muse-id. Simulates "the user already has a live legacy
@@ -318,13 +345,41 @@ export function createMuseIdMock(): MuseIdMockControls {
     ] as [string, ServiceName][]) {
       if (!url.startsWith(base)) continue;
 
+      // Legacy first-party sign-in — needed for task 5.3's post-legacy-
+      // sign-in prompt test (AuthDialog.tsx/AdieuAuthDialog.tsx's legacy
+      // form calls this via musehub-client.ts/adieu-client.ts's
+      // directLogin). Not a faithful password check (this mock doesn't
+      // track ServiceUserRecord passwords at all) — any password succeeds
+      // for a seeded service user, matching this file's existing "just
+      // enough to drive the flow under test" scope.
+      if (path === '/api/auth/direct-token' && method === 'POST') {
+        const body = jsonBody<{ mode?: string; email?: string }>(init);
+        const email = (body.email ?? '').toLowerCase();
+        const su = state.serviceUsers[service].get(email);
+        if (!su) return jsonResponse({ error: 'invalid_credentials' }, 401);
+        return jsonResponse({
+          ...mintTokens(service, email),
+          token_type: 'Bearer',
+          user: { id: su.id, email: su.email, name: su.name },
+        });
+      }
+
       if (path === '/api/auth/muse-exchange' && method === 'POST') {
         const body = jsonBody<{ muse_access_token: string; legacy_access_token?: string }>(init);
         const museOwner = state.accessTokens.get(body.muse_access_token);
         const museUser = museOwner && museOwner.kind === 'muse' ? state.museUsers.get(museOwner.email) : undefined;
         if (!museOwner || !museUser) return jsonResponse({ error: 'invalid_muse_token' }, 401);
 
+        // Task 5.3: capture the resolution path BEFORE mutating state, so
+        // the response can tell "Continue with Muse ID" (AuthDialog.tsx /
+        // AdieuAuthDialog.tsx) whether this call matched an existing
+        // account (needs the "confirm before claiming" recognition card)
+        // or freshly created one (stated plainly, no confirm) — see
+        // ServiceExchangeResult.accountStatus's doc comment in
+        // muse-id-client.ts for why the real RPs can't do this yet.
+        const alreadyLinked = museUser.linkedServices.has(service);
         let su = state.serviceUsers[service].get(museOwner.email);
+        const matchedByEmail = !alreadyLinked && !!su;
         if (!su && body.legacy_access_token) {
           const legacyOwner = state.accessTokens.get(body.legacy_access_token);
           if (legacyOwner && legacyOwner.kind === service) {
@@ -332,16 +387,24 @@ export function createMuseIdMock(): MuseIdMockControls {
           }
         }
         if (!su) {
-          su = { id: nextId(`${service}-user`), email: museOwner.email, name: museUser.name, avatarUrl: museUser.avatarUrl };
+          su = { id: nextId(`${service}-user`), email: museOwner.email, name: museUser.name, avatarUrl: museUser.avatarUrl, itemCount: 0 };
           state.serviceUsers[service].set(museOwner.email, su);
         }
         museUser.linkedServices.add(service);
+
+        const accountStatus: 'linked' | 'email_match' | 'created' = alreadyLinked
+          ? 'linked'
+          : matchedByEmail
+            ? 'email_match'
+            : 'created';
 
         return jsonResponse({
           ...mintTokens(service, museOwner.email),
           token_type: 'Bearer',
           scope: service === 'moose-hub' ? 'profile library:read wallet:write' : 'profile projects:write',
           user: { id: su.id, email: su.email, name: su.name },
+          accountStatus,
+          display: { name: su.name, maskedEmail: maskEmailMock(su.email), summary: summaryForService(service, su.itemCount) },
         });
       }
 
@@ -401,12 +464,17 @@ export function createMuseIdMock(): MuseIdMockControls {
     },
     seedServiceUser(service, input) {
       const email = input.email.toLowerCase();
-      state.serviceUsers[service].set(email, { id: input.id ?? nextId(`${service}-user`), email, name: input.name });
+      state.serviceUsers[service].set(email, {
+        id: input.id ?? nextId(`${service}-user`),
+        email,
+        name: input.name,
+        itemCount: input.itemCount ?? 0,
+      });
     },
     seedServiceAccessToken(service, email) {
       const normalized = email.toLowerCase();
       if (!state.serviceUsers[service].has(normalized)) {
-        state.serviceUsers[service].set(normalized, { id: nextId(`${service}-user`), email: normalized, name: normalized });
+        state.serviceUsers[service].set(normalized, { id: nextId(`${service}-user`), email: normalized, name: normalized, itemCount: 0 });
       }
       return mintTokens(service, normalized).access_token;
     },

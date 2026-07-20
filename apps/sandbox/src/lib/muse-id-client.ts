@@ -103,6 +103,23 @@ export interface SignInResult extends TokenBundle {
 
 export interface ServiceExchangeResult extends TokenBundle {
   user: { id: string; email: string; name: string };
+  /** Task 5.3: lets "Continue with Muse ID" (AuthDialog.tsx /
+   *  AdieuAuthDialog.tsx) tell a fresh JIT-provisioned account apart from
+   *  one matched by email — the design spec's "confirm before claiming"
+   *  rule for recognition cards requires knowing which happened. 'linked'
+   *  = the caller was already linked (should not normally reach the
+   *  client in the not-linked CTA flow, but included for completeness).
+   *  KNOWN GAP: the real moose-hub/adieu `/api/auth/muse-exchange` routes
+   *  do not send `accountStatus`/`display` yet (verified against
+   *  ~/Documents/webdev/{moose-hub,adieu}/app/api/auth/muse-exchange/
+   *  route.ts, 2026-07-20) — only museIdMock.ts populates them today, so
+   *  both fields MUST be treated as optional/absent-safe by every caller.
+   *  Follow-up: add the same discriminator + `display` (reusing each RP's
+   *  existing maskEmail/summary helpers from task 5.2's
+   *  /api/internal/lookup) to the real exchange route, in a dedicated
+   *  task against those repos. */
+  accountStatus?: 'linked' | 'email_match' | 'created';
+  display?: { name: string; maskedEmail: string; summary: string };
 }
 
 export class MuseIdAuthError extends Error {
@@ -146,6 +163,15 @@ function clearTokens(): void {
 
 export function hasToken(): boolean {
   return readTokens() !== null;
+}
+
+/** Current Muse ID access token, if signed in — used by the service
+ *  AuthDialogs' "Continue with Muse ID" CTA (task 5.3) to call
+ *  exchangeMooseHub/exchangeAdieu directly, without going through
+ *  MuseIdContext's own sign-in flows. Mirrors musehub-client.ts's/
+ *  adieu-client.ts's getAccessToken. */
+export function getAccessToken(): string | null {
+  return readTokens()?.accessToken ?? null;
 }
 
 function tokensFromBundle(bundle: TokenBundle): MuseIdTokens {

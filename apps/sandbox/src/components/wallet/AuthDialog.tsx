@@ -14,12 +14,27 @@
 //      a single helper.
 // We keep email + password in component state across the two steps so
 // verifySignup can issue the signin POST without re-prompting.
+//
+// Task 5.3: "Continue with Muse ID" primary CTA + divider above this
+// legacy form (never a replacement — the form below is unchanged and keeps
+// working exactly as before). The CTA's five-state behaviour lives in the
+// shared useMuseIdEntry hook (apps/sandbox/src/hooks/useMuseIdEntry.ts —
+// see its file header for how each state is detected); this component only
+// wires that hook's `adoptTokens`/`signOut` to MuseHubContext and renders
+// its phases. Also implements the post-legacy-sign-in prompt: if a Muse
+// session is held and this account isn't linked after a successful legacy
+// sign-in, offer to link before closing (see handleSubmit/linkPromptPending
+// below) — the session-proof rung of the linking ladder, at its natural
+// moment, never forced.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMuseHub } from '../../contexts/MuseHubContext';
+import { useMuseId } from '../../contexts/MuseIdContext';
+import { useMuseIdEntry } from '../../hooks/useMuseIdEntry';
 import {
   directLogin,
+  getAccessToken,
   resendSignupCode,
   startSignup,
   verifySignup,
@@ -27,7 +42,8 @@ import {
 import './AuthDialog.css';
 
 export const AuthDialog: React.FC = () => {
-  const { authDialog, openAuthDialog, closeAuthDialog, hydrate } = useMuseHub();
+  const { authDialog, openAuthDialog, closeAuthDialog, hydrate, adoptTokens, signOut } = useMuseHub();
+  const museId = useMuseId();
   const open = authDialog !== 'closed';
   const mode = authDialog === 'create-account' ? 'create-account' : 'sign-in';
 
@@ -42,7 +58,37 @@ export const AuthDialog: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  // Post-legacy-sign-in prompt: set once a legacy sign-in/verify succeeds
+  // while a Muse session is held and this service isn't linked yet.
+  const [linkPromptPending, setLinkPromptPending] = useState(false);
+  const [linking, setLinking] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  // First focusable control in whichever Muse ID entry-flow panel (CTA
+  // confirm/settled/different-email/error, or the link prompt) is
+  // currently showing — re-pointed per render like MuseIdAuthDialog's
+  // focusFirstRef. The effect below focuses it on every phase transition.
+  const museFocusRef = useRef<HTMLElement>(null);
+  const focusMuseFirstRef = (el: HTMLElement | null) => {
+    museFocusRef.current = el;
+  };
+
+  const entry = useMuseIdEntry({
+    service: 'moose-hub',
+    adoptTokens,
+    signOut,
+    onDone: () => finishAndClose(),
+  });
+
+  const finishAndClose = () => {
+    closeAuthDialog();
+    setEmail('');
+    setPassword('');
+    setDisplayName('');
+    setVerificationCode('');
+    setSignupStep('details');
+    setLinkPromptPending(false);
+    entry.reset();
+  };
 
   // Reset form whenever the dialog opens or the mode changes.
   useEffect(() => {
@@ -52,8 +98,22 @@ export const AuthDialog: React.FC = () => {
     setSubmitting(false);
     setSignupStep('details');
     setVerificationCode('');
+    setLinkPromptPending(false);
+    entry.reset();
     setTimeout(() => firstInputRef.current?.focus(), 50);
+    // entry.reset is stable (useCallback, no deps) — omitted to avoid
+    // re-running this effect on every entry-hook re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
+
+  // Focus the new panel's first control on every Muse ID entry-flow state
+  // change (exchanging -> confirm/settled/different-email/error, and the
+  // post-legacy-sign-in link prompt) — same convention as MuseIdAuthDialog's
+  // step-transition focus effect.
+  useEffect(() => {
+    if (!open) return;
+    setTimeout(() => museFocusRef.current?.focus(), 50);
+  }, [open, entry.phase.kind, linkPromptPending]);
 
   // When advancing to the verify step, focus the code input.
   useEffect(() => {
@@ -61,18 +121,22 @@ export const AuthDialog: React.FC = () => {
     setTimeout(() => firstInputRef.current?.focus(), 50);
   }, [mode, signupStep]);
 
+  // Muse ID exchange in flight — blocks dismissal the same way `submitting`
+  // (the legacy form's own in-flight flag) already does.
+  const museBusy = entry.phase.kind === 'exchanging';
+
   // Escape to dismiss when nothing's in flight.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) {
+      if (e.key === 'Escape' && !submitting && !museBusy) {
         e.preventDefault();
         closeAuthDialog();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, submitting, closeAuthDialog]);
+  }, [open, submitting, museBusy, closeAuthDialog]);
 
   if (!open) return null;
 
@@ -113,12 +177,15 @@ export const AuthDialog: React.FC = () => {
         await verifySignup(email.trim(), password, verificationCode.trim());
       }
       await hydrate();
-      closeAuthDialog();
-      setEmail('');
-      setPassword('');
-      setDisplayName('');
-      setVerificationCode('');
-      setSignupStep('details');
+      // Post-legacy-sign-in prompt (design spec): a Muse session is held
+      // but this account isn't linked yet — offer the session-proof rung
+      // before closing, instead of closing silently.
+      if (museId.signedIn && !museId.linkedServices.includes('moose-hub')) {
+        setLinkPromptPending(true);
+        setSubmitting(false);
+        return;
+      }
+      finishAndClose();
     } catch (err) {
       setError(friendlyError(err));
       setSubmitting(false);
@@ -137,23 +204,53 @@ export const AuthDialog: React.FC = () => {
     }
   };
 
-  const title = mode === 'sign-in'
-    ? 'Sign in to MuseHub'
-    : signupStep === 'verify'
-      ? 'Check your email'
-      : 'Create a MuseHub account';
+  // ---- Post-legacy-sign-in link prompt -------------------------------------
+
+  const handleLinkNow = async () => {
+    setLinking(true);
+    try {
+      const token = getAccessToken();
+      if (token) await museId.linkService('moose-hub', token);
+    } catch {
+      // Best-effort — the account is already signed in either way; a
+      // failed link attempt shouldn't strand the user in this dialog.
+    } finally {
+      setLinking(false);
+      finishAndClose();
+    }
+  };
+  const handleSkipLink = () => finishAndClose();
+
+  const title = linkPromptPending
+    ? 'Link to your Muse ID?'
+    : entry.phase.kind === 'confirm'
+      ? 'Is this you?'
+      : entry.phase.kind === 'settled'
+        ? "You're in"
+        : entry.phase.kind === 'different-email'
+          ? 'Use a different email'
+          : entry.phase.kind === 'error'
+            ? 'Something went wrong'
+            : entry.phase.kind === 'exchanging'
+              ? 'Connecting…'
+              : mode === 'sign-in'
+                ? 'Sign in to MuseHub'
+                : signupStep === 'verify'
+                  ? 'Check your email'
+                  : 'Create a MuseHub account';
   const submitLabel = (() => {
     if (mode === 'sign-in') return submitting ? 'Signing in…' : 'Sign in';
     if (signupStep === 'verify') return submitting ? 'Verifying…' : 'Verify and sign in';
     return submitting ? 'Sending code…' : 'Continue';
   })();
+  const showLegacyPanel = !linkPromptPending && entry.phase.kind === 'idle';
 
   const content = (
     <div
       className="auth-dialog__backdrop"
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !submitting) closeAuthDialog();
+        if (e.target === e.currentTarget && !submitting && !museBusy) closeAuthDialog();
       }}
     >
       <div className="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title">
@@ -163,7 +260,7 @@ export const AuthDialog: React.FC = () => {
             type="button"
             className="auth-dialog__close"
             onClick={closeAuthDialog}
-            disabled={submitting}
+            disabled={submitting || museBusy}
             aria-label="Close"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
@@ -172,6 +269,127 @@ export const AuthDialog: React.FC = () => {
           </button>
         </header>
 
+        {linkPromptPending && (
+          <div className="auth-dialog__museid-panel">
+            <p className="auth-dialog__subtitle">
+              Link this MuseHub account to your Muse ID? You'll be able to use "Continue with Muse ID" here next time.
+            </p>
+            {error && <p className="auth-dialog__error" role="alert">{error}</p>}
+            <button
+              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="auth-dialog__cta"
+              onClick={handleLinkNow}
+              disabled={linking}
+            >
+              {linking && <span className="auth-dialog__spinner" aria-hidden="true" />}
+              <span>{linking ? 'Linking…' : 'Link to my Muse ID'}</span>
+            </button>
+            <button type="button" className="auth-dialog__link" onClick={handleSkipLink} disabled={linking}>
+              Not now
+            </button>
+          </div>
+        )}
+
+        {!linkPromptPending && entry.phase.kind === 'exchanging' && (
+          <div className="auth-dialog__museid-panel">
+            <p className="auth-dialog__subtitle">
+              <span className="auth-dialog__spinner" aria-hidden="true" /> Connecting to your Muse ID…
+            </p>
+          </div>
+        )}
+
+        {!linkPromptPending && entry.phase.kind === 'confirm' && (
+          <div className="auth-dialog__museid-panel">
+            <p className="auth-dialog__subtitle">
+              We found a MuseHub account under your Muse ID's email. Is this you?
+            </p>
+            <div className="auth-dialog__recognition-card">
+              <span className="auth-dialog__recognition-name">{entry.phase.display.name}</span>
+              <span className="auth-dialog__recognition-email">{entry.phase.display.maskedEmail}</span>
+              <span className="auth-dialog__recognition-summary">{entry.phase.display.summary}</span>
+            </div>
+            <button
+              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="auth-dialog__cta"
+              onClick={() => void entry.confirmClaim()}
+            >
+              Yes, that's me — continue
+            </button>
+            <button type="button" className="auth-dialog__link" onClick={() => void entry.declineClaim()}>
+              Not me — use a different account
+            </button>
+          </div>
+        )}
+
+        {!linkPromptPending && entry.phase.kind === 'settled' && (
+          <div className="auth-dialog__museid-panel">
+            <p className="auth-dialog__subtitle">
+              {entry.phase.wasKnownNew
+                ? "We've set up your MuseHub account."
+                : "You're connected to MuseHub via Muse ID."}
+            </p>
+            <button
+              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="auth-dialog__cta"
+              onClick={finishAndClose}
+            >
+              Continue to MuseHub
+            </button>
+            <button type="button" className="auth-dialog__link" onClick={() => void entry.declineClaim()}>
+              Actually, I have an account under a different email
+            </button>
+          </div>
+        )}
+
+        {!linkPromptPending && entry.phase.kind === 'different-email' && (
+          <div className="auth-dialog__museid-panel">
+            <p className="auth-dialog__subtitle">
+              Linking an account under a different email is coming soon. For now, use the form below to sign in or create a new MuseHub account.
+            </p>
+            <button
+              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="auth-dialog__link"
+              onClick={entry.reset}
+            >
+              Back
+            </button>
+          </div>
+        )}
+
+        {!linkPromptPending && entry.phase.kind === 'error' && (
+          <div className="auth-dialog__museid-panel">
+            <p className="auth-dialog__error" role="alert">{entry.phase.message}</p>
+            <button
+              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="auth-dialog__link"
+              onClick={entry.reset}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {showLegacyPanel && (
+          <>
+            <button
+              type="button"
+              className="auth-dialog__cta auth-dialog__cta--museid"
+              onClick={() => void entry.continueWithMuseId()}
+            >
+              Continue with Muse ID
+            </button>
+            <div className="auth-dialog__divider" role="separator" aria-orientation="horizontal">
+              <span>or</span>
+            </div>
+          </>
+        )}
+
+        {showLegacyPanel && (
         <p className="auth-dialog__subtitle">
           {mode === 'sign-in'
             ? 'Sign in to your MuseHub account to buy and manage effects.'
@@ -179,7 +397,9 @@ export const AuthDialog: React.FC = () => {
               ? `We sent a 6-digit code to ${email.trim()}. Enter it here to finish creating your account.`
               : 'Create a free MuseHub account — needed to buy effects from the marketplace.'}
         </p>
+        )}
 
+        {showLegacyPanel && (
         <form className="auth-dialog__form" onSubmit={handleSubmit} noValidate>
           {mode === 'create-account' && signupStep === 'verify' ? (
             <label className="auth-dialog__field">
@@ -328,6 +548,7 @@ export const AuthDialog: React.FC = () => {
             </p>
           )}
         </form>
+        )}
       </div>
     </div>
   );

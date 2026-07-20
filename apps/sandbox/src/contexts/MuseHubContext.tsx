@@ -14,6 +14,16 @@
 // the granular hooks (useWalletBalance, useSignedIn, useUser,
 // usePurchasedEffects, useDisabledPlugins) when they only need one slice,
 // or useMuseHub() for the full surface (actions + state).
+//
+// Task 5.3: the wallet AuthDialog is no longer mounted here. It now needs
+// useMuseId() (the "Continue with Muse ID" CTA), and MuseIdProvider is a
+// DESCENDANT of this provider in App.tsx's tree (MuseHubProvider >
+// AdieuProvider > MuseIdProvider), never an ancestor or sibling — a
+// component mounted here as a sibling of `children` (the old pattern)
+// cannot see MuseIdContext. AuthDialog now mounts alongside
+// MuseIdAuthDialog in MuseIdContext.tsx instead, where it's a descendant of
+// all three providers. AdieuContext.tsx's AdieuAuthDialog moved for the
+// identical reason.
 
 import React, {
   createContext,
@@ -35,7 +45,6 @@ import {
   type MuseHubEntitlement,
   type MuseHubTokens,
 } from '../lib/musehub-client';
-import { AuthDialog } from '../components/wallet/AuthDialog';
 
 export interface UserProfile {
   name: string;
@@ -688,7 +697,6 @@ export const MuseHubProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <MuseHubContext.Provider value={value}>
       {children}
-      <AuthDialog />
     </MuseHubContext.Provider>
   );
 };

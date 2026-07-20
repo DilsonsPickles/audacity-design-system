@@ -7,6 +7,12 @@
 // On mount we hydrate from the server if a token is present. signIn opens
 // the AdieuAuthDialog; the dialog itself calls hydrate() after a successful
 // password-grant login.
+//
+// Task 5.3: AdieuAuthDialog is no longer mounted here — see
+// MuseHubContext.tsx's identical note. It now needs useMuseId() (the
+// "Continue with Muse ID" CTA) and mounts alongside MuseIdAuthDialog in
+// MuseIdContext.tsx, where it's a descendant of MuseHubProvider,
+// AdieuProvider, AND MuseIdProvider.
 
 import React, {
   createContext,
@@ -26,7 +32,6 @@ import {
   type AdieuProjectSummary,
   type AdieuTokens,
 } from '../lib/adieu-client';
-import { AdieuAuthDialog } from '../components/adieu/AdieuAuthDialog';
 
 export interface UserProfile {
   name: string;
@@ -264,7 +269,6 @@ export const AdieuProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <AdieuContext.Provider value={value}>
       {children}
-      <AdieuAuthDialog />
     </AdieuContext.Provider>
   );
 };

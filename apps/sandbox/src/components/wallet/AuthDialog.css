@@ -216,3 +216,60 @@
 }
 
 .auth-dialog__forgot a:hover { text-decoration: underline; }
+
+/* Task 5.3: "Continue with Muse ID" CTA + divider + entry-flow panels. */
+
+.auth-dialog__cta--museid {
+  width: 100%;
+  background: #6C5CE7;
+  color: #FFFFFF;
+}
+
+.auth-dialog__cta--museid:hover:not(:disabled) { background: #7B6DF0; }
+
+.auth-dialog__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.auth-dialog__divider::before,
+.auth-dialog__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-dialog__museid-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-dialog__recognition-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.auth-dialog__recognition-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.auth-dialog__recognition-email,
+.auth-dialog__recognition-summary {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}

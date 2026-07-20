@@ -60,12 +60,29 @@ import { museUnlink as adieuMuseUnlink } from '../lib/adieu-client';
 import { useMuseHub } from './MuseHubContext';
 import { useAdieu } from './AdieuContext';
 import { MuseIdAuthDialog } from '../components/museid/MuseIdAuthDialog';
+// Task 5.3: the wallet/adieu AuthDialogs now need useMuseId() too (the
+// "Continue with Muse ID" CTA), so they mount here instead of inside their
+// own MuseHubProvider/AdieuProvider — this is the one place in the tree
+// that's a descendant of all three providers. See MuseHubContext.tsx's/
+// AdieuContext.tsx's file-header notes for why they can't self-mount
+// anymore.
+import { AuthDialog } from '../components/wallet/AuthDialog';
+import { AdieuAuthDialog } from '../components/adieu/AdieuAuthDialog';
 
 export interface MuseIdProfile {
   sub: string;
   email: string;
   name: string;
   avatarUrl?: string;
+}
+
+/** Thrown by `ensureSignedIn()` when the MuseIdAuthDialog closes without
+ *  completing sign-up/sign-in — mirrors AdieuContext's SignInCancelledError. */
+export class MuseIdSignInCancelledError extends Error {
+  constructor() {
+    super('muse_id_sign_in_cancelled');
+    this.name = 'MuseIdSignInCancelledError';
+  }
 }
 
 interface MuseIdContextValue {
@@ -140,6 +157,19 @@ interface MuseIdContextValue {
   openAuthDialog: (mode: 'sign-up' | 'sign-in') => void;
   /** Close the MuseIdAuthDialog. No-op if already closed. */
   closeAuthDialog: () => void;
+  /** Task 5.3, state 5 of the service-dialog CTA table ("No Muse session →
+   *  open the Muse ID dialog, then re-enter the table"). If already signed
+   *  in, resolves immediately with no dialog. Otherwise opens
+   *  MuseIdAuthDialog in `mode` and returns a Promise that resolves once
+   *  sign-up/sign-in completes (tokens written), or rejects with
+   *  MuseIdSignInCancelledError if the dialog is closed first (Escape,
+   *  backdrop, the × button) — mirrors AdieuContext.signIn/
+   *  SignInCancelledError exactly, but keyed off `hasToken()` at close time
+   *  instead of a separate explicit "complete" call, since this dialog's
+   *  own closeAuthDialog is the single place every exit path (including
+   *  the 'done' step's "Continue to Audacity" button) already funnels
+   *  through. */
+  ensureSignedIn: (mode?: 'sign-up' | 'sign-in') => Promise<void>;
 
   // ---- Task 3.2b: legacy-dialog debug toggle ------------------------------
   /** Debug-only escape hatch (Debug panel → "Muse ID" section). "Continue
@@ -400,10 +430,38 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
   // Globally-mounted MuseIdAuthDialog state — mirrors MuseHubContext's/
   // AdieuContext's own authDialog + openAuthDialog/closeAuthDialog.
   const [authDialog, setAuthDialog] = useState<'closed' | 'sign-up' | 'sign-in'>('closed');
+
+  // Pending ensureSignedIn() promise resolver — set when ensureSignedIn
+  // opens the dialog, cleared (and resolved/rejected) the next time
+  // closeAuthDialog runs. See ensureSignedIn's doc comment above.
+  const pendingSignInRef = useRef<{
+    resolve: () => void;
+    reject: (err: Error) => void;
+  } | null>(null);
+
   const openAuthDialog = useCallback((mode: 'sign-up' | 'sign-in') => {
     setAuthDialog(mode);
   }, []);
-  const closeAuthDialog = useCallback(() => setAuthDialog('closed'), []);
+  const closeAuthDialog = useCallback(() => {
+    setAuthDialog('closed');
+    const pending = pendingSignInRef.current;
+    if (pending) {
+      pendingSignInRef.current = null;
+      if (hasToken()) pending.resolve();
+      else pending.reject(new MuseIdSignInCancelledError());
+    }
+  }, []);
+  const ensureSignedIn = useCallback((mode: 'sign-up' | 'sign-in' = 'sign-up'): Promise<void> => {
+    if (hasToken()) return Promise.resolve();
+    if (pendingSignInRef.current) {
+      pendingSignInRef.current.reject(new MuseIdSignInCancelledError());
+      pendingSignInRef.current = null;
+    }
+    return new Promise<void>((resolve, reject) => {
+      pendingSignInRef.current = { resolve, reject };
+      setAuthDialog(mode);
+    });
+  }, []);
 
   const [legacyAuthDialogsEnabled, setLegacyAuthDialogsEnabled] = useState(false);
 
@@ -425,6 +483,7 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       authDialog,
       openAuthDialog,
       closeAuthDialog,
+      ensureSignedIn,
       legacyAuthDialogsEnabled,
       setLegacyAuthDialogsEnabled,
     }),
@@ -445,6 +504,7 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       authDialog,
       openAuthDialog,
       closeAuthDialog,
+      ensureSignedIn,
       legacyAuthDialogsEnabled,
     ],
   );
@@ -453,6 +513,8 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
     <MuseIdContext.Provider value={value}>
       {children}
       <MuseIdAuthDialog />
+      <AuthDialog />
+      <AdieuAuthDialog />
     </MuseIdContext.Provider>
   );
 };
