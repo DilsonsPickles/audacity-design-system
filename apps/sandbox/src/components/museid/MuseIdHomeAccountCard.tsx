@@ -1,17 +1,21 @@
 // Sandbox-side Muse ID card for the HomeTab "My accounts" page (Task 3.2b,
-// revised Task 3.2c). Shows ONE Muse identity (name/email/avatar) with a
-// combined MuseHub + audio.com summary line when signed in, or "Create a
-// Muse ID" (primary) + "Sign in" (secondary) when signed out. Reuses the
-// home-tab__accounts-* classes shipped by @dilsonspickles/components (same
-// pattern MuseHubHomeAccountCard/AdieuHomeAccountCard use) so no new
-// component-level CSS is needed.
+// revised Task 3.2c, restructured Task 3.2d). Shows ONE Muse identity
+// (name/email/avatar) with a combined MuseHub + audio.com summary line when
+// signed in, or "Create a Muse ID" (primary) + "Sign in" (secondary) when
+// signed out. Reuses the home-tab__accounts-* classes shipped by
+// @dilsonspickles/components (same pattern MuseHubHomeAccountCard /
+// AdieuHomeAccountCard use) so no new component-level CSS is needed here.
 //
-// Rendered alongside MuseHubHomeAccountCard and AdieuHomeAccountCard (both
-// always visible, independent of Muse ID sign-in state — legacy sign-in is
-// a first-class part of the linking story, not a fallback). App.tsx always
-// hides the design system's own built-in audio.com card (HomeTab's
-// `hideBuiltInAccountCard` prop) since it renders hardcoded placeholder
-// copy instead of real state.
+// Muse ID is the umbrella identity, not a peer of MuseHub/audio.com — this
+// card renders full width via the `home-tab__accounts-section--primary`
+// modifier (grid-column: 1 / -1). App.tsx renders MuseHubHomeAccountCard and
+// AdieuHomeAccountCard beneath it, grouped under a "Connected services"
+// subheading with subordinate card styling (`--secondary` modifiers). Both
+// service cards stay visible independent of Muse ID sign-in state — legacy
+// sign-in is a first-class part of the linking story, not a fallback.
+// App.tsx always hides the design system's own built-in audio.com card
+// (HomeTab's `hideBuiltInAccountCard` prop) since it renders hardcoded
+// placeholder copy instead of real state.
 
 import React from 'react';
 import { Button, Icon } from '@dilsonspickles/components';
@@ -46,7 +50,7 @@ export const MuseIdHomeAccountCard: React.FC = () => {
   })();
 
   return (
-    <div className="home-tab__accounts-section">
+    <div className="home-tab__accounts-section home-tab__accounts-section--primary">
       <h2 className="home-tab__accounts-section-title">Muse ID</h2>
       <div className="home-tab__accounts-card">
         <div className="home-tab__accounts-avatar">

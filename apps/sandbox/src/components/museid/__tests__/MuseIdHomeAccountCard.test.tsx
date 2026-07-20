@@ -64,6 +64,14 @@ describe('MuseIdHomeAccountCard', () => {
     expect(apiRef.current?.museId.authDialog).toBe('sign-up');
   });
 
+  it('renders full width via the --primary modifier (Muse ID is the umbrella identity, not a peer of MuseHub/audio.com)', async () => {
+    const { apiRef } = renderCard();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+
+    const heading = screen.getByRole('heading', { name: 'Muse ID' });
+    expect(heading.closest('.home-tab__accounts-section--primary')).toBeTruthy();
+  });
+
   it('signed in: shows a combined MuseHub + audio.com summary line', async () => {
     mock.seedMuseUser({
       email: 'combo@mu.se',

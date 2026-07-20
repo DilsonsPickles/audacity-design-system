@@ -863,12 +863,23 @@ function CanvasDemoContent() {
             // path), so its card is always visible too, independent of the
             // Debug panel's legacy-dialogs toggle and of Muse ID sign-in
             // state (Task 3.2c).
+            //
+            // Layout (Task 3.2d, design review): Muse ID is the umbrella
+            // identity, not a peer of MuseHub/audio.com, so its card renders
+            // full width on its own row (`--primary` modifier) and the two
+            // services are grouped beneath it under a "Connected services"
+            // subheading with subordinate (`--secondary`) card styling.
             hideBuiltInAccountCard={true}
             extraAccountsSections={
               <>
                 <MuseIdHomeAccountCard />
-                <MuseHubHomeAccountCard />
-                <AdieuHomeAccountCard />
+                <div className="home-tab__accounts-services">
+                  <h2 className="home-tab__accounts-services-title">Connected services</h2>
+                  <div className="home-tab__accounts-services-grid">
+                    <MuseHubHomeAccountCard />
+                    <AdieuHomeAccountCard />
+                  </div>
+                </div>
               </>
             }
             // Deferred-link prompt (Task 3.2b item 4): only when Muse ID is

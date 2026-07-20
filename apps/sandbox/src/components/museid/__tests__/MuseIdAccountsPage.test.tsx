@@ -94,6 +94,15 @@ describe('MuseIdAccountsPage', () => {
     expect(apiRef.current?.adieu.authDialog).toBe('sign-in');
   });
 
+  it('groups MuseHub and audio.com under a "Connected services" subheading, with no "Create account" CTA anywhere on the page (Task 3.2d)', async () => {
+    const { apiRef } = renderPage();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+
+    expect(screen.getByRole('heading', { name: 'Connected services' })).toBeTruthy();
+    expect(screen.queryByText('Create account')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create account' })).toBeNull();
+  });
+
   it('legacy session with no Muse ID session: row shows signed-in state but no Link action', async () => {
     const { apiRef } = renderPage();
     await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));

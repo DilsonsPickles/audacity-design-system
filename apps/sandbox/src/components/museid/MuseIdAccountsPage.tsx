@@ -1,12 +1,14 @@
 // Sandbox-side content for the Preferences → Accounts page (Task 3.2b,
-// revised Task 3.2c after design review).
+// revised Task 3.2c, wording aligned with the HomeTab surface in 3.2d).
 //
-// One Muse ID card (name/email/avatar + global sign-out, or "Create a Muse
-// ID" / "Sign in" when signed out) plus service rows for MuseHub and
-// audio.com that are ALWAYS visible — legacy sign-in for each service is a
-// first-class part of the story (the session-proof linking rung: an
-// existing user signs into the legacy service, then links it to their Muse
-// ID), not a debug-only path. Each row is one of three states:
+// One full-width Muse ID card on top (name/email/avatar + global sign-out,
+// or "Create a Muse ID" / "Sign in" when signed out) — the umbrella
+// identity, not a peer of the services below it — plus a "Connected
+// services" group of subordinate rows for MuseHub and audio.com that are
+// ALWAYS visible. Legacy sign-in for each service is a first-class part of
+// the story (the session-proof linking rung: an existing user signs into
+// the legacy service, then links it to their Muse ID), not a debug-only
+// path. Each row is one of three states:
 //   1. Signed into the service AND linked to Muse ID -> real data + Unlink.
 //   2. Signed into the service, not linked, Muse ID session exists ->
 //      "Link" (session-proof rung via MuseIdContext.linkService).
@@ -170,7 +172,7 @@ export const MuseIdAccountsPage: React.FC = () => {
           ID session (Link), or not signed into the service at all (legacy
           sign-in). */}
       <div className="museid-accounts__services">
-        <h4 className="museid-accounts__services-title">Services</h4>
+        <h4 className="museid-accounts__services-title">Connected services</h4>
 
         {(['moose-hub', 'adieu'] as ServiceName[]).map((service) => {
           const linked = museId.signedIn && museId.linkedServices.includes(service);

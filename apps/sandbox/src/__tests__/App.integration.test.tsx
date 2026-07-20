@@ -4,7 +4,7 @@
 // (§2) for the seams this suite is meant to cover; this file lands the
 // boot test only (Task 1) — later tasks add the rest.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 // audioMockFactory MUST come from './audioMock' (not './integrationHarness')
 // — see audioMock.ts's header comment for the circular-import deadlock this
@@ -300,5 +300,53 @@ describe('Transport toolbar positions', () => {
       expect(precedes(transportToolbar()!, selectionToolbar()!)).toBe(true);
     });
     expect(transportToolbar()!.parentElement?.style.position).not.toBe('fixed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Home tab — My accounts: Muse ID is the umbrella identity, not a peer of
+// MuseHub/audio.com (Task 3.2d, design review). Muse ID renders full width
+// on its own row; MuseHub + audio.com are grouped beneath it under a
+// "Connected services" subheading. "Create account" was removed from both
+// service cards — with Muse ID SSO, account creation happens once on the
+// Muse ID card, so the per-service CTA is redundant.
+// ---------------------------------------------------------------------------
+
+describe('Home tab — My accounts', () => {
+  it('groups MuseHub + audio.com under "Connected services" beneath the full-width Muse ID card, with no "Create account" CTAs', async () => {
+    const { getByText } = renderApp();
+
+    fireEvent.click(getByText('My accounts'));
+
+    const museIdHeading = await screen.findByRole('heading', { name: 'Muse ID' });
+    const servicesHeading = screen.getByRole('heading', { name: 'Connected services' });
+    const museHubHeading = screen.getByRole('heading', { name: 'MuseHub' });
+    const audioComHeading = screen.getByRole('heading', { name: 'audio.com' });
+
+    // Muse ID renders full width, on top, via the --primary modifier.
+    expect(museIdHeading.closest('.home-tab__accounts-section--primary')).toBeTruthy();
+
+    // MuseHub + audio.com are nested inside the "Connected services" group,
+    // AFTER the Muse ID card in document order.
+    const servicesGroup = servicesHeading.closest('.home-tab__accounts-services');
+    expect(servicesGroup).toBeTruthy();
+    expect(servicesGroup!.contains(museHubHeading)).toBe(true);
+    expect(servicesGroup!.contains(audioComHeading)).toBe(true);
+    expect(
+      !!(museIdHeading.compareDocumentPosition(servicesHeading) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+
+    // Sane heading hierarchy: the group's members are subordinate (h3) to
+    // the group heading (h2), matching Muse ID's own (h2) level.
+    expect(museIdHeading.tagName).toBe('H2');
+    expect(servicesHeading.tagName).toBe('H2');
+    expect(museHubHeading.tagName).toBe('H3');
+    expect(audioComHeading.tagName).toBe('H3');
+
+    // Every service card offers "Sign in" but never "Create account" — the
+    // Muse ID card above is the only place an account gets created. Three
+    // "Sign in" buttons: Muse ID's own secondary CTA + MuseHub + audio.com.
+    expect(screen.queryByText('Create account')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Sign in' })).toHaveLength(3);
   });
 });
