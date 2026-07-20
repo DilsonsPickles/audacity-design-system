@@ -472,6 +472,11 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
     };
   }
 
+  // Invariant: a non-null time selection cannot coexist with track selection.
+  if (action.type === 'SET_TIME_SELECTION' && action.payload !== null) {
+    return { ...innerReducer(state, action), selectedTrackIndices: [] };
+  }
+
   // Snapshot the current tracks before running the reducer if this is an
   // undoable action. We only push to `past` when the reducer actually
   // mutates tracks (checked below).

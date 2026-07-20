@@ -135,3 +135,36 @@ describe('scope integrity under track delete/move', () => {
     expect(next.timeSelection).toEqual({ startTime: 0, endTime: 1 });
   });
 });
+
+describe('track-selection / time-selection mutual exclusivity', () => {
+  it('SET_TIME_SELECTION with non-null payload clears selectedTrackIndices', () => {
+    const state = stateWith({
+      selectedTrackIndices: [0, 1],
+    });
+    const next = tracksReducer(state, {
+      type: 'SET_TIME_SELECTION',
+      payload: { startTime: 0, endTime: 1 },
+    });
+    expect(next.selectedTrackIndices).toEqual([]);
+    expect(next.timeSelection).toEqual({ startTime: 0, endTime: 1 });
+  });
+
+  it('SET_TIME_SELECTION with null payload leaves selectedTrackIndices untouched', () => {
+    const state = stateWith({
+      selectedTrackIndices: [0, 1],
+      timeSelection: { startTime: 0, endTime: 1 },
+    });
+    const next = tracksReducer(state, { type: 'SET_TIME_SELECTION', payload: null });
+    expect(next.selectedTrackIndices).toEqual([0, 1]);
+    expect(next.timeSelection).toBeNull();
+  });
+
+  it('SET_TIME_SELECTION is a no-op on selectedTrackIndices when it is already empty', () => {
+    const state = stateWith({ selectedTrackIndices: [] });
+    const next = tracksReducer(state, {
+      type: 'SET_TIME_SELECTION',
+      payload: { startTime: 0, endTime: 2 },
+    });
+    expect(next.selectedTrackIndices).toEqual([]);
+  });
+});
