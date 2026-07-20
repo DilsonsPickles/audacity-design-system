@@ -219,26 +219,3 @@
   font-size: 12px;
   color: #d64545;
 }
-
-.museid-accounts__legacy {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(0, 0, 0, 0.14);
-}
-
-@media (prefers-color-scheme: dark) {
-  .museid-accounts__legacy {
-    border-top-color: rgba(255, 255, 255, 0.14);
-  }
-}
-
-.museid-accounts__legacy-label {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--preferences-muted, rgba(0, 0, 0, 0.5));
-}

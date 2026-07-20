@@ -1,14 +1,17 @@
-// Sandbox-side Muse ID card for the HomeTab "My accounts" page (Task 3.2b).
-// Replaces the old MuseHubHomeAccountCard as the primary entry there: shows
-// ONE Muse identity (name/email/avatar) with a combined MuseHub + audio.com
-// summary line when signed in, or a "Continue with Muse ID" primary CTA
-// when signed out. Reuses the home-tab__accounts-* classes shipped by
-// @dilsonspickles/components (same pattern MuseHubHomeAccountCard used) so
-// no new component-level CSS is needed.
+// Sandbox-side Muse ID card for the HomeTab "My accounts" page (Task 3.2b,
+// revised Task 3.2c). Shows ONE Muse identity (name/email/avatar) with a
+// combined MuseHub + audio.com summary line when signed in, or "Create a
+// Muse ID" (primary) + "Sign in" (secondary) when signed out. Reuses the
+// home-tab__accounts-* classes shipped by @dilsonspickles/components (same
+// pattern MuseHubHomeAccountCard/AdieuHomeAccountCard use) so no new
+// component-level CSS is needed.
 //
-// App.tsx additionally hides the design system's own built-in audio.com
-// card (HomeTab's `hideBuiltInAccountCard` prop) once Muse ID is signed in,
-// since this card's summary line already covers audio.com.
+// Rendered alongside MuseHubHomeAccountCard and AdieuHomeAccountCard (both
+// always visible, independent of Muse ID sign-in state — legacy sign-in is
+// a first-class part of the linking story, not a fallback). App.tsx always
+// hides the design system's own built-in audio.com card (HomeTab's
+// `hideBuiltInAccountCard` prop) since it renders hardcoded placeholder
+// copy instead of real state.
 
 import React from 'react';
 import { Button, Icon } from '@dilsonspickles/components';
@@ -82,7 +85,7 @@ export const MuseIdHomeAccountCard: React.FC = () => {
                   size="default"
                   onClick={() => museId.openAuthDialog('sign-up')}
                 >
-                  Continue with Muse ID
+                  Create a Muse ID
                 </Button>
                 <Button
                   variant="secondary"

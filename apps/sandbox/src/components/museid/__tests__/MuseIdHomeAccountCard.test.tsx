@@ -55,12 +55,12 @@ afterEach(() => {
 });
 
 describe('MuseIdHomeAccountCard', () => {
-  it('signed out: "Continue with Muse ID" is the primary trigger and opens the sign-up dialog', async () => {
+  it('signed out: "Create a Muse ID" is the primary trigger and opens the sign-up dialog', async () => {
     const { apiRef } = renderCard();
     await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
 
     expect(screen.getByText('Not signed in')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Muse ID' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create a Muse ID' }));
     expect(apiRef.current?.museId.authDialog).toBe('sign-up');
   });
 

@@ -1,21 +1,28 @@
-// Sandbox-side content for the Preferences → Accounts page (Task 3.2b).
+// Sandbox-side content for the Preferences → Accounts page (Task 3.2b,
+// revised Task 3.2c after design review).
 //
-// Replaces the old per-service MuseHubAccountSection with a UNIFIED Muse
-// identity surface: one Muse ID card (name/email/avatar + global sign-out)
-// plus a "Linked services" section listing MuseHub and audio.com with their
-// linked/unlinked state and Link/Unlink actions.
+// One Muse ID card (name/email/avatar + global sign-out, or "Create a Muse
+// ID" / "Sign in" when signed out) plus service rows for MuseHub and
+// audio.com that are ALWAYS visible — legacy sign-in for each service is a
+// first-class part of the story (the session-proof linking rung: an
+// existing user signs into the legacy service, then links it to their Muse
+// ID), not a debug-only path. Each row is one of three states:
+//   1. Signed into the service AND linked to Muse ID -> real data + Unlink.
+//   2. Signed into the service, not linked, Muse ID session exists ->
+//      "Link" (session-proof rung via MuseIdContext.linkService).
+//   3. Not signed into the service -> "Sign in to <service>" opens that
+//      service's own legacy dialog. Works with or without a Muse ID
+//      session (with none, it's just legacy sign-in; with one, it unlocks
+//      state 2 next).
 //
-// Link/Unlink call MuseIdContext.linkService/unlinkService (Task 3.1) —
-// this is the first UI to exercise them. linkService is session-proof only
-// (it needs a live legacy access token); when no legacy session exists for
-// a service, this page explains that and offers the legacy sign-in button
-// as the linking mechanism itself (NOT gated by the debug toggle — a live
-// legacy session is the actual precondition for session-proof linking, see
-// docs/superpowers/specs/2026-07-13-muse-id-sso-design.md's linking ladder).
+// Link/Unlink call MuseIdContext.linkService/unlinkService (Task 3.1).
+// linkService is session-proof only (it needs a live legacy access token) —
+// see docs/superpowers/specs/2026-07-13-muse-id-sso-design.md's linking
+// ladder.
 //
-// When signed out of Muse ID, "Continue with Muse ID" is the primary CTA.
-// The legacy MuseHubAccountSection stays reachable behind the Debug panel's
-// "Show legacy sign-in dialogs" toggle (regression path + demo contrast).
+// "Create a Muse ID" (not "Continue with Muse ID") is the primary CTA when
+// signed out: "Continue with X" implies an existing account, which nobody
+// has yet on first visit to this page.
 
 import React from 'react';
 import { useMuseId } from '../../contexts/MuseIdContext';
@@ -24,7 +31,6 @@ import { useAdieu } from '../../contexts/AdieuContext';
 import { getAccessToken as getMuseHubAccessToken } from '../../lib/musehub-client';
 import { getAccessToken as getAdieuAccessToken } from '../../lib/adieu-client';
 import type { ServiceName } from '../../lib/muse-id-client';
-import { MuseHubAccountSection } from '../wallet/MuseHubAccountSection';
 import './MuseIdAccountsPage.css';
 
 const SERVICE_LABELS: Record<ServiceName, string> = {
@@ -134,8 +140,8 @@ export const MuseIdAccountsPage: React.FC = () => {
       ) : (
         <div className="museid-accounts__card museid-accounts__card--signed-out">
           <p className="museid-accounts__signed-out-text">
-            You're not signed in. Continue with Muse ID for one identity
-            across MuseHub and audio.com.
+            You're not signed in. Create a Muse ID for one identity across
+            MuseHub and audio.com.
           </p>
           <div className="museid-accounts__actions">
             <button
@@ -143,7 +149,7 @@ export const MuseIdAccountsPage: React.FC = () => {
               className="museid-accounts__btn museid-accounts__btn--primary"
               onClick={() => museId.openAuthDialog('sign-up')}
             >
-              Continue with Muse ID
+              Create a Muse ID
             </button>
             <button
               type="button"
@@ -156,43 +162,49 @@ export const MuseIdAccountsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Linked services — always visible (even signed out) so the page
-          previews what Muse ID unlocks; actions are disabled until signed
-          in. Service labels ("MuseHub"/"audio.com") are plain text so this
-          section doubles as the Accounts page's distinguishing content. */}
+      {/* Service rows — ALWAYS visible, independent of Muse ID sign-in
+          state. Legacy sign-in is a first-class rung of the linking ladder
+          (see file header), not a debug-only path, so it must never be
+          hidden behind the Debug panel toggle. Each row is one of three
+          states: linked (data + Unlink), signed-in-not-linked with a Muse
+          ID session (Link), or not signed into the service at all (legacy
+          sign-in). */}
       <div className="museid-accounts__services">
-        <h4 className="museid-accounts__services-title">Linked services</h4>
+        <h4 className="museid-accounts__services-title">Services</h4>
 
         {(['moose-hub', 'adieu'] as ServiceName[]).map((service) => {
           const linked = museId.signedIn && museId.linkedServices.includes(service);
+          const legacySignedIn = hasLegacySession(service);
           const busy = linkingService === service;
           return (
             <div key={service} className="museid-accounts__service-row">
               <div className="museid-accounts__service-meta">
                 <span className="museid-accounts__service-name">{SERVICE_LABELS[service]}</span>
-                {!museId.signedIn ? (
-                  <span className="museid-accounts__service-summary">
-                    Sign in with Muse ID to link this service.
-                  </span>
-                ) : linked ? (
+                {linked ? (
                   <span className="museid-accounts__service-summary">
                     {service === 'moose-hub'
                       ? `${formatUSD(museHub.balance)} · ${museHub.purchasedEffects.length} plugin${museHub.purchasedEffects.length === 1 ? '' : 's'}`
                       : `${adieu.cloudProjects.length} cloud project${adieu.cloudProjects.length === 1 ? '' : 's'}`}
                   </span>
-                ) : hasLegacySession(service) ? (
+                ) : legacySignedIn && museId.signedIn ? (
                   <span className="museid-accounts__service-summary">
                     Signed in to {SERVICE_LABELS[service]} as{' '}
                     {service === 'moose-hub' ? museHub.user.email : adieu.user.email} — ready to link.
                   </span>
+                ) : legacySignedIn ? (
+                  <span className="museid-accounts__service-summary">
+                    Signed in to {SERVICE_LABELS[service]} as{' '}
+                    {service === 'moose-hub' ? museHub.user.email : adieu.user.email}. Create a Muse ID
+                    above to link it.
+                  </span>
                 ) : (
                   <span className="museid-accounts__service-summary">
-                    Not linked. Sign in to {SERVICE_LABELS[service]} to link it here.
+                    Not signed in to {SERVICE_LABELS[service]}.
                   </span>
                 )}
               </div>
               <div className="museid-accounts__service-actions">
-                {!museId.signedIn ? null : linked ? (
+                {linked ? (
                   <button
                     type="button"
                     className="museid-accounts__btn museid-accounts__btn--ghost"
@@ -201,7 +213,7 @@ export const MuseIdAccountsPage: React.FC = () => {
                   >
                     {busy ? 'Unlinking…' : 'Unlink'}
                   </button>
-                ) : hasLegacySession(service) ? (
+                ) : legacySignedIn && museId.signedIn ? (
                   <button
                     type="button"
                     className="museid-accounts__btn museid-accounts__btn--primary"
@@ -210,13 +222,13 @@ export const MuseIdAccountsPage: React.FC = () => {
                   >
                     {busy ? 'Linking…' : 'Link'}
                   </button>
-                ) : (
+                ) : legacySignedIn ? null : (
                   <button
                     type="button"
                     className="museid-accounts__btn museid-accounts__btn--ghost"
                     onClick={() => openLegacySignIn(service)}
                   >
-                    Sign in to link
+                    Sign in to {SERVICE_LABELS[service]}
                   </button>
                 )}
               </div>
@@ -225,13 +237,6 @@ export const MuseIdAccountsPage: React.FC = () => {
         })}
         {linkError && <p className="museid-accounts__error" role="alert">{linkError}</p>}
       </div>
-
-      {museId.legacyAuthDialogsEnabled && !museId.signedIn && (
-        <div className="museid-accounts__legacy">
-          <p className="museid-accounts__legacy-label">Legacy sign-in (debug)</p>
-          <MuseHubAccountSection />
-        </div>
-      )}
     </div>
   );
 };

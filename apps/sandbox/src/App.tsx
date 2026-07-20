@@ -35,6 +35,7 @@ import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/Mus
 import { AdieuProvider, useAdieu } from './contexts/AdieuContext';
 import { MuseIdProvider, useMuseId } from './contexts/MuseIdContext';
 import { MuseHubHomeAccountCard } from './components/wallet/MuseHubHomeAccountCard';
+import { AdieuHomeAccountCard } from './components/wallet/AdieuHomeAccountCard';
 import { MuseIdHomeAccountCard } from './components/museid/MuseIdHomeAccountCard';
 import { useZoomControls } from './hooks/useZoomControls';
 import { useCanvasScrollSync } from './hooks/useCanvasScrollSync';
@@ -824,7 +825,7 @@ function CanvasDemoContent() {
             })()}
             audioFiles={cloudAudioFiles}
             onDeleteAudioFile={(id) => setCloudAudioFiles(prev => prev.filter(f => f.id !== id))}
-            // "Continue with Muse ID" is the primary CTA everywhere per the
+            // "Create a Muse ID" is the primary CTA everywhere per the
             // design spec — the legacy direct-to-adieu sign-in stays reachable
             // only when the Debug panel's "Show legacy sign-in dialogs" toggle
             // is on (regression path + demo contrast).
@@ -854,14 +855,20 @@ function CanvasDemoContent() {
             onOpenOther={handleOpenFromComputer}
             onDeleteProject={handleDeleteProject}
             currentProjectId={currentProjectId}
-            // Once Muse ID is signed in, MuseIdHomeAccountCard's combined
-            // summary line already covers audio.com — hide the design
-            // system's own built-in card so the service isn't shown twice.
-            hideBuiltInAccountCard={museIdSignedIn}
+            // The design system's built-in Audio.com card renders hardcoded
+            // placeholder copy ("Service name / URL") rather than real
+            // state — always suppress it in favor of AdieuHomeAccountCard
+            // below, which reads real AdieuContext data. MuseHub sign-in is
+            // a first-class part of the linking story (not a debug-only
+            // path), so its card is always visible too, independent of the
+            // Debug panel's legacy-dialogs toggle and of Muse ID sign-in
+            // state (Task 3.2c).
+            hideBuiltInAccountCard={true}
             extraAccountsSections={
               <>
                 <MuseIdHomeAccountCard />
-                {legacyAuthDialogsEnabled && !museIdSignedIn && <MuseHubHomeAccountCard />}
+                <MuseHubHomeAccountCard />
+                <AdieuHomeAccountCard />
               </>
             }
             // Deferred-link prompt (Task 3.2b item 4): only when Muse ID is

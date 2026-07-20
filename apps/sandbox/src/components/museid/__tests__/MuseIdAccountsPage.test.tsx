@@ -57,13 +57,57 @@ afterEach(() => {
 });
 
 describe('MuseIdAccountsPage', () => {
-  it('signed out: shows "Continue with Muse ID" which opens the sign-up dialog', async () => {
+  it('signed out: shows "Create a Muse ID" (primary) which opens the sign-up dialog', async () => {
     const { apiRef } = renderPage();
     await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
 
     expect(apiRef.current?.museId.authDialog).toBe('closed');
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Muse ID' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create a Muse ID' }));
     expect(apiRef.current?.museId.authDialog).toBe('sign-up');
+  });
+
+  it('signed out: "Sign in" is a separate secondary action that opens the sign-in dialog', async () => {
+    const { apiRef } = renderPage();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(apiRef.current?.museId.authDialog).toBe('sign-in');
+  });
+
+  it('no Muse ID session: both service rows are visible with legacy sign-in actions (not hidden behind the debug toggle)', async () => {
+    const { apiRef } = renderPage();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+    expect(apiRef.current?.museId.legacyAuthDialogsEnabled).toBe(false);
+    expect(apiRef.current?.museId.signedIn).toBe(false);
+
+    expect(screen.getByText('MuseHub')).toBeTruthy();
+    expect(screen.getByText('audio.com')).toBeTruthy();
+
+    const museHubSignIn = screen.getByRole('button', { name: 'Sign in to MuseHub' });
+    const adieuSignIn = screen.getByRole('button', { name: 'Sign in to audio.com' });
+    expect(apiRef.current?.museHub.authDialog).toBe('closed');
+    fireEvent.click(museHubSignIn);
+    expect(apiRef.current?.museHub.authDialog).toBe('sign-in');
+
+    expect(apiRef.current?.adieu.authDialog).toBe('closed');
+    fireEvent.click(adieuSignIn);
+    expect(apiRef.current?.adieu.authDialog).toBe('sign-in');
+  });
+
+  it('legacy session with no Muse ID session: row shows signed-in state but no Link action', async () => {
+    const { apiRef } = renderPage();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+
+    const legacyToken = mock.seedServiceAccessToken('moose-hub', 'legacy-only@mu.se');
+    await act(async () => {
+      adoptMuseHubTokens({ accessToken: legacyToken, refreshToken: 'irrelevant', expiresAt: Date.now() + 3600_000 });
+      await apiRef.current!.museHub.hydrate();
+    });
+    await waitFor(() => expect(apiRef.current!.museHub.signedIn).toBe(true));
+
+    expect(screen.getByText(/Signed in to MuseHub as legacy-only@mu\.se/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Link' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign in to MuseHub' })).toBeNull();
   });
 
   it('signed in with both services linked: shows both services\' data', async () => {
