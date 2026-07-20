@@ -52,6 +52,39 @@ Consequences: the 30-day refresh token means a signed-up user re-authenticates r
 
 Note: moose-hub already seeds an `audacity-electron` OAuth client with a `127.0.0.1/callback` loopback redirect (RFC 8252), so the desktop bounce is pre-anticipated on the RP side.
 
+### Using Muse ID to enter a service + the linking ladder (amended 2026-07-13, user decisions)
+
+**"Continue with Muse ID" belongs on the SERVICE sign-in dialogs** (both MuseHub's and audio.com's), not on the Muse ID card itself — that is the third-party-IdP context where the idiom is correct ("use your Muse ID to get into this service"), and it is the actual payoff of SSO. Primary CTA above the demoted legacy email/password form.
+
+Behaviour when clicked, by state:
+
+| State | Behaviour |
+|---|---|
+| Muse session + service already linked | Exchange tokens, straight in. No prompts. |
+| Muse session + not linked + service account exists with the SAME email | Confirm before claiming: show the recognition card (see disclosure rule) and link on confirm. |
+| Muse session + not linked + no service account | Create one under the Muse ID, stated plainly ("We'll set up your MuseHub account"). |
+| Muse session + not linked + user's service account uses a DIFFERENT email | Do NOT silently create a duplicate (that orphans their real account — "my purchases are gone"). Offer rung 3 below. |
+| No Muse session | Open the Muse ID dialog (create/sign-in), then re-enter the table. |
+
+**Linking ladder (final):**
+1. **Same email** — found automatically at signup discovery.
+2. **Live in-app service session** — one tap; the existing session is the proof (no email round-trip).
+3. **Different email — prove by code** *(user's addition)*: "Have an account under a different email? Add it" → enter email B → code sent to B → verified → that service account is linked. Same ownership standard as the primary email; user-initiated (only they know B exists); leaks nothing (a stranger typing an address just gets "code sent"). Available at the found-your-accounts step AND in Preferences → Accounts.
+4. Otherwise create fresh — now a deliberate choice, never an accident.
+
+**Email B is PROOF ONLY (user decision).** It is NOT stored as an alternate address on the Muse ID. One Muse ID = one email. No alias/alternate-address model.
+
+Also in scope: after a user signs into a service with the LEGACY form while holding a Muse session, offer "Link this MuseHub account to your Muse ID?" — the same session-proof link at its natural moment; how existing users migrate without ever being forced.
+
+### Disclosure rule for recognition cards (amended 2026-07-13, user decision)
+
+Pre-link cards must show the LEAST that supports the "is this mine?" decision. **No financial data before linking.**
+- Show: service name, **masked email** (e.g. `a.d•••@mu.se`), and a non-financial detail (`4 plugins`, `3 cloud projects`).
+- Do NOT show: wallet balance (or any monetary value) pre-link. Balance appears only after linking, on the authenticated account card.
+- Applies to the discovery payload itself: each RP's `/api/internal/lookup` returns the masked email + non-financial summary; muse-id passes it through unchanged.
+
+Note: the flow is not stranger-reachable (discovery is gated behind a code sent to that address), but in MOCK_EMAIL_CODES demo mode the fixed code makes it appear so — a demo artifact to call out when presenting.
+
 ### muse-id service surface
 
 Public (consumed by the sandbox):

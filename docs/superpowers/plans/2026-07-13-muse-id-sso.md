@@ -92,6 +92,34 @@ Muse ID gains a password (siblings both have one; enables password managers + la
 - [ ] `apps/sandbox/src/__tests__/MuseId.integration.test.tsx`: full dialog flow (mocked network at museIdMock boundary): enumeration-safe start, code entry, both linking rungs (stage: museIdMock returns moose-hub discovery; adieu linked via live legacy session), contexts adopt exchanged tokens (assert both service contexts signed in), global sign-out clears everything, deferred-link prompt appears when a service is skipped. Sabotage check (report-only): break the adoptTokens wiring → test reds.
 - [ ] Full prototype gates; suite count reported.
 
+## Phase 5 — Service-dialog SSO + linking ladder rung 3 (spec amendment 2026-07-13)
+
+Binding: spec §"Using Muse ID to enter a service + the linking ladder" and §"Disclosure rule for recognition cards".
+
+### Task 5.1: muse-id — link-by-email (rung 3) endpoints
+
+- [ ] `POST /api/link/start` (user Bearer) `{ service, email }` → always `{ ok: true }` (anti-enumeration parity with `/api/auth/start`); issues a code to that address scoped to (museUserId, service, email). Reuse `lib/codes.ts`; scope the PendingVerification row so it can't be confused with signup codes (add a purpose/scope column or a separate table — your call, document it).
+- [ ] `POST /api/link/verify` (user Bearer) `{ service, email, code }` → on valid code: call that service's `/api/internal/lookup` for `email`; if a service account exists, `registerLink` it to the calling Muse user (honour both @@unique constraints → clean 409s); if none exists, return a clear "no account there" result WITHOUT creating anything. Email B is PROOF ONLY — do NOT persist it on the User.
+- [ ] Tests: happy path, wrong/expired code, attempts cap, no-account-at-that-email, already-linked-elsewhere 409, enumeration parity on `/link/start`, and that email B is never written to the User row.
+- [ ] Gates (`pnpm test`, `pnpm build`, tsc). Commit + push (muse-id is push-safe).
+
+### Task 5.2: both RPs — disclosure change on internal/lookup
+
+- [ ] moose-hub + adieu `/api/internal/lookup`: return masked email (e.g. `a.d•••@mu.se`; put the masking helper in each repo's lib, tested) and a NON-FINANCIAL summary. moose-hub: drop the wallet balance, keep the plugin count. adieu: project count already fine.
+- [ ] Update their tests; existing suites stay green. Branch `feat/muse-exchange` in each. **DO NOT PUSH** (Railway auto-deploys).
+
+### Task 5.3: sandbox — "Continue with Muse ID" in both service dialogs
+
+- [ ] Add the primary CTA + demoted legacy form to `components/wallet/AuthDialog.tsx` (MuseHub) and `components/adieu/AdieuAuthDialog.tsx`, implementing the spec's five-state table (linked → straight in via exchange; same-email → confirm card; none → create, stated; different-email → offer rung 3; no Muse session → open the Muse ID dialog then re-enter).
+- [ ] Post-legacy-sign-in prompt: after a legacy sign-in with a Muse session held, offer "Link this account to your Muse ID?".
+- [ ] Tests at the museIdMock boundary for all five states + the post-sign-in prompt.
+
+### Task 5.4: sandbox — rung 3 UI + disclosure rendering
+
+- [ ] "Have an account under a different email? Add it" on the found-your-accounts step AND Preferences → Accounts: email → code → linked (drives 5.1's endpoints via the muse-id client).
+- [ ] Recognition cards render masked email + non-financial detail; balance only on the post-link account card. Update any test/fixture asserting `wallet $42.50` pre-link.
+- [ ] Tests: rung-3 happy path, no-account-at-that-email, and a disclosure assertion that no monetary value appears pre-link.
+
 ### Task 4: E2E, docs, rollout gate
 
 - [ ] Local E2E attempt: run all three services locally (check sibling READMEs/local DB availability; if local Postgres isn't available, document and rely on suites) + sandbox dev server; controller drives the demo script in the preview browser.
