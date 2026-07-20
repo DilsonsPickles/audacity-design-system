@@ -59,6 +59,7 @@ import { museUnlink as museHubMuseUnlink } from '../lib/musehub-client';
 import { museUnlink as adieuMuseUnlink } from '../lib/adieu-client';
 import { useMuseHub } from './MuseHubContext';
 import { useAdieu } from './AdieuContext';
+import { MuseIdAuthDialog } from '../components/museid/MuseIdAuthDialog';
 
 export interface MuseIdProfile {
   sub: string;
@@ -126,6 +127,19 @@ interface MuseIdContextValue {
    *  are two independently-owned pieces of state, so a failure clearing
    *  the RP side doesn't roll back the muse-id side). */
   unlinkService: (service: ServiceName) => Promise<void>;
+
+  // ---- Globally-mounted MuseIdAuthDialog (Task 3.2a) ---------------------
+  /** State of the globally-mounted MuseIdAuthDialog. 'sign-up' is the
+   *  primary in-app entry point (email -> code -> discovery -> profile);
+   *  'sign-in' is the secondary email+password path for a returning user.
+   *  See the design spec's "Auth surface" section for why sign-up stays
+   *  in-app while sign-in is meant to eventually prefer a browser bounce
+   *  (deferred — see MuseIdAuthDialog.tsx's file header). */
+  authDialog: 'closed' | 'sign-up' | 'sign-in';
+  /** Open the MuseIdAuthDialog in a given mode. */
+  openAuthDialog: (mode: 'sign-up' | 'sign-in') => void;
+  /** Close the MuseIdAuthDialog. No-op if already closed. */
+  closeAuthDialog: () => void;
 }
 
 const MuseIdContext = createContext<MuseIdContextValue | null>(null);
@@ -370,6 +384,14 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
     [fetchProfile],
   );
 
+  // Globally-mounted MuseIdAuthDialog state — mirrors MuseHubContext's/
+  // AdieuContext's own authDialog + openAuthDialog/closeAuthDialog.
+  const [authDialog, setAuthDialog] = useState<'closed' | 'sign-up' | 'sign-in'>('closed');
+  const openAuthDialog = useCallback((mode: 'sign-up' | 'sign-in') => {
+    setAuthDialog(mode);
+  }, []);
+  const closeAuthDialog = useCallback(() => setAuthDialog('closed'), []);
+
   const value = useMemo<MuseIdContextValue>(
     () => ({
       signedIn,
@@ -385,6 +407,9 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       signOutEverywhere,
       linkService,
       unlinkService,
+      authDialog,
+      openAuthDialog,
+      closeAuthDialog,
     }),
     [
       signedIn,
@@ -400,10 +425,18 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       signOutEverywhere,
       linkService,
       unlinkService,
+      authDialog,
+      openAuthDialog,
+      closeAuthDialog,
     ],
   );
 
-  return <MuseIdContext.Provider value={value}>{children}</MuseIdContext.Provider>;
+  return (
+    <MuseIdContext.Provider value={value}>
+      {children}
+      <MuseIdAuthDialog />
+    </MuseIdContext.Provider>
+  );
 };
 
 export function useMuseId(): MuseIdContextValue {

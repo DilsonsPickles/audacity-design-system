@@ -118,6 +118,15 @@ export function adoptTokens(tokens: MuseHubTokens): void {
   writeTokens(tokens);
 }
 
+/** Current moose-hub access token, if signed in — used by Muse ID's session-
+ *  proof linking (the "found your accounts" step lets you link this service
+ *  via your live legacy session instead of re-verifying by email). Reading
+ *  this token client-side is not itself a trust boundary: the RP validates
+ *  it server-side during the muse-exchange/link call before honoring it. */
+export function getAccessToken(): string | null {
+  return readTokens()?.accessToken ?? null;
+}
+
 // ---- PKCE helpers ---------------------------------------------------------
 
 function base64UrlEncode(bytes: Uint8Array): string {

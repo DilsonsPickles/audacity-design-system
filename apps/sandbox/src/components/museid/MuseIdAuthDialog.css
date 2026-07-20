@@ -1,0 +1,269 @@
+/* Muse ID auth dialog — sign-up / sign-in / found-your-accounts / forgot
+   password. Structure mirrors wallet/AuthDialog.css and
+   adieu/AdieuAuthDialog.css (same backdrop/card/field/cta shapes); the
+   accent is sky-400 (#38BDF8) rather than MuseHub's violet or adieu's rose,
+   since Muse ID is the neutral identity layer both services trust — not
+   another branded surface. z-index 20000 matches the sibling auth dialogs
+   (above the design-system Dialog at 10000, below nothing — these three
+   auth dialogs are mutually exclusive in practice). */
+
+@keyframes museid-auth-dialog-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes museid-auth-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.museid-auth-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: museid-auth-dialog-backdrop-in 140ms ease-out;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.museid-auth-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: #131722;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 22px 22px 24px;
+  color: #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: museid-auth-dialog-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.museid-auth-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.museid-auth-dialog__header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+}
+
+.museid-auth-dialog__close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.museid-auth-dialog__close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.museid-auth-dialog__close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.museid-auth-dialog__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.45;
+}
+
+.museid-auth-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.museid-auth-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.museid-auth-dialog__field > span:first-child {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.01em;
+}
+
+.museid-auth-dialog__field input {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: #FFFFFF;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.museid-auth-dialog__field input:focus {
+  border-color: rgba(56, 189, 248, 0.7);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.museid-auth-dialog__field input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.museid-auth-dialog__hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  min-height: 14px;
+}
+
+.museid-auth-dialog__error {
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #FFB0B0;
+  font-size: 12px;
+}
+
+.museid-auth-dialog__done {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ---- Found-your-accounts cards ------------------------------------------ */
+
+.museid-auth-dialog__cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.museid-auth-dialog__card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+}
+
+.museid-auth-dialog__card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.museid-auth-dialog__card input[type='checkbox'] {
+  margin-top: 2px;
+  accent-color: #38BDF8;
+}
+
+.museid-auth-dialog__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.museid-auth-dialog__card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.museid-auth-dialog__card-summary {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.museid-auth-dialog__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 9999px;
+  border: 0;
+  background: #38BDF8;
+  color: #0B1A22;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.museid-auth-dialog__cta:hover:not(:disabled) { background: #67CDFA; }
+.museid-auth-dialog__cta:active:not(:disabled) { transform: translateY(1px); }
+
+.museid-auth-dialog__cta:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+.museid-auth-dialog__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.6px solid rgba(11, 26, 34, 0.2);
+  border-top-color: #0B1A22;
+  animation: museid-auth-dialog-spin 700ms linear infinite;
+}
+
+@keyframes museid-auth-dialog-spin {
+  to { transform: rotate(360deg); }
+}
+
+.museid-auth-dialog__switch,
+.museid-auth-dialog__forgot {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.museid-auth-dialog__link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #38BDF8;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.museid-auth-dialog__link:hover:not(:disabled) { color: #67CDFA; }
+.museid-auth-dialog__link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
