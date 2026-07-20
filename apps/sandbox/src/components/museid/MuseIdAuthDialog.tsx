@@ -108,8 +108,25 @@ export const MuseIdAuthDialog: React.FC = () => {
 
   const [discovery, setDiscovery] = useState<DiscoveryEntry[]>([]);
   const [checked, setChecked] = useState<Partial<Record<ServiceName, boolean>>>({});
+  // Set when handleForgotCodeSubmit's verify resolves status:'new' — i.e.
+  // the reset target has no Muse ID to reset. Drives the "Create a Muse ID
+  // instead" link on the forgot-code step (see handleForgotCodeSubmit).
+  const [forgotAccountMissing, setForgotAccountMissing] = useState(false);
 
-  const firstInputRef = useRef<HTMLInputElement>(null);
+  // Shared "first meaningful control" ref — only one step's markup is
+  // mounted at a time, so this gets re-pointed (via focusFirstRef below) at
+  // whichever step is currently rendered: an input, a checkbox, or a
+  // button. Typed HTMLElement (not HTMLInputElement) to cover all three.
+  // The [open,mode] effect focuses it for a flow's initial step; the two
+  // step-transition effects below (one per step enum) refocus it on every
+  // subsequent step. This generalizes AuthDialog's own pattern — a single
+  // post-'verify' focus effect (see wallet/AuthDialog.tsx) — to this
+  // dialog's larger set of steps across both the sign-up and sign-in/
+  // forgot-password step enums.
+  const firstFocusRef = useRef<HTMLElement>(null);
+  const focusFirstRef = (el: HTMLElement | null) => {
+    firstFocusRef.current = el;
+  };
 
   // Reset all local state whenever the dialog opens or the mode switches —
   // mirrors AuthDialog/AdieuAuthDialog's own open/mode reset effect.
@@ -126,7 +143,8 @@ export const MuseIdAuthDialog: React.FC = () => {
     setSignInStep('form');
     setDiscovery([]);
     setChecked({});
-    setTimeout(() => firstInputRef.current?.focus(), 50);
+    setForgotAccountMissing(false);
+    setTimeout(() => firstFocusRef.current?.focus(), 50);
   }, [open, mode]);
 
   // Escape to dismiss when nothing's in flight.
@@ -141,6 +159,21 @@ export const MuseIdAuthDialog: React.FC = () => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, submitting, closeAuthDialog]);
+
+  // Focus the new step's first meaningful control on every sign-up step
+  // transition (email -> code -> discovery -> profile -> done). The
+  // [open,mode] effect above only covers the flow's initial step ('email').
+  useEffect(() => {
+    if (!open || mode !== 'sign-up') return;
+    setTimeout(() => firstFocusRef.current?.focus(), 50);
+  }, [open, mode, signUpStep]);
+
+  // Same as above for the sign-in/forgot-password step enum (form ->
+  // forgot-email -> forgot-code -> done, or form -> done directly).
+  useEffect(() => {
+    if (!open || mode !== 'sign-in') return;
+    setTimeout(() => firstFocusRef.current?.focus(), 50);
+  }, [open, mode, signInStep]);
 
   if (!open) return null;
 
@@ -296,10 +329,25 @@ export const MuseIdAuthDialog: React.FC = () => {
     e.preventDefault();
     if (submitting) return;
     setError(null);
+    setForgotAccountMissing(false);
     setSubmitting(true);
     try {
-      await museId.signUpVerify(code.trim(), newPassword);
-      setSignInStep('done');
+      const result = await museId.signUpVerify(code.trim(), newPassword);
+      if (result.status === 'reset') {
+        setSignInStep('done');
+      } else {
+        // status === 'new': signUpVerify only signs the caller in on
+        // 'reset' (MuseIdContext.signUpVerify) — this email has no Muse ID
+        // to reset a password for. Previously this branch was unhandled
+        // and execution fell through to the unconditional "done" screen,
+        // falsely claiming success while museId.signedIn stayed false.
+        // The code step is already past the anti-enumeration boundary
+        // (mirrors handleCodeSubmit's equivalent 'new' branch above), so
+        // it's fine to say so plainly rather than pretend the reset
+        // worked — offer sign-up instead of a dead-end retry.
+        setForgotAccountMissing(true);
+        setError('There’s no Muse ID for that email yet.');
+      }
     } catch (err) {
       setError(friendlyError(err));
     } finally {
@@ -382,7 +430,7 @@ export const MuseIdAuthDialog: React.FC = () => {
             <label className="museid-auth-dialog__field">
               <span>Email</span>
               <input
-                ref={firstInputRef}
+                ref={focusFirstRef}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -415,7 +463,7 @@ export const MuseIdAuthDialog: React.FC = () => {
             <label className="museid-auth-dialog__field">
               <span>Verification code</span>
               <input
-                ref={firstInputRef}
+                ref={focusFirstRef}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -452,10 +500,11 @@ export const MuseIdAuthDialog: React.FC = () => {
         {mode === 'sign-up' && signUpStep === 'discovery' && (
           <div className="museid-auth-dialog__form">
             <ul className="museid-auth-dialog__cards">
-              {discovery.map((d) => (
+              {discovery.map((d, i) => (
                 <li key={d.service}>
                   <label className="museid-auth-dialog__card">
                     <input
+                      ref={i === 0 ? focusFirstRef : undefined}
                       type="checkbox"
                       checked={!!checked[d.service]}
                       onChange={() => toggleChecked(d.service)}
@@ -467,10 +516,11 @@ export const MuseIdAuthDialog: React.FC = () => {
                   </label>
                 </li>
               ))}
-              {sessionCards.map((card) => (
+              {sessionCards.map((card, i) => (
                 <li key={card.service}>
                   <label className="museid-auth-dialog__card">
                     <input
+                      ref={discovery.length === 0 && i === 0 ? focusFirstRef : undefined}
                       type="checkbox"
                       checked={!!checked[card.service]}
                       onChange={() => toggleChecked(card.service)}
@@ -500,7 +550,7 @@ export const MuseIdAuthDialog: React.FC = () => {
             <label className="museid-auth-dialog__field">
               <span>Display name</span>
               <input
-                ref={firstInputRef}
+                ref={focusFirstRef}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -533,7 +583,7 @@ export const MuseIdAuthDialog: React.FC = () => {
         {mode === 'sign-up' && signUpStep === 'done' && (
           <div className="museid-auth-dialog__form">
             <p className="museid-auth-dialog__done">You're in as {museId.profile?.name ?? name}.</p>
-            <button type="button" className="museid-auth-dialog__cta" onClick={closeAuthDialog}>
+            <button type="button" ref={focusFirstRef} className="museid-auth-dialog__cta" onClick={closeAuthDialog}>
               Continue to Audacity
             </button>
           </div>
@@ -544,7 +594,7 @@ export const MuseIdAuthDialog: React.FC = () => {
             <label className="museid-auth-dialog__field">
               <span>Email</span>
               <input
-                ref={firstInputRef}
+                ref={focusFirstRef}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -601,7 +651,7 @@ export const MuseIdAuthDialog: React.FC = () => {
             <label className="museid-auth-dialog__field">
               <span>Email</span>
               <input
-                ref={firstInputRef}
+                ref={focusFirstRef}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -636,7 +686,7 @@ export const MuseIdAuthDialog: React.FC = () => {
             <label className="museid-auth-dialog__field">
               <span>Verification code</span>
               <input
-                ref={firstInputRef}
+                ref={focusFirstRef}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -670,13 +720,25 @@ export const MuseIdAuthDialog: React.FC = () => {
               {submitting && <span className="museid-auth-dialog__spinner" aria-hidden="true" />}
               <span>{submitting ? 'Resetting…' : 'Reset password and sign in'}</span>
             </button>
+            {forgotAccountMissing && (
+              <p className="museid-auth-dialog__switch">
+                <button
+                  type="button"
+                  className="museid-auth-dialog__link"
+                  onClick={() => openAuthDialog('sign-up')}
+                  disabled={submitting}
+                >
+                  Create a Muse ID instead
+                </button>
+              </p>
+            )}
           </form>
         )}
 
         {mode === 'sign-in' && signInStep === 'done' && (
           <div className="museid-auth-dialog__form">
             <p className="museid-auth-dialog__done">You're in as {museId.profile?.name ?? email}.</p>
-            <button type="button" className="museid-auth-dialog__cta" onClick={closeAuthDialog}>
+            <button type="button" ref={focusFirstRef} className="museid-auth-dialog__cta" onClick={closeAuthDialog}>
               Continue to Audacity
             </button>
           </div>

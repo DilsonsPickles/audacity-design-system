@@ -206,4 +206,83 @@ describe('MuseIdAuthDialog', () => {
     );
     expect(apiRef.current!.museId.signedIn).toBe(false);
   });
+
+  it('forgot password: happy path resets the password and signs the user in', async () => {
+    mock.seedMuseUser({
+      email: 'reset-me@mu.se',
+      password: 'old-password1',
+      name: 'Reset Me',
+    });
+
+    const { apiRef } = renderDialog();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+    act(() => apiRef.current!.museId.openAuthDialog('sign-in'));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }));
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'reset-me@mu.se' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send reset code' }));
+
+    const codeInput = await screen.findByLabelText('Verification code', { exact: false });
+    fireEvent.change(codeInput, { target: { value: '000000' } });
+    fireEvent.change(screen.getByLabelText('New password', { exact: false }), {
+      target: { value: 'brand-new-pw1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset password and sign in' }));
+
+    await screen.findByText(/You're in as/);
+    expect(apiRef.current!.museId.signedIn).toBe(true);
+    expect(apiRef.current!.museId.profile?.email).toBe('reset-me@mu.se');
+  });
+
+  it('forgot password: an email with no Muse ID does not show a false "signed in" screen', async () => {
+    // No seedMuseUser call — this email has no Muse ID. The mock's
+    // /api/auth/verify falls through to its status:'new' branch (see
+    // museIdMock.ts) even though this request carries purpose:'reset',
+    // exactly like the real muse-id backend (there's no account to reset).
+    const { apiRef } = renderDialog();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+    act(() => apiRef.current!.museId.openAuthDialog('sign-in'));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }));
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'nobody@mu.se' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send reset code' }));
+
+    const codeInput = await screen.findByLabelText('Verification code', { exact: false });
+    fireEvent.change(codeInput, { target: { value: '000000' } });
+    fireEvent.change(screen.getByLabelText('New password', { exact: false }), {
+      target: { value: 'brand-new-pw1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset password and sign in' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/no Muse ID/i),
+    );
+    // The bug: this used to unconditionally land on the "done" screen and
+    // report signed in, regardless of what signUpVerify actually resolved.
+    expect(screen.queryByText(/You're in as/)).not.toBeInTheDocument();
+    expect(apiRef.current!.museId.signedIn).toBe(false);
+
+    // Offers a way forward instead of a dead end.
+    fireEvent.click(screen.getByRole('button', { name: 'Create a Muse ID instead' }));
+    await screen.findByText('Continue with Muse ID');
+  });
+
+  it('focuses the new step\'s first control on a step transition (email -> code)', async () => {
+    const { apiRef } = renderDialog();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+    act(() => apiRef.current!.museId.openAuthDialog('sign-up'));
+
+    const emailInput = await screen.findByLabelText('Email');
+    // Initial-step focus (the [open,mode] reset effect).
+    await waitFor(() => expect(document.activeElement).toBe(emailInput));
+
+    fireEvent.change(emailInput, { target: { value: 'focus-check@mu.se' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    // Step-transition focus (the fix under test) — the email input unmounts
+    // and the code step's input must pick up focus, not silently drop to
+    // <body>.
+    const codeInput = await screen.findByLabelText('Verification code', { exact: false });
+    await waitFor(() => expect(document.activeElement).toBe(codeInput));
+  });
 });
