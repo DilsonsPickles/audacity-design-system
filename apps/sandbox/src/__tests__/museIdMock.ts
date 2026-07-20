@@ -65,6 +65,12 @@ interface MockState {
   accessTokens: Map<string, TokenOwner>;
   refreshTokens: Map<string, TokenOwner>;
   pendingVerification: Map<string, { verified: boolean }>;
+  /** Task 6.4: muse-id `/authorize` authorization codes, seeded by tests via
+   *  `seedAuthCode` to simulate a completed browser round-trip (the mock
+   *  never actually serves the `/authorize` page — the sandbox never fetches
+   *  it, it navigates the browser there). Single-use, consumed by
+   *  `/api/oauth/token`'s `grant_type=authorization_code` branch. */
+  authCodes: Map<string, { email: string }>;
   /** One-shot: the next request whose URL contains this substring 500s. */
   failing: Set<string>;
 }
@@ -76,6 +82,7 @@ function freshState(): MockState {
     accessTokens: new Map(),
     refreshTokens: new Map(),
     pendingVerification: new Map(),
+    authCodes: new Map(),
     failing: new Set(),
   };
 }
@@ -161,6 +168,15 @@ export interface MuseIdMockControls {
    *  email (signIn/verify/complete all mint one) — lets a test call the
    *  client directly without threading the token through context state. */
   museAccessTokenFor(email: string): string | undefined;
+  /** Task 6.4: registers `code` as a valid, single-use authorization code
+   *  for `email` — simulates muse-id's `/authorize` having minted an
+   *  AuthCode after the user approved consent. A test drives the browser-
+   *  first callback by calling `completeBrowserAuthorize(code, state)` (or
+   *  rendering OAuthCallback with a matching `?code&state` URL) with a code
+   *  seeded here. Does not validate PKCE/client_id/redirect_uri (the mock's
+   *  scope is "enough to drive the flow", not a faithful reimplementation —
+   *  see this file's header comment); the real muse-id service does. */
+  seedAuthCode(code: string, email: string): void;
   /** Clears ALL in-memory state and the spy's call history. */
   reset(): void;
 }
@@ -181,7 +197,16 @@ export function createMuseIdMock(): MuseIdMockControls {
   }
 
   function formBody(init: RequestInit | undefined): URLSearchParams {
-    return new URLSearchParams(typeof init?.body === 'string' ? init.body : '');
+    const body = init?.body;
+    // Callers construct form bodies both ways in this codebase (a raw
+    // `new URLSearchParams(...)`, which real `fetch` stringifies over the
+    // wire — see muse-id-client.ts's refreshTokens/logout/
+    // completeBrowserAuthorize — and pre-stringified via `.toString()`).
+    // Since this mock replaces `fetch` entirely, no such serialization
+    // happens; both forms must be accepted directly.
+    if (typeof body === 'string') return new URLSearchParams(body);
+    if (body instanceof URLSearchParams) return new URLSearchParams(body);
+    return new URLSearchParams();
   }
 
   async function router(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -332,6 +357,13 @@ export function createMuseIdMock(): MuseIdMockControls {
 
       if (path === '/api/oauth/token' && method === 'POST') {
         const form = formBody(init);
+        if (form.get('grant_type') === 'authorization_code') {
+          const code = form.get('code') ?? '';
+          const entry = state.authCodes.get(code);
+          if (!entry) return jsonResponse({ error: 'invalid_grant' }, 400);
+          state.authCodes.delete(code); // single-use, mirrors the real service.
+          return jsonResponse({ ...mintTokens('muse', entry.email), token_type: 'Bearer', scope: 'profile' });
+        }
         const owner = state.refreshTokens.get(form.get('refresh_token') ?? '');
         if (!owner) return jsonResponse({ error: 'invalid_grant' }, 400);
         return jsonResponse({ ...mintTokens(owner.kind, owner.email), token_type: 'Bearer', scope: 'profile' });
@@ -486,6 +518,9 @@ export function createMuseIdMock(): MuseIdMockControls {
     },
     failNext(urlIncludes) {
       state.failing.add(urlIncludes);
+    },
+    seedAuthCode(code, email) {
+      state.authCodes.set(code, { email: email.toLowerCase() });
     },
     museAccessTokenFor(email) {
       const target = email.toLowerCase();

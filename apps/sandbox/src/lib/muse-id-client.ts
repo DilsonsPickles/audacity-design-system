@@ -18,8 +18,8 @@
 // the one completing the signup). signin/link/unlink/token/revoke don't
 // participate in that handoff, so they don't need it.
 
-import { MUSEHUB_BASE } from './musehub-client';
-import { ADIEU_BASE } from './adieu-client';
+import { MUSEHUB_BASE, adoptTokens as museHubAdoptTokens } from './musehub-client';
+import { ADIEU_BASE, adoptTokens as adieuAdoptTokens } from './adieu-client';
 
 const MUSEID_BASE_URL: string =
   (import.meta.env.VITE_MUSEID_BASE_URL as string | undefined) ??
@@ -456,6 +456,194 @@ export function exchangeResultToTokens(result: ServiceExchangeResult): {
     refreshToken: result.refresh_token,
     expiresAt: Date.now() + result.expires_in * 1000,
   };
+}
+
+/** Exchanges `museAccessToken` for each of `services`' own token pairs and
+ *  writes them via that service's own client-level `adoptTokens` — NOT
+ *  through React context. This exists for `OAuthCallback.tsx` (Task 6.4's
+ *  browser-first DAW sign-in), which is deliberately rendered OUTSIDE every
+ *  provider (see that file's header comment), so it has no
+ *  MuseHubContext/AdieuContext to call. Writing straight to each client's
+ *  localStorage store is exactly what the existing moose-hub-only
+ *  `handleCallback` in musehub-client.ts already does — the redirect to "/"
+ *  that follows remounts the provider tree, and each context's own
+ *  mount-time `hydrate()` picks the freshly-written tokens up from there.
+ *
+ *  MuseIdContext.exchangeAndAdoptAll performs the analogous exchange, but
+ *  through `museHub.adoptTokens`/`adieu.adoptTokens` (the context methods,
+ *  which ALSO call that context's `hydrate()`) — required there because
+ *  those callers run while the provider tree is already live-mounted, so
+ *  React state must update immediately rather than waiting for a remount.
+ *  The two call sites can't share one implementation for that reason; this
+ *  is the plain, no-React-state counterpart.
+ *
+ *  Each service's exchange runs independently (a failure for one never
+ *  blocks the other); returns the services that failed so the caller can
+ *  decide how to surface that (a failed service exchange still lands the
+ *  user signed in to Muse ID + whatever other service succeeded). */
+export async function exchangeAndAdoptServices(
+  museAccessToken: string,
+  services: ServiceName[],
+): Promise<ServiceName[]> {
+  const failures: ServiceName[] = [];
+  for (const service of services) {
+    try {
+      const result =
+        service === 'moose-hub'
+          ? await exchangeMooseHub(museAccessToken)
+          : await exchangeAdieu(museAccessToken);
+      const tokens = exchangeResultToTokens(result);
+      if (service === 'moose-hub') museHubAdoptTokens(tokens);
+      else adieuAdoptTokens(tokens);
+    } catch {
+      failures.push(service);
+    }
+  }
+  return failures;
+}
+
+// ---- Browser-first OAuth (authorization code + PKCE) — Task 6.4 -----------
+//
+// The DAW's own sign-IN step can bounce the whole browser to muse-id's
+// /authorize instead of the in-app email/password form (RFC 8252-style
+// "browser-first" sign-in — see the design spec's "Auth surface" table and
+// Phase 6's "DAW browser-first sign-in" paragraph). This is a genuine
+// top-level navigation (`window.location.assign`), not an iframe/popup
+// embed like musehub-client.ts's `startAuthorize` — so there is no
+// in-memory closure that survives the navigation; the PKCE verifier and
+// state live ONLY in sessionStorage, exactly like musehub-client.ts's own
+// top-level-fallback branch of `handleCallback`.
+//
+// Distinguishing this return from moose-hub's OAuth return: both flows
+// redirect back to the SAME sandbox route (`<origin>/oauth/callback`) with
+// the same `?code&state` query shape — muse-id's `audacity-web-demo` OAuth
+// client is seeded with that exact redirect_uri, and muse-id's
+// `isAllowedRedirect` (lib/oauth/authorize.ts) requires a byte-exact match
+// for non-loopback URIs, so the URL can't carry a distinguishing query
+// param without breaking that check. The robust option is the sessionStorage
+// marker below (`OAUTH_PENDING_KEY`): `isBrowserAuthorizePending()` is the
+// FIRST thing OAuthCallback.tsx checks, before falling back to the existing
+// moose-hub handling — moose-hub's own OAuth code (musehub-client.ts) never
+// touches this key, so its absence unambiguously means "not a muse-id
+// browser-first return."
+
+const OAUTH_VERIFIER_KEY = 'muse-id-oauth-verifier';
+const OAUTH_STATE_KEY = 'muse-id-oauth-state';
+const OAUTH_PENDING_KEY = 'muse-id-oauth-pending';
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  let str = '';
+  for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function randomBase64Url(byteLength: number): string {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
+}
+
+async function sha256Base64Url(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+function browserRedirectUri(): string {
+  return `${window.location.origin}/oauth/callback`;
+}
+
+/** Starts the browser-first sign-in: generates a PKCE verifier/challenge +
+ *  random state, stashes them (plus the `OAUTH_PENDING_KEY` marker
+ *  OAuthCallback.tsx checks) in sessionStorage, then navigates the whole
+ *  window to muse-id's `/authorize`. There is no `complete()` closure to
+ *  return, unlike musehub-client.ts's iframe-oriented `startAuthorize` — the
+ *  caller unmounts on navigation. `completeBrowserAuthorize` below, called
+ *  from OAuthCallback.tsx after the redirect back, finishes the exchange. */
+export async function startBrowserAuthorize(): Promise<void> {
+  const verifier = randomBase64Url(32);
+  const state = randomBase64Url(16);
+  const challenge = await sha256Base64Url(verifier);
+
+  window.sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier);
+  window.sessionStorage.setItem(OAUTH_STATE_KEY, state);
+  window.sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
+
+  const url = new URL('/authorize', MUSEID_BASE_URL);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('client_id', CLIENT_ID);
+  url.searchParams.set('redirect_uri', browserRedirectUri());
+  url.searchParams.set('scope', 'profile');
+  url.searchParams.set('state', state);
+  url.searchParams.set('code_challenge', challenge);
+  url.searchParams.set('code_challenge_method', 'S256');
+
+  window.location.assign(url.toString());
+}
+
+/** True when OAuthCallback.tsx should treat the current `/oauth/callback`
+ *  hit as a muse-id browser-first return rather than moose-hub's — see the
+ *  section header comment above for why this can't be a redirect_uri query
+ *  param. */
+export function isBrowserAuthorizePending(): boolean {
+  return window.sessionStorage.getItem(OAUTH_PENDING_KEY) === '1';
+}
+
+/** Clears the sessionStorage entries `startBrowserAuthorize` wrote, without
+ *  exchanging anything. Used by OAuthCallback.tsx on any early failure
+ *  (an `error` query param, a missing code/state) so a stale marker can't
+ *  wrongly claim a later top-level `/oauth/callback` hit — e.g. a
+ *  bookmarked or reloaded callback URL. `completeBrowserAuthorize` below
+ *  also calls this internally on every path (success or failure) it
+ *  reaches, so callers only need this for the paths that never reach it. */
+export function clearBrowserAuthorizeState(): void {
+  window.sessionStorage.removeItem(OAUTH_VERIFIER_KEY);
+  window.sessionStorage.removeItem(OAUTH_STATE_KEY);
+  window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
+}
+
+/** Step 2 of the browser-first flow: verifies `returnedState` against what
+ *  `startBrowserAuthorize` stored, exchanges `code` + the stored PKCE
+ *  verifier for muse tokens (`grant_type=authorization_code`), writes them,
+ *  and returns them. Always clears the sessionStorage entries first — the
+ *  authorization code is single-use server-side regardless of outcome, and
+ *  the DAW's local markers shouldn't survive either a mismatch or a
+ *  successful exchange. */
+export async function completeBrowserAuthorize(
+  code: string,
+  returnedState: string,
+): Promise<MuseIdTokens> {
+  const expectedState = window.sessionStorage.getItem(OAUTH_STATE_KEY);
+  const verifier = window.sessionStorage.getItem(OAUTH_VERIFIER_KEY);
+  clearBrowserAuthorizeState();
+
+  if (!expectedState || returnedState !== expectedState) {
+    throw new MuseIdAuthError('oauth_state_mismatch', 'OAuth state mismatch');
+  }
+  if (!verifier) {
+    throw new MuseIdAuthError('oauth_missing_verifier', 'Missing PKCE verifier');
+  }
+
+  const res = await fetch(`${MUSEID_BASE_URL}/api/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: CLIENT_ID,
+      code,
+      redirect_uri: browserRedirectUri(),
+      code_verifier: verifier,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new MuseIdAuthError(
+      (data as { error?: string }).error ?? 'exchange_failed',
+    );
+  }
+  const tokens = tokensFromBundle(data as TokenBundle);
+  writeTokens(tokens);
+  return tokens;
 }
 
 export const MUSEID_BASE = MUSEID_BASE_URL;

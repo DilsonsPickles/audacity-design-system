@@ -243,6 +243,28 @@
   to { transform: rotate(360deg); }
 }
 
+/* Task 6.4: "Continue with Muse ID" browser-first CTA + divider above the
+   in-app email/password fallback form (sign-in step). */
+
+.museid-auth-dialog__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.museid-auth-dialog__divider::before,
+.museid-auth-dialog__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .museid-auth-dialog__switch,
 .museid-auth-dialog__forgot {
   margin: 0;

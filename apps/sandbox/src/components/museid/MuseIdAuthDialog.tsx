@@ -10,13 +10,15 @@
 //     (skipped when nothing to link) -> profile (name + password) -> done.
 //     Per the design spec's amended "Auth surface" section, sign-up is
 //     in-app because a first-time user has no browser session to leverage.
-//   - Sign-in (secondary): email + password, one step. Per the same spec
-//     section, routine sign-in is MEANT to eventually prefer a browser
-//     `/authorize` bounce (SSO stickiness) with this in-app form as the
-//     fallback — but muse-id has no /authorize page yet, so the controller
-//     scoped Task 3.2a to the in-app path only; the bounce is deferred to a
-//     later task. This dialog is that in-app fallback, serving as the
-//     ONLY sign-in path for now.
+//   - Sign-in (secondary): "Continue with Muse ID" (Task 6.4) is the primary
+//     control — it bounces the whole browser to muse-id's `/authorize`
+//     (RFC 8252-style browser-first sign-in, PKCE + state via
+//     muse-id-client.ts's `startBrowserAuthorize`; the return is handled by
+//     OAuthCallback.tsx). The in-app email + password form beneath it is
+//     the fallback for when the browser round-trip isn't wanted or fails —
+//     per the design spec's "Auth surface" table, this is exactly the
+//     trade-off routine sign-in is meant to make (SSO stickiness first,
+//     guaranteed local path second).
 //
 // Forgot-password (sign-in mode only) reuses the same primitive the reset
 // path already needed for Task 1.4: signUpVerify(code, resetPassword). It
@@ -37,7 +39,7 @@ import { useMuseHub } from '../../contexts/MuseHubContext';
 import { useAdieu } from '../../contexts/AdieuContext';
 import { getAccessToken as getMuseHubAccessToken } from '../../lib/musehub-client';
 import { getAccessToken as getAdieuAccessToken } from '../../lib/adieu-client';
-import type { DiscoveryEntry, ServiceName } from '../../lib/muse-id-client';
+import { startBrowserAuthorize, type DiscoveryEntry, type ServiceName } from '../../lib/muse-id-client';
 import './MuseIdAuthDialog.css';
 
 const SERVICE_LABELS: Record<ServiceName, string> = {
@@ -294,6 +296,26 @@ export const MuseIdAuthDialog: React.FC = () => {
   };
 
   // ---- Sign-in handlers -----------------------------------------------------
+
+  // Task 6.4: browser-first sign-in. Generates PKCE + state and navigates
+  // the whole window away (startBrowserAuthorize), so on success this
+  // component unmounts mid-navigation and never gets to reset `submitting`
+  // — that's fine, the button staying disabled through the (real) browser
+  // redirect is the correct behavior. Only a failure to even START the
+  // redirect (e.g. crypto.subtle unavailable) surfaces inline here; a
+  // rejected/failed round-trip itself is reported by OAuthCallback.tsx
+  // after the browser comes back.
+  const handleContinueWithMuseIdBrowser = async () => {
+    if (submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await startBrowserAuthorize();
+    } catch (err) {
+      setError(friendlyError(err));
+      setSubmitting(false);
+    }
+  };
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -590,60 +612,74 @@ export const MuseIdAuthDialog: React.FC = () => {
         )}
 
         {mode === 'sign-in' && signInStep === 'form' && (
-          <form className="museid-auth-dialog__form" onSubmit={handleSignInSubmit} noValidate>
-            <label className="museid-auth-dialog__field">
-              <span>Email</span>
-              <input
-                ref={focusFirstRef}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                disabled={submitting}
-                required
-              />
-            </label>
-            <label className="museid-auth-dialog__field">
-              <span>Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                disabled={submitting}
-                required
-              />
-            </label>
-            {error && <p className="museid-auth-dialog__error" role="alert">{error}</p>}
-            <button type="submit" className="museid-auth-dialog__cta" disabled={submitting}>
+          <div className="museid-auth-dialog__form">
+            <button
+              ref={focusFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="museid-auth-dialog__cta"
+              onClick={() => void handleContinueWithMuseIdBrowser()}
+              disabled={submitting}
+            >
               {submitting && <span className="museid-auth-dialog__spinner" aria-hidden="true" />}
-              <span>{submitting ? 'Signing in…' : 'Sign in'}</span>
+              <span>Continue with Muse ID</span>
             </button>
-            <p className="museid-auth-dialog__switch">
-              Don't have a Muse ID?{' '}
-              <button
-                type="button"
-                className="museid-auth-dialog__link"
-                onClick={() => openAuthDialog('sign-up')}
-                disabled={submitting}
-              >
-                Create one
+            <div className="museid-auth-dialog__divider" role="separator" aria-orientation="horizontal">
+              <span>or</span>
+            </div>
+            {error && <p className="museid-auth-dialog__error" role="alert">{error}</p>}
+            <form className="museid-auth-dialog__form" onSubmit={handleSignInSubmit} noValidate>
+              <label className="museid-auth-dialog__field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  disabled={submitting}
+                  required
+                />
+              </label>
+              <label className="museid-auth-dialog__field">
+                <span>Password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  disabled={submitting}
+                  required
+                />
+              </label>
+              <button type="submit" className="museid-auth-dialog__cta" disabled={submitting}>
+                {submitting && <span className="museid-auth-dialog__spinner" aria-hidden="true" />}
+                <span>{submitting ? 'Signing in…' : 'Sign in'}</span>
               </button>
-            </p>
-            <p className="museid-auth-dialog__forgot">
-              <button
-                type="button"
-                className="museid-auth-dialog__link"
-                onClick={() => {
-                  setSignInStep('forgot-email');
-                  setError(null);
-                }}
-                disabled={submitting}
-              >
-                Forgot password?
-              </button>
-            </p>
-          </form>
+              <p className="museid-auth-dialog__switch">
+                Don't have a Muse ID?{' '}
+                <button
+                  type="button"
+                  className="museid-auth-dialog__link"
+                  onClick={() => openAuthDialog('sign-up')}
+                  disabled={submitting}
+                >
+                  Create one
+                </button>
+              </p>
+              <p className="museid-auth-dialog__forgot">
+                <button
+                  type="button"
+                  className="museid-auth-dialog__link"
+                  onClick={() => {
+                    setSignInStep('forgot-email');
+                    setError(null);
+                  }}
+                  disabled={submitting}
+                >
+                  Forgot password?
+                </button>
+              </p>
+            </form>
+          </div>
         )}
 
         {mode === 'sign-in' && signInStep === 'forgot-email' && (
