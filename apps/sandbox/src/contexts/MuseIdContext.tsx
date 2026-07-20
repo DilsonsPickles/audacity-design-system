@@ -87,10 +87,15 @@ interface MuseIdContextValue {
   signUpStart: (email: string) => Promise<void>;
   /** Step 2: checks the code entered for the email passed to signUpStart.
    *  For a brand-new email, resolves `{status:'new', discovery}` (no
-   *  sign-in yet — call signUpComplete next). For an existing Muse ID this
-   *  is the password-reset path (Task 1.4): resolves `{status:'reset',...}`
-   *  and signs the caller in immediately (services get exchanged too). */
-  signUpVerify: (code: string) => Promise<VerifyResult>;
+   *  sign-in yet — call signUpComplete next). For an existing Muse ID, the
+   *  real muse-id `/api/auth/verify` route 400s `password_required` unless
+   *  the call ALSO carries `purpose:'reset'` plus a new password — so a
+   *  reset can only be triggered by passing `resetPassword` here. When
+   *  provided (and the email belongs to an existing Muse ID), this
+   *  overwrites that account's password and resolves `{status:'reset',...}`,
+   *  signing the caller in immediately (services get exchanged too). Omit
+   *  it for the ordinary new-signup flow. */
+  signUpVerify: (code: string, resetPassword?: string) => Promise<VerifyResult>;
   /** Step 3: creates the Muse ID for the email passed to signUpStart, then
    *  exchanges + adopts every linked service (server-registered
    *  email-match links from the `complete` response, plus any
@@ -269,11 +274,15 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const signUpVerify = useCallback(
-    async (code: string): Promise<VerifyResult> => {
+    async (code: string, resetPassword?: string): Promise<VerifyResult> => {
       const email = pendingSignUpEmailRef.current;
       if (!email) throw new Error('signUpStart must be called before signUpVerify');
       setError(null);
-      const result = await museIdVerify(email, code);
+      const result = await museIdVerify(
+        email,
+        code,
+        resetPassword ? { password: resetPassword } : undefined,
+      );
       if (result.status === 'reset') {
         // Existing Muse ID, password just reset — signed in immediately.
         pendingSignUpEmailRef.current = null;

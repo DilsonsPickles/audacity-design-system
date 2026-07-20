@@ -209,4 +209,99 @@ describe('MuseIdContext', () => {
     });
     await waitFor(() => expect(result.current.adieu.signedIn).toBe(true));
   });
+
+  it('signUpVerify with a resetPassword drives the password-reset path and signs in immediately', async () => {
+    // Existing Muse ID — the real /api/auth/verify route (and this mock,
+    // mirroring it) 400s `password_required` for a correct code on an
+    // existing user unless the call also carries a reset password. Passing
+    // `resetPassword` to signUpVerify is the only way to reach that branch.
+    mock.seedMuseUser({
+      email: 'reset-me@mu.se',
+      password: 'old-password',
+      name: 'Reset Me',
+      linkedServices: ['moose-hub'],
+    });
+
+    const { result } = renderContexts();
+    await waitFor(() => expect(result.current.museId.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.museId.signUpStart('reset-me@mu.se');
+    });
+
+    let verifyResult: Awaited<ReturnType<typeof result.current.museId.signUpVerify>> | undefined;
+    await act(async () => {
+      verifyResult = await result.current.museId.signUpVerify('000000', 'brand-new-pw');
+    });
+
+    expect(verifyResult?.status).toBe('reset');
+    await waitFor(() => expect(result.current.museId.signedIn).toBe(true));
+    expect(result.current.museId.profile?.email).toBe('reset-me@mu.se');
+    expect(result.current.museId.error).toBeNull();
+
+    // Reset also exchanges + adopts the account's linked services.
+    await waitFor(() => expect(result.current.museHub.signedIn).toBe(true));
+  });
+
+  it('signUpVerify without a resetPassword still 400s password_required for an existing Muse ID', async () => {
+    // Documents the branch this omission guards against: an existing user's
+    // correct code, submitted WITHOUT resetPassword, must not silently sign
+    // the caller in (that would be the password-bypass Task 1.4 closed).
+    mock.seedMuseUser({
+      email: 'no-reset@mu.se',
+      password: 'old-password',
+      name: 'No Reset',
+    });
+
+    const { result } = renderContexts();
+    await waitFor(() => expect(result.current.museId.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.museId.signUpStart('no-reset@mu.se');
+    });
+
+    await expect(
+      act(async () => {
+        await result.current.museId.signUpVerify('000000');
+      }),
+    ).rejects.toThrow(/password_required/);
+
+    expect(result.current.museId.signedIn).toBe(false);
+  });
+
+  it('sends credentials:"include" on start/verify/complete — the caller-binding session cookie handoff', async () => {
+    // muse-id's /api/auth/complete is authorized via an iron-session cookie
+    // set by /api/auth/verify. The mock ignores cookies entirely, so a
+    // client-side regression that drops `credentials:'include'` from any of
+    // these three calls would break real-service signup while every other
+    // test here kept passing. Assert it directly against the fetch spy.
+    mock.seedServiceUser('moose-hub', { email: 'cred-check@mu.se', name: 'Cred Check' });
+
+    const { result } = renderContexts();
+    await waitFor(() => expect(result.current.museId.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.museId.signUpStart('cred-check@mu.se');
+    });
+    await act(async () => {
+      await result.current.museId.signUpVerify('000000');
+    });
+    await act(async () => {
+      await result.current.museId.signUpComplete({
+        name: 'Cred Check',
+        password: 'hunter2222',
+        links: [{ service: 'moose-hub', method: 'email-match' }],
+      });
+    });
+
+    const calls = mock.fetchMock.mock.calls as [RequestInfo | URL, RequestInit | undefined][];
+    const findCall = (pathIncludes: string) =>
+      calls.find(([input]) => String(input).includes(pathIncludes));
+
+    for (const path of ['/api/auth/start', '/api/auth/verify', '/api/auth/complete']) {
+      const call = findCall(path);
+      expect(call, `expected a fetch call to ${path}`).toBeTruthy();
+      expect(call?.[1]?.credentials, `${path} must send credentials:'include'`).toBe('include');
+    }
+  });
 });
