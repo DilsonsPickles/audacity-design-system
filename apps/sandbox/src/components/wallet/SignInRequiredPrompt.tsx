@@ -67,7 +67,7 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
       openMuseHubAuthDialog('sign-in');
       return;
     }
-    museId.openAuthDialog('sign-up');
+    museId.openAuthDialog('sign-in');
   };
 
   const signInCtaLabel = museId.legacyAuthDialogsEnabled

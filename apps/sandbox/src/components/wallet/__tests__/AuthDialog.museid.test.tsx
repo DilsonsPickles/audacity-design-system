@@ -249,7 +249,13 @@ describe('AuthDialog — Continue with Muse ID', () => {
     expect(apiRef.current!.museId.linkedServices).toContain('moose-hub');
   });
 
-  it('state 5: no Muse session -> opens the Muse ID dialog, then resumes the table on completion', async () => {
+  it('state 5: no Muse session -> "Continue with Muse ID" opens the Muse ID dialog in SIGN-IN mode (not create), with a switch link to create one', async () => {
+    // Regression test: ensureSignedIn used to default to 'sign-up', so an
+    // existing Muse ID holder clicking "Continue with Muse ID" to sign IN
+    // was silently dropped into the create flow. It must default to
+    // sign-in — creation is the exception, reachable only via the switch
+    // link — mirroring how "Continue with Google" signs into an existing
+    // identity rather than registering a new one.
     const { apiRef } = renderTree();
     await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
     expect(apiRef.current!.museId.signedIn).toBe(false);
@@ -263,18 +269,33 @@ describe('AuthDialog — Continue with Muse ID', () => {
     const museIdDialog = () =>
       within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
 
+    await waitFor(() => expect(apiRef.current!.museId.authDialog).toBe('sign-in'));
+    // Sign-in's first (and only) step asks for email + password together —
+    // sign-up's first step asks only for an email, so the Password field's
+    // presence is itself proof this landed on sign-in, not create.
+    expect(museIdDialog().getByRole('heading', { name: 'Sign in to Muse ID' })).toBeInTheDocument();
+    expect(museIdDialog().getByLabelText('Password')).toBeInTheDocument();
+    expect(museIdDialog().getByRole('button', { name: 'Create one' })).toBeInTheDocument();
+  });
+
+  it('state 5: signing in via the Muse ID dialog resumes the table on completion', async () => {
+    mock.seedMuseUser({ email: 'e@mu.se', password: 'password1', name: 'Evan' });
+    // No moose-hub service user seeded -> lands on state 3 (create) after
+    // the Muse ID sign-in resolves.
+
+    const { apiRef } = renderTree();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+
+    act(() => apiRef.current!.museHub.openAuthDialog('sign-in'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue with Muse ID' }));
+
+    const museIdDialog = () =>
+      within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
+
     const emailInput = await waitFor(() => museIdDialog().getByLabelText('Email'));
     fireEvent.change(emailInput, { target: { value: 'e@mu.se' } });
-    fireEvent.click(museIdDialog().getByRole('button', { name: 'Continue' }));
-
-    const codeInput = await waitFor(() => museIdDialog().getByLabelText('Verification code', { exact: false }));
-    fireEvent.change(codeInput, { target: { value: '000000' } });
-    fireEvent.click(museIdDialog().getByRole('button', { name: 'Verify' }));
-
-    const nameInput = await waitFor(() => museIdDialog().getByLabelText('Display name'));
-    fireEvent.change(nameInput, { target: { value: 'Evan' } });
-    fireEvent.change(museIdDialog().getByLabelText('Password', { exact: false }), { target: { value: 'newpassword1' } });
-    fireEvent.click(museIdDialog().getByRole('button', { name: 'Create Muse ID' }));
+    fireEvent.change(museIdDialog().getByLabelText('Password'), { target: { value: 'password1' } });
+    fireEvent.click(museIdDialog().getByRole('button', { name: 'Sign in' }));
 
     fireEvent.click(await waitFor(() => museIdDialog().getByRole('button', { name: 'Continue to Audacity' })));
 
@@ -298,7 +319,7 @@ describe('AuthDialog — Continue with Muse ID', () => {
     await waitFor(() => museIdDialog().getByLabelText('Email'));
     fireEvent.click(museIdDialog().getByRole('button', { name: 'Close' }));
 
-    await waitFor(() => expect(screen.queryByText('Continue with Muse ID', { selector: 'h2' })).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Sign in to Muse ID', { selector: 'h2' })).toBeNull());
     // Back on the wallet dialog's own idle state — CTA + legacy form intact.
     expect(await screen.findByRole('button', { name: 'Continue with Muse ID' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();

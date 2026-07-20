@@ -264,7 +264,7 @@ describe('MuseIdAuthDialog', () => {
 
     // Offers a way forward instead of a dead end.
     fireEvent.click(screen.getByRole('button', { name: 'Create a Muse ID instead' }));
-    await screen.findByText('Continue with Muse ID');
+    await screen.findByText('Create a Muse ID');
   });
 
   it('focuses the new step\'s first control on a step transition (email -> code)', async () => {
@@ -284,5 +284,26 @@ describe('MuseIdAuthDialog', () => {
     // <body>.
     const codeInput = await screen.findByLabelText('Verification code', { exact: false });
     await waitFor(() => expect(document.activeElement).toBe(codeInput));
+  });
+
+  it('sign-in and create modes have distinct headings and a switch link between them', async () => {
+    // Regression coverage for the "silently dropped into create" bug: both
+    // flows used to open on a near-identical "enter your email" screen, so
+    // there was nothing on screen telling the user which mode they were in.
+    const { apiRef } = renderDialog();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+
+    act(() => apiRef.current!.museId.openAuthDialog('sign-in'));
+    expect(await screen.findByRole('heading', { name: 'Sign in to Muse ID' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create one' })).toBeInTheDocument();
+
+    act(() => apiRef.current!.museId.closeAuthDialog());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    act(() => apiRef.current!.museId.openAuthDialog('sign-up'));
+    expect(await screen.findByRole('heading', { name: 'Create a Muse ID' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
   });
 });

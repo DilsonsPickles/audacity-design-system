@@ -161,7 +161,7 @@ export function useMuseIdEntry({
     try {
       if (!museId.signedIn) {
         try {
-          await museId.ensureSignedIn('sign-up');
+          await museId.ensureSignedIn('sign-in');
         } catch (err) {
           if (err instanceof MuseIdSignInCancelledError) {
             setPhase({ kind: 'idle' });

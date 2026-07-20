@@ -451,7 +451,7 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       else pending.reject(new MuseIdSignInCancelledError());
     }
   }, []);
-  const ensureSignedIn = useCallback((mode: 'sign-up' | 'sign-in' = 'sign-up'): Promise<void> => {
+  const ensureSignedIn = useCallback((mode: 'sign-up' | 'sign-in' = 'sign-in'): Promise<void> => {
     if (hasToken()) return Promise.resolve();
     if (pendingSignInRef.current) {
       pendingSignInRef.current.reject(new MuseIdSignInCancelledError());

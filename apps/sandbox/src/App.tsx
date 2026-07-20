@@ -835,7 +835,7 @@ function CanvasDemoContent() {
             }}
             onSignIn={() => {
               if (legacyAuthDialogsEnabled) void adieuSignIn();
-              else openMuseIdAuthDialog('sign-up');
+              else openMuseIdAuthDialog('sign-in');
             }}
             onSignOut={() => {
               void adieuSignOut();

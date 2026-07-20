@@ -371,11 +371,11 @@ export const MuseIdAuthDialog: React.FC = () => {
       if (signInStep === 'done') {
         return { title: "You're signed in", subtitle: 'Your Muse ID is connected to MuseHub and audio.com.' };
       }
-      return { title: 'Sign in with Muse ID', subtitle: 'One account for MuseHub and audio.com.' };
+      return { title: 'Sign in to Muse ID', subtitle: 'One account for MuseHub and audio.com.' };
     }
     switch (signUpStep) {
       case 'email':
-        return { title: 'Continue with Muse ID', subtitle: 'One account for MuseHub and audio.com.' };
+        return { title: 'Create a Muse ID', subtitle: 'One account for MuseHub and audio.com.' };
       case 'code':
         return {
           title: 'Check your email',
@@ -390,7 +390,7 @@ export const MuseIdAuthDialog: React.FC = () => {
       case 'done':
         return { title: "You're all set", subtitle: 'Your Muse ID is connected to MuseHub and audio.com.' };
       default:
-        return { title: 'Continue with Muse ID', subtitle: '' };
+        return { title: 'Create a Muse ID', subtitle: '' };
     }
   })();
 
