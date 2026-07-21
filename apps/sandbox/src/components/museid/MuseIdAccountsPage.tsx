@@ -30,8 +30,6 @@ import React from 'react';
 import { useMuseId } from '../../contexts/MuseIdContext';
 import { useMuseHub } from '../../contexts/MuseHubContext';
 import { useAdieu } from '../../contexts/AdieuContext';
-import { getAccessToken as getMuseHubAccessToken } from '../../lib/musehub-client';
-import { getAccessToken as getAdieuAccessToken } from '../../lib/adieu-client';
 import type { ServiceName } from '../../lib/muse-id-client';
 import { friendlyLinkByEmailError } from '../../hooks/useMuseIdEntry';
 import { toast } from '@dilsonspickles/components';
@@ -87,23 +85,6 @@ export const MuseIdAccountsPage: React.FC = () => {
 
   const hasLegacySession = (service: ServiceName): boolean =>
     service === 'moose-hub' ? museHub.signedIn : adieu.signedIn;
-
-  const legacyAccessToken = (service: ServiceName): string | null =>
-    service === 'moose-hub' ? getMuseHubAccessToken() : getAdieuAccessToken();
-
-  const handleLink = async (service: ServiceName) => {
-    const token = legacyAccessToken(service);
-    if (!token) return;
-    setLinkError(null);
-    setLinkingService(service);
-    try {
-      await museId.linkService(service, token);
-    } catch (err) {
-      setLinkError(err instanceof Error ? err.message : `Failed to link ${SERVICE_LABELS[service]}.`);
-    } finally {
-      setLinkingService(null);
-    }
-  };
 
   const handleUnlink = async (service: ServiceName) => {
     setLinkError(null);
@@ -251,10 +232,15 @@ export const MuseIdAccountsPage: React.FC = () => {
                       ? `${formatUSD(museHub.balance)} · ${museHub.purchasedEffects.length} plugin${museHub.purchasedEffects.length === 1 ? '' : 's'}`
                       : `${adieu.cloudProjects.length} cloud project${adieu.cloudProjects.length === 1 ? '' : 's'}`}
                   </span>
-                ) : legacySignedIn && museId.signedIn ? (
+                ) : museId.signedIn && legacySignedIn ? (
                   <span className="museid-accounts__service-summary">
                     Signed in to {SERVICE_LABELS[service]} as{' '}
-                    {service === 'moose-hub' ? museHub.user.email : adieu.user.email} — ready to link.
+                    {service === 'moose-hub' ? museHub.user.email : adieu.user.email} — not linked to
+                    your Muse ID.
+                  </span>
+                ) : museId.signedIn ? (
+                  <span className="museid-accounts__service-summary">
+                    Not linked. Link it by proving you own the {SERVICE_LABELS[service]} account.
                   </span>
                 ) : legacySignedIn ? (
                   <span className="museid-accounts__service-summary">
@@ -278,39 +264,40 @@ export const MuseIdAccountsPage: React.FC = () => {
                   >
                     {busy ? 'Unlinking…' : 'Unlink'}
                   </button>
-                ) : legacySignedIn && museId.signedIn ? (
-                  <button
-                    type="button"
-                    className="museid-accounts__btn museid-accounts__btn--primary"
-                    onClick={() => { void handleLink(service); }}
-                    disabled={busy}
-                  >
-                    {busy ? 'Linking…' : 'Link'}
-                  </button>
-                ) : legacySignedIn ? null : (
+                ) : museId.signedIn ? (
+                  // Linking is ownership-proven: receive a code at the service
+                  // account's email (startEmailLinkFlow). A live service
+                  // session is NOT accepted as a linking credential — that was
+                  // the shared-computer hijack vector — so this prove-by-code
+                  // flow is the ONLY way to link a service to a Muse ID. The
+                  // legacy sign-in stays available alongside (an independent
+                  // service session is a legitimate, distinct state).
                   <>
                     <button
                       type="button"
-                      className="museid-accounts__btn museid-accounts__btn--ghost"
-                      onClick={() => openLegacySignIn(service)}
+                      className="museid-accounts__btn museid-accounts__btn--primary"
+                      onClick={() => startEmailLinkFlow(service)}
                     >
-                      Sign in to {SERVICE_LABELS[service]}
+                      Link {SERVICE_LABELS[service]}
                     </button>
-                    {/* Rung 3 (task 5.4) — needs a live Muse session (it's a
-                        Bearer-gated endpoint), but NOT a live legacy session
-                        for this service — that's the whole point: it's the
-                        path for someone who can't produce a session because
-                        their account is under a different email. */}
-                    {museId.signedIn && (
+                    {!legacySignedIn && (
                       <button
                         type="button"
                         className="museid-accounts__btn museid-accounts__btn--ghost"
-                        onClick={() => startEmailLinkFlow(service)}
+                        onClick={() => openLegacySignIn(service)}
                       >
-                        Link with a different email
+                        Sign in to {SERVICE_LABELS[service]}
                       </button>
                     )}
                   </>
+                ) : legacySignedIn ? null : (
+                  <button
+                    type="button"
+                    className="museid-accounts__btn museid-accounts__btn--ghost"
+                    onClick={() => openLegacySignIn(service)}
+                  >
+                    Sign in to {SERVICE_LABELS[service]}
+                  </button>
                 )}
               </div>
             </div>

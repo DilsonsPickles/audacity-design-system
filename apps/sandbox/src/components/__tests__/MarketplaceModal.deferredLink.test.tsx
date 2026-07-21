@@ -70,7 +70,7 @@ describe('MarketplaceModal deferred-link prompt', () => {
     expect(screen.queryByText(bannerText)).toBeNull();
   });
 
-  it('appears when signed in to Muse ID and MuseHub is unlinked, with a Link MuseHub action', async () => {
+  it('appears when signed in to Muse ID and MuseHub is unlinked, with a sign-in action (no session-linking)', async () => {
     mock.seedMuseUser({
       email: 'unlinked@mu.se',
       password: 'correct-horse',
@@ -89,10 +89,10 @@ describe('MarketplaceModal deferred-link prompt', () => {
 
     expect(await screen.findByText(bannerText)).toBeTruthy();
 
-    // No live MuseHub session to prove — clicking Link opens the legacy
-    // MuseHub sign-in dialog as the actual linking mechanism.
+    // Session-linking removal: the prompt's action just opens the MuseHub
+    // sign-in dialog; ownership-proven linking lives on the Accounts page.
     await act(async () => {
-      screen.getByRole('button', { name: 'Link MuseHub' }).click();
+      screen.getByRole('button', { name: 'Sign in to MuseHub' }).click();
     });
     expect(apiRef.current!.museHub.authDialog).toBe('sign-in');
   });

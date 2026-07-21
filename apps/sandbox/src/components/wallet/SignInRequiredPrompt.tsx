@@ -8,7 +8,6 @@ import { createPortal } from 'react-dom';
 import type { MarketplaceEffect } from '../MarketplaceModal';
 import { useMuseHub, useSignedIn, useWalletBalance } from '../../contexts/MuseHubContext';
 import { useMuseId } from '../../contexts/MuseIdContext';
-import { getAccessToken as getMuseHubAccessToken } from '../../lib/musehub-client';
 import './SignInRequiredPrompt.css';
 
 type Phase = 'idle' | 'processing' | 'success';
@@ -38,7 +37,6 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
   const { signIn, openAuthDialog: openMuseHubAuthDialog } = useMuseHub();
   const museId = useMuseId();
   const [phase, setPhase] = useState<Phase>('idle');
-  const [linking, setLinking] = useState(false);
 
   const price = effect.price ?? 0;
   const canAfford = balance >= price;
@@ -52,18 +50,11 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
       void signIn();
       return;
     }
-    // Already signed in to Muse ID but MuseHub isn't linked yet: a live
-    // MuseHub session is required for session-proof linking. If one already
-    // exists (rare here, since `signedIn` is false), link directly;
-    // otherwise the legacy sign-in dialog IS the linking mechanism, not a
-    // legacy fallback — it's not gated by the debug toggle.
+    // Already signed in to Muse ID but MuseHub isn't linked yet: open the
+    // MuseHub sign-in dialog ("Continue with Muse ID" exchange or password).
+    // Session-linking removal: a held legacy token is NOT a linking
+    // credential — ownership-proven linking lives on the Accounts page.
     if (museId.signedIn) {
-      const legacyToken = getMuseHubAccessToken();
-      if (legacyToken) {
-        setLinking(true);
-        museId.linkService('moose-hub', legacyToken).finally(() => setLinking(false));
-        return;
-      }
       openMuseHubAuthDialog('sign-in');
       return;
     }
@@ -73,7 +64,7 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
   const signInCtaLabel = museId.legacyAuthDialogsEnabled
     ? 'Sign in or Create Account'
     : museId.signedIn
-      ? (linking ? 'Linking MuseHub…' : 'Link your MuseHub account')
+      ? 'Sign in to MuseHub'
       : 'Continue with Muse ID';
 
   const handleConfirm = () => {
@@ -173,7 +164,6 @@ export const SignInRequiredPrompt: React.FC<SignInRequiredPromptProps> = ({
               type="button"
               className="signin-prompt__cta"
               onClick={handleSignIn}
-              disabled={linking}
             >
               <span>{signInCtaLabel}</span>
             </button>

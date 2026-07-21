@@ -327,7 +327,11 @@ describe('AuthDialog — Continue with Muse ID', () => {
     expect(apiRef.current!.museHub.signedIn).toBe(false);
   });
 
-  it('post-legacy-sign-in prompt: signing in via the legacy form while holding an unlinked Muse session offers to link', async () => {
+  it('SECURITY regression: a legacy sign-in with an unlinked Muse session held just closes — no link offer, nothing linked', async () => {
+    // Session-linking removal: the old post-legacy-sign-in "Link to my Muse
+    // ID?" prompt converted a live session into a permanent link (shared-
+    // computer hijack vector). Signing into MuseHub while holding someone's
+    // (or your own) unlinked Muse session must simply sign in and close.
     mock.seedMuseUser({ email: 'f@mu.se', password: 'password1', name: 'Fin' });
     mock.seedServiceUser('moose-hub', { email: 'legacy@musehub.example', name: 'Legacy Fin' });
 
@@ -344,40 +348,14 @@ describe('AuthDialog — Continue with Muse ID', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'anything' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
-    await screen.findByText('Link this MuseHub account to your Muse ID?', { exact: false });
-    // Legacy sign-in already succeeded — the dialog stayed open only for
-    // this prompt, not because sign-in failed.
-    expect(apiRef.current!.museHub.signedIn).toBe(true);
-    expect(apiRef.current!.museId.linkedServices).not.toContain('moose-hub');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Link to my Muse ID' }));
-
-    await waitFor(() => expect(apiRef.current!.museId.linkedServices).toContain('moose-hub'));
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  it('post-legacy-sign-in prompt: "Not now" skips linking and still closes', async () => {
-    mock.seedMuseUser({ email: 'g@mu.se', password: 'password1', name: 'Gus' });
-    mock.seedServiceUser('moose-hub', { email: 'legacy2@musehub.example', name: 'Legacy Gus' });
-
-    const { apiRef } = renderTree();
-    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
-    await act(async () => {
-      await apiRef.current!.museId.signIn('g@mu.se', 'password1');
-    });
-
-    act(() => apiRef.current!.museHub.openAuthDialog('sign-in'));
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'legacy2@musehub.example' } });
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'anything' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-
-    await screen.findByText('Link this MuseHub account to your Muse ID?', { exact: false });
-    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
-
+    // Dialog closes on success — no "Link to my Muse ID?" interstitial.
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(apiRef.current!.museHub.signedIn).toBe(true);
+    // And nothing got linked as a side effect.
     expect(apiRef.current!.museId.linkedServices).not.toContain('moose-hub');
+    expect(screen.queryByText('Link this MuseHub account to your Muse ID?', { exact: false })).toBeNull();
   });
+
 
   it('the legacy form still renders and works, demoted beneath the CTA (never a replacement)', async () => {
     mock.seedServiceUser('moose-hub', { email: 'plain@musehub.example', name: 'Plain' });

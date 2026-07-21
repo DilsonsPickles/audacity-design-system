@@ -37,27 +37,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMuseId } from '../../contexts/MuseIdContext';
-import { useMuseHub } from '../../contexts/MuseHubContext';
-import { useAdieu } from '../../contexts/AdieuContext';
-import { getAccessToken as getMuseHubAccessToken } from '../../lib/musehub-client';
-import { getAccessToken as getAdieuAccessToken } from '../../lib/adieu-client';
-import { type DiscoveryEntry, type ServiceName } from '../../lib/muse-id-client';
 import './MuseIdAuthDialog.css';
-
-const SERVICE_LABELS: Record<ServiceName, string> = {
-  'moose-hub': 'MuseHub',
-  adieu: 'audio.com',
-};
-
-function getLegacyAccessToken(service: ServiceName): string | null {
-  return service === 'moose-hub' ? getMuseHubAccessToken() : getAdieuAccessToken();
-}
-
-interface LinkChoice {
-  service: ServiceName;
-  method: 'email-match' | 'session';
-  legacy_access_token?: string;
-}
 
 // Friendly copy for muse-id's error codes. Codes are documented inline on
 // muse-id's route handlers (start/verify/complete/signin) and surfaced here
@@ -88,13 +68,11 @@ function friendlyError(err: unknown): string {
   }
 }
 
-type SignUpStep = 'email' | 'code' | 'discovery' | 'profile' | 'done';
+type SignUpStep = 'email' | 'code' | 'profile' | 'done';
 type SignInStep = 'form' | 'forgot-email' | 'forgot-code' | 'done';
 
 export const MuseIdAuthDialog: React.FC = () => {
   const museId = useMuseId();
-  const museHub = useMuseHub();
-  const adieu = useAdieu();
   const { authDialog, openAuthDialog, closeAuthDialog } = museId;
   const open = authDialog !== 'closed';
   const mode: 'sign-up' | 'sign-in' = authDialog === 'sign-in' ? 'sign-in' : 'sign-up';
@@ -110,8 +88,6 @@ export const MuseIdAuthDialog: React.FC = () => {
   const [signUpStep, setSignUpStep] = useState<SignUpStep>('email');
   const [signInStep, setSignInStep] = useState<SignInStep>('form');
 
-  const [discovery, setDiscovery] = useState<DiscoveryEntry[]>([]);
-  const [checked, setChecked] = useState<Partial<Record<ServiceName, boolean>>>({});
   // Set when handleForgotCodeSubmit's verify resolves status:'new' — i.e.
   // the reset target has no Muse ID to reset. Drives the "Create a Muse ID
   // instead" link on the forgot-code step (see handleForgotCodeSubmit).
@@ -145,8 +121,6 @@ export const MuseIdAuthDialog: React.FC = () => {
     setSubmitting(false);
     setSignUpStep('email');
     setSignInStep('form');
-    setDiscovery([]);
-    setChecked({});
     setForgotAccountMissing(false);
     setTimeout(() => firstFocusRef.current?.focus(), 50);
   }, [open, mode]);
@@ -181,51 +155,6 @@ export const MuseIdAuthDialog: React.FC = () => {
 
   if (!open) return null;
 
-  // Session-rung cards: legacy services with a live in-app session that
-  // discovery (email-match) did NOT already find. Computed from current
-  // state for rendering; goToPostVerifyStep below re-derives the same thing
-  // from a fresh discovery array to decide whether to skip the step.
-  const discoveredServiceSet = new Set(discovery.map((d) => d.service));
-  const sessionCards: { service: ServiceName; email: string }[] = [];
-  if (!discoveredServiceSet.has('moose-hub') && museHub.signedIn) {
-    sessionCards.push({ service: 'moose-hub', email: museHub.user.email });
-  }
-  if (!discoveredServiceSet.has('adieu') && adieu.signedIn) {
-    sessionCards.push({ service: 'adieu', email: adieu.user.email });
-  }
-
-  const toggleChecked = (service: ServiceName) => {
-    setChecked((prev) => ({ ...prev, [service]: !prev[service] }));
-  };
-
-  const buildLinks = (): LinkChoice[] => {
-    const links: LinkChoice[] = [];
-    for (const d of discovery) {
-      if (checked[d.service]) links.push({ service: d.service, method: 'email-match' });
-    }
-    for (const card of sessionCards) {
-      if (!checked[card.service]) continue;
-      const token = getLegacyAccessToken(card.service);
-      if (token) links.push({ service: card.service, method: 'session', legacy_access_token: token });
-    }
-    return links;
-  };
-
-  // After a successful (non-reset) verify: decide whether the discovery
-  // step is worth showing at all, and pre-check the email-match rung only
-  // (the session rung — a different email — needs a deliberate confirm).
-  const goToPostVerifyStep = (nextDiscovery: DiscoveryEntry[]) => {
-    const discoveredSet = new Set(nextDiscovery.map((d) => d.service));
-    const hasSessionCard =
-      (!discoveredSet.has('moose-hub') && museHub.signedIn) ||
-      (!discoveredSet.has('adieu') && adieu.signedIn);
-    const initialChecked: Partial<Record<ServiceName, boolean>> = {};
-    for (const d of nextDiscovery) initialChecked[d.service] = true;
-    setChecked(initialChecked);
-    setDiscovery(nextDiscovery);
-    setSignUpStep(nextDiscovery.length > 0 || hasSessionCard ? 'discovery' : 'profile');
-  };
-
   // ---- Sign-up handlers ---------------------------------------------------
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -251,7 +180,11 @@ export const MuseIdAuthDialog: React.FC = () => {
     try {
       const result = await museId.signUpVerify(code.trim());
       if (result.status === 'new') {
-        goToPostVerifyStep(result.discovery);
+        // Signup creates ONLY the Muse ID. No auto-linking of discovered or
+        // signed-in service accounts — linking is a separate, explicit,
+        // ownership-proven action from the Accounts page (link by email +
+        // code). See the removal of the discovery/session-card step below.
+        setSignUpStep('profile');
       } else {
         // 'reset' can't happen on this path (no resetPassword was passed),
         // but if it ever does, MuseIdContext has already signed the caller
@@ -271,13 +204,6 @@ export const MuseIdAuthDialog: React.FC = () => {
     setError(null);
   };
 
-  const handleDiscoveryContinue = () => setSignUpStep('profile');
-
-  const handleLinkLater = () => {
-    setChecked({});
-    setSignUpStep('profile');
-  };
-
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
@@ -287,7 +213,7 @@ export const MuseIdAuthDialog: React.FC = () => {
       await museId.signUpComplete({
         name: name.trim(),
         password,
-        links: buildLinks(),
+        links: [],
       });
       setSignUpStep('done');
     } catch (err) {
@@ -387,12 +313,10 @@ export const MuseIdAuthDialog: React.FC = () => {
           // exists for this address — matches /api/auth/start's response.
           subtitle: `We've sent a code to ${email.trim()}.`,
         };
-      case 'discovery':
-        return { title: 'Found your accounts', subtitle: 'Link them to your new Muse ID now, or do it later from settings.' };
       case 'profile':
         return { title: 'Finish creating your Muse ID', subtitle: 'Choose a display name and password.' };
       case 'done':
-        return { title: "You're all set", subtitle: 'Your Muse ID is connected to MuseHub and audio.com.' };
+        return { title: "You're all set", subtitle: 'Connect MuseHub and audio.com any time from Accounts.' };
       default:
         return { title: 'Create a Muse ID', subtitle: '' };
     }
@@ -499,55 +423,6 @@ export const MuseIdAuthDialog: React.FC = () => {
               </button>
             </p>
           </form>
-        )}
-
-        {mode === 'sign-up' && signUpStep === 'discovery' && (
-          <div className="museid-auth-dialog__form">
-            <ul className="museid-auth-dialog__cards">
-              {discovery.map((d, i) => (
-                <li key={d.service}>
-                  <label className="museid-auth-dialog__card">
-                    <input
-                      ref={i === 0 ? focusFirstRef : undefined}
-                      type="checkbox"
-                      checked={!!checked[d.service]}
-                      onChange={() => toggleChecked(d.service)}
-                    />
-                    <span className="museid-auth-dialog__card-body">
-                      <span className="museid-auth-dialog__card-title">{SERVICE_LABELS[d.service]}</span>
-                      <span className="museid-auth-dialog__card-email">{d.display.maskedEmail}</span>
-                      <span className="museid-auth-dialog__card-summary">{d.display.summary}</span>
-                    </span>
-                  </label>
-                </li>
-              ))}
-              {sessionCards.map((card, i) => (
-                <li key={card.service}>
-                  <label className="museid-auth-dialog__card">
-                    <input
-                      ref={discovery.length === 0 && i === 0 ? focusFirstRef : undefined}
-                      type="checkbox"
-                      checked={!!checked[card.service]}
-                      onChange={() => toggleChecked(card.service)}
-                    />
-                    <span className="museid-auth-dialog__card-body">
-                      <span className="museid-auth-dialog__card-title">{SERVICE_LABELS[card.service]}</span>
-                      <span className="museid-auth-dialog__card-summary">Signed in as {card.email}</span>
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-            {error && <p className="museid-auth-dialog__error" role="alert">{error}</p>}
-            <button type="button" className="museid-auth-dialog__cta" onClick={handleDiscoveryContinue}>
-              Continue
-            </button>
-            <p className="museid-auth-dialog__switch">
-              <button type="button" className="museid-auth-dialog__link" onClick={handleLinkLater}>
-                I'll link these later
-              </button>
-            </p>
-          </div>
         )}
 
         {mode === 'sign-up' && signUpStep === 'profile' && (

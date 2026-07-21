@@ -115,7 +115,7 @@ describe('MuseIdAccountsPage', () => {
     await waitFor(() => expect(apiRef.current!.museHub.signedIn).toBe(true));
 
     expect(screen.getByText(/Signed in to MuseHub as legacy-only@mu\.se/)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Link' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Link MuseHub' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign in to MuseHub' })).toBeNull();
   });
 
@@ -148,7 +148,11 @@ describe('MuseIdAccountsPage', () => {
     expect(screen.getByText(/cloud projects?$/)).toBeTruthy();
   });
 
-  it('link flow: a live legacy MuseHub session marks the service linked via session-proof linkService', async () => {
+  it('SECURITY regression: a live legacy session is NOT a linking credential — linking requires the email-code proof', async () => {
+    // Shared-computer hijack scenario: someone else's MuseHub session is
+    // live in this browser. Creating/signing into a Muse ID must not be
+    // able to convert that session into a permanent link. The only linking
+    // path is proving ownership of the service account's email by code.
     mock.seedMuseUser({
       email: 'linker@mu.se',
       password: 'correct-horse',
@@ -165,19 +169,30 @@ describe('MuseIdAccountsPage', () => {
     await waitFor(() => expect(apiRef.current!.museId.signedIn).toBe(true));
     expect(apiRef.current!.museId.linkedServices).toEqual([]);
 
-    // Simulate a live legacy MuseHub session (as a real OAuth sign-in would
-    // produce) WITHOUT going through muse-exchange — the precondition for
-    // the session-proof Link button.
-    const legacyToken = mock.seedServiceAccessToken('moose-hub', 'linker@mu.se');
+    // A live legacy MuseHub session (someone's — not necessarily ours).
+    const legacyToken = mock.seedServiceAccessToken('moose-hub', 'victim@example.com');
     await act(async () => {
       adoptMuseHubTokens({ accessToken: legacyToken, refreshToken: 'irrelevant', expiresAt: Date.now() + 3600_000 });
       await apiRef.current!.museHub.hydrate();
     });
     await waitFor(() => expect(apiRef.current!.museHub.signedIn).toBe(true));
 
-    // Not linked yet, so the row offers "Link" (not "Unlink").
-    const linkButton = await screen.findByRole('button', { name: 'Link' });
-    fireEvent.click(linkButton);
+    // Nothing auto-linked, and no one-click session-proof Link exists.
+    expect(apiRef.current!.museId.linkedServices).toEqual([]);
+
+    // "Link MuseHub" opens the email-code proof flow instead of linking.
+    fireEvent.click(await screen.findByRole('button', { name: 'Link MuseHub' }));
+    expect(await screen.findByLabelText(/Email for your MuseHub account/)).toBeInTheDocument();
+    // Still not linked — opening the flow proves nothing by itself.
+    expect(apiRef.current!.museId.linkedServices).toEqual([]);
+
+    // Completing the proof for an email we can receive codes at DOES link.
+    fireEvent.change(screen.getByLabelText(/Email for your MuseHub account/), {
+      target: { value: 'victim@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
+    fireEvent.change(await screen.findByLabelText('Verification code'), { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
 
     await waitFor(() => expect(apiRef.current!.museId.linkedServices).toContain('moose-hub'));
     expect(await screen.findByRole('button', { name: 'Unlink' })).toBeTruthy();
@@ -208,8 +223,8 @@ describe('MuseIdAccountsPage', () => {
     await waitFor(() => expect(apiRef.current!.museId.linkedServices).not.toContain('moose-hub'));
     // The row re-renders off the cleared state: the local MuseHub session
     // is untouched by unlink (it's a separate piece of state), so the row
-    // now offers to re-link rather than "Sign in to link".
-    expect(await screen.findByRole('button', { name: 'Link' })).toBeTruthy();
+    // now offers to re-link (email-code proof) rather than "Sign in to link".
+    expect(await screen.findByRole('button', { name: 'Link MuseHub' })).toBeTruthy();
 
     // Side 2: the service's own museId column was cleared via its
     // muse-unlink endpoint — assert the call actually happened.
@@ -220,14 +235,14 @@ describe('MuseIdAccountsPage', () => {
 
   // ---- Rung 3: "different email — prove by code" (task 5.4) ---------------
 
-  describe('rung 3 — "Link with a different email"', () => {
+  describe('link by email-code proof ("Link <service>")', () => {
     it('is offered for an unlinked service with no live session, only once a Muse session exists', async () => {
       const { apiRef } = renderPage();
       await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
 
       // No Muse session yet — no Bearer available, so the affordance must
       // not appear (it would 401 immediately if clicked).
-      expect(screen.queryByRole('button', { name: 'Link with a different email' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Link MuseHub' })).toBeNull();
 
       mock.seedMuseUser({ email: 'p@mu.se', password: 'password1', name: 'Page' });
       await act(async () => {
@@ -235,7 +250,8 @@ describe('MuseIdAccountsPage', () => {
       });
 
       // Now offered, alongside (not instead of) the legacy sign-in button.
-      expect(await screen.findAllByRole('button', { name: 'Link with a different email' })).toHaveLength(2);
+      expect(await screen.findByRole('button', { name: 'Link MuseHub' })).toBeTruthy();
+      expect(await screen.findByRole('button', { name: 'Link audio.com' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Sign in to MuseHub' })).toBeTruthy();
     });
 
@@ -249,8 +265,7 @@ describe('MuseIdAccountsPage', () => {
         await apiRef.current!.museId.signIn('q@mu.se', 'password1');
       });
 
-      const [linkByEmailButton] = await screen.findAllByRole('button', { name: 'Link with a different email' });
-      fireEvent.click(linkByEmailButton);
+      fireEvent.click(await screen.findByRole('button', { name: 'Link MuseHub' }));
 
       const emailInput = await screen.findByLabelText(/Email for your MuseHub account/);
       fireEvent.change(emailInput, { target: { value: 'q-alt@mu.se' } });
@@ -277,8 +292,7 @@ describe('MuseIdAccountsPage', () => {
         await apiRef.current!.museId.signIn('r@mu.se', 'password1');
       });
 
-      const [linkByEmailButton] = await screen.findAllByRole('button', { name: 'Link with a different email' });
-      fireEvent.click(linkByEmailButton);
+      fireEvent.click(await screen.findByRole('button', { name: 'Link MuseHub' }));
 
       fireEvent.change(await screen.findByLabelText(/Email for your MuseHub account/), {
         target: { value: 'r-alt@mu.se' },

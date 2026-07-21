@@ -92,7 +92,7 @@ export interface CompleteInput {
   name: string;
   password: string;
   avatarChoice?: string;
-  links?: { service: ServiceName; method: 'email-match' | 'session'; legacy_access_token?: string }[];
+  links?: { service: ServiceName; method: 'email-match' }[];
 }
 
 export interface CompleteResult extends TokenBundle {
@@ -399,25 +399,6 @@ export function getUserInfo(): Promise<MuseIdUserInfo> {
   return getJson<MuseIdUserInfo>('/api/oauth/userinfo');
 }
 
-/** Session-proof / credential-proof linking after account creation (settings
- *  page, deferred "have an existing account?" prompts). muse-id verifies
- *  `legacyAccessToken` itself by calling the service's own userinfo.
- *
- *  `rpSynced` (Task 5.4 fix): whether muse-id's write-back call — telling
- *  the RP which local account this link now belongs to (its own `museId`
- *  join column) — succeeded. `false` means the muse-id-side link IS
- *  registered but the RP wasn't told, so a later exchange's museId-match
- *  rung won't find it yet; callers should surface this rather than treat
- *  the link as fully connected. Optional in the type since older muse-id
- *  deployments (and this client's own museIdMock, if not yet updated)
- *  might omit it — callers must not assume it's always present. */
-export function link(
-  service: ServiceName,
-  legacyAccessToken: string,
-): Promise<{ ok: true; linked: boolean; service: ServiceName; rpSynced?: boolean }> {
-  return postJsonAuthed('/api/link', { service, legacy_access_token: legacyAccessToken });
-}
-
 /** Linking-ladder rung 3 ("different email — prove by code", task 5.1's
  *  `POST /api/link/start`): sends/mocks a 6-digit code to `email` to prove
  *  ownership of a `service` account under an email OTHER than the signed-in
@@ -496,23 +477,19 @@ export async function logout(): Promise<void> {
 // Each service exchanges a Muse access token for its own opaque token pair.
 // These calls are NOT bearer-authenticated against muse-id (the muse access
 // token travels in the JSON body, not an Authorization header) — the RP
-// introspects it server-side via muse-id's S2S surface. `legacyAccessToken`
-// is optional: when present, it's THAT service's own access token, used to
-// prove a live legacy session for session-proof linking (the RP validates
-// it itself — muse-id and the sandbox never assert a claim the RP doesn't
-// independently verify).
+// introspects it server-side via muse-id's S2S surface. Session-linking
+// removal: no legacy_access_token is ever sent — a live legacy session is
+// not accepted as linking proof anywhere (client or server).
 
 async function exchange(
   baseUrl: string,
   museAccessToken: string,
-  legacyAccessToken?: string,
 ): Promise<ServiceExchangeResult> {
   const res = await fetch(`${baseUrl}/api/auth/muse-exchange`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       muse_access_token: museAccessToken,
-      ...(legacyAccessToken ? { legacy_access_token: legacyAccessToken } : {}),
     }),
   });
   const data = await res.json().catch(() => ({}));
@@ -524,18 +501,12 @@ async function exchange(
   return data as ServiceExchangeResult;
 }
 
-export function exchangeMooseHub(
-  museAccessToken: string,
-  legacyAccessToken?: string,
-): Promise<ServiceExchangeResult> {
-  return exchange(MUSEHUB_BASE, museAccessToken, legacyAccessToken);
+export function exchangeMooseHub(museAccessToken: string): Promise<ServiceExchangeResult> {
+  return exchange(MUSEHUB_BASE, museAccessToken);
 }
 
-export function exchangeAdieu(
-  museAccessToken: string,
-  legacyAccessToken?: string,
-): Promise<ServiceExchangeResult> {
-  return exchange(ADIEU_BASE, museAccessToken, legacyAccessToken);
+export function exchangeAdieu(museAccessToken: string): Promise<ServiceExchangeResult> {
+  return exchange(ADIEU_BASE, museAccessToken);
 }
 
 /** Converts a service-exchange response into the `{accessToken,

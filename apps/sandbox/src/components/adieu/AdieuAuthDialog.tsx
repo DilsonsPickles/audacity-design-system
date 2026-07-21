@@ -12,21 +12,21 @@
 // Task 5.3: "Continue with Muse ID" primary CTA + divider above this legacy
 // form (never a replacement). Mirrors wallet/AuthDialog.tsx's wiring — see
 // that file's header and apps/sandbox/src/hooks/useMuseIdEntry.ts for the
-// five-state CTA behaviour and the post-legacy-sign-in link prompt; this
-// file only swaps the service context (AdieuContext) and copy.
+// five-state CTA behaviour; this file only swaps the service context
+// (AdieuContext) and copy. Like wallet/AuthDialog.tsx, a legacy sign-in no
+// longer offers session-proof linking (shared-computer hijack vector) —
+// linking is an explicit, ownership-proven action from Accounts.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdieu } from '../../contexts/AdieuContext';
-import { useMuseId } from '../../contexts/MuseIdContext';
 import { useMuseIdEntry } from '../../hooks/useMuseIdEntry';
-import { directLogin, directSignup, getAccessToken } from '../../lib/adieu-client';
+import { directLogin, directSignup } from '../../lib/adieu-client';
 import './AdieuAuthDialog.css';
 
 export const AdieuAuthDialog: React.FC = () => {
   const { authDialog, openAuthDialog, closeAuthDialog, hydrate, completePendingSignIn, adoptTokens, signOut } =
     useAdieu();
-  const museId = useMuseId();
   const open = authDialog !== 'closed';
   const mode = authDialog === 'create-account' ? 'create-account' : 'sign-in';
 
@@ -35,8 +35,6 @@ export const AdieuAuthDialog: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [linkPromptPending, setLinkPromptPending] = useState(false);
-  const [linking, setLinking] = useState(false);
   // Rung 3 ("different email — prove by code", task 5.4) — see
   // wallet/AuthDialog.tsx's identical state for the rationale.
   const [linkEmail, setLinkEmail] = useState('');
@@ -65,7 +63,6 @@ export const AdieuAuthDialog: React.FC = () => {
     setEmail('');
     setPassword('');
     setDisplayName('');
-    setLinkPromptPending(false);
     setLinkEmail('');
     setLinkCode('');
     setLinkSubmitting(false);
@@ -76,7 +73,6 @@ export const AdieuAuthDialog: React.FC = () => {
     if (!open) return;
     setError(null);
     setSubmitting(false);
-    setLinkPromptPending(false);
     setLinkEmail('');
     setLinkCode('');
     setLinkSubmitting(false);
@@ -98,7 +94,7 @@ export const AdieuAuthDialog: React.FC = () => {
       return;
     }
     setTimeout(() => museFocusRef.current?.focus(), 50);
-  }, [open, entry.phase.kind, linkPromptPending]);
+  }, [open, entry.phase.kind]);
 
   useEffect(() => {
     if (!open) return;
@@ -113,20 +109,6 @@ export const AdieuAuthDialog: React.FC = () => {
   }, [open, submitting, museBusy, closeAuthDialog]);
 
   if (!open) return null;
-
-  const handleLinkNow = async () => {
-    setLinking(true);
-    try {
-      const token = getAccessToken();
-      if (token) await museId.linkService('adieu', token);
-    } catch {
-      // Best-effort — see wallet/AuthDialog.tsx's identical handler.
-    } finally {
-      setLinking(false);
-      finishAndClose();
-    }
-  };
-  const handleSkipLink = () => finishAndClose();
 
   // ---- Rung 3: "different email — prove by code" (task 5.4) ---------------
 
@@ -166,11 +148,7 @@ export const AdieuAuthDialog: React.FC = () => {
       // Resolve any awaiting signIn() promise BEFORE closing the dialog,
       // so closeAuthDialog doesn't see a still-pending resolver and reject it.
       completePendingSignIn();
-      if (museId.signedIn && !museId.linkedServices.includes('adieu')) {
-        setLinkPromptPending(true);
-        setSubmitting(false);
-        return;
-      }
+      // No post-sign-in link offer — see file header (session-linking removal).
       finishAndClose();
     } catch (err) {
       const code = (err as { code?: string }).code ?? '';
@@ -187,9 +165,7 @@ export const AdieuAuthDialog: React.FC = () => {
 
   // User-facing branding is audio.com — the demo's external positioning.
   // The "adieu" name is reserved for the internal codename / repo.
-  const title = linkPromptPending
-    ? 'Link to your Muse ID?'
-    : entry.phase.kind === 'confirm'
+  const title = entry.phase.kind === 'confirm'
       ? 'Is this you?'
       : entry.phase.kind === 'settled'
         ? "You're in"
@@ -216,7 +192,7 @@ export const AdieuAuthDialog: React.FC = () => {
       : mode === 'sign-in'
         ? 'Sign in'
         : 'Create account';
-  const showLegacyPanel = !linkPromptPending && entry.phase.kind === 'idle';
+  const showLegacyPanel = entry.phase.kind === 'idle';
 
   const content = (
     <div
@@ -242,28 +218,7 @@ export const AdieuAuthDialog: React.FC = () => {
           </button>
         </header>
 
-        {linkPromptPending && (
-          <div className="adieu-auth-dialog__museid-panel">
-            <p className="adieu-auth-dialog__subtitle">
-              Link this audio.com account to your Muse ID? You'll be able to use "Continue with Muse ID" here next time.
-            </p>
-            <button
-              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
-              type="button"
-              className="adieu-auth-dialog__cta"
-              onClick={handleLinkNow}
-              disabled={linking}
-            >
-              {linking && <span className="adieu-auth-dialog__spinner" aria-hidden="true" />}
-              <span>{linking ? 'Linking…' : 'Link to my Muse ID'}</span>
-            </button>
-            <button type="button" className="adieu-auth-dialog__link" onClick={handleSkipLink} disabled={linking}>
-              Not now
-            </button>
-          </div>
-        )}
-
-        {!linkPromptPending && entry.phase.kind === 'exchanging' && (
+        {entry.phase.kind === 'exchanging' && (
           <div className="adieu-auth-dialog__museid-panel">
             <p className="adieu-auth-dialog__subtitle">
               <span className="adieu-auth-dialog__spinner" aria-hidden="true" /> Connecting to your Muse ID…
@@ -271,7 +226,7 @@ export const AdieuAuthDialog: React.FC = () => {
           </div>
         )}
 
-        {!linkPromptPending && entry.phase.kind === 'confirm' && (
+        {entry.phase.kind === 'confirm' && (
           <div className="adieu-auth-dialog__museid-panel">
             <p className="adieu-auth-dialog__subtitle">
               We found an audio.com account under your Muse ID's email. Is this you?
@@ -295,7 +250,7 @@ export const AdieuAuthDialog: React.FC = () => {
           </div>
         )}
 
-        {!linkPromptPending && entry.phase.kind === 'settled' && (
+        {entry.phase.kind === 'settled' && (
           <div className="adieu-auth-dialog__museid-panel">
             <p className="adieu-auth-dialog__subtitle">
               {entry.phase.wasKnownNew
@@ -316,7 +271,7 @@ export const AdieuAuthDialog: React.FC = () => {
           </div>
         )}
 
-        {!linkPromptPending && entry.phase.kind === 'different-email' && (
+        {entry.phase.kind === 'different-email' && (
           <div className="adieu-auth-dialog__museid-panel">
             <p className="adieu-auth-dialog__subtitle">
               Have an audio.com account under a different email? Enter it and we'll send a code to prove it's yours.
@@ -346,7 +301,7 @@ export const AdieuAuthDialog: React.FC = () => {
           </div>
         )}
 
-        {!linkPromptPending && entry.phase.kind === 'different-email-code' && (
+        {entry.phase.kind === 'different-email-code' && (
           <div className="adieu-auth-dialog__museid-panel">
             <p className="adieu-auth-dialog__subtitle">We've sent a code to {entry.phase.email}.</p>
             <form className="adieu-auth-dialog__form" onSubmit={(e) => void handleLinkCodeSubmit(e)} noValidate>
@@ -386,7 +341,7 @@ export const AdieuAuthDialog: React.FC = () => {
           </div>
         )}
 
-        {!linkPromptPending && entry.phase.kind === 'different-email-result' && (
+        {entry.phase.kind === 'different-email-result' && (
           <div className="adieu-auth-dialog__museid-panel">
             {entry.phase.status === 'linked' ? (
               <>
@@ -416,7 +371,7 @@ export const AdieuAuthDialog: React.FC = () => {
           </div>
         )}
 
-        {!linkPromptPending && entry.phase.kind === 'error' && (
+        {entry.phase.kind === 'error' && (
           <div className="adieu-auth-dialog__museid-panel">
             <p className="adieu-auth-dialog__error" role="alert">{entry.phase.message}</p>
             <button

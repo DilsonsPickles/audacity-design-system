@@ -4,7 +4,7 @@
 // (§2) for the seams this suite is meant to cover; this file lands the
 // boot test only (Task 1) — later tasks add the rest.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 // audioMockFactory MUST come from './audioMock' (not './integrationHarness')
 // — see audioMock.ts's header comment for the circular-import deadlock this
@@ -54,7 +54,26 @@ vi.mock('../utils/RecordingManager', () => ({
   },
 }));
 
-afterEach(cleanup);
+// Clicking 'Project' with no current project fires an unawaited async chain
+// (ProjectToolbarContainer.tsx onMenuItemClick -> createNewProject ->
+// getProjects -> setIndexedDBProjects) — the same pre-existing app-side
+// hazard documented on gotoProject() in EditorLayout.integration.test.tsx
+// and tracked in docs/backlog.md ("Async race in createNewProject"). The
+// timeline-ruler waitFor the tests use does NOT cover it: the ruler appears
+// synchronously from setActiveMenuItem, independent of that chain. If the
+// chain is still pending when this file's jsdom environment is torn down
+// (load-dependent — only bites under a full-suite run), the late setState
+// crashes react-dom with an unhandled "ReferenceError: window is not
+// defined". The fake-indexeddb chain needs event-loop turns, not wall time,
+// so yielding real macrotasks here lets it settle while `window` still
+// exists. Remove alongside EditorLayout's settle helpers once the backlog
+// item fixes the ordering in product code.
+afterEach(async () => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  });
+  cleanup();
+});
 
 describe('App boot', () => {
   it('boots: renders project chrome without crashing', async () => {

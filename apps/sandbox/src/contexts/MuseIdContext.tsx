@@ -45,7 +45,6 @@ import {
   signIn as museIdSignInRequest,
   getUserInfo,
   getAccessToken,
-  link as museIdLink,
   unlink as museIdUnlink,
   linkStart as museIdLinkStart,
   linkVerify as museIdLinkVerify,
@@ -117,10 +116,10 @@ interface MuseIdContextValue {
    *  signing the caller in immediately (services get exchanged too). Omit
    *  it for the ordinary new-signup flow. */
   signUpVerify: (code: string, resetPassword?: string) => Promise<VerifyResult>;
-  /** Step 3: creates the Muse ID for the email passed to signUpStart, then
-   *  exchanges + adopts every linked service (server-registered
-   *  email-match links from the `complete` response, plus any
-   *  session-proof links the caller included with a `legacy_access_token`). */
+  /** Step 3: creates the Muse ID for the email passed to signUpStart.
+   *  Session-linking removal: signup creates ONLY the Muse ID — `links` is
+   *  always empty now; linking is an explicit, ownership-proven action
+   *  (email + code) from the Accounts page afterwards. */
   signUpComplete: (input: Omit<CompleteInput, 'email'>) => Promise<void>;
 
   // ---- Routine sign-in ----------------------------------------------------
@@ -135,15 +134,6 @@ interface MuseIdContextValue {
    *  succeeds server-side. */
   signOutEverywhere: () => Promise<void>;
 
-  /** Post-creation linking (settings / deferred prompts). Calls muse-id's
-   *  own `/api/link` (which verifies `legacyAccessToken` against the
-   *  service itself), then — Task 5.4 fix — exchanges + adopts THIS
-   *  service's own tokens too (the same exchange signup/signin run), so
-   *  the service is actually signed in locally with real data, not just
-   *  "linked" in muse-id's directory. Re-hydrates either way. A failed
-   *  exchange is surfaced via `error`, not thrown — the muse-id-side link
-   *  already succeeded by that point. */
-  linkService: (service: ServiceName, legacyAccessToken: string) => Promise<void>;
   /** Unlinks `service`: clears muse-id's own LinkedAccount row (the
    *  authoritative directory) AND that service's own museId join column
    *  (best-effort — see muse-id README's "Link ownership boundary": these
@@ -165,7 +155,7 @@ interface MuseIdContextValue {
    *  linkVerify doc comment) — callers map the error code to copy.
    *
    *  Task 5.4 fix: on `'linked'`, also exchanges + adopts this service's
-   *  own tokens (same as `linkService` above) so the service is actually
+   *  own tokens (same exchange signup/signin run) so the service is actually
    *  signed in locally with real data — without this, a rung-3 link (no
    *  live legacy session on this device at all) left the service
    *  perpetually signed out locally despite muse-id considering it linked,
@@ -314,11 +304,11 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
   // its own; it's a plain rethrow here so the caller can attribute the
   // failure to a specific service.
   const adoptForService = useCallback(
-    async (service: ServiceName, museAccessToken: string, legacyAccessToken?: string) => {
+    async (service: ServiceName, museAccessToken: string) => {
       const result =
         service === 'moose-hub'
-          ? await exchangeMooseHub(museAccessToken, legacyAccessToken)
-          : await exchangeAdieu(museAccessToken, legacyAccessToken);
+          ? await exchangeMooseHub(museAccessToken)
+          : await exchangeAdieu(museAccessToken);
       const tokens = exchangeResultToTokens(result);
       if (service === 'moose-hub') await museHub.adoptTokens(tokens);
       else await adieu.adoptTokens(tokens);
@@ -333,15 +323,11 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
   // adopt, so a failed exchange for service B leaves service A's already-
   // adopted tokens exactly as they were).
   const exchangeAndAdoptAll = useCallback(
-    async (
-      museAccessToken: string,
-      services: ServiceName[],
-      legacyTokensByService: Partial<Record<ServiceName, string>> = {},
-    ) => {
+    async (museAccessToken: string, services: ServiceName[]) => {
       const failures: ServiceName[] = [];
       for (const service of services) {
         try {
-          await adoptForService(service, museAccessToken, legacyTokensByService[service]);
+          await adoptForService(service, museAccessToken);
         } catch {
           failures.push(service);
         }
@@ -388,22 +374,10 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       const result = await museIdComplete({ email, ...input });
       pendingSignUpEmailRef.current = null;
 
-      // Union of server-registered email-match links (already live on
-      // muse-id) and any session-proof links the caller supplied — those
-      // need the exchange call's `legacy_access_token` to actually
-      // establish the RP-side link (muse-id's /api/auth/complete only
-      // executes email-match links itself; see its file-header comment).
-      const legacyByService: Partial<Record<ServiceName, string>> = {};
-      for (const l of input.links ?? []) {
-        if (l.method === 'session' && l.legacy_access_token) {
-          legacyByService[l.service] = l.legacy_access_token;
-        }
-      }
-      const services = Array.from(
-        new Set<ServiceName>([...result.linkedServices, ...(Object.keys(legacyByService) as ServiceName[])]),
-      );
-
-      await exchangeAndAdoptAll(result.access_token, services, legacyByService);
+      // Session-linking removal: signup creates only the Muse ID (`links` is
+      // always empty), so there is nothing to exchange/adopt here beyond any
+      // linkedServices the server reports (always [] for a fresh account).
+      await exchangeAndAdoptAll(result.access_token, result.linkedServices);
       await fetchProfile();
     },
     [fetchProfile, exchangeAndAdoptAll],
@@ -435,30 +409,6 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
     setLinkedServices([]);
     pendingSignUpEmailRef.current = null;
   }, [museHub, adieu, linkedServices]);
-
-  const linkService = useCallback(
-    async (service: ServiceName, legacyAccessToken: string): Promise<void> => {
-      setError(null);
-      const result = await museIdLink(service, legacyAccessToken);
-      if (result.linked) {
-        if (result.rpSynced === false) {
-          setError(
-            `Linked to Muse ID, but couldn't finish connecting ${service} — try again from Accounts.`,
-          );
-        }
-        const museAccessToken = getAccessToken();
-        if (museAccessToken) {
-          try {
-            await adoptForService(service, museAccessToken, legacyAccessToken);
-          } catch {
-            setError(`Linked, but couldn't connect ${service} — try again from Accounts.`);
-          }
-        }
-      }
-      await fetchProfile();
-    },
-    [fetchProfile, adoptForService],
-  );
 
   const unlinkService = useCallback(
     async (service: ServiceName): Promise<void> => {
@@ -563,7 +513,6 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       signUpComplete,
       signIn,
       signOutEverywhere,
-      linkService,
       unlinkService,
       linkByEmailStart,
       linkByEmailVerify,
@@ -586,7 +535,6 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       signUpComplete,
       signIn,
       signOutEverywhere,
-      linkService,
       unlinkService,
       linkByEmailStart,
       linkByEmailVerify,

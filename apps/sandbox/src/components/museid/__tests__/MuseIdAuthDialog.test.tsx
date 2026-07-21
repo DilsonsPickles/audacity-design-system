@@ -18,6 +18,7 @@ import { MuseHubProvider, useMuseHub } from '../../../contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from '../../../contexts/AdieuContext';
 import { MuseIdProvider, useMuseId } from '../../../contexts/MuseIdContext';
 import { createMuseIdMock, type MuseIdMockControls } from '../../../__tests__/museIdMock';
+import { adoptTokens as adoptAdieuTokens } from '../../../lib/adieu-client';
 
 afterEach(cleanup);
 
@@ -63,13 +64,14 @@ afterEach(() => {
 });
 
 describe('MuseIdAuthDialog', () => {
-  it('full sign-up walkthrough: email -> code -> discovery (both rungs) -> profile -> success', async () => {
-    // Email-match rung: a moose-hub account under the NEW email.
+  it('full sign-up walkthrough: email -> code -> profile -> success — creates ONLY the Muse ID (no auto-linking)', async () => {
+    // SECURITY regression (session-linking removal): both auto-link inputs
+    // are staged — a moose-hub account under the SAME email (the old
+    // email-match rung) and a live adieu session under a DIFFERENT email
+    // (the old session rung). Signup must link NEITHER: it creates just the
+    // Muse ID; linking is an explicit email-code-proven action from
+    // Accounts afterwards.
     mock.seedServiceUser('moose-hub', { email: 'new@mu.se', name: 'New MuseHub User' });
-    // Session rung: an EXISTING Muse ID + adieu account under a DIFFERENT
-    // email — signing into it first gives us a live in-app adieu session,
-    // the precondition for the session rung (see MuseIdAuthDialog.tsx's
-    // file header on session-rung detection).
     mock.seedMuseUser({
       email: 'prior@mu.se',
       password: 'priorpass1',
@@ -81,14 +83,23 @@ describe('MuseIdAuthDialog', () => {
     const { apiRef } = renderDialog();
     await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
 
-    // Prep: get a live adieu session going under a different email, purely
-    // through context calls (not the dialog) — this is scene-setting, not
-    // part of the flow under test.
+    // Scene-setting: a live adieu session under a different email exists in
+    // this browser (the shared-computer scenario) before the new signup.
     await act(async () => {
       await apiRef.current!.museId.signIn('prior@mu.se', 'priorpass1');
     });
     await waitFor(() => expect(apiRef.current!.adieu.signedIn).toBe(true));
-    expect(apiRef.current!.adieu.user.email).toBe('prior@mu.se');
+    await act(async () => {
+      await apiRef.current!.museId.signOutEverywhere();
+    });
+    // signOutEverywhere scopes to linked services — adieu was linked to the
+    // prior Muse ID, so re-establish an independent adieu session directly.
+    const adieuToken = mock.seedServiceAccessToken('adieu', 'prior@mu.se');
+    await act(async () => {
+      adoptAdieuTokens({ accessToken: adieuToken, refreshToken: 'irrelevant', expiresAt: Date.now() + 3600_000 });
+      await apiRef.current!.adieu.hydrate();
+    });
+    await waitFor(() => expect(apiRef.current!.adieu.signedIn).toBe(true));
 
     // Open the dialog for a fresh sign-up.
     act(() => apiRef.current!.museId.openAuthDialog('sign-up'));
@@ -104,55 +115,21 @@ describe('MuseIdAuthDialog', () => {
     fireEvent.change(codeInput, { target: { value: '000000' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
 
-    // ---- Discovery step: both rungs present ----
-    await screen.findByText('Found your accounts');
-    const museHubCheckbox = screen.getByRole('checkbox', { name: /MuseHub/i });
-    const adieuCheckbox = screen.getByRole('checkbox', { name: /audio\.com/i });
-    // Email-match rung pre-checked; session rung starts unchecked.
-    expect(museHubCheckbox).toBeChecked();
-    expect(adieuCheckbox).not.toBeChecked();
-    expect(screen.getByText(/Signed in as prior@mu\.se/)).toBeInTheDocument();
-    fireEvent.click(adieuCheckbox);
-    expect(adieuCheckbox).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-    // ---- Profile step ----
+    // ---- Straight to profile: NO discovery/link step exists anymore ----
     const nameInput = await screen.findByLabelText('Display name');
+    expect(screen.queryByText('Found your accounts')).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     fireEvent.change(nameInput, { target: { value: 'New Muse User' } });
     fireEvent.change(screen.getByLabelText('Password', { exact: false }), { target: { value: 'brand-new-pw' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create Muse ID' }));
 
-    // ---- Done ----
+    // ---- Done: Muse ID exists, NOTHING got linked ----
     await screen.findByText("You're all set");
     expect(apiRef.current!.museId.signedIn).toBe(true);
-    expect(apiRef.current!.museId.linkedServices.sort()).toEqual(['adieu', 'moose-hub']);
-
-    await waitFor(() => expect(apiRef.current!.museHub.signedIn).toBe(true));
-    await waitFor(() => expect(apiRef.current!.adieu.signedIn).toBe(true));
-  });
-
-  it('discovery cards show masked email + non-financial summary, NEVER a monetary value (disclosure rule)', async () => {
-    mock.seedServiceUser('moose-hub', { email: 'money@mu.se', name: 'Money MuseHub', itemCount: 7 });
-
-    const { apiRef } = renderDialog();
-    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
-    act(() => apiRef.current!.museId.openAuthDialog('sign-up'));
-
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'money@mu.se' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-    fireEvent.change(await screen.findByLabelText('Verification code', { exact: false }), {
-      target: { value: '000000' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
-
-    await screen.findByText('Found your accounts');
-    // Masked email + non-financial count — not the raw email, not a dollar
-    // amount anywhere on the card.
-    expect(screen.getByText('mon•••@mu.se')).toBeInTheDocument();
-    expect(screen.getByText('7 plugins')).toBeInTheDocument();
-    expect(screen.queryByText('money@mu.se')).not.toBeInTheDocument();
-    expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
+    expect(apiRef.current!.museId.linkedServices).toEqual([]);
+    // The bystander adieu session is untouched — still signed in, still NOT
+    // linked to the new Muse ID.
+    expect(apiRef.current!.adieu.signedIn).toBe(true);
   });
 
   it('code step surfaces friendly copy for a wrong code', async () => {
