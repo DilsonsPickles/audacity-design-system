@@ -8,6 +8,8 @@
 // for a prototype but should be hardened (HttpOnly cookies, server-side
 // session) for production.
 
+import { oauthCallbackUri } from './appBase';
+
 const MUSEHUB_BASE_URL: string =
   (import.meta.env.VITE_MUSEHUB_BASE_URL as string | undefined) ??
   'http://localhost:3000';
@@ -315,7 +317,7 @@ export async function startAuthorize(): Promise<AuthorizeFlow> {
   window.sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier);
   window.sessionStorage.setItem(OAUTH_STATE_KEY, state);
 
-  const redirectUri = `${window.location.origin}/oauth/callback`;
+  const redirectUri = oauthCallbackUri();
   const url = new URL(`${MUSEHUB_BASE_URL}/authorize`);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', CLIENT_ID);
@@ -420,7 +422,7 @@ export async function handleCallback(): Promise<void> {
   if (!expectedState || returnedState !== expectedState) throw new Error('OAuth state mismatch');
   if (!verifier) throw new Error('Missing PKCE verifier');
 
-  const redirectUri = `${window.location.origin}/oauth/callback`;
+  const redirectUri = oauthCallbackUri();
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     client_id: CLIENT_ID,

@@ -20,6 +20,7 @@
 
 import { MUSEHUB_BASE, adoptTokens as museHubAdoptTokens } from './musehub-client';
 import { ADIEU_BASE, adoptTokens as adieuAdoptTokens } from './adieu-client';
+import { oauthCallbackUri } from './appBase';
 import { toast } from '@dilsonspickles/components';
 
 const MUSEID_BASE_URL: string =
@@ -693,7 +694,10 @@ async function sha256Base64Url(input: string): Promise<string> {
 }
 
 function browserRedirectUri(): string {
-  return `${window.location.origin}/oauth/callback`;
+  // Base-path-aware (GitHub Pages serves the app under a subpath). See
+  // appBase.ts. On `/` hosting this is identical to the old
+  // `${origin}/oauth/callback`.
+  return oauthCallbackUri();
 }
 
 /** Starts the browser-first sign-in: generates a PKCE verifier/challenge +

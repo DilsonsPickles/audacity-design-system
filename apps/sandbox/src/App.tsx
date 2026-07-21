@@ -35,6 +35,7 @@ import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/Mus
 import { AdieuProvider, useAdieu } from './contexts/AdieuContext';
 import { MuseIdProvider, useMuseId } from './contexts/MuseIdContext';
 import { notifyPendingServiceAdoptFailure } from './lib/muse-id-client';
+import { isOAuthCallbackPath } from './lib/appBase';
 import { MuseHubHomeAccountCard } from './components/wallet/MuseHubHomeAccountCard';
 import { AdieuHomeAccountCard } from './components/wallet/AdieuHomeAccountCard';
 import { MuseIdHomeAccountCard } from './components/museid/MuseIdHomeAccountCard';
@@ -1285,7 +1286,7 @@ export default function App() {
   // OAuth callback from moose-hub. Exchanges code for tokens, then redirects
   // to "/". Rendered outside the providers because the rest of the app
   // expects a hydrated MuseHubContext, which can't run until tokens land.
-  if (window.location.pathname === '/oauth/callback') {
+  if (isOAuthCallbackPath(window.location.pathname)) {
     return (
       <React.Suspense fallback={<div>Loading...</div>}>
         <OAuthCallback />

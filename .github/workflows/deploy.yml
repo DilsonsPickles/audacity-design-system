@@ -50,6 +50,11 @@ jobs:
         run: |
           mkdir -p _site
           cp -r apps/sandbox/dist/* _site/
+          # SPA fallback: GitHub Pages serves 404.html for any unknown path
+          # (e.g. the client-side /oauth/callback route the OAuth flow
+          # redirects back to). Serving a copy of index.html boots the app,
+          # which then reads the URL and routes to OAuthCallback.
+          cp _site/index.html _site/404.html
           mkdir -p _site/storybook
           cp -r apps/docs/storybook-static/* _site/storybook/
 

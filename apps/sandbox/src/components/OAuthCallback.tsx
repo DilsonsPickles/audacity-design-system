@@ -1,5 +1,6 @@
 import React from 'react';
 import { handleCallback } from '../lib/musehub-client';
+import { appHomePath } from '../lib/appBase';
 import {
   isBrowserAuthorizePending,
   completeBrowserAuthorize,
@@ -119,7 +120,7 @@ export function OAuthCallback() {
           await handleCallback();
         }
         if (cancelled) return;
-        window.location.replace('/');
+        window.location.replace(appHomePath());
       } catch (err) {
         if (cancelled) return;
         setErrorMessage(err instanceof Error ? err.message : 'Unknown error');
@@ -164,7 +165,7 @@ export function OAuthCallback() {
           </div>
           <button
             type="button"
-            onClick={() => window.location.replace('/')}
+            onClick={() => window.location.replace(appHomePath())}
             style={{
               background: '#677ce4',
               color: '#f4f5f9',
