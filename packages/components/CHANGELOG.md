@@ -1,6 +1,6 @@
 # @dilsonspickles/components
 
-## Unreleased
+## 0.10.0 — 2026-07-21
 
 ### Changed — BEHAVIORAL
 
