@@ -10,15 +10,17 @@
 //     (skipped when nothing to link) -> profile (name + password) -> done.
 //     Per the design spec's amended "Auth surface" section, sign-up is
 //     in-app because a first-time user has no browser session to leverage.
-//   - Sign-in (secondary): "Continue with Muse ID" (Task 6.4) is the primary
-//     control — it bounces the whole browser to muse-id's `/authorize`
-//     (RFC 8252-style browser-first sign-in, PKCE + state via
-//     muse-id-client.ts's `startBrowserAuthorize`; the return is handled by
-//     OAuthCallback.tsx). The in-app email + password form beneath it is
-//     the fallback for when the browser round-trip isn't wanted or fails —
-//     per the design spec's "Auth surface" table, this is exactly the
-//     trade-off routine sign-in is meant to make (SSO stickiness first,
-//     guaranteed local path second).
+//   - Sign-in (secondary): in-app email + password, plus "Create one" /
+//     "Forgot password?". This dialog signs into Muse ID ITSELF, so it does
+//     NOT offer a "Continue with Muse ID" button — that identity-provider
+//     control only makes sense on the MuseHub / audio.com service dialogs
+//     (wallet/AuthDialog, adieu/AdieuAuthDialog), where using a Muse ID to
+//     ENTER a service is the whole point. Offering it here was circular
+//     ("use your Muse ID to sign into Muse ID" — a door that needs the key
+//     on its far side), so the browser-first redirect path (Task 6.4) was
+//     removed from this dialog. (The client-side browser-first helpers in
+//     muse-id-client.ts are now unused by the app — kept for now, safe to
+//     prune later.)
 //
 // Forgot-password (sign-in mode only) reuses the same primitive the reset
 // path already needed for Task 1.4: signUpVerify(code, resetPassword). It
@@ -39,7 +41,7 @@ import { useMuseHub } from '../../contexts/MuseHubContext';
 import { useAdieu } from '../../contexts/AdieuContext';
 import { getAccessToken as getMuseHubAccessToken } from '../../lib/musehub-client';
 import { getAccessToken as getAdieuAccessToken } from '../../lib/adieu-client';
-import { startBrowserAuthorize, type DiscoveryEntry, type ServiceName } from '../../lib/muse-id-client';
+import { type DiscoveryEntry, type ServiceName } from '../../lib/muse-id-client';
 import './MuseIdAuthDialog.css';
 
 const SERVICE_LABELS: Record<ServiceName, string> = {
@@ -296,26 +298,6 @@ export const MuseIdAuthDialog: React.FC = () => {
   };
 
   // ---- Sign-in handlers -----------------------------------------------------
-
-  // Task 6.4: browser-first sign-in. Generates PKCE + state and navigates
-  // the whole window away (startBrowserAuthorize), so on success this
-  // component unmounts mid-navigation and never gets to reset `submitting`
-  // — that's fine, the button staying disabled through the (real) browser
-  // redirect is the correct behavior. Only a failure to even START the
-  // redirect (e.g. crypto.subtle unavailable) surfaces inline here; a
-  // rejected/failed round-trip itself is reported by OAuthCallback.tsx
-  // after the browser comes back.
-  const handleContinueWithMuseIdBrowser = async () => {
-    if (submitting) return;
-    setError(null);
-    setSubmitting(true);
-    try {
-      await startBrowserAuthorize();
-    } catch (err) {
-      setError(friendlyError(err));
-      setSubmitting(false);
-    }
-  };
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -614,24 +596,12 @@ export const MuseIdAuthDialog: React.FC = () => {
 
         {mode === 'sign-in' && signInStep === 'form' && (
           <div className="museid-auth-dialog__form">
-            <button
-              ref={focusFirstRef as React.Ref<HTMLButtonElement>}
-              type="button"
-              className="museid-auth-dialog__cta"
-              onClick={() => void handleContinueWithMuseIdBrowser()}
-              disabled={submitting}
-            >
-              {submitting && <span className="museid-auth-dialog__spinner" aria-hidden="true" />}
-              <span>Continue with Muse ID</span>
-            </button>
-            <div className="museid-auth-dialog__divider" role="separator" aria-orientation="horizontal">
-              <span>or</span>
-            </div>
             {error && <p className="museid-auth-dialog__error" role="alert">{error}</p>}
             <form className="museid-auth-dialog__form" onSubmit={handleSignInSubmit} noValidate>
               <label className="museid-auth-dialog__field">
                 <span>Email</span>
                 <input
+                  ref={focusFirstRef as React.Ref<HTMLInputElement>}
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
