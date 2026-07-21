@@ -1,0 +1,12 @@
+# @dilsonspickles/components
+
+## Unreleased
+
+### Changed — BEHAVIORAL
+
+- **`generateSpeechWaveform` default `samplesPerSecond` lowered 50,000 → 1,000; `generateSineWave` default lowered 2,000 → 1,000.** Waveform rendering derives the sample rate from array length, so rendered peaks are visually identical at any density above ~10–20 samples per rendered pixel — but the returned **array length changes** for callers that omit the argument (e.g. `generateSpeechWaveform(11)` now returns 11,000 floats instead of 550,000). Callers depending on the old array length must pass `samplesPerSecond` explicitly. Motivation: the 50k default caused multi-second synchronous main-thread stalls in downstream consumers; every internal call site already passed 500–1,800 explicitly.
+
+### Added
+
+- `generateSpeechWaveform` accepts an optional third argument `{ seed }` for deterministic output (same duration + samplesPerSecond + seed → identical array). The first parameter is duration in **seconds** — it was never a seed, despite downstream code repeatedly treating it as one.
+- Dev-only `console.warn` when any waveform generator produces more than 100,000 samples, pointing at the `samplesPerSecond` argument (suppressed when `NODE_ENV === 'production'`).
