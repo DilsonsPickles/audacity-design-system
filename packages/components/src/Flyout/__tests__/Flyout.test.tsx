@@ -37,7 +37,7 @@ function renderFlyout(direction: 'down' | 'up' | 'left' | 'right' = 'down') {
 describe('Flyout', () => {
   it.each([
     ['down', '60px', '58px'],
-    ['up', '60px', '2px'],
+    ['up', '60px', '10px'],
     ['left', '12px', '30px'],
     ['right', '108px', '30px'],
   ] as const)('expands %s from its anchor', (direction, left, top) => {
