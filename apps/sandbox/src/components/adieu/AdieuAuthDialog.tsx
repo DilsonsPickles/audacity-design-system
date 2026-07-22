@@ -167,6 +167,8 @@ export const AdieuAuthDialog: React.FC = () => {
   // The "adieu" name is reserved for the internal codename / repo.
   const title = entry.phase.kind === 'confirm'
       ? 'Is this you?'
+      : entry.phase.kind === 'choose'
+        ? 'New to audio.com?'
       : entry.phase.kind === 'settled'
         ? "You're in"
         : entry.phase.kind === 'different-email'
@@ -246,6 +248,26 @@ export const AdieuAuthDialog: React.FC = () => {
             </button>
             <button type="button" className="adieu-auth-dialog__link" onClick={() => void entry.declineClaim()}>
               Not me — use a different account
+            </button>
+          </div>
+        )}
+
+        {entry.phase.kind === 'choose' && (
+          <div className="adieu-auth-dialog__museid-panel">
+            <p className="adieu-auth-dialog__subtitle">
+              No audio.com account is connected to your Muse ID yet. Nothing has been created —
+              choose what you'd like to do.
+            </p>
+            <button
+              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="adieu-auth-dialog__cta"
+              onClick={() => void entry.chooseCreate()}
+            >
+              Create a new audio.com account
+            </button>
+            <button type="button" className="adieu-auth-dialog__link" onClick={entry.chooseDifferentEmail}>
+              I already have an audio.com account — connect it
             </button>
           </div>
         )}

@@ -148,6 +148,11 @@ describe('AuthDialog — Continue with Muse ID', () => {
     expect(screen.getByText('be•••@mu.se')).toBeInTheDocument();
     expect(screen.queryByText('bea@mu.se')).toBeNull();
     expect(screen.queryByText(/\$/)).toBeNull();
+    // Consent invariant (2026-07-22 rewrite): while the card is showing,
+    // NOTHING has been linked or signed in — discovery is read-only; the
+    // link happens only on the confirm click below.
+    expect(apiRef.current!.museHub.signedIn).toBe(false);
+    expect(apiRef.current!.museId.linkedServices).not.toContain('moose-hub');
 
     fireEvent.click(screen.getByRole('button', { name: "Yes, that's me — continue" }));
 
@@ -230,7 +235,11 @@ describe('AuthDialog — Continue with Muse ID', () => {
     expect(document.activeElement).not.toBe(document.body);
   });
 
-  it('state 3: no matching account -> creates one, stated plainly, then signs in', async () => {
+  it('state 3: no matching account -> explicit choice card; choosing "create" provisions and signs in', async () => {
+    // Linking-consent rewrite (2026-07-22): discovery no longer silently
+    // JIT-creates an account. The user is shown a choice — create new vs
+    // connect an existing account under a different email — and creation
+    // happens only on the explicit create click.
     mock.seedMuseUser({ email: 'd@mu.se', password: 'password1', name: 'Dee' });
     // No moose-hub service user seeded at all.
 
@@ -243,11 +252,39 @@ describe('AuthDialog — Continue with Muse ID', () => {
     act(() => apiRef.current!.museHub.openAuthDialog('sign-in'));
     fireEvent.click(await screen.findByRole('button', { name: 'Continue with Muse ID' }));
 
+    // The choice card — and the consent invariant: nothing exists yet.
+    await screen.findByText(/No MuseHub account is connected to your Muse ID yet/i);
+    expect(apiRef.current!.museHub.signedIn).toBe(false);
+    expect(apiRef.current!.museId.linkedServices).not.toContain('moose-hub');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create a new MuseHub account' }));
+
     await screen.findByText("We've set up your MuseHub account.");
     fireEvent.click(screen.getByRole('button', { name: 'Continue to MuseHub' }));
 
     await waitFor(() => expect(apiRef.current!.museHub.signedIn).toBe(true));
     expect(apiRef.current!.museId.linkedServices).toContain('moose-hub');
+  });
+
+  it("state 3 choice card: 'I already have an account' hands off to the different-email link rung, creating nothing", async () => {
+    mock.seedMuseUser({ email: 'dx@mu.se', password: 'password1', name: 'Dex' });
+
+    const { apiRef } = renderTree();
+    await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
+    await act(async () => {
+      await apiRef.current!.museId.signIn('dx@mu.se', 'password1');
+    });
+
+    act(() => apiRef.current!.museHub.openAuthDialog('sign-in'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue with Muse ID' }));
+    await screen.findByText(/No MuseHub account is connected to your Muse ID yet/i);
+
+    fireEvent.click(screen.getByRole('button', { name: 'I already have a MuseHub account — connect it' }));
+
+    // Lands on rung 3's email step; still nothing created or signed in.
+    await screen.findByText(/Have a MuseHub account under a different email/i);
+    expect(apiRef.current!.museHub.signedIn).toBe(false);
+    expect(apiRef.current!.museId.linkedServices).not.toContain('moose-hub');
   });
 
   it('state 5: no Muse session -> "Continue with Muse ID" opens the Muse ID dialog in SIGN-IN mode (not create), with a switch link to create one', async () => {
@@ -301,8 +338,10 @@ describe('AuthDialog — Continue with Muse ID', () => {
     fireEvent.click(await waitFor(() => museIdDialog().getByRole('button', { name: 'Continue to Audacity' })));
 
     // Muse ID dialog closed -> the CTA table resumed automatically (no
-    // second click needed) and landed on state 3 (no moose-hub account at
-    // e@mu.se yet).
+    // second click needed) and landed on state 3's choice card (no
+    // moose-hub account at e@mu.se yet). Choosing create finishes.
+    await screen.findByText(/No MuseHub account is connected to your Muse ID yet/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Create a new MuseHub account' }));
     await screen.findByText("We've set up your MuseHub account.");
     fireEvent.click(screen.getByRole('button', { name: 'Continue to MuseHub' }));
     await waitFor(() => expect(apiRef.current!.museHub.signedIn).toBe(true));
@@ -391,11 +430,12 @@ describe('AuthDialog — Continue with Muse ID', () => {
 
       act(() => apiRef.current!.museHub.openAuthDialog('sign-in'));
       fireEvent.click(await screen.findByRole('button', { name: 'Continue with Muse ID' }));
-      // State 3 fires first (no account under the Muse ID's OWN email) —
-      // decline it to reach the rung-3 hand-off, exactly as a real user
-      // would ("actually, my MuseHub account is under a different email").
-      await screen.findByText("We've set up your MuseHub account.");
-      fireEvent.click(screen.getByRole('button', { name: 'Actually, I have an account under a different email' }));
+      // State 3's choice card fires first (no account under the Muse ID's
+      // OWN email) — pick "connect an existing account" to reach the
+      // rung-3 hand-off, exactly as a real user would ("my MuseHub account
+      // is under a different email"). Nothing is created along the way.
+      await screen.findByText(/No MuseHub account is connected to your Muse ID yet/i);
+      fireEvent.click(screen.getByRole('button', { name: 'I already have a MuseHub account — connect it' }));
 
       const emailInput = await screen.findByLabelText('Email');
       fireEvent.change(emailInput, { target: { value: 'rung3-alt@mu.se' } });
@@ -425,8 +465,8 @@ describe('AuthDialog — Continue with Muse ID', () => {
 
       act(() => apiRef.current!.museHub.openAuthDialog('sign-in'));
       fireEvent.click(await screen.findByRole('button', { name: 'Continue with Muse ID' }));
-      await screen.findByText("We've set up your MuseHub account.");
-      fireEvent.click(screen.getByRole('button', { name: 'Actually, I have an account under a different email' }));
+      await screen.findByText(/No MuseHub account is connected to your Muse ID yet/i);
+      fireEvent.click(screen.getByRole('button', { name: 'I already have a MuseHub account — connect it' }));
 
       fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'rung3b-alt@mu.se' } });
       fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
@@ -469,8 +509,8 @@ describe('AuthDialog — Continue with Muse ID', () => {
 
       act(() => apiRef.current!.museHub.openAuthDialog('sign-in'));
       fireEvent.click(await screen.findByRole('button', { name: 'Continue with Muse ID' }));
-      await screen.findByText("We've set up your MuseHub account.");
-      fireEvent.click(screen.getByRole('button', { name: 'Actually, I have an account under a different email' }));
+      await screen.findByText(/No MuseHub account is connected to your Muse ID yet/i);
+      fireEvent.click(screen.getByRole('button', { name: 'I already have a MuseHub account — connect it' }));
 
       fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'shared-alt@mu.se' } });
       fireEvent.click(screen.getByRole('button', { name: 'Send code' }));

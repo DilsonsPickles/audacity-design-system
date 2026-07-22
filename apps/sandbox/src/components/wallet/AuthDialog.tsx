@@ -252,6 +252,8 @@ export const AuthDialog: React.FC = () => {
 
   const title = entry.phase.kind === 'confirm'
       ? 'Is this you?'
+      : entry.phase.kind === 'choose'
+        ? 'New to MuseHub?'
       : entry.phase.kind === 'settled'
         ? "You're in"
         : entry.phase.kind === 'different-email'
@@ -330,6 +332,26 @@ export const AuthDialog: React.FC = () => {
             </button>
             <button type="button" className="auth-dialog__link" onClick={() => void entry.declineClaim()}>
               Not me — use a different account
+            </button>
+          </div>
+        )}
+
+        {entry.phase.kind === 'choose' && (
+          <div className="auth-dialog__museid-panel">
+            <p className="auth-dialog__subtitle">
+              No MuseHub account is connected to your Muse ID yet. Nothing has been created — choose
+              what you'd like to do.
+            </p>
+            <button
+              ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
+              type="button"
+              className="auth-dialog__cta"
+              onClick={() => void entry.chooseCreate()}
+            >
+              Create a new MuseHub account
+            </button>
+            <button type="button" className="auth-dialog__link" onClick={entry.chooseDifferentEmail}>
+              I already have a MuseHub account — connect it
             </button>
           </div>
         )}

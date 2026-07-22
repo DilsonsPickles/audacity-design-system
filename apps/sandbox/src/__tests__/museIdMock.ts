@@ -321,9 +321,17 @@ export function createMuseIdMock(): MuseIdMockControls {
         };
         const linkedServices: ServiceName[] = [];
         for (const l of body.links ?? []) {
-          if (l.method === 'email-match' && state.serviceUsers[l.service].has(email)) {
+          const su = state.serviceUsers[l.service].get(email);
+          if (l.method === 'email-match' && su) {
             user.linkedServices.add(l.service);
             linkedServices.push(l.service);
+            // Two-sided link: set the RP's own museId join column too, so a
+            // later muse-exchange DISCOVERS this as already-linked (returns
+            // tokens) rather than a tokenless email-match. This models
+            // muse-id's set-museid write-back when it registers the link —
+            // the consent rewrite means the exchange itself no longer links
+            // on the fly.
+            su.museId = user.id;
           }
         }
         state.museUsers.set(email, user);
@@ -507,82 +515,79 @@ export function createMuseIdMock(): MuseIdMockControls {
       }
 
       if (path === '/api/auth/muse-exchange' && method === 'POST') {
-        const body = jsonBody<{ muse_access_token: string; legacy_access_token?: string }>(init);
+        const body = jsonBody<{ muse_access_token: string; intent?: string; legacy_access_token?: string }>(init);
+        // Session-linking removal: the REAL RPs reject the field outright.
+        if (body.legacy_access_token !== undefined) {
+          return jsonResponse({ error: 'session_linking_removed' }, 400);
+        }
+        if (body.intent !== undefined && body.intent !== 'link-existing' && body.intent !== 'create') {
+          return jsonResponse({ error: 'invalid_request' }, 400);
+        }
         const museOwner = state.accessTokens.get(body.muse_access_token);
         const museUser = museOwner && museOwner.kind === 'muse' ? state.museUsers.get(museOwner.email) : undefined;
         if (!museOwner || !museUser) return jsonResponse({ error: 'invalid_muse_token' }, 401);
 
-        // Task 5.3/5.4: capture the resolution rung BEFORE mutating state,
-        // mirroring the REAL moose-hub/adieu `/api/auth/muse-exchange`
-        // route.ts's (via lib/museResolution.ts) four-rung order 1:1, so
-        // the mock's accountStatus can't drift from what production
-        // actually sends — see ServiceExchangeResult's doc comment in
-        // muse-id-client.ts.
+        // Linking-consent contract (2026-07-22 rewrite) — mirrors the REAL
+        // moose-hub/adieu route.ts 1:1: a call WITHOUT `intent` is
+        // DISCOVERY (read-only; tokens only for an already-linked Muse
+        // ID); linking an email-matched account or JIT-provisioning
+        // happens ONLY on an explicit intent.
         //
-        // (a) existing museId match — scans every service account for one
-        // whose `museId` (see ServiceUserRecord's doc comment) equals THIS
-        // muse user's id. Deliberately NOT keyed by the muse account's own
-        // email (that's what the pre-fix version of this mock did, and
-        // it's exactly what made rung 3 — a DIFFERENT-email link — silently
-        // undetectable here, hiding the task 5.4 bug from every test that
-        // exercised it).
-        let su = Array.from(state.serviceUsers[service].values()).find((s) => s.museId === museUser.id);
-        // Default matches (d)'s fallback — overridden by whichever earlier
-        // rung actually resolves the account (mirrors museResolution.ts's
-        // own default-then-override structure).
-        let accountStatus: 'linked' | 'linked-by-session' | 'matched-by-email' | 'created' = 'created';
-        if (su) {
-          accountStatus = 'linked';
-        } else if (body.legacy_access_token) {
-          // (b) legacy_access_token proves a live legacy session — adopt
-          // that account and set its museId (mirrors museResolution.ts).
-          const legacyOwner = state.accessTokens.get(body.legacy_access_token);
-          const legacySu = legacyOwner && legacyOwner.kind === service
-            ? state.serviceUsers[service].get(legacyOwner.email)
-            : undefined;
-          if (legacySu) {
-            su = legacySu;
-            su.museId = museUser.id;
-            accountStatus = 'linked-by-session';
-          }
-        }
-        if (!su) {
-          // (c) verified email match — the service account's OWN email
-          // equals the muse account's OWN email. Only meaningful when
-          // that's genuinely the same address (rung 3's whole reason for
-          // existing is that it usually isn't).
-          const emailMatch = state.serviceUsers[service].get(museOwner.email);
-          if (emailMatch) {
-            su = emailMatch;
-            su.museId = museUser.id;
-            accountStatus = 'matched-by-email';
-          }
-        }
-        if (!su) {
-          // (d) JIT-provision.
-          su = { id: nextId(`${service}-user`), email: museOwner.email, name: museUser.name, avatarUrl: museUser.avatarUrl, itemCount: 0, museId: museUser.id };
-          state.serviceUsers[service].set(museOwner.email, su);
-          accountStatus = 'created';
-        }
-        museUser.linkedServices.add(service);
+        // Sign-in helper: mints the token under the RESOLVED account's own
+        // email, not the muse account's — they can genuinely differ
+        // (that's rung 3's whole reason for existing). Minting at
+        // museOwner.email would silently orphan the session: every
+        // subsequent bearerEmail lookup (userinfo/wallet/library) keys off
+        // the token owner's email into `state.serviceUsers[service]`,
+        // which is keyed by the SERVICE account's own email.
+        const signedInResponse = (su: ServiceUserRecord, accountStatus: 'linked' | 'linked-existing' | 'created') => {
+          museUser.linkedServices.add(service);
+          return jsonResponse({
+            ...mintTokens(service, su.email),
+            token_type: 'Bearer',
+            scope: service === 'moose-hub' ? 'profile library:read wallet:write' : 'profile projects:write',
+            user: { id: su.id, email: su.email, name: su.name },
+            accountStatus,
+            display: { name: su.name, maskedEmail: maskEmailMock(su.email), summary: summaryForService(service, su.itemCount) },
+          });
+        };
 
-        // Mint the token under the RESOLVED account's own email, not the
-        // muse account's — they can genuinely differ (that's rung 3's
-        // whole reason for existing). Minting at museOwner.email here
-        // would silently orphan the session: every subsequent bearerEmail
-        // lookup (userinfo/wallet/library) keys off the token owner's
-        // email into `state.serviceUsers[service]`, which is keyed by the
-        // SERVICE account's own email — a mismatch 401s everything after
-        // a rung-3 (or rung-2 session-proof) exchange despite the exchange
-        // itself reporting success.
-        return jsonResponse({
-          ...mintTokens(service, su.email),
-          token_type: 'Bearer',
-          scope: service === 'moose-hub' ? 'profile library:read wallet:write' : 'profile projects:write',
-          user: { id: su.id, email: su.email, name: su.name },
-          accountStatus,
-          display: { name: su.name, maskedEmail: maskEmailMock(su.email), summary: summaryForService(service, su.itemCount) },
-        });
+        // Already linked — scans every service account for one whose
+        // `museId` equals THIS muse user's id (deliberately NOT keyed by
+        // the muse account's own email; a rung-3 link is a DIFFERENT
+        // email). The existing link wins regardless of intent.
+        const linked = Array.from(state.serviceUsers[service].values()).find((s) => s.museId === museUser.id);
+        if (linked) return signedInResponse(linked, 'linked');
+
+        const emailMatch = state.serviceUsers[service].get(museOwner.email);
+
+        if (body.intent === undefined) {
+          // DISCOVERY — mutates NOTHING. Tokenless email-match/no-account.
+          if (emailMatch) {
+            return jsonResponse({
+              accountStatus: 'email-match',
+              display: {
+                name: emailMatch.name,
+                maskedEmail: maskEmailMock(emailMatch.email),
+                summary: summaryForService(service, emailMatch.itemCount),
+              },
+            });
+          }
+          return jsonResponse({ accountStatus: 'no-account' });
+        }
+
+        if (body.intent === 'link-existing') {
+          if (!emailMatch) return jsonResponse({ error: 'no_account_to_link' }, 409);
+          emailMatch.museId = museUser.id;
+          return signedInResponse(emailMatch, 'linked-existing');
+        }
+
+        // intent === 'create': JIT-provision (refusing an email collision,
+        // like the real route's email_conflict).
+        if (emailMatch) return jsonResponse({ error: 'email_conflict' }, 409);
+        const su: ServiceUserRecord = { id: nextId(`${service}-user`), email: museOwner.email, name: museUser.name, avatarUrl: museUser.avatarUrl, itemCount: 0, museId: museUser.id };
+        state.serviceUsers[service].set(museOwner.email, su);
+        return signedInResponse(su, 'created');
       }
 
       if (path === '/api/oauth/userinfo' && method === 'GET') {
@@ -630,22 +635,43 @@ export function createMuseIdMock(): MuseIdMockControls {
     fetchMock,
     seedMuseUser(input) {
       const email = input.email.toLowerCase();
+      const museId = nextId('muse-user');
+      const linkedServices = input.linkedServices ?? [];
       state.museUsers.set(email, {
-        id: nextId('muse-user'),
+        id: museId,
         email,
         name: input.name,
         password: input.password,
         avatarUrl: input.avatarUrl,
-        linkedServices: new Set(input.linkedServices ?? []),
+        linkedServices: new Set(linkedServices),
       });
+      // A declared link is two-sided: muse-id's directory row AND the RP's
+      // own `museId` join column both point at each other (see
+      // ServiceUserRecord.museId). Establish the RP side so a later
+      // muse-exchange DISCOVERS an already-linked account (returns tokens)
+      // rather than a tokenless email-match — the linking-consent contract
+      // means discovery never links on the fly anymore, so the link has to
+      // pre-exist. Upsert at the muse email, setting museId; an existing
+      // record (a test that also seedServiceUser'd this email) just gets
+      // its museId set.
+      for (const service of linkedServices) {
+        const existing = state.serviceUsers[service].get(email);
+        if (existing) existing.museId = museId;
+        else state.serviceUsers[service].set(email, { id: nextId(`${service}-user`), email, name: input.name, avatarUrl: input.avatarUrl, itemCount: 0, museId });
+      }
     },
     seedServiceUser(service, input) {
       const email = input.email.toLowerCase();
+      // Preserve an already-established link (seedMuseUser may have wired
+      // museId onto this email first) — re-seeding the account's display
+      // data must not silently unlink it.
+      const prior = state.serviceUsers[service].get(email);
       state.serviceUsers[service].set(email, {
-        id: input.id ?? nextId(`${service}-user`),
+        id: input.id ?? prior?.id ?? nextId(`${service}-user`),
         email,
         name: input.name,
         itemCount: input.itemCount ?? 0,
+        museId: prior?.museId,
       });
     },
     seedServiceAccessToken(service, email) {

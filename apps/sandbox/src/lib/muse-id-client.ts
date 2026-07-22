@@ -107,33 +107,47 @@ export interface SignInResult extends TokenBundle {
   user: MuseIdUser;
 }
 
-export interface ServiceExchangeResult extends TokenBundle {
+/** The explicit user choice a commit exchange carries (linking-consent
+ *  rewrite, 2026-07-22): 'link-existing' — connect the RP account that
+ *  matches the Muse email; 'create' — provision a fresh Muse-born account.
+ *  A call WITHOUT an intent is discovery-only and can never mutate RP
+ *  accounts — see ServiceExchangeResult below. */
+export type MuseExchangeIntent = 'link-existing' | 'create';
+
+/** A muse-exchange response that actually signed the caller in — tokens
+ *  present. `accountStatus`:
+ *   - 'linked' — the Muse ID was ALREADY linked here (discovery signs
+ *     straight in; useMuseIdEntry's zero-prompt state 1).
+ *   - 'linked-existing' — commit with intent 'link-existing' just linked
+ *     the email-matched account (after the user confirmed).
+ *   - 'created' — commit with intent 'create' just JIT-provisioned a
+ *     Muse-born account (after the user chose to).
+ *  Kept optional since museIdMock.ts and any future RP-shape drift
+ *  shouldn't be a hard client-side assumption. */
+export interface ServiceExchangeSignedIn extends TokenBundle {
   user: { id: string; email: string; name: string };
-  /** Task 5.3 (fixed in the 5.3 review follow-up, 2026-07-20): lets
-   *  "Continue with Muse ID" (AuthDialog.tsx / AdieuAuthDialog.tsx) tell
-   *  which of the four server-side resolution rungs fired — the design
-   *  spec's "confirm before claiming" rule for recognition cards requires
-   *  knowing whether this was a same-email match, not just that SOME
-   *  account was resolved. Mirrors moose-hub's/adieu's `/api/auth/
-   *  muse-exchange` route.ts resolution order 1:1:
-   *   - 'linked' — (a) existing museId match; caller was already linked.
-   *     Zero-prompt exchange (useMuseIdEntry's state 1).
-   *   - 'linked-by-session' — (b) a `legacy_access_token` proved a live
-   *     legacy session; the RP adopted that user. Not reachable from
-   *     useMuseIdEntry's CTA today (it never sends legacy_access_token —
-   *     see continueWithMuseId), only from MuseIdContext's signup-time
-   *     session-proof links; included for type completeness/correctness.
-   *   - 'matched-by-email' — (c) verified email matched an existing,
-   *     not-yet-linked account. Confirm-before-claiming card (state 2).
-   *   - 'created' — (d) JIT-provisioned a brand-new account. Stated
-   *     plainly, no confirm (state 3).
-   *  Both moose-hub and adieu now send this field on every response
-   *  (verified against ~/Documents/webdev/{moose-hub,adieu}/app/api/auth/
-   *  muse-exchange/route.ts, 2026-07-20) — no longer optional in practice,
-   *  but kept optional in the type since museIdMock.ts and any future
-   *  RP-shape drift shouldn't be a hard client-side assumption. */
-  accountStatus?: 'linked' | 'linked-by-session' | 'matched-by-email' | 'created';
+  accountStatus?: 'linked' | 'linked-existing' | 'created';
   display?: { name: string; maskedEmail: string; summary: string };
+}
+
+/** A discovery response that did NOT sign the caller in — no tokens, and
+ *  (the consent contract) nothing was linked or created server-side:
+ *   - 'email-match' — an existing, not-yet-linked account has this email;
+ *     `display` carries the recognition card's masked email + summary. The
+ *     user must confirm before the caller retries with 'link-existing'.
+ *   - 'no-account' — nothing exists here; the user must choose before the
+ *     caller retries with 'create' (or goes down the different-email link
+ *     rung instead). */
+export type ServiceExchangePending =
+  | { accountStatus: 'email-match'; display: DiscoveryDisplay }
+  | { accountStatus: 'no-account' };
+
+export type ServiceExchangeResult = ServiceExchangeSignedIn | ServiceExchangePending;
+
+/** Discriminates a signed-in exchange from a pending discovery by the only
+ *  structural difference that matters: whether tokens came back. */
+export function isExchangeSignedIn(result: ServiceExchangeResult): result is ServiceExchangeSignedIn {
+  return typeof (result as ServiceExchangeSignedIn).access_token === 'string';
 }
 
 export class MuseIdAuthError extends Error {
@@ -484,12 +498,14 @@ export async function logout(): Promise<void> {
 async function exchange(
   baseUrl: string,
   museAccessToken: string,
+  intent?: MuseExchangeIntent,
 ): Promise<ServiceExchangeResult> {
   const res = await fetch(`${baseUrl}/api/auth/muse-exchange`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       muse_access_token: museAccessToken,
+      ...(intent ? { intent } : {}),
     }),
   });
   const data = await res.json().catch(() => ({}));
@@ -501,18 +517,24 @@ async function exchange(
   return data as ServiceExchangeResult;
 }
 
-export function exchangeMooseHub(museAccessToken: string): Promise<ServiceExchangeResult> {
-  return exchange(MUSEHUB_BASE, museAccessToken);
+export function exchangeMooseHub(
+  museAccessToken: string,
+  intent?: MuseExchangeIntent,
+): Promise<ServiceExchangeResult> {
+  return exchange(MUSEHUB_BASE, museAccessToken, intent);
 }
 
-export function exchangeAdieu(museAccessToken: string): Promise<ServiceExchangeResult> {
-  return exchange(ADIEU_BASE, museAccessToken);
+export function exchangeAdieu(
+  museAccessToken: string,
+  intent?: MuseExchangeIntent,
+): Promise<ServiceExchangeResult> {
+  return exchange(ADIEU_BASE, museAccessToken, intent);
 }
 
 /** Converts a service-exchange response into the `{accessToken,
  *  refreshToken, expiresAt}` shape each service's own client's
  *  `adoptTokens` expects. */
-export function exchangeResultToTokens(result: ServiceExchangeResult): {
+export function exchangeResultToTokens(result: ServiceExchangeSignedIn): {
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
@@ -558,6 +580,15 @@ export async function exchangeAndAdoptServices(
         service === 'moose-hub'
           ? await exchangeMooseHub(museAccessToken)
           : await exchangeAdieu(museAccessToken);
+      // These are services muse-id's own directory says are linked, so
+      // discovery should return tokens ('linked'). A tokenless discovery
+      // means the RP side disagrees (desync) — never auto-commit here (the
+      // consent contract); surface it as a connect failure so the user
+      // resolves it deliberately from Accounts.
+      if (!isExchangeSignedIn(result)) {
+        failures.push(service);
+        continue;
+      }
       const tokens = exchangeResultToTokens(result);
       if (service === 'moose-hub') museHubAdoptTokens(tokens);
       else adieuAdoptTokens(tokens);

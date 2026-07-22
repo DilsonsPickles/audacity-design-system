@@ -52,6 +52,7 @@ import {
   exchangeMooseHub,
   exchangeAdieu,
   exchangeResultToTokens,
+  isExchangeSignedIn,
   type ServiceName,
   type CompleteInput,
   type VerifyResult,
@@ -309,6 +310,12 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
         service === 'moose-hub'
           ? await exchangeMooseHub(museAccessToken)
           : await exchangeAdieu(museAccessToken);
+      // Callers only pass services muse-id's directory says are linked, so
+      // discovery should return tokens ('linked'). A tokenless discovery
+      // means the RP side disagrees (desync) — never auto-commit here (the
+      // consent contract); fail this service so the user resolves it
+      // deliberately from Accounts.
+      if (!isExchangeSignedIn(result)) throw new Error(`${service} is not linked on the service side`);
       const tokens = exchangeResultToTokens(result);
       if (service === 'moose-hub') await museHub.adoptTokens(tokens);
       else await adieu.adoptTokens(tokens);
