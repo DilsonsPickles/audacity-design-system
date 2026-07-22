@@ -198,6 +198,11 @@ export const darkTheme: ThemeTokens = {
       hover: '#32383E',          // Hover intentionally matches idle — hover state disabled while we settle the idle/selected contrast
       selected: '#3D444B',       // Lighter still when selected/active
       parent: '#252B31',         // Parent panel that holds the track header rows
+      addButton: {               // Add-new button on the recessed rail — matches the dark secondary button greys, which already contrast with `parent`
+        idle: '#515A63',
+        hover: '#5B656F',
+        active: '#46505A',
+      },
     },
 
     panel: {

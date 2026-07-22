@@ -194,6 +194,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     // (which is calibrated for the light toolbar background).
     '--tcsp-border': theme.border.onElevated,
     '--tcsp-focus-outline': theme.border.focus,
+    // Feeds the scoped !important override in TrackControlSidePanel.css —
+    // without these the CSS falls back to light-mode hexes in every theme.
+    '--tcsp-add-btn-bg-idle': theme.background.trackHeader.addButton.idle,
+    '--tcsp-add-btn-bg-hover': theme.background.trackHeader.addButton.hover,
+    '--tcsp-add-btn-bg-active': theme.background.trackHeader.addButton.active,
   } as React.CSSProperties;
 
   const handleMenuClick = (trackIndex: number, event?: React.MouseEvent) => {

@@ -204,6 +204,11 @@ export const lightTheme: ThemeTokens = {
       hover: '#ECECEF',          // Hover intentionally matches idle — hover state disabled while we settle the idle/selected contrast
       selected: '#F8F8F9',       // Track-panel active — near-white, pops off the neutral idle rows
       parent: '#D5D5DB',         // Knocked-back parent panel — pushes the track rows forward so selected vs idle contrast reads better
+      addButton: {               // Add-new button on the recessed rail — darker than the shared secondary button so it separates from `parent`
+        idle: '#C0C1C9',
+        hover: '#B4B5BE',
+        active: '#A8AAB3',
+      },
     },
 
     panel: {
