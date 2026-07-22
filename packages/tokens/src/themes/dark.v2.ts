@@ -137,7 +137,7 @@ export const darkTheme: ThemeTokens = {
       },
 
       timecode: {
-        idle: '#25262b',         // Dark background
+        idle: '#171F25',         // Timecode chip background in dark mode
         hover: '#2c2e33',        // Slightly lighter on hover
         active: '#4a90e2',       // Blue when active/editing
       },

@@ -143,7 +143,7 @@ export const lightTheme: ThemeTokens = {
       },
 
       timecode: {
-        idle: '#FFFFFF',         // White background
+        idle: '#212433',         // Timecode chip — dark in BOTH themes (transport uses variant='dark'); this is the light-app value, unchanged from the prior hardcode
         hover: '#F9F9FA',        // Slight gray on hover
         active: '#84B5FF',       // Blue when active/editing
       },
