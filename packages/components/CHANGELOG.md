@@ -1,6 +1,15 @@
 # @dilsonspickles/components
 
-## 0.10.0 — 2026-07-21
+## 0.10.1 — 2026-07-23
+
+### Fixed — dark mode
+
+- **Add-new track button** no longer stuck on light-grey CSS fallbacks in dark mode (`TrackControlSidePanel` now wires `--tcsp-add-btn-bg-*` from a new `trackHeader.addButton` token; light theme keeps the original greys).
+- **Dropdown** trigger and open menu backgrounds were hardcoded white; now sourced from `background.control.input.idle` (dark surface in dark mode, unchanged `#FFFFFF` in light).
+- **SearchField** background was hardcoded white; same fix (themed input surface; light unchanged).
+- **TimeCode** dark-variant chip background is now `#171F25` in dark mode (via the `background.control.timecode` token), `#212433` in light — unchanged.
+
+All fixes keep light-theme output pixel-identical; only dark mode is affected. No API changes.
 
 ### Changed — BEHAVIORAL
 
