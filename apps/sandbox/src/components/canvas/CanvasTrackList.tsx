@@ -75,6 +75,9 @@ export interface CanvasTrackListProps {
   clipStretchStateRef: React.MutableRefObject<ClipStretchState | null>;
   startClipStretch: (stretchState: ClipStretchState) => void;
   beginCmdMove: () => void;
+  /** Factory that builds a new track template for keyboard drop-below.
+   *  Signature matches useClipDragging's buildTrackForDrop. */
+  buildTrackForDrop?: (indexAmongNew: number, sourceTrackIndex: number) => Track;
 }
 
 /**
@@ -131,6 +134,7 @@ export function CanvasTrackList({
   clipStretchStateRef,
   startClipStretch,
   beginCmdMove,
+  buildTrackForDrop,
 }: CanvasTrackListProps) {
   const dispatch = useTracksDispatch();
 
@@ -311,24 +315,36 @@ export function CanvasTrackList({
                     payload: { trackIndex, clipId: clipId as number },
                   });
                 }
-                dispatch({
-                  type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
-                  payload: { direction: direction as 1 | -1 },
-                });
+                // Detect whether the move would push the bottommost selected clip
+                // past the last track. If so, and we have the factory, dispatch the
+                // combined create-and-move action for single-step undo.
+                const maxSelectedTrackIndex = tracks.reduce((max, t, ti) => {
+                  const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
+                  return hasSelected ? Math.max(max, ti) : max;
+                }, -1);
+                const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
+
+                if (wouldOverflow && buildTrackForDrop) {
+                  const template = buildTrackForDrop(0, trackIndex);
+                  dispatch({
+                    type: 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
+                    payload: { newTrack: template },
+                  });
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
+                } else {
+                  dispatch({
+                    type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
+                    payload: { direction: direction as 1 | -1 },
+                  });
+                  const newTrackIndex = trackIndex + direction;
+                  if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
+                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
+                  }
+                }
                 // Defer overlap resolution to Cmd/Ctrl release — see
                 // onClipMove above for the same rationale.
                 pendingClipMoveResolution.current = true;
                 beginCmdMove();
-                // Follow the focused clip with the track-focus state.
-                // The MOVE_SELECTED_CLIPS_TO_TRACK reducer remaps the
-                // selected-tracks set but leaves focusedTrackIndex
-                // where it was — without this, the focused-track
-                // indicator stays on the source row even though the
-                // user just moved themselves off it.
-                const newTrackIndex = trackIndex + direction;
-                if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
-                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
-                }
                 // Focus the clip on the new track and scroll into view
                 requestAnimationFrame(() => {
                   requestAnimationFrame(() => {

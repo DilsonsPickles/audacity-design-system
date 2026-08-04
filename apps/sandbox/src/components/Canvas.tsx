@@ -743,6 +743,32 @@ export function Canvas({
           clipStretchStateRef={clipStretchStateRef}
           startClipStretch={startClipStretch}
           beginCmdMove={beginCmdMove}
+          buildTrackForDrop={(indexAmongNew, sourceTrackIndex) => {
+            const source = tracks[sourceTrackIndex];
+            const sourceIsMidi = source?.type === 'midi'
+              || (source?.midiClips?.length ?? 0) > 0;
+            const type = sourceIsMidi ? 'midi' : 'audio';
+            const prefix = sourceIsMidi ? 'MIDI' : 'Track';
+            const namePattern = new RegExp(`^${prefix} (\\d+)$`);
+            const usedNumbers = tracks
+              .map((t) => {
+                const m = namePattern.exec(t.name ?? '');
+                return m ? parseInt(m[1], 10) : NaN;
+              })
+              .filter((n: number) => !isNaN(n));
+            const nextNameNumber = (usedNumbers.length === 0 ? 0 : Math.max(...usedNumbers)) + 1 + indexAmongNew;
+            const nextId = Math.max(...tracks.map((t) => t.id), 0) + 1 + indexAmongNew;
+            return {
+              id: nextId,
+              name: `${prefix} ${nextNameNumber}`,
+              type,
+              height: source?.height ?? 114,
+              ...(source?.viewMode ? { viewMode: source.viewMode } : {}),
+              ...(source?.channelSplitRatio !== undefined ? { channelSplitRatio: source.channelSplitRatio } : {}),
+              clips: [],
+              ...(type === 'midi' ? { midiClips: [] } : {}),
+            };
+          }}
         />
 
         {/* Right-drag marquee rectangle. Rendered above tracks but
