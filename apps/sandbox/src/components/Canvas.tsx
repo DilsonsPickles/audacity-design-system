@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@dilsonspickles/components';
 import type { SpectrogramScale } from '@dilsonspickles/components';
 import { type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
-import { useTracksState, useTracksDispatch } from '../contexts/TracksContext';
+import { useTracksState, useTracksDispatch, type Track } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
 import { useEditingBehaviorPrefs, useAppearancePrefs } from '@dilsonspickles/components';
 import { useClipDragging } from '../hooks/useClipDragging';
@@ -248,6 +248,41 @@ export function Canvas({
   // is in progress; beginCmdMove flips it on at the call sites below.
   const { isCmdArrowMoving, beginCmdMove } = useCmdArrowMove({ tracks });
 
+  // Factory that builds a new track template when a clip is dropped below
+  // all tracks (mouse drag) or when Cmd+Down overflows the last track
+  // (keyboard path). Extracted so both useClipDragging and
+  // useTrackKeyboardHandlers can reference the same function.
+  const buildTrackForDrop = (indexAmongNew: number, sourceTrackIndex: number): Track => {
+    const source = tracks[sourceTrackIndex];
+    const sourceIsMidi = source?.type === 'midi'
+      || (source?.midiClips?.length ?? 0) > 0;
+    const type = sourceIsMidi ? 'midi' : 'audio';
+    const prefix = sourceIsMidi ? 'MIDI' : 'Track';
+    const namePattern = new RegExp(`^${prefix} (\\d+)$`);
+    const usedNumbers = tracks
+      .map((t) => {
+        const m = namePattern.exec(t.name ?? '');
+        return m ? parseInt(m[1], 10) : NaN;
+      })
+      .filter((n: number) => !isNaN(n));
+    // + indexAmongNew so a multi-clip drop that needs several new
+    // tracks in the same dispatch batch gets distinct numbers.
+    const nextNameNumber = (usedNumbers.length === 0 ? 0 : Math.max(...usedNumbers)) + 1 + indexAmongNew;
+    const nextId = Math.max(...tracks.map((t) => t.id), 0) + 1 + indexAmongNew;
+    return {
+      id: nextId,
+      name: `${prefix} ${nextNameNumber}`,
+      type,
+      height: source?.height ?? 114,
+      // Inherit the source's view so a spectrogram clip lands on a
+      // spectrogram-configured row and looks right immediately.
+      ...(source?.viewMode ? { viewMode: source.viewMode } : {}),
+      ...(source?.channelSplitRatio !== undefined ? { channelSplitRatio: source.channelSplitRatio } : {}),
+      clips: [],
+      ...(type === 'midi' ? { midiClips: [] } : {}),
+    };
+  };
+
   // Track-level keyboard navigation (Arrow/Shift+Arrow) and reorder
   // (Cmd+Arrow) handlers — extracted so the per-track render loop below
   // just wires each TrackNew's trackIndex through a thin arrow.
@@ -261,6 +296,7 @@ export function Canvas({
     trackSelectionMode,
     onTrackContainerFocusChange,
     beginCmdMove,
+    buildTrackForDrop,
   });
 
   // Snap options for grid snapping
@@ -300,37 +336,7 @@ export function Canvas({
     // fresh track and lands the clip on it. We mirror the source
     // track's type / view / channel mode so an audio clip lands on a
     // matching audio row, a MIDI clip on a MIDI row, and so on.
-    buildTrackForDrop: (indexAmongNew, sourceTrackIndex) => {
-      const source = tracks[sourceTrackIndex];
-      const sourceIsMidi = source?.type === 'midi'
-        || (source?.midiClips?.length ?? 0) > 0;
-      const type = sourceIsMidi ? 'midi' : 'audio';
-      const prefix = sourceIsMidi ? 'MIDI' : 'Track';
-      const namePattern = new RegExp(`^${prefix} (\\d+)$`);
-      const usedNumbers = tracks
-        .map((t) => {
-          const m = namePattern.exec(t.name ?? '');
-          return m ? parseInt(m[1], 10) : NaN;
-        })
-        .filter((n: number) => !isNaN(n));
-      // + indexAmongNew so a multi-clip drop that needs several new
-      // tracks in the same dispatch batch gets distinct numbers.
-      const nextNameNumber = (usedNumbers.length === 0 ? 0 : Math.max(...usedNumbers)) + 1 + indexAmongNew;
-      const nextId = Math.max(...tracks.map((t) => t.id), 0) + 1 + indexAmongNew;
-
-      return {
-        id: nextId,
-        name: `${prefix} ${nextNameNumber}`,
-        type,
-        height: source?.height ?? 114,
-        // Inherit the source's view so a spectrogram clip lands on a
-        // spectrogram-configured row and looks right immediately.
-        ...(source?.viewMode ? { viewMode: source.viewMode } : {}),
-        ...(source?.channelSplitRatio !== undefined ? { channelSplitRatio: source.channelSplitRatio } : {}),
-        clips: [],
-        ...(type === 'midi' ? { midiClips: [] } : {}),
-      };
-    },
+    buildTrackForDrop,
     snapEnabled,
     snapOptions,
   });
@@ -743,32 +749,7 @@ export function Canvas({
           clipStretchStateRef={clipStretchStateRef}
           startClipStretch={startClipStretch}
           beginCmdMove={beginCmdMove}
-          buildTrackForDrop={(indexAmongNew, sourceTrackIndex) => {
-            const source = tracks[sourceTrackIndex];
-            const sourceIsMidi = source?.type === 'midi'
-              || (source?.midiClips?.length ?? 0) > 0;
-            const type = sourceIsMidi ? 'midi' : 'audio';
-            const prefix = sourceIsMidi ? 'MIDI' : 'Track';
-            const namePattern = new RegExp(`^${prefix} (\\d+)$`);
-            const usedNumbers = tracks
-              .map((t) => {
-                const m = namePattern.exec(t.name ?? '');
-                return m ? parseInt(m[1], 10) : NaN;
-              })
-              .filter((n: number) => !isNaN(n));
-            const nextNameNumber = (usedNumbers.length === 0 ? 0 : Math.max(...usedNumbers)) + 1 + indexAmongNew;
-            const nextId = Math.max(...tracks.map((t) => t.id), 0) + 1 + indexAmongNew;
-            return {
-              id: nextId,
-              name: `${prefix} ${nextNameNumber}`,
-              type,
-              height: source?.height ?? 114,
-              ...(source?.viewMode ? { viewMode: source.viewMode } : {}),
-              ...(source?.channelSplitRatio !== undefined ? { channelSplitRatio: source.channelSplitRatio } : {}),
-              clips: [],
-              ...(type === 'midi' ? { midiClips: [] } : {}),
-            };
-          }}
+          buildTrackForDrop={buildTrackForDrop}
         />
 
         {/* Right-drag marquee rectangle. Rendered above tracks but

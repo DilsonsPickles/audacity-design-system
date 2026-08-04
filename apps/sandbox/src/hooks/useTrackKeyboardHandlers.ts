@@ -14,6 +14,9 @@ export interface UseTrackKeyboardHandlersOptions {
   onTrackContainerFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
   /** Records a pending keyboard clip-move; overlap resolution fires on Cmd/Ctrl release (from useCmdArrowMove). */
   beginCmdMove: () => void;
+  /** Factory that builds a new track template when Cmd+Down overflows the
+   *  last track. Same signature as useClipDragging's buildTrackForDrop. */
+  buildTrackForDrop?: (indexAmongNew: number, sourceTrackIndex: number) => Track;
 }
 
 export interface UseTrackKeyboardHandlersReturn {
@@ -55,6 +58,7 @@ export function useTrackKeyboardHandlers(
     trackSelectionMode,
     onTrackContainerFocusChange,
     beginCmdMove,
+    buildTrackForDrop,
   } = options;
   const dispatch = useTracksDispatch();
 
@@ -179,29 +183,50 @@ export function useTrackKeyboardHandlers(
     }
 
     if (focusedHasSelectedClip || promotedFromTimeSelection) {
-      dispatch({
-        type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
-        payload: { direction: direction as 1 | -1 },
-      });
-      // Follow the moved clips with the focused-track
-      // indicator so the UI stays aligned with where
-      // the user just moved themselves. Anchor on the
-      // CURRENT focused track from state (not the
-      // trackIndex closure) so consecutive Cmd+Arrow
-      // presses accumulate correctly — otherwise DOM
-      // focus stays parked on the original track and
-      // the state pointer keeps snapping back next to
-      // it instead of trailing the clips downward.
-      const anchor = focusedTrackIndex ?? trackIndex;
-      const newTrackIndex = anchor + direction;
-      if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
-        dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
+      const maxSelectedTrackIndex = tracks.reduce((max, t, ti) => {
+        const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
+        return hasSelected ? Math.max(max, ti) : max;
+      }, -1);
+      const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
+
+      if (wouldOverflow && buildTrackForDrop) {
+        const anchorTrackIndex = focusedTrackIndex ?? trackIndex;
+        const template = buildTrackForDrop(0, anchorTrackIndex);
+        dispatch({
+          type: 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
+          payload: { newTrack: template },
+        });
+        dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
+      } else {
+        dispatch({
+          type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
+          payload: { direction: direction as 1 | -1 },
+        });
+        // Follow the moved clips with the focused-track
+        // indicator so the UI stays aligned with where
+        // the user just moved themselves. Anchor on the
+        // CURRENT focused track from state (not the
+        // trackIndex closure) so consecutive Cmd+Arrow
+        // presses accumulate correctly — otherwise DOM
+        // focus stays parked on the original track and
+        // the state pointer keeps snapping back next to
+        // it instead of trailing the clips downward.
+        const anchor = focusedTrackIndex ?? trackIndex;
+        const newTrackIndex = anchor + direction;
+        if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
+          dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
+        }
+      }
+
+      // Follow-up: move DOM focus to the new track container
+      const followIndex = wouldOverflow && buildTrackForDrop ? tracks.length : (focusedTrackIndex ?? trackIndex) + direction;
+      if (followIndex >= 0 && (wouldOverflow || followIndex < tracks.length)) {
         // Also move DOM focus to the new track so the
         // next Cmd+Arrow press fires from the right
         // TrackNew instance.
         setTimeout(() => {
           const target = document.querySelector<HTMLElement>(
-            `.track-wrapper[data-track-index="${newTrackIndex}"] .track`,
+            `.track-wrapper[data-track-index="${followIndex}"] .track`,
           );
           if (target && document.activeElement !== target) {
             target.focus({ preventScroll: true });
