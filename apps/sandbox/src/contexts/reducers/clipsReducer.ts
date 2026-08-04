@@ -505,6 +505,63 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       };
     }
 
+    case 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK': {
+      const { newTrack } = action.payload;
+
+      const selectedEntries: Array<{ trackIndex: number; clip: Clip; isMidi: boolean }> = [];
+      state.tracks.forEach((track, trackIndex) => {
+        track.clips.forEach(clip => {
+          if (clip.selected) selectedEntries.push({ trackIndex, clip, isMidi: false });
+        });
+        track.midiClips?.forEach(clip => {
+          if (clip.selected) {
+            selectedEntries.push({ trackIndex, clip: clip as unknown as Clip, isMidi: true }); // justified: MidiClip treated as Clip for uniform cross-track move (common id/start/duration fields used)
+          }
+        });
+      });
+
+      if (selectedEntries.length === 0) return state;
+
+      const newTrackIndex = state.tracks.length;
+      const newTracks = [...state.tracks.map(track => ({
+        ...track,
+        clips: [...track.clips],
+        midiClips: track.midiClips ? [...track.midiClips] : undefined,
+      })), { ...newTrack, clips: [], midiClips: newTrack.midiClips ? [] : undefined }];
+
+      // First pass: remove selected clips from their source tracks
+      for (const entry of selectedEntries) {
+        if (entry.isMidi) {
+          newTracks[entry.trackIndex] = {
+            ...newTracks[entry.trackIndex],
+            midiClips: newTracks[entry.trackIndex].midiClips?.filter(c => c.id !== entry.clip.id),
+          };
+        } else {
+          newTracks[entry.trackIndex] = {
+            ...newTracks[entry.trackIndex],
+            clips: newTracks[entry.trackIndex].clips.filter(c => c.id !== entry.clip.id),
+          };
+        }
+      }
+
+      // Second pass: add selected clips to the new track
+      for (const entry of selectedEntries) {
+        if (entry.isMidi) {
+          newTracks[newTrackIndex] = {
+            ...newTracks[newTrackIndex],
+            midiClips: [...(newTracks[newTrackIndex].midiClips || []), { ...(entry.clip as unknown as import('@audacity-ui/core').MidiClip), color: newTracks[newTrackIndex].color }], // justified: entry.clip is already a MidiClip stored as Clip for uniform handling
+          };
+        } else {
+          newTracks[newTrackIndex] = {
+            ...newTracks[newTrackIndex],
+            clips: [...newTracks[newTrackIndex].clips, { ...entry.clip, color: newTracks[newTrackIndex].color }],
+          };
+        }
+      }
+
+      return { ...state, tracks: newTracks };
+    }
+
     case 'DELETE_TIME_RANGE': {
       const { startTime, endTime } = action.payload;
 
