@@ -25,6 +25,7 @@ export const ACTION_DOMAIN: Record<TracksAction['type'], Domain> = {
   ADD_CLIP: 'clips', UPDATE_CLIP: 'clips', DELETE_CLIP: 'clips', MOVE_CLIP: 'clips',
   APPLY_CLIP_PLACEMENT: 'clips', TRIM_CLIP: 'clips', STRETCH_CLIP: 'clips',
   MOVE_SELECTED_CLIPS: 'clips', MOVE_SELECTED_CLIPS_TO_TRACK: 'clips',
+  MOVE_SELECTED_CLIPS_TO_NEW_TRACK: 'clips',
   DELETE_TIME_RANGE: 'clips', GROUP_SELECTED_CLIPS: 'clips', UNGROUP_CLIPS: 'clips',
   ADD_LABEL: 'clips', UPDATE_LABEL: 'clips',
 
