@@ -199,8 +199,16 @@ export function useTrackKeyboardHandlers(
         if (!pt) { provisionalKeyboardTrackIds.current.delete(trackId); continue; }
         const hasUnselected = pt.clips.some(c => !c.selected) || (pt.midiClips || []).some(c => !c.selected);
         if (!hasUnselected) {
-          toCleanUp.push(trackId);
-          provisionalKeyboardTrackIds.current.delete(trackId);
+          // Skip cleanup if another selected clip is moving INTO this slot —
+          // clips shift by `direction`, so the incoming neighbour is at ptIdx-direction.
+          const ptIdx = tracks.findIndex(t => t.id === trackId);
+          const incomingIdx = ptIdx - direction;
+          const hasIncoming = incomingIdx >= 0 && incomingIdx < tracks.length
+            && (tracks[incomingIdx].clips.some(c => c.selected) || (tracks[incomingIdx].midiClips || []).some(c => c.selected));
+          if (!hasIncoming) {
+            toCleanUp.push(trackId);
+            provisionalKeyboardTrackIds.current.delete(trackId);
+          }
         }
       }
 
