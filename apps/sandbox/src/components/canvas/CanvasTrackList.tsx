@@ -323,7 +323,13 @@ export function CanvasTrackList({
                   const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
                   return hasSelected ? Math.max(max, ti) : max;
                 }, -1);
+                const minSelectedTrackIndex = tracks.reduce((min, t, ti) => {
+                  const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
+                  return hasSelected ? Math.min(min, ti) : min;
+                }, Infinity);
                 const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
+                // Top clip already at track 0 — nothing to do, keep focus where it is.
+                if (direction === -1 && minSelectedTrackIndex === 0) return;
 
                 if (wouldOverflow && buildTrackForDrop) {
                   const template = buildTrackForDrop(0, trackIndex);
@@ -332,7 +338,8 @@ export function CanvasTrackList({
                     payload: { newTrack: template },
                   });
                   provisionalKeyboardTrackIds.current.add(template.id);
-                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
+                  // No SET_FOCUSED_TRACK — focus stays on the clip that triggered
+                  // the gesture, not the new provisional track below.
                 } else {
                   dispatch({
                     type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
@@ -347,12 +354,13 @@ export function CanvasTrackList({
                 // onClipMove above for the same rationale.
                 pendingClipMoveResolution.current = true;
                 beginCmdMove();
-                // Focus the clip on the new track and scroll into view
+                // Scroll the moved clip into view; only move DOM focus when clips
+                // travelled through existing tracks (overflow keeps focus in place).
                 requestAnimationFrame(() => {
                   requestAnimationFrame(() => {
                     const movedClip = document.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
                     if (movedClip) {
-                      movedClip.focus({ preventScroll: true });
+                      if (!wouldOverflow) movedClip.focus({ preventScroll: true });
                       scrollIntoViewIfNeeded(movedClip);
                     }
                   });

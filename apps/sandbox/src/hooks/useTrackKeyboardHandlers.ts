@@ -188,7 +188,13 @@ export function useTrackKeyboardHandlers(
         const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
         return hasSelected ? Math.max(max, ti) : max;
       }, -1);
+      const minSelectedTrackIndex = tracks.reduce((min, t, ti) => {
+        const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
+        return hasSelected ? Math.min(min, ti) : min;
+      }, Infinity);
       const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
+      // Top clip already at track 0 — nothing to do, keep focus where it is.
+      if (direction === -1 && minSelectedTrackIndex === 0) return;
 
       if (wouldOverflow && buildTrackForDrop) {
         const anchorTrackIndex = focusedTrackIndex ?? trackIndex;
@@ -198,42 +204,31 @@ export function useTrackKeyboardHandlers(
           payload: { newTrack: template },
         });
         provisionalKeyboardTrackIds.current.add(template.id);
-        dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
+        // No SET_FOCUSED_TRACK and no DOM focus move — focus stays on
+        // the clip/track that triggered the gesture, not the new track.
       } else {
         dispatch({
           type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
           payload: { direction: direction as 1 | -1 },
         });
-        // Follow the moved clips with the focused-track
-        // indicator so the UI stays aligned with where
-        // the user just moved themselves. Anchor on the
-        // CURRENT focused track from state (not the
-        // trackIndex closure) so consecutive Cmd+Arrow
-        // presses accumulate correctly — otherwise DOM
-        // focus stays parked on the original track and
-        // the state pointer keeps snapping back next to
-        // it instead of trailing the clips downward.
         const anchor = focusedTrackIndex ?? trackIndex;
         const newTrackIndex = anchor + direction;
         if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
           dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
         }
-      }
-
-      // Follow-up: move DOM focus to the new track container
-      const followIndex = wouldOverflow && buildTrackForDrop ? tracks.length : (focusedTrackIndex ?? trackIndex) + direction;
-      if (followIndex >= 0 && (wouldOverflow || followIndex < tracks.length)) {
-        // Also move DOM focus to the new track so the
-        // next Cmd+Arrow press fires from the right
-        // TrackNew instance.
-        setTimeout(() => {
-          const target = document.querySelector<HTMLElement>(
-            `.track-wrapper[data-track-index="${followIndex}"] .track`,
-          );
-          if (target && document.activeElement !== target) {
-            target.focus({ preventScroll: true });
-          }
-        }, 0);
+        // Move DOM focus to the new track so the next Cmd+Arrow press
+        // fires from the right TrackNew instance.
+        const followIndex = (focusedTrackIndex ?? trackIndex) + direction;
+        if (followIndex >= 0 && followIndex < tracks.length) {
+          setTimeout(() => {
+            const target = document.querySelector<HTMLElement>(
+              `.track-wrapper[data-track-index="${followIndex}"] .track`,
+            );
+            if (target && document.activeElement !== target) {
+              target.focus({ preventScroll: true });
+            }
+          }, 0);
+        }
       }
       // Defer overlap resolution until Cmd/Ctrl release
       // — matches the horizontal clip-nudge flow.
