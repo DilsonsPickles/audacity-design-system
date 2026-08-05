@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tracksDomainReducer } from '../reducers/tracksDomainReducer';
+import { clipsReducer } from '../reducers/clipsReducer';
 import { initialState } from '../TracksContext';
 import type { TracksState, Track } from '../TracksContext';
 
@@ -59,5 +60,22 @@ describe('DELETE_PROVISIONAL_TRACK', () => {
       payload: { trackId: 99 },
     });
     expect(next.focusedTrackIndex).toBe(0);
+  });
+
+  it('correctly sequences move-then-delete: clip arrives before track is removed', () => {
+    const state = makeState([
+      makeTrack(1, 1),
+      { ...makeTrack(99, 0), clips: [{ id: 10, name: 'Clip 10', start: 0, duration: 1, trimStart: 0, fullDuration: 1, selected: true, envelopePoints: [] }] } as Track,
+    ]);
+
+    const moveAction = { type: 'MOVE_SELECTED_CLIPS_TO_TRACK' as const, payload: { direction: -1 as const } };
+    const afterMove = clipsReducer(state, moveAction);
+
+    const deleteAction = { type: 'DELETE_PROVISIONAL_TRACK' as const, payload: { trackId: 99 } };
+    const afterDelete = tracksDomainReducer(afterMove, deleteAction);
+
+    expect(afterDelete.tracks).toHaveLength(1);
+    expect(afterDelete.tracks[0].id).toBe(1);
+    expect(afterDelete.tracks[0].clips).toHaveLength(2);
   });
 });

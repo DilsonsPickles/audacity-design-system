@@ -190,14 +190,16 @@ export function useTrackKeyboardHandlers(
       }, -1);
       const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
 
-      // Before every clip-move dispatch: delete any provisional tracks that
-      // the moving clips are vacating. Covers Cmd+Up AND repeated Cmd+Down.
+      // Identify provisional tracks to clean up using the pre-move snapshot
+      // (all their clips are selected and about to leave). Delete them AFTER
+      // the move so the reducer sees empty tracks, not tracks with clips.
+      const toCleanUp: number[] = [];
       for (const trackId of provisionalKeyboardTrackIds.current) {
         const pt = tracks.find(t => t.id === trackId);
         if (!pt) { provisionalKeyboardTrackIds.current.delete(trackId); continue; }
         const hasUnselected = pt.clips.some(c => !c.selected) || (pt.midiClips || []).some(c => !c.selected);
         if (!hasUnselected) {
-          dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
+          toCleanUp.push(trackId);
           provisionalKeyboardTrackIds.current.delete(trackId);
         }
       }
@@ -210,12 +212,18 @@ export function useTrackKeyboardHandlers(
           payload: { newTrack: template },
         });
         provisionalKeyboardTrackIds.current.add(template.id);
+        for (const trackId of toCleanUp) {
+          dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
+        }
         dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
       } else {
         dispatch({
           type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
           payload: { direction: direction as 1 | -1 },
         });
+        for (const trackId of toCleanUp) {
+          dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
+        }
         // Follow the moved clips with the focused-track
         // indicator so the UI stays aligned with where
         // the user just moved themselves. Anchor on the
