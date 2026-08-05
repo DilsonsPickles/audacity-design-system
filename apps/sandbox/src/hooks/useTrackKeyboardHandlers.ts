@@ -212,12 +212,17 @@ export function useTrackKeyboardHandlers(
           payload: { direction: direction as 1 | -1 },
         });
       }
-      // Always follow the initiating clip to its new position.
+      // Update Redux focus state to follow the initiating clip.
       // For overflow the provisional track isn't in `tracks` yet — skip upper bound.
       if (newTrackIndex >= 0 && (wouldOverflow || newTrackIndex < tracks.length)) {
         dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
       }
-      if (newTrackIndex >= 0 && (wouldOverflow || newTrackIndex < tracks.length)) {
+      // DOM focus: for non-overflow moves, shift the track container so
+      // subsequent Cmd+Arrows fire from the right TrackNew instance.
+      // For overflow we intentionally skip this — focusing the container
+      // sets isContainerFocused=true, which makes the next key-repeat
+      // fire track-reorder logic instead of clip-move logic.
+      if (!wouldOverflow && newTrackIndex >= 0 && newTrackIndex < tracks.length) {
         setTimeout(() => {
           const target = document.querySelector<HTMLElement>(
             `.track-wrapper[data-track-index="${newTrackIndex}"] .track`,
