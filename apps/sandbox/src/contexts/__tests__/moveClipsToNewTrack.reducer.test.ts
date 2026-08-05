@@ -53,7 +53,7 @@ describe('MOVE_SELECTED_CLIPS_TO_NEW_TRACK', () => {
     expect(next.tracks[1].clips.map(c => c.id)).toEqual([1]);
   });
 
-  it('handles a multi-track group: moves selected clips from multiple source tracks', () => {
+  it('handles a multi-track group: each clip shifts down by one, preserving relative spacing', () => {
     const clip1 = makeClip({ id: 1, selected: true });
     const clip2 = makeClip({ id: 2, selected: true });
     const state = makeState([
@@ -66,11 +66,12 @@ describe('MOVE_SELECTED_CLIPS_TO_NEW_TRACK', () => {
       payload: { newTrack: newTrackTemplate },
     });
 
-    // Three tracks after: original two (now empty) + new one with both clips
+    // Three tracks after: original two vacated, clip1 shifts to slot 1,
+    // clip2 shifts to slot 2 (the new appended track).
     expect(next.tracks).toHaveLength(3);
     expect(next.tracks[0].clips).toHaveLength(0);
-    expect(next.tracks[1].clips).toHaveLength(0);
-    expect(next.tracks[2].clips.map(c => c.id).sort()).toEqual([1, 2]);
+    expect(next.tracks[1].clips.map(c => c.id)).toEqual([1]);
+    expect(next.tracks[2].clips.map(c => c.id)).toEqual([2]);
   });
 
   it('returns state unchanged when no clips are selected', () => {

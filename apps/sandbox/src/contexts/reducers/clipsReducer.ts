@@ -522,7 +522,6 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
 
       if (selectedEntries.length === 0) return state;
 
-      const newTrackIndex = state.tracks.length;
       const newTracks = [...state.tracks.map(track => ({
         ...track,
         clips: [...track.clips],
@@ -544,17 +543,20 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
         }
       }
 
-      // Second pass: add selected clips to the new track
+      // Second pass: move each clip down by one from its current position.
+      // Clips on the previously-last track land on the new appended track;
+      // clips above it shift into the vacated slots below them.
       for (const entry of selectedEntries) {
+        const destIndex = entry.trackIndex + 1;
         if (entry.isMidi) {
-          newTracks[newTrackIndex] = {
-            ...newTracks[newTrackIndex],
-            midiClips: [...(newTracks[newTrackIndex].midiClips || []), { ...(entry.clip as unknown as import('@audacity-ui/core').MidiClip), color: newTracks[newTrackIndex].color }], // justified: entry.clip is already a MidiClip stored as Clip for uniform handling
+          newTracks[destIndex] = {
+            ...newTracks[destIndex],
+            midiClips: [...(newTracks[destIndex].midiClips || []), { ...(entry.clip as unknown as import('@audacity-ui/core').MidiClip), color: newTracks[destIndex].color }], // justified: entry.clip is already a MidiClip stored as Clip for uniform handling
           };
         } else {
-          newTracks[newTrackIndex] = {
-            ...newTracks[newTrackIndex],
-            clips: [...newTracks[newTrackIndex].clips, { ...entry.clip, color: newTracks[newTrackIndex].color }],
+          newTracks[destIndex] = {
+            ...newTracks[destIndex],
+            clips: [...newTracks[destIndex].clips, { ...entry.clip, color: newTracks[destIndex].color }],
           };
         }
       }
