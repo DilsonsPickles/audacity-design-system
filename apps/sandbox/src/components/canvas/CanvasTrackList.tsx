@@ -325,34 +325,6 @@ export function CanvasTrackList({
                 }, -1);
                 const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
 
-                // Identify provisional tracks to clean up using the pre-move snapshot
-                // (all their clips are selected and about to leave). Delete them AFTER
-                // the move so the reducer sees empty tracks, not tracks with clips.
-                // Only run on Cmd+Up (direction=-1): Cmd+Down must let provisional
-                // tracks accumulate so clips visually travel further down each press.
-                // Empty provisional tracks left by Cmd+Down are purged on Cmd release
-                // in useCmdArrowMove's keyup handler.
-                const toCleanUp: number[] = [];
-                if (direction === -1) {
-                  for (const trackId of provisionalKeyboardTrackIds.current) {
-                    const pt = tracks.find(t => t.id === trackId);
-                    if (!pt) { provisionalKeyboardTrackIds.current.delete(trackId); continue; }
-                    const hasUnselected = pt.clips.some(c => !c.selected) || (pt.midiClips || []).some(c => !c.selected);
-                    if (!hasUnselected) {
-                      // Skip cleanup if another selected clip is moving INTO this slot —
-                      // clips shift by `direction`, so the incoming neighbour is at ptIdx-direction.
-                      const ptIdx = tracks.findIndex(t => t.id === trackId);
-                      const incomingIdx = ptIdx - direction;
-                      const hasIncoming = incomingIdx >= 0 && incomingIdx < tracks.length
-                        && (tracks[incomingIdx].clips.some(c => c.selected) || (tracks[incomingIdx].midiClips || []).some(c => c.selected));
-                      if (!hasIncoming) {
-                        toCleanUp.push(trackId);
-                        provisionalKeyboardTrackIds.current.delete(trackId);
-                      }
-                    }
-                  }
-                }
-
                 if (wouldOverflow && buildTrackForDrop) {
                   const template = buildTrackForDrop(0, trackIndex);
                   dispatch({
@@ -360,18 +332,12 @@ export function CanvasTrackList({
                     payload: { newTrack: template },
                   });
                   provisionalKeyboardTrackIds.current.add(template.id);
-                  for (const trackId of toCleanUp) {
-                    dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
-                  }
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
                 } else {
                   dispatch({
                     type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
                     payload: { direction: direction as 1 | -1 },
                   });
-                  for (const trackId of toCleanUp) {
-                    dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
-                  }
                   const newTrackIndex = trackIndex + direction;
                   if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
                     dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
