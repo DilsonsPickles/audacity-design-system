@@ -306,6 +306,7 @@ export type TracksAction =
   | { type: 'MOVE_SELECTED_CLIPS'; payload: { deltaSeconds: number } }
   | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } }
   | { type: 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK'; payload: { newTrack: Track } }
+  | { type: 'DELETE_PROVISIONAL_TRACK'; payload: { trackId: number } }
   | { type: 'UPDATE_TRACK_RULER_FORMAT'; payload: { index: number; format: 'linear-amp' | 'logarithmic-db' | 'linear-db' } }
   | { type: 'UPDATE_TRACK_SPECTROGRAM_SCALE'; payload: { index: number; scale: SpectrogramScale } }
   | { type: 'UPDATE_TRACK_SPECTROGRAM_FREQ'; payload: { index: number; minFreq?: number; maxFreq?: number } }
@@ -395,6 +396,7 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'MOVE_SELECTED_CLIPS',
   'MOVE_SELECTED_CLIPS_TO_TRACK',
   'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
+  'DELETE_PROVISIONAL_TRACK',
   'GROUP_SELECTED_CLIPS',
   'UNGROUP_CLIPS',
   // Envelope
@@ -426,6 +428,7 @@ const UNDO_COALESCE_GROUP: Partial<Record<TracksAction['type'], string>> = {
   MOVE_SELECTED_CLIPS: 'clip-drag',
   MOVE_SELECTED_CLIPS_TO_TRACK: 'clip-drag',
   MOVE_SELECTED_CLIPS_TO_NEW_TRACK: 'clip-drag',
+  DELETE_PROVISIONAL_TRACK: 'clip-drag',
   TRIM_CLIP: 'clip-drag',
   STRETCH_CLIP: 'clip-drag',
   UPDATE_CLIP_ENVELOPE_POINTS: 'envelope-drag',

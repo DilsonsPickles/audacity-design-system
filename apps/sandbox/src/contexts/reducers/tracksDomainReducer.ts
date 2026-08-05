@@ -176,6 +176,30 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       };
     }
 
+    case 'DELETE_PROVISIONAL_TRACK': {
+      const idx = state.tracks.findIndex(t => t.id === action.payload.trackId);
+      if (idx === -1) return state;
+      const newTracks = state.tracks.filter(t => t.id !== action.payload.trackId);
+      const newFocused = newTracks.length === 0
+        ? null
+        : state.focusedTrackIndex === null
+        ? null
+        : state.focusedTrackIndex >= idx
+        ? Math.max(0, state.focusedTrackIndex - 1)
+        : state.focusedTrackIndex;
+      return {
+        ...state,
+        tracks: dissolveDegenerateGroups(newTracks),
+        focusedTrackIndex: newFocused,
+        selectedTrackIndices: state.selectedTrackIndices
+          .filter(i => i !== idx)
+          .map(i => (i > idx ? i - 1 : i)),
+        timeSelection: remapTimeSelectionTracks(state.timeSelection, i =>
+          i === idx ? null : i > idx ? i - 1 : i
+        ),
+      };
+    }
+
     case 'DELETE_TRACKS': {
       const indicesToDelete = new Set(action.payload);
       const remainingTracks = state.tracks.filter((_, index) => !indicesToDelete.has(index));

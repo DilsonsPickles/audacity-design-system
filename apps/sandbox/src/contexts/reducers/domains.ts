@@ -15,6 +15,7 @@ export const ACTION_DOMAIN: Record<TracksAction['type'], Domain> = {
 
   // tracks
   SET_TRACKS: 'tracks', REPLACE_TRACKS_EDIT: 'tracks', ADD_TRACK: 'tracks',
+  DELETE_PROVISIONAL_TRACK: 'tracks',
   UPDATE_TRACK: 'tracks', DELETE_TRACK: 'tracks', DELETE_TRACKS: 'tracks',
   SET_TRACK_MUTED_EXCLUSIVE: 'tracks', SET_TRACK_SOLOED_EXCLUSIVE: 'tracks',
   MOVE_TRACK: 'tracks', UPDATE_TRACK_HEIGHT: 'tracks', UPDATE_CHANNEL_SPLIT_RATIO: 'tracks',
