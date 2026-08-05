@@ -12,6 +12,7 @@ import {
   type KeyboardTrimTarget,
 } from '../../utils/clipKeyboardEdit';
 import { pendingClipMoveResolution } from '../../utils/pendingClipMoveResolution';
+import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrackIds';
 import { calculateTrackYOffset } from '../../utils/trackLayout';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../../constants/canvas';
 import { LabelRenderer } from '../LabelRenderer';
@@ -324,12 +325,27 @@ export function CanvasTrackList({
                 }, -1);
                 const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
 
+                // Before every clip-move dispatch: delete any provisional tracks that
+                // the moving clips are vacating (only selected clips remain → empty
+                // after the move). Runs for both overflow and non-overflow so repeated
+                // Cmd+Down presses also clean up the track they just left.
+                for (const trackId of provisionalKeyboardTrackIds.current) {
+                  const pt = tracks.find(t => t.id === trackId);
+                  if (!pt) { provisionalKeyboardTrackIds.current.delete(trackId); continue; }
+                  const hasUnselected = pt.clips.some(c => !c.selected) || (pt.midiClips || []).some(c => !c.selected);
+                  if (!hasUnselected) {
+                    dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
+                    provisionalKeyboardTrackIds.current.delete(trackId);
+                  }
+                }
+
                 if (wouldOverflow && buildTrackForDrop) {
                   const template = buildTrackForDrop(0, trackIndex);
                   dispatch({
                     type: 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
                     payload: { newTrack: template },
                   });
+                  provisionalKeyboardTrackIds.current.add(template.id);
                   dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
                 } else {
                   dispatch({

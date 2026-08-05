@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTracksDispatch, type Track } from '../contexts/TracksContext';
 import { resolveOverlap, type ClipPlacement } from '../utils/resolveOverlap';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
+import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
 
 export interface UseCmdArrowMoveOptions {
   tracks: Track[];
@@ -54,6 +55,7 @@ export function useCmdArrowMove(options: UseCmdArrowMoveOptions): UseCmdArrowMov
       if (e.key !== 'Meta' && e.key !== 'Control') return;
       if (!pendingClipMoveResolution.current) return;
       pendingClipMoveResolution.current = false;
+      provisionalKeyboardTrackIds.current.clear();
       setIsCmdArrowMoving(false);
 
       const tracks = tracksRef.current;

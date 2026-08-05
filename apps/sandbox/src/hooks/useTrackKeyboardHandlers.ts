@@ -1,5 +1,6 @@
 import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
+import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
 import { resolveTimeSelectionScope } from '../utils/timeSelectionScope';
 
 export interface UseTrackKeyboardHandlersOptions {
@@ -189,6 +190,18 @@ export function useTrackKeyboardHandlers(
       }, -1);
       const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
 
+      // Before every clip-move dispatch: delete any provisional tracks that
+      // the moving clips are vacating. Covers Cmd+Up AND repeated Cmd+Down.
+      for (const trackId of provisionalKeyboardTrackIds.current) {
+        const pt = tracks.find(t => t.id === trackId);
+        if (!pt) { provisionalKeyboardTrackIds.current.delete(trackId); continue; }
+        const hasUnselected = pt.clips.some(c => !c.selected) || (pt.midiClips || []).some(c => !c.selected);
+        if (!hasUnselected) {
+          dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
+          provisionalKeyboardTrackIds.current.delete(trackId);
+        }
+      }
+
       if (wouldOverflow && buildTrackForDrop) {
         const anchorTrackIndex = focusedTrackIndex ?? trackIndex;
         const template = buildTrackForDrop(0, anchorTrackIndex);
@@ -196,6 +209,7 @@ export function useTrackKeyboardHandlers(
           type: 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
           payload: { newTrack: template },
         });
+        provisionalKeyboardTrackIds.current.add(template.id);
         dispatch({ type: 'SET_FOCUSED_TRACK', payload: tracks.length });
       } else {
         dispatch({
