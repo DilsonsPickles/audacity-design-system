@@ -55,8 +55,20 @@ export function useCmdArrowMove(options: UseCmdArrowMoveOptions): UseCmdArrowMov
       if (e.key !== 'Meta' && e.key !== 'Control') return;
       if (!pendingClipMoveResolution.current) return;
       pendingClipMoveResolution.current = false;
-      provisionalKeyboardTrackIds.current.clear();
       setIsCmdArrowMoving(false);
+
+      // Delete any empty provisional tracks that accumulated from repeated
+      // Cmd+Down presses (clips passed through them and moved further down).
+      // Must run before clear() so we still know which track IDs to check.
+      for (const trackId of provisionalKeyboardTrackIds.current) {
+        const pt = tracksRef.current.find(t => t.id === trackId);
+        if (!pt) continue;
+        const hasClips = pt.clips.length > 0 || (pt.midiClips || []).length > 0;
+        if (!hasClips) {
+          dispatch({ type: 'DELETE_PROVISIONAL_TRACK', payload: { trackId } });
+        }
+      }
+      provisionalKeyboardTrackIds.current.clear();
 
       const tracks = tracksRef.current;
       const intent: ClipPlacement[] = [];
