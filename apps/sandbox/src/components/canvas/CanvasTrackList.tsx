@@ -338,29 +338,29 @@ export function CanvasTrackList({
                     payload: { newTrack: template },
                   });
                   provisionalKeyboardTrackIds.current.add(template.id);
-                  // No SET_FOCUSED_TRACK — focus stays on the clip that triggered
-                  // the gesture, not the new provisional track below.
                 } else {
                   dispatch({
                     type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
                     payload: { direction: direction as 1 | -1 },
                   });
-                  const newTrackIndex = trackIndex + direction;
-                  if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
-                    dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
-                  }
+                }
+                // Follow the initiating clip: it moves from trackIndex to
+                // trackIndex+direction. For overflow the new track isn't in
+                // `tracks` yet, so skip the upper-bound guard in that case.
+                const newTrackIndex = trackIndex + direction;
+                if (newTrackIndex >= 0 && (wouldOverflow || newTrackIndex < tracks.length)) {
+                  dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
                 }
                 // Defer overlap resolution to Cmd/Ctrl release — see
                 // onClipMove above for the same rationale.
                 pendingClipMoveResolution.current = true;
                 beginCmdMove();
-                // Scroll the moved clip into view; only move DOM focus when clips
-                // travelled through existing tracks (overflow keeps focus in place).
+                // Always follow the initiating clip to its new DOM position.
                 requestAnimationFrame(() => {
                   requestAnimationFrame(() => {
                     const movedClip = document.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement;
                     if (movedClip) {
-                      if (!wouldOverflow) movedClip.focus({ preventScroll: true });
+                      movedClip.focus({ preventScroll: true });
                       scrollIntoViewIfNeeded(movedClip);
                     }
                   });

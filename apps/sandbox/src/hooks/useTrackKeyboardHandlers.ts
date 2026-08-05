@@ -196,39 +196,36 @@ export function useTrackKeyboardHandlers(
       // Top clip already at track 0 — nothing to do, keep focus where it is.
       if (direction === -1 && minSelectedTrackIndex === 0) return;
 
+      const anchor = focusedTrackIndex ?? trackIndex;
+      const newTrackIndex = anchor + direction;
+
       if (wouldOverflow && buildTrackForDrop) {
-        const anchorTrackIndex = focusedTrackIndex ?? trackIndex;
-        const template = buildTrackForDrop(0, anchorTrackIndex);
+        const template = buildTrackForDrop(0, anchor);
         dispatch({
           type: 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
           payload: { newTrack: template },
         });
         provisionalKeyboardTrackIds.current.add(template.id);
-        // No SET_FOCUSED_TRACK and no DOM focus move — focus stays on
-        // the clip/track that triggered the gesture, not the new track.
       } else {
         dispatch({
           type: 'MOVE_SELECTED_CLIPS_TO_TRACK',
           payload: { direction: direction as 1 | -1 },
         });
-        const anchor = focusedTrackIndex ?? trackIndex;
-        const newTrackIndex = anchor + direction;
-        if (newTrackIndex >= 0 && newTrackIndex < tracks.length) {
-          dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
-        }
-        // Move DOM focus to the new track so the next Cmd+Arrow press
-        // fires from the right TrackNew instance.
-        const followIndex = (focusedTrackIndex ?? trackIndex) + direction;
-        if (followIndex >= 0 && followIndex < tracks.length) {
-          setTimeout(() => {
-            const target = document.querySelector<HTMLElement>(
-              `.track-wrapper[data-track-index="${followIndex}"] .track`,
-            );
-            if (target && document.activeElement !== target) {
-              target.focus({ preventScroll: true });
-            }
-          }, 0);
-        }
+      }
+      // Always follow the initiating clip to its new position.
+      // For overflow the provisional track isn't in `tracks` yet — skip upper bound.
+      if (newTrackIndex >= 0 && (wouldOverflow || newTrackIndex < tracks.length)) {
+        dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
+      }
+      if (newTrackIndex >= 0 && (wouldOverflow || newTrackIndex < tracks.length)) {
+        setTimeout(() => {
+          const target = document.querySelector<HTMLElement>(
+            `.track-wrapper[data-track-index="${newTrackIndex}"] .track`,
+          );
+          if (target && document.activeElement !== target) {
+            target.focus({ preventScroll: true });
+          }
+        }, 0);
       }
       // Defer overlap resolution until Cmd/Ctrl release
       // — matches the horizontal clip-nudge flow.
