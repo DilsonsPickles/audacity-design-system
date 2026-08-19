@@ -23,6 +23,10 @@ CI runs these same gates on every push/PR — `.github/workflows/test.yml`.
 
 **The baseline is fully green**: all tests pass with no skips, `tsc --noEmit` reports 0 errors in both packages, and the `any` guard reports 0 violations. If a gate fails, your change caused it — do not assume pre-existing breakage. Every `any` (including `as any`, `Record<string, any>`, etc.) needs a `// justified: <reason>` comment or the guard fails.
 
+**One exception to "your change caused it" — the Node version.** CI pins Node 20. Node 22+ ships its own native `localStorage` global that takes precedence over the one jsdom installs on `window`, but resolves to `undefined` unless `--localstorage-file` is passed — so on a newer local Node, every test touching `localStorage` fails with `Cannot read properties of undefined (reading 'clear')` (~96 of them) while CI stays green. The test scripts pass `--no-experimental-webstorage` through `cross-env` to neutralise this; the flag is a no-op on Node 20. If you add a new test script, carry the flag over.
+
+`pnpm test` from the repo root runs all four projects at once (71 files / 615 tests) via `test.projects` in the root `vitest.config.ts`. The per-package gates above are still what CI runs.
+
 ### Load-bearing conventions — violating these causes real bugs
 
 - **Ref-mirror for document listeners**: hooks that bind document-level `mousemove`/`mouseup`/`keyup` listeners bind ONCE and mirror frequently-changing props into refs (`useEffect(() => { ref.current = val }, [val])`) so the handler reads live state without re-binding. See the explanatory comment in `apps/sandbox/src/hooks/useClipTrimming.ts` (~lines 85–96). Exception: self-cleaning attach-on-mousedown/remove-on-mouseup handlers (e.g. `useDraggableToolbar`) don't need it.
