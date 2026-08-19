@@ -32,8 +32,8 @@
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsup",
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsup --watch",
     "lint": "echo 'No linting configured yet'",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "cross-env NODE_OPTIONS=--no-experimental-webstorage vitest run",
+    "test:watch": "cross-env NODE_OPTIONS=--no-experimental-webstorage vitest",
     "test:smoke": "node scripts/smoke-test.mjs"
   },
   "keywords": [
