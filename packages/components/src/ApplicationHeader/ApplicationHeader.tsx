@@ -232,7 +232,9 @@ export function ApplicationHeader({
             aria-label="Minimize"
             tabIndex={-1}
           >
-            {'\uE921'}
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+              <line x1="0.5" y1="5" x2="9.5" y2="5" stroke="currentColor" strokeWidth="1" />
+            </svg>
           </button>
           <button
             className="application-header__windows-control application-header__windows-control--maximize"
@@ -240,7 +242,17 @@ export function ApplicationHeader({
             aria-label="Maximize"
             tabIndex={-1}
           >
-            {'\uE922'}
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+              <rect
+                x="0.5"
+                y="0.5"
+                width="9"
+                height="9"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+              />
+            </svg>
           </button>
           <button
             className="application-header__windows-control application-header__windows-control--close"
@@ -248,7 +260,10 @@ export function ApplicationHeader({
             aria-label="Close"
             tabIndex={-1}
           >
-            {'\uE8BB'}
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+              <line x1="0.5" y1="0.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1" />
+              <line x1="9.5" y1="0.5" x2="0.5" y2="9.5" stroke="currentColor" strokeWidth="1" />
+            </svg>
           </button>
         </div>
       </div>
