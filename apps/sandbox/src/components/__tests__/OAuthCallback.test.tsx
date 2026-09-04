@@ -9,7 +9,7 @@
 // to the client modules directly.
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { toast } from '@dilsonspickles/components';
+import { toast } from '@audacity-ui/components';
 import { OAuthCallback } from '../OAuthCallback';
 import {
   createMuseIdMock,

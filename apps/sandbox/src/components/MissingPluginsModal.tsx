@@ -1,4 +1,4 @@
-import { DialogHeader, DialogFooter, Button } from '@dilsonspickles/components';
+import { DialogHeader, DialogFooter, Button } from '@audacity-ui/components';
 
 export interface MissingPluginsModalProps {
   isOpen: boolean;

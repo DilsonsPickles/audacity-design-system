@@ -1,4 +1,4 @@
-import { CLIP_CONTENT_OFFSET } from '@dilsonspickles/components';
+import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 
 export interface SnapGuidelineProps {
   /** Time (seconds) the guideline is drawn at. Caller is responsible

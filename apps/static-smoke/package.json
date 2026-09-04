@@ -1,15 +1,15 @@
 {
-  "name": "@dilsonspickles/static-smoke",
+  "name": "@audacity-ui/static-smoke",
   "version": "0.0.0",
   "private": true,
-  "description": "Minimal static page that renders @dilsonspickles/components with no providers, to catch standalone-mode regressions before publish.",
+  "description": "Minimal static page that renders @audacity-ui/components with no providers, to catch standalone-mode regressions before publish.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
   },
   "dependencies": {
-    "@dilsonspickles/components": "workspace:*",
+    "@audacity-ui/components": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

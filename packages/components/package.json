@@ -1,5 +1,5 @@
 {
-  "name": "@dilsonspickles/components",
+  "name": "@audacity-ui/components",
   "version": "0.10.3",
   "description": "UI component library for Audacity Design System",
   "main": "./dist/index.js",
@@ -50,14 +50,13 @@
   },
   "license": "MIT",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "access": "public"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
-  "_comment": "Workspace siblings live under devDependencies so the monorepo build resolves them, but they don't appear as runtime dependencies in the published manifest — tsup bundles their compiled output into dist.",
+  "_comment": "Workspace siblings live under devDependencies so the monorepo build resolves them, but they don't appear as runtime dependencies in the published manifest \u2014 tsup bundles their compiled output into dist.",
   "devDependencies": {
     "@audacity-ui/core": "workspace:*",
     "@audacity-ui/tokens": "workspace:*",

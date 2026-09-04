@@ -13,7 +13,7 @@
   "dependencies": {
     "@audacity-ui/audio": "workspace:*",
     "@audacity-ui/core": "workspace:*",
-    "@dilsonspickles/components": "workspace:*",
+    "@audacity-ui/components": "workspace:*",
     "audiobuffer-to-wav": "^1.0.0",
     "dexie": "^4.3.0",
     "dom-to-image-more": "^3.7.2",

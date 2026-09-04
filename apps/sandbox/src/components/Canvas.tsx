@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@dilsonspickles/components';
-import type { SpectrogramScale } from '@dilsonspickles/components';
+import { useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@audacity-ui/components';
+import type { SpectrogramScale } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch, type Track } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
-import { useEditingBehaviorPrefs, useAppearancePrefs } from '@dilsonspickles/components';
+import { useEditingBehaviorPrefs, useAppearancePrefs } from '@audacity-ui/components';
 import { useClipDragging } from '../hooks/useClipDragging';
 import { useClipTrimming } from '../hooks/useClipTrimming';
 import { useClipStretching } from '../hooks/useClipStretching';

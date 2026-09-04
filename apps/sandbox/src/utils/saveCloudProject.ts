@@ -1,7 +1,7 @@
 import type React from 'react';
 import type { TracksState } from '../contexts/TracksContext';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { toast, type StoredProject } from '@dilsonspickles/components';
+import { toast, type StoredProject } from '@audacity-ui/components';
 import {
   saveProject as adieuSaveProject,
 } from '../lib/adieu-client';

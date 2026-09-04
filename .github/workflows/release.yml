@@ -1,4 +1,4 @@
-name: Release @dilsonspickles/components
+name: Release @audacity-ui/components
 
 # Trigger a publish to GitHub Packages whenever a tag of the form
 # `components-v*` is pushed (e.g. `components-v0.1.0`). Using a prefixed
@@ -64,7 +64,7 @@ jobs:
       # the freshly built ./dist so we're testing what consumers actually
       # see, not the source.
       - name: Standalone-mode smoke test (in-package)
-        run: pnpm --filter @dilsonspickles/components test:smoke
+        run: pnpm --filter @audacity-ui/components test:smoke
 
       # Build the tiny static-smoke Vite app. It imports the priority
       # surfaces with no providers — if a bundler / build-time regression
@@ -94,7 +94,7 @@ jobs:
           EOF
           npm install --no-audit --no-fund react@18 react-dom@18 "$TARBALL_PATH"
           # Resolve the installed entry point and hand it to the script.
-          INSTALLED_ENTRY="$(node -e "console.log(require.resolve('@dilsonspickles/components'))")"
+          INSTALLED_ENTRY="$(node -e "console.log(require.resolve('@audacity-ui/components'))")"
           echo "Installed entry: $INSTALLED_ENTRY"
           # Copy the script into the smoke dir so Node resolves its
           # `import 'react'` from this dir's node_modules (the React 18
@@ -103,7 +103,7 @@ jobs:
           cp "$SCRIPT_PATH" ./smoke-test.mjs
           SMOKE_TARGET="$INSTALLED_ENTRY" node ./smoke-test.mjs
 
-      - name: Publish @dilsonspickles/components
+      - name: Publish @audacity-ui/components
         working-directory: packages/components
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

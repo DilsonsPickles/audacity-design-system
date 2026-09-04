@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ToolButton } from '@dilsonspickles/components';
+import { ToolButton } from '@audacity-ui/components';
 
 const meta: Meta<typeof ToolButton> = {
   title: 'Components/ToolButton',

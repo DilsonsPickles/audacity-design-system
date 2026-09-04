@@ -11,7 +11,7 @@ For background on any section, follow the deep-dive doc links at the bottom.
 |---|---|---|
 | `@audacity-ui/core` | `packages/core/` | Shared TypeScript interfaces and accessibility utilities (tab groups, roving tabindex, a11y profiles) |
 | `@audacity-ui/tokens` | `packages/tokens/` | Design tokens — theme definitions, color palettes, typography values |
-| `@dilsonspickles/components` | `packages/components/` | 100+ UI components: ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, rulers, overlays, etc. |
+| `@audacity-ui/components` | `packages/components/` | 100+ UI components: ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, rulers, overlays, etc. |
 | `@audacity-ui/audio` | `packages/audio/` | Tone.js-backed audio playback; entry point is `packages/audio/src/AudioPlaybackManager.ts` |
 
 ---
@@ -23,7 +23,7 @@ For background on any section, follow the deep-dive doc links at the bottom.
 | `@audacity-ui/sandbox` | `apps/sandbox/` | Vite + React 19 full UI — the primary development and testing target; dev server on port 5173; run tests with `pnpm --filter @audacity-ui/sandbox test` |
 | Desktop | `apps/desktop/` | Electron wrapper around the built sandbox; main process entry is `apps/desktop/src/main.cjs` |
 | `@audacity-ui/docs` | `apps/docs/` | Storybook component documentation site |
-| `@dilsonspickles/static-smoke` | `apps/static-smoke/` | Standalone-render regression page for smoke-testing component output without the full app |
+| `@audacity-ui/static-smoke` | `apps/static-smoke/` | Standalone-render regression page for smoke-testing component output without the full app |
 
 ---
 
@@ -174,7 +174,7 @@ The sandbox app contains two integration test suites driven by a shared harness 
 | `apps/sandbox/src/__tests__/App.integration.test.tsx` | Full-app seam suite via `renderApp()` — 5 tests: app boot (renders project chrome), Preferences modal (Cmd+, opens it, every nav page renders), Theme (switching to Dark re-themes the tree and persists to `localStorage`), Loop (toggling Loop drives the audio stub and marks the button active), and Transport toolbar positions (gripper-drag through docked-top → floating → docked-bottom → docked-top). |
 | `apps/sandbox/src/__tests__/Canvas.integration.test.tsx` | Canvas/track/clip seam suite via `renderCanvas()` — 6 tests: clip selection (header click selects, body click on an unselected clip deselects), Shift+Click time-selection scope (extends a selection scoped to the tracks the gesture spans), track ArrowDown navigation (focus moves to the next track), Cmd+ArrowDown reorder + Meta-release overlap resolution (moves the selected clip to the next track, then trims the overlapped neighbor), keyboard trim (`[` shrinks the focused clip by the 0.1s step), and Tab roving between clips. |
 
-Run both suites with `pnpm --filter @audacity-ui/sandbox test` (alongside the rest of the sandbox unit tests); run everything including `@dilsonspickles/components` with `pnpm test` from the repo root.
+Run both suites with `pnpm --filter @audacity-ui/sandbox test` (alongside the rest of the sandbox unit tests); run everything including `@audacity-ui/components` with `pnpm test` from the repo root.
 
 ---
 

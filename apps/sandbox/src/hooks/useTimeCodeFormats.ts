@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { TimeCodeFormat } from '@dilsonspickles/components';
+import type { TimeCodeFormat } from '@audacity-ui/components';
 
 export interface UseTimeCodeFormatsReturn {
   timeCodeFormat: TimeCodeFormat;

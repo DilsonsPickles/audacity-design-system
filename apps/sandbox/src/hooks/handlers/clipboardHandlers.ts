@@ -1,4 +1,4 @@
-import { announce } from '@dilsonspickles/components';
+import { announce } from '@audacity-ui/components';
 import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
 import { dissolveDegenerateGroups } from '../../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';

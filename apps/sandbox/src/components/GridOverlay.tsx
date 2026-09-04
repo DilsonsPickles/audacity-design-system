@@ -1,5 +1,5 @@
 import React from 'react';
-import { CLIP_CONTENT_OFFSET, useTheme } from '@dilsonspickles/components';
+import { CLIP_CONTENT_OFFSET, useTheme } from '@audacity-ui/components';
 
 export interface GridArgs {
   bpm: number;

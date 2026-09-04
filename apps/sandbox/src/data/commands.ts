@@ -1,4 +1,4 @@
-import type { Command } from '@dilsonspickles/components';
+import type { Command } from '@audacity-ui/components';
 
 export const availableCommands: Command[] = [
   // A

@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { SnapGrid } from '@audacity-ui/core';
-import { CLIP_CONTENT_OFFSET } from '@dilsonspickles/components';
+import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 import { snapToGrid } from '../utils/snapToGrid';
 import type { Track, TracksAction } from '../contexts/TracksContext';
 import type { TimelineRulerContextMenuState } from './useContextMenuState';

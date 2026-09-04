@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { Dropdown } from '@dilsonspickles/components';
+import { Dropdown } from '@audacity-ui/components';
 
 const meta: Meta<typeof Dropdown> = {
   title: 'Components/Dropdown',

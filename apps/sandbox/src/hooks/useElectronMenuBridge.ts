@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MenuItem } from '@dilsonspickles/components';
+import type { MenuItem } from '@audacity-ui/components';
 
 export interface UseElectronMenuBridgeOptions {
   menuDefinitions: Record<string, MenuItem[]>;

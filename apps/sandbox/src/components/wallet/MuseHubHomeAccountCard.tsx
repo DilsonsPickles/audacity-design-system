@@ -4,7 +4,7 @@
 // peer of it, so it uses the `--secondary` heading/card modifiers. Mirrors
 // the visual structure of the built-in Audio.com card (avatar, title +
 // subtitle, action buttons) reusing the home-tab__accounts-* classes shipped
-// by @dilsonspickles/components (no new component-level CSS needed).
+// by @audacity-ui/components (no new component-level CSS needed).
 //
 // No "Create account" here (Task 3.2d): creating a standalone MuseHub
 // account is exactly what Muse ID SSO replaces — account creation happens
@@ -13,7 +13,7 @@
 // Accounts' "Link" action needs a live legacy session first).
 
 import React from 'react';
-import { Button, Icon } from '@dilsonspickles/components';
+import { Button, Icon } from '@audacity-ui/components';
 import { useMuseHub } from '../../contexts/MuseHubContext';
 
 export const MuseHubHomeAccountCard: React.FC = () => {

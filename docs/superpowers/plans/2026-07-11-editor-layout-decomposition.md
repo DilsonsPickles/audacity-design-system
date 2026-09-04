@@ -16,7 +16,7 @@
 - CLAUDE.md "Working Here" rules bind (gates, landmines, test conventions, profile id).
 - The spec's Binding Hazards and Preserve-not-fix sections apply to EVERY task.
 - Extracted code imports shared layout constants (`TRACK_GAP`, `CLIP_HEADER_HEIGHT`, `CLIP_CONTENT_OFFSET`, default track height) from one source — find the existing constants module(s) first; never re-hard-code.
-- **Gates after every task:** `pnpm --filter @audacity-ui/sandbox test` (all green, no skips), `pnpm --filter @dilsonspickles/components test`, `cd apps/sandbox && npx tsc --noEmit`, `node scripts/check-any.mjs`. Commit per task, repo message style.
+- **Gates after every task:** `pnpm --filter @audacity-ui/sandbox test` (all green, no skips), `pnpm --filter @audacity-ui/components test`, `cd apps/sandbox && npx tsc --noEmit`, `node scripts/check-any.mjs`. Commit per task, repo message style.
 
 ---
 

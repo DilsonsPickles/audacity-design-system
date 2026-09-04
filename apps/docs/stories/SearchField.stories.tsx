@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { SearchField } from '@dilsonspickles/components';
+import { SearchField } from '@audacity-ui/components';
 import { useState } from 'react';
 
 const meta = {

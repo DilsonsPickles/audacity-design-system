@@ -41,7 +41,7 @@ Returns both state and setter; `setMixerPanelOpen` is still needed at call sites
 
 **Signature:** `useTimeCodeFormats(): UseTimeCodeFormatsReturn` (6 values: the three format states + their setters).
 
-`TimeCodeFormat` type import removed from App.tsx's `@dilsonspickles/components` import (now lives only in the hook file).
+`TimeCodeFormat` type import removed from App.tsx's `@audacity-ui/components` import (now lives only in the hook file).
 
 **App.tsx replacement:** destructuring call at same declaration position.
 

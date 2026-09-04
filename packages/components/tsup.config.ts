@@ -9,7 +9,7 @@ import { defineConfig } from 'tsup';
 // `sideEffects: ["**/*.css"]` is set in package.json.
 //
 // The root `src/index.ts` stays as the `index` entry so the existing
-// barrel import (`import { Button } from '@dilsonspickles/components'`)
+// barrel import (`import { Button } from '@audacity-ui/components'`)
 // keeps working; tree-shaking through the barrel still drops unused
 // components.
 const srcDir = path.resolve(__dirname, 'src');

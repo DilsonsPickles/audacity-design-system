@@ -5,7 +5,7 @@
 // uses the `--secondary` heading/card modifiers. Mirrors
 // MuseHubHomeAccountCard's structure (avatar, title + subtitle, action
 // buttons) using the home-tab__accounts-* classes shipped by
-// @dilsonspickles/components — no new component-level CSS needed.
+// @audacity-ui/components — no new component-level CSS needed.
 //
 // No "Create account" here (Task 3.2d): creating a standalone audio.com
 // account is exactly what Muse ID SSO replaces — account creation happens
@@ -19,7 +19,7 @@
 // renders this one (reading real AdieuContext state) in its place.
 
 import React from 'react';
-import { Button, Icon } from '@dilsonspickles/components';
+import { Button, Icon } from '@audacity-ui/components';
 import { useAdieu } from '../../contexts/AdieuContext';
 import { ADIEU_BASE } from '../../lib/adieu-client';
 

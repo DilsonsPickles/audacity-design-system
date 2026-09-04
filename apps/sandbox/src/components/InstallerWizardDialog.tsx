@@ -7,7 +7,7 @@
 // and triggers it at the Installation step.
 
 import React from 'react';
-import { useGeneralPrefs } from '@dilsonspickles/components';
+import { useGeneralPrefs } from '@audacity-ui/components';
 import { useMuseHub } from '../contexts/MuseHubContext';
 import './InstallerWizardDialog.css';
 

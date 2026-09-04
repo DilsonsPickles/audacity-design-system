@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, ReactNode } from 'react';
 import type { CutMode } from '../utils/cutOperations';
 import type { Label as CoreLabel } from '@audacity-ui/core';
-import type { SpectrogramScale } from '@dilsonspickles/components';
+import type { SpectrogramScale } from '@audacity-ui/components';
 import { ACTION_DOMAIN } from './reducers/domains';
 import { selectionReducer } from './reducers/selectionReducer';
 import { viewReducer } from './reducers/viewReducer';

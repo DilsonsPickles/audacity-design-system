@@ -2,7 +2,7 @@ import type React from 'react';
 import { generateRmsWaveform } from './rmsWaveform';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { toast } from '@dilsonspickles/components';
+import { toast } from '@audacity-ui/components';
 
 export interface ImportAudioDeps {
   state: TracksState;

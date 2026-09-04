@@ -12,7 +12,7 @@
 
 import type { Clip, Track } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
-import { formatTimeForA11y } from '@dilsonspickles/components';
+import { formatTimeForA11y } from '@audacity-ui/components';
 import {
   resolveOverlap,
   type ClipPlacement,

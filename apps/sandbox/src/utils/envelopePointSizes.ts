@@ -22,7 +22,7 @@ export interface EnvelopePointSizes {
   whiteCenter: (typeof ENVELOPE_POINT_STYLES)[string]['whiteCenter'];
   dualStrokeLine: boolean | undefined;
   lineColor: string | undefined;
-  // Consumers (ClipBody, Clip, TrackNew in @dilsonspickles/components) type
+  // Consumers (ClipBody, Clip, TrackNew in @audacity-ui/components) type
   // this prop with a trailing `[key: string]: unknown` index signature.
   [key: string]: unknown;
 }

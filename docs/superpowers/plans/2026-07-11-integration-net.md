@@ -17,7 +17,7 @@
 - **Assertions target rendered DOM / real reducer outcomes.** Audio-stub spies are secondary evidence only (e.g. `setLoopRegion(0, 8)` args).
 - **No arbitrary timeouts** — `findBy*`/`waitFor` on conditions. A seam test that cannot be made deterministic is dropped with a comment naming the replacement manual check.
 - **Sabotage evidence required** per suite (break the seam, watch the test fail, revert) — recorded in the task report, never committed.
-- **Gates after every task:** `pnpm --filter @audacity-ui/sandbox test` (all green, no skips — 290 baseline plus this plan's new tests), `pnpm --filter @dilsonspickles/components test` (75), `npx tsc --noEmit` clean in apps/sandbox, `node scripts/check-any.mjs` 0.
+- **Gates after every task:** `pnpm --filter @audacity-ui/sandbox test` (all green, no skips — 290 baseline plus this plan's new tests), `pnpm --filter @audacity-ui/components test` (75), `npx tsc --noEmit` clean in apps/sandbox, `node scripts/check-any.mjs` 0.
 - Line numbers are hints; locate by identifier.
 
 ---

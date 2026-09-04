@@ -13,7 +13,7 @@
 - Work on branch `refactor/canvas-extraction` (already created).
 - ZERO behavior change. The mouse-dispatch guard chain (capture→bubble: right-click marquee → split-mode → shift-guard → clip mousedown → container click) keeps its exact order; split-tool handlers relocate bodies only, wired in the same positions with the same `preventDefault`/`stopPropagation`.
 - Do NOT touch the race-prone refs: `didDragRef`, `justSelectedOnMouseDownRef`, `clipTrimStateRef`, `clipStretchStateRef`, module-scoped `pendingClipMoveResolution`.
-- Layout constants live in `apps/sandbox/src/constants/canvas.ts`: `TOP_GAP=2`, `TRACK_GAP=2`, `DEFAULT_TRACK_HEIGHT=114`, `CLIP_HEADER_HEIGHT=20`. `CLIP_CONTENT_OFFSET` is imported from `@dilsonspickles/components`. `calculateTrackYOffset` from `../utils/trackLayout`.
+- Layout constants live in `apps/sandbox/src/constants/canvas.ts`: `TOP_GAP=2`, `TRACK_GAP=2`, `DEFAULT_TRACK_HEIGHT=114`, `CLIP_HEADER_HEIGHT=20`. `CLIP_CONTENT_OFFSET` is imported from `@audacity-ui/components`. `calculateTrackYOffset` from `../utils/trackLayout`.
 - Tests: `pnpm --filter @audacity-ui/sandbox test`. Build: `pnpm --filter @audacity-ui/sandbox build`. Typecheck: `cd apps/sandbox && npx tsc --noEmit -p tsconfig.json`.
 - Test provider pattern: components using `useTheme` need `ThemeProvider` + `AccessibilityProfileProvider` wrappers (see `packages/components` test docs / existing component tests). Query from the `container` returned by `render()`, add `afterEach(cleanup)`.
 
@@ -99,7 +99,7 @@ Create the file. Move the body of the grid `useMemo` (Canvas.tsx ~738–813) VER
 
 ```tsx
 import React from 'react';
-import { CLIP_CONTENT_OFFSET, useTheme } from '@dilsonspickles/components';
+import { CLIP_CONTENT_OFFSET, useTheme } from '@audacity-ui/components';
 
 export interface GridArgs {
   bpm: number;

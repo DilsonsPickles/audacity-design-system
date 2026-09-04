@@ -1,4 +1,4 @@
-// Standalone-mode smoke test for @dilsonspickles/components.
+// Standalone-mode smoke test for @audacity-ui/components.
 //
 // Renders the public surface that external consumers rely on (marketing
 // site, manual, future Storybook standalone examples) without wrapping in
@@ -6,7 +6,7 @@
 // its provider — exactly the class of bug that slipped through before 0.2.0.
 //
 // Runs against `./dist/index.mjs` so the test reflects what users actually
-// import after `npm install`. Run with: `pnpm --filter @dilsonspickles/components test:smoke`
+// import after `npm install`. Run with: `pnpm --filter @audacity-ui/components test:smoke`
 
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';

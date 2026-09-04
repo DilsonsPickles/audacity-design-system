@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { TransportButton } from '@dilsonspickles/components';
+import { TransportButton } from '@audacity-ui/components';
 
 const meta: Meta<typeof TransportButton> = {
   title: 'Components/TransportButton',

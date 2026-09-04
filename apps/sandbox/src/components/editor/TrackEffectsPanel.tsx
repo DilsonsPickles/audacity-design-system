@@ -1,5 +1,5 @@
 import React from 'react';
-import { EffectsPanel } from '@dilsonspickles/components';
+import { EffectsPanel } from '@audacity-ui/components';
 import { getAllEffects } from '@audacity-ui/core';
 import { useTracksDispatch } from '../../contexts/TracksContext';
 import type { Track, Effect } from '../../contexts/TracksContext';

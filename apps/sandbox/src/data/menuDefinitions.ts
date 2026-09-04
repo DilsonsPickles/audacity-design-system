@@ -1,4 +1,4 @@
-import type { MenuItem } from '@dilsonspickles/components';
+import type { MenuItem } from '@audacity-ui/components';
 
 export interface MenuDefinitionDeps {
   // File menu deps

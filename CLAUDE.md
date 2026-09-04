@@ -14,7 +14,7 @@ This codebase is deliberately kept agent-ready: typed (no unguarded `any`), test
 
 ```bash
 pnpm --filter @audacity-ui/sandbox test        # sandbox suite
-pnpm --filter @dilsonspickles/components test  # components suite
+pnpm --filter @audacity-ui/components test  # components suite
 npx tsc --noEmit                               # inside whichever package you touched
 node scripts/check-any.mjs                     # from repo root
 ```
@@ -73,7 +73,7 @@ This is a **pnpm monorepo** for the Audacity Design System - a collection of reu
 |---------|-------------|
 | `@audacity-ui/core` | Core TypeScript types and accessibility utilities. |
 | `@audacity-ui/tokens` | Design tokens (themes, colors). |
-| `@dilsonspickles/components` | UI component library (100+ components including ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, etc.). |
+| `@audacity-ui/components` | UI component library (100+ components including ClipDisplay, TrackNew, EnvelopeInteractionLayer, EffectsPanel, etc.). |
 | `@audacity-ui/audio` | Tone.js audio playback (`packages/audio/src/AudioPlaybackManager.ts`). |
 
 ## Development Commands
@@ -131,7 +131,7 @@ pnpm test:coverage
 
 # Run tests for a single package
 pnpm --filter @audacity-ui/sandbox test
-pnpm --filter @dilsonspickles/components test
+pnpm --filter @audacity-ui/components test
 
 # Run a single test file (from inside the package)
 npx vitest run TrackNew
@@ -376,7 +376,7 @@ Other layout constants:
 - ✅ Monorepo infrastructure setup (pnpm workspaces)
 - ✅ `@audacity-ui/core` package — types and accessibility utilities
 - ✅ `@audacity-ui/tokens` package — theme tokens
-- ✅ `@dilsonspickles/components` package — full UI component library
+- ✅ `@audacity-ui/components` package — full UI component library
 - ✅ `@audacity-ui/audio` package — Tone.js audio playback
 - ✅ Sandbox app (`apps/sandbox/`) — full Audacity UI implementation
 - ✅ `desktop` app — Electron wrapper of sandbox
@@ -452,7 +452,7 @@ Other layout constants:
 Packages will be published under their current scoped names to the npm registry:
 - `@audacity-ui/core`
 - `@audacity-ui/tokens`
-- `@dilsonspickles/components`
+- `@audacity-ui/components`
 - `@audacity-ui/audio`
 
 Use independent versioning (each package has its own version number).

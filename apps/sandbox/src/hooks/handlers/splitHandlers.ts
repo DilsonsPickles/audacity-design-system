@@ -1,4 +1,4 @@
-import { announce, formatTimeForA11y } from '@dilsonspickles/components';
+import { announce, formatTimeForA11y } from '@audacity-ui/components';
 import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
 
 export interface SplitHandlerDeps {

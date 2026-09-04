@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- All gates must remain green: `pnpm --filter @audacity-ui/sandbox test`, `pnpm --filter @dilsonspickles/components test`, `npx tsc --noEmit`, `node scripts/check-any.mjs`
+- All gates must remain green: `pnpm --filter @audacity-ui/sandbox test`, `pnpm --filter @audacity-ui/components test`, `npx tsc --noEmit`, `node scripts/check-any.mjs`
 - No `any` — every use requires a `// justified:` comment or the guard fails
 - Behavior-preserving outside the stated scope — do not touch other selection behaviors (Shift+click range, clip selection, label selection, keyboard selection)
 - Commit messages should be concise

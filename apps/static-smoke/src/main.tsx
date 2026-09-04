@@ -13,14 +13,14 @@ import {
   ToolbarButtonGroup,
   TransportButton,
   ToolButton,
-} from '@dilsonspickles/components';
-import '@dilsonspickles/components/style.css';
+} from '@audacity-ui/components';
+import '@audacity-ui/components/style.css';
 
 function App() {
   return (
     <div style={{ padding: 16, fontFamily: 'system-ui, sans-serif' }}>
       <h1 style={{ fontSize: 14, margin: '0 0 12px', color: '#333' }}>
-        @dilsonspickles/components — standalone smoke
+        @audacity-ui/components — standalone smoke
       </h1>
       <Toolbar>
         <ToolbarButtonGroup gap={2}>

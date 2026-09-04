@@ -54,7 +54,7 @@ CLAUDE.md links to this map as the canonical navigation entry point.
 ### A3. Remove the astro website; keep the component export package
 - **Delete `apps/astro-website/`.** It contains only `dist/`, `public/`, and `node_modules` — no source, no `package.json` — and nothing in the repo imports it. Confirmed safe to remove.
 - **Clean the workspace globs** in `pnpm-workspace.yaml`: remove the dead `apps/demo/*` entry (the phantom submodule) at the same time.
-- **Explicitly keep `packages/components`** — the component export package (published as `@dilsonspickles/components`) is unaffected by the astro removal and stays exactly as-is. Reflect the reduced app set (now 4 apps) in CLAUDE.md and codebase-map.
+- **Explicitly keep `packages/components`** — the component export package (published as `@audacity-ui/components`) is unaffected by the astro removal and stays exactly as-is. Reflect the reduced app set (now 4 apps) in CLAUDE.md and codebase-map.
 
 ### A4. Prune stale root docs
 Candidates: `THEME_MIGRATION_TODO.md`, `REMAINING_THEME_MIGRATIONS.md`, `CHANNEL_MAPPING_IMPLEMENTATION.md`, `EAR_SVGS.md`, `KEYBOARD_SHORTCUTS.md`.

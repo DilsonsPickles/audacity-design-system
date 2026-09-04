@@ -21,7 +21,7 @@
 import { MUSEHUB_BASE, adoptTokens as museHubAdoptTokens } from './musehub-client';
 import { ADIEU_BASE, adoptTokens as adieuAdoptTokens } from './adieu-client';
 import { oauthCallbackUri } from './appBase';
-import { toast } from '@dilsonspickles/components';
+import { toast } from '@audacity-ui/components';
 
 const MUSEID_BASE_URL: string =
   (import.meta.env.VITE_MUSEID_BASE_URL as string | undefined) ??

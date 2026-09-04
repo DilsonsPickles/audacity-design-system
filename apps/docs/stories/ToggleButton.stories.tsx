@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ToggleButton } from '@dilsonspickles/components';
+import { ToggleButton } from '@audacity-ui/components';
 
 const meta = {
   title: 'Components/ToggleButton',

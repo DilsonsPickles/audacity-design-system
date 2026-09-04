@@ -1,6 +1,6 @@
 import React from 'react';
 import { deleteProject, getProjects } from '../utils/projectDatabase';
-import type { StoredProject } from '@dilsonspickles/components';
+import type { StoredProject } from '@audacity-ui/components';
 import type { AdieuProjectSummary } from '../lib/adieu-client';
 import type { TracksAction } from '../contexts/TracksContext';
 

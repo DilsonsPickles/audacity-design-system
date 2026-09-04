@@ -1,7 +1,7 @@
 // Pure id/name allocation + track-duplication math for EditorLayout's
 // onAddTrackType and onDuplicateTrack handlers. Kept side-effect free and
 // framework-agnostic so it can be unit tested without mounting the reducer.
-import type { TrackType } from '@dilsonspickles/components';
+import type { TrackType } from '@audacity-ui/components';
 import type { Track } from '../contexts/TracksContext';
 import { computeWholeGroupIds, regroupCopiedClips } from './clipGroupCopy';
 

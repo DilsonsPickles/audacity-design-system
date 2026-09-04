@@ -60,13 +60,13 @@ Therefore making the config type honest (a minimal structural shape using `.star
 2. **Retype the hooks' config.** In `packages/components/src/hooks/` change the `tracks` field the selection config carries (in `TimeSelectionConfig` / the spectral config / `UseAudioSelectionConfig` — wherever `tracks: Track[]` is declared for these hooks) to `tracks: TrackLike[]`. Then **remove the internal `as any` casts** that only existed because the type was wrong: the `track as any` for `.viewMode`/`.height` reads (`useTimeSelection` ~136/286/447, `useAudioSelection` ~225/287) and the `(clip as any).waveformLeft/waveformRight` stereo casts (now declared optional on `ClipLike`). Keep a cast ONLY if a hook reads a field genuinely absent from `TrackLike`/`ClipLike` — and if so, add that field to the structural type instead (that's the whole point).
    - If `TimeSelectionConfig.tracks` is shared with OTHER hooks/consumers that pass a different shape, scope the change to the config(s) `useAudioSelection` actually uses; do not break an unrelated consumer. (Investigation: `useAudioSelection` is the only caller of concern; confirm during implementation before widening.)
 3. **Remove the app-side cast.** In `Canvas.tsx:533`, drop `tracks as any` → `tracks` (sandbox `Track[]` structurally satisfies `TrackLike[]`).
-4. **Rebuild the package** so the sandbox picks up the new types: `pnpm --filter @dilsonspickles/components build` (or the repo's package build), then typecheck the sandbox.
+4. **Rebuild the package** so the sandbox picks up the new types: `pnpm --filter @audacity-ui/components build` (or the repo's package build), then typecheck the sandbox.
 
 ## Testing
 
 - `tsc` clean is the primary gate for both parts (typing changes; the type system is the test).
 - Full sandbox suite green (behavior backstop): `pnpm --filter @audacity-ui/sandbox test`.
-- The components package's own tests (if any) green after its rebuild: `pnpm --filter @dilsonspickles/components test` (run if the package has a test script).
+- The components package's own tests (if any) green after its rebuild: `pnpm --filter @audacity-ui/components test` (run if the package has a test script).
 - Production build green: `pnpm --filter @audacity-ui/sandbox build`.
 - No new unit tests required — this is type-model work; a behavior change would be a bug, not a feature.
 

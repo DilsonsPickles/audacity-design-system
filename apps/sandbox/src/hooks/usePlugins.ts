@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Plugin } from '@dilsonspickles/components';
+import type { Plugin } from '@audacity-ui/components';
 import { createInitialPlugins } from '../data/plugins';
 import { findMissingEffects } from '../utils/findMissingEffects';
 import type { Track, Effect } from '../contexts/TracksContext';

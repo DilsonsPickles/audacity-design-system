@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MenuItem } from '@dilsonspickles/components';
+import type { MenuItem } from '@audacity-ui/components';
 import { createMenuDefinitions } from '../data/menuDefinitions';
 import { useTracksDispatch } from '../contexts/TracksContext';
 import type { Track, TracksState } from '../contexts/TracksContext';

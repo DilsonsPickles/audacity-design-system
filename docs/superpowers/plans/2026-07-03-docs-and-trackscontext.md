@@ -12,7 +12,7 @@
 
 - All work on branch `refactor/docs-and-trackscontext` (already created and checked out).
 - No behavior change in Part B: the public exports of `TracksContext.tsx` (`tracksReducer`, `TracksProvider`, `useTracks`, `useTracksState`, `useTracksDispatch`, `TracksState`, `TracksAction`, `Track`, `Clip`, `expandSelectionToGroups`) keep identical signatures. No consumer files change.
-- Keep `packages/components` (published `@dilsonspickles/components`) untouched.
+- Keep `packages/components` (published `@audacity-ui/components`) untouched.
 - Tests run from repo root with `pnpm --filter @audacity/sandbox test` (or `cd apps/sandbox && pnpm test`). Verify the exact script name in `apps/sandbox/package.json` Step 0.
 - Frequent commits — one per task minimum.
 
@@ -133,7 +133,7 @@ Removed: <list>. Kept: <list> (reason)."
 
 Edit `CLAUDE.md` to correct, at minimum:
 - Apps list → `sandbox` (Vite dev app + full UI), `desktop` (Electron wrapper of sandbox), `docs` (Storybook), `static-smoke` (regression page). Remove all `apps/demo/clip-envelope` submodule references.
-- Packages list → 4 packages: `@audacity-ui/core`, `@audacity-ui/tokens`, `@dilsonspickles/components`, and add `@audacity-ui/audio` (`packages/audio`, Tone.js playback).
+- Packages list → 4 packages: `@audacity-ui/core`, `@audacity-ui/tokens`, `@audacity-ui/components`, and add `@audacity-ui/audio` (`packages/audio`, Tone.js playback).
 - Remove the false "Canvas.tsx refactored to 788 lines" claim and every other **exact line-count citation**. Replace "N-line file" phrasing with role descriptions; where a file is large enough to warrant care, write "large — see `docs/codebase-map.md`".
 
 - [ ] **Step 2: Verify retained sections against code**

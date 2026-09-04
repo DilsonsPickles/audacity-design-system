@@ -3,7 +3,7 @@
 // (name/email/avatar) with a combined MuseHub + audio.com summary line when
 // signed in, or "Create a Muse ID" (primary) + "Sign in" (secondary) when
 // signed out. Reuses the home-tab__accounts-* classes shipped by
-// @dilsonspickles/components (same pattern MuseHubHomeAccountCard /
+// @audacity-ui/components (same pattern MuseHubHomeAccountCard /
 // AdieuHomeAccountCard use) so no new component-level CSS is needed here.
 //
 // Muse ID is the umbrella identity, not a peer of MuseHub/audio.com — this
@@ -18,7 +18,7 @@
 // placeholder copy instead of real state.
 
 import React from 'react';
-import { Button, Icon } from '@dilsonspickles/components';
+import { Button, Icon } from '@audacity-ui/components';
 import { useMuseId } from '../../contexts/MuseIdContext';
 import { useMuseHub } from '../../contexts/MuseHubContext';
 import { useAdieu } from '../../contexts/AdieuContext';

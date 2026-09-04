@@ -1,5 +1,5 @@
 import { MutableRefObject } from 'react';
-import { CLIP_CONTENT_OFFSET } from '@dilsonspickles/components';
+import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 import { calculateLabelRows, isPointInLabel } from '../utils/labelLayout';
 import type { Track, Clip, TracksAction, ClipDragState } from '../contexts/TracksContext';
 import type { SpectralSelection } from '../contexts/SpectralSelectionContext';

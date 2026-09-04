@@ -4,7 +4,7 @@ import {
   type AdieuProjectSummary,
 } from '../lib/adieu-client';
 import { decodeBufferMap } from '../lib/binary';
-import { type StoredProject } from '@dilsonspickles/components';
+import { type StoredProject } from '@audacity-ui/components';
 
 /** Shape of a cloud audio file entry as stored in localStorage and passed to dialogs. */
 export interface CloudAudioFile {

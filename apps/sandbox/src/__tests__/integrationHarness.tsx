@@ -22,7 +22,7 @@ import {
   PreferencesProvider,
   ThemeProvider,
   AccessibilityProfileProvider,
-} from '@dilsonspickles/components';
+} from '@audacity-ui/components';
 import App from '../App';
 import { Canvas, type CanvasProps } from '../components/Canvas';
 import { TracksProvider } from '../contexts/TracksContext';

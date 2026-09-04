@@ -592,7 +592,7 @@ Open `http://localhost:5173` in a browser.
 
 ```bash
 pnpm --filter @audacity-ui/sandbox test
-pnpm --filter @dilsonspickles/components test
+pnpm --filter @audacity-ui/components test
 cd apps/sandbox && npx tsc --noEmit
 node scripts/check-any.mjs
 ```

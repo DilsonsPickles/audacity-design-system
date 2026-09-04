@@ -3,7 +3,7 @@
 // tsup emits per-entry CSS sidecars (dist/Button.css, dist/Footer.css, …) but
 // removes the original `import './Foo.css'` from the JS output. That means
 // consumers who import a single component get the JS but *not* its styles —
-// they'd have to manually `import '@dilsonspickles/components/Button.css'`
+// they'd have to manually `import '@audacity-ui/components/Button.css'`
 // alongside every component, or fall back to the full bundle.
 //
 // This script walks dist/, finds each `<Name>.mjs` / `<Name>.js` that has a

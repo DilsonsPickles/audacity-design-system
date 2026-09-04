@@ -69,7 +69,7 @@ On `push` (master) and `pull_request`:
 1. checkout, pnpm setup (version pinned to match `packageManager`/lockfile-less install: `pnpm install --no-frozen-lockfile` since pnpm-lock.yaml is gitignored), Node LTS
 2. `pnpm build` (all packages)
 3. `npx tsc --noEmit` in `packages/components` and `apps/sandbox`
-4. `pnpm --filter @dilsonspickles/components test` and `pnpm --filter @audacity-ui/sandbox test`
+4. `pnpm --filter @audacity-ui/components test` and `pnpm --filter @audacity-ui/sandbox test`
 5. `node scripts/check-any.mjs`
 
 Single job, ~2–4 min. No coverage-thresholds or matrix builds (YAGNI).

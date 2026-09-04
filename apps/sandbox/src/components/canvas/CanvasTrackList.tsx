@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, type SpectrogramScale } from '@dilsonspickles/components';
+import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, type SpectrogramScale } from '@audacity-ui/components';
 import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';

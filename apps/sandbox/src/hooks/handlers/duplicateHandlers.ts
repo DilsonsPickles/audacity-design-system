@@ -1,4 +1,4 @@
-import { announce } from '@dilsonspickles/components';
+import { announce } from '@audacity-ui/components';
 import type { TracksState, TracksAction, Clip, Track } from '../../contexts/TracksContext';
 import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
 

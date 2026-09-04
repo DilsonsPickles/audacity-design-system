@@ -1,10 +1,10 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@dilsonspickles/components';
+import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
-import type { SpectrogramScale } from '@dilsonspickles/components';
+import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
 import { useTracks } from './contexts/TracksContext';
@@ -241,7 +241,7 @@ function CanvasDemoContent() {
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [snapEnabled, setSnapEnabled] = React.useState(false);
-  const [snapMode, setSnapMode] = React.useState<import('@dilsonspickles/components').SnapMode>('musical');
+  const [snapMode, setSnapMode] = React.useState<import('@audacity-ui/components').SnapMode>('musical');
   const [showMixer, setShowMixer] = React.useState(true);
   const { mixerPanelOpen, setMixerPanelOpen } = useMixerPanelListener();
   const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);

@@ -13,6 +13,6 @@
 
 **Rules:** TYPE-ONLY; runtime expressions must remain byte-identical wherever possible — if dropping a specific cast surfaces a genuinely hard Tone typing conflict, keep THAT ONE cast with `// justified: Tone v15 types — <reason>`; NEVER restore the shim or add a new module declaration; no new `any`. If a fix would change a runtime call path, STOP → DONE_WITH_CONCERNS. `Effect.parameters?: Record<string, any>` in TracksContext is OUT OF SCOPE (types-4).
 
-**Gates:** sandbox tsc 0; core tsc 0; 168 tests; sandbox build; ALSO `pnpm --filter @audacity-ui/audio build` + `pnpm --filter @dilsonspickles/components build` (shim deletion must not affect package builds — it shouldn't, it's app-local, but verify).
+**Gates:** sandbox tsc 0; core tsc 0; 168 tests; sandbox build; ALSO `pnpm --filter @audacity-ui/audio build` + `pnpm --filter @audacity-ui/components build` (shim deletion must not affect package builds — it shouldn't, it's app-local, but verify).
 
 **Manual smoke (deferred to user):** playback, MIDI note preview (synths), record a clip, meters move.

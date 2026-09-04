@@ -1,4 +1,4 @@
-import { TransportToolbar, type TransportToolbarProps } from '@dilsonspickles/components';
+import { TransportToolbar, type TransportToolbarProps } from '@audacity-ui/components';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import type { UseMasterMeterReturn } from '../hooks/useMasterMeter';
 

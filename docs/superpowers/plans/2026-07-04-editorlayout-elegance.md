@@ -40,7 +40,7 @@
 - [ ] **Step 1: Widen the scale type to the canonical `SpectrogramScale` (single source of truth)**
 
 In `apps/sandbox/src/contexts/TracksContext.tsx`:
-- Add a type-only import: `import type { SpectrogramScale } from '@dilsonspickles/components';` (near the other type imports).
+- Add a type-only import: `import type { SpectrogramScale } from '@audacity-ui/components';` (near the other type imports).
 - Change the action payload from the 4-member union to the canonical type:
   ```ts
   | { type: 'UPDATE_TRACK_SPECTROGRAM_SCALE'; payload: { index: number; scale: SpectrogramScale } }

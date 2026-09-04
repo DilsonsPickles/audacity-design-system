@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VerticalSpectralRuler } from '@dilsonspickles/components';
+import { VerticalSpectralRuler } from '@audacity-ui/components';
 
 export const SpectralRulerDemo: React.FC = () => {
   const [height, setHeight] = useState(600);

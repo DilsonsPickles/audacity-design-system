@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction, Clip } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
-import { scrollIntoViewIfNeeded, useEditingBehaviorPrefs, announce } from '@dilsonspickles/components';
+import { scrollIntoViewIfNeeded, useEditingBehaviorPrefs, announce } from '@audacity-ui/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';

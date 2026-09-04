@@ -8,14 +8,14 @@
 
 **Architecture:** New pure helper `resolveTimeSelectionScope` (scope → selectedTracks → caller fallback). `TimeSelection.tracks?: number[]` added to both the sandbox and `@audacity-ui/core` types. Gestures stamp the field (drag: rows crossed; keyboard: focused track); edits preserve it; track delete/move remap it; all consumers resolve through the helper; TrackNew renders three scope states.
 
-**Tech Stack:** TypeScript, React 19, Vitest 4 (per-package: `pnpm --filter @audacity-ui/sandbox test`, `pnpm --filter @dilsonspickles/components test`).
+**Tech Stack:** TypeScript, React 19, Vitest 4 (per-package: `pnpm --filter @audacity-ui/sandbox test`, `pnpm --filter @audacity-ui/components test`).
 
 ## Global Constraints
 
 - Branch: `feat/time-selection-scope` (already checked out; spec committed).
 - This is a DELIBERATE BEHAVIOR CHANGE. New tests assert the new spec; update any test locking "drag sets track selection".
 - No `any` types (`pnpm guard:any` clean). The prototype's `(timeSelection as any)` casts must NOT be reproduced — extend the prop/interface types instead. Task 6 removes one existing justified cast in TrackNew.
-- **Stale dist warning:** sandbox tsc reads `packages/*/dist`. After changing `packages/core` or `packages/components` source, rebuild that package (`pnpm --filter @audacity-ui/core build`, `pnpm --filter @dilsonspickles/components build`) before running sandbox tsc or tests that import built output. When tsc reports a type error naming `dist/index`, rebuild before debugging.
+- **Stale dist warning:** sandbox tsc reads `packages/*/dist`. After changing `packages/core` or `packages/components` source, rebuild that package (`pnpm --filter @audacity-ui/core build`, `pnpm --filter @audacity-ui/components build`) before running sandbox tsc or tests that import built output. When tsc reports a type error naming `dist/index`, rebuild before debugging.
 - Known pre-existing failures (do NOT try to fix): root `pnpm test` runs without jsdom (Vitest 4 workspace issue); 5 TrackNew.test.tsx failures in packages/components. Gate = sandbox suite fully green + components suite showing ONLY those 5.
 - Commit only the files each task names; never `git add -A`. Messages: concise conventional style + trailer `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 - Scope resolution chain, verbatim everywhere: `timeSelection.tracks` (non-empty) → `selectedTrackIndices` (non-empty) → caller-supplied fallback.
@@ -219,10 +219,10 @@ with:
 
 - [ ] **Step 3: Rebuild components, type-check, run suites**
 
-Run: `pnpm --filter @dilsonspickles/components build`
+Run: `pnpm --filter @audacity-ui/components build`
 Run: `cd apps/sandbox && npx tsc --noEmit && cd ../..` — expected clean.
 Run: `pnpm --filter @audacity-ui/sandbox test` — all pass.
-Run: `pnpm --filter @dilsonspickles/components test` — only the 5 known TrackNew failures.
+Run: `pnpm --filter @audacity-ui/components test` — only the 5 known TrackNew failures.
 
 - [ ] **Step 4: Commit**
 
@@ -861,10 +861,10 @@ with:
 
 - [ ] **Step 5: Rebuild, type-check, run suites**
 
-Run: `pnpm --filter @dilsonspickles/components build`
+Run: `pnpm --filter @audacity-ui/components build`
 Run: `cd apps/sandbox && npx tsc --noEmit && cd ../..` — clean.
 Run: `pnpm --filter @audacity-ui/sandbox test` — all pass.
-Run: `pnpm --filter @dilsonspickles/components test` — only the 5 known TrackNew failures (your change must not add a 6th).
+Run: `pnpm --filter @audacity-ui/components test` — only the 5 known TrackNew failures (your change must not add a 6th).
 
 - [ ] **Step 6: Commit**
 
@@ -1161,10 +1161,10 @@ In `apps/desktop/package.json`: `"version": "0.7.0"` → `"version": "0.8.0"`.
 
 ```bash
 pnpm guard:any                                   # clean
-pnpm --filter @audacity-ui/core build && pnpm --filter @dilsonspickles/components build
+pnpm --filter @audacity-ui/core build && pnpm --filter @audacity-ui/components build
 cd apps/sandbox && npx tsc --noEmit && cd ../..  # clean
 pnpm --filter @audacity-ui/sandbox test          # all green
-pnpm --filter @dilsonspickles/components test    # only the 5 known TrackNew failures
+pnpm --filter @audacity-ui/components test    # only the 5 known TrackNew failures
 pnpm build                                       # exit 0 (retry once if a tsup step flakes)
 ```
 

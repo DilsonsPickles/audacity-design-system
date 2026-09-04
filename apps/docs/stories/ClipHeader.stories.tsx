@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { ClipHeader } from '@dilsonspickles/components';
+import { ClipHeader } from '@audacity-ui/components';
 
 const meta: Meta<typeof ClipHeader> = {
   title: 'Audio/ClipHeader',

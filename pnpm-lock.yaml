@@ -58,7 +58,7 @@ importers:
       '@audacity-ui/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
-      '@dilsonspickles/components':
+      '@audacity-ui/components':
         specifier: workspace:*
         version: link:../../packages/components
       react:
@@ -104,7 +104,7 @@ importers:
       '@audacity-ui/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@dilsonspickles/components':
+      '@audacity-ui/components':
         specifier: workspace:*
         version: link:../../packages/components
       audiobuffer-to-wav:
@@ -162,7 +162,7 @@ importers:
 
   apps/static-smoke:
     dependencies:
-      '@dilsonspickles/components':
+      '@audacity-ui/components':
         specifier: workspace:*
         version: link:../../packages/components
       react:

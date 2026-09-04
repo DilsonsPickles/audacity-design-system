@@ -44,8 +44,8 @@ jobs:
         run: npx tsc --noEmit
         working-directory: apps/sandbox
 
-      - name: Test @dilsonspickles/components
-        run: pnpm --filter @dilsonspickles/components test
+      - name: Test @audacity-ui/components
+        run: pnpm --filter @audacity-ui/components test
 
       - name: Test @audacity-ui/sandbox
         run: pnpm --filter @audacity-ui/sandbox test

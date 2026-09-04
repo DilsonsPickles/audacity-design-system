@@ -1,5 +1,5 @@
 import React, { MutableRefObject } from 'react';
-import { CLIP_CONTENT_OFFSET } from '@dilsonspickles/components';
+import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 import type { Track, TracksAction } from '../contexts/TracksContext';
 
 interface ContainerClickConfig {

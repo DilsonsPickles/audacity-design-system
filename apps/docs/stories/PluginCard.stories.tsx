@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { PluginCard } from '@dilsonspickles/components';
+import { PluginCard } from '@audacity-ui/components';
 
 const meta: Meta<typeof PluginCard> = {
   title: 'Components/PluginCard',

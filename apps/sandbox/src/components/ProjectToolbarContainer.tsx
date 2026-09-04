@@ -1,9 +1,9 @@
 import React from 'react';
-import { ProjectToolbar, type TransportToolbarProps } from '@dilsonspickles/components';
+import { ProjectToolbar, type TransportToolbarProps } from '@audacity-ui/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useTracks } from '../contexts/TracksContext';
 import { getProjects } from '../utils/projectDatabase';
-import type { StoredProject } from '@dilsonspickles/components';
+import type { StoredProject } from '@audacity-ui/components';
 
 // TransportToolbar is the module that owns the Workspace union — reuse its
 // type rather than duplicating the literal list here.

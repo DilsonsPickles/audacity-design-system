@@ -32,7 +32,7 @@ import { useMuseHub } from '../../contexts/MuseHubContext';
 import { useAdieu } from '../../contexts/AdieuContext';
 import type { ServiceName } from '../../lib/muse-id-client';
 import { friendlyLinkByEmailError } from '../../hooks/useMuseIdEntry';
-import { toast } from '@dilsonspickles/components';
+import { toast } from '@audacity-ui/components';
 import './MuseIdAccountsPage.css';
 
 const SERVICE_LABELS: Record<ServiceName, string> = {

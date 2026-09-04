@@ -15,7 +15,7 @@
 - Do NOT change the sandbox `Track`/`Clip` (`TracksContext`) or core's real `Track`/`Clip` (`@audacity-ui/core`). Add NEW structural types instead.
 - **No new `any`.** A surfaced `tsc` error = a real mismatch to fix at the access; never silence with `any`.
 - Part A and Part B are **separate commits**. Part B requires rebuilding `packages/components`.
-- Verify commands: `cd apps/sandbox && npx tsc --noEmit -p tsconfig.json` ; `pnpm --filter @audacity-ui/sandbox test` ; `pnpm --filter @audacity-ui/sandbox build` ; package build `pnpm --filter @dilsonspickles/components build`.
+- Verify commands: `cd apps/sandbox && npx tsc --noEmit -p tsconfig.json` ; `pnpm --filter @audacity-ui/sandbox test` ; `pnpm --filter @audacity-ui/sandbox build` ; package build `pnpm --filter @audacity-ui/components build`.
 
 ---
 
@@ -129,14 +129,14 @@ In `useSpectralSelection.ts`, delete the local `interface SpectralTrack {…}` /
 - [ ] **Step 5: Rebuild the package, then typecheck the app**
 
 ```bash
-pnpm --filter @dilsonspickles/components build
+pnpm --filter @audacity-ui/components build
 cd apps/sandbox && npx tsc --noEmit -p tsconfig.json
 ```
 Expected: package builds; sandbox tsc clean. If sandbox tsc errors on the `tracks` prop, the sandbox `Track`/`Clip` is missing a field `TrackLike` requires — DO NOT widen `TrackLike` beyond what the hooks read; instead confirm the field (`start`/`duration`/`id`/`clips`/`height`/`viewMode`) genuinely exists on the sandbox types (it does) and fix the real mismatch. If some other consumer of `TimeSelectionConfig`/`useTimeSelection` breaks (passes a non-`TrackLike` shape), report it — do not broaden scope silently.
 
 - [ ] **Step 6: Verify**
 
-`pnpm --filter @audacity-ui/sandbox test` (168 pass); `pnpm --filter @audacity-ui/sandbox build` green; if the components package has a test script, `pnpm --filter @dilsonspickles/components test`.
+`pnpm --filter @audacity-ui/sandbox test` (168 pass); `pnpm --filter @audacity-ui/sandbox build` green; if the components package has a test script, `pnpm --filter @audacity-ui/components test`.
 
 - [ ] **Step 7: Commit**
 

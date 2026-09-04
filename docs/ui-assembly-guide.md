@@ -1,6 +1,6 @@
 # UI Assembly Guide
 
-How to compose `@dilsonspickles/components` into the Audacity 4 project window.
+How to compose `@audacity-ui/components` into the Audacity 4 project window.
 
 The package ships ~130 components, but the knowledge of how they fit together lives
 in the sandbox app (`apps/sandbox/`). This guide extracts that composition knowledge
@@ -13,11 +13,11 @@ the file it was read from. Where the sandbox does something app-specific (reduce
 context menus, focus routing), it is marked **sandbox-specific** — a static
 composition does not need it.
 
-Imports use the deep-subpath form throughout (`@dilsonspickles/components/X`).
+Imports use the deep-subpath form throughout (`@audacity-ui/components/X`).
 The package's `exports` map (`packages/components/package.json`) routes `./*` to
 `dist/*.mjs`, one entry per component directory, so subpath imports tree-shake to
 just the component and its CSS. The barrel
-(`import { X } from '@dilsonspickles/components'`) also works.
+(`import { X } from '@audacity-ui/components'`) also works.
 
 ---
 
@@ -43,7 +43,7 @@ The editor row itself is composed in
 
 ### 1.1 Application header
 
-- **Component**: `ApplicationHeader` — `@dilsonspickles/components/ApplicationHeader`
+- **Component**: `ApplicationHeader` — `@audacity-ui/components/ApplicationHeader`
 - **Source**: `packages/components/src/ApplicationHeader/ApplicationHeader.tsx`;
   used in `apps/sandbox/src/App.tsx:776–780` (skipped under Electron, where the
   OS titlebar takes over).
@@ -55,14 +55,14 @@ The editor row itself is composed in
   Building the menu tree is **sandbox-specific** (`useMenuDefinitions`).
 
 ```tsx
-import { ApplicationHeader } from '@dilsonspickles/components/ApplicationHeader';
+import { ApplicationHeader } from '@audacity-ui/components/ApplicationHeader';
 
 <ApplicationHeader os="macos" />
 ```
 
 ### 1.2 Project toolbar row
 
-- **Component**: `ProjectToolbar` — `@dilsonspickles/components/ProjectToolbar`
+- **Component**: `ProjectToolbar` — `@audacity-ui/components/ProjectToolbar`
 - **Source**: `packages/components/src/ProjectToolbar/ProjectToolbar.tsx`; wired in
   `apps/sandbox/src/components/ProjectToolbarContainer.tsx`.
 - **Minimum viable props**: none required; a bare `<ProjectToolbar />` renders the
@@ -76,7 +76,7 @@ import { ApplicationHeader } from '@dilsonspickles/components/ApplicationHeader'
 The sandbox's hotbar, verbatim (ProjectToolbarContainer.tsx:86–113):
 
 ```tsx
-import { ProjectToolbar } from '@dilsonspickles/components/ProjectToolbar';
+import { ProjectToolbar } from '@audacity-ui/components/ProjectToolbar';
 
 <ProjectToolbar
   activeItem="project"
@@ -103,7 +103,7 @@ import { ProjectToolbar } from '@dilsonspickles/components/ProjectToolbar';
 
 ### 1.3 Transport toolbar
 
-- **Component**: `TransportToolbar` — `@dilsonspickles/components/TransportToolbar`
+- **Component**: `TransportToolbar` — `@audacity-ui/components/TransportToolbar`
 - **Source**: `packages/components/src/TransportToolbar/TransportToolbar.tsx`; wired
   in `apps/sandbox/src/components/TransportToolbarContainer.tsx`.
 - This is the one component with a genuinely large **required** prop surface
@@ -134,8 +134,8 @@ import { ProjectToolbar } from '@dilsonspickles/components/ProjectToolbar';
 ### 1.4 Track control side panel
 
 - **Components**: `TrackControlSidePanel` containing `TrackControlPanel` children —
-  `@dilsonspickles/components/TrackControlSidePanel`,
-  `@dilsonspickles/components/TrackControlPanel`
+  `@audacity-ui/components/TrackControlSidePanel`,
+  `@audacity-ui/components/TrackControlPanel`
 - **Source**: `packages/components/src/TrackControlSidePanel/TrackControlSidePanel.tsx`,
   `packages/components/src/TrackControlPanel/TrackControlPanel.tsx`; composed in
   EditorLayout.tsx:338–510.
@@ -159,8 +159,8 @@ import { ProjectToolbar } from '@dilsonspickles/components/ProjectToolbar';
   (`useTrackPanelHandlers`) are **sandbox-specific**.
 
 ```tsx
-import { TrackControlSidePanel } from '@dilsonspickles/components/TrackControlSidePanel';
-import { TrackControlPanel } from '@dilsonspickles/components/TrackControlPanel';
+import { TrackControlSidePanel } from '@audacity-ui/components/TrackControlSidePanel';
+import { TrackControlPanel } from '@audacity-ui/components/TrackControlPanel';
 
 <TrackControlSidePanel trackHeights={[114, 114]}>
   <TrackControlPanel trackName="Vocals" trackType="mono"
@@ -173,7 +173,7 @@ import { TrackControlPanel } from '@dilsonspickles/components/TrackControlPanel'
 
 ### 1.5 Timeline ruler
 
-- **Component**: `TimelineRuler` — `@dilsonspickles/components/TimelineRuler`
+- **Component**: `TimelineRuler` — `@audacity-ui/components/TimelineRuler`
 - **Source**: `packages/components/src/TimelineRuler/TimelineRuler.tsx`; composed in
   EditorLayout.tsx:516–606.
 - **Minimum viable props**: `pixelsPerSecond`, `totalDuration`, `width`.
@@ -195,7 +195,7 @@ import { TrackControlPanel } from '@dilsonspickles/components/TrackControlPanel'
   it is a second `PlayheadCursor` (§1.7).
 
 ```tsx
-import { TimelineRuler } from '@dilsonspickles/components/TimelineRuler';
+import { TimelineRuler } from '@audacity-ui/components/TimelineRuler';
 
 <TimelineRuler pixelsPerSecond={100} scrollX={0} totalDuration={60}
   width={5000} viewportWidth={960} height={40}
@@ -211,14 +211,14 @@ and what Canvas ultimately renders per track
 (via `apps/sandbox/src/components/canvas/CanvasTrackList.tsx`), is:
 
 - **`TrackNew`** — barrel import only
-  (`import { TrackNew } from '@dilsonspickles/components'`;
+  (`import { TrackNew } from '@audacity-ui/components'`;
   `src/index.ts:119`) — one horizontal lane: positions its clips on the
   timeline, renders selection/focus track background, and hosts the envelope
   overlay. Source: `packages/components/src/Track/TrackNew.tsx`. Beware: the
   `/Track` **subpath** exports the older `Track` component
   (`src/Track/index.ts`), not `TrackNew` — the sandbox uses `TrackNew`
   (CanvasTrackList.tsx:2).
-- **`Clip`** — `@dilsonspickles/components/Clip` — one clip: `ClipHeader`
+- **`Clip`** — `@audacity-ui/components/Clip` — one clip: `ClipHeader`
   (name, menu button, drag surface) over `ClipBody` (canvas-drawn waveform /
   spectrogram). Source: `packages/components/src/Clip/Clip.tsx`.
 
@@ -260,7 +260,7 @@ Direct `Clip` use (outside a track lane) needs `name`, `width`, `height`,
 
 ### 1.7 Playhead
 
-- **Component**: `PlayheadCursor` — `@dilsonspickles/components/PlayheadCursor`
+- **Component**: `PlayheadCursor` — `@audacity-ui/components/PlayheadCursor`
 - **Source**: `packages/components/src/PlayheadCursor/PlayheadCursor.tsx`;
   composed twice in EditorLayout.tsx:579–604 and 828–833.
 - **Minimum viable props**: `position` (seconds), `pixelsPerSecond`, `height` (px).
@@ -275,7 +275,7 @@ Direct `Clip` use (outside a track lane) needs `name`, `width`, `height`,
 
 ### 1.8 Vertical (amplitude/frequency) rulers
 
-- **Component**: `VerticalRulerPanel` — `@dilsonspickles/components/VerticalRuler`
+- **Component**: `VerticalRulerPanel` — `@audacity-ui/components/VerticalRuler`
 - **Source**: `packages/components/src/VerticalRuler/VerticalRulerPanel.tsx`;
   composed in EditorLayout.tsx:872–1004.
 - **Minimum viable props**: `tracks` — an array of `TrackRulerConfig`
@@ -293,7 +293,7 @@ Direct `Clip` use (outside a track lane) needs `name`, `width`, `height`,
 
 ### 1.9 Selection toolbar (status bar)
 
-- **Component**: `SelectionToolbar` — `@dilsonspickles/components/SelectionToolbar`
+- **Component**: `SelectionToolbar` — `@audacity-ui/components/SelectionToolbar`
 - **Source**: `packages/components/src/SelectionToolbar/SelectionToolbar.tsx`;
   used in App.tsx:986–1023 (hidden on the home tab).
 - **Minimum viable props**: `selectionStart` and `selectionEnd` (seconds,
@@ -304,14 +304,14 @@ Direct `Clip` use (outside a track lane) needs `name`, `width`, `height`,
   `'hh:mm:ss+milliseconds'`.
 
 ```tsx
-import { SelectionToolbar } from '@dilsonspickles/components/SelectionToolbar';
+import { SelectionToolbar } from '@audacity-ui/components/SelectionToolbar';
 
 <SelectionToolbar selectionStart={2.5} selectionEnd={7.25} />
 ```
 
 ### 1.10 Scrollbars (optional)
 
-`CustomScrollbar` (`@dilsonspickles/components/CustomScrollbar`) renders overlay
+`CustomScrollbar` (`@audacity-ui/components/CustomScrollbar`) renders overlay
 scrollbars driven by a `contentRef` to the scrolling element — one horizontal
 (`height={20}`) and one vertical (`width={20}`) instance in the sandbox
 (EditorLayout.tsx:857–868). Only needed when you hide native scrollbars.
@@ -430,7 +430,7 @@ or the ruler, playhead and clips drift apart.
 
 ### 3.5 TimeCode
 
-`TimeCode` (`@dilsonspickles/components/TimeCode`,
+`TimeCode` (`@audacity-ui/components/TimeCode`,
 `packages/components/src/TimeCode/TimeCode.tsx:34–109`) takes `value` in
 **seconds** plus `format` — one of twelve formats (`'hh:mm:ss'`,
 `'hh:mm:ss+milliseconds'`, `'hh:mm:ss+samples'`, `'seconds'`, `'samples'`,
@@ -518,7 +518,7 @@ render fine with handlers missing — rather than intercepting events above them
 
 ### 5.3 ThemeProvider and the global stylesheet
 
-- **Stylesheet**: import `@dilsonspickles/components/style.css` once (maps to
+- **Stylesheet**: import `@audacity-ui/components/style.css` once (maps to
   `dist/index.css`; package.json `exports` line 14). Each per-component `.mjs`
   also re-imports its own CSS sidecar (the tsup post-build step
   `attach-css-imports.mjs`), so bundlers that process CSS from `node_modules`
@@ -527,7 +527,7 @@ render fine with handlers missing — rather than intercepting events above them
   the MusescoreIcon `@font-face` is missing, so every icon renders as a blank
   square (see the comment in `apps/static-smoke/src/main.tsx`, whose whole
   purpose is to verify this standalone path).
-- **`ThemeProvider`** (`@dilsonspickles/components/ThemeProvider`; the
+- **`ThemeProvider`** (`@audacity-ui/components/ThemeProvider`; the
   `lightTheme`/`darkTheme` objects are re-exported from the barrel,
   `src/index.ts:11`): technically optional for most chrome — `useTheme`
   falls back to the baked-in light theme when no provider is present
@@ -574,20 +574,20 @@ regions present, no interactivity wired. The `noop`s satisfy `TransportToolbar`'
 required callbacks.
 
 ```tsx
-import { ThemeProvider } from '@dilsonspickles/components/ThemeProvider';
-import { lightTheme } from '@dilsonspickles/components';  // theme objects live on the barrel
-import { ApplicationHeader } from '@dilsonspickles/components/ApplicationHeader';
-import { ProjectToolbar } from '@dilsonspickles/components/ProjectToolbar';
-import { TransportToolbar } from '@dilsonspickles/components/TransportToolbar';
-import { TrackControlSidePanel } from '@dilsonspickles/components/TrackControlSidePanel';
-import { TrackControlPanel } from '@dilsonspickles/components/TrackControlPanel';
-import { TimelineRuler } from '@dilsonspickles/components/TimelineRuler';
-import { PlayheadCursor } from '@dilsonspickles/components/PlayheadCursor';
-import { SelectionToolbar } from '@dilsonspickles/components/SelectionToolbar';
+import { ThemeProvider } from '@audacity-ui/components/ThemeProvider';
+import { lightTheme } from '@audacity-ui/components';  // theme objects live on the barrel
+import { ApplicationHeader } from '@audacity-ui/components/ApplicationHeader';
+import { ProjectToolbar } from '@audacity-ui/components/ProjectToolbar';
+import { TransportToolbar } from '@audacity-ui/components/TransportToolbar';
+import { TrackControlSidePanel } from '@audacity-ui/components/TrackControlSidePanel';
+import { TrackControlPanel } from '@audacity-ui/components/TrackControlPanel';
+import { TimelineRuler } from '@audacity-ui/components/TimelineRuler';
+import { PlayheadCursor } from '@audacity-ui/components/PlayheadCursor';
+import { SelectionToolbar } from '@audacity-ui/components/SelectionToolbar';
 // TrackNew and the waveform generators have no subpath entry — barrel only
 // (the /Track subpath is the older Track component, not TrackNew)
-import { TrackNew, generateSpeechWaveform } from '@dilsonspickles/components';
-import '@dilsonspickles/components/style.css';
+import { TrackNew, generateSpeechWaveform } from '@audacity-ui/components';
+import '@audacity-ui/components/style.css';
 
 const noop = () => {};
 const PPS = 100;                       // pixels per second, shared everywhere

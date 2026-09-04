@@ -1130,7 +1130,7 @@ git commit -am "refactor(sandbox): useCanvasScrollSync owns wheel-zoom and two-p
 ## Final verification (whole branch)
 
 - [ ] `pnpm build` (root — all packages compile)
-- [ ] `pnpm --filter @audacity-ui/sandbox test` and `pnpm --filter @dilsonspickles/components test` — all green, count strictly greater than the 232 baseline (new tests added in Phases 1–3, 5, 6)
+- [ ] `pnpm --filter @audacity-ui/sandbox test` and `pnpm --filter @audacity-ui/components test` — all green, count strictly greater than the 232 baseline (new tests added in Phases 1–3, 5, 6)
 - [ ] `node scripts/check-any.mjs` — 0 violations
 - [ ] Manual smoke sweep in the sandbox: playback, record, loop region, clip drag/trim/stretch (mouse + keyboard), time selection with scope, envelope edit, preferences modal all pages, theme switch, project open/save/new (local + cloud), undo/redo
 - [ ] Line-count report in the final summary: App.tsx, Canvas.tsx, PreferencesModal.tsx before/after
