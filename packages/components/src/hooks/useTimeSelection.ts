@@ -366,8 +366,14 @@ export function useTimeSelection({
         }
       }
 
-      // Call finalized callback with current selection before clearing drag state
-      if (onTimeSelectionFinalized && currentTimeSelection) {
+      // Call finalized callback with current selection before clearing drag
+      // state. Only for gestures that changed the selection — create-drags
+      // past the threshold and any resize. With persistent selection a plain
+      // click leaves the selection in place, so it must NOT re-run finalize
+      // side effects (playhead snapping, focus parking); the click's own
+      // handler moves the playhead instead.
+      if (onTimeSelectionFinalized && currentTimeSelection
+        && (didActuallyDrag || mode !== 'create')) {
         onTimeSelectionFinalized(currentTimeSelection);
       }
 
@@ -489,12 +495,13 @@ export function useTimeSelection({
         fixedTimeBounds, // Store the fixed time bounds from spectral conversion
       };
 
-      // Clear any existing time selection UNLESS we're converting from spectral
-      // (indicated by allowConversionToSpectral being true and a selection existing)
-      // This allows the user to drag the time selection back into the clip
-      if (!(allowConversionToSpectral && currentTimeSelection)) {
-        onTimeSelectionChange(null);
-      }
+      // PERSISTENT SELECTION: mousedown deliberately does NOT clear the
+      // existing time selection any more. A plain click only moves the
+      // playhead (the container click handler); the selection is replaced
+      // wholesale the moment a create-drag crosses the 5px threshold in
+      // handleDocumentMouseMove, and Escape clears it explicitly. This is
+      // the Reaper-style independent cursor/selection model — clicking
+      // around to audition must not destroy a range the user built.
 
       // Clear any existing spectral selection
       if (onClearSpectralSelection) {

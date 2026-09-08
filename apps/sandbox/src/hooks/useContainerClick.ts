@@ -85,6 +85,10 @@ export function useContainerClick({
       if (selectedTrackIndices.length > 0) {
         dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
       }
+      // The persistent time selection survives clicks ON tracks/clips
+      // (those just move the playhead), but empty space below the tracks
+      // is the click-away target: clear the selection here, like Escape.
+      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     } else if (clickedTrackIndex !== null) {
       // Call containerProps onClick handler for track clicks (but skip if Shift is held)
       // (it would change selection before our Shift+Click logic runs)
