@@ -27,6 +27,7 @@ import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { buildNewTrack, buildDuplicatedTracks } from '../utils/trackManagement';
 import { LoopRegionStalks } from './editor/LoopRegionStalks';
 import { PunchPointIndicator } from './editor/PunchPointIndicator';
+import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
 import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
@@ -167,7 +168,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     loopRegionInteracting, setLoopRegionInteracting, loopRegionHovering, setLoopRegionHovering,
   } = useLoopRegionContext();
 
-  const { audioManagerRef } = usePlayback();
+  const { audioManagerRef, playbackStartTime, setPlaybackStartTime } = usePlayback();
   const { trackSelectionMode } = useEditingBehaviorPrefs();
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
@@ -320,6 +321,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     clickRulerToStartPlayback,
     tracks: state.tracks,
     timeSelection: state.timeSelection,
+    setPlaybackStartTime,
     audioManagerRef,
     setIsPlaying,
     setMouseCursorPosition,
@@ -925,6 +927,15 @@ export function EditorLayout(props: EditorLayoutProps) {
                 {punchPointPosition != null && (
                   <PunchPointIndicator
                     punchPointPosition={punchPointPosition}
+                    pixelsPerSecond={pixelsPerSecond}
+                    height={Math.max(canvasHeight + scrollBuffer, viewportH)}
+                  />
+                )}
+                {/* Playback-start marker — ghost line at the position the
+                    current playback run started from; Space returns here */}
+                {playbackStartTime != null && (
+                  <PlaybackStartIndicator
+                    playbackStartTime={playbackStartTime}
                     pixelsPerSecond={pixelsPerSecond}
                     height={Math.max(canvasHeight + scrollBuffer, viewportH)}
                   />

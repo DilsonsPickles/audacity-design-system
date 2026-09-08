@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { TracksState, TracksAction, Clip } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
-import { scrollIntoViewIfNeeded, useEditingBehaviorPrefs, announce } from '@audacity-ui/components';
+import { useEditingBehaviorPrefs, announce } from '@audacity-ui/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';
@@ -9,6 +9,7 @@ import { handleDelete } from './handlers/deleteHandlers';
 import { handleSpacebar, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
+import { scrollPlayheadIntoView } from '../utils/scrollPlayheadIntoView';
 import { handleTrackCreation } from './handlers/trackCreationHandlers';
 import { handleEffectsKey } from './handlers/effectsPanelHandlers';
 import { handleSplitAtPlayhead, handleSplitAllTracks } from './handlers/splitHandlers';
@@ -91,15 +92,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     return () => document.removeEventListener('mousedown', handleMouseDown, true);
   }, []);
 
-  const scrollPlayheadIntoView = () => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const container = document.querySelector('.canvas-scroll-container') as HTMLElement;
-        const playhead = container?.querySelector('.playhead-cursor') as HTMLElement;
-        if (playhead) scrollIntoViewIfNeeded(playhead, container);
-      });
-    });
-  };
 
   useEffect(() => {
     const transportDeps = { state, handlePlay, handleRecord, handleStopRecording, setEffectsPanel, toggleLoopRegion };

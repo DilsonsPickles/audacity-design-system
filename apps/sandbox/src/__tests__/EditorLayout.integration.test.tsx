@@ -826,6 +826,97 @@ describe('Selection playback', () => {
     expect(call[1]).toBeUndefined();
   });
 
+  it('play marks the start position; toggling playback off returns the playhead to it', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+
+    // Park the playhead at 0.3 s via the ruler (3 × 0.1 s nudges)
+    const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
+    act(() => {
+      ruler.focus();
+    });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+
+    // Space: playback starts, the ghost start marker appears at 0.3 s
+    fireEvent.keyDown(document.body, { key: ' ' });
+    const marker = await waitFor(() => {
+      const el = container.querySelector('[data-testid="playback-start-indicator"]');
+      if (!el) throw new Error('marker not rendered');
+      return el as HTMLElement;
+    });
+    // CLIP_CONTENT_OFFSET (12) + 0.3 s × 100 px/s = 42px
+    expect(marker.style.left).toBe('42px');
+
+    // Simulate the transport advancing: drive the position callback the
+    // app registered on the (mocked) audio manager.
+    const positionCb = audioSpies.setPositionUpdateCallback.mock.calls.at(-1)![0] as (p: number) => void;
+    act(() => {
+      positionCb(5);
+    });
+    await waitFor(() => {
+      expect((ruler.querySelector('.playhead-cursor') as HTMLElement).style.left).toBe('512px');
+    });
+
+    // Space again: the mock must report "playing" so handlePlay takes the
+    // pause branch — playhead returns to the marked 0.3 s, marker retires.
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => {
+      expect((ruler.querySelector('.playhead-cursor') as HTMLElement).style.left).toBe('42px');
+    });
+    expect(container.querySelector('[data-testid="playback-start-indicator"]')).toBeNull();
+    audioSpies.getIsPlaying.mockReturnValue(false);
+  });
+
+  it('Skip to start / Skip to end move the playhead to 0 and to the project end', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    // Create content with a known end: a MIDI clip spanning a dragged time
+    // selection (same flow as the piano-roll test above).
+    await addTrackType(container, 'MIDI');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('MIDI 1'));
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+    fireEvent.mouseDown(pointerContainer, { clientX: 100, clientY: 50, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 50 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 50 });
+    fireEvent.mouseDown(pointerContainer, { clientX: 200, clientY: 50, button: 2 });
+    fireEvent.contextMenu(pointerContainer, { clientX: 200, clientY: 50 });
+    await clickWhenReady(() => menuItem(container, 'Create Empty MIDI Clip'));
+    const midiClip = await waitFor(() => {
+      const el = container.querySelector('[data-clip-id]');
+      if (!el) throw new Error('MIDI clip was not created');
+      return el as HTMLElement;
+    });
+    expect(midiClip).toBeDefined();
+
+    const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
+    const playheadLeft = () => (ruler.querySelector('.playhead-cursor') as HTMLElement).style.left;
+
+    // Skip to end: playhead lands on the clip's end (selection was
+    // 0.88 s → 2.88 s at 100 px/s, so end = 2.88 s → 12 + 288 = 300px).
+    fireEvent.click(container.querySelector('button[aria-label="Skip to end"]')!);
+    await waitFor(() => expect(playheadLeft()).toBe('300px'));
+
+    // Skip to start: back to 0 (12px offset).
+    fireEvent.click(container.querySelector('button[aria-label="Skip to start"]')!);
+    await waitFor(() => expect(playheadLeft()).toBe('12px'));
+  });
+
   it('transport play without a selection stays open-ended (no end bound)', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;

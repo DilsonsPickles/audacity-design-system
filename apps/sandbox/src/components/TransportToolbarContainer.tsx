@@ -10,7 +10,7 @@ import type { UseMasterMeterReturn } from '../hooks/useMasterMeter';
  */
 export type TransportToolbarContainerTransport = Pick<TransportToolbarProps,
   | 'activeMenuItem' | 'workspace'
-  | 'isPlaying' | 'isRecording' | 'onPlay' | 'onStop' | 'onRecord'
+  | 'isPlaying' | 'isRecording' | 'onPlay' | 'onStop' | 'onRecord' | 'onSkipToStart' | 'onSkipToEnd'
   | 'useSplitRecordButton' | 'rollInTimeEnabled' | 'onToggleRollInTime'
   | 'timeSelection' | 'bpm' | 'onBpmChange' | 'beatsPerMeasure' | 'noteValue' | 'onTimeSignatureChange'
   | 'envelopeMode' | 'spectrogramMode' | 'splitMode' | 'onToggleEnvelope' | 'onToggleSpectrogram' | 'onToggleSplit'

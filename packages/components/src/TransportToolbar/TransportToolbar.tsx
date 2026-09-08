@@ -40,6 +40,10 @@ export interface TransportToolbarProps {
   onPlay: () => void;
   onStop: () => void;
   onRecord: () => void;
+  /** Skip-to-start transport button (playhead to 0) */
+  onSkipToStart?: () => void;
+  /** Skip-to-end transport button (playhead to the end of the project) */
+  onSkipToEnd?: () => void;
   useSplitRecordButton?: boolean;
   rollInTimeEnabled?: boolean;
   onToggleRollInTime?: () => void;
@@ -198,7 +202,7 @@ function SplitRecordButton({
 
 export function TransportToolbar({
   activeMenuItem, workspace,
-  isPlaying, isRecording, onPlay, onStop, onRecord, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
+  isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
   timeSelection, bpm, onBpmChange, beatsPerMeasure, noteValue = 4, onTimeSignatureChange,
@@ -371,8 +375,8 @@ export function TransportToolbar({
                 onClick={onRecord}
               />
             )}
-            <TransportButton icon="skip-back" ariaLabel="Step backward" disabled={isPlaying} />
-            <TransportButton icon="skip-forward" ariaLabel="Step forward" disabled={isPlaying} />
+            <TransportButton icon="skip-back" ariaLabel="Skip to start" disabled={isPlaying} onClick={onSkipToStart} />
+            <TransportButton icon="skip-forward" ariaLabel="Skip to end" disabled={isPlaying} onClick={onSkipToEnd} />
             <TransportButton
               icon="loop"
               ariaLabel="Loop"

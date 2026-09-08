@@ -15,6 +15,8 @@ import { AppDialogs } from './components/AppDialogs';
 import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
+import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
+import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
 import { ProjectToolbarContainer } from './components/ProjectToolbarContainer';
 const TokenReview = React.lazy(() =>
@@ -700,6 +702,14 @@ function CanvasDemoContent() {
       onPlay: handlePlay,
       onStop: handleStop,
       onRecord: handleRecord,
+      onSkipToStart: () => {
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
+        scrollPlayheadIntoView();
+      },
+      onSkipToEnd: () => {
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: computeProjectEnd(state.tracks) });
+        scrollPlayheadIntoView();
+      },
       useSplitRecordButton,
       rollInTimeEnabled,
       onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),

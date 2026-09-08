@@ -13,7 +13,20 @@ export interface NavigationHandlerDeps {
   trackSelectionMode: 'classic' | 'follows-focus';
 }
 
-/** Home/End: jump playhead with optional Shift to extend time selection */
+/** Project end = latest clip end across audio and MIDI clips. Shared by
+ *  the End key and the transport Skip-to-end button. */
+export function computeProjectEnd(tracks: TracksState['tracks']): number {
+  return tracks.reduce((max, track) => {
+    const audioMax = track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max);
+    return (track.midiClips || []).reduce((m, clip) => Math.max(m, clip.start + clip.duration), audioMax);
+  }, 0);
+}
+
+/** Home/End: jump playhead with optional Shift to extend time selection.
+ *  Plain Home/End are selection-NEUTRAL (persistent-selection model:
+ *  moving the playhead never destroys a selection — playback simply
+ *  unbinds when the playhead leaves the range). They still reset the
+ *  Shift-extend anchors so the next Shift+Arrow starts fresh. */
 export function handleHomeEnd(e: KeyboardEvent, deps: NavigationHandlerDeps): void {
   const { state, dispatch, selectionAnchorRef, selectionEdgesRef, scrollPlayheadIntoView } = deps;
 
@@ -40,15 +53,11 @@ export function handleHomeEnd(e: KeyboardEvent, deps: NavigationHandlerDeps): vo
     } else {
       selectionAnchorRef.current = null;
       selectionEdgesRef.current = null;
-      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
       dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
     }
   } else {
     // End key
-    const projectEnd = state.tracks.reduce((max, track) => {
-      const audioMax = track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max);
-      return (track.midiClips || []).reduce((m, clip) => Math.max(m, clip.start + clip.duration), audioMax);
-    }, 0);
+    const projectEnd = computeProjectEnd(state.tracks);
 
     if (e.shiftKey) {
       if (selectionAnchorRef.current === null) {
@@ -72,7 +81,6 @@ export function handleHomeEnd(e: KeyboardEvent, deps: NavigationHandlerDeps): vo
     } else {
       selectionAnchorRef.current = null;
       selectionEdgesRef.current = null;
-      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
       dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: projectEnd });
     }
   }

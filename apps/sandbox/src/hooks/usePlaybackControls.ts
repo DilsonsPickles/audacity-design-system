@@ -31,6 +31,11 @@ export interface UsePlaybackControlsReturn {
   setTrackMeterLevels: React.Dispatch<React.SetStateAction<Map<number, number>>>;
   /** Master output meter level on a 0-100 scale (post-mix, post-volume). */
   masterMeterLevel: number;
+  /** Where the current playback run started (seconds), or null when no
+   *  marker is active. Drawn as a ghost line on the canvas; toggling
+   *  playback off returns the playhead here (Audacity behavior). */
+  playbackStartTime: number | null;
+  setPlaybackStartTime: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 /**
@@ -58,6 +63,11 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   const [trackMeterLevels, setTrackMeterLevels] = useState<Map<number, number>>(new Map());
   // Master output meter — single post-mix level 0-100.
   const [masterMeterLevel, setMasterMeterLevel] = useState(0);
+
+  // Playback-start marker: set when playback begins, drawn as a ghost line
+  // on the canvas; toggling playback off (Space / play button) returns the
+  // playhead here and clears it.
+  const [playbackStartTime, setPlaybackStartTime] = useState<number | null>(null);
 
   // Ref-mirror (see CLAUDE.md): the playback-complete callback below is
   // registered once in the init effect but must read the live time
@@ -100,6 +110,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     // play replays the same range.
     audioManager.setPlaybackCompleteCallback(() => {
       setIsPlaying(false);
+      setPlaybackStartTime(null);
       const sel = timeSelectionRef.current;
       if (sel) {
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
@@ -147,6 +158,14 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     if (audioManager.getIsPlaying()) {
       audioManager.pause();
       setIsPlaying(false);
+      // Toggling playback off returns the playhead to where this run
+      // started (the marked ghost line), then retires the marker.
+      // (Read from the closure, not a setState updater — updaters must be
+      // pure, and dispatching inside one warns/misbehaves.)
+      if (playbackStartTime !== null) {
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: playbackStartTime });
+      }
+      setPlaybackStartTime(null);
     } else {
       // Players are already loaded (the tracks-change effect above) and are
       // scheduled position-independently — play() just seeks the transport
@@ -168,6 +187,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
         && state.playheadPosition >= sel.startTime
         && state.playheadPosition <= sel.endTime;
       if (sel && playheadInSelection && sel.endTime - sel.startTime > 1e-6) {
+        setPlaybackStartTime(sel.startTime);
         if (options?.ignoreSelectionEnd) {
           // Shift+Space: same start point, no end bound — play through.
           await audioManager.play(sel.startTime);
@@ -175,6 +195,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
           await audioManager.play(sel.startTime, sel.endTime);
         }
       } else {
+        setPlaybackStartTime(state.playheadPosition);
         await audioManager.play(state.playheadPosition);
       }
 
@@ -193,6 +214,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     const audioManager = audioManagerRef.current;
     audioManager.stop();
     setIsPlaying(false);
+    setPlaybackStartTime(null);
     setTrackMeterLevels(new Map()); // Reset all meter levels to 0
   };
 
@@ -252,5 +274,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     trackMeterLevels,
     setTrackMeterLevels,
     masterMeterLevel,
+    playbackStartTime,
+    setPlaybackStartTime,
   };
 }

@@ -26,6 +26,8 @@ export interface UseTimelineRulerInteractionsDeps {
   /** Active time selection — a click-to-play landing inside it plays only
    *  to the selection's end (selection playback), matching transport play. */
   timeSelection: TimeSelection | null;
+  /** Records the playback-start marker (ghost line + Space-return target) */
+  setPlaybackStartTime: React.Dispatch<React.SetStateAction<number | null>>;
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   setMouseCursorPosition: React.Dispatch<React.SetStateAction<number | undefined>>;
@@ -55,7 +57,7 @@ export function useTimelineRulerInteractions(
 ): UseTimelineRulerInteractionsResult {
   const {
     timelineRulerRef, playheadPosition, canvasSnap, snapEnabled, timelineFormat, bpm, beatsPerMeasure,
-    pixelsPerSecond, scrollX, clickRulerToStartPlayback, tracks, timeSelection, audioManagerRef, setIsPlaying,
+    pixelsPerSecond, scrollX, clickRulerToStartPlayback, tracks, timeSelection, setPlaybackStartTime, audioManagerRef, setIsPlaying,
     setMouseCursorPosition, setTimelineRulerContextMenu, dispatch,
   } = deps;
 
@@ -166,6 +168,7 @@ export function useTimelineRulerInteractions(
       const insideSelection = timeSelection
         && clickedTime >= timeSelection.startTime
         && clickedTime < timeSelection.endTime;
+      setPlaybackStartTime(clickedTime);
       if (insideSelection) {
         await audioManager.play(clickedTime, timeSelection.endTime);
       } else {
@@ -175,7 +178,7 @@ export function useTimelineRulerInteractions(
     }
   }, [
     clickRulerToStartPlayback, timelineRulerRef, scrollX, pixelsPerSecond, snapEnabled, timelineFormat,
-    bpm, beatsPerMeasure, canvasSnap, dispatch, audioManagerRef, setIsPlaying, tracks, timeSelection,
+    bpm, beatsPerMeasure, canvasSnap, dispatch, audioManagerRef, setIsPlaying, tracks, timeSelection, setPlaybackStartTime,
   ]);
 
   const onContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
