@@ -33,6 +33,15 @@ export class AudioPlaybackManager {
   private loopEnabled: boolean = false;
   private loopStart: number | null = null;
   private loopEnd: number | null = null;
+  /** ToneAudioBuffer cache so loadClips doesn't re-copy (and re-bake)
+   *  every clip's channel data on every reload. Non-enveloped clips share
+   *  one entry per SOURCE buffer (split siblings reuse it); enveloped
+   *  clips get a per-clip entry keyed by clip id, invalidated when the
+   *  envelope signature (points + visible duration) changes. Entries for
+   *  deleted clips linger like audioBuffers entries do — same retention
+   *  model, same magnitude. */
+  private toneBufferCache = new Map<string, { sig: string; toneBuffer: Tone.ToneAudioBuffer }>();
+
   /** When set, playback auto-stops as the transport reaches this time —
    *  used to play only a time selection. Cleared by pause()/stop().
    *  Ignored while the transport is looping (loop region wins). */
@@ -150,6 +159,10 @@ export class AudioPlaybackManager {
    * Add a clip with an audio buffer for playback
    */
   addClipBuffer(clipId: string | number, buffer: AudioBuffer): void {
+    // A new/replaced source invalidates any cached ToneAudioBuffers built
+    // from the previous content under this id.
+    this.toneBufferCache.delete(`src:${String(clipId)}`);
+    this.toneBufferCache.delete(`clip:${String(clipId)}`);
     this.audioBuffers.set(String(clipId), buffer);
   }
 
@@ -311,20 +324,29 @@ export class AudioPlaybackManager {
           const trimStart = clip.trimStart || 0;
           const deletedRegions = clip.deletedRegions || [];
 
-          // Clip gain: bake the envelope into the channel copy each player
-          // gets. fromArray already copies the channel data, so this adds
-          // per-sample multiplies to a copy we were paying for anyway — and
-          // baked audio survives every transport operation (sync, seek,
-          // loop) with zero scheduling. Evaluation matches the waveform
-          // renderer exactly (see envelopeGain.ts).
+          // Clip gain: the envelope is baked into the ToneAudioBuffer each
+          // player gets — baked audio survives every transport operation
+          // (sync, seek, loop) with zero scheduling, and evaluation matches
+          // the waveform renderer exactly (see envelopeGain.ts). Buffers are
+          // CACHED so reloads (which fire on every tracks change) only pay
+          // the copy/bake when the source or envelope actually changed.
           const envelopePoints = (clip.envelopePoints ?? []) as EnvelopeGainPoint[];
-          const channelData: Float32Array = envelopePoints.length > 0
-            ? applyEnvelopeToChannel(buffer.getChannelData(0), envelopePoints, buffer.sampleRate, clip.duration)
-            : buffer.getChannelData(0);
+          const hasEnvelope = envelopePoints.length > 0;
+          const cacheKey = hasEnvelope ? `clip:${clip.id}` : `src:${bufferKey}`;
+          const sig = hasEnvelope ? `${JSON.stringify(envelopePoints)}|${clip.duration}` : '';
+          let cached = this.toneBufferCache.get(cacheKey);
+          if (!cached || cached.sig !== sig) {
+            const channelData: Float32Array = hasEnvelope
+              ? applyEnvelopeToChannel(buffer.getChannelData(0), envelopePoints, buffer.sampleRate, clip.duration)
+              : buffer.getChannelData(0);
+            cached = { sig, toneBuffer: Tone.ToneAudioBuffer.fromArray(channelData) };
+            this.toneBufferCache.set(cacheKey, cached);
+          }
+          const clipToneBuffer = cached.toneBuffer;
 
           if (deletedRegions.length === 0) {
             // No deleted regions - create a single player for the entire clip
-            const toneBuffer = Tone.ToneAudioBuffer.fromArray(channelData);
+            const toneBuffer = clipToneBuffer;
             const trackGain = this.trackGains.get(trackIndex);
             const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
@@ -340,8 +362,8 @@ export class AudioPlaybackManager {
             const segments = this.calculateSegments(clip.duration, deletedRegions);
 
             segments.forEach((segment, segmentIndex) => {
-              // Create a Tone.js buffer from the AudioBuffer
-              const toneBuffer = Tone.ToneAudioBuffer.fromArray(channelData);
+              // Segments share the clip's cached buffer
+              const toneBuffer = clipToneBuffer;
               const trackGain = this.trackGains.get(trackIndex);
               const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 

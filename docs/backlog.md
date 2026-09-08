@@ -59,16 +59,6 @@ AudioBuffer is still retained by AudioPlaybackManager; the proper fix is to
 render spectrograms from it on demand. Short clips and the demo content are
 unaffected (full rate below the cap).
 
-### Debounce loadClips on rapid tracks changes (2026-09-08)
-usePlaybackControls reloads all Tone players on every tracks change while
-stopped. Envelope drags (EnvelopeInteractionLayer) and clip drags dispatch
-per mousemove, so a drag re-copies every clip buffer per event — and with
-envelope baking (packages/audio/src/envelopeGain.ts) enveloped clips now
-also re-bake per event. Pre-existing cost, roughly doubled for enveloped
-clips. Fix: debounce the reload effect (~150 ms), being careful that
-handlePlay no longer reloads on play — a pending debounce must flush
-before play() so fresh edits are audible.
-
 ## Minor (batch into related work, don't do standalone)
 
 - `stretchFactor` onto the sandbox `Clip` type — would remove 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` (plain `as Clip` does NOT typecheck today).

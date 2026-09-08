@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Label, Track, TracksAction } from '../contexts/TracksContext';
+import type { Label, TracksAction } from '../contexts/TracksContext';
 import { calculateLabelRows, calculatePointLabelWidth } from '../utils/labelLayout';
 
 interface LabelRendererProps {
@@ -11,7 +11,11 @@ interface LabelRendererProps {
   selectedLabelIds: string[];
   hoveredEar: string | null;
   hoveredBanner: string | null;
-  tracks: Track[];
+  /** Number of tracks in the project — used by label expansion to build
+   *  the all-tracks scope. (Only the count is needed; taking the full
+   *  array would couple this row to every tracks-array identity change
+   *  and defeat CanvasTrack's memo.) */
+  trackCount: number;
   selectedTrackIndices: number[];
   setHoveredEar: (id: string | null) => void;
   setHoveredBanner: (id: string | null) => void;
@@ -27,7 +31,7 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
   selectedLabelIds,
   hoveredEar,
   hoveredBanner,
-  tracks,
+  trackCount,
   selectedTrackIndices,
   setHoveredEar,
   setHoveredBanner,
@@ -221,7 +225,7 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
             // Handle click (no drag) for region labels only - use setTimeout to avoid conflicts
             if (!hasMoved && !isPointLabel && wasAlreadySelected) {
               // Check if all tracks are currently selected
-              const allTrackIndices = tracks.map((_, idx) => idx);
+              const allTrackIndices = Array.from({ length: trackCount }, (_, idx) => idx);
               const allTracksSelected = allTrackIndices.every(idx => selectedTrackIndices.includes(idx));
 
               // Use setTimeout to ensure this happens after other event handlers

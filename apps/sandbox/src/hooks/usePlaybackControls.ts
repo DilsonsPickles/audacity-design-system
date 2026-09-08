@@ -147,15 +147,53 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // Reload clips for playback whenever tracks change (but not during
   // playback/recording). Deliberately NOT keyed on playheadPosition:
   // loadClips schedules everything at absolute transport times regardless of
-  // position, and reloading here on every playhead move meant tearing down
-  // and rebuilding every Tone.Player — including a full copy of each clip's
-  // audio buffer — on every timeline click.
-  useEffect(() => {
-    if (!isPlaying && !state.isRecording) {
-      const audioManager = audioManagerRef.current;
-      audioManager.loadClips(state.tracks);
-      applyTrackGains(audioManager, state.tracks);
+  // position.
+  //
+  // DEBOUNCED: drag interactions (clip trim/stretch, envelope edits)
+  // dispatch per mousemove, and each tracks change used to tear down and
+  // rebuild every Tone.Player mid-drag. The trailing debounce coalesces a
+  // drag's dispatch stream into one reload after the edit settles. Because
+  // handlePlay does NOT reload, it must FLUSH a pending reload before
+  // play() so fresh edits are always audible — reloadNeededRef tracks
+  // whether the players are stale, and flushPendingReload() (called from
+  // handlePlay) performs the reload immediately and cancels the timer.
+  const reloadNeededRef = useRef(false);
+  const reloadTimerRef = useRef<number | null>(null);
+  const RELOAD_DEBOUNCE_MS = 150;
+
+  const performReload = () => {
+    const audioManager = audioManagerRef.current;
+    audioManager.loadClips(state.tracks);
+    applyTrackGains(audioManager, state.tracks);
+    reloadNeededRef.current = false;
+  };
+  // Ref-mirror (see CLAUDE.md): the flush runs from handlePlay and the
+  // debounce timer; both must load the LATEST tracks, not a stale closure.
+  const performReloadRef = useRef(performReload);
+  performReloadRef.current = performReload;
+
+  const flushPendingReload = () => {
+    if (reloadTimerRef.current !== null) {
+      clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = null;
     }
+    if (reloadNeededRef.current) {
+      performReloadRef.current();
+    }
+  };
+
+  useEffect(() => {
+    if (isPlaying || state.isRecording) return;
+    reloadNeededRef.current = true;
+    const handle = window.setTimeout(() => {
+      reloadTimerRef.current = null;
+      performReloadRef.current();
+    }, RELOAD_DEBOUNCE_MS);
+    reloadTimerRef.current = handle;
+    return () => {
+      clearTimeout(handle);
+      if (reloadTimerRef.current === handle) reloadTimerRef.current = null;
+    };
   }, [state.tracks, isPlaying, state.isRecording]);
 
   // Handle play/pause transport controls
@@ -177,10 +215,10 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       }
       setPlaybackStartTime(null);
     } else {
-      // Players are already loaded (the tracks-change effect above) and are
-      // scheduled position-independently — play() just seeks the transport
-      // to the current playhead. Reloading here would re-copy every clip's
-      // audio buffer into fresh Tone.Players on each play press.
+      // Players are loaded by the (debounced) tracks-change effect above
+      // and are scheduled position-independently — but a pending debounced
+      // reload must land before play so just-finished edits are audible.
+      flushPendingReload();
       applyTrackGains(audioManager, state.tracks);
 
       // With an active time selection, play ONLY the selected range: start

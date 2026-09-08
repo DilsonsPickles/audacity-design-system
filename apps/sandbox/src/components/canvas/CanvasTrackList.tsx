@@ -89,16 +89,30 @@ export interface CanvasTrackListProps {
  * verbatim moves of Canvas.tsx's original per-track render loop. DOM
  * structure (element order, z-index/overflow contracts) is unchanged.
  *
- * PERF CONTRACT: `CanvasTrack` is React.memo'd so playhead ticks during
- * playback (SET_PLAYHEAD_POSITION keeps `state.tracks` and every prop here
- * identity-stable) skip reconciling every track/clip at 60 fps. Anything
- * added to CanvasTrackListProps must stay reference-stable across playhead
- * ticks (useCallback/useMemo/refs at the source) or it silently defeats the
- * memo for every row — see the churn audit notes in the commit that
- * introduced this.
+ * PERF CONTRACT: `CanvasTrack` is React.memo'd, two ways:
+ * - Playhead ticks (SET_PLAYHEAD_POSITION keeps `state.tracks` and every
+ *   prop identity-stable) skip reconciling every track/clip at 60 fps.
+ * - Track EDITS re-render only the affected row: the whole `tracks` array
+ *   is deliberately NOT a CanvasTrack prop — handlers read it through
+ *   `tracksRef` at event time, and the render-time derivations that
+ *   depend on other tracks (yOffset, trackCount, anySoloed) are computed
+ *   in the parent and passed as cheap value props.
+ * Anything added to CanvasTrackListProps must stay reference-stable across
+ * playhead ticks (useCallback/useMemo/refs at the source), and anything a
+ * row RENDERS from must be a value prop (never tracksRef) or the row won't
+ * repaint when it changes.
  */
 export function CanvasTrackList(props: CanvasTrackListProps) {
-  const { tracks } = props;
+  const { tracks, ...rest } = props;
+
+  // Ref-mirror (see CLAUDE.md): CanvasTrack's HANDLERS need the full tracks
+  // array (cross-track keyboard move/trim/stretch scans), but taking it as
+  // a memo prop would re-render EVERY row on ANY track edit. Handlers read
+  // the live array through this ref at event time instead; render-time
+  // derivations that genuinely depend on other tracks (yOffset, count,
+  // anySoloed) are computed here and passed as cheap value props.
+  const tracksRef = React.useRef(tracks);
+  tracksRef.current = tracks;
 
   // Solo overrides per-track mute visuals: when any track is soloed,
   // every non-soloed track reads as effectively muted (matches the audio
@@ -110,25 +124,32 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
       {tracks.map((track, trackIndex) => (
         <CanvasTrack
           key={track.id}
-          {...props}
+          {...rest}
           track={track}
           trackIndex={trackIndex}
           anySoloed={anySoloed}
+          tracksRef={tracksRef}
+          yOffset={calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT)}
+          trackCount={tracks.length}
         />
       ))}
     </>
   );
 }
 
-interface CanvasTrackProps extends CanvasTrackListProps {
+interface CanvasTrackProps extends Omit<CanvasTrackListProps, 'tracks'> {
   track: Track;
   trackIndex: number;
   anySoloed: boolean;
+  /** Live tracks array for event-time reads only — never render from it
+   *  (a memo-skipped row would hold no stale data, but renders must come
+   *  from the value props above so rows repaint when they change). */
+  tracksRef: React.MutableRefObject<Track[]>;
+  yOffset: number;
+  trackCount: number;
 }
 
 const CanvasTrack = React.memo(function CanvasTrack({
-
-  tracks,
   selectedTrackIndices,
   focusedTrackIndex,
   selectedLabelIds,
@@ -176,6 +197,9 @@ const CanvasTrack = React.memo(function CanvasTrack({
   track,
   trackIndex,
   anySoloed,
+  tracksRef,
+  yOffset,
+  trackCount,
 }: CanvasTrackProps) {
   const dispatch = useTracksDispatch();
 
@@ -206,9 +230,6 @@ const CanvasTrack = React.memo(function CanvasTrack({
   const effectivelyMuted =
     track.muted === true
     || (anySoloed && track.soloed !== true);
-
-  // Calculate y position for this track
-  const yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
 
   return (
     <div
@@ -359,15 +380,15 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // Detect whether the move would push the bottommost selected clip
           // past the last track. If so, and we have the factory, dispatch the
           // combined create-and-move action for single-step undo.
-          const maxSelectedTrackIndex = tracks.reduce((max, t, ti) => {
+          const maxSelectedTrackIndex = tracksRef.current.reduce((max, t, ti) => {
             const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
             return hasSelected ? Math.max(max, ti) : max;
           }, -1);
-          const minSelectedTrackIndex = tracks.reduce((min, t, ti) => {
+          const minSelectedTrackIndex = tracksRef.current.reduce((min, t, ti) => {
             const hasSelected = t.clips.some(c => c.selected) || (t.midiClips || []).some(c => c.selected);
             return hasSelected ? Math.min(min, ti) : min;
           }, Infinity);
-          const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracks.length;
+          const wouldOverflow = direction === 1 && maxSelectedTrackIndex + 1 >= tracksRef.current.length;
           // Top clip already at track 0 — nothing to do, keep focus where it is.
           if (direction === -1 && minSelectedTrackIndex === 0) return;
 
@@ -388,7 +409,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // trackIndex+direction. For overflow the new track isn't in
           // `tracks` yet, so skip the upper-bound guard in that case.
           const newTrackIndex = trackIndex + direction;
-          if (newTrackIndex >= 0 && (wouldOverflow || newTrackIndex < tracks.length)) {
+          if (newTrackIndex >= 0 && (wouldOverflow || newTrackIndex < tracksRef.current.length)) {
             dispatch({ type: 'SET_FOCUSED_TRACK', payload: newTrackIndex });
           }
           // Defer overlap resolution to Cmd/Ctrl release — see
@@ -412,10 +433,10 @@ const CanvasTrack = React.memo(function CanvasTrack({
           const sourceStart = sourceClip?.start ?? 0;
 
           // Search tracks in the given direction, wrapping around
-          const trackCount = tracks.length;
+          const trackCount = tracksRef.current.length;
           for (let i = 1; i <= trackCount; i++) {
             const candidateIndex = ((trackIndex + direction * i) % trackCount + trackCount) % trackCount;
-            const candidateTrackData = tracks[candidateIndex];
+            const candidateTrackData = tracksRef.current[candidateIndex];
             if (candidateTrackData.clips.length === 0) continue;
 
             // Find the clip closest in start time
@@ -451,8 +472,8 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // no-ops. Selection is the "you're operating on
           // this" signal, independent of whether the edge
           // actually moved.
-          const focusedClip = tracks[trackIndex]?.clips.find((c) => c.id === clipId)
-            || (tracks[trackIndex]?.midiClips || []).find((c) => c.id === clipId);
+          const focusedClip = tracksRef.current[trackIndex]?.clips.find((c) => c.id === clipId)
+            || (tracksRef.current[trackIndex]?.midiClips || []).find((c) => c.id === clipId);
           if (focusedClip && !focusedClip.selected) {
             dispatch({
               type: 'SELECT_CLIP',
@@ -466,7 +487,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // applied to each clip independently, with per-clip
           // bounds checks against its own source duration.
           const targets: KeyboardTrimTarget[] = [];
-          tracks.forEach((t, tIndex) => {
+          tracksRef.current.forEach((t, tIndex) => {
             t.clips.forEach((c) => {
               if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
                 targets.push({ trackIndex: tIndex, clip: c });
@@ -494,7 +515,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // the mouse-trim path: once a trim moves an edge into a
           // neighbor, the neighbor gets non-destructively eaten
           // (trim / split / delete) the same way it does on drop.
-          const { updates, mutations } = computeKeyboardTrimBatch(uniqueTargets, edge, deltaSeconds, tracks);
+          const { updates, mutations } = computeKeyboardTrimBatch(uniqueTargets, edge, deltaSeconds, tracksRef.current);
 
           for (const update of updates) {
             dispatch({
@@ -536,7 +557,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // Applied to every selected clip; if the originating
           // clip isn't currently selected we still stretch it.
           const targets: KeyboardTrimTarget[] = [];
-          tracks.forEach((t, tIndex) => {
+          tracksRef.current.forEach((t, tIndex) => {
             t.clips.forEach((c) => {
               if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
                 targets.push({ trackIndex: tIndex, clip: c });
@@ -663,7 +684,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
 
             // Store initial state for all selected clips (including the one we just selected)
             const allClipsInitialState = new Map<string, { trimStart: number; duration: number; start: number; fullDuration: number; isMidi?: boolean; stretchFactor?: number }>();
-            tracks.forEach((t, tIndex) => {
+            tracksRef.current.forEach((t, tIndex) => {
               const isMidiTrack = t.type === 'midi';
               const allTrackClips = [...t.clips, ...(t.midiClips || [])];
               allTrackClips.forEach(c => {
@@ -728,7 +749,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
             initialStart: number;
             initialStretchFactor: number;
           }> = [];
-          tracks.forEach((t, tIndex) => {
+          tracksRef.current.forEach((t, tIndex) => {
             t.clips.forEach((c) => {
               if (
                 c.selected
@@ -800,7 +821,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         }}
       />
 
-      {/* Render labels for label tracks */}
+      {/* Render labels for label tracksRef.current */}
       {track.labels && (
         <div
           style={{
@@ -823,7 +844,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
               selectedLabelIds={selectedLabelIds}
               hoveredEar={hoveredEar}
               hoveredBanner={hoveredBanner}
-              tracks={tracks}
+              trackCount={trackCount}
               selectedTrackIndices={selectedTrackIndices}
               setHoveredEar={setHoveredEar}
               setHoveredBanner={setHoveredBanner}
