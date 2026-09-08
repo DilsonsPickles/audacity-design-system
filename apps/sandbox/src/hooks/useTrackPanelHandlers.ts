@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -90,7 +91,10 @@ export function useTrackPanelHandlers(
   } = options;
   const dispatch = useTracksDispatch();
 
-  const toggleScopeOrTrackSelection = (index: number) => {
+  // useCallback'd: consumed by EditorLayout's stabilized onContainerEnter,
+  // which feeds CanvasTrack's React.memo — identity must survive playhead
+  // ticks (every dep below is tick-stable).
+  const toggleScopeOrTrackSelection = useCallback((index: number) => {
     const ts = timeSelection;
     if (ts) {
       // Time-selection mode: extend or contract the row scope only.
@@ -109,7 +113,7 @@ export function useTrackPanelHandlers(
       toggleTrackSelection(index, selectedTrackIndices, dispatch);
     }
     setSelectionAnchor(index);
-  };
+  }, [timeSelection, selectedTrackIndices, setSelectionAnchor, dispatch]);
 
   const onMuteToggle = (e: React.MouseEvent<HTMLButtonElement>, index: number, track: Track) => {
     // Cmd/Ctrl+click: exclusive mute — mute this track

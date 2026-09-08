@@ -75,8 +75,15 @@ export function ThemeProvider({ theme = lightTheme, children }: ThemeProviderPro
     return vars;
   }, [theme]);
 
+  // Memoized: a fresh `{ theme }` literal here re-renders EVERY useTheme()
+  // consumer on EVERY provider re-render — context propagation bypasses
+  // React.memo, so an un-memoized value silently defeats memoized subtrees
+  // (this was re-rendering every track/clip 60x/sec during playback via the
+  // nested provider around the canvas).
+  const contextValue = React.useMemo(() => ({ theme }), [theme]);
+
   return (
-    <ThemeContext.Provider value={{ theme }}>
+    <ThemeContext.Provider value={contextValue}>
       <div style={cssVars as React.CSSProperties}>
         {children}
       </div>

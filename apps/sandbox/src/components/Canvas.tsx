@@ -251,8 +251,9 @@ export function Canvas({
   // Factory that builds a new track template when a clip is dropped below
   // all tracks (mouse drag) or when Cmd+Down overflows the last track
   // (keyboard path). Extracted so both useClipDragging and
-  // useTrackKeyboardHandlers can reference the same function.
-  const buildTrackForDrop = (indexAmongNew: number, sourceTrackIndex: number): Track => {
+  // useTrackKeyboardHandlers can reference the same function. useCallback'd
+  // on `tracks` (tick-stable) so CanvasTrack's React.memo survives playback.
+  const buildTrackForDrop = React.useCallback((indexAmongNew: number, sourceTrackIndex: number): Track => {
     const source = tracks[sourceTrackIndex];
     const sourceIsMidi = source?.type === 'midi'
       || (source?.midiClips?.length ?? 0) > 0;
@@ -281,7 +282,7 @@ export function Canvas({
       clips: [],
       ...(type === 'midi' ? { midiClips: [] } : {}),
     };
-  };
+  }, [tracks]);
 
   // Track-level keyboard navigation (Arrow/Shift+Arrow) and reorder
   // (Cmd+Arrow) handlers — extracted so the per-track render loop below

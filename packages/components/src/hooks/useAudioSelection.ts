@@ -424,6 +424,18 @@ export function useAudioSelection(
     ? spectralSelection.cursorStyle
     : timeSelection.cursorStyle;
 
+  // Stable identity for consumers that memoize on it: the inner hooks
+  // recreate their wasJustDragging functions each render, so mirror them
+  // into refs and expose one useCallback that reads the latest.
+  const tsWasJustDraggingRef = useRef(timeSelection.wasJustDragging);
+  tsWasJustDraggingRef.current = timeSelection.wasJustDragging;
+  const ssWasJustDraggingRef = useRef(spectralSelection.wasJustDragging);
+  ssWasJustDraggingRef.current = spectralSelection.wasJustDragging;
+  const wasJustDraggingStable = useCallback(
+    () => tsWasJustDraggingRef.current() || ssWasJustDraggingRef.current(),
+    [],
+  );
+
   return {
     containerProps: {
       ref: containerRef,
@@ -440,7 +452,7 @@ export function useAudioSelection(
     selection: {
       isDragging: timeSelection.isDragging || spectralSelection.isDragging,
       cursorStyle: currentCursor,
-      wasJustDragging: () => timeSelection.wasJustDragging() || spectralSelection.wasJustDragging(),
+      wasJustDragging: wasJustDraggingStable,
       isPositionOnSpectralClip: spectralSelection.isPositionOnSpectralClip,
       isCreating: spectralSelection.isCreating,
     },

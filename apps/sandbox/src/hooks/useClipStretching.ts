@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { useTracksDispatch, Track } from '../contexts/TracksContext';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
@@ -68,9 +68,10 @@ export function useClipStretching(
   const [snapGuidelineTime, setSnapGuidelineTime] = useState<number | null>(null);
   const [snapGuidelineKind, setSnapGuidelineKind] = useState<SnapGuidelineKind | null>(null);
 
-  const startClipStretch = (stretchState: ClipStretchState) => {
+  // Stable identities — consumers (CanvasTrack memo) compare by reference
+  const startClipStretch = useCallback((stretchState: ClipStretchState) => {
     clipStretchStateRef.current = stretchState;
-  };
+  }, []);
 
   const cancelStretch = () => {
     clipStretchStateRef.current = null;
@@ -78,7 +79,7 @@ export function useClipStretching(
     setSnapGuidelineKind(null);
   };
 
-  const wasJustStretching = () => justStretchedRef.current;
+  const wasJustStretching = useCallback(() => justStretchedRef.current, []);
 
   // Same "sticky mouseup" hazard as useClipTrimming — every stretch
   // dispatch changes `tracks`, which would otherwise rebind these

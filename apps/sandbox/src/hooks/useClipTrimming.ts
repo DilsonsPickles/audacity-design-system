@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { useTracksDispatch, Track, Clip } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import { resolveOverlap, ClipPlacement } from '../utils/resolveOverlap';
@@ -68,7 +68,8 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
   const [snapGuidelineTime, setSnapGuidelineTime] = useState<number | null>(null);
   const [snapGuidelineKind, setSnapGuidelineKind] = useState<SnapGuidelineKind | null>(null);
 
-  const wasJustTrimming = () => justTrimmedRef.current;
+  // Stable identity — consumers (CanvasTrack memo) compare it by reference
+  const wasJustTrimming = useCallback(() => justTrimmedRef.current, []);
 
   const startClipTrim = (trimState: ClipTrimState) => {
     clipTrimStateRef.current = trimState;

@@ -59,17 +59,6 @@ AudioBuffer is still retained by AudioPlaybackManager; the proper fix is to
 render spectrograms from it on demand. Short clips and the demo content are
 unaffected (full rate below the cap).
 
-### Playback render path: per-frame reconcile of all tracks (2026-09-08)
-During playback the RAF loop fires three state updates per frame, and
-`CanvasTrackList` (un-memoized, plus an RMS-stripping `track.clips.map()` that
-runs whenever "Show RMS" is off, plus ~14 inline handler props) defeats
-`TrackNew`'s React.memo — so every track and clip reconciles at 60 fps.
-ClipBody's memo spares the canvas, but this is residual playback jank
-independent of file size. Fix wants: memoize the clip mapping, stabilize
-handlers (per-track child component with useCallback), and/or split
-`playheadPosition` out of TracksContext (see codebase-map's App decomposition
-notes). Deliberately deferred from the 2026-09-08 import-perf pass.
-
 ## Minor (batch into related work, don't do standalone)
 
 - `stretchFactor` onto the sandbox `Clip` type — would remove 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` (plain `as Clip` does NOT typecheck today).

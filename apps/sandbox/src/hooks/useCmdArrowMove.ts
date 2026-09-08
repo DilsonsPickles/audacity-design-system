@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTracksDispatch, type Track } from '../contexts/TracksContext';
 import { resolveOverlap, type ClipPlacement } from '../utils/resolveOverlap';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
@@ -34,7 +34,8 @@ export function useCmdArrowMove(options: UseCmdArrowMoveOptions): UseCmdArrowMov
   // triggers re-render; a ref alone can't.
   const [isCmdArrowMoving, setIsCmdArrowMoving] = useState(false);
 
-  const beginCmdMove = () => setIsCmdArrowMoving(true);
+  // Stable identity — consumers (CanvasTrack memo) compare by reference
+  const beginCmdMove = useCallback(() => setIsCmdArrowMoving(true), []);
 
   // Every Cmd+Arrow nudge dispatches a MOVE_SELECTED_CLIPS(_TO_TRACK)
   // action, which updates `tracks`. Listing `tracks` as an effect dep

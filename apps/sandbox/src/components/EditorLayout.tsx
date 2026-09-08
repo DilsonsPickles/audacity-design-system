@@ -364,6 +364,130 @@ export function EditorLayout(props: EditorLayoutProps) {
     setTrackContextMenu,
   });
 
+  // ---------------------------------------------------------------------
+  // Canvas track-callback stabilization: these used to be inline JSX arrows
+  // on <Canvas>, recreated on every EditorLayout render — which is every
+  // playhead tick during playback, defeating CanvasTrack's React.memo for
+  // every row at 60 fps. Bodies are verbatim; deps are all tick-stable
+  // (state.tracks / selection slices keep identity across SET_PLAYHEAD_POSITION).
+  const handleClipMenuClick = React.useCallback((clipId: number, trackIndex: number, x: number, y: number, openedViaKeyboard?: boolean) => {
+    setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
+  }, [setClipContextMenu]);
+
+  const handleTrackFocusChange = React.useCallback((_trackIndex: number, _hasFocus: boolean) => {
+    // Track focus no longer follows clip focus —
+    // each focus state stands on its own. The
+    // container-focus path (onTrackContainerFocusChange)
+    // is the only thing that sets focusedTrackIndex
+    // now, so keyboard nav landing on the track row
+    // itself still updates the side panel / ruler,
+    // while landing on a clip leaves the track focus
+    // state where it was.
+    setControlPanelHasFocus(null);
+  }, [setControlPanelHasFocus]);
+
+  const handleTrackContainerFocusChange = React.useCallback((trackIndex: number, hasFocus: boolean) => {
+    setContainerFocusedTrack(hasFocus ? trackIndex : null);
+    if (hasFocus) {
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+    }
+  }, [setContainerFocusedTrack, dispatch]);
+
+  const handleEnterTrackPanel = React.useCallback((trackIndex: number) => {
+    findFirstButtonInTrackControlPanel(document, trackIndex)?.focus();
+  }, []);
+
+  const handleContainerEnter = React.useCallback((trackIndex: number, modifiers: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
+    if (modifiers.shiftKey && !modifiers.metaKey && !modifiers.ctrlKey) {
+      // Shift+Enter: range-select from anchor to this track
+      const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : trackIndex);
+      if (selectionAnchor === null) setSelectionAnchor(anchor);
+      const start = Math.min(anchor, trackIndex);
+      const end = Math.max(anchor, trackIndex);
+      const newSelection: number[] = [];
+      for (let i = start; i <= end; i++) newSelection.push(i);
+      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+    } else if (modifiers.metaKey || modifiers.ctrlKey) {
+      toggleScopeOrTrackSelection(trackIndex);
+    } else {
+      // Plain Enter: select the track, or deselect if it's
+      // already the sole selection (toggle-off).
+      const isOnlySelection =
+        state.selectedTrackIndices.length === 1 &&
+        state.selectedTrackIndices[0] === trackIndex;
+      if (isOnlySelection) {
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
+        setSelectionAnchor(null);
+      } else {
+        selectTrackExclusive(trackIndex, dispatch);
+      }
+    }
+  }, [selectionAnchor, state.selectedTrackIndices, setSelectionAnchor, dispatch, toggleScopeOrTrackSelection]);
+
+  const handleShiftTabFromTrack = React.useCallback((trackIndex: number) => {
+    const prevIndex = trackIndex - 1;
+    if (prevIndex < 0) {
+      // First track — focus the timeline ruler
+      timelineRulerRef.current?.focus();
+      return;
+    }
+    // If rulers are visible and previous track is audio, focus its ruler
+    if (showVerticalRulers && state.tracks[prevIndex]?.type !== 'label' && state.tracks[prevIndex]?.type !== 'midi') {
+      const rulerEl = findTrackRulerByIndex(document, prevIndex);
+      if (rulerEl) {
+        rulerEl.focus();
+        return;
+      }
+    }
+    // Try previous track's last clip
+    const lastClip = findLastClipInTrack(document, prevIndex);
+    if (lastClip) {
+      lastClip.focus();
+      return;
+    }
+    // No clips — focus last button in previous track's panel
+    findLastButtonInTrackControlPanel(document, prevIndex)?.focus();
+  }, [showVerticalRulers, state.tracks]);
+
+  const handleTabFromLastClip = React.useCallback((trackIndex: number) => {
+    // Tab off the last clip → focus THIS track's
+    // vertical ruler as the next stop in the
+    // per-track flow: [header] → clip 1 → … →
+    // clip N → [ruler] → [next header]. The
+    // ruler's own onTabFromRuler picks up from
+    // here and moves to the next track's panel.
+    if (showVerticalRulers && state.tracks[trackIndex]?.type !== 'label' && state.tracks[trackIndex]?.type !== 'midi') {
+      const rulerEl = findTrackRulerByIndex(document, trackIndex);
+      if (rulerEl) {
+        rulerEl.focus();
+        return;
+      }
+    }
+    // No ruler (hidden, or label/midi track) —
+    // skip straight to the next track's control
+    // panel.
+    const nextIndex = trackIndex + 1;
+    if (nextIndex < state.tracks.length) {
+      const nextPanel = findTrackControlPanelByIndex(document, nextIndex);
+      if (nextPanel) {
+        const firstButton = nextPanel.querySelector<HTMLElement>('button');
+        firstButton?.focus();
+        return;
+      }
+      // Fall back to focusing the track container
+      // if the panel can't be found.
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
+      if (trackSelectionMode === 'follows-focus') {
+        dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
+        setSelectionAnchor(nextIndex);
+      }
+      findTrackContainerByIndex(document, nextIndex)?.focus();
+    } else {
+      // Last track — focus first focusable child in selection toolbar
+      findSelectionToolbarFirstGroup(document)?.focus();
+    }
+  }, [showVerticalRulers, state.tracks, trackSelectionMode, dispatch, setSelectionAnchor]);
+
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
   const scrollBuffer = viewportH > 0 && canvasHeight > viewportH ? Math.round(viewportH * 0.4) : 0;
@@ -767,9 +891,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     bpm={bpm}
                     beatsPerMeasure={beatsPerMeasure}
                     timeFormat={timelineFormat}
-                    onClipMenuClick={(clipId, trackIndex, x, y, openedViaKeyboard) => {
-                      setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
-                    }}
+                    onClipMenuClick={handleClipMenuClick}
                     onTimeSelectionMenuClick={(x, y, trackIndex) => {
                       const timeSinceClosed = Date.now() - contextMenuClosedTimeRef.current;
                       if (timeSinceClosed > 300) {
@@ -777,114 +899,12 @@ export function EditorLayout(props: EditorLayoutProps) {
                         setTimeSelectionContextMenu({ isOpen: true, x, y, trackIndex, trackType: track?.type });
                       }
                     }}
-                    onTrackFocusChange={(_trackIndex, _hasFocus) => {
-                      // Track focus no longer follows clip focus —
-                      // each focus state stands on its own. The
-                      // container-focus path (onTrackContainerFocusChange)
-                      // is the only thing that sets focusedTrackIndex
-                      // now, so keyboard nav landing on the track row
-                      // itself still updates the side panel / ruler,
-                      // while landing on a clip leaves the track focus
-                      // state where it was.
-                      setControlPanelHasFocus(null);
-                    }}
-                    onTrackContainerFocusChange={(trackIndex, hasFocus) => {
-                      setContainerFocusedTrack(hasFocus ? trackIndex : null);
-                      if (hasFocus) {
-                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
-                      }
-                    }}
-                    onEnterTrackPanel={(trackIndex) => {
-                      findFirstButtonInTrackControlPanel(document, trackIndex)?.focus();
-                    }}
-                    onContainerEnter={(trackIndex, modifiers) => {
-                      if (modifiers.shiftKey && !modifiers.metaKey && !modifiers.ctrlKey) {
-                        // Shift+Enter: range-select from anchor to this track
-                        const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : trackIndex);
-                        if (selectionAnchor === null) setSelectionAnchor(anchor);
-                        const start = Math.min(anchor, trackIndex);
-                        const end = Math.max(anchor, trackIndex);
-                        const newSelection: number[] = [];
-                        for (let i = start; i <= end; i++) newSelection.push(i);
-                        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
-                      } else if (modifiers.metaKey || modifiers.ctrlKey) {
-                        toggleScopeOrTrackSelection(trackIndex);
-                      } else {
-                        // Plain Enter: select the track, or deselect if it's
-                        // already the sole selection (toggle-off).
-                        const isOnlySelection =
-                          state.selectedTrackIndices.length === 1 &&
-                          state.selectedTrackIndices[0] === trackIndex;
-                        if (isOnlySelection) {
-                          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
-                          setSelectionAnchor(null);
-                        } else {
-                          selectTrackExclusive(trackIndex, dispatch);
-                        }
-                      }
-                    }}
-                    onShiftTabFromTrack={(trackIndex) => {
-                      const prevIndex = trackIndex - 1;
-                      if (prevIndex < 0) {
-                        // First track — focus the timeline ruler
-                        timelineRulerRef.current?.focus();
-                        return;
-                      }
-                      // If rulers are visible and previous track is audio, focus its ruler
-                      if (showVerticalRulers && state.tracks[prevIndex]?.type !== 'label' && state.tracks[prevIndex]?.type !== 'midi') {
-                        const rulerEl = findTrackRulerByIndex(document, prevIndex);
-                        if (rulerEl) {
-                          rulerEl.focus();
-                          return;
-                        }
-                      }
-                      // Try previous track's last clip
-                      const lastClip = findLastClipInTrack(document, prevIndex);
-                      if (lastClip) {
-                        lastClip.focus();
-                        return;
-                      }
-                      // No clips — focus last button in previous track's panel
-                      findLastButtonInTrackControlPanel(document, prevIndex)?.focus();
-                    }}
-                    onTabFromLastClip={(trackIndex) => {
-                      // Tab off the last clip → focus THIS track's
-                      // vertical ruler as the next stop in the
-                      // per-track flow: [header] → clip 1 → … →
-                      // clip N → [ruler] → [next header]. The
-                      // ruler's own onTabFromRuler picks up from
-                      // here and moves to the next track's panel.
-                      if (showVerticalRulers && state.tracks[trackIndex]?.type !== 'label' && state.tracks[trackIndex]?.type !== 'midi') {
-                        const rulerEl = findTrackRulerByIndex(document, trackIndex);
-                        if (rulerEl) {
-                          rulerEl.focus();
-                          return;
-                        }
-                      }
-                      // No ruler (hidden, or label/midi track) —
-                      // skip straight to the next track's control
-                      // panel.
-                      const nextIndex = trackIndex + 1;
-                      if (nextIndex < state.tracks.length) {
-                        const nextPanel = findTrackControlPanelByIndex(document, nextIndex);
-                        if (nextPanel) {
-                          const firstButton = nextPanel.querySelector<HTMLElement>('button');
-                          firstButton?.focus();
-                          return;
-                        }
-                        // Fall back to focusing the track container
-                        // if the panel can't be found.
-                        dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });
-                        if (trackSelectionMode === 'follows-focus') {
-                          dispatch({ type: 'SELECT_TRACK', payload: nextIndex });
-                          setSelectionAnchor(nextIndex);
-                        }
-                        findTrackContainerByIndex(document, nextIndex)?.focus();
-                      } else {
-                        // Last track — focus first focusable child in selection toolbar
-                        findSelectionToolbarFirstGroup(document)?.focus();
-                      }
-                    }}
+                    onTrackFocusChange={handleTrackFocusChange}
+                    onTrackContainerFocusChange={handleTrackContainerFocusChange}
+                    onEnterTrackPanel={handleEnterTrackPanel}
+                    onContainerEnter={handleContainerEnter}
+                    onShiftTabFromTrack={handleShiftTabFromTrack}
+                    onTabFromLastClip={handleTabFromLastClip}
                     onMidiClipDoubleClick={(trackIndex, clipIndex) => {
                       dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: true, trackIndex, clipIndex } });
                     }}

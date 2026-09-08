@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
@@ -45,6 +46,10 @@ export interface UseTrackKeyboardHandlersReturn {
  *
  * so the closures here read purely from the options object rather than
  * from JSX-loop scope.
+ *
+ * Both handlers are useCallback'd on the full options set — every dep is
+ * stable across playhead ticks, so CanvasTrack's React.memo can bail
+ * during playback.
  */
 export function useTrackKeyboardHandlers(
   options: UseTrackKeyboardHandlersOptions,
@@ -63,7 +68,7 @@ export function useTrackKeyboardHandlers(
   } = options;
   const dispatch = useTracksDispatch();
 
-  const onTrackNavigateVertical = (
+  const onTrackNavigateVertical = useCallback((
     trackIndex: number,
     direction: 1 | -1,
     shiftKey?: boolean,
@@ -114,9 +119,9 @@ export function useTrackKeyboardHandlers(
         target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }, 0);
-  };
+  }, [tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, selectionAnchor, setSelectionAnchor, trackSelectionMode, onTrackContainerFocusChange, beginCmdMove, buildTrackForDrop, dispatch]);
 
-  const onTrackReorder = (
+  const onTrackReorder = useCallback((
     trackIndex: number,
     direction: 1 | -1,
     wasContainerFocused: boolean,
@@ -314,7 +319,7 @@ export function useTrackKeyboardHandlers(
       target?.focus();
       target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 0);
-  };
+  }, [tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, selectionAnchor, setSelectionAnchor, trackSelectionMode, onTrackContainerFocusChange, beginCmdMove, buildTrackForDrop, dispatch]);
 
   return { onTrackNavigateVertical, onTrackReorder };
 }
