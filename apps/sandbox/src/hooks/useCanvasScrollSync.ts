@@ -1,4 +1,25 @@
 import React from 'react';
+import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
+
+/**
+ * Pure zoom-toward-cursor anchor math. Content at time t renders at pixel
+ * CLIP_CONTENT_OFFSET + t * pps, so the time under the cursor is
+ * (cursorX + scrollLeft - OFFSET) / pps, and keeping that time under the
+ * cursor after a zoom needs scrollLeft' = OFFSET + t * newPps - cursorX.
+ * (The offset was previously omitted from both sides, which re-anchored
+ * every wheel step slightly wrong — the waveform start visibly walked
+ * during trackpad zooms.)
+ */
+export function computeZoomAnchor(
+  cursorX: number,
+  scrollLeft: number,
+  pps: number,
+  newPps: number,
+): { timeAtCursor: number; newScrollLeft: number } {
+  const timeAtCursor = (cursorX + scrollLeft - CLIP_CONTENT_OFFSET) / pps;
+  const newScrollLeft = Math.max(0, CLIP_CONTENT_OFFSET + timeAtCursor * newPps - cursorX);
+  return { timeAtCursor, newScrollLeft };
+}
 
 export interface UseCanvasScrollSyncOptions {
   scrollContainerRef: React.RefObject<HTMLDivElement>;
@@ -55,7 +76,30 @@ export function useCanvasScrollSync({
   minPpsRef.current = minPixelsPerSecond;
   setPixelsPerSecondRef.current = setPixelsPerSecond;
 
-  const isZoomingRef = React.useRef(false);
+  // Wheel-zoom scroll correction is DEFERRED to the layout effect below:
+  // writing scrollLeft at wheel time painted one frame with the OLD clip
+  // widths at the NEW scroll (then a second paint after React committed
+  // the new widths — and on zoom-out the shrinking container re-clamped
+  // the scroll for a third jump). Trackpads emit dozens of events, so the
+  // alternation read as waveform jitter. The pending record carries the
+  // anchor so consecutive wheel events in one frame stay continuous even
+  // though el.scrollLeft hasn't been written yet.
+  const pendingZoomRef = React.useRef<{ timeAtCursor: number; cursorX: number } | null>(null);
+  const setScrollXRef = React.useRef(setScrollX);
+  setScrollXRef.current = setScrollX;
+
+  React.useLayoutEffect(() => {
+    const pending = pendingZoomRef.current;
+    if (!pending) return;
+    pendingZoomRef.current = null;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    // New widths are committed; write scroll + mirror scrollX state in the
+    // same pre-paint pass so canvas, ruler and overlays land together.
+    const target = Math.max(0, CLIP_CONTENT_OFFSET + pending.timeAtCursor * pixelsPerSecond - pending.cursorX);
+    el.scrollLeft = target;
+    setScrollXRef.current(el.scrollLeft);
+  }, [pixelsPerSecond, scrollContainerRef]);
 
   React.useEffect(() => {
     const el = scrollContainerRef.current;
@@ -66,28 +110,28 @@ export function useCanvasScrollSync({
         e.preventDefault();
         const rect = el.getBoundingClientRect();
         const cursorX = e.clientX - rect.left;
-        const timeAtCursor = (cursorX + el.scrollLeft) / ppsRef.current;
+
+        // If a zoom is already pending (burst of wheel events before the
+        // next render), derive the effective scroll from the pending
+        // anchor instead of the not-yet-updated el.scrollLeft.
+        const pending = pendingZoomRef.current;
+        const effectiveScrollLeft = pending
+          ? Math.max(0, CLIP_CONTENT_OFFSET + pending.timeAtCursor * ppsRef.current - pending.cursorX)
+          : el.scrollLeft;
 
         const zoomDelta = e.deltaY || e.deltaX;
         const zoomFactor = Math.pow(0.998, zoomDelta);
         const newPps = Math.max(minPpsRef.current, Math.min(maxPpsRef.current, ppsRef.current * zoomFactor));
 
-        // Update ref immediately so scroll correction uses new value
+        const { timeAtCursor } = computeZoomAnchor(cursorX, effectiveScrollLeft, ppsRef.current, newPps);
+
+        // Update ref immediately so a same-frame follow-up event chains
         ppsRef.current = newPps;
+        pendingZoomRef.current = { timeAtCursor, cursorX };
 
-        // Suppress scroll state updates during zoom to avoid extra re-renders
-        isZoomingRef.current = true;
-
-        // Set scroll position before React re-render
-        el.scrollLeft = Math.max(0, timeAtCursor * newPps - cursorX);
-
-        // Trigger single React update for zoom level
+        // Trigger the React update; the layout effect above applies the
+        // scroll correction after the new widths commit, pre-paint.
         setPixelsPerSecondRef.current(newPps);
-
-        // Clear zooming flag after React has processed the update
-        requestAnimationFrame(() => {
-          isZoomingRef.current = false;
-        });
         return;
       }
 
