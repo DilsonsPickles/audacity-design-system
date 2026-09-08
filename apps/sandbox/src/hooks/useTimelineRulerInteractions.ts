@@ -3,7 +3,7 @@ import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { SnapGrid } from '@audacity-ui/core';
 import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 import { snapToGrid } from '../utils/snapToGrid';
-import type { Track, TracksAction } from '../contexts/TracksContext';
+import type { TimeSelection, Track, TracksAction } from '../contexts/TracksContext';
 import type { TimelineRulerContextMenuState } from './useContextMenuState';
 
 export interface UseTimelineRulerInteractionsDeps {
@@ -23,6 +23,9 @@ export interface UseTimelineRulerInteractionsDeps {
   scrollX: number;
   clickRulerToStartPlayback: boolean;
   tracks: Track[];
+  /** Active time selection — a click-to-play landing inside it plays only
+   *  to the selection's end (selection playback), matching transport play. */
+  timeSelection: TimeSelection | null;
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   setMouseCursorPosition: React.Dispatch<React.SetStateAction<number | undefined>>;
@@ -52,7 +55,7 @@ export function useTimelineRulerInteractions(
 ): UseTimelineRulerInteractionsResult {
   const {
     timelineRulerRef, playheadPosition, canvasSnap, snapEnabled, timelineFormat, bpm, beatsPerMeasure,
-    pixelsPerSecond, scrollX, clickRulerToStartPlayback, tracks, audioManagerRef, setIsPlaying,
+    pixelsPerSecond, scrollX, clickRulerToStartPlayback, tracks, timeSelection, audioManagerRef, setIsPlaying,
     setMouseCursorPosition, setTimelineRulerContextMenu, dispatch,
   } = deps;
 
@@ -159,12 +162,20 @@ export function useTimelineRulerInteractions(
 
       // Players stay loaded across playhead moves (loadClips schedules at
       // absolute transport times), so no reload is needed to play from here.
-      await audioManager.play(clickedTime);
+      // A click inside the active time selection plays only to its end.
+      const insideSelection = timeSelection
+        && clickedTime >= timeSelection.startTime
+        && clickedTime < timeSelection.endTime;
+      if (insideSelection) {
+        await audioManager.play(clickedTime, timeSelection.endTime);
+      } else {
+        await audioManager.play(clickedTime);
+      }
       setIsPlaying(true);
     }
   }, [
     clickRulerToStartPlayback, timelineRulerRef, scrollX, pixelsPerSecond, snapEnabled, timelineFormat,
-    bpm, beatsPerMeasure, canvasSnap, dispatch, audioManagerRef, setIsPlaying, tracks,
+    bpm, beatsPerMeasure, canvasSnap, dispatch, audioManagerRef, setIsPlaying, tracks, timeSelection,
   ]);
 
   const onContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {

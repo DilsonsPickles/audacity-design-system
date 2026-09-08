@@ -33,7 +33,7 @@ export interface ClipboardState {
 export interface UseKeyboardShortcutsOptions {
   state: TracksState;
   dispatch: React.Dispatch<TracksAction>;
-  handlePlay: () => void;
+  handlePlay: (options?: { ignoreSelectionEnd?: boolean }) => void;
   handleRecord: () => void;
   handleStopRecording: () => void;
   selectionAnchor: number | null;
@@ -240,7 +240,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
         if (!isTextField) {
           e.preventDefault();
-          handleSpacebar(transportDeps);
+          // Shift+Space: play through — ignore the selection's end bound.
+          handleSpacebar(transportDeps, { ignoreSelectionEnd: e.shiftKey });
           return;
         }
       }

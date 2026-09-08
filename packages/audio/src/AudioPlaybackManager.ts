@@ -32,6 +32,11 @@ export class AudioPlaybackManager {
   private loopEnabled: boolean = false;
   private loopStart: number | null = null;
   private loopEnd: number | null = null;
+  /** When set, playback auto-stops as the transport reaches this time —
+   *  used to play only a time selection. Cleared by pause()/stop().
+   *  Ignored while the transport is looping (loop region wins). */
+  private playbackEndTime: number | null = null;
+  private onPlaybackComplete?: () => void;
   private midiSynths: Map<number, Tone.PolySynth> = new Map();
   private scheduledMidiEvents: number[] = [];
 
@@ -439,15 +444,19 @@ export class AudioPlaybackManager {
   }
 
   /**
-   * Start playback from specified position (or current position if not specified)
+   * Start playback from specified position (or current position if not specified).
+   * When `endTime` is given, playback auto-stops as the transport reaches it
+   * (selection playback) and the playback-complete callback fires — unless
+   * the transport is looping, in which case the loop region takes precedence.
    */
-  async play(startTime?: number): Promise<void> {
+  async play(startTime?: number, endTime?: number): Promise<void> {
     if (this.isPlaying) return;
 
     await Tone.start(); // Ensure audio context is started
     this.isPlaying = true;
     this.isPaused = false;
     this.pausedPosition = null; // Clear paused position
+    this.playbackEndTime = endTime ?? null;
     this.frozenMeterLevels.clear(); // Clear frozen levels when playing
 
     // If start time is provided, seek to that position first
@@ -507,6 +516,7 @@ export class AudioPlaybackManager {
 
     this.isPlaying = false;
     this.isPaused = true;
+    this.playbackEndTime = null;
   }
 
   /**
@@ -554,6 +564,14 @@ export class AudioPlaybackManager {
    */
   setPositionUpdateCallback(callback: (position: number) => void): void {
     this.onPositionUpdate = callback;
+  }
+
+  /**
+   * Called when bounded (selection) playback reaches its end time and stops
+   * itself. Not called for pause/stop initiated by the user.
+   */
+  setPlaybackCompleteCallback(callback: () => void): void {
+    this.onPlaybackComplete = callback;
   }
 
   /**
@@ -630,6 +648,23 @@ export class AudioPlaybackManager {
 
       const currentTime = Tone.getTransport().seconds;
       this.playbackPosition = currentTime;
+
+      // Selection playback: stop at the end bound (loop region wins if the
+      // transport is looping). pause() clears playbackEndTime, so capture
+      // it first for the final clamped position report.
+      if (this.playbackEndTime !== null && !Tone.getTransport().loop
+        && currentTime >= this.playbackEndTime) {
+        const endTime = this.playbackEndTime;
+        this.playbackPosition = endTime;
+        this.pause();
+        if (this.onPositionUpdate) {
+          this.onPositionUpdate(endTime);
+        }
+        if (this.onPlaybackComplete) {
+          this.onPlaybackComplete();
+        }
+        return;
+      }
 
       if (this.onPositionUpdate) {
         this.onPositionUpdate(currentTime);

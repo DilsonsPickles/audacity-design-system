@@ -3,6 +3,13 @@ import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audi
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { RecordingManager } from '../utils/RecordingManager';
 
+export interface PlayOptions {
+  /** Shift+Space: start playback exactly as normal play would (selection
+   *  start when the playhead is inside the selection), but WITHOUT the
+   *  selection end bound — keep playing past it. */
+  ignoreSelectionEnd?: boolean;
+}
+
 export interface UsePlaybackControlsOptions {
   state: TracksState;
   dispatch: React.Dispatch<TracksAction>;
@@ -17,7 +24,7 @@ export interface UsePlaybackControlsOptions {
 export interface UsePlaybackControlsReturn {
   isPlaying: boolean;
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
-  handlePlay: () => Promise<void>;
+  handlePlay: (options?: PlayOptions) => Promise<void>;
   handleStop: () => Promise<void>;
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
   trackMeterLevels: Map<number, number>;
@@ -52,6 +59,14 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // Master output meter — single post-mix level 0-100.
   const [masterMeterLevel, setMasterMeterLevel] = useState(0);
 
+  // Ref-mirror (see CLAUDE.md): the playback-complete callback below is
+  // registered once in the init effect but must read the live time
+  // selection when selection playback finishes.
+  const timeSelectionRef = useRef(state.timeSelection);
+  useEffect(() => {
+    timeSelectionRef.current = state.timeSelection;
+  }, [state.timeSelection]);
+
   // Initialize audio playback manager
   useEffect(() => {
     const audioManager = audioManagerRef.current;
@@ -77,6 +92,18 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     // post-mix level. Used by the master playback meter UI.
     audioManager.setMasterMeterUpdateCallback((level) => {
       setMasterMeterLevel(level);
+    });
+
+    // Selection playback finished (the manager auto-stopped at the
+    // selection's end bound): reflect the stopped transport in React state
+    // and return the playhead to the selection start, Audacity-style, so
+    // play replays the same range.
+    audioManager.setPlaybackCompleteCallback(() => {
+      setIsPlaying(false);
+      const sel = timeSelectionRef.current;
+      if (sel) {
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
+      }
     });
 
     // Cleanup on unmount
@@ -113,7 +140,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   }, [state.tracks, isPlaying, state.isRecording]);
 
   // Handle play/pause transport controls
-  const handlePlay = async () => {
+  const handlePlay = async (options?: PlayOptions) => {
     const audioManager = audioManagerRef.current;
 
     // Use audio manager's state as source of truth, not React state
@@ -126,7 +153,30 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       // to the current playhead. Reloading here would re-copy every clip's
       // audio buffer into fresh Tone.Players on each play press.
       applyTrackGains(audioManager, state.tracks);
-      await audioManager.play(state.playheadPosition);
+
+      // With an active time selection, play ONLY the selected range: start
+      // at its start, auto-stop at its end (the manager's playback-complete
+      // callback then parks the playhead back on the selection start).
+      //
+      // The selection binds playback only while the playhead sits inside it
+      // (inclusive edges — the same containment rule as
+      // playheadAfterSelectionFinalize). Moving the playhead OUT of the
+      // selection is an explicit "play from here instead" gesture, so play
+      // reverts to open-ended from the playhead.
+      const sel = state.timeSelection;
+      const playheadInSelection = !!sel
+        && state.playheadPosition >= sel.startTime
+        && state.playheadPosition <= sel.endTime;
+      if (sel && playheadInSelection && sel.endTime - sel.startTime > 1e-6) {
+        if (options?.ignoreSelectionEnd) {
+          // Shift+Space: same start point, no end bound — play through.
+          await audioManager.play(sel.startTime);
+        } else {
+          await audioManager.play(sel.startTime, sel.endTime);
+        }
+      } else {
+        await audioManager.play(state.playheadPosition);
+      }
 
       setIsPlaying(true);
     }

@@ -319,6 +319,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     scrollX,
     clickRulerToStartPlayback,
     tracks: state.tracks,
+    timeSelection: state.timeSelection,
     audioManagerRef,
     setIsPlaying,
     setMouseCursorPosition,

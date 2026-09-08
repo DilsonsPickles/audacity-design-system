@@ -638,6 +638,148 @@ describe('Timeline ruler', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Selection playback (usePlaybackControls.handlePlay + AudioPlaybackManager
+// end bound). Seam: with an active time selection, transport play must play
+// ONLY the selected range — play(selStart, selEnd) — not from the playhead
+// to the end of the project.
+// ---------------------------------------------------------------------------
+
+describe('Selection playback', () => {
+  it('transport play with an active time selection plays only the selected range', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+
+    // Drag a time selection on the track's canvas row (same pointer-container
+    // identification and rect stub as the MIDI-clip creation test above).
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+
+    fireEvent.mouseDown(pointerContainer, { clientX: 100, clientY: 50, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 50 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 50 });
+
+    // Transport play — must be bounded to the selection, not open-ended.
+    audioSpies.play.mockClear();
+    const playButton = container.querySelector('button[aria-label="Play"]') as HTMLElement;
+    fireEvent.click(playButton);
+
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const call = audioSpies.play.mock.calls.at(-1) as [number, number];
+    const [start, end] = call;
+    // Selection spans the dragged pixel range at 100 px/s with the canvas's
+    // content offset; the exact times matter less than that BOTH bounds are
+    // passed and match each other's span (2 s for a 200 px drag).
+    expect(typeof end).toBe('number');
+    expect(end - start).toBeCloseTo(2, 5);
+    expect(start).toBeGreaterThanOrEqual(0);
+  });
+
+  it('Shift+Space plays through — same start, selection end bound ignored', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+
+    fireEvent.mouseDown(pointerContainer, { clientX: 100, clientY: 50, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 50 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 50 });
+
+    // Plain Space first: bounded selection playback (both args).
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const boundedCall = audioSpies.play.mock.calls.at(-1) as [number, number];
+    expect(boundedCall[1] - boundedCall[0]).toBeCloseTo(2, 5);
+
+    // Pause (the mock's getIsPlaying stays false, so Space plays again),
+    // then Shift+Space: same start point, NO end bound.
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: ' ', shiftKey: true });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const playThroughCall = audioSpies.play.mock.calls.at(-1) as unknown[];
+    expect(playThroughCall[0]).toBeCloseTo(boundedCall[0], 5);
+    expect(playThroughCall[1]).toBeUndefined();
+  });
+
+  it('moving the playhead OUT of the selection unbinds playback from it', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+
+    fireEvent.mouseDown(pointerContainer, { clientX: 100, clientY: 50, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 50 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 50 });
+
+    // Finalize parked the playhead on the selection start; nudge it LEFT out
+    // of the selection via the ruler's keyboard interaction (0.1 s step).
+    const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
+    act(() => {
+      ruler.focus();
+    });
+    fireEvent.keyDown(ruler, { key: 'ArrowLeft' });
+
+    audioSpies.play.mockClear();
+    const playButton = container.querySelector('button[aria-label="Play"]') as HTMLElement;
+    fireEvent.click(playButton);
+
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const call = audioSpies.play.mock.calls.at(-1) as unknown[];
+    // Open-ended play from the (moved) playhead — no selection end bound.
+    expect(call[1]).toBeUndefined();
+  });
+
+  it('transport play without a selection stays open-ended (no end bound)', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+
+    audioSpies.play.mockClear();
+    const playButton = container.querySelector('button[aria-label="Play"]') as HTMLElement;
+    fireEvent.click(playButton);
+
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const call = audioSpies.play.mock.calls.at(-1) as unknown[];
+    expect(call[1]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Track management (TrackControlSidePanel wiring, EditorLayout.tsx ~487-620)
 // Seam: onAddTrackType (id/name allocation via Math.max(...)+1, immune to
 // gaps left by deletes), onDuplicateTrack (group-copy invariant: fresh

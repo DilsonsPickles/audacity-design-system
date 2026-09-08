@@ -3,7 +3,7 @@ import type { EffectsPanelState } from '../useContextMenuState';
 
 export interface TransportHandlerDeps {
   state: TracksState;
-  handlePlay: () => void;
+  handlePlay: (options?: { ignoreSelectionEnd?: boolean }) => void;
   handleRecord: () => void;
   handleStopRecording: () => void;
   setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
@@ -11,11 +11,14 @@ export interface TransportHandlerDeps {
 }
 
 /** Space bar: play/pause or stop recording */
-export function handleSpacebar(deps: TransportHandlerDeps): void {
+export function handleSpacebar(
+  deps: TransportHandlerDeps,
+  options?: { ignoreSelectionEnd?: boolean },
+): void {
   if (deps.state.isRecording) {
     deps.handleStopRecording();
   } else {
-    deps.handlePlay();
+    deps.handlePlay(options);
   }
 }
 
