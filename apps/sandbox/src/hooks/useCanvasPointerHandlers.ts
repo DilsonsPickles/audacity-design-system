@@ -7,6 +7,7 @@ import { resolveTrackIndexFromY } from '../utils/canvasGeometry';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
 import type { UseSplitToolResult } from './useSplitTool';
 import type { UseMarqueeSelectionReturn } from './useMarqueeSelection';
+import { pointerTimelineTimeRef } from './pointerTimelineTime';
 import type { CanvasProps } from '../components/Canvas';
 
 export interface UseCanvasPointerHandlersOptions {
@@ -149,11 +150,16 @@ export function useCanvasPointerHandlers(
   };
 
   const onMouseMove: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    // Record the timeline time under the pointer for the B key (play
+    // between pointer and cursor) — read at keypress time, off-canvas null.
+    const rect = e.currentTarget.getBoundingClientRect();
+    pointerTimelineTimeRef.current = (e.clientX - rect.left - leftPadding) / pixelsPerSecond;
     splitTool.handlers.onMouseMove(e);
     containerProps.onMouseMove?.(e);
   };
 
   const onMouseLeave: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    pointerTimelineTimeRef.current = null;
     splitTool.handlers.onMouseLeave(e);
     // Let useAudioSelection reset the time-selection cursor so a
     // hover-triggered `ew-resize` doesn't stick when the pointer

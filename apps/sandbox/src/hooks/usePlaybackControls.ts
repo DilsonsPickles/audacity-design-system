@@ -16,6 +16,11 @@ export interface PlayOptions {
    *  playhead where playback stopped instead of returning it to the
    *  playback-start marker. Starting plays exactly like Space. */
   keepCursorOnStop?: boolean;
+  /** B (Play to Selection, AU3 heritage): play an explicit [start, end]
+   *  range; the playhead returns to `returnTo` (the cursor position) when
+   *  the range completes or playback is toggled off. Takes precedence over
+   *  the selection-derived play paths. */
+  playRange?: { start: number; end: number; returnTo: number };
 }
 
 export interface UsePlaybackControlsOptions {
@@ -85,6 +90,11 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     timeSelectionRef.current = state.timeSelection;
   }, [state.timeSelection]);
 
+  // B (playRange): where to park the playhead when the range finishes.
+  // Set only by the playRange path, cleared by every other play/stop path,
+  // and takes precedence over the selection-return in the complete callback.
+  const rangeReturnRef = useRef<number | null>(null);
+
   // Initialize audio playback manager
   useEffect(() => {
     const audioManager = audioManagerRef.current;
@@ -119,6 +129,14 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     audioManager.setPlaybackCompleteCallback(() => {
       setIsPlaying(false);
       setPlaybackStartTime(null);
+      // B (playRange) finished: return the playhead to the cursor it was
+      // previewing toward — never to the selection start.
+      const rangeReturn = rangeReturnRef.current;
+      if (rangeReturn !== null) {
+        rangeReturnRef.current = null;
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: rangeReturn });
+        return;
+      }
       const sel = timeSelectionRef.current;
       if (sel) {
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
@@ -214,12 +232,28 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: playbackStartTime });
       }
       setPlaybackStartTime(null);
+      rangeReturnRef.current = null;
     } else {
       // Players are loaded by the (debounced) tracks-change effect above
       // and are scheduled position-independently — but a pending debounced
       // reload must land before play so just-finished edits are audible.
       flushPendingReload();
       applyTrackGains(audioManager, state.tracks);
+      rangeReturnRef.current = null;
+
+      // B (Play to Selection, AU3 heritage): explicit range between the
+      // mouse pointer and the cursor. The ghost marker sits on the cursor
+      // (returnTo) so toggling playback off returns the playhead there,
+      // and the complete callback does the same via rangeReturnRef.
+      if (options?.playRange) {
+        const { start, end, returnTo } = options.playRange;
+        rangeReturnRef.current = returnTo;
+        setPlaybackStartTime(returnTo);
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: start });
+        await audioManager.play(start, end);
+        setIsPlaying(true);
+        return;
+      }
 
       // With an active time selection, play ONLY the selected range: start
       // at its start, auto-stop at its end (the manager's playback-complete
@@ -280,6 +314,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     audioManager.stop();
     setIsPlaying(false);
     setPlaybackStartTime(null);
+    rangeReturnRef.current = null;
     setTrackMeterLevels(new Map()); // Reset all meter levels to 0
   };
 

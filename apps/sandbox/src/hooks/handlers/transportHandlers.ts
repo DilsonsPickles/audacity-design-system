@@ -1,9 +1,11 @@
 import type { TracksState } from '../../contexts/TracksContext';
 import type { EffectsPanelState } from '../useContextMenuState';
+import type { PlayOptions } from '../usePlaybackControls';
+import { pointerTimelineTimeRef } from '../pointerTimelineTime';
 
 export interface TransportHandlerDeps {
   state: TracksState;
-  handlePlay: (options?: { ignoreSelectionEnd?: boolean; snapToSelection?: boolean; keepCursorOnStop?: boolean }) => void;
+  handlePlay: (options?: PlayOptions) => void;
   handleRecord: () => void;
   handleStopRecording: () => void;
   setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
@@ -22,9 +24,25 @@ export function handlePlayStopSetCursor(deps: TransportHandlerDeps): void {
   }
 }
 
-/** B key: play the selection — snap the playhead to the selection start
- *  and play the range (Shift+B plays through past its end). Audacity
- *  heritage: B was Play to Selection. Ignored while recording. */
+/** B key (AU3 heritage: Play to Selection): plays between the mouse
+ *  pointer's timeline position and the cursor — up to the cursor when the
+ *  pointer sits left of it, from the cursor outward when right of it. The
+ *  playhead returns to the cursor when the range finishes. No-op unless
+ *  the pointer is over the canvas timeline. Ignored while recording. */
+export function handlePlayToCursor(deps: TransportHandlerDeps): void {
+  if (deps.state.isRecording) return;
+  const pointerTime = pointerTimelineTimeRef.current;
+  if (pointerTime === null) return;
+  const cursor = deps.state.playheadPosition;
+  const start = Math.max(0, Math.min(pointerTime, cursor));
+  const end = Math.max(pointerTime, cursor);
+  if (end - start <= 1e-6) return;
+  deps.handlePlay({ playRange: { start, end, returnTo: cursor } });
+}
+
+/** W key: play the selection — snap the playhead to the selection start
+ *  and play the range (Shift+W plays through past its end).
+ *  Ignored while recording. */
 export function handlePlaySelection(
   deps: TransportHandlerDeps,
   options?: { ignoreSelectionEnd?: boolean },

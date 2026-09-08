@@ -866,7 +866,7 @@ describe('Selection playback', () => {
     audioSpies.getIsPlaying.mockReturnValue(false);
   });
 
-  it('B plays the selection from anywhere: snaps the playhead to its start, bounded', async () => {
+  it('W plays the selection from anywhere: snaps the playhead to its start, bounded', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;
     await gotoProject(rendered);
@@ -887,7 +887,7 @@ describe('Selection playback', () => {
     fireEvent.mouseUp(document, { clientX: 300, clientY: 50 });
 
     // Move the playhead OUT of the selection — Space would now be unbound,
-    // but B snaps back to the selection and plays it bounded.
+    // but W snaps back to the selection and plays it bounded.
     const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
     act(() => {
       ruler.focus();
@@ -895,7 +895,7 @@ describe('Selection playback', () => {
     fireEvent.keyDown(ruler, { key: 'ArrowLeft' });
 
     audioSpies.play.mockClear();
-    fireEvent.keyDown(document.body, { key: 'b' });
+    fireEvent.keyDown(document.body, { key: 'w' });
     await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
     const call = audioSpies.play.mock.calls.at(-1) as [number, number];
     expect(call[1] - call[0]).toBeCloseTo(2, 5);
@@ -905,16 +905,77 @@ describe('Selection playback', () => {
         .toBe(`${12 + call[0] * 100}px`);
     });
 
-    // Shift+B: same start, no end bound.
+    // Shift+W: same start, no end bound.
     audioSpies.play.mockClear();
-    fireEvent.keyDown(document.body, { key: 'B', shiftKey: true });
+    fireEvent.keyDown(document.body, { key: 'W', shiftKey: true });
     await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
     const throughCall = audioSpies.play.mock.calls.at(-1) as unknown[];
     expect(throughCall[0]).toBeCloseTo(call[0], 5);
     expect(throughCall[1]).toBeUndefined();
 
-    // Without a selection, B does nothing.
+    // Without a selection, W does nothing.
     fireEvent.keyDown(document.body, { key: 'Escape' });
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: 'w' });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(audioSpies.play).not.toHaveBeenCalled();
+  });
+
+  it('B plays between the mouse pointer position and the cursor (AU3 Play to Selection)', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+
+    // Park the cursor at 0.3 s via the ruler (3 × 0.1 s nudges)
+    const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
+    act(() => { ruler.focus(); });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+
+    // Hover the pointer at t = 3 s (x = 12 offset + 300), right of the
+    // cursor → B plays FROM the cursor to the pointer.
+    fireEvent.mouseMove(pointerContainer, { clientX: 312, clientY: 50 });
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: 'b' });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    let call = audioSpies.play.mock.calls.at(-1) as [number, number];
+    expect(call[0]).toBeCloseTo(0.3, 5);
+    expect(call[1]).toBeCloseTo(3, 5);
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    fireEvent.keyDown(document.body, { key: 'b' }); // toggle off
+    audioSpies.getIsPlaying.mockReturnValue(false);
+    // Playhead returned to the cursor (12px offset + 0.3 s × 100)
+    await waitFor(() => {
+      expect((ruler.querySelector('.playhead-cursor') as HTMLElement).style.left).toBe('42px');
+    });
+
+    // Pointer LEFT of the cursor (t = 0.1 s) → plays up to the cursor.
+    fireEvent.mouseMove(pointerContainer, { clientX: 22, clientY: 50 });
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: 'b' });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    call = audioSpies.play.mock.calls.at(-1) as [number, number];
+    expect(call[0]).toBeCloseTo(0.1, 5);
+    expect(call[1]).toBeCloseTo(0.3, 5);
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    fireEvent.keyDown(document.body, { key: 'b' });
+    audioSpies.getIsPlaying.mockReturnValue(false);
+
+    // Pointer off the canvas → B does nothing.
+    fireEvent.mouseLeave(pointerContainer);
     audioSpies.play.mockClear();
     fireEvent.keyDown(document.body, { key: 'b' });
     await new Promise((r) => setTimeout(r, 50));

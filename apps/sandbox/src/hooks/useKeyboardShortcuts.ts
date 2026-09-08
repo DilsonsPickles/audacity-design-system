@@ -6,7 +6,7 @@ import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';
 import { handleDelete } from './handlers/deleteHandlers';
-import { handleSpacebar, handlePlaySelection, handlePlayStopSetCursor, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
+import { handleSpacebar, handlePlaySelection, handlePlayToCursor, handlePlayStopSetCursor, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
 import { scrollPlayheadIntoView } from '../utils/scrollPlayheadIntoView';
@@ -238,10 +238,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
       }
 
-      // --- B: Play Selection (Audacity heritage: B = Play to Selection) ---
+      // --- W: Play Selection ---
       // Snaps the playhead to the selection start and plays the range,
-      // wherever the playhead was; Shift+B plays through past the end.
-      if ((e.key === 'b' || e.key === 'B') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // wherever the playhead was; Shift+W plays through past the end.
+      // Plain W only — Cmd/Ctrl+W stays close (handled further down).
+      if ((e.key === 'w' || e.key === 'W') && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const target = e.target as HTMLElement;
         const isTextField = target.tagName === 'TEXTAREA' ||
           (target.tagName === 'INPUT' && ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes((target as HTMLInputElement).type)) ||
@@ -250,6 +251,23 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (!isTextField) {
           e.preventDefault();
           handlePlaySelection(transportDeps, { ignoreSelectionEnd: e.shiftKey });
+          return;
+        }
+      }
+
+      // --- B: Play to Selection (AU3 heritage) --- plays between the
+      // mouse pointer's timeline position and the cursor (up to the cursor
+      // when the pointer is left of it), then returns the playhead to the
+      // cursor. Needs the pointer over the canvas; plain B only.
+      if ((e.key === 'b' || e.key === 'B') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const target = e.target as HTMLElement;
+        const isTextField = target.tagName === 'TEXTAREA' ||
+          (target.tagName === 'INPUT' && ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes((target as HTMLInputElement).type)) ||
+          target.isContentEditable;
+
+        if (!isTextField) {
+          e.preventDefault();
+          handlePlayToCursor(transportDeps);
           return;
         }
       }
