@@ -418,6 +418,9 @@ export function useCanvasPointerHandlers(
       payload: { startTime: prevEnd, endTime: nextStart, tracks: [ti] },
     });
     dispatch({ type: 'SET_FOCUSED_TRACK', payload: ti });
+    // Park the playhead on the gap's start so Space auditions the selected
+    // space from its beginning — same contract as clip-body double-click.
+    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: prevEnd });
   };
 
   const onDragStart: React.DragEventHandler<HTMLDivElement> = (e) => e.preventDefault();

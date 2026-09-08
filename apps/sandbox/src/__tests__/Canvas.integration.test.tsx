@@ -278,6 +278,9 @@ describe('Double / triple click', () => {
     // Overlay rect: left = 12 + 2 s × 100, width = 3 s × 100
     expect(overlay.style.left).toBe('212px');
     expect(overlay.style.width).toBe('300px');
+    // Playhead parks on the gap's start, so Space auditions the space.
+    const probe = container.querySelector('[data-testid="tracks-state-probe"]') as HTMLElement;
+    expect(probe.getAttribute('data-playhead')).toBe('2');
   });
 
   it('double-click on empty space before the first clip selects track-start to clip-start', () => {
@@ -299,6 +302,9 @@ describe('Double / triple click', () => {
     const overlay = trackEl(container, 0).children[0] as HTMLElement;
     expect(overlay.style.left).toBe('12px');
     expect(overlay.style.width).toBe('150px');
+    // Playhead parks on the gap's start (the track start here).
+    const probe = container.querySelector('[data-testid="tracks-state-probe"]') as HTMLElement;
+    expect(probe.getAttribute('data-playhead')).toBe('0');
   });
 
   it('double-click after all content clears the time selection', () => {
