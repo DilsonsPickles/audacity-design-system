@@ -6,7 +6,13 @@ import type { TimeSelection } from '@audacity-ui/core';
 const LEFT_PADDING = 12; // pixels
 const MIN_VIEWPORT_WIDTH = 5000; // Minimum starting width
 const MAX_CANVAS_WIDTH = 32000; // Browser canvas limit safety
-const MIN_ZOOM = 10; // Minimum pixels per second
+// Absolute floor, used only when the project is empty. With content, the
+// zoom-out limit is DYNAMIC: the viewport may span at most 2x the project
+// length (see minPixelsPerSecond below) — audio ending at 4:00 lets you
+// zoom out to see 8:00, no further.
+const ABSOLUTE_MIN_ZOOM = 1;
+const DEFAULT_ZOOM = 100; // px/s — also caps the dynamic floor so a short
+                          // project never forces a zoom-IN past the default
 const ZOOM_FACTOR = 1.5; // Multiplier for zoom in/out steps
 
 export interface UseZoomControlsOptions {
@@ -30,6 +36,8 @@ export interface UseZoomControlsReturn {
   timelineWidth: number;
   timelineDuration: number;
   maxPixelsPerSecond: number;
+  /** Dynamic zoom-out floor: viewport spans at most 2x the project length */
+  minPixelsPerSecond: number;
 }
 
 /**
@@ -46,7 +54,7 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
   } = options;
 
   // Zoom state
-  const [pixelsPerSecond, setPixelsPerSecond] = useState(100);
+  const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_ZOOM);
 
   // Calculate project length (end of last clip across all tracks)
   const projectLength = useMemo(() => {
@@ -76,6 +84,15 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
 
   // Calculate max pixels per second to stay under canvas limit
   const maxPixelsPerSecond = Math.floor((MAX_CANVAS_WIDTH - LEFT_PADDING) / timelineDuration);
+
+  // Dynamic zoom-out floor: the visible span is capped at 2x the project
+  // length. Capped at DEFAULT_ZOOM so short projects don't get a floor
+  // above the default zoom (zoom-out just stops; nothing forces zoom-in),
+  // and falling back to the absolute floor when the project is empty.
+  const viewportWidthForMin = scrollContainerRef.current?.clientWidth || 800;
+  const minPixelsPerSecond = projectLength > 0
+    ? Math.min(DEFAULT_ZOOM, viewportWidthForMin / (2 * projectLength))
+    : ABSOLUTE_MIN_ZOOM;
 
   // Convert zoom level name to pixels per second
   const zoomLevelToPixelsPerSecond = useCallback((level: string): number => {
@@ -124,8 +141,8 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
   }, [maxPixelsPerSecond]);
 
   const zoomOut = useCallback(() => {
-    setPixelsPerSecond(prev => Math.max(prev / ZOOM_FACTOR, MIN_ZOOM));
-  }, []);
+    setPixelsPerSecond(prev => Math.max(prev / ZOOM_FACTOR, minPixelsPerSecond));
+  }, [minPixelsPerSecond]);
 
   const zoomToggle = useCallback(() => {
     // Toggle between the two predefined zoom levels
@@ -163,7 +180,7 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
     const newPixelsPerSecond = Math.floor(viewportWidth / selectionDuration);
 
     // Apply zoom level constraints
-    const constrainedZoom = Math.max(MIN_ZOOM, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
+    const constrainedZoom = Math.max(minPixelsPerSecond, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
     setPixelsPerSecond(constrainedZoom);
 
     // Scroll to show the selection at the left edge
@@ -172,7 +189,7 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = Math.max(0, scrollPosition);
     }
-  }, [state.timeSelection, scrollContainerRef, maxPixelsPerSecond]);
+  }, [state.timeSelection, scrollContainerRef, maxPixelsPerSecond, minPixelsPerSecond]);
 
   const zoomToFitProject = useCallback(() => {
     // Find the earliest start time and latest end time across all clips
@@ -203,7 +220,7 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
 
 
     // Apply zoom level constraints
-    const constrainedZoom = Math.max(MIN_ZOOM, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
+    const constrainedZoom = Math.max(minPixelsPerSecond, Math.min(newPixelsPerSecond, maxPixelsPerSecond));
     setPixelsPerSecond(constrainedZoom);
 
     // Scroll to the start of the project
@@ -213,7 +230,7 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = scrollPosition;
     }
-  }, [state.tracks, scrollContainerRef, maxPixelsPerSecond]);
+  }, [state.tracks, scrollContainerRef, maxPixelsPerSecond, minPixelsPerSecond]);
 
   return {
     pixelsPerSecond,
@@ -226,5 +243,6 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
     timelineWidth,
     timelineDuration,
     maxPixelsPerSecond,
+    minPixelsPerSecond,
   };
 }

@@ -1,13 +1,13 @@
 import React from 'react';
 
-const MIN_ZOOM = 10; // Minimum pixels per second (matches useZoomControls)
-
 export interface UseCanvasScrollSyncOptions {
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   trackHeaderScrollRef: React.RefObject<HTMLDivElement>;
   lastWrittenScrollTopRef: React.MutableRefObject<{ canvas: number; header: number }>;
   pixelsPerSecond: number;
   maxPixelsPerSecond: number;
+  /** Dynamic zoom-out floor from useZoomControls (2x project length rule) */
+  minPixelsPerSecond: number;
   setPixelsPerSecond: (v: number) => void; // the _setPixelsPerSecond from useZoomControls
   activeMenuItem: string;
   setScrollX: (v: number) => void;
@@ -36,6 +36,7 @@ export function useCanvasScrollSync({
   lastWrittenScrollTopRef,
   pixelsPerSecond,
   maxPixelsPerSecond,
+  minPixelsPerSecond,
   setPixelsPerSecond,
   activeMenuItem,
   setScrollX,
@@ -47,9 +48,11 @@ export function useCanvasScrollSync({
   // Wheel-to-zoom: Cmd/Ctrl + scroll zooms toward cursor (like piano roll)
   const ppsRef = React.useRef(pixelsPerSecond);
   const maxPpsRef = React.useRef(maxPixelsPerSecond);
+  const minPpsRef = React.useRef(minPixelsPerSecond);
   const setPixelsPerSecondRef = React.useRef(setPixelsPerSecond);
   ppsRef.current = pixelsPerSecond;
   maxPpsRef.current = maxPixelsPerSecond;
+  minPpsRef.current = minPixelsPerSecond;
   setPixelsPerSecondRef.current = setPixelsPerSecond;
 
   const isZoomingRef = React.useRef(false);
@@ -67,7 +70,7 @@ export function useCanvasScrollSync({
 
         const zoomDelta = e.deltaY || e.deltaX;
         const zoomFactor = Math.pow(0.998, zoomDelta);
-        const newPps = Math.max(MIN_ZOOM, Math.min(maxPpsRef.current, ppsRef.current * zoomFactor));
+        const newPps = Math.max(minPpsRef.current, Math.min(maxPpsRef.current, ppsRef.current * zoomFactor));
 
         // Update ref immediately so scroll correction uses new value
         ppsRef.current = newPps;

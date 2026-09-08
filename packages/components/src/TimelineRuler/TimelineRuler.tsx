@@ -763,6 +763,10 @@ function drawBeatsAndMeasures(
 }
 
 function getTimelineMajorInterval(pixelsPerSecond: number): number {
+  // Low-zoom entries keep major labels >=60px apart down to MIN_ZOOM
+  // (1 px/s): 60s interval at 1-2 px/s = 60-120px spacing.
+  if (pixelsPerSecond < 2) return 60;
+  if (pixelsPerSecond < 6) return 30;
   if (pixelsPerSecond < 20) return 10;
   if (pixelsPerSecond < 50) return 5;
   if (pixelsPerSecond < 100) return 2;

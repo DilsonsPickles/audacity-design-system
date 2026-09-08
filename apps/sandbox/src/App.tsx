@@ -370,7 +370,7 @@ function CanvasDemoContent() {
   const {
     pixelsPerSecond, setPixelsPerSecond: _setPixelsPerSecond,
     zoomIn, zoomOut, zoomToSelection, zoomToFitProject, zoomToggle,
-    timelineWidth, timelineDuration, maxPixelsPerSecond,
+    timelineWidth, timelineDuration, maxPixelsPerSecond, minPixelsPerSecond,
   } = useZoomControls({
     state: { tracks: state.tracks, timeSelection: state.timeSelection },
     scrollContainerRef,
@@ -506,6 +506,7 @@ function CanvasDemoContent() {
     lastWrittenScrollTopRef,
     pixelsPerSecond,
     maxPixelsPerSecond,
+    minPixelsPerSecond,
     setPixelsPerSecond: _setPixelsPerSecond,
     activeMenuItem,
     setScrollX,
