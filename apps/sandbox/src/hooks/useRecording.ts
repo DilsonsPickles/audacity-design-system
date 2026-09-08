@@ -154,6 +154,9 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
               duration: clipDuration,
               waveform,
               waveformRms,
+              // Replace the live-preview pin with the true source length —
+              // a stale live fullDuration would mis-map the final waveform.
+              fullDuration: clipDuration,
             },
           },
         });
@@ -205,6 +208,14 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
               waveform: waveformData,
               waveformRms: waveformRms,
               duration: duration,
+              // Pin the render mapping: waveformGeometry's detected sample
+              // rate is dataLength / (fullDuration || duration), and the
+              // clip's `duration` is ALSO written per-frame from the wall
+              // clock (smooth width growth) — without this pin the rate
+              // drifted between audio chunks and snapped back on each one,
+              // horizontally stretching the live waveform (jitter). Set
+              // only here, in the same dispatch as the array it matches.
+              fullDuration: duration,
             },
           },
         });
