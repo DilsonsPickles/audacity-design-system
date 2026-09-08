@@ -210,7 +210,9 @@ describe('Persistent selection vs track-background clicks', () => {
 // Double-click on a clip BODY selects the clip; triple-click selects the
 // whole track's extent (gaps included) as a track-scoped time selection.
 // Seam: useCanvasPointerHandlers onDoubleClick (audio branch) + onClick's
-// e.detail >= 3 branch.
+// click-chain triple branch (three clicks within 400 ms / 6 px each —
+// deliberately NOT e.detail, whose browser windows chain a stale click
+// into a later double-click and misfired whole-track selection).
 // ---------------------------------------------------------------------------
 
 describe('Double / triple click', () => {
@@ -244,9 +246,11 @@ describe('Double / triple click', () => {
     const pointerContainer = getPointerContainer(container);
     stubZeroRect(pointerContainer);
 
-    // Triple-click lands as a click with detail 3 — on track 0
+    // A genuine triple: three rapid clicks at one spot — on track 0
     // (clientY 50 is within its row). Track extent = last clip end (7 s),
     // gaps between the clips included.
+    fireEvent.click(pointerContainer, { clientX: 100, clientY: 50, detail: 1 });
+    fireEvent.click(pointerContainer, { clientX: 100, clientY: 50, detail: 2 });
     fireEvent.click(pointerContainer, { clientX: 100, clientY: 50, detail: 3 });
 
     // Track 0 shows the in-scope overlay; track 1 is out of scope.
@@ -297,15 +301,20 @@ describe('Double / triple click', () => {
     expect(overlay.style.width).toBe('150px');
   });
 
-  it('double-click after all content stays a plain click (no unbounded selection)', () => {
+  it('double-click after all content clears the time selection', () => {
     const { container } = renderCanvas(twoClipTrack());
     const pointerContainer = getPointerContainer(container);
     stubZeroRect(pointerContainer);
 
-    // t = 9 s — past the last clip end (7 s); no right bound, no selection
+    // Make a selection first: double-click the gap between the clips → [2, 5].
+    fireEvent.doubleClick(pointerContainer, { clientX: 362, clientY: 50 });
+    const overlayColor = () => ((trackEl(container, 0).children[0] as HTMLElement | undefined)?.style.backgroundColor ?? '');
+    expect(overlayColor()).toContain('98, 119, 136');
+
+    // t = 9 s — past the last clip end (7 s); no right bound, so the
+    // double-click clears the selection instead of creating one.
     fireEvent.doubleClick(pointerContainer, { clientX: 912, clientY: 50 });
-    const overlay = trackEl(container, 0).children[0] as HTMLElement | undefined;
-    expect(overlay?.style.backgroundColor ?? '').not.toContain('98, 119, 136');
+    expect(overlayColor()).not.toContain('98, 119, 136');
   });
 
   it('triple-click on an empty track does nothing', () => {
@@ -314,11 +323,80 @@ describe('Double / triple click', () => {
     stubZeroRect(pointerContainer);
 
     // Track 1 (empty) occupies y within [118, 232)
+    fireEvent.click(pointerContainer, { clientX: 100, clientY: 175, detail: 1 });
+    fireEvent.click(pointerContainer, { clientX: 100, clientY: 175, detail: 2 });
     fireEvent.click(pointerContainer, { clientX: 100, clientY: 175, detail: 3 });
     const overlayColor = (idx: number) => (trackEl(container, idx).children[0] as HTMLElement).style.backgroundColor;
     // No time selection: neither track shows a scoped overlay
     expect(overlayColor(0)).not.toContain('98, 119, 136');
     expect(overlayColor(1)).not.toContain('98, 119, 136');
+  });
+
+  // Regression: a click followed (after a pause) by a double-click keeps
+  // chaining the BROWSER's e.detail to 3 within its ~500 ms windows, which
+  // used to fire the triple-click branch — a gap double-click suddenly
+  // selected the whole track extent ("I double clicked in the second empty
+  // space and it selected the space before the clip!"). The handler now
+  // keeps its own click chain with a 400 ms window, so the pause resets it.
+  describe('stale click before a double-click (browser detail escalation)', () => {
+    // [gap 0–2][clip 2–4][gap 4–∞] on track 1; track 0 empty.
+    const gapClipGap = (): Track[] => ([
+      { id: 1, name: 'Track 1', clips: [] },
+      {
+        id: 2,
+        name: 'Track 2',
+        clips: [
+          { id: 7, name: 'c', start: 2, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 },
+        ],
+      },
+    ]);
+
+    // Real browser event order for "click … pause … double-click" at one
+    // spot: click(detail 1), then click(detail 2), dblclick, click(detail 3).
+    const clickPauseDoubleClick = (el: HTMLElement, clientX: number, clientY: number) => {
+      const nowSpy = vi.spyOn(performance, 'now');
+      try {
+        nowSpy.mockReturnValue(1000);
+        fireEvent.click(el, { clientX, clientY, detail: 1 });
+        // 600 ms pause — beyond the handler's 400 ms chain window, but the
+        // browser's own multi-click windows apply per adjacent pair, so its
+        // detail counter still reaches 3.
+        nowSpy.mockReturnValue(1600);
+        fireEvent.click(el, { clientX, clientY, detail: 2 });
+        fireEvent.doubleClick(el, { clientX, clientY, detail: 2 });
+        nowSpy.mockReturnValue(1750);
+        fireEvent.click(el, { clientX, clientY, detail: 3 });
+      } finally {
+        nowSpy.mockRestore();
+      }
+    };
+
+    it('in the unbounded gap after the clip: no selection at all (the reported bug)', () => {
+      const { container } = renderCanvas(gapClipGap());
+      const pointerContainer = getPointerContainer(container);
+      stubZeroRect(pointerContainer);
+
+      // t = 6 s (x = 12 + 600), track 1 row (y = 175) — after the clip.
+      clickPauseDoubleClick(pointerContainer, 612, 175);
+
+      const overlay = trackEl(container, 1).children[0] as HTMLElement | undefined;
+      expect(overlay?.style.backgroundColor ?? '').not.toContain('98, 119, 136');
+    });
+
+    it('in the bounded gap before the clip: selects that gap, not the whole track', () => {
+      const { container } = renderCanvas(gapClipGap());
+      const pointerContainer = getPointerContainer(container);
+      stubZeroRect(pointerContainer);
+
+      // t = 1 s (x = 12 + 100) in the first gap → selection [0, 2].
+      clickPauseDoubleClick(pointerContainer, 112, 175);
+
+      const overlay = trackEl(container, 1).children[0] as HTMLElement;
+      expect(overlay.style.backgroundColor).toContain('98, 119, 136');
+      expect(overlay.style.left).toBe('12px');
+      // 2 s × 100 px/s — the whole-track misfire was 400px ([0, 4]).
+      expect(overlay.style.width).toBe('200px');
+    });
   });
 });
 

@@ -84,6 +84,16 @@ export function useCanvasPointerHandlers(
 
   const dispatch = useTracksDispatch();
 
+  // Our own multi-click chain. The BROWSER's e.detail keeps counting across
+  // what users perceive as separate gestures — "click … then double-click"
+  // at one spot reaches detail 3 within the browser's ~500 ms windows, which
+  // fired the triple-click branch when the user meant a plain double-click
+  // (observed as a gap double-click suddenly selecting the whole track).
+  // A click continues the chain only within 400 ms and ~6 px of the
+  // previous one; a thinking pause resets it, while a genuinely rapid
+  // triple-click still counts to 3.
+  const clickChainRef = React.useRef<{ time: number; x: number; y: number; count: number } | null>(null);
+
   const onMouseDownCapture: React.MouseEventHandler<HTMLDivElement> = (e) => {
     // Right-drag marquee selection runs at capture so it beats
     // the browser's context-menu dispatch and any bubble-phase
@@ -162,11 +172,23 @@ export function useCanvasPointerHandlers(
   const onClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
     if (splitMode) return;
 
+    // Advance our multi-click chain (see clickChainRef above — deliberately
+    // NOT e.detail, whose windows are too forgiving across gestures).
+    const now = performance.now();
+    const prevClick = clickChainRef.current;
+    const chainCount = prevClick
+      && now - prevClick.time < 400
+      && Math.abs(e.clientX - prevClick.x) < 6
+      && Math.abs(e.clientY - prevClick.y) < 6
+      ? prevClick.count + 1
+      : 1;
+    clickChainRef.current = { time: now, x: e.clientX, y: e.clientY, count: chainCount };
+
     // Triple-click: word-editor-style "select the whole line" — a time
     // selection spanning the full extent of the clicked track, silences
     // and gaps between clips included, scoped to that track. Runs before
     // the body-deselect and playhead paths and consumes the click.
-    if (e.detail >= 3 && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (chainCount >= 3 && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
       const rect = e.currentTarget.getBoundingClientRect();
       const y = e.clientY - rect.top;
       const ti = resolveTrackIndexFromY(y, tracks);
@@ -355,8 +377,9 @@ export function useCanvasPointerHandlers(
     // Empty track space: double-click selects the GAP as a time selection —
     // from the end of the previous clip (or the track start, for empty
     // space before the first clip) to the start of the next clip. Needs a
-    // clip on the right to bound it; space after all content is unbounded
-    // and stays a plain click. Scoped to the clicked track.
+    // clip on the right to bound it; space after all content is unbounded,
+    // so a double-click there CLEARS the selection instead ("click away to
+    // deselect"). Scoped to the clicked track.
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -380,7 +403,14 @@ export function useCanvasPointerHandlers(
       if (iv.end <= time) prevEnd = Math.max(prevEnd, iv.end);
       if (iv.start >= time) nextStart = Math.min(nextStart, iv.start);
     }
-    if (!Number.isFinite(nextStart) || nextStart - prevEnd <= 1e-6) return;
+    if (!Number.isFinite(nextStart)) {
+      // No clip to the right — space beyond the last clip. Clear both the
+      // time selection and any clip selection.
+      dispatch({ type: 'DESELECT_ALL_CLIPS' });
+      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+      return;
+    }
+    if (nextStart - prevEnd <= 1e-6) return;
 
     dispatch({ type: 'DESELECT_ALL_CLIPS' });
     dispatch({
