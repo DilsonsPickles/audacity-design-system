@@ -660,7 +660,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 meterLevel={
                   state.isRecording && state.recordingTrackIndex === index
                     ? state.recordingMeterLevel
-                    : isMicMonitoring && state.selectedTrackIndices.includes(index)
+                    : isMicMonitoring && state.focusedTrackIndex === index
                       ? state.recordingMeterLevel
                       : isPlaying
                         ? trackMeterLevels.get(index) || 0
@@ -669,7 +669,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 meterLevelLeft={
                   state.isRecording && state.recordingTrackIndex === index
                     ? state.recordingMeterLevel
-                    : isMicMonitoring && state.selectedTrackIndices.includes(index)
+                    : isMicMonitoring && state.focusedTrackIndex === index
                       ? state.recordingMeterLevel
                       : isPlaying
                         ? trackMeterLevels.get(index) || 0
@@ -678,7 +678,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 meterLevelRight={
                   state.isRecording && state.recordingTrackIndex === index
                     ? state.recordingMeterLevel
-                    : isMicMonitoring && state.selectedTrackIndices.includes(index)
+                    : isMicMonitoring && state.focusedTrackIndex === index
                       ? state.recordingMeterLevel
                       : isPlaying
                         ? trackMeterLevels.get(index) || 0
