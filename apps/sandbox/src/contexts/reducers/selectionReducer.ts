@@ -271,7 +271,16 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
         ...state,
         selectedLabelIds: action.payload,
         tracks: newTracks,
-        timeSelection: newTimeSelection,
+        // Mirror a single selected label's range; otherwise PRESERVE the
+        // existing time selection. The track-background click handler
+        // dispatches SET_SELECTED_LABELS: [] on every canvas track click,
+        // and unconditionally nulling here destroyed multi-track time
+        // selections the moment the user clicked another track — the
+        // second "clicking another track deselects" leak through this
+        // case (see the comment above for the first). Ruler-only
+        // selections still clear, matching DESELECT_ALL_CLIPS.
+        timeSelection: newTimeSelection
+          ?? (state.timeSelection?.renderOnCanvas === false ? null : state.timeSelection),
       };
     }
 

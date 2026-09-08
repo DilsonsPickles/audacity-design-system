@@ -165,6 +165,48 @@ describe('Shift+Click time-selection scope', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Multi-track time selection survives clicking another track's background.
+// Seam: the CanvasTrack wrapper's track-background click dispatches
+// SET_SELECTED_LABELS: [] ("clear label selection") on EVERY track click,
+// and the reducer used to null the time selection unless exactly one label
+// was selected — destroying selections on any cross-track click. The click
+// target must be the real `.track` element for the wrapper's
+// isTrackBackground branch to fire (a click on the pointer container does
+// NOT reproduce it — which is how this slipped past the original
+// persistent-selection test).
+// ---------------------------------------------------------------------------
+
+describe('Persistent selection vs track-background clicks', () => {
+  it('a multi-track time selection survives clicking another track background', async () => {
+    const tracks: Track[] = [0, 1, 2].map((i) => ({ id: i + 1, name: `Track ${i + 1}`, clips: [] }));
+    const { container } = renderCanvas(tracks);
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+
+    // Drag a selection spanning tracks 0 and 1
+    fireEvent.mouseDown(pointerContainer, { clientX: 100, clientY: 50, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 175 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 175 });
+
+    const overlayColor = (idx: number) => (trackEl(container, idx).children[0] as HTMLElement).style.backgroundColor;
+    expect(overlayColor(0)).toContain('98, 119, 136'); // in scope
+    expect(overlayColor(1)).toContain('98, 119, 136'); // in scope
+
+    // Wait out the 50 ms wasJustDragging click-suppression window — a
+    // click inside it skips the wrapper's dispatches entirely and would
+    // NOT reproduce the bug.
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Plain click on track 2's BACKGROUND element (the real target of a
+    // canvas click on another track) — the selection must persist.
+    fireEvent.click(trackEl(container, 2));
+    expect(overlayColor(0)).toContain('98, 119, 136');
+    expect(overlayColor(1)).toContain('98, 119, 136');
+    expect(overlayColor(2)).toContain('49, 56, 70'); // still out of scope
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Double-click on a clip BODY selects the clip; triple-click selects the
 // whole track's extent (gaps included) as a track-scoped time selection.
 // Seam: useCanvasPointerHandlers onDoubleClick (audio branch) + onClick's
