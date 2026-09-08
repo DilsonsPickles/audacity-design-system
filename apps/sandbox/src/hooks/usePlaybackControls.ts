@@ -8,6 +8,14 @@ export interface PlayOptions {
    *  start when the playhead is inside the selection), but WITHOUT the
    *  selection end bound — keep playing past it. */
   ignoreSelectionEnd?: boolean;
+  /** B (Play Selection): snap the playhead to the selection start and play
+   *  the selected range regardless of where the playhead currently sits.
+   *  No-op when there is no usable time selection. */
+  snapToSelection?: boolean;
+  /** X (Play/Stop and Set Cursor, Audacity heritage): stopping leaves the
+   *  playhead where playback stopped instead of returning it to the
+   *  playback-start marker. Starting plays exactly like Space. */
+  keepCursorOnStop?: boolean;
 }
 
 export interface UsePlaybackControlsOptions {
@@ -160,9 +168,11 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       setIsPlaying(false);
       // Toggling playback off returns the playhead to where this run
       // started (the marked ghost line), then retires the marker.
+      // X (keepCursorOnStop) skips the return — the playhead stays where
+      // playback stopped ("set cursor") — but still retires the marker.
       // (Read from the closure, not a setState updater — updaters must be
       // pure, and dispatching inside one warns/misbehaves.)
-      if (playbackStartTime !== null) {
+      if (playbackStartTime !== null && !options?.keepCursorOnStop) {
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: playbackStartTime });
       }
       setPlaybackStartTime(null);
@@ -183,10 +193,27 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       // selection is an explicit "play from here instead" gesture, so play
       // reverts to open-ended from the playhead.
       const sel = state.timeSelection;
+      const hasRange = !!sel && sel.endTime - sel.startTime > 1e-6;
+
+      // B (Play Selection): jump to the selection and play it, wherever
+      // the playhead was. Without a selection the key does nothing.
+      if (options?.snapToSelection) {
+        if (!sel || !hasRange) return;
+        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
+        setPlaybackStartTime(sel.startTime);
+        if (options.ignoreSelectionEnd) {
+          await audioManager.play(sel.startTime);
+        } else {
+          await audioManager.play(sel.startTime, sel.endTime);
+        }
+        setIsPlaying(true);
+        return;
+      }
+
       const playheadInSelection = !!sel
         && state.playheadPosition >= sel.startTime
         && state.playheadPosition <= sel.endTime;
-      if (sel && playheadInSelection && sel.endTime - sel.startTime > 1e-6) {
+      if (sel && playheadInSelection && hasRange) {
         setPlaybackStartTime(sel.startTime);
         if (options?.ignoreSelectionEnd) {
           // Shift+Space: same start point, no end bound — play through.

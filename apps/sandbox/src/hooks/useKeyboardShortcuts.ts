@@ -6,7 +6,7 @@ import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import type { EffectsPanelState } from './useContextMenuState';
 import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers';
 import { handleDelete } from './handlers/deleteHandlers';
-import { handleSpacebar, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
+import { handleSpacebar, handlePlaySelection, handlePlayStopSetCursor, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
 import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
 import { scrollPlayheadIntoView } from '../utils/scrollPlayheadIntoView';
@@ -34,7 +34,7 @@ export interface ClipboardState {
 export interface UseKeyboardShortcutsOptions {
   state: TracksState;
   dispatch: React.Dispatch<TracksAction>;
-  handlePlay: (options?: { ignoreSelectionEnd?: boolean }) => void;
+  handlePlay: (options?: { ignoreSelectionEnd?: boolean; snapToSelection?: boolean; keepCursorOnStop?: boolean }) => void;
   handleRecord: () => void;
   handleStopRecording: () => void;
   selectionAnchor: number | null;
@@ -234,6 +234,39 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           e.preventDefault();
           // Shift+Space: play through — ignore the selection's end bound.
           handleSpacebar(transportDeps, { ignoreSelectionEnd: e.shiftKey });
+          return;
+        }
+      }
+
+      // --- B: Play Selection (Audacity heritage: B = Play to Selection) ---
+      // Snaps the playhead to the selection start and plays the range,
+      // wherever the playhead was; Shift+B plays through past the end.
+      if ((e.key === 'b' || e.key === 'B') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        const isTextField = target.tagName === 'TEXTAREA' ||
+          (target.tagName === 'INPUT' && ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes((target as HTMLInputElement).type)) ||
+          target.isContentEditable;
+
+        if (!isTextField) {
+          e.preventDefault();
+          handlePlaySelection(transportDeps, { ignoreSelectionEnd: e.shiftKey });
+          return;
+        }
+      }
+
+      // --- X: Play/Stop and Set Cursor (Audacity heritage) ---
+      // Like Space, but stopping leaves the playhead where playback
+      // stopped instead of returning to the start marker. Plain X only —
+      // Cmd/Ctrl+X stays Cut (handled further down the chain).
+      if ((e.key === 'x' || e.key === 'X') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const target = e.target as HTMLElement;
+        const isTextField = target.tagName === 'TEXTAREA' ||
+          (target.tagName === 'INPUT' && ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes((target as HTMLInputElement).type)) ||
+          target.isContentEditable;
+
+        if (!isTextField) {
+          e.preventDefault();
+          handlePlayStopSetCursor(transportDeps);
           return;
         }
       }
