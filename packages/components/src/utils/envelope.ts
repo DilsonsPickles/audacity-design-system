@@ -4,7 +4,6 @@
  */
 
 const BOTTOM_MARGIN = 3; // Prevent envelope from going under clip border
-const INFINITY_ZONE = 1; // Within bottom margin, last 1px for -∞
 
 /**
  * Convert dB value to Y position using non-linear scale
@@ -325,9 +324,6 @@ export function renderEnvelopePoints(options: RenderEnvelopePointsOptions): void
     // Use hover sizes if hovered, otherwise normal sizes
     const outerRadius = isHovered ? outerRadiusHoverValue : outerRadiusNormal;
     const innerRadius = isHovered ? innerRadiusHoverValue : innerRadiusNormal;
-
-    // Ring thickness on hover (1px)
-    const ringThickness = 1;
 
     // Draw donut/ring shape
     if (centerColor === 'transparent') {

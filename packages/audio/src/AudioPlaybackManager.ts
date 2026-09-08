@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { applyEnvelopeToChannel, type EnvelopeGainPoint } from './envelopeGain';
 import audioBufferToWav from 'audiobuffer-to-wav';
 
 /**
@@ -310,9 +311,20 @@ export class AudioPlaybackManager {
           const trimStart = clip.trimStart || 0;
           const deletedRegions = clip.deletedRegions || [];
 
+          // Clip gain: bake the envelope into the channel copy each player
+          // gets. fromArray already copies the channel data, so this adds
+          // per-sample multiplies to a copy we were paying for anyway — and
+          // baked audio survives every transport operation (sync, seek,
+          // loop) with zero scheduling. Evaluation matches the waveform
+          // renderer exactly (see envelopeGain.ts).
+          const envelopePoints = (clip.envelopePoints ?? []) as EnvelopeGainPoint[];
+          const channelData: Float32Array = envelopePoints.length > 0
+            ? applyEnvelopeToChannel(buffer.getChannelData(0), envelopePoints, buffer.sampleRate, clip.duration)
+            : buffer.getChannelData(0);
+
           if (deletedRegions.length === 0) {
             // No deleted regions - create a single player for the entire clip
-            const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
+            const toneBuffer = Tone.ToneAudioBuffer.fromArray(channelData);
             const trackGain = this.trackGains.get(trackIndex);
             const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
@@ -329,7 +341,7 @@ export class AudioPlaybackManager {
 
             segments.forEach((segment, segmentIndex) => {
               // Create a Tone.js buffer from the AudioBuffer
-              const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
+              const toneBuffer = Tone.ToneAudioBuffer.fromArray(channelData);
               const trackGain = this.trackGains.get(trackIndex);
               const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
@@ -789,27 +801,26 @@ export class AudioPlaybackManager {
 
         const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
         const offlineBuffer = offlineCtx.createBuffer(numChannels, audioBuffer.length, audioBuffer.sampleRate);
+        // Clip gain: bake the envelope into each channel — the same math
+        // live playback bakes into its players (the previous gain-node
+        // ramps here read `pt.value`, but envelope points carry `db`, so
+        // envelopes never actually applied to exports).
+        const envelopePoints = (clip.envelopePoints ?? []) as EnvelopeGainPoint[];
         for (let ch = 0; ch < numChannels; ch++) {
-          offlineBuffer.copyToChannel(audioBuffer.getChannelData(ch), ch);
+          const channelData = envelopePoints.length > 0
+            ? applyEnvelopeToChannel(audioBuffer.getChannelData(ch), envelopePoints, audioBuffer.sampleRate, clip.duration)
+            : audioBuffer.getChannelData(ch);
+          offlineBuffer.copyToChannel(channelData, ch);
         }
 
         const source = offlineCtx.createBufferSource();
         source.buffer = offlineBuffer;
-
-        const gainNode = offlineCtx.createGain();
-        gainNode.gain.setValueAtTime(1, 0);
-
-        if (clip.envelopePoints?.length > 0) {
-          const points: { time: number; value: number }[] = clip.envelopePoints;
-          gainNode.gain.setValueAtTime(points[0]?.value ?? 1, clip.start);
-          for (const pt of points) {
-            gainNode.gain.linearRampToValueAtTime(pt.value, clip.start + pt.time);
-          }
-        }
-
-        source.connect(gainNode);
-        gainNode.connect(offlineCtx.destination);
-        source.start(clip.start, 0, clip.duration);
+        source.connect(offlineCtx.destination);
+        // Honor trimStart, matching live playback's
+        // player.sync().start(clip.start, trimStart, clip.duration) —
+        // the previous offset of 0 exported the wrong audio for
+        // trimmed/split clips.
+        source.start(clip.start, clip.trimStart || 0, clip.duration);
       }
     }
 
