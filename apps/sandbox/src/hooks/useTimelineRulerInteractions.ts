@@ -157,7 +157,8 @@ export function useTimelineRulerInteractions(
         setIsPlaying(false);
       }
 
-      audioManager.loadClips(tracks, clickedTime);
+      // Players stay loaded across playhead moves (loadClips schedules at
+      // absolute transport times), so no reload is needed to play from here.
       await audioManager.play(clickedTime);
       setIsPlaying(true);
     }

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { generateRmsWaveform } from './rmsWaveform';
+import { buildClipWaveforms } from './clipWaveforms';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { toast } from '@audacity-ui/components';
@@ -53,21 +53,23 @@ export function importAudio({ state, dispatch, audioManagerRef }: ImportAudioDep
       const newClipId = Date.now();
       audioManager.addClipBuffer(newClipId, audioBuffer);
 
-      // Use full sample arrays for waveform display (matches recording flow)
-      const leftChannel = Array.from(audioBuffer.getChannelData(0)) as number[];
+      // Display waveforms are decimated peak/RMS arrays (see clipWaveforms);
+      // playback reads the AudioBuffer registered above, never these.
+      const left = buildClipWaveforms(audioBuffer.getChannelData(0));
+      const right = isStereo ? buildClipWaveforms(audioBuffer.getChannelData(1)) : null;
       const startTime = state.playheadPosition;
 
       const clipName = file.name.replace(/\.[^/.]+$/, '');
 
-      const newClip = isStereo ? {
+      const newClip = right ? {
         id: newClipId,
         name: clipName,
         start: startTime,
         duration,
-        waveformLeft: leftChannel,
-        waveformRight: Array.from(audioBuffer.getChannelData(1)) as number[],
-        waveformLeftRms: generateRmsWaveform(leftChannel),
-        waveformRightRms: generateRmsWaveform(Array.from(audioBuffer.getChannelData(1)) as number[]),
+        waveformLeft: left.waveform,
+        waveformRight: right.waveform,
+        waveformLeftRms: left.rms,
+        waveformRightRms: right.rms,
         envelopePoints: [],
         fullDuration: duration,
       } : {
@@ -75,8 +77,8 @@ export function importAudio({ state, dispatch, audioManagerRef }: ImportAudioDep
         name: clipName,
         start: startTime,
         duration,
-        waveform: leftChannel,
-        waveformRms: generateRmsWaveform(leftChannel),
+        waveform: left.waveform,
+        waveformRms: left.rms,
         envelopePoints: [],
         fullDuration: duration,
       };

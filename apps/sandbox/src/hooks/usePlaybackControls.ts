@@ -98,14 +98,19 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     });
   };
 
-  // Reload clips for playback whenever tracks change (but not during playback/recording)
+  // Reload clips for playback whenever tracks change (but not during
+  // playback/recording). Deliberately NOT keyed on playheadPosition:
+  // loadClips schedules everything at absolute transport times regardless of
+  // position, and reloading here on every playhead move meant tearing down
+  // and rebuilding every Tone.Player — including a full copy of each clip's
+  // audio buffer — on every timeline click.
   useEffect(() => {
     if (!isPlaying && !state.isRecording) {
       const audioManager = audioManagerRef.current;
-      audioManager.loadClips(state.tracks, state.playheadPosition);
+      audioManager.loadClips(state.tracks);
       applyTrackGains(audioManager, state.tracks);
     }
-  }, [state.tracks, isPlaying, state.isRecording, state.playheadPosition]);
+  }, [state.tracks, isPlaying, state.isRecording]);
 
   // Handle play/pause transport controls
   const handlePlay = async () => {
@@ -116,9 +121,10 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       audioManager.pause();
       setIsPlaying(false);
     } else {
-      // Always use the current playhead position (which the user may have
-      // repositioned via ,/. keys or clicking the timeline)
-      audioManager.loadClips(state.tracks, state.playheadPosition);
+      // Players are already loaded (the tracks-change effect above) and are
+      // scheduled position-independently — play() just seeks the transport
+      // to the current playhead. Reloading here would re-copy every clip's
+      // audio buffer into fresh Tone.Players on each play press.
       applyTrackGains(audioManager, state.tracks);
       await audioManager.play(state.playheadPosition);
 

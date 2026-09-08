@@ -48,6 +48,28 @@ Decide whether to mark it deprecated / remove it in the next breaking release.
 Related nits while it lives: its "run on files" affordance reuses the `save` icon — the
 design wants a folder glyph, which means adding a `folder` codepoint to `Icon`'s `ICON_MAP`.
 
+### Spectral view of long imported/recorded clips is decimated data (2026-09-08)
+Import and recording-complete now store decimated peak/RMS display arrays
+(`apps/sandbox/src/utils/clipWaveforms.ts`, capped at 65,536 values/channel)
+instead of full-rate samples — this is what fixed the large-import freeze and
+the ~424 MB state payload. Consequence: the spectrogram/split view FFTs those
+arrays, so for clips longer than ~1.5 s (where decimation kicks in) it renders
+from decimated data — increasingly wrong as clips get longer. The decoded
+AudioBuffer is still retained by AudioPlaybackManager; the proper fix is to
+render spectrograms from it on demand. Short clips and the demo content are
+unaffected (full rate below the cap).
+
+### Playback render path: per-frame reconcile of all tracks (2026-09-08)
+During playback the RAF loop fires three state updates per frame, and
+`CanvasTrackList` (un-memoized, plus an RMS-stripping `track.clips.map()` that
+runs whenever "Show RMS" is off, plus ~14 inline handler props) defeats
+`TrackNew`'s React.memo — so every track and clip reconciles at 60 fps.
+ClipBody's memo spares the canvas, but this is residual playback jank
+independent of file size. Fix wants: memoize the clip mapping, stabilize
+handlers (per-track child component with useCallback), and/or split
+`playheadPosition` out of TracksContext (see codebase-map's App decomposition
+notes). Deliberately deferred from the 2026-09-08 import-perf pass.
+
 ## Minor (batch into related work, don't do standalone)
 
 - `stretchFactor` onto the sandbox `Clip` type — would remove 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` (plain `as Clip` does NOT typecheck today).

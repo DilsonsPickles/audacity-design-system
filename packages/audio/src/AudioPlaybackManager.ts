@@ -207,6 +207,14 @@ export class AudioPlaybackManager {
   /**
    * Load and schedule all clips for playback
    * Handles clips with deleted regions by creating multiple player instances per clip
+   *
+   * `startTime` no longer filters what gets scheduled: players are synced at
+   * absolute transport times and Transport.schedule events before the start
+   * position simply never fire, so everything is loaded position-independently.
+   * That lets callers load once per tracks change instead of tearing down and
+   * rebuilding every Tone.Player (and re-copying each clip's audio buffer) on
+   * every playhead move. The parameter is kept for call-site compatibility and
+   * recorded in `lastLoadedPosition` only.
    */
   loadClips(tracks: any[], startTime: number = 0): void { // justified: Track[] not imported into audio package — pending audio-package sweep
     // Clear existing players
@@ -294,50 +302,44 @@ export class AudioPlaybackManager {
           }
         }
         if (buffer) {
-          // Only create players for clips that should play from the current start time
-          if (clip.start + clip.duration > startTime) {
-            const trimStart = clip.trimStart || 0;
-            const deletedRegions = clip.deletedRegions || [];
+          const trimStart = clip.trimStart || 0;
+          const deletedRegions = clip.deletedRegions || [];
 
-            if (deletedRegions.length === 0) {
-              // No deleted regions - create a single player for the entire clip
+          if (deletedRegions.length === 0) {
+            // No deleted regions - create a single player for the entire clip
+            const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
+            const trackGain = this.trackGains.get(trackIndex);
+            const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
+
+            // Sync player to transport and schedule it. The duration arg
+            // is required so split segments only play their own slice —
+            // otherwise the player runs to the end of the source buffer
+            // and you hear the whole original clip even after a split.
+            player.sync().start(clip.start, trimStart, clip.duration);
+
+            this.players.set(String(clip.id), player);
+          } else {
+            // Clip has deleted regions - create multiple players for each segment
+            const segments = this.calculateSegments(clip.duration, deletedRegions);
+
+            segments.forEach((segment, segmentIndex) => {
+              // Create a Tone.js buffer from the AudioBuffer
               const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
               const trackGain = this.trackGains.get(trackIndex);
               const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
 
-              // Sync player to transport and schedule it. The duration arg
-              // is required so split segments only play their own slice —
-              // otherwise the player runs to the end of the source buffer
-              // and you hear the whole original clip even after a split.
-              player.sync().start(clip.start, trimStart, clip.duration);
+              // Calculate timeline position for this segment
+              const timelineStart = clip.start + segment.timelineOffset;
 
-              this.players.set(String(clip.id), player);
-            } else {
-              // Clip has deleted regions - create multiple players for each segment
-              const segments = this.calculateSegments(clip.duration, deletedRegions);
+              // Calculate buffer offset (accounting for trimStart)
+              const bufferOffset = trimStart + segment.sourceOffset;
 
-              segments.forEach((segment, segmentIndex) => {
-                // Create a Tone.js buffer from the AudioBuffer
-                const toneBuffer = Tone.ToneAudioBuffer.fromArray(buffer.getChannelData(0));
-                const trackGain = this.trackGains.get(trackIndex);
-                const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
+              // Sync player to transport
+              // The .sync() mechanism automatically handles the Transport position offset
+              player.sync().start(timelineStart, bufferOffset, segment.duration);
 
-                // Calculate timeline position for this segment
-                const timelineStart = clip.start + segment.timelineOffset;
-
-                // Calculate buffer offset (accounting for trimStart)
-                const bufferOffset = trimStart + segment.sourceOffset;
-
-                // Only schedule if segment should play from current start time
-                if (timelineStart + segment.duration > startTime) {
-                  // Sync player to transport
-                  // The .sync() mechanism automatically handles the Transport position offset
-                  player.sync().start(timelineStart, bufferOffset, segment.duration);
-
-                  this.players.set(`${clip.id}_segment_${segmentIndex}`, player);
-                }
-              });
-            }
+              this.players.set(`${clip.id}_segment_${segmentIndex}`, player);
+            });
           }
         }
       });
@@ -371,8 +373,6 @@ export class AudioPlaybackManager {
         const clipEnd = clip.start + clip.duration;
         clip.notes.forEach((note: any) => { // justified: MidiNote type not imported into audio package — pending audio-package sweep
           const absTime = clip.start + note.startTime;
-          const noteEnd = absTime + note.duration;
-          if (noteEnd <= startTime) return; // skip notes that end before playback start
           if (absTime >= clipEnd || absTime < clip.start) return; // skip notes outside clip boundaries
           const freq = Tone.Frequency(note.pitch, 'midi').toFrequency();
           const velocity = note.velocity / 127;

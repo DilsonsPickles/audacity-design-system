@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RecordingManager } from '../utils/RecordingManager';
-import { generateRmsWaveform } from '../utils/rmsWaveform';
+import { buildClipWaveforms } from '../utils/clipWaveforms';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 
@@ -131,12 +131,12 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         });
       },
       onRecordingComplete: (audioBuffer) => {
-        // Generate waveform from audio buffer
-        const channelData = audioBuffer.getChannelData(0);
-        const waveform = Array.from(channelData);
-
-        // Generate RMS waveform
-        const waveformRms = generateRmsWaveform(waveform);
+        // Decimated display waveform + RMS (playback uses the AudioBuffer
+        // registered below, never these arrays) — replaces the live-preview
+        // waveform accumulated during recording.
+        const { waveform, rms: waveformRms } = buildClipWaveforms(
+          audioBuffer.getChannelData(0),
+        );
 
         // Update the existing clip with waveform data
         const clipDuration = audioBuffer.duration;
