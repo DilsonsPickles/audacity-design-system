@@ -160,3 +160,107 @@ describe('handleDuplicate', () => {
     expect(gidA).not.toBe('g1');
   });
 });
+
+describe('handleDuplicate — time-selection duplicate to new tracks', () => {
+  const waveform = [0.1, -0.2, 0.3];
+  const addTrackPayloads = (dispatch: ReturnType<typeof vi.fn>) =>
+    dispatch.mock.calls.filter((c) => c[0].type === 'ADD_TRACK').map((c) => c[0].payload);
+
+  it('duplicates the selected range of a clip onto a new track below the source', () => {
+    const state = makeState({
+      tracks: [
+        {
+          id: 1, name: 'Mono 1',
+          clips: [{ id: 7, name: 'clip', start: 0, duration: 10, trimStart: 2, waveform, envelopePoints: [] }],
+        },
+      ],
+      timeSelection: { startTime: 3, endTime: 5 },
+      selectedTrackIndices: [],
+    });
+    const dispatch = vi.fn();
+    const preventDefault = vi.fn();
+    handleDuplicate(keyEvent({ preventDefault }), { state, dispatch });
+
+    expect(preventDefault).toHaveBeenCalled();
+    const [payload] = addTrackPayloads(dispatch);
+    expect(payload).toBeDefined();
+    expect(payload.name).toBe('Mono 1 copy');
+    expect(payload.insertAt).toBe(1);
+    expect(payload.id).toBe(2);
+    expect(payload.clips).toHaveLength(1);
+
+    const clone = payload.clips[0];
+    // Trimmed to the selection: same timeline position, 2 s long,
+    // trimStart advanced by the clipped-off left portion (3 s).
+    expect(clone.start).toBe(3);
+    expect(clone.duration).toBe(2);
+    expect(clone.trimStart).toBe(5); // 2 (original) + 3 (left trim)
+    expect(clone.fullDuration).toBe(12); // original trimStart 2 + duration 10
+    expect(clone.sourceClipId).toBe(7);
+    expect(clone.id).not.toBe(7);
+    // Waveform shared by REFERENCE — required by the audio engine's
+    // buffer-resolution fallback and by memory sanity.
+    expect(clone.waveform).toBe(waveform);
+    // The persistent selection stays; no clearing dispatch.
+    const types = dispatch.mock.calls.map((c) => c[0].type);
+    expect(types).not.toContain('SET_TIME_SELECTION');
+    expect(types).not.toContain('SET_PLAYHEAD_POSITION');
+  });
+
+  it('respects the selection track scope and skips non-audio tracks', () => {
+    const state = makeState({
+      tracks: [
+        { id: 1, name: 'skipped', clips: [{ id: 1, name: 'c', start: 0, duration: 10, envelopePoints: [] }] },
+        { id: 2, name: 'labels', type: 'label', clips: [] },
+        { id: 3, name: 'target', clips: [{ id: 2, name: 'c', start: 0, duration: 10, envelopePoints: [] }] },
+      ],
+      // Scope names tracks 1 (label) and 2 (audio "target") only.
+      timeSelection: { startTime: 1, endTime: 2, tracks: [1, 2] },
+      selectedTrackIndices: [],
+    });
+    const dispatch = vi.fn();
+    handleDuplicate(keyEvent(), { state, dispatch });
+
+    const payloads = addTrackPayloads(dispatch);
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0].name).toBe('target copy');
+    expect(payloads[0].insertAt).toBe(3);
+  });
+
+  it('duplicates multiple scoped tracks, inserting below each source', () => {
+    const state = makeState({
+      tracks: [
+        { id: 1, name: 't1', clips: [{ id: 1, name: 'a', start: 0, duration: 4, envelopePoints: [] }] },
+        { id: 2, name: 't2', clips: [{ id: 2, name: 'b', start: 1, duration: 4, envelopePoints: [] }] },
+      ],
+      timeSelection: { startTime: 1, endTime: 3 },
+      selectedTrackIndices: [],
+    });
+    const dispatch = vi.fn();
+    handleDuplicate(keyEvent(), { state, dispatch });
+
+    const payloads = addTrackPayloads(dispatch);
+    expect(payloads).toHaveLength(2);
+    // Dispatched highest-source-index first so insertAt stays valid.
+    expect(payloads[0].name).toBe('t2 copy');
+    expect(payloads[0].insertAt).toBe(2);
+    expect(payloads[1].name).toBe('t1 copy');
+    expect(payloads[1].insertAt).toBe(1);
+    // Fresh track ids beyond the existing max.
+    expect(payloads.map((p) => p.id).sort()).toEqual([3, 4]);
+  });
+
+  it('does nothing (falls through) when the selection captures no audio', () => {
+    const state = makeState({
+      tracks: [
+        { id: 1, name: 't1', clips: [{ id: 1, name: 'c', start: 5, duration: 2, envelopePoints: [] }] },
+      ],
+      timeSelection: { startTime: 0, endTime: 1 }, // no clip in range
+      selectedTrackIndices: [],
+      focusedTrackIndex: null,
+    });
+    const dispatch = vi.fn();
+    handleDuplicate(keyEvent(), { state, dispatch });
+    expect(addTrackPayloads(dispatch)).toHaveLength(0);
+  });
+});

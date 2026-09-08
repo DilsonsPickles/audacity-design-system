@@ -1,6 +1,7 @@
 import { announce } from '@audacity-ui/components';
 import type { TracksState, TracksAction, Clip, Track } from '../../contexts/TracksContext';
 import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
+import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
 
 export interface DuplicateHandlerDeps {
   state: TracksState;
@@ -8,14 +9,129 @@ export interface DuplicateHandlerDeps {
 }
 
 /**
- * Ctrl/Cmd+D: Duplicate the focused clip(s) or track(s).
+ * Time-selection duplicate (Audacity's Duplicate): copy the selected time
+ * range of every audio track in the selection's scope onto NEW tracks,
+ * inserted directly below their sources, at the same timeline position.
  *
- * Mirrors the Model-3 rule used by delete and split. Tries clip
- * duplication first when focus is on a clip; otherwise falls
- * through to track duplication.
+ * Clips are trimmed to the selection bounds — `trimStart` advances by the
+ * clipped-off left portion (same plain-seconds math as the split reducer)
+ * so the copy plays exactly the selected audio. Copies share their source's
+ * waveform arrays by reference and carry `sourceClipId`, so rendering and
+ * playback resolve to the original decoded buffer. The selection and
+ * playhead are left untouched.
+ *
+ * Returns true when it handled the event (a selection existed and captured
+ * at least one clip portion); false lets handleDuplicate fall through to
+ * the clip/track paths.
+ */
+function duplicateTimeSelectionToNewTracks(
+  e: KeyboardEvent,
+  state: TracksState,
+  dispatch: React.Dispatch<TracksAction>,
+): boolean {
+  const sel = state.timeSelection;
+  if (!sel || sel.renderOnCanvas === false) return false;
+  const { startTime, endTime } = sel;
+  if (endTime - startTime <= 1e-6) return false;
+
+  const scopedTracks = resolveTimeSelectionScope(
+    sel,
+    state.selectedTrackIndices,
+    state.tracks.map((_, idx) => idx),
+  );
+
+  let nextClipId = 1;
+  for (const t of state.tracks) {
+    for (const c of t.clips) if (c.id >= nextClipId) nextClipId = c.id + 1;
+  }
+  let nextTrackId = state.tracks.reduce(
+    (max: number, t: Track) => (t.id > max ? t.id : max),
+    0,
+  ) + 1;
+
+  // Collect the intersecting portion of every audio clip per scoped track.
+  const perTrack: Array<{ ti: number; src: Track; sources: Clip[]; clones: Clip[] }> = [];
+  for (const ti of scopedTracks) {
+    const src = state.tracks[ti];
+    // Audio tracks only — label tracks have no clips and MIDI duplication
+    // (note slicing) is a separate path this deliberately does not attempt.
+    if (!src || (src.type && src.type !== 'audio')) continue;
+    const sources: Clip[] = [];
+    const clones: Clip[] = [];
+    for (const clip of src.clips ?? []) {
+      const clipEnd = clip.start + clip.duration;
+      if (!(clip.start < endTime && clipEnd > startTime)) continue;
+      const leftTrim = Math.max(0, startTime - clip.start);
+      const rightTrim = Math.max(0, clipEnd - endTime);
+      const newDuration = clip.duration - leftTrim - rightTrim;
+      if (newDuration <= 0) continue;
+      const originalTrimStart = clip.trimStart ?? 0;
+      sources.push(clip);
+      clones.push({
+        ...clip,
+        id: nextClipId++,
+        start: clip.start + leftTrim,
+        duration: newDuration,
+        trimStart: originalTrimStart + leftTrim,
+        fullDuration: clip.fullDuration ?? (originalTrimStart + clip.duration),
+        selected: false,
+        sourceClipId: clip.sourceClipId ?? clip.id,
+      });
+    }
+    if (clones.length > 0) perTrack.push({ ti, src, sources, clones });
+  }
+  if (perTrack.length === 0) return false;
+
+  e.preventDefault();
+
+  // Copy invariant: a fresh group iff the whole source group was captured
+  // whole within the selection range; partial captures come out ungrouped.
+  const allSources = perTrack.flatMap((p) => p.sources);
+  const wholeGroups = computeWholeGroupIds(allSources, state.tracks, { startTime, endTime });
+  const regrouped = regroupCopiedClips(perTrack.flatMap((p) => p.clones), wholeGroups);
+
+  let cloneIdx = 0;
+  const withRegrouped = perTrack.map((p) => ({
+    ...p,
+    regroupedClips: p.clones.map(() => regrouped[cloneIdx++]),
+  }));
+  // Insert from highest source index down so each insertAt doesn't shift
+  // the indices we haven't visited yet (same discipline as track duplicate).
+  withRegrouped.sort((a, b) => b.ti - a.ti);
+  for (const p of withRegrouped) {
+    dispatch({
+      type: 'ADD_TRACK',
+      payload: {
+        ...p.src,
+        id: nextTrackId++,
+        name: `${p.src.name} copy`,
+        clips: p.regroupedClips,
+        insertAt: p.ti + 1,
+      },
+    });
+  }
+
+  announce(
+    withRegrouped.length === 1
+      ? 'Selection duplicated to new track.'
+      : `Selection duplicated to ${withRegrouped.length} new tracks.`,
+  );
+  return true;
+}
+
+/**
+ * Ctrl/Cmd+D: Duplicate the time selection, focused clip(s), or track(s).
+ *
+ * Priority order matches the clipboard handlers: an active time selection
+ * wins (duplicates the selected range to new tracks); otherwise the
+ * Model-3 rule used by delete and split applies — clip duplication when
+ * focus is on a clip, falling through to track duplication.
  */
 export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): void {
   const { state, dispatch } = deps;
+
+  // Time-selection path — duplicate the selected range to new tracks.
+  if (duplicateTimeSelectionToNewTracks(e, state, dispatch)) return;
 
   // Clip duplication path — when DOM focus is on a clip.
   const active = document.activeElement as HTMLElement | null;

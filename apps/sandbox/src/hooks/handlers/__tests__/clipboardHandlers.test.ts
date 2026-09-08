@@ -123,6 +123,41 @@ describe('handleCut — wholeGroupIds capture + source dissolution', () => {
   });
 });
 
+describe('handlePaste — time-selection trim offsets the source window', () => {
+  it('partial-clip paste advances trimStart and pins fullDuration (plays the SELECTED audio)', () => {
+    const waveform = [0.1, -0.2, 0.3];
+    const state = stateWith(
+      [{ id: 1, name: 't', clips: [
+        clip({ id: 10, start: 0, duration: 10, trimStart: 2, waveform }),
+      ] }],
+      { focusedTrackIndex: 0, playheadPosition: 20 },
+    );
+    const { deps } = makeDeps(state);
+    const clipboard: ClipboardState = {
+      clips: [{ ...clip({ id: 10, start: 0, duration: 10, trimStart: 2, waveform }), trackIndex: 0 }],
+      operation: 'copy',
+      timeSelection: { startTime: 3, endTime: 5 },
+      wholeGroupIds: [],
+    };
+    handlePaste({ ...deps, clipboard });
+
+    const replace = (deps.dispatch as ReturnType<typeof vi.fn>).mock.calls
+      .find(c => c[0].type === 'REPLACE_TRACKS_EDIT')![0];
+    const pasted = replace.payload[0].clips.find((c: Clip) => c.id !== 10);
+    expect(pasted).toBeDefined();
+    // Selection [3, 5] of a clip at 0 with trimStart 2: the copy is 2 s
+    // long, its source window starts at 2 + 3 = 5 s into the source, its
+    // fullDuration records the true source extent (2 + 10 = 12), and it
+    // lands with the selection start aligned to the playhead (20).
+    expect(pasted.duration).toBe(2);
+    expect(pasted.trimStart).toBe(5);
+    expect(pasted.fullDuration).toBe(12);
+    expect(pasted.start).toBe(20);
+    // Waveform shared by reference for buffer resolution.
+    expect(pasted.waveform).toBe(waveform);
+  });
+});
+
 describe('handlePaste — regrouping', () => {
   const groupedClipboardState = () => stateWith(
     [

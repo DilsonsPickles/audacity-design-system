@@ -179,16 +179,27 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
       const selEnd = clipboard.timeSelection!.endTime;
 
       // Calculate intersection with time selection
-      const trimStart = Math.max(0, selStart - clipData.start);
-      const trimEnd = Math.max(0, clipEnd - selEnd);
-      const newDuration = clipData.duration - trimStart - trimEnd;
+      const leftTrim = Math.max(0, selStart - clipData.start);
+      const rightTrim = Math.max(0, clipEnd - selEnd);
+      const newDuration = clipData.duration - leftTrim - rightTrim;
 
       if (newDuration <= 0) return null; // Clip doesn't intersect selection
 
+      // The clip's own trimStart must advance by the clipped-off left
+      // portion (same plain-seconds math as the split reducer and the
+      // time-selection duplicate) — without this, a partial-clip paste
+      // rendered and played from the clip's ORIGINAL source offset, i.e.
+      // the wrong audio. fullDuration pins the true source extent for
+      // waveform geometry on audio clips (MidiClip has no such field).
+      const originalTrimStart = clipData.trimStart ?? 0;
       return {
         ...clipData,
-        start: clipData.start + trimStart,
+        start: clipData.start + leftTrim,
         duration: newDuration,
+        trimStart: originalTrimStart + leftTrim,
+        ...('envelopePoints' in clipData
+          ? { fullDuration: clipData.fullDuration ?? (originalTrimStart + clipData.duration) }
+          : {}),
       };
     }).filter(Boolean);
   } else {
