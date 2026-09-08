@@ -117,10 +117,11 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
           payload: position
         });
 
-        // Update the clip duration as we record
+        // Update the clip duration as we record (non-undoable: the whole
+        // recording is one undo entry — the ADD_CLIP)
         const elapsedDuration = position - recordingStartPosition;
         dispatch({
-          type: 'UPDATE_CLIP',
+          type: 'UPDATE_RECORDING_CLIP',
           payload: {
             trackIndex: recordingTrackIndex,
             clipId: clipId,
@@ -146,7 +147,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         audioManager.addClipBuffer(clipId, audioBuffer);
 
         dispatch({
-          type: 'UPDATE_CLIP',
+          type: 'UPDATE_RECORDING_CLIP',
           payload: {
             trackIndex: recordingTrackIndex,
             clipId: clipId,
@@ -198,9 +199,9 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         // Calculate duration from sample count and sample rate
         const duration = waveformData.length / sampleRate;
 
-        // Send waveform, RMS, and calculated duration
+        // Send waveform, RMS, and calculated duration (non-undoable)
         dispatch({
-          type: 'UPDATE_CLIP',
+          type: 'UPDATE_RECORDING_CLIP',
           payload: {
             trackIndex: recordingTrackIndex,
             clipId: clipId,

@@ -268,3 +268,44 @@ describe('tracksReducer characterization (behavior lock for domain split)', () =
     expect(redone.tracks[0].clips.map((c) => c.id)).toEqual([1, 2]);
   });
 });
+
+describe('recording undo granularity', () => {
+  it('a recording is ONE undo entry: live updates create no history, undo removes the clip', () => {
+    let state = tracksReducer(initialState, {
+      type: 'ADD_TRACK',
+      payload: { id: 1, name: 't', clips: [] },
+    });
+    const pastAfterTrack = state.past.length;
+
+    // Recording begins: ADD_CLIP is the single undoable entry
+    state = tracksReducer(state, {
+      type: 'ADD_CLIP',
+      payload: { trackIndex: 0, clip: { id: 7, name: 'Recording', start: 0, duration: 0, waveform: [], envelopePoints: [] } },
+    });
+    expect(state.past.length).toBe(pastAfterTrack + 1);
+
+    // Live stream: duration growth + waveform chunks + completion — all
+    // non-undoable, history must not grow
+    for (let i = 1; i <= 60; i++) {
+      state = tracksReducer(state, {
+        type: 'UPDATE_RECORDING_CLIP',
+        payload: { trackIndex: 0, clipId: 7, updates: { duration: i * 0.1 } },
+      });
+    }
+    state = tracksReducer(state, {
+      type: 'UPDATE_RECORDING_CLIP',
+      payload: { trackIndex: 0, clipId: 7, updates: { duration: 6, waveform: [0.1, 0.2], waveformRms: [0.1, 0.1], fullDuration: 6 } },
+    });
+    expect(state.past.length).toBe(pastAfterTrack + 1);
+    expect(state.tracks[0].clips[0].duration).toBe(6);
+
+    // One undo removes the recorded clip entirely
+    state = tracksReducer(state, { type: 'UNDO' });
+    expect(state.tracks[0].clips).toHaveLength(0);
+
+    // Redo restores the fully-completed clip
+    state = tracksReducer(state, { type: 'REDO' });
+    expect(state.tracks[0].clips[0].duration).toBe(6);
+    expect(state.tracks[0].clips[0].fullDuration).toBe(6);
+  });
+});

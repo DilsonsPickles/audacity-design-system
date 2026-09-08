@@ -262,6 +262,15 @@ export type TracksAction =
   | { type: 'SELECT_TRACK'; payload: number }
   | { type: 'UPDATE_CLIP_ENVELOPE_POINTS'; payload: { trackIndex: number; clipId: number; envelopePoints: EnvelopePoint[] } }
   | { type: 'UPDATE_CLIP'; payload: { trackIndex: number; clipId: number; updates: Partial<Clip> } }
+  /** Same mutation as UPDATE_CLIP but NON-UNDOABLE — the live recording
+   *  stream (duration growth ~60x/sec + waveform chunks + the completion
+   *  write) must not create undo entries: they were flooding the 50-entry
+   *  history within a second of recording, evicting the ADD_CLIP entry
+   *  (and everything older), so undo stepped back through recording
+   *  frames instead of removing the recorded clip. With this, a recording
+   *  is exactly ONE undo entry (the ADD_CLIP): undo removes the clip,
+   *  redo restores it fully completed. */
+  | { type: 'UPDATE_RECORDING_CLIP'; payload: { trackIndex: number; clipId: number; updates: Partial<Clip> } }
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | {
       type: 'APPLY_CLIP_PLACEMENT';

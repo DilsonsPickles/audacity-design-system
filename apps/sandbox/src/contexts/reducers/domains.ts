@@ -23,7 +23,7 @@ export const ACTION_DOMAIN: Record<TracksAction['type'], Domain> = {
   UPDATE_TRACK_SPECTROGRAM_SCALE: 'tracks', UPDATE_TRACK_SPECTROGRAM_FREQ: 'tracks',
 
   // clips
-  ADD_CLIP: 'clips', UPDATE_CLIP: 'clips', DELETE_CLIP: 'clips', MOVE_CLIP: 'clips',
+  ADD_CLIP: 'clips', UPDATE_CLIP: 'clips', UPDATE_RECORDING_CLIP: 'clips', DELETE_CLIP: 'clips', MOVE_CLIP: 'clips',
   APPLY_CLIP_PLACEMENT: 'clips', TRIM_CLIP: 'clips', STRETCH_CLIP: 'clips',
   MOVE_SELECTED_CLIPS: 'clips', MOVE_SELECTED_CLIPS_TO_TRACK: 'clips',
   MOVE_SELECTED_CLIPS_TO_NEW_TRACK: 'clips',

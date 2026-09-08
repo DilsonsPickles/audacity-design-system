@@ -18,6 +18,9 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       return { ...state, tracks: newTracks };
     }
 
+    // UPDATE_RECORDING_CLIP: identical mutation, but excluded from
+    // UNDOABLE_ACTIONS — see the action's doc comment in TracksContext.
+    case 'UPDATE_RECORDING_CLIP':
     case 'UPDATE_CLIP': {
       const { trackIndex, clipId, updates } = action.payload;
       const newTracks = [...state.tracks];
