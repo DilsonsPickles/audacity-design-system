@@ -127,7 +127,9 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     const WHEEL_MAX_STEP = 24;
 
     const handleWheel = (e: WheelEvent) => {
-      if ((!e.metaKey && !e.ctrlKey) || e.altKey || e.shiftKey) return;
+      // Alt is allowed through: the consumer treats Alt-modified resizes
+      // as "apply to all tracks" (Ableton-style) — see EditorLayout.
+      if ((!e.metaKey && !e.ctrlKey) || e.shiftKey) return;
       if (resizeStartRef.current) return; // an active drag owns the height
       e.preventDefault();
       if (snapAnimationRef.current !== null) {

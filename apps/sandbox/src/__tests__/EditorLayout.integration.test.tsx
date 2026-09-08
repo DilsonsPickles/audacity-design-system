@@ -1047,6 +1047,36 @@ describe('Selection playback', () => {
     });
   });
 
+  it('Alt held while resizing one header resizes ALL tracks (Ableton-style)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+
+    // Hold Alt, then Cmd+scroll on track 1's header only — with no track
+    // selection involving track 0, BOTH tracks still take the new height.
+    fireEvent.keyDown(document.body, { key: 'Alt' });
+    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('138px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('138px');
+    });
+    fireEvent.keyUp(document.body, { key: 'Alt' });
+
+    // Alt released: the same gesture on track 1 resizes only track 1.
+    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true });
+    await waitFor(() => {
+      expect((panels()[1] as HTMLElement).style.height).toBe('162px');
+    });
+    expect((panels()[0] as HTMLElement).style.height).toBe('138px');
+  });
+
   it('play marks the start position; toggling playback off returns the playhead to it', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;

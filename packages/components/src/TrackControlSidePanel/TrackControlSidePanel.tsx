@@ -189,7 +189,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     const el = listRef.current;
     if (!el) return;
     const suppressZoomScroll = (e: WheelEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
         e.preventDefault();
       }
     };

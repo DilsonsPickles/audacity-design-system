@@ -490,6 +490,25 @@ export function EditorLayout(props: EditorLayoutProps) {
     }
   }, [showVerticalRulers, state.tracks, trackSelectionMode, dispatch, setSelectionAnchor]);
 
+  // Ableton-style Alt+resize: while Alt/Option is held, resizing ANY track
+  // header (edge drag or Cmd+scroll) applies the height to ALL tracks.
+  // Tracked globally because ResizablePanel's resize callbacks don't carry
+  // modifier state; blur resets so a Cmd+Tab away can't strand it held.
+  const altHeldRef = React.useRef(false);
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === 'Alt') altHeldRef.current = true; };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Alt') altHeldRef.current = false; };
+    const reset = () => { altHeldRef.current = false; };
+    document.addEventListener('keydown', down);
+    document.addEventListener('keyup', up);
+    window.addEventListener('blur', reset);
+    return () => {
+      document.removeEventListener('keydown', down);
+      document.removeEventListener('keyup', up);
+      window.removeEventListener('blur', reset);
+    };
+  }, []);
+
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
   const scrollBuffer = viewportH > 0 && canvasHeight > viewportH ? Math.round(viewportH * 0.4) : 0;
@@ -540,13 +559,16 @@ export function EditorLayout(props: EditorLayoutProps) {
           onScroll={onTrackHeaderScroll}
           bufferSpace={scrollBuffer}
           onTrackResize={(trackIndex, height) => {
-            // Group resize: dragging (or Cmd-scrolling) the edge of a
-            // SELECTED track applies the height to every selected track —
-            // their panels follow live via ResizablePanel's external-height
-            // sync. An unselected track resizes alone.
-            const targets = state.selectedTrackIndices.includes(trackIndex)
-              ? state.selectedTrackIndices
-              : [trackIndex];
+            // Group resize: Alt/Option held (Ableton-style) applies the
+            // height to ALL tracks; otherwise dragging (or Cmd-scrolling)
+            // the edge of a SELECTED track applies it to every selected
+            // track — panels follow live via ResizablePanel's
+            // external-height sync. An unselected track resizes alone.
+            const targets = altHeldRef.current
+              ? state.tracks.map((_, i) => i)
+              : state.selectedTrackIndices.includes(trackIndex)
+                ? state.selectedTrackIndices
+                : [trackIndex];
             targets.forEach((index) => {
               dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height } });
             });
