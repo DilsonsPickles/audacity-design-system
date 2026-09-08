@@ -33,6 +33,8 @@ const OAuthCallback = React.lazy(() =>
   import('./components/OAuthCallback').then(m => ({ default: m.OAuthCallback }))
 );
 import { RecordingManager } from './utils/RecordingManager';
+import { computeFitTrackHeight } from './utils/trackManagement';
+import { TOP_GAP, TRACK_GAP } from './constants/canvas';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from './contexts/AdieuContext';
 import { MuseIdProvider, useMuseId } from './contexts/MuseIdContext';
@@ -429,6 +431,27 @@ function CanvasDemoContent() {
     toggleLoopRegion,
   } = loopRegion;
 
+  // View > track-size commands (AU3 heritage): Fit tracks to height
+  // (Ctrl/Cmd+Shift+F) sizes every track to fill the canvas viewport;
+  // Expand all (Ctrl/Cmd+Shift+X) restores the 114px default; Collapse
+  // all (Ctrl/Cmd+Shift+C) shrinks to the 44px minimum.
+  const setAllTrackHeights = React.useCallback((height: number) => {
+    state.tracks.forEach((t, index) => {
+      if ((t.height || 114) !== height) {
+        dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height } });
+      }
+    });
+  }, [state.tracks, dispatch]);
+
+  const handleFitTracksToHeight = React.useCallback(() => {
+    const viewport = scrollContainerRef.current?.clientHeight ?? 0;
+    const per = computeFitTrackHeight(viewport, state.tracks.length, TOP_GAP, TRACK_GAP);
+    if (per !== null) setAllTrackHeights(per);
+  }, [state.tracks.length, setAllTrackHeights]);
+
+  const handleExpandAllTracks = React.useCallback(() => setAllTrackHeights(114), [setAllTrackHeights]);
+  const handleCollapseAllTracks = React.useCallback(() => setAllTrackHeights(44), [setAllTrackHeights]);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     state, dispatch, handlePlay, handleRecord, handleStopRecording,
@@ -440,6 +463,9 @@ function CanvasDemoContent() {
     toggleLoopRegion,
     audioManagerRef,
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
+    onFitTracksToHeight: handleFitTracksToHeight,
+    onExpandAllTracks: handleExpandAllTracks,
+    onCollapseAllTracks: handleCollapseAllTracks,
   });
 
   // Hold Cmd (Ctrl on Windows/Linux) to grab-pan the canvas. The
@@ -682,6 +708,9 @@ function CanvasDemoContent() {
     setIsPluginManagerOpen,
     handleGenerateTone,
     setIsMacrosPanelOpen,
+    onFitTracksToHeight: handleFitTracksToHeight,
+    onExpandAllTracks: handleExpandAllTracks,
+    onCollapseAllTracks: handleCollapseAllTracks,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu

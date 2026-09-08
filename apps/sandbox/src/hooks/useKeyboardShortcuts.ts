@@ -50,6 +50,12 @@ export interface UseKeyboardShortcutsOptions {
   audioManagerRef: React.RefObject<AudioPlaybackManager>;
   /** Cmd/Ctrl+, opens the preferences modal. */
   onOpenPreferences?: () => void;
+  /** Cmd/Ctrl+Shift+F fits all track heights to the canvas viewport. */
+  onFitTracksToHeight?: () => void;
+  /** Cmd/Ctrl+Shift+X restores every track to the default height. */
+  onExpandAllTracks?: () => void;
+  /** Cmd/Ctrl+Shift+C collapses every track to the minimum height. */
+  onCollapseAllTracks?: () => void;
 }
 
 /**
@@ -76,6 +82,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     toggleLoopRegion,
     audioManagerRef,
     onOpenPreferences,
+    onFitTracksToHeight,
+    onExpandAllTracks,
+    onCollapseAllTracks,
   } = options;
 
   // Track whether the user is navigating via keyboard or mouse.
@@ -202,6 +211,29 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (onOpenPreferences) {
           e.preventDefault();
           onOpenPreferences();
+          return;
+        }
+      }
+
+      // --- Cmd/Ctrl+Shift+F/X/C : track-size commands (AU3 heritage) ---
+      // Fit to height / Expand all / Collapse all. Must precede the Cut
+      // and Copy branches down the chain (those match lowercase-only keys,
+      // but keep these together and early regardless).
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === 'f' && onFitTracksToHeight) {
+          e.preventDefault();
+          onFitTracksToHeight();
+          return;
+        }
+        if (key === 'x' && onExpandAllTracks) {
+          e.preventDefault();
+          onExpandAllTracks();
+          return;
+        }
+        if (key === 'c' && onCollapseAllTracks) {
+          e.preventDefault();
+          onCollapseAllTracks();
           return;
         }
       }

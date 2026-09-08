@@ -982,6 +982,71 @@ describe('Selection playback', () => {
     expect(audioSpies.play).not.toHaveBeenCalled();
   });
 
+  it('Cmd+Shift+F fits all track heights to the canvas viewport (View > Fit tracks to height)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+
+    // jsdom has no layout — give the canvas viewport a measurable height.
+    const scrollEl = container.querySelector('.canvas-scroll-container') as HTMLElement;
+    Object.defineProperty(scrollEl, 'clientHeight', { value: 500, configurable: true });
+
+    fireEvent.keyDown(document.body, { key: 'F', metaKey: true, shiftKey: true });
+
+    // (500 - TOP_GAP 2 - 2 × TRACK_GAP 2) / 2 = 247, applied to BOTH the
+    // header panels (via ResizablePanel's external-height sync) uniformly.
+    await waitFor(() => {
+      const panels = container.querySelectorAll('.track-control-side-panel__track');
+      expect(panels.length).toBe(2);
+      expect((panels[0] as HTMLElement).style.height).toBe('247px');
+      expect((panels[1] as HTMLElement).style.height).toBe('247px');
+    });
+  });
+
+  it('resizing a selected header resizes all selected tracks; Cmd+Shift+X/C expand and collapse all', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+
+    // Select BOTH tracks: focus panel 0, Shift+ArrowDown extends the range.
+    const panel0 = container.querySelectorAll('[aria-label*="track controls"]')[0] as HTMLElement;
+    act(() => { panel0.focus(); });
+    fireEvent.keyDown(panel0, { key: 'ArrowDown', shiftKey: true });
+
+    // Cmd+scroll on track 1's header (part of the selection) → both
+    // headers take the new height (114 + capped 24px step = 138).
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('138px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('138px');
+    });
+
+    // Collapse all → 44px minimum everywhere.
+    fireEvent.keyDown(document.body, { key: 'C', metaKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('44px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('44px');
+    });
+
+    // Expand all → back to the 114px default.
+    fireEvent.keyDown(document.body, { key: 'X', metaKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+    });
+  });
+
   it('play marks the start position; toggling playback off returns the playhead to it', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;

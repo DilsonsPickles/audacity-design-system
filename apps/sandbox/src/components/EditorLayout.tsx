@@ -540,7 +540,16 @@ export function EditorLayout(props: EditorLayoutProps) {
           onScroll={onTrackHeaderScroll}
           bufferSpace={scrollBuffer}
           onTrackResize={(trackIndex, height) => {
-            dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index: trackIndex, height } });
+            // Group resize: dragging (or Cmd-scrolling) the edge of a
+            // SELECTED track applies the height to every selected track —
+            // their panels follow live via ResizablePanel's external-height
+            // sync. An unselected track resizes alone.
+            const targets = state.selectedTrackIndices.includes(trackIndex)
+              ? state.selectedTrackIndices
+              : [trackIndex];
+            targets.forEach((index) => {
+              dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height } });
+            });
             setRulerFlyout(null);
           }}
           onAddTrackType={(type: TrackType) => {

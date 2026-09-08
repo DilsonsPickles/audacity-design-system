@@ -6,6 +6,7 @@ import {
   nextTrackNameNumber,
   buildNewTrack,
   buildDuplicatedTracks,
+  computeFitTrackHeight,
 } from '../trackManagement';
 import type { Clip, Track } from '../../contexts/TracksContext';
 
@@ -194,5 +195,28 @@ describe('buildDuplicatedTracks', () => {
   it('skips out-of-range indices rather than throwing', () => {
     const source = track({ id: 1, clips: [] });
     expect(buildDuplicatedTracks([5], [source])).toEqual([]);
+  });
+});
+
+describe('computeFitTrackHeight', () => {
+  it('divides the viewport (minus gaps) evenly across tracks', () => {
+    // (500 - topGap 2 - 3 x trackGap 2) / 3 = 164
+    expect(computeFitTrackHeight(500, 3, 2, 2)).toBe(164);
+  });
+
+  it('snaps heights inside the forbidden 71-112 band to the nearer edge', () => {
+    // (300 - 2 - 6) / 3 = 97.33 -> 97, closer to 112 than 71
+    expect(computeFitTrackHeight(300, 3, 2, 2)).toBe(112);
+    // (240 - 2 - 6) / 3 = 77.33 -> 77, closer to 71
+    expect(computeFitTrackHeight(240, 3, 2, 2)).toBe(71);
+  });
+
+  it('clamps to the 44px control-panel minimum', () => {
+    expect(computeFitTrackHeight(100, 4, 2, 2)).toBe(44);
+  });
+
+  it('returns null for an empty project or unmeasured viewport', () => {
+    expect(computeFitTrackHeight(0, 3, 2, 2)).toBeNull();
+    expect(computeFitTrackHeight(500, 0, 2, 2)).toBeNull();
   });
 });

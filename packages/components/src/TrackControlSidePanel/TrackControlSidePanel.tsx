@@ -173,6 +173,29 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   const [addTrackFlyoutAutoFocus, setAddTrackFlyoutAutoFocus] = useState(false);
   const addButtonRef = React.useRef<HTMLDivElement>(null);
   const addButtonElementRef = React.useRef<HTMLButtonElement>(null);
+  // The per-panel Cmd/Ctrl+wheel resize (ResizablePanel wheelResize)
+  // preventDefaults over the panels themselves, but wheel events landing
+  // on the gaps/padding between and below panels would still scroll this
+  // list mid-gesture. Suppress ALL zoom-modifier wheel scrolling over the
+  // list (native non-passive listener — React's onWheel is passive).
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const setListRef = (node: HTMLDivElement | null) => {
+    listRef.current = node;
+    if (scrollRef) {
+      (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    }
+  };
+  React.useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const suppressZoomScroll = (e: WheelEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+      }
+    };
+    el.addEventListener('wheel', suppressZoomScroll, { passive: false });
+    return () => el.removeEventListener('wheel', suppressZoomScroll);
+  }, []);
   // Captures the panel's menu button that opened the side-panel
   // context menu so focus can return there when the menu closes —
   // including after an item (e.g. Track color) is picked.
@@ -338,7 +361,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       {/* Track list */}
       <div
         className="track-control-side-panel__list"
-        ref={scrollRef}
+        ref={setListRef}
         onScroll={onScroll}
         style={{ paddingBottom: `${bufferSpace}px` }}
         tabIndex={-1}
@@ -358,6 +381,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
               style={undefined}
               isFirstPanel={index === 0}
+              wheelResize
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
               onResizeEnd={(finalHeight) => onTrackResize?.(index, finalHeight)}
             >

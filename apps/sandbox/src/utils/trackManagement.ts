@@ -134,3 +134,25 @@ export function buildDuplicatedTracks(
     insertAt: idx + 1,
   }));
 }
+
+/**
+ * Fit-to-height (View > Fit tracks to height, AU3 heritage): the uniform
+ * track height that makes `trackCount` tracks exactly fill the canvas
+ * viewport. Canvas layout is TOP_GAP + per-track (height + TRACK_GAP) —
+ * see calculateTrackYOffset. Clamped to the 44px control-panel minimum,
+ * and heights inside the forbidden control-panel band (71-112, where the
+ * volume slider has no valid layout) snap to the nearer edge.
+ */
+export function computeFitTrackHeight(
+  viewportHeight: number,
+  trackCount: number,
+  topGap: number,
+  trackGap: number,
+): number | null {
+  if (viewportHeight <= 0 || trackCount <= 0) return null;
+  const available = viewportHeight - topGap - trackCount * trackGap;
+  let per = Math.floor(available / trackCount);
+  if (per < 44) per = 44;
+  if (per > 71 && per < 112) per = per - 71 <= 112 - per ? 71 : 112;
+  return per;
+}

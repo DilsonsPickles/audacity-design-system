@@ -23,6 +23,9 @@ export interface MenuDefinitionDeps {
   onToggleRmsInWaveform: () => void;
   onToggleVerticalRulers: () => void;
   onTogglePianoRoll: () => void;
+  onFitTracksToHeight: () => void;
+  onExpandAllTracks: () => void;
+  onCollapseAllTracks: () => void;
 
   // Effect menu deps
   onOpenPluginManager: () => void;
@@ -96,6 +99,23 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Show piano roll',
       checked: deps.pianoRollOpen,
       onClick: deps.onTogglePianoRoll,
+    },
+    {
+      // AU3 heritage: View > Track Size > Fit to Height / Expand All /
+      // Collapse All. Our Menu has no submenus, so they live flat in View.
+      label: 'Fit tracks to height',
+      shortcut: 'Ctrl+Shift+F',
+      onClick: deps.onFitTracksToHeight,
+    },
+    {
+      label: 'Expand all tracks',
+      shortcut: 'Ctrl+Shift+X',
+      onClick: deps.onExpandAllTracks,
+    },
+    {
+      label: 'Collapse all tracks',
+      shortcut: 'Ctrl+Shift+C',
+      onClick: deps.onCollapseAllTracks,
     },
   ];
 

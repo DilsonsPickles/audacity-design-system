@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './ResizablePanel.css';
 
+// 71 (slider just fits) and 112 (effect button has breathing room) bracket
+// a forbidden range — there's no valid layout between them, because the
+// slider would be visible without the effect button having any space.
+// Enforced by the mouseup snap (bounce back) and the wheel resize (detent).
+const FORBIDDEN_LOW = 71;
+const FORBIDDEN_HIGH = 112;
+
 export interface ResizablePanelProps {
   /**
    * Content to be rendered inside the resizable panel
@@ -52,6 +59,12 @@ export interface ResizablePanelProps {
    * Additional inline styles for the container
    */
   style?: React.CSSProperties;
+  /**
+   * Cmd/Ctrl + scroll wheel over the panel resizes it (scroll/swipe up =
+   * taller) — the same modifier as canvas zoom, so it reads as "zoom the
+   * track". Uses the same height plumbing as drag resize.
+   */
+  wheelResize?: boolean;
 }
 
 export const ResizablePanel: React.FC<ResizablePanelProps> = ({
@@ -67,6 +80,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   className = '',
   isFirstPanel = false,
   style: externalStyle,
+  wheelResize = false,
 }) => {
   const [height, setHeight] = useState(initialHeight);
   const [isResizing, setIsResizing] = useState(false);
@@ -86,6 +100,82 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   // Tracks a running release-spring animation so a new resize gesture
   // cancels it cleanly.
   const snapAnimationRef = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Cmd/Ctrl+wheel resize — attached natively with { passive: false }
+  // because React's root-delegated onWheel is passive, so preventDefault()
+  // there is ignored and the surrounding list would scroll while resizing.
+  // Bound once; live prop values are read through a ref-mirror.
+  const wheelDepsRef = useRef({ minHeight, maxHeight, onHeightChange });
+  useEffect(() => {
+    wheelDepsRef.current = { minHeight, maxHeight, onHeightChange };
+  }, [minHeight, maxHeight, onHeightChange]);
+
+  // Sub-pixel remainder between wheel events, so gentle trackpad deltas
+  // (well under 1px after the resistance factor) accumulate instead of
+  // being rounded away. Dropped whenever a clamp or the detent fires.
+  const wheelAccRef = useRef(0);
+
+  useEffect(() => {
+    if (!wheelResize) return;
+    const el = rootRef.current;
+    if (!el) return;
+
+    // Resistance: half the raw wheel delta, capped per event so momentum
+    // flicks ramp instead of teleporting. Tuned by feel.
+    const WHEEL_SENSITIVITY = 0.5;
+    const WHEEL_MAX_STEP = 24;
+
+    const handleWheel = (e: WheelEvent) => {
+      if ((!e.metaKey && !e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (resizeStartRef.current) return; // an active drag owns the height
+      e.preventDefault();
+      if (snapAnimationRef.current !== null) {
+        cancelAnimationFrame(snapAnimationRef.current);
+        snapAnimationRef.current = null;
+      }
+      const { minHeight: min, maxHeight: max, onHeightChange: emit } = wheelDepsRef.current;
+      const current = latestHeightRef.current;
+      // deltaMode 1/2 are line/page deltas (non-pixel mice) — normalize.
+      const raw = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      const step = Math.max(-WHEEL_MAX_STEP, Math.min(WHEEL_MAX_STEP, raw * WHEEL_SENSITIVITY));
+      const acc = wheelAccRef.current - step; // wheel/swipe up = taller
+      const whole = Math.round(acc);
+      wheelAccRef.current = acc - whole;
+      if (whole === 0) return;
+      let next = current + whole;
+      // Step over the forbidden layout band in the direction of travel —
+      // a detent, so every intermediate height is a valid layout.
+      if (next > FORBIDDEN_LOW && next < FORBIDDEN_HIGH) {
+        next = whole > 0 ? FORBIDDEN_HIGH : FORBIDDEN_LOW;
+      }
+      next = Math.max(min, next);
+      if (max !== undefined) next = Math.min(max, next);
+      const rounded = Math.round(next);
+      if (rounded !== current + whole) wheelAccRef.current = 0; // clamped/detented
+      if (rounded === current) return;
+      latestHeightRef.current = rounded;
+      setHeight(rounded);
+      emit?.(rounded);
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [wheelResize]);
+
+  // Adopt EXTERNAL height changes (e.g. the Fit-to-height menu command
+  // dispatching new track heights) — but never mid-gesture: internal state
+  // stays authoritative while a drag or release-spring is running, and
+  // self-initiated changes echo back as an equal initialHeight (no-op).
+  useEffect(() => {
+    if (isResizing || snapAnimationRef.current !== null) return;
+    const target = Math.round(initialHeight);
+    if (target !== latestHeightRef.current) {
+      latestHeightRef.current = target;
+      wheelAccRef.current = 0;
+      setHeight(target);
+    }
+  }, [initialHeight, isResizing]);
 
   useEffect(() => {
     return () => {
@@ -191,10 +281,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       resizeStartRef.current = null;
       const released = latestHeightRef.current;
 
-      // 71 (slider just fits) and 112 (effect button has breathing
-      // room) bracket a forbidden range — there's no valid layout
-      // between them, because the slider would be visible without
-      // the effect button having any space.
+      // FORBIDDEN_LOW/HIGH (see module top) bracket the invalid band.
       //
       // Inside the forbidden range, we bounce back to whichever side
       // the drag *started* from — not the midpoint. So a small tug
@@ -204,8 +291,6 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       //
       // Outside the forbidden range, the regular closest-within-window
       // logic applies for 71, 112, and the home (initialHeight at mount).
-      const FORBIDDEN_LOW = 71;
-      const FORBIDDEN_HIGH = 112;
       const SNAP_CATCH_WINDOW = 18;
       let nearest: number | null = null;
 
@@ -316,6 +401,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
   return (
     <div
+      ref={rootRef}
       className={`resizable-panel ${className}`}
       style={{
         position: 'relative',

@@ -27,6 +27,12 @@ export interface UseMenuDefinitionsOptions {
   handleGenerateTone: () => Promise<void>;
   /** Opens the dockable Macros management panel */
   setIsMacrosPanelOpen: (open: boolean) => void;
+  /** View > Fit tracks to height (AU3 heritage) */
+  onFitTracksToHeight: () => void;
+  /** View > Expand all tracks (restore default height) */
+  onExpandAllTracks: () => void;
+  /** View > Collapse all tracks (minimum height) */
+  onCollapseAllTracks: () => void;
 }
 
 /**
@@ -56,6 +62,9 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     setIsPluginManagerOpen,
     handleGenerateTone,
     setIsMacrosPanelOpen,
+    onFitTracksToHeight,
+    onExpandAllTracks,
+    onCollapseAllTracks,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -137,6 +146,9 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onOpenPluginManager: () => setIsPluginManagerOpen(true),
     onGenerateTone: handleGenerateTone,
     onOpenMacroManager: () => setIsMacrosPanelOpen(true),
+    onFitTracksToHeight,
+    onExpandAllTracks,
+    onCollapseAllTracks,
   });
 
   return menuDefinitions;
