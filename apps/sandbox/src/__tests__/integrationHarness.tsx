@@ -25,7 +25,7 @@ import {
 } from '@audacity-ui/components';
 import App from '../App';
 import { Canvas, type CanvasProps } from '../components/Canvas';
-import { TracksProvider } from '../contexts/TracksContext';
+import { TracksProvider, useTracksState } from '../contexts/TracksContext';
 import type { Track } from '../contexts/TracksContext';
 import { SpectralSelectionProvider } from '../contexts/SpectralSelectionContext';
 import { getLastAudioManager, type AudioSpies } from './audioMock';
@@ -136,6 +136,19 @@ interface CanvasHarnessProps {
   canvasProps?: Partial<CanvasProps>;
 }
 
+/** Test-only observability: mirrors reducer state that Canvas renders no
+ *  DOM for (the playhead lives in EditorLayout in production) onto data
+ *  attributes, so Canvas-harness tests can assert on it. */
+function TracksStateProbe() {
+  const state = useTracksState();
+  return (
+    <div
+      data-testid="tracks-state-probe"
+      data-playhead={String(state.playheadPosition)}
+    />
+  );
+}
+
 function CanvasHarness({ tracks, canvasProps }: CanvasHarnessProps) {
   return (
     <PreferencesProvider>
@@ -157,6 +170,7 @@ function CanvasHarness({ tracks, canvasProps }: CanvasHarnessProps) {
                 controlPointStyle="solidGreenSimple"
                 {...canvasProps}
               />
+              <TracksStateProbe />
             </SpectralSelectionProvider>
           </TracksProvider>
         </AccessibilityProfileProvider>

@@ -165,6 +165,122 @@ describe('Shift+Click time-selection scope', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Double-click on a clip BODY selects the clip; triple-click selects the
+// whole track's extent (gaps included) as a track-scoped time selection.
+// Seam: useCanvasPointerHandlers onDoubleClick (audio branch) + onClick's
+// e.detail >= 3 branch.
+// ---------------------------------------------------------------------------
+
+describe('Double / triple click', () => {
+  const twoClipTrack = (): Track[] => ([
+    {
+      id: 1,
+      name: 'Track 1',
+      clips: [
+        { id: 1, name: 'Clip 1', start: 0, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 },
+        { id: 2, name: 'Clip 2', start: 5, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 },
+      ],
+    },
+    { id: 2, name: 'Track 2', clips: [] },
+  ]);
+
+  it('double-click on an audio clip body selects that clip and parks the playhead on its start', () => {
+    const { container } = renderCanvas(twoClipTrack());
+    expect(isClipSelected(container, 1)).toBe(false);
+
+    // Clip 2 starts at 5 s — double-click selects it AND moves the
+    // playhead to the clip start, so Space auditions from its beginning.
+    fireEvent.doubleClick(clipEl(container, 2));
+    expect(isClipSelected(container, 2)).toBe(true);
+    expect(isClipSelected(container, 1)).toBe(false);
+    const probe = container.querySelector('[data-testid="tracks-state-probe"]') as HTMLElement;
+    expect(probe.getAttribute('data-playhead')).toBe('5');
+  });
+
+  it('triple-click selects the full track extent as a track-scoped time selection', () => {
+    const { container } = renderCanvas(twoClipTrack());
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+
+    // Triple-click lands as a click with detail 3 — on track 0
+    // (clientY 50 is within its row). Track extent = last clip end (7 s),
+    // gaps between the clips included.
+    fireEvent.click(pointerContainer, { clientX: 100, clientY: 50, detail: 3 });
+
+    // Track 0 shows the in-scope overlay; track 1 is out of scope.
+    const overlayColor = (idx: number) => (trackEl(container, idx).children[0] as HTMLElement).style.backgroundColor;
+    expect(overlayColor(0)).toContain('98, 119, 136'); // in scope
+    expect(overlayColor(1)).toContain('49, 56, 70'); // out of scope
+
+    // The whole-clip range is selected, so both clips are body-deselected
+    // (time selection replaced any clip selection).
+    expect(isClipSelected(container, 1)).toBe(false);
+    expect(isClipSelected(container, 2)).toBe(false);
+  });
+
+  it('double-click on empty space selects the gap between clips', () => {
+    const { container } = renderCanvas(twoClipTrack());
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+
+    // Clips span [0,2] and [5,7]; double-click at t = 3.5 s
+    // (x = 12 offset + 350) inside the gap → selection [2, 5].
+    fireEvent.doubleClick(pointerContainer, { clientX: 362, clientY: 50 });
+
+    const overlay = trackEl(container, 0).children[0] as HTMLElement;
+    expect(overlay.style.backgroundColor).toContain('98, 119, 136'); // in scope
+    // Overlay rect: left = 12 + 2 s × 100, width = 3 s × 100
+    expect(overlay.style.left).toBe('212px');
+    expect(overlay.style.width).toBe('300px');
+  });
+
+  it('double-click on empty space before the first clip selects track-start to clip-start', () => {
+    const tracks: Track[] = [
+      {
+        id: 1,
+        name: 'Track 1',
+        clips: [
+          { id: 1, name: 'Clip 1', start: 1.5, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 },
+        ],
+      },
+    ];
+    const { container } = renderCanvas(tracks);
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+
+    // t = 0.5 s (x = 12 + 50) → selection [0, 1.5]
+    fireEvent.doubleClick(pointerContainer, { clientX: 62, clientY: 50 });
+    const overlay = trackEl(container, 0).children[0] as HTMLElement;
+    expect(overlay.style.left).toBe('12px');
+    expect(overlay.style.width).toBe('150px');
+  });
+
+  it('double-click after all content stays a plain click (no unbounded selection)', () => {
+    const { container } = renderCanvas(twoClipTrack());
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+
+    // t = 9 s — past the last clip end (7 s); no right bound, no selection
+    fireEvent.doubleClick(pointerContainer, { clientX: 912, clientY: 50 });
+    const overlay = trackEl(container, 0).children[0] as HTMLElement | undefined;
+    expect(overlay?.style.backgroundColor ?? '').not.toContain('98, 119, 136');
+  });
+
+  it('triple-click on an empty track does nothing', () => {
+    const { container } = renderCanvas(twoClipTrack());
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+
+    // Track 1 (empty) occupies y within [118, 232)
+    fireEvent.click(pointerContainer, { clientX: 100, clientY: 175, detail: 3 });
+    const overlayColor = (idx: number) => (trackEl(container, idx).children[0] as HTMLElement).style.backgroundColor;
+    // No time selection: neither track shows a scoped overlay
+    expect(overlayColor(0)).not.toContain('98, 119, 136');
+    expect(overlayColor(1)).not.toContain('98, 119, 136');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Row 3: ArrowDown on focused track -> focus moves to next track.
 // Seam: useTrackKeyboardHandlers navigate (onTrackNavigateVertical).
 // DOM evidence: document.activeElement after the arrow-nav's deferred

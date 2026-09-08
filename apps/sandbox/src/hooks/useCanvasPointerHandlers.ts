@@ -162,6 +162,31 @@ export function useCanvasPointerHandlers(
   const onClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
     if (splitMode) return;
 
+    // Triple-click: word-editor-style "select the whole line" — a time
+    // selection spanning the full extent of the clicked track, silences
+    // and gaps between clips included, scoped to that track. Runs before
+    // the body-deselect and playhead paths and consumes the click.
+    if (e.detail >= 3 && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const ti = resolveTrackIndexFromY(y, tracks);
+      const track = ti !== null ? tracks[ti] : undefined;
+      if (ti !== null && track && track.type !== 'label') {
+        let trackEnd = 0;
+        track.clips.forEach((c) => { trackEnd = Math.max(trackEnd, c.start + c.duration); });
+        (track.midiClips || []).forEach((c) => { trackEnd = Math.max(trackEnd, c.start + c.duration); });
+        if (trackEnd > 0) {
+          dispatch({ type: 'DESELECT_ALL_CLIPS' });
+          dispatch({
+            type: 'SET_TIME_SELECTION',
+            payload: { startTime: 0, endTime: trackEnd, tracks: [ti] },
+          });
+          dispatch({ type: 'SET_FOCUSED_TRACK', payload: ti });
+        }
+      }
+      return;
+    }
+
     // Body-click clip deselection: clicking the body of any
     // clip that isn't currently selected drops the existing
     // clip selection. Clicking the body of an already-
@@ -295,7 +320,6 @@ export function useCanvasPointerHandlers(
   };
 
   const onDoubleClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
-    if (!onMidiClipDoubleClick) return;
     // Walk up from the click target to find a clip element with data-clip-id
     let el = e.target as HTMLElement | null;
     while (el && el !== e.currentTarget) {
@@ -307,13 +331,63 @@ export function useCanvasPointerHandlers(
         if (track?.type === 'midi' && track.midiClips) {
           const clipIndex = track.midiClips.findIndex((mc) => String(mc.id) === clipId);
           if (clipIndex >= 0) {
-            onMidiClipDoubleClick(trackIdx, clipIndex);
+            onMidiClipDoubleClick?.(trackIdx, clipIndex);
           }
+          return;
+        }
+        // Audio clip body: double-click selects the clip. Clip selection
+        // is an explicit gesture, so it replaces the time selection —
+        // same contract as clip-header click (useClipMouseDown).
+        const audioClip = track?.clips.find((c) => String(c.id) === clipId);
+        if (audioClip) {
+          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+          dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: trackIdx, clipId: audioClip.id } });
+          dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIdx });
+          // Selecting a clip this way also parks the playhead on the
+          // clip's start, so Space auditions the clip from its beginning.
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: audioClip.start });
         }
         return;
       }
       el = el.parentElement;
     }
+
+    // Empty track space: double-click selects the GAP as a time selection —
+    // from the end of the previous clip (or the track start, for empty
+    // space before the first clip) to the start of the next clip. Needs a
+    // clip on the right to bound it; space after all content is unbounded
+    // and stays a plain click. Scoped to the clicked track.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const ti = resolveTrackIndexFromY(y, tracks);
+    const track = ti !== null ? tracks[ti] : undefined;
+    if (ti === null || !track || track.type === 'label') return;
+    const time = (x - leftPadding) / pixelsPerSecond;
+    if (time < 0) return;
+
+    const intervals = [
+      ...track.clips.map((c) => ({ start: c.start, end: c.start + c.duration })),
+      ...(track.midiClips || []).map((c) => ({ start: c.start, end: c.start + c.duration })),
+    ];
+    // Inside a clip → the walk-up above owns it (shouldn't reach here, but
+    // guard against overlay elements swallowing the data-clip-id walk).
+    if (intervals.some((iv) => time >= iv.start && time < iv.end)) return;
+
+    let prevEnd = 0;
+    let nextStart = Infinity;
+    for (const iv of intervals) {
+      if (iv.end <= time) prevEnd = Math.max(prevEnd, iv.end);
+      if (iv.start >= time) nextStart = Math.min(nextStart, iv.start);
+    }
+    if (!Number.isFinite(nextStart) || nextStart - prevEnd <= 1e-6) return;
+
+    dispatch({ type: 'DESELECT_ALL_CLIPS' });
+    dispatch({
+      type: 'SET_TIME_SELECTION',
+      payload: { startTime: prevEnd, endTime: nextStart, tracks: [ti] },
+    });
+    dispatch({ type: 'SET_FOCUSED_TRACK', payload: ti });
   };
 
   const onDragStart: React.DragEventHandler<HTMLDivElement> = (e) => e.preventDefault();
