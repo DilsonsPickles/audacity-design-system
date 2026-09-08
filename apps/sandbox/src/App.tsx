@@ -49,6 +49,7 @@ import { useGrabToPan } from './hooks/useGrabToPan';
 import { useProjectManagement } from './hooks/useProjectManagement';
 import { usePlugins } from './hooks/usePlugins';
 import { DialogProvider, useDialogs } from './contexts/DialogContext';
+import { MacrosProvider, useMacros } from './contexts/MacrosContext';
 import { ContextMenuProvider, useContextMenus } from './contexts/ContextMenuContext';
 import { useLoopRegion } from './hooks/useLoopRegion';
 import { useMasterMeter } from './hooks/useMasterMeter';
@@ -103,7 +104,7 @@ function CanvasDemoContent() {
     setIsShareDialogOpen,
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
-    setIsPluginManagerOpen, setIsMacroManagerOpen,
+    setIsPluginManagerOpen,
     setAlertDialogOpen,
     showMissingPlugins,
   } = useDialogs();
@@ -244,8 +245,7 @@ function CanvasDemoContent() {
   const [snapMode, setSnapMode] = React.useState<import('@audacity-ui/components').SnapMode>('musical');
   const [showMixer, setShowMixer] = React.useState(true);
   const { mixerPanelOpen, setMixerPanelOpen } = useMixerPanelListener();
-  const [macros, setMacros] = React.useState<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>([]);
-  const [selectedMacroId, setSelectedMacroId] = React.useState<string | undefined>(undefined);
+  const { setIsMacrosPanelOpen } = useMacros();
 
   const {
     audioSetupMenuAnchor, setAudioSetupMenuAnchor,
@@ -678,7 +678,7 @@ function CanvasDemoContent() {
     setRollInTimeEnabled,
     setIsPluginManagerOpen,
     handleGenerateTone,
-    setIsMacroManagerOpen,
+    setIsMacrosPanelOpen,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
@@ -1102,10 +1102,6 @@ function CanvasDemoContent() {
         setSelectedPlaybackDevice={setSelectedPlaybackDevice}
         availableAudioInputs={availableAudioInputs}
         availableAudioOutputs={availableAudioOutputs}
-        macros={macros}
-        setMacros={setMacros}
-        selectedMacroId={selectedMacroId}
-        setSelectedMacroId={setSelectedMacroId}
         plugins={allPlugins}
         setPlugins={setPluginsWithSync}
         initialExportType={initialExportType}
@@ -1253,6 +1249,7 @@ function ThemedApp() {
           <TracksProvider initialTracks={[]}>
             <SpectralSelectionProvider>
               <DialogProvider>
+                <MacrosProvider>
                 <ContextMenuProvider>
                   <MuseHubProvider>
                     <AdieuProvider>
@@ -1269,6 +1266,7 @@ function ThemedApp() {
                     </AdieuProvider>
                   </MuseHubProvider>
                 </ContextMenuProvider>
+                </MacrosProvider>
               </DialogProvider>
             </SpectralSelectionProvider>
           </TracksProvider>

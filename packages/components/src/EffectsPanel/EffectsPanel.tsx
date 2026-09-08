@@ -111,8 +111,11 @@ export interface EffectsPanelProps {
   onTabOut?: () => void;
   /** Additional CSS class */
   className?: string;
-  /** Positioning mode - 'sidebar' for static left panel, 'overlay' for absolute positioned overlay */
-  mode?: 'sidebar' | 'overlay';
+  /** Positioning mode - 'sidebar' for static left panel, 'overlay' for absolute
+   *  positioned overlay, 'embedded' for filling a host container (e.g. a
+   *  DockPanel tab) that provides its own chrome — no SidePanel wrapper and
+   *  no EffectsPanelHeader are rendered. */
+  mode?: 'sidebar' | 'overlay' | 'embedded';
   /** Position for overlay mode (left offset in px) */
   left?: number;
   /** Position for overlay mode (top offset in px) */
@@ -460,11 +463,14 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
 
   const content = (
     <>
-      {/* Header */}
-      <EffectsPanelHeader
-        title="Effects"
-        onClose={onClose}
-      />
+      {/* Header — omitted in embedded mode, where the host (e.g. a DockPanel
+          tab bar) provides the title and close affordance */}
+      {mode !== 'embedded' && (
+        <EffectsPanelHeader
+          title="Effects"
+          onClose={onClose}
+        />
+      )}
 
       {/* Body container */}
       <div ref={contentRef} className="effects-panel__content">
@@ -508,6 +514,26 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
           height: height ? `${height}px` : 'auto',
           zIndex: 1000,
         }}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+        onFocus={tabGroup.onFocus}
+        onBlur={tabGroup.onBlur}
+        onClickCapture={tabGroup.onClickCapture}
+        role="region"
+        aria-label="Effects panel"
+      >
+        {content}
+      </div>
+    );
+  }
+
+  // Embedded mode - fills a host container that provides position + chrome
+  if (mode === 'embedded') {
+    return (
+      <div
+        ref={panelRef}
+        className={`effects-panel effects-panel--embedded effects-panel__focusable-container ${className}`}
+        style={style}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         onFocus={tabGroup.onFocus}

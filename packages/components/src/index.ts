@@ -99,6 +99,9 @@ export * from './LabelEditorTableHeader';
 export * from './LabelEditorTableRow';
 export * from './PluginManagerDialog';
 export * from './MacroManager';
+export * from './MacrosPanel';
+export * from './MacroEditorDialog';
+export * from './CommandParametersDialog';
 export * from './SelectCommandDialog';
 export * from './VSTEffectOptionsDialog';
 
@@ -148,6 +151,7 @@ export * from './TransportToolbar';
 export * from './TrackControlSidePanel';
 export * from './EffectsPanel';
 export * from './PanelHeader';
+export * from './DockPanel';
 export * from './EffectDialog';
 export * from './TimeCode';
 export * from './SelectionToolbar';

@@ -41,6 +41,13 @@ The watcher effect uses `apps/sandbox/src/utils/findMissingEffects.ts` (id-based
 ### Extract EditorLayout's remaining handler clusters
 Final review of the EditorLayout decomposition (spec: `docs/superpowers/specs/2026-07-11-editor-layout-decomposition-design.md`) adjudicated the remaining 1178 lines as ~80% composition-root glue plus three extractable clusters no task scoped: (1) Canvas focus-routing callbacks (`onContainerEnter`/`onShiftTabFromTrack`/`onTabFromLastClip`) → `useCanvasFocusRouting`; (2) VerticalRulerPanel callbacks incl. two scroll-sync math blocks → `useVerticalRulerPanelHandlers`; (3) MarketplaceModal/EffectPicker handler block → container component. Same discipline: verbatim moves under the existing characterization net (the 5 focus-routing integration tests must stay green). Cheap riders: rewrite the stale exploratory comment in `components/editor/EditorBottomDrawer.tsx` (~84–92) to describe the actual `close-mixer-panel` CustomEvent contract; have `hooks/handlers/trackCreationHandlers.ts` (Cmd+T) adopt `utils/trackManagement.ts` to kill its near-duplicate id/name allocation.
 
+### Deprecate the combined MacroManager modal
+The sandbox now uses the dockable `MacrosPanel` + floating `MacroEditorDialog` (2026-09-07);
+`MacroManager` stays exported from `@audacity-ui/components` only for package consumers.
+Decide whether to mark it deprecated / remove it in the next breaking release.
+Related nits while it lives: its "run on files" affordance reuses the `save` icon — the
+design wants a folder glyph, which means adding a `folder` codepoint to `Icon`'s `ICON_MAP`.
+
 ## Minor (batch into related work, don't do standalone)
 
 - `stretchFactor` onto the sandbox `Clip` type — would remove 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` (plain `as Clip` does NOT typecheck today).

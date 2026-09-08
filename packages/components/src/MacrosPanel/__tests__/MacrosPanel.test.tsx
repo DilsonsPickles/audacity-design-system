@@ -1,0 +1,115 @@
+import React from 'react';
+import { render, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
+import { MacrosPanel } from '../MacrosPanel';
+import type { Macro } from '../../MacroManager/macroTypes';
+
+afterEach(cleanup);
+
+const MACROS: Macro[] = [
+  { id: 'm1', name: 'Fade ends', steps: [{ command: 'Fade In', parameters: '' }, { command: 'END', parameters: '' }] },
+  { id: 'm2', name: 'MP3 conversion', steps: [{ command: 'END', parameters: '' }] },
+];
+
+function renderPanel(props: Partial<React.ComponentProps<typeof MacrosPanel>> = {}) {
+  return render(
+    <ThemeProvider>
+      <MacrosPanel macros={MACROS} {...props} />
+    </ThemeProvider>,
+  );
+}
+
+describe('MacrosPanel', () => {
+  it('renders a row per macro', () => {
+    const { container } = renderPanel();
+    const rows = container.querySelectorAll('.macros-panel__row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain('Fade ends');
+    expect(rows[1].textContent).toContain('MP3 conversion');
+  });
+
+  it('shows an empty state when there are no macros', () => {
+    const { container } = renderPanel({ macros: [] });
+    expect(container.querySelector('.macros-panel__empty')).not.toBeNull();
+    expect(container.querySelectorAll('.macros-panel__row')).toHaveLength(0);
+  });
+
+  it('runs a macro on the project via the row play button', () => {
+    const onRunOnProject = vi.fn();
+    const { container } = renderPanel({ onRunOnProject });
+    const playButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Run Fade ends on current project"]',
+    );
+    expect(playButton).not.toBeNull();
+    fireEvent.click(playButton!);
+    expect(onRunOnProject).toHaveBeenCalledWith('m1');
+  });
+
+  it('runs a macro on files via the row files button', () => {
+    const onRunOnFiles = vi.fn();
+    const { container } = renderPanel({ onRunOnFiles });
+    fireEvent.click(container.querySelector('button[aria-label="Run MP3 conversion on files"]')!);
+    expect(onRunOnFiles).toHaveBeenCalledWith('m2');
+  });
+
+  it('opens the editor when a row is clicked', () => {
+    const onEditMacro = vi.fn();
+    const { container } = renderPanel({ onEditMacro });
+    fireEvent.click(container.querySelector('[data-macro-id="m1"]')!);
+    expect(onEditMacro).toHaveBeenCalledWith('m1');
+  });
+
+  it('does not open the editor when a row action button is clicked', () => {
+    const onEditMacro = vi.fn();
+    const onRunOnProject = vi.fn();
+    const { container } = renderPanel({ onEditMacro, onRunOnProject });
+    fireEvent.click(container.querySelector('button[aria-label="Run Fade ends on current project"]')!);
+    expect(onRunOnProject).toHaveBeenCalled();
+    expect(onEditMacro).not.toHaveBeenCalled();
+  });
+
+  it('offers Edit / Rename / Export / Delete in the row menu', () => {
+    const onDeleteMacro = vi.fn();
+    const { container } = renderPanel({ onDeleteMacro });
+    fireEvent.click(container.querySelector('button[aria-label="Fade ends options"]')!);
+
+    const items = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'));
+    const labels = items.map((el) => el.textContent);
+    expect(labels.join(' ')).toContain('Edit macro');
+    expect(labels.join(' ')).toContain('Rename macro');
+    expect(labels.join(' ')).toContain('Export macro');
+    expect(labels.join(' ')).toContain('Delete macro');
+
+    const deleteItem = items.find((el) => el.textContent?.includes('Delete macro'));
+    fireEvent.click(deleteItem!);
+    expect(onDeleteMacro).toHaveBeenCalledWith('m1');
+  });
+
+  it('creates a macro through the Create new macro dialog', () => {
+    const onCreateMacro = vi.fn();
+    const { container, getByText } = renderPanel({ onCreateMacro });
+    fireEvent.click(getByText('Create new macro'));
+
+    const input = container.querySelector<HTMLInputElement>('#macro-name-input');
+    expect(input).not.toBeNull();
+    fireEvent.change(input!, { target: { value: 'My new macro' } });
+    fireEvent.click(getByText('Create'));
+    expect(onCreateMacro).toHaveBeenCalledWith('My new macro');
+  });
+
+  it('renames a macro through the rename dialog', () => {
+    const onRenameMacro = vi.fn();
+    const { container, getByText } = renderPanel({ onRenameMacro });
+    fireEvent.click(container.querySelector('button[aria-label="Fade ends options"]')!);
+    const renameItem = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.includes('Rename macro'));
+    fireEvent.click(renameItem!);
+
+    const input = container.querySelector<HTMLInputElement>('#rename-macro-input');
+    expect(input).not.toBeNull();
+    fireEvent.change(input!, { target: { value: 'Fade both ends' } });
+    fireEvent.click(getByText('Rename'));
+    expect(onRenameMacro).toHaveBeenCalledWith('m1', 'Fade both ends');
+  });
+});

@@ -19,7 +19,6 @@ const DIALOG_IDS = [
   'debugPanel',
   'spectrogramSettings',
   'pluginBrowser',
-  'macroManager',
   'missingPluginsModal',
 ] as const;
 
@@ -77,9 +76,6 @@ export interface UseDialogStateReturn {
 
   isPluginBrowserOpen: boolean;
   setIsPluginBrowserOpen: (open: boolean) => void;
-
-  isMacroManagerOpen: boolean;
-  setIsMacroManagerOpen: (open: boolean) => void;
 
   isMissingPluginsModalOpen: boolean;
   setIsMissingPluginsModalOpen: (open: boolean) => void;
@@ -176,7 +172,6 @@ export function useDialogState(): UseDialogStateReturn {
       setIsDebugPanelOpen: makeSetter('debugPanel'),
       setIsSpectrogramSettingsOpen: makeSetter('spectrogramSettings'),
       setIsPluginBrowserOpen: makeSetter('pluginBrowser'),
-      setIsMacroManagerOpen: makeSetter('macroManager'),
       setIsMissingPluginsModalOpen: makeSetter('missingPluginsModal'),
     }),
     [makeSetter],
@@ -211,7 +206,6 @@ export function useDialogState(): UseDialogStateReturn {
     isDebugPanelOpen: openDialogs.has('debugPanel'),
     isSpectrogramSettingsOpen: openDialogs.has('spectrogramSettings'),
     isPluginBrowserOpen: openDialogs.has('pluginBrowser'),
-    isMacroManagerOpen: openDialogs.has('macroManager'),
     isMissingPluginsModalOpen: openDialogs.has('missingPluginsModal'),
     missingPluginNames,
     showMissingPlugins,

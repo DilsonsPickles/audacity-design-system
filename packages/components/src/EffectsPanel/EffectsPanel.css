@@ -12,6 +12,13 @@
   overflow: visible;
 }
 
+/* Embedded mode — host (DockPanel tab) already draws the dock border */
+.effects-panel--embedded {
+  border-right: none;
+  flex: 1;
+  min-height: 0;
+}
+
 /* Focus outline for the entire panel when tabbed to */
 .effects-panel__focusable-container {
   display: flex;

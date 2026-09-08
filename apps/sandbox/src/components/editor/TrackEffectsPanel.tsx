@@ -118,7 +118,7 @@ export function TrackEffectsPanel({
   return (
     <EffectsPanel
       isOpen={effectsPanel.isOpen}
-      mode="sidebar"
+      mode="embedded"
       trackSection={{
         trackName: tracks[trackIndex]?.name || 'Track',
         effects: currentTrackEffects,

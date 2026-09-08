@@ -1,5 +1,5 @@
 import React from 'react';
-import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroManager, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, type PreferencesState, type StoredProject } from '@audacity-ui/components';
+import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroEditorDialog, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, type PreferencesState, type StoredProject } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { AccessibilityProfile } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
@@ -10,7 +10,10 @@ import { DebugPanel } from './DebugPanel';
 import { MissingPluginsModal } from './MissingPluginsModal';
 import { generateWaveform } from '../utils/waveformGenerator';
 import { availableCommands } from '../data/commands';
+import { getCommandParameters, getDefaultParameters } from '../data/commandParameters';
 import { useDialogs } from '../contexts/DialogContext';
+import { useMacros } from '../contexts/MacrosContext';
+import { exportMacroFile } from '../utils/macroFile';
 import { MuseIdAccountsPage } from './museid/MuseIdAccountsPage';
 import { useContextMenus } from '../contexts/ContextMenuContext';
 import { useAdieu, SignInCancelledError } from '../contexts/AdieuContext';
@@ -72,12 +75,6 @@ export interface AppDialogsProps {
   availableAudioInputs: MediaDeviceInfo[];
   availableAudioOutputs: MediaDeviceInfo[];
 
-  // Macros
-  macros: Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>;
-  setMacros: React.Dispatch<React.SetStateAction<Array<{ id: string; name: string; steps: Array<{ command: string; parameters: string }> }>>>;
-  selectedMacroId: string | undefined;
-  setSelectedMacroId: React.Dispatch<React.SetStateAction<string | undefined>>;
-
   // Plugins
   plugins: Plugin[];
   setPlugins: React.Dispatch<React.SetStateAction<Plugin[]>>;
@@ -130,6 +127,7 @@ export function AppDialogs(props: AppDialogsProps) {
   const { audioManagerRef } = usePlayback();
   const { loopRegionEnabled, loopRegionStart, loopRegionEnd } = useLoopRegionContext();
   const dialogs = useDialogs();
+  const macrosCtx = useMacros();
   const { effectDialog, setEffectDialog, effectContextMenu, setEffectContextMenu } = useContextMenus();
   const {
     signedIn: adieuSignedIn,
@@ -160,7 +158,6 @@ export function AppDialogs(props: AppDialogsProps) {
     selectedRecordingDevice, setSelectedRecordingDevice,
     selectedPlaybackDevice, setSelectedPlaybackDevice,
     availableAudioInputs, availableAudioOutputs,
-    macros, setMacros, selectedMacroId, setSelectedMacroId,
     plugins, setPlugins,
     initialExportType,
     alertDialogTitle, setAlertDialogTitle, alertDialogMessage, setAlertDialogMessage,
@@ -700,44 +697,26 @@ export function AppDialogs(props: AppDialogsProps) {
         os={os}
       />
 
-      {/* Macro Manager Dialog */}
-      <MacroManager
-        isOpen={dialogs.isMacroManagerOpen}
-        macros={macros}
-        selectedMacroId={selectedMacroId}
-        onClose={() => dialogs.setIsMacroManagerOpen(false)}
-        onSelectMacro={(macroId) => setSelectedMacroId(macroId)}
-        onAddMacro={(name) => {
-          const newMacro = {
-            id: `macro-${Date.now()}`,
-            name,
-            steps: [
-              { command: 'END', parameters: '' },
-            ]
-          };
-          setMacros([...macros, newMacro]);
-          setSelectedMacroId(newMacro.id);
-        }}
-        onRenameMacro={(macroId, newName) => {
-          setMacros(macros.map(m => m.id === macroId ? { ...m, name: newName } : m));
-        }}
-        onDeleteMacro={(macroId) => {
-          setMacros(macros.filter(m => m.id !== macroId));
-          if (selectedMacroId === macroId) {
-            setSelectedMacroId(undefined);
-          }
+      {/* Macro Editor Dialog — floating editor for the macro opened from
+          the docked Macros panel */}
+      <MacroEditorDialog
+        isOpen={macrosCtx.editingMacroId !== null}
+        macro={macrosCtx.macros.find((m) => m.id === macrosCtx.editingMacroId) ?? null}
+        onClose={() => macrosCtx.setEditingMacroId(null)}
+        onRenameMacro={macrosCtx.renameMacro}
+        onDeleteMacro={macrosCtx.deleteMacro}
+        onExportMacro={(macroId) => {
+          const macro = macrosCtx.macros.find((m) => m.id === macroId);
+          if (macro) exportMacroFile(macro);
         }}
         onAddCommand={(macroId, command) => {
-          setMacros(macros.map(m => {
-            if (m.id === macroId) {
-              return {
-                ...m,
-                steps: [...m.steps, { command: command.name, parameters: '' }]
-              };
-            }
-            return m;
-          }));
+          macrosCtx.addCommandToMacro(macroId, command, getDefaultParameters(command.name));
         }}
+        onEditStep={macrosCtx.updateStepParameters}
+        onDeleteStep={macrosCtx.deleteStep}
+        onMoveStep={macrosCtx.moveStep}
+        onReorderStep={macrosCtx.reorderStep}
+        getCommandParameters={getCommandParameters}
         availableCommands={availableCommands}
         os={os}
       />

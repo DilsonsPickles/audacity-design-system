@@ -52,6 +52,18 @@ for (const name of ['localStorage', 'sessionStorage'] as const) {
   }
 }
 
+// jsdom has no ResizeObserver; components that observe their own size
+// (Dialog, CustomScrollbar, PianoRollPanel, …) just never get resize
+// callbacks in tests.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class NoopResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  globalThis.ResizeObserver = NoopResizeObserver as unknown as typeof ResizeObserver;
+}
+
 // Mock canvas context for components that render to canvas
 HTMLCanvasElement.prototype.getContext = (() => {
   const noop = () => {};

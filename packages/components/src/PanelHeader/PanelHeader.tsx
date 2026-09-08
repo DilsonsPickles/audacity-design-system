@@ -8,6 +8,8 @@ export interface PanelHeaderTab {
   id: string;
   /** Display label */
   label: string;
+  /** Whether the active tab shows the ellipsis menu button. @default true */
+  hasMenu?: boolean;
 }
 
 export interface PanelHeaderProps {
@@ -210,7 +212,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
               onPointerDown={(e) => handleTabPointerDown(e, tab.id)}
             >
               <span className="panel-header__tab-label">{tab.label}</span>
-              {isActive && (
+              {isActive && tab.hasMenu !== false && (
                 <GhostButton
                   icon="menu"
                   size="small"

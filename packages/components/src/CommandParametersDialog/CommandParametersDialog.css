@@ -1,0 +1,76 @@
+/* CommandParametersDialog — per-command macro parameter editor.
+   Optional params: [checkbox + label | control] rows.
+   Required params (e.g. Mode): stacked label + full-width control. */
+
+.command-parameters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: min(480px, calc(100vh - 220px));
+  overflow-y: auto;
+}
+
+.command-parameters__empty {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+  padding: 8px 0;
+}
+
+.command-parameters__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Keep the checkbox+label from being squeezed by the control */
+.command-parameters__row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.command-parameters__control {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.command-parameters__control > * {
+  width: 100%;
+}
+
+.command-parameters__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  border: 1px solid var(--stroke-primary, #d2d6dd);
+  border-radius: 3px;
+  outline: none;
+  background: var(--input-bg, #ffffff);
+  color: var(--text-primary, #14151a);
+}
+
+.command-parameters__input:disabled {
+  opacity: 0.5;
+}
+
+.command-parameters__input:focus {
+  border-color: var(--accent-primary, #677ce4);
+}
+
+.command-parameters__required {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.command-parameters__required-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+}

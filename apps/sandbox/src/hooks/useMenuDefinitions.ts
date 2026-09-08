@@ -25,7 +25,8 @@ export interface UseMenuDefinitionsOptions {
   setRollInTimeEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   setIsPluginManagerOpen: (open: boolean) => void;
   handleGenerateTone: () => Promise<void>;
-  setIsMacroManagerOpen: (open: boolean) => void;
+  /** Opens the dockable Macros management panel */
+  setIsMacrosPanelOpen: (open: boolean) => void;
 }
 
 /**
@@ -54,7 +55,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     setRollInTimeEnabled,
     setIsPluginManagerOpen,
     handleGenerateTone,
-    setIsMacroManagerOpen,
+    setIsMacrosPanelOpen,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -135,7 +136,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),
     onOpenPluginManager: () => setIsPluginManagerOpen(true),
     onGenerateTone: handleGenerateTone,
-    onOpenMacroManager: () => setIsMacroManagerOpen(true),
+    onOpenMacroManager: () => setIsMacrosPanelOpen(true),
   });
 
   return menuDefinitions;
