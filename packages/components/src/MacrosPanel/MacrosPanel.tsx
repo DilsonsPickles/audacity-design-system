@@ -40,9 +40,34 @@ interface MacroRowProps {
   onRunOnFiles?: () => void;
 }
 
+/** Delay before a single row click opens the editor, so a double-click
+ *  (run on project) can cancel it. */
+const ROW_DOUBLE_CLICK_WINDOW = 250;
+
 function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject, onRunOnFiles }: MacroRowProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 });
+
+  // Single click opens the editor (deferred); double click runs the macro
+  // on the current project and swallows the pending single-click edit.
+  const clickTimerRef = React.useRef<number | null>(null);
+  React.useEffect(() => () => {
+    if (clickTimerRef.current !== null) window.clearTimeout(clickTimerRef.current);
+  }, []);
+  const handleRowClick = () => {
+    if (clickTimerRef.current !== null) return; // second click of a double-click
+    clickTimerRef.current = window.setTimeout(() => {
+      clickTimerRef.current = null;
+      onEdit?.();
+    }, ROW_DOUBLE_CLICK_WINDOW);
+  };
+  const handleRowDoubleClick = () => {
+    if (clickTimerRef.current !== null) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    onRunOnProject?.();
+  };
 
   const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -68,7 +93,8 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
         data-macro-id={macro.id}
         role="button"
         tabIndex={0}
-        onClick={onEdit}
+        onClick={handleRowClick}
+        onDoubleClick={handleRowDoubleClick}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -122,6 +148,7 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
 /**
  * MacrosPanel — dockable macro management panel. Lists macros with
  * per-row run / run-on-files / options actions, plus import and create.
+ * Row single-click edits; double-click runs the macro on the project.
  * Editing an individual macro happens in the separate MacroEditorDialog;
  * this panel only reports `onEditMacro`.
  */

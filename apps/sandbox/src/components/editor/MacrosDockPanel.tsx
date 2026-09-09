@@ -1,6 +1,8 @@
 import { MacrosPanel, toast, useGeneralPrefs, type Macro } from '@audacity-ui/components';
 import { useMacros } from '../../contexts/MacrosContext';
+import { useTracks } from '../../contexts/TracksContext';
 import { exportMacroFile } from '../../utils/macroFile';
+import { runMacroSteps } from '../../macros/macroActions';
 
 /** Type guard for the shape written by handleExportMacro. */
 function isImportedMacro(value: unknown): value is Pick<Macro, 'name' | 'steps'> {
@@ -20,14 +22,18 @@ function isImportedMacro(value: unknown): value is Pick<Macro, 'name' | 'steps'>
 
 /**
  * MacrosDockPanel — sandbox wiring for the dockable MacrosPanel.
- * Owns import (file picker) / export (JSON download) plumbing; running a
- * macro is simulated with a toast, since the sandbox has no command engine.
+ * Owns import (file picker) / export (JSON download) plumbing. Running on
+ * the project executes steps through the macro action registry
+ * (`macros/macroActions.ts`) — commands without a registered action are
+ * reported as simulated; run-on-files stays fully simulated (batch mode
+ * has no file engine in the sandbox).
  */
 export function MacrosDockPanel() {
   const {
     macros, addMacro, renameMacro, deleteMacro, importMacro, setEditingMacroId,
   } = useMacros();
   const { operatingSystem } = useGeneralPrefs();
+  const { state, dispatch } = useTracks();
 
   const handleImportMacro = () => {
     const input = document.createElement('input');
@@ -60,6 +66,20 @@ export function MacrosDockPanel() {
     if (macro) exportMacroFile(macro);
   };
 
+  const handleRunOnProject = (macroId: string) => {
+    const macro = macros.find((m) => m.id === macroId);
+    if (!macro) return;
+    const { applied, simulated } = runMacroSteps(macro, state, dispatch);
+    if (applied.length === 0 && simulated.length === 0) {
+      toast.info(`"${macro.name}" has no steps`, 'Add commands in the macro editor first.');
+      return;
+    }
+    const parts = [];
+    if (applied.length > 0) parts.push(`${applied.length} step${applied.length === 1 ? '' : 's'} applied`);
+    if (simulated.length > 0) parts.push(`${simulated.length} simulated (${simulated.join(', ')})`);
+    toast.success(`Ran "${macro.name}"`, `${parts.join('; ')}.`);
+  };
+
   const runToast = (macroId: string, target: string) => {
     const macro = macros.find((m) => m.id === macroId);
     if (!macro) return;
@@ -75,7 +95,7 @@ export function MacrosDockPanel() {
       onRenameMacro={renameMacro}
       onDeleteMacro={deleteMacro}
       onExportMacro={handleExportMacro}
-      onRunOnProject={(id) => runToast(id, 'the current project')}
+      onRunOnProject={handleRunOnProject}
       onRunOnFiles={(id) => runToast(id, 'selected files')}
       os={operatingSystem}
     />

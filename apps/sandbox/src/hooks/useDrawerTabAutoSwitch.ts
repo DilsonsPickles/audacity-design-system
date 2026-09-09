@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
+import type { DrawerTabId } from '../components/editor/EditorBottomDrawer';
 
 export interface UseDrawerTabAutoSwitchDeps {
   showMixer: boolean | undefined;
   pianoRollOpen: boolean;
-  drawerActiveTab: 'mixer' | 'piano-roll';
-  setDrawerActiveTab: React.Dispatch<React.SetStateAction<'mixer' | 'piano-roll'>>;
+  drawerActiveTab: DrawerTabId;
+  setDrawerActiveTab: React.Dispatch<React.SetStateAction<DrawerTabId>>;
 }
 
 export function useDrawerTabAutoSwitch(deps: UseDrawerTabAutoSwitchDeps): void {

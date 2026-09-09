@@ -152,6 +152,7 @@ export * from './TrackControlSidePanel';
 export * from './EffectsPanel';
 export * from './PanelHeader';
 export * from './DockPanel';
+export * from './FloatingPanel';
 export * from './EffectDialog';
 export * from './TimeCode';
 export * from './SelectionToolbar';

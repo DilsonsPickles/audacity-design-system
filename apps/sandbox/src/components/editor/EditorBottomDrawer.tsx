@@ -4,6 +4,9 @@ import { MixerPanel, PianoRollPanel, PanelHeader, type MixerPanelChannel, type P
 import { useTracksDispatch, type TracksState } from '../../contexts/TracksContext';
 import { MIDI_INSTRUMENTS } from '../../contexts/AudioEngineContext';
 import type { EffectSelectorMenuState } from '../../hooks/useContextMenuState';
+import { MacrosDockPanel } from './MacrosDockPanel';
+
+export type DrawerTabId = 'mixer' | 'piano-roll' | 'macros';
 
 export interface EditorBottomDrawerProps {
   /** Same TracksState object EditorLayout reads today — passed through
@@ -28,10 +31,15 @@ export interface EditorBottomDrawerProps {
   setHoveredMidiClipId: React.Dispatch<React.SetStateAction<number | null>>;
   drawerHeight: number;
   setDrawerHeight: React.Dispatch<React.SetStateAction<number>>;
-  drawerActiveTab: 'mixer' | 'piano-roll';
-  setDrawerActiveTab: React.Dispatch<React.SetStateAction<'mixer' | 'piano-roll'>>;
-  drawerTabOrder: Array<'mixer' | 'piano-roll'>;
-  setDrawerTabOrder: React.Dispatch<React.SetStateAction<Array<'mixer' | 'piano-roll'>>>;
+  drawerActiveTab: DrawerTabId;
+  setDrawerActiveTab: React.Dispatch<React.SetStateAction<DrawerTabId>>;
+  drawerTabOrder: DrawerTabId[];
+  setDrawerTabOrder: React.Dispatch<React.SetStateAction<DrawerTabId[]>>;
+  /** Whether the Macros panel is docked into this drawer */
+  macrosOpen?: boolean;
+  onCloseMacros?: () => void;
+  /** Opens the Macros placement menu (Float / Dock left / right / bottom) */
+  onMacrosMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 /** Unified tabbed panel for Mixer and Piano Roll, docked to the bottom of
@@ -59,21 +67,26 @@ export function EditorBottomDrawer({
   setDrawerActiveTab,
   drawerTabOrder,
   setDrawerTabOrder,
+  macrosOpen,
+  onCloseMacros,
+  onMacrosMenuClick,
 }: EditorBottomDrawerProps) {
   const dispatch = useTracksDispatch();
 
   const mixerOpen = showMixer && activeMenuItem !== 'export';
   const pianoRollOpen = state.pianoRollOpen && state.pianoRollTrackIndex !== null;
-  if (!mixerOpen && !pianoRollOpen) return null;
+  if (!mixerOpen && !pianoRollOpen && !macrosOpen) return null;
 
   // Build tabs for open panels, respecting user's drag order
   const allTabDefs: Record<string, PanelHeaderTab> = {
     mixer: { id: 'mixer', label: 'Mixer' },
     'piano-roll': { id: 'piano-roll', label: 'Piano roll' },
+    macros: { id: 'macros', label: 'Macros' },
   };
   const openIds = new Set<string>();
   if (mixerOpen) openIds.add('mixer');
   if (pianoRollOpen) openIds.add('piano-roll');
+  if (macrosOpen) openIds.add('macros');
   const tabs: PanelHeaderTab[] = drawerTabOrder
     .filter(id => openIds.has(id))
     .map(id => allTabDefs[id]);
@@ -93,6 +106,8 @@ export function EditorBottomDrawer({
       window.dispatchEvent(new CustomEvent('close-mixer-panel'));
     } else if (activeTab === 'piano-roll') {
       dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
+    } else if (activeTab === 'macros') {
+      onCloseMacros?.();
     }
   };
 
@@ -116,8 +131,9 @@ export function EditorBottomDrawer({
       <PanelHeader
         tabs={tabs}
         activeTabId={activeTab}
-        onTabChange={(tabId) => setDrawerActiveTab(tabId as 'mixer' | 'piano-roll')}
-        onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as Array<'mixer' | 'piano-roll'>)}
+        onTabChange={(tabId) => setDrawerActiveTab(tabId as DrawerTabId)}
+        onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as DrawerTabId[])}
+        onMenuClick={activeTab === 'macros' ? onMacrosMenuClick : undefined}
         onClose={handleTabClose}
         onResizeStart={(e) => {
           e.preventDefault();
@@ -137,6 +153,9 @@ export function EditorBottomDrawer({
           document.addEventListener('mouseup', onUp);
         }}
       />
+
+      {/* Macros content — same sandbox wiring as the side docks */}
+      {activeTab === 'macros' && macrosOpen && <MacrosDockPanel />}
 
       {/* Mixer content */}
       {activeTab === 'mixer' && mixerOpen && (() => {

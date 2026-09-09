@@ -53,11 +53,38 @@ describe('MacrosPanel', () => {
     expect(onRunOnFiles).toHaveBeenCalledWith('m2');
   });
 
-  it('opens the editor when a row is clicked', () => {
-    const onEditMacro = vi.fn();
-    const { container } = renderPanel({ onEditMacro });
-    fireEvent.click(container.querySelector('[data-macro-id="m1"]')!);
-    expect(onEditMacro).toHaveBeenCalledWith('m1');
+  it('opens the editor when a row is clicked (after the double-click window)', () => {
+    vi.useFakeTimers();
+    try {
+      const onEditMacro = vi.fn();
+      const { container } = renderPanel({ onEditMacro });
+      fireEvent.click(container.querySelector('[data-macro-id="m1"]')!);
+      // Deferred so a double-click can cancel it
+      expect(onEditMacro).not.toHaveBeenCalled();
+      vi.runAllTimers();
+      expect(onEditMacro).toHaveBeenCalledWith('m1');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('double-clicking a row runs the macro on the project instead of editing', () => {
+    vi.useFakeTimers();
+    try {
+      const onEditMacro = vi.fn();
+      const onRunOnProject = vi.fn();
+      const { container } = renderPanel({ onEditMacro, onRunOnProject });
+      const row = container.querySelector('[data-macro-id="m1"]')!;
+      // A real double-click fires click, click, dblclick
+      fireEvent.click(row);
+      fireEvent.click(row);
+      fireEvent.doubleClick(row);
+      expect(onRunOnProject).toHaveBeenCalledWith('m1');
+      vi.runAllTimers();
+      expect(onEditMacro).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not open the editor when a row action button is clicked', () => {

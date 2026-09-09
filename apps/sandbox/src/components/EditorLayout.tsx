@@ -4,7 +4,7 @@ import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, DockPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, DockPanel, FloatingPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat, ThemeTokens } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
@@ -207,11 +207,12 @@ export function EditorLayout(props: EditorLayoutProps) {
     anchorRect: DOMRect | null;
   }>({ open: false, x: 0, y: 0, anchorRect: null });
   const [drawerHeight, setDrawerHeight] = React.useState(376);
-  const [drawerActiveTab, setDrawerActiveTab] = React.useState<'mixer' | 'piano-roll'>('mixer');
-  const [drawerTabOrder, setDrawerTabOrder] = React.useState<Array<'mixer' | 'piano-roll'>>(['mixer', 'piano-roll']);
+  const [drawerActiveTab, setDrawerActiveTab] = React.useState<'mixer' | 'piano-roll' | 'macros'>('mixer');
+  const [drawerTabOrder, setDrawerTabOrder] = React.useState<Array<'mixer' | 'piano-roll' | 'macros'>>(['mixer', 'piano-roll', 'macros']);
 
   // Side docks — the left dock hosts Effects and (optionally) Macros as
-  // tabs; the Macros panel can instead dock right via its tab's kebab menu.
+  // tabs. The Macros panel opens floating by default; its tab's kebab menu
+  // moves it between floating and the left/right docks.
   const {
     isMacrosPanelOpen, setIsMacrosPanelOpen,
     macrosPanelSide, setMacrosPanelSide,
@@ -223,6 +224,8 @@ export function EditorLayout(props: EditorLayoutProps) {
   const effectsOpen = activeMenuItem !== 'export' && !!effectsPanel?.isOpen;
   const macrosDockedLeft = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'left';
   const macrosDockedRight = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'right';
+  const macrosFloating = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'floating';
+  const macrosDockedBottom = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'bottom';
 
   // Auto-activate a dock tab when its panel opens (mirrors the bottom
   // drawer's useDrawerTabAutoSwitch behavior).
@@ -231,11 +234,12 @@ export function EditorLayout(props: EditorLayoutProps) {
   }, [effectsPanel?.isOpen]);
   React.useEffect(() => {
     if (isMacrosPanelOpen && macrosPanelSide === 'left') setLeftDockActiveTab('macros');
+    if (isMacrosPanelOpen && macrosPanelSide === 'bottom') setDrawerActiveTab('macros');
   }, [isMacrosPanelOpen, macrosPanelSide]);
 
   const macrosTabDef: PanelHeaderTab = { id: 'macros', label: 'Macros' };
   const leftDockTabDefs: Record<'effects' | 'macros', PanelHeaderTab> = {
-    effects: { id: 'effects', label: 'Effects', hasMenu: false },
+    effects: { id: 'effects', label: 'Effects' },
     macros: macrosTabDef,
   };
   const openLeftDockIds = new Set<string>();
@@ -1186,24 +1190,71 @@ export function EditorLayout(props: EditorLayoutProps) {
       )}
     </div>
 
-    {/* Macros tab kebab menu — move the panel between docks */}
+    {/* Floating Macros panel — the default placement on first open. */}
+    {macrosFloating && (
+      <FloatingPanel
+        width={280}
+        height={420}
+        tabs={[macrosTabDef]}
+        activeTabId="macros"
+        onMenuClick={openDockMenu}
+        onClose={() => setIsMacrosPanelOpen(false)}
+      >
+        <MacrosDockPanel />
+      </FloatingPanel>
+    )}
+
+    {/* Macros tab kebab menu — move the panel between floating and the docks */}
     <ContextMenu
       isOpen={dockMenu !== null}
       onClose={() => setDockMenu(null)}
       x={dockMenu?.x ?? 0}
       y={dockMenu?.y ?? 0}
     >
-      <ContextMenuItem
-        label={macrosPanelSide === 'left' ? 'Dock right' : 'Dock left'}
-        onClick={() => {
-          setMacrosPanelSide((side) => (side === 'left' ? 'right' : 'left'));
-          setDockMenu(null);
-        }}
-      />
+      {macrosPanelSide !== 'floating' && (
+        <ContextMenuItem
+          label="Float"
+          onClick={() => {
+            setMacrosPanelSide('floating');
+            setDockMenu(null);
+          }}
+        />
+      )}
+      {macrosPanelSide !== 'left' && (
+        <ContextMenuItem
+          label="Dock left"
+          onClick={() => {
+            setMacrosPanelSide('left');
+            setDockMenu(null);
+          }}
+        />
+      )}
+      {macrosPanelSide !== 'right' && (
+        <ContextMenuItem
+          label="Dock right"
+          onClick={() => {
+            setMacrosPanelSide('right');
+            setDockMenu(null);
+          }}
+        />
+      )}
+      {macrosPanelSide !== 'bottom' && (
+        <ContextMenuItem
+          label="Dock bottom"
+          onClick={() => {
+            setMacrosPanelSide('bottom');
+            setDockMenu(null);
+          }}
+        />
+      )}
     </ContextMenu>
 
-    {/* Bottom Drawer — unified tabbed panel for Mixer and Piano Roll */}
+    {/* Bottom Drawer — unified tabbed panel for Mixer, Piano Roll and (when
+        docked bottom) Macros */}
     <EditorBottomDrawer
+      macrosOpen={macrosDockedBottom}
+      onCloseMacros={() => setIsMacrosPanelOpen(false)}
+      onMacrosMenuClick={openDockMenu}
       state={state}
       theme={theme}
       activeMenuItem={activeMenuItem}

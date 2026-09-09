@@ -29,6 +29,8 @@ Both test setup files (`packages/components/src/__tests__/setup.ts`, `apps/sandb
 
 `pnpm test` from the repo root runs all four projects at once (71 files / 615 tests) via `test.projects` in the root `vitest.config.ts`. The per-package gates above are still what CI runs.
 
+**Second Node-26 casualty — electron's binary install.** electron's postinstall (`install.js` → `extract-zip`/`yauzl`) silently breaks on Node 26: it verifies the checksum, extracts ONE file into `dist/`, then exits 0 without error — leaving a stub that later crashes `pnpm --filter @audacity-ui/desktop dev` at `getElectronPath` ("Electron failed to install correctly"-style stack). Packaged builds (`build:mac`) are unaffected (electron-builder ships its own extraction). After any `node_modules` wipe, fix it manually: `ditto -x -k ~/Library/Caches/electron/<hash>/electron-v<ver>-darwin-arm64.zip node_modules/.pnpm/electron@<ver>/node_modules/electron/dist` then write `Electron.app/Contents/MacOS/Electron` (no trailing newline) to `path.txt` next to `dist/`. The zip is already in the cache — `node install.js` in that directory re-downloads/verifies it if not.
+
 ### Load-bearing conventions — violating these causes real bugs
 
 - **Ref-mirror for document listeners**: hooks that bind document-level `mousemove`/`mouseup`/`keyup` listeners bind ONCE and mirror frequently-changing props into refs (`useEffect(() => { ref.current = val }, [val])`) so the handler reads live state without re-binding. See the explanatory comment in `apps/sandbox/src/hooks/useClipTrimming.ts` (~lines 85–96). Exception: self-cleaning attach-on-mousedown/remove-on-mouseup handlers (e.g. `useDraggableToolbar`) don't need it.

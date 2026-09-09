@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 import type { Macro } from '@audacity-ui/components';
 import type { Command } from '@audacity-ui/components';
 
-export type MacrosPanelSide = 'left' | 'right';
+export type MacrosPanelSide = 'left' | 'right' | 'bottom' | 'floating';
 
 export interface MacrosContextValue {
   /** All macros in the project */
@@ -24,7 +24,8 @@ export interface MacrosContextValue {
   /** Replace a step's parameters string */
   updateStepParameters: (macroId: string, stepIndex: number, parameters: string) => void;
 
-  /** Dockable Macros management panel */
+  /** Macros management panel — floats by default, or docks to a side or
+   *  into the bottom drawer (alongside Mixer / Piano roll) */
   isMacrosPanelOpen: boolean;
   setIsMacrosPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
   macrosPanelSide: MacrosPanelSide;
@@ -40,7 +41,7 @@ const MacrosContext = createContext<MacrosContextValue | null>(null);
 export function MacrosProvider({ children }: { children: React.ReactNode }) {
   const [macros, setMacros] = React.useState<Macro[]>([]);
   const [isMacrosPanelOpen, setIsMacrosPanelOpen] = React.useState(false);
-  const [macrosPanelSide, setMacrosPanelSide] = React.useState<MacrosPanelSide>('left');
+  const [macrosPanelSide, setMacrosPanelSide] = React.useState<MacrosPanelSide>('floating');
   const [editingMacroId, setEditingMacroId] = React.useState<string | null>(null);
 
   const addMacro = React.useCallback((name: string) => {
