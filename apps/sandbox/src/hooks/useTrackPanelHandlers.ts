@@ -97,16 +97,20 @@ export function useTrackPanelHandlers(
   const toggleScopeOrTrackSelection = useCallback((index: number) => {
     const ts = timeSelection;
     if (ts) {
-      // Time-selection mode: extend or contract the row scope only.
-      // selectedTrackIndices stays empty (invariant: track selection and
-      // time selection cannot coexist).
+      // Time-selection mode: extend or contract the row scope. The
+      // reducer mirrors the new scope into selectedTrackIndices, so the
+      // spanned tracks read as selected. Removing the LAST spanned track
+      // is a no-op: repeated cmd+clicks must never destroy the time
+      // range itself — clearing it stays an explicit gesture (Escape /
+      // click-away).
       const currentScope = ts.tracks ?? selectedTrackIndices;
       const newScope = currentScope.includes(index)
         ? currentScope.filter((i) => i !== index)
         : [...currentScope, index].sort((a, b) => a - b);
+      if (newScope.length === 0) return;
       dispatch({
         type: 'SET_TIME_SELECTION',
-        payload: newScope.length > 0 ? { ...ts, tracks: newScope } : null,
+        payload: { ...ts, tracks: newScope },
       });
     } else {
       // Track-selection mode: toggle the clicked track in/out of the selection set.

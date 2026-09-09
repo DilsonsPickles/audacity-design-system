@@ -487,9 +487,17 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
     };
   }
 
-  // Invariant: a non-null time selection cannot coexist with track selection.
-  if (action.type === 'SET_TIME_SELECTION' && action.payload !== null) {
-    return { ...innerReducer(state, action), selectedTrackIndices: [] };
+  // A time selection selects the tracks it spans: a payload carrying row
+  // scope (`tracks` — every canvas drag gesture) mirrors that scope into
+  // selectedTrackIndices. A scope-less payload (programmatic, e.g. the
+  // macro engine's Select Time) leaves track selection alone — the
+  // existing selection then feeds scope resolution as the fallback
+  // (see utils/timeSelectionScope.ts).
+  if (action.type === 'SET_TIME_SELECTION' && action.payload?.tracks?.length) {
+    return {
+      ...innerReducer(state, action),
+      selectedTrackIndices: [...action.payload.tracks].sort((a, b) => a - b),
+    };
   }
 
   // Snapshot the current tracks before running the reducer if this is an

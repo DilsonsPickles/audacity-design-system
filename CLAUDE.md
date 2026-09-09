@@ -52,7 +52,7 @@ Both test setup files (`packages/components/src/__tests__/setup.ts`, `apps/sandb
 
 - Time-stretch applies to AUDIO clips only; `MidiClip` never gets `stretchFactor`.
 - Clip-group copies never tether to original groups: a fresh group is created iff a whole group is copied whole; otherwise copies are ungrouped.
-- Time-selection drags never mutate track selection; the selection's vertical scope lives on `TimeSelection.tracks`, resolved via scope → `selectedTrackIndices` → all tracks.
+- A time-range selection selects the tracks it spans (rule changed 2026-09-10, reversing the earlier "never mutate track selection" decision): the reducer mirrors a `SET_TIME_SELECTION` payload's `tracks` into `selectedTrackIndices`. A scope-less payload (programmatic, e.g. macro Select Time) leaves track selection alone. Operations still resolve rows via `TimeSelection.tracks` → `selectedTrackIndices` → fallback (`utils/timeSelectionScope.ts`).
 
 ## Repository Overview
 

@@ -136,8 +136,20 @@ describe('scope integrity under track delete/move', () => {
   });
 });
 
-describe('track-selection / time-selection mutual exclusivity', () => {
-  it('SET_TIME_SELECTION with non-null payload clears selectedTrackIndices', () => {
+describe('time selection selects the tracks it spans (2026-09-10 rule change)', () => {
+  it('SET_TIME_SELECTION with row scope mirrors it into selectedTrackIndices, sorted', () => {
+    const state = stateWith({
+      selectedTrackIndices: [0],
+    });
+    const next = tracksReducer(state, {
+      type: 'SET_TIME_SELECTION',
+      payload: { startTime: 0, endTime: 1, tracks: [2, 1] },
+    });
+    expect(next.selectedTrackIndices).toEqual([1, 2]);
+    expect(next.timeSelection).toEqual({ startTime: 0, endTime: 1, tracks: [2, 1] });
+  });
+
+  it('a scope-less payload leaves selectedTrackIndices alone (they feed scope fallback)', () => {
     const state = stateWith({
       selectedTrackIndices: [0, 1],
     });
@@ -145,7 +157,7 @@ describe('track-selection / time-selection mutual exclusivity', () => {
       type: 'SET_TIME_SELECTION',
       payload: { startTime: 0, endTime: 1 },
     });
-    expect(next.selectedTrackIndices).toEqual([]);
+    expect(next.selectedTrackIndices).toEqual([0, 1]);
     expect(next.timeSelection).toEqual({ startTime: 0, endTime: 1 });
   });
 
@@ -157,14 +169,5 @@ describe('track-selection / time-selection mutual exclusivity', () => {
     const next = tracksReducer(state, { type: 'SET_TIME_SELECTION', payload: null });
     expect(next.selectedTrackIndices).toEqual([0, 1]);
     expect(next.timeSelection).toBeNull();
-  });
-
-  it('SET_TIME_SELECTION is a no-op on selectedTrackIndices when it is already empty', () => {
-    const state = stateWith({ selectedTrackIndices: [] });
-    const next = tracksReducer(state, {
-      type: 'SET_TIME_SELECTION',
-      payload: { startTime: 0, endTime: 2 },
-    });
-    expect(next.selectedTrackIndices).toEqual([]);
   });
 });
