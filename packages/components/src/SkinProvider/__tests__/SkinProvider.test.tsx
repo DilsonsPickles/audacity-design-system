@@ -49,7 +49,7 @@ it('browses without adopting, and saves a clicked skin', async () => {
   render(<SkinProvider mode="light"><SkinSelector value="default" onChange={persist} /></SkinProvider>);
   fireEvent.click(screen.getByRole('button', { name: 'Next skins' }));
   expect(persist).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Sakura', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: /^Sakura$/ }));
   expect(persist).toHaveBeenCalledWith('sakura');
   vi.unstubAllGlobals();
 });
