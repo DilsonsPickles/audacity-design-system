@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+@import './fonts.css';
+@import './sakura-buttons.css';
+
+.audacity-skin[data-editor-skin='sakura'] { --editor-skin-art: url('./sakura.svg'); --editor-skin-radius: 7px; }
+.audacity-skin[data-editor-skin='lilac'] { --editor-skin-art: url('./lilac.svg'); --editor-skin-radius: 3px; }
+.audacity-skin[data-editor-skin='techno'] { --editor-skin-art: url('./techno.svg'); --editor-skin-radius: 0px; }
+.audacity-skin {
+  font-family: var(--editor-skin-font);
+  color: var(--text);
+}
+.audacity-skin :is(button, input, select, textarea, .menu, .context-menu, .dialog-header,
+  .clip-header__name, .preference-panel, .dialog, .dialog-side-nav, .dropdown__option,
+  .tooltip__content, .button__text, .dropdown__text, .checkbox__label, .labeled-radio__label) {
+  font-family: var(--editor-skin-font);
+}
+.audacity-skin :is(.button, .dropdown__trigger, .dialog, .context-menu) {
+  border-radius: var(--editor-skin-radius);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.audacity-skin .button--primary { color: #152132; }
+/* Opt-in artwork stays behind content and never changes track geometry. */
+.audacity-skin :is([data-skin-surface='timeline'], [data-skin-surface='chrome']) {
+  background-image: var(--editor-skin-art);
+  background-position: right bottom;
+  background-repeat: no-repeat;
+  background-size: 960px 600px;
+}
+.audacity-skin .tooltip__content { background: var(--bg); color: var(--text); border-color: var(--line); }
+.audacity-skin .tooltip__arrow path { fill: var(--bg); stroke: var(--line); }
+.audacity-skin[data-editor-skin='sakura'] .timecode > * {
+  --timecode-bg: var(--skin-timecode-bg); --timecode-text: var(--text);
+  --timecode-hover: var(--skin-timecode-hover); --timecode-unit-bg: var(--skin-timecode-bg);
+  --timecode-unit-text: var(--text); --timecode-unit-hover-bg: var(--skin-timecode-hover);
+  --timecode-unit-hover-text: var(--text);
+}
+.audacity-skin[data-editor-skin='sakura'] .timecode__format-button > .icon { color: var(--text) !important; }
+@media (forced-colors: active) {
+  .audacity-skin { --editor-skin-art: none; }
+  .audacity-skin :is(button, .dialog, .context-menu) { box-shadow: none !important; }
+}
+
+/* Preferences predates tokenized dialog surfaces; scope its fixed light fills. */
+.audacity-skin :is(.preferences-modal__body, .preferences-modal__scroll-container) {
+  background-color: var(--bg);
+  color: var(--text);
+}
+.audacity-skin :is(.preferences-modal__footer, .dialog-sidenav, .dialog-sidenav__button) {
+  background-color: var(--panel);
+  border-color: var(--line);
+  color: var(--text);
+}
+.audacity-skin .dialog-sidenav__button:is(:hover, .dialog-sidenav__button--selected) {
+  background-color: color-mix(in srgb, var(--accent) 18%, var(--panel));
+}
+.audacity-skin .dialog-sidenav__indicator { background-color: var(--accent); }
+.audacity-skin :is(.preferences-page__label, .preferences-page__hint, .preferences-page__description,
+  .preferences-page__value, .preferences-page h3, .editor-skin-preferences h3, .editor-skin-preferences p) {
+  color: var(--text);
+}
+.audacity-skin .preferences-modal__scroll-container::-webkit-scrollbar {
+  background-color: var(--bg); border-color: var(--line);
+}
+.audacity-skin .preferences-modal__scroll-container::-webkit-scrollbar-thumb {
+  background-color: var(--muted); border-color: var(--bg);
+}

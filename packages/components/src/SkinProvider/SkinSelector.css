@@ -1,0 +1,87 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+.editor-skin-preferences h3 { margin: 0 0 12px; }
+.editor-skin-carousel {
+	display: grid;
+	grid-template-columns: 28px minmax(0, 1fr) 28px;
+	align-items: center;
+	gap: 8px;
+}
+
+.editor-skin-choices {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 148px;
+	gap: 12px;
+	min-width: 0;
+	padding: 4px;
+	overflow-x: auto;
+	scrollbar-width: thin;
+	scroll-snap-type: x proximity;
+	scroll-padding-inline: 4px;
+}
+
+.editor-skin-carousel__step {
+	padding: 0;
+	height: 32px;
+	border: 1px solid var(--line);
+	border-radius: 4px;
+	background: var(--control);
+	color: var(--text);
+	font: 24px/1 sans-serif;
+	cursor: pointer;
+}
+
+.editor-skin-carousel__step:disabled {
+	opacity: .4;
+	cursor: default;
+}
+
+.editor-skin-carousel__step:dir(rtl) span {
+	display: inline-block;
+	transform: rotate(180deg);
+}
+
+.editor-skin-choice {
+	scroll-snap-align: start;
+	display: grid;
+	gap: 6px;
+	padding: 7px;
+	min-width: 0;
+	border: 1px solid var(--line);
+	border-radius: 5px;
+	color: var(--text);
+	background: var(--bg);
+	cursor: pointer;
+	font: inherit;
+	text-align: start;
+}
+
+.editor-skin-choice[aria-pressed='true'] {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.editor-skin-carousel__step:focus-visible,
+.editor-skin-choice:focus-visible,
+.editor-skin-preview-actions button:focus-visible {
+	outline: 2px solid var(--focus-color, var(--accent));
+	outline-offset: 3px;
+}
+
+.editor-skin-swatch {
+	display: block;
+	width: 100%;
+	height: 92px;
+	object-fit: contain;
+}
+
+.editor-skin-preview-actions button {
+	margin-inline-end: 8px;
+	padding: 6px 10px;
+	border: 1px solid var(--line);
+	border-radius: 3px;
+	background: var(--control);
+	color: var(--text);
+	font: inherit;
+	cursor: pointer;
+}

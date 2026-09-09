@@ -1,3 +1,4 @@
+import { SkinSelector } from '../../SkinProvider/SkinSelector';
 import { LabeledRadio } from '../../LabeledRadio';
 import { usePreferences } from '../../contexts/PreferencesContext';
 
@@ -7,6 +8,7 @@ export function AppearancePage() {
 
   return (
     <div className="preferences-page">
+      <SkinSelector value={preferences.skin} onChange={(skin) => updatePreference('skin', skin)} />
       <div className="preferences-page__section">
         <h3 className="preferences-page__section-title">Theme</h3>
 

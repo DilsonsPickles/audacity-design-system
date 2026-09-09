@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, SkinProvider, ThemeProvider, useTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
@@ -1279,11 +1279,10 @@ function CanvasDemoContent() {
 
 // Wrapper component that applies the theme based on preferences
 function ThemedApp() {
-  const { theme } = useAppearancePrefs();
-  const currentTheme = theme === 'dark' ? darkTheme : lightTheme;
+  const { theme, skin } = useAppearancePrefs();
 
   return (
-    <ThemeProvider theme={currentTheme}>
+    <SkinProvider skin={skin} mode={theme}>
       <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
         <AudioEngineProvider>
           <TracksProvider initialTracks={[]}>
@@ -1312,7 +1311,7 @@ function ThemedApp() {
           </TracksProvider>
         </AudioEngineProvider>
       </AccessibilityProfileProvider>
-    </ThemeProvider>
+    </SkinProvider>
   );
 }
 

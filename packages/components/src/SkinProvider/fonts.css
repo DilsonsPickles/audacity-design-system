@@ -1,0 +1,35 @@
+@font-face {
+	font-family: 'Nunito Sans';
+	font-style: normal;
+	font-display: swap;
+	/* Match Inter line metrics so a skin never resizes workspace chrome. */
+	ascent-override: 96.875%;
+	descent-override: 24.1211%;
+	line-gap-override: 0%;
+	font-weight: 400;
+	src: url('@fontsource/nunito-sans/files/nunito-sans-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Nunito Sans';
+	font-style: normal;
+	font-display: swap;
+	/* Match Inter line metrics so a skin never resizes workspace chrome. */
+	ascent-override: 96.875%;
+	descent-override: 24.1211%;
+	line-gap-override: 0%;
+	font-weight: 700;
+	src: url('@fontsource/nunito-sans/files/nunito-sans-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'JetBrains Mono';
+	font-style: normal;
+	font-display: swap;
+	/* Match Inter line metrics so a skin never resizes workspace chrome. */
+	ascent-override: 96.875%;
+	descent-override: 24.1211%;
+	line-gap-override: 0%;
+	font-weight: 400;
+	src: url('@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+}

@@ -1,3 +1,4 @@
+import { SkinScope } from '../SkinProvider/SkinScope';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
@@ -59,7 +60,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   );
 
   // Render tooltip at document body level to escape stacking context issues
-  return createPortal(tooltipElement, document.body);
+  return createPortal(<SkinScope>{tooltipElement}</SkinScope>, document.body);
 };
 
 export default Tooltip;

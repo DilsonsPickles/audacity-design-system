@@ -58,3 +58,21 @@ describe('PreferencesContext persistence', () => {
     expect(editingRenders).toBe(before); // context value memoized on trackSelectionMode only
   });
 });
+
+describe('skin preference compatibility', () => {
+  it.each([undefined, 'unknown'])('normalizes saved skin %s without losing the theme', (skin) => {
+    localStorage.setItem('audacity-preferences', JSON.stringify({ theme: 'dark', skin }));
+    let value!: ReturnType<typeof usePreferences>;
+    render(<PreferencesProvider><Probe onValue={v => { value = v; }} /></PreferencesProvider>);
+    expect(value.preferences.skin).toBe('default');
+    expect(value.preferences.theme).toBe('dark');
+  });
+  it('persists a skin synchronously before reporting adoption success', () => {
+    let value!: ReturnType<typeof usePreferences>;
+    render(<PreferencesProvider><Probe onValue={v => { value = v; }} /></PreferencesProvider>);
+    act(() => {
+      value.updatePreference('skin', 'sakura');
+      expect(JSON.parse(localStorage.getItem('audacity-preferences')!).skin).toBe('sakura');
+    });
+  });
+});
