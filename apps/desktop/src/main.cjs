@@ -81,14 +81,14 @@ async function startLocalRendererServer() {
 }
 
 // The loopback origin muse-id should redirect back to. Set once whichever
-// server carries the relay route is listening; the preload hands it to
-// the renderer synchronously so the redirect_uri can be built before the
-// browser opens. muse-id registers `http://127.0.0.1/oauth/callback` as
-// an any-port TEMPLATE (RFC 8252), so the port is free to vary.
+// server carries the relay route is listening, and handed to each window's
+// preload as a process argument (see createWindow) — NOT over IPC: a
+// synchronous IPC ask from the preload would block the renderer forever if
+// it ever ran against a main process without the handler (e.g. a preload
+// re-executed by a page reload after the source changed under a running
+// app). muse-id registers `http://127.0.0.1/oauth/callback` as an
+// any-port TEMPLATE (RFC 8252), so the port is free to vary.
 let oauthCallbackOrigin = null;
-ipcMain.on('oauth:callback-origin', (event) => {
-  event.returnValue = oauthCallbackOrigin;
-});
 
 // Dev mode: the renderer is served by Vite, which knows nothing about the
 // relay — so run a relay-only server on a free loopback port. Packaged
@@ -164,6 +164,8 @@ function createWindow(url) {
       // Preload exposes window.electronMenu.onCommand so the renderer
       // can subscribe to native menu clicks (File > Save, etc.).
       preload: path.join(__dirname, 'preload.cjs'),
+      // Read by preload.cjs from process.argv — see oauthCallbackOrigin.
+      additionalArguments: [`--oauth-callback-origin=${oauthCallbackOrigin ?? ''}`],
     },
   });
 
