@@ -1,18 +1,21 @@
 /**
- * SelectCommandDialog — category-driven picker for macro steps.
+ * SelectCommandDialog — the "Command picker": category-driven picker for
+ * macro steps.
  *
  * Search across everything on top; a category rail on the left (order =
  * first appearance in `commands`, so the data file controls it); the
  * matching commands on the right, grouped under category headers when
- * viewing "All commands". Clicking a command IS the commitment: it
- * reports the command and closes (the consumer opens the parameters
- * dialog if the command has any). Enter picks the first visible match,
- * so "type, Enter" adds a step without touching the mouse. The rail's
- * counts follow the search so you can see where the hits are before
- * narrowing.
+ * viewing "All commands". Clicking a command reports it via
+ * `onSelectCommand`; the CONSUMER decides what happens next — add it
+ * and close, or (for commands with parameters) open the parameters
+ * window on top of this one so Cancel returns to the search with the
+ * query intact. The search state resets only when the dialog closes.
+ * Enter picks the first visible match, so "type, Enter" adds a step
+ * without touching the mouse. The rail's counts follow the search so
+ * you can see where the hits are before narrowing.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Dialog } from '../Dialog';
 import { Icon } from '../Icon';
 import './SelectCommandDialog.css';
@@ -33,13 +36,20 @@ export interface SelectCommandDialogProps {
    */
   onClose?: () => void;
   /**
-   * Callback when a command is picked (the dialog closes itself after)
+   * Callback when a command is picked. The dialog stays open; the
+   * consumer closes it (or stacks a parameters window on top first).
    */
   onSelectCommand?: (command: Command) => void;
   /**
    * Available commands
    */
   commands: Command[];
+  /**
+   * Whether Escape closes this dialog. Turn OFF while another modal is
+   * stacked on top — every open Dialog listens for Escape on the
+   * document, so otherwise one press closes both.
+   */
+  closeOnEscape?: boolean;
   /**
    * Operating system for platform-specific header controls
    */
@@ -56,10 +66,20 @@ export function SelectCommandDialog({
   onClose,
   onSelectCommand,
   commands,
+  closeOnEscape = true,
   os = 'macos',
 }: SelectCommandDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES);
+
+  // Search state survives a pick (a stacked parameters window may hand
+  // control back here on Cancel) and resets only once the dialog closes.
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('');
+      setSelectedCategory(ALL_CATEGORIES);
+    }
+  }, [isOpen]);
 
   // Rail order = first appearance in the data
   const categories = useMemo(() => {
@@ -104,19 +124,11 @@ export function SelectCommandDialog({
 
   const showGroupHeaders = selectedCategory === ALL_CATEGORIES;
 
-  const reset = () => {
-    setSearchQuery('');
-    setSelectedCategory(ALL_CATEGORIES);
-  };
-
   const pick = (command: Command) => {
     onSelectCommand?.(command);
-    reset();
-    onClose?.();
   };
 
   const handleClose = () => {
-    reset();
     onClose?.();
   };
 
@@ -130,11 +142,12 @@ export function SelectCommandDialog({
   return (
     <Dialog
       isOpen={isOpen}
-      title="Select command"
+      title="Command picker"
       onClose={handleClose}
       os={os}
       width={720}
       minHeight={600}
+      closeOnEscape={closeOnEscape}
       customLayout
       className="select-command-dialog"
     >

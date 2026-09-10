@@ -198,10 +198,58 @@ describe('MacroEditorDialog', () => {
     const onClose = vi.fn();
     const { container, getByText } = renderEditor({ onClose, availableCommands: [] });
     fireEvent.click(getByText('Add step'));
-    // SelectCommandDialog opens (empty command list is fine for this assertion)
-    expect(container.textContent).toContain('Select command');
+    // The Command picker opens (empty command list is fine for this assertion)
+    expect(container.textContent).toContain('Command picker');
     fireEvent.click(getByText('Done'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe('picking a command', () => {
+    const COMMANDS = [
+      { id: 'split', name: 'Split', category: 'Clips' },
+      { id: 'effect:amplify', name: 'Amplify', category: 'Effects' },
+    ];
+    const getCommandParameters = (name: string) =>
+      name === 'Amplify'
+        ? [{ key: 'Ratio', label: 'Amplification (dB)', type: 'number' as const, defaultValue: '0' }]
+        : [];
+    const pickerOpen = (container: HTMLElement) => !!container.querySelector('.select-command-dialog');
+
+    it('adds a command without parameters immediately and closes the picker', () => {
+      const onAddCommand = vi.fn();
+      const { container, getByText } = renderEditor({ onAddCommand, availableCommands: COMMANDS, getCommandParameters });
+      fireEvent.click(getByText('Add step'));
+      fireEvent.click(container.querySelector('[data-command-id="split"]')!);
+      expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[0]);
+      expect(pickerOpen(container)).toBe(false);
+    });
+
+    it('stacks the parameters window on top of the picker; Cancel returns to the search', () => {
+      const onAddCommand = vi.fn();
+      const { container, getByText } = renderEditor({ onAddCommand, availableCommands: COMMANDS, getCommandParameters });
+      fireEvent.click(getByText('Add step'));
+      fireEvent.click(container.querySelector('[data-command-id="effect:amplify"]')!);
+      // Picker still open underneath, parameters window on top, nothing added yet
+      expect(pickerOpen(container)).toBe(true);
+      expect(container.textContent).toContain('Amplification (dB)');
+      expect(onAddCommand).not.toHaveBeenCalled();
+
+      fireEvent.click(getByText('Cancel'));
+      expect(container.textContent).not.toContain('Amplification (dB)');
+      expect(pickerOpen(container)).toBe(true);
+      expect(onAddCommand).not.toHaveBeenCalled();
+    });
+
+    it('OK in the parameters window adds the step with the confirmed values and closes both', () => {
+      const onAddCommand = vi.fn();
+      const { container, getByText } = renderEditor({ onAddCommand, availableCommands: COMMANDS, getCommandParameters });
+      fireEvent.click(getByText('Add step'));
+      fireEvent.click(container.querySelector('[data-command-id="effect:amplify"]')!);
+      fireEvent.click(getByText('OK'));
+      expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[1], expect.stringContaining('Ratio='));
+      expect(pickerOpen(container)).toBe(false);
+      expect(container.textContent).not.toContain('Amplification (dB)');
+    });
   });
 });
 

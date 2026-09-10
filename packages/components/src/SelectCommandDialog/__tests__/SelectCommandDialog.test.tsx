@@ -77,13 +77,31 @@ describe('SelectCommandDialog', () => {
     expect(container.querySelector('.select-command-dialog__empty')?.textContent).toContain('zzz');
   });
 
-  it('clicking a command picks it and closes', () => {
+  it('clicking a command reports it and leaves closing to the consumer', () => {
     const onSelectCommand = vi.fn();
     const onClose = vi.fn();
     const { container } = renderDialog({ onSelectCommand, onClose });
     fireEvent.click(container.querySelector('[data-command-id="split"]')!);
     expect(onSelectCommand).toHaveBeenCalledWith(COMMANDS[2]);
-    expect(onClose).toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps the search query across a pick and resets it once closed', () => {
+    const { container, rerender } = renderDialog();
+    fireEvent.change(searchInput(container), { target: { value: 'split' } });
+    fireEvent.click(container.querySelector('[data-command-id="split"]')!);
+    expect(searchInput(container).value).toBe('split');
+    rerender(
+      <ThemeProvider>
+        <SelectCommandDialog isOpen={false} commands={COMMANDS} />
+      </ThemeProvider>,
+    );
+    rerender(
+      <ThemeProvider>
+        <SelectCommandDialog isOpen commands={COMMANDS} />
+      </ThemeProvider>,
+    );
+    expect(searchInput(container).value).toBe('');
   });
 
   it('Enter in the search field picks the first visible match', () => {

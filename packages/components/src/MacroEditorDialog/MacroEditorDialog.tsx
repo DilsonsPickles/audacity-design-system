@@ -33,8 +33,11 @@ export interface MacroEditorDialogProps {
   onRun?: (macroId: string) => void;
   /** Called when the footer's "Run on files…" button is clicked */
   onRunFiles?: (macroId: string) => void;
-  /** Called when a command is added as a new step via "Add step" */
-  onAddCommand?: (macroId: string, command: Command) => void;
+  /** Called when a command is added as a new step via "Add step".
+   *  `parameters` is set when the command has a schema and the user
+   *  confirmed values in the stacked parameters window; undefined means
+   *  "use your defaults". */
+  onAddCommand?: (macroId: string, command: Command, parameters?: string) => void;
   /** Called when a step's parameters are edited via the row pencil */
   onEditStep?: (macroId: string, stepIndex: number, parameters: string) => void;
   /** Called when a row's delete button is clicked */
@@ -257,6 +260,11 @@ export function MacroEditorDialog({
   os = 'macos',
 }: MacroEditorDialogProps) {
   const [isSelectCommandDialogOpen, setIsSelectCommandDialogOpen] = React.useState(false);
+  // A picked command that has parameters waits here while its
+  // parameters window sits ON TOP of the still-open picker: OK adds the
+  // step with those values and closes both; Cancel drops it and returns
+  // to the search with the query intact.
+  const [pendingCommand, setPendingCommand] = React.useState<Command | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   // Header kebab: macro-level management actions (rename / export / delete)
   const [macroMenuOpen, setMacroMenuOpen] = React.useState(false);
@@ -269,6 +277,7 @@ export function MacroEditorDialog({
   React.useEffect(() => {
     setEditingStepIndex(null);
     setDraggedIndex(null);
+    setPendingCommand(null);
   }, [macro?.id, isOpen]);
 
   if (!macro) return null;
@@ -476,22 +485,39 @@ export function MacroEditorDialog({
 
       <SelectCommandDialog
         isOpen={isSelectCommandDialogOpen}
-        onClose={() => setIsSelectCommandDialogOpen(false)}
-        onSelectCommand={(command) => {
-          onAddCommand?.(macro.id, command);
+        onClose={() => {
           setIsSelectCommandDialogOpen(false);
-          // Picking IS the commitment: if the command has adjustable
-          // parameters, go straight into editing them on the new step
-          // (its index is the current length — the step lands on the
-          // next render, and the parameters dialog waits for it).
+          setPendingCommand(null);
+        }}
+        onSelectCommand={(command) => {
           const schema = getCommandParameters?.(command.name) ?? null;
           if (schema && schema.length > 0) {
-            setEditingStepIndex(macro.steps.length);
+            // Parameters first — the picker stays open underneath
+            setPendingCommand(command);
+            return;
           }
+          onAddCommand?.(macro.id, command);
+          setIsSelectCommandDialogOpen(false);
         }}
         commands={availableCommands}
+        closeOnEscape={pendingCommand === null}
         os={os}
       />
+
+      {pendingCommand && (
+        <CommandParametersDialog
+          isOpen
+          commandName={pendingCommand.name}
+          parameters={getCommandParameters?.(pendingCommand.name) ?? []}
+          onClose={() => setPendingCommand(null)}
+          onSubmit={(parameters) => {
+            onAddCommand?.(macro.id, pendingCommand, parameters);
+            setPendingCommand(null);
+            setIsSelectCommandDialogOpen(false);
+          }}
+          os={os}
+        />
+      )}
 
       <RenameMacroDialog
         isOpen={isRenameDialogOpen}
