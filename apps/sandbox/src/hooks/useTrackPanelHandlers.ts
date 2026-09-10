@@ -99,14 +99,19 @@ export function useTrackPanelHandlers(
     if (ts) {
       // Time-selection mode: extend or contract the row scope. The
       // reducer mirrors the new scope into selectedTrackIndices, so the
-      // spanned tracks read as selected. Removing the LAST spanned
-      // track deselects it but keeps the time range as a ruler-only,
-      // zero-track selection (`tracks: []`) — the range itself is only
-      // cleared by an explicit gesture (Escape / click-away).
+      // spanned tracks read as selected. Cmd+clicking away the FINAL
+      // spanned track clears the whole time selection — a range that
+      // spans no tracks has nothing left to select.
       const currentScope = ts.tracks ?? selectedTrackIndices;
       const newScope = currentScope.includes(index)
         ? currentScope.filter((i) => i !== index)
         : [...currentScope, index].sort((a, b) => a - b);
+      if (newScope.length === 0) {
+        dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
+        setSelectionAnchor(index);
+        return;
+      }
       dispatch({
         type: 'SET_TIME_SELECTION',
         payload: { ...ts, tracks: newScope },

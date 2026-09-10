@@ -298,10 +298,14 @@ export function useCanvasPointerHandlers(
         const newScope = currentScope.includes(ti)
           ? currentScope.filter((i) => i !== ti)
           : [...currentScope, ti].sort((a, b) => a - b);
-        // Removing the LAST spanned track deselects it but keeps the
-        // range as a ruler-only, zero-track selection — cmd+clicks
-        // never destroy the time range itself (mirrors
-        // useTrackPanelHandlers).
+        // Cmd+clicking away the FINAL spanned track clears the whole
+        // time selection — a range spanning no tracks has nothing left
+        // to select (mirrors useTrackPanelHandlers).
+        if (newScope.length === 0) {
+          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
+          return;
+        }
         dispatch({
           type: 'SET_TIME_SELECTION',
           payload: { ...timeSelection, tracks: newScope },
