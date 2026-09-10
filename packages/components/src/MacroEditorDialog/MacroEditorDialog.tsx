@@ -230,13 +230,13 @@ function StepRow({
 }
 
 /**
- * MacroEditorDialog — floating editor for a single macro. Owns macro-level
- * actions (rename / delete / export) plus the step list: add, edit
- * parameters, delete, and reorder (drag handle, or the row menu's Move
- * up/down). A NON-MODAL window (2026-09-10): the app behind stays
- * interactive, and the footer's Run button executes the macro on the
- * project so you can test as you edit. All edits apply live
- * (auto-save); Done just closes. Run-on-files stays in the MacrosPanel.
+ * MacroEditorDialog — floating editor for a single macro. The header
+ * menu owns macro-level actions (rename / export / delete); the step
+ * list supports add, edit parameters, delete, and reorder (drag handle,
+ * or the row menu's Move up/down). A NON-MODAL window (2026-09-10): the
+ * app behind stays interactive, and the footer's Run / Run on files…
+ * buttons execute the macro so you can test as you edit. All edits
+ * apply live (auto-save); Done just closes.
  */
 export function MacroEditorDialog({
   isOpen,
