@@ -242,6 +242,15 @@ export function Canvas({
   // Track if we just selected a clip on mouse down to prevent immediate deselection on click
   const justSelectedOnMouseDownRef = useRef(false);
 
+  // Ref-mirror of focusedTrackIndex for the post-drag focus parking in
+  // onTimeSelectionFinalized. onFocusedTrackChange also writes it
+  // synchronously at mouseup so the same-tick parking sees the track
+  // the drag released on, not the stale pre-drag closure value.
+  const parkTrackIndexRef = useRef<number | null>(focusedTrackIndex ?? null);
+  useEffect(() => {
+    parkTrackIndexRef.current = focusedTrackIndex ?? null;
+  }, [focusedTrackIndex]);
+
   // Cmd/Ctrl-release overlap resolution for Cmd+Arrow clip moves — see
   // useCmdArrowMove for the ref-mirror + keyup listener details.
   // isCmdArrowMoving mirrors the module-scoped pendingClipMoveResolution
@@ -508,19 +517,25 @@ export function Canvas({
             dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: nextPlayhead });
           }
           // Park DOM focus on the focused track's .track container so
-          // subsequent Tab / Shift+Tab presses hit that track's own
-          // routing (ruler → next track, panel, etc.) instead of
-          // starting from wherever the pointer left focus — commonly
-          // body, which sends Tab off to unrelated toolbar controls.
+          // subsequent Tab / Shift+Tab / ArrowUp/Down presses hit that
+          // track's own routing instead of starting from wherever the
+          // pointer left focus — commonly body or a clip. Reads the
+          // REF, not the closure: onFocusedTrackChange writes the
+          // released track into the ref synchronously at mouseup,
+          // while the closure's focusedTrackIndex is still the
+          // pre-drag value (its dispatch hasn't re-rendered yet) —
+          // parking on the closure made arrows step from the
+          // previously-focused track ("strange ordering").
           requestAnimationFrame(() => {
             const active = document.activeElement as HTMLElement | null;
             // A clip focused by the drag's mousedown is NOT a keyboard-
             // ready anchor (arrows would go dead) — re-park it on the
             // focused track's container. See isKeyboardReadyFocusAnchor.
             if (isKeyboardReadyFocusAnchor(active)) return;
-            if (focusedTrackIndex === null || focusedTrackIndex === undefined) return;
+            const parkIndex = parkTrackIndexRef.current;
+            if (parkIndex === null) return;
             const trackEl = document.querySelector<HTMLElement>(
-              `.track-wrapper[data-track-index="${focusedTrackIndex}"] .track`,
+              `.track-wrapper[data-track-index="${parkIndex}"] .track`,
             );
             trackEl?.focus({ preventScroll: true });
           });
@@ -535,6 +550,10 @@ export function Canvas({
       onFocusedTrackChange: (trackIndex) => {
         // Don't clear focus when clicking empty space - maintain current focus
         if (trackIndex !== null) {
+          // Written BEFORE the dispatch so the same-tick
+          // onTimeSelectionFinalized parking sees the released track
+          // (the dispatched state won't have re-rendered yet).
+          parkTrackIndexRef.current = trackIndex;
           dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
           onTrackFocusChange?.(trackIndex, true); // Update keyboard focus state in App.tsx
           // Track selection intentionally left untouched. Canvas
