@@ -39,6 +39,24 @@ describe('handlePlayheadMove — scope stamping', () => {
     expect(types).not.toContain('SET_SELECTED_TRACKS');
   });
 
+  it('a fresh Shift+ArrowRight range inherits the built track selection as its scope (Shift+Down then Shift+Right must not shrink the footprint)', () => {
+    const state = makeState({
+      tracks: [
+        { id: 1, name: 't1', clips: [] },
+        { id: 2, name: 't2', clips: [] },
+        { id: 3, name: 't3', clips: [] },
+      ] as TracksState['tracks'],
+      focusedTrackIndex: 2, // Shift+Down left focus on the last track
+      playheadPosition: 5,
+      selectedTrackIndices: [0, 1, 2], // ...after selecting all tracks
+    });
+    const deps = makeDeps(state);
+    handlePlayheadMove(keyEvent(), false, 0.1, deps);
+
+    const [payload] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
+    expect(payload.tracks).toEqual([0, 1, 2]);
+  });
+
   it('Shift+ArrowRight preserves an existing scope instead of restamping', () => {
     const state = makeState({
       tracks: [

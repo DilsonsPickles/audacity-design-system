@@ -39,9 +39,6 @@ export function handlePlayheadMove(
 
     if (!state.timeSelection || playheadOutsideSelection) {
       dispatch({ type: 'DESELECT_ALL_CLIPS' });
-      // Track selection is left untouched — the selection's vertical
-      // scope is carried on the SET_TIME_SELECTION payload below
-      // (`tracks`), not on selectedTrackIndices.
       selectionEdgesRef.current = { startTime: state.playheadPosition, endTime: state.playheadPosition };
     }
 
@@ -82,12 +79,16 @@ export function handlePlayheadMove(
       payload: {
         startTime: selectionEdgesRef.current.startTime,
         endTime: selectionEdgesRef.current.endTime,
-        // Preserve an existing scope; a fresh keyboard selection is
-        // scoped to the focused track (spec: the gesture defines
-        // the scope). No scope when nothing is focused — consumers
-        // fall back to selectedTrackIndices, then all tracks.
+        // Preserve an existing scope. A FRESH keyboard range inherits
+        // the selection the user already built (Shift+Arrow extends —
+        // it must never shrink the footprint the mirror will write
+        // back), falling back to the focused track when nothing is
+        // selected. No scope when neither exists — consumers fall
+        // back to all tracks.
         tracks: state.timeSelection?.tracks
-          ?? (state.focusedTrackIndex != null ? [state.focusedTrackIndex] : undefined),
+          ?? (state.selectedTrackIndices.length > 0
+            ? state.selectedTrackIndices
+            : state.focusedTrackIndex != null ? [state.focusedTrackIndex] : undefined),
       },
     });
     scrollPlayheadIntoView();
