@@ -727,9 +727,22 @@ async function sha256Base64Url(input: string): Promise<string> {
 }
 
 function browserRedirectUri(): string {
-  // Base-path-aware (GitHub Pages serves the app under a subpath). See
-  // appBase.ts. On `/` hosting this is identical to the old
-  // `${origin}/oauth/callback`.
+  // Electron (RFC 8252 loopback): the app is served from a local express
+  // server on 127.0.0.1 at whatever port was free. muse-id registers a
+  // loopback TEMPLATE (`http://127.0.0.1/oauth/callback`, any port), so
+  // redirect to 127.0.0.1 rather than `localhost` — its matcher treats
+  // only the literal loopback IP as a template; `localhost` needs an
+  // exact, port-specific registration. The system browser lands on the
+  // loopback server, which relays the code to us over IPC.
+  if (typeof window !== 'undefined' && 'electronOAuth' in window) {
+    const url = new URL(oauthCallbackUri());
+    url.hostname = '127.0.0.1';
+    return url.toString();
+  }
+  // Web: base-path-aware (GitHub Pages serves the app under a subpath).
+  // See appBase.ts. On `/` hosting this is identical to
+  // `${origin}/oauth/callback` — the exact string muse-id registers for
+  // the deployed sandbox origin and for localhost:5173.
   return oauthCallbackUri();
 }
 
