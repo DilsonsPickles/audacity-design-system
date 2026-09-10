@@ -43,7 +43,9 @@ const MacrosContext = createContext<MacrosContextValue | null>(null);
 export function MacrosProvider({ children }: { children: React.ReactNode }) {
   const [macros, setMacros] = React.useState<Macro[]>([]);
   const [isMacrosPanelOpen, setIsMacrosPanelOpen] = React.useState(false);
-  const [macrosPanelSide, setMacrosPanelSide] = React.useState<MacrosPanelSide>('floating');
+  // First open lands in the RIGHT dock (2026-09-10 decision — was
+  // 'floating'); the tab kebab moves it between placements.
+  const [macrosPanelSide, setMacrosPanelSide] = React.useState<MacrosPanelSide>('right');
   const [editingMacroId, setEditingMacroId] = React.useState<string | null>(null);
 
   const addMacro = React.useCallback((name: string) => {
