@@ -20,6 +20,7 @@ export * from './constants';
  */
 export * from './Button';
 export * from './GhostButton';
+export * from './SplitButton';
 export * from './Icon';
 export * from './Knob';
 export * from './PanKnob';

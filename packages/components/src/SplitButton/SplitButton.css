@@ -1,0 +1,20 @@
+/* SplitButton — primary action + caret menu of variants */
+
+.split-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.split-button__divider {
+  width: 1px;
+  height: 14px;
+  background: var(--split-button-divider, #d4d5d9);
+  flex-shrink: 0;
+}
+
+/* Caret segment is narrower than a full square button */
+.split-button .split-button__caret {
+  width: 18px;
+  min-width: 18px;
+}

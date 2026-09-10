@@ -46,10 +46,13 @@ describe('MacrosPanel', () => {
     expect(onRunOnProject).toHaveBeenCalledWith('m1');
   });
 
-  it('runs a macro on files via the row files button', () => {
+  it('runs a macro on files via the split button caret menu', () => {
     const onRunOnFiles = vi.fn();
     const { container } = renderPanel({ onRunOnFiles });
-    fireEvent.click(container.querySelector('button[aria-label="Run MP3 conversion on files"]')!);
+    fireEvent.click(container.querySelector('button[aria-label="Run MP3 conversion options"]')!);
+    const applyItem = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.includes('Apply to files'));
+    fireEvent.click(applyItem!);
     expect(onRunOnFiles).toHaveBeenCalledWith('m2');
   });
 

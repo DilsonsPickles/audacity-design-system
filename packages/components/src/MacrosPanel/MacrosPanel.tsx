@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
+import { SplitButton } from '../SplitButton';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { NewMacroDialog, RenameMacroDialog } from '../MacroManager/MacroDialogs';
@@ -47,6 +48,17 @@ const ROW_DOUBLE_CLICK_WINDOW = 250;
 function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject, onRunOnFiles }: MacroRowProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 });
+  // Run-variants menu (the split button's caret) — run actions only;
+  // management actions stay on the kebab.
+  const [runMenuOpen, setRunMenuOpen] = React.useState(false);
+  const [runMenuPosition, setRunMenuPosition] = React.useState({ x: 0, y: 0 });
+
+  const handleRunMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setRunMenuPosition({ x: rect.right, y: rect.bottom });
+    setRunMenuOpen(true);
+  };
 
   // Single click opens the editor (deferred); double click runs the macro
   // on the current project and swallows the pending single-click edit.
@@ -108,17 +120,14 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          <GhostButton
+          <SplitButton
             icon="play"
             size="medium"
             ariaLabel={`Run ${macro.name} on current project`}
             onClick={onRunOnProject}
-          />
-          <GhostButton
-            icon="file"
-            size="medium"
-            ariaLabel={`Run ${macro.name} on files`}
-            onClick={onRunOnFiles}
+            menuAriaLabel={`Run ${macro.name} options`}
+            onMenuClick={handleRunMenuClick}
+            menuActive={runMenuOpen}
           />
           <GhostButton
             icon="menu"
@@ -141,13 +150,29 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
         {menuItem('Export macro', onExport)}
         {menuItem('Delete macro', onDelete)}
       </ContextMenu>
+
+      <ContextMenu
+        isOpen={runMenuOpen}
+        onClose={() => setRunMenuOpen(false)}
+        x={runMenuPosition.x}
+        y={runMenuPosition.y}
+      >
+        <ContextMenuItem
+          label="Apply to files…"
+          onClick={() => {
+            setRunMenuOpen(false);
+            onRunOnFiles?.();
+          }}
+        />
+      </ContextMenu>
     </>
   );
 }
 
 /**
- * MacrosPanel — dockable macro management panel. Lists macros with
- * per-row run / run-on-files / options actions, plus import and create.
+ * MacrosPanel — dockable macro management panel. Each row carries a
+ * SPLIT run button (primary = run on project; caret menu = "Apply to
+ * files…") and a kebab for management actions, plus import and create.
  * Row single-click edits; double-click runs the macro on the project.
  * Editing an individual macro happens in the separate MacroEditorDialog;
  * this panel only reports `onEditMacro`.
