@@ -116,7 +116,7 @@ describe('MacrosPanel', () => {
   it('creates a macro through the Create new macro dialog', () => {
     const onCreateMacro = vi.fn();
     const { container, getByText } = renderPanel({ onCreateMacro });
-    fireEvent.click(getByText('Create new macro'));
+    fireEvent.click(getByText('Create new'));
 
     const input = container.querySelector<HTMLInputElement>('#macro-name-input');
     expect(input).not.toBeNull();

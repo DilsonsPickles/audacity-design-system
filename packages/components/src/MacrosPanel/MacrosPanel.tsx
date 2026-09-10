@@ -179,7 +179,7 @@ export function MacrosPanel({
           Import macro
         </Button>
         <Button variant="primary" size="small" onClick={() => setIsNewMacroDialogOpen(true)}>
-          Create new macro
+          Create new
         </Button>
       </div>
 
