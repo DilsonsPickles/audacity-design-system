@@ -128,38 +128,28 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           dispatch({ type: 'SET_SPLIT_MODE', payload: false });
           return;
         }
-        // Next: clear any active "selection-ish" state — time selection
-        // and any selected clips. Both go in one Escape press so the
-        // user has a single "deselect everything" gesture instead of
-        // hunting separate shortcuts.
+        // Next: clear any active "selection-ish" state — time selection,
+        // selected clips, AND the track selection. All go in one Escape
+        // press so the user has a single "deselect everything" gesture
+        // (parity with clicking the empty space below the tracks, which
+        // clears the same set). Track selection joins the press because
+        // it now mirrors the range's scope — leaving tracks selected
+        // after clearing the range was a leftover of the old decoupling.
         const hasTimeSelection = !!state.timeSelection;
         const hasSelectedClips = state.tracks.some(
           (t) =>
             t.clips.some((c) => c.selected)
             || t.midiClips?.some((c) => c.selected),
         );
-        if (hasTimeSelection || hasSelectedClips) {
+        const selectedTrackIndices = state.selectedTrackIndices || [];
+        if (hasTimeSelection || hasSelectedClips || selectedTrackIndices.length > 0) {
           e.preventDefault();
           if (hasTimeSelection) handleEscape(playheadDeps);
           if (hasSelectedClips) dispatch({ type: 'DESELECT_ALL_CLIPS' });
-          return;
-        }
-        // After time-selection / clip-selection are clear, the next
-        // Escape narrows a multi-track selection down to just the
-        // focused track. Focused-in-selection → keep only focused;
-        // focused-out-of-selection → wipe the selection entirely
-        // (matches the Model 3 spirit — the user is "away" from it).
-        const selectedTrackIndices = state.selectedTrackIndices || [];
-        if (selectedTrackIndices.length > 1) {
-          e.preventDefault();
-          const fti = state.focusedTrackIndex;
-          const focusedInSelection =
-            fti !== null && fti !== undefined && selectedTrackIndices.includes(fti);
-          dispatch({
-            type: 'SET_SELECTED_TRACKS',
-            payload: focusedInSelection && fti !== null && fti !== undefined ? [fti] : [],
-          });
-          setSelectionAnchor(focusedInSelection ? (fti as number) : null);
+          if (selectedTrackIndices.length > 0) {
+            dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
+            setSelectionAnchor(null);
+          }
           return;
         }
         // Progressive Escape:
