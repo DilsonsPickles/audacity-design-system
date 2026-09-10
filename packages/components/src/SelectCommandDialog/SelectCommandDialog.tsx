@@ -146,7 +146,6 @@ export function SelectCommandDialog({
       onClose={handleClose}
       os={os}
       width={720}
-      minHeight={600}
       closeOnEscape={closeOnEscape}
       customLayout
       className="select-command-dialog"

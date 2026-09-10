@@ -2,6 +2,16 @@
    Search on top, category rail left (DialogSideNav language: selected
    tint + 3px indicator), grouped command list on a grey well right. */
 
+/* A window, not a sheet: fixed height (yielding to short viewports) so
+   the rail and list scroll inside it instead of the dialog growing to
+   fit 280 rows. */
+.select-command-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: min(600px, calc(100vh - 32px));
+}
+
 .select-command-dialog__header {
   background: var(--dialog-header-bg, #f8f8f9);
   border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
