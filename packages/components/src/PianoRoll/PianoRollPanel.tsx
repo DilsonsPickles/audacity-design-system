@@ -39,7 +39,6 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   onDeselectAll,
   onPixelsPerSecondChange,
   onScrollXChange,
-  onClose,
   onCreateClipWithNote,
   onResizeClip,
   onSelectClip,
@@ -199,7 +198,6 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
         <PanelHeader
           tabs={[{ id: 'piano-roll', label: 'Piano roll' }]}
           activeTabId="piano-roll"
-          onClose={onClose}
           onResizeStart={handleResizeStart}
         />
       )}

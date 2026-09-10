@@ -219,7 +219,9 @@ export function EditorLayout(props: EditorLayoutProps) {
   } = useMacros();
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<'effects' | 'macros'>('effects');
   const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
-  const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number } | null>(null);
+  // Which tab's kebab menu is open. Closing a panel lives in this menu —
+  // panel headers deliberately have no close button (2026-09-10).
+  const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number; tab: 'macros' | 'effects' } | null>(null);
 
   const effectsOpen = activeMenuItem !== 'export' && !!effectsPanel?.isOpen;
   const macrosDockedLeft = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'left';
@@ -252,23 +254,14 @@ export function EditorLayout(props: EditorLayoutProps) {
     ? leftDockActiveTab
     : (leftDockTabs[0]?.id as 'effects' | 'macros' | undefined);
 
-  const handleLeftDockClose = () => {
-    if (activeLeftDockTab === 'effects') {
-      setEffectsPanel(null);
-    } else if (activeLeftDockTab === 'macros') {
-      setIsMacrosPanelOpen(false);
-    }
-  };
-
-  // Per-tab close for the left dock's tab mode (close button on each tab)
-  const handleLeftDockTabClose = (tabId: string) => {
-    if (tabId === 'effects') setEffectsPanel(null);
-    else if (tabId === 'macros') setIsMacrosPanelOpen(false);
-  };
-
   const openDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setDockMenu({ x: rect.right, y: rect.bottom });
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: 'macros' });
+  };
+
+  const openLeftDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: activeLeftDockTab === 'effects' ? 'effects' : 'macros' });
   };
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
@@ -556,9 +549,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           activeTabId={activeLeftDockTab ?? leftDockTabs[0].id}
           onTabChange={(tabId) => setLeftDockActiveTab(tabId as 'effects' | 'macros')}
           onTabReorder={(newTabs) => setLeftDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
-          onMenuClick={activeLeftDockTab === 'macros' ? openDockMenu : undefined}
-          onClose={handleLeftDockClose}
-          onTabClose={handleLeftDockTabClose}
+          onMenuClick={openLeftDockMenu}
         >
           {activeLeftDockTab === 'effects' && effectsOpen && effectsPanel && (
             <TrackEffectsPanel
@@ -1209,7 +1200,6 @@ export function EditorLayout(props: EditorLayoutProps) {
           tabs={[macrosTabDef]}
           activeTabId="macros"
           onMenuClick={openDockMenu}
-          onClose={() => setIsMacrosPanelOpen(false)}
         >
           <MacrosDockPanel />
         </DockPanel>
@@ -1224,20 +1214,20 @@ export function EditorLayout(props: EditorLayoutProps) {
         tabs={[macrosTabDef]}
         activeTabId="macros"
         onMenuClick={openDockMenu}
-        onClose={() => setIsMacrosPanelOpen(false)}
       >
         <MacrosDockPanel />
       </FloatingPanel>
     )}
 
-    {/* Macros tab kebab menu — move the panel between floating and the docks */}
+    {/* Tab kebab menu — placement (Macros) and Close. Closing a panel
+        lives HERE: panel headers have no close button (2026-09-10). */}
     <ContextMenu
       isOpen={dockMenu !== null}
       onClose={() => setDockMenu(null)}
       x={dockMenu?.x ?? 0}
       y={dockMenu?.y ?? 0}
     >
-      {macrosPanelSide !== 'floating' && (
+      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'floating' && (
         <ContextMenuItem
           label="Float"
           onClick={() => {
@@ -1246,7 +1236,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         />
       )}
-      {macrosPanelSide !== 'left' && (
+      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'left' && (
         <ContextMenuItem
           label="Dock left"
           onClick={() => {
@@ -1255,7 +1245,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         />
       )}
-      {macrosPanelSide !== 'right' && (
+      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'right' && (
         <ContextMenuItem
           label="Dock right"
           onClick={() => {
@@ -1264,7 +1254,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         />
       )}
-      {macrosPanelSide !== 'bottom' && (
+      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'bottom' && (
         <ContextMenuItem
           label="Dock bottom"
           onClick={() => {
@@ -1273,6 +1263,14 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         />
       )}
+      <ContextMenuItem
+        label="Close"
+        onClick={() => {
+          if (dockMenu?.tab === 'effects') setEffectsPanel(null);
+          else setIsMacrosPanelOpen(false);
+          setDockMenu(null);
+        }}
+      />
     </ContextMenu>
 
     {/* Bottom Drawer — unified tabbed panel for Mixer, Piano Roll and (when

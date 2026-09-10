@@ -40,29 +40,17 @@ describe('DockPanel', () => {
     expect(onTabChange).toHaveBeenCalledWith('macros');
   });
 
-  it('tab mode: the active tab carries the close button (onClose fallback)', () => {
-    const onClose = vi.fn();
-    const { container } = renderDock({ onClose });
-    // Two tabs → no panel-level close; the active tab (Effects) has one
+  it('renders no close button — closing lives in the kebab menu (2026-09-10 decision)', () => {
+    const { container, unmount } = renderDock();
     expect(container.querySelector('button[aria-label="Close panel"]')).toBeNull();
-    fireEvent.click(container.querySelector('button[aria-label="Close Effects"]')!);
-    expect(onClose).toHaveBeenCalled();
-  });
+    expect(container.querySelector('[aria-label^="Close"]')).toBeNull();
+    unmount();
 
-  it('tab mode: onTabClose receives the specific tab id, including inactive tabs', () => {
-    const onTabClose = vi.fn();
-    const { container } = renderDock({ onTabClose });
-    fireEvent.click(container.querySelector('button[aria-label="Close Macros"]')!);
-    expect(onTabClose).toHaveBeenCalledWith('macros');
-  });
-
-  it('single tab renders TITLE mode: plain title, panel-level close, no tablist', () => {
-    const onClose = vi.fn();
-    const { container } = renderDock({ tabs: [TABS[1]], activeTabId: 'macros', onClose });
-    expect(container.querySelector('[role="tab"]')).toBeNull();
-    expect(container.querySelector('.panel-header__title')?.textContent).toBe('Macros');
-    fireEvent.click(container.querySelector('button[aria-label="Close panel"]')!);
-    expect(onClose).toHaveBeenCalled();
+    // A single tab still renders as a real tab (pill + kebab), no close
+    const { container: c2 } = renderDock({ tabs: [TABS[1]], activeTabId: 'macros' });
+    expect(c2.querySelector('[role="tab"]')?.textContent).toContain('Macros');
+    expect(c2.querySelector('button[aria-label="Macros menu"]')).not.toBeNull();
+    expect(c2.querySelector('[aria-label^="Close"]')).toBeNull();
   });
 
   it('hides the ellipsis menu on tabs with hasMenu: false and shows it otherwise', () => {

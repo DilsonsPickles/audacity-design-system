@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { MixerPanel, PianoRollPanel, PanelHeader, type MixerPanelChannel, type PanelHeaderTab, type ThemeTokens } from '@audacity-ui/components';
+import { MixerPanel, PianoRollPanel, PanelHeader, ContextMenu, ContextMenuItem, type MixerPanelChannel, type PanelHeaderTab, type ThemeTokens } from '@audacity-ui/components';
 import { useTracksDispatch, type TracksState } from '../../contexts/TracksContext';
 import { MIDI_INSTRUMENTS } from '../../contexts/AudioEngineContext';
 import type { EffectSelectorMenuState } from '../../hooks/useContextMenuState';
@@ -73,6 +73,11 @@ export function EditorBottomDrawer({
 }: EditorBottomDrawerProps) {
   const dispatch = useTracksDispatch();
 
+  // Kebab menu for the Mixer / Piano roll tabs (Macros routes to the
+  // shared placement menu via onMacrosMenuClick). Closing a tab lives
+  // here — panel headers have no close button (2026-09-10).
+  const [tabMenu, setTabMenu] = React.useState<{ x: number; y: number } | null>(null);
+
   const mixerOpen = showMixer && activeMenuItem !== 'export';
   const pianoRollOpen = state.pianoRollOpen && state.pianoRollTrackIndex !== null;
   if (!mixerOpen && !pianoRollOpen && !macrosOpen) return null;
@@ -94,31 +99,16 @@ export function EditorBottomDrawer({
   // Ensure active tab is valid
   const activeTab = tabs.find(t => t.id === drawerActiveTab) ? drawerActiveTab : tabs[0].id;
 
-  // Per-tab close (tab mode's on-tab close buttons). handleTabClose
-  // below stays as the single-tab title-mode close for the active tab.
+  // Close a drawer tab. The mixer is controlled by App.tsx's
+  // setMixerPanelOpen, which we only have as a read prop — the
+  // `close-mixer-panel` window CustomEvent is the established bridge
+  // (App's useMixerPanelListener turns it into mixerPanelOpen=false).
   const closeTab = (tabId: string) => {
     if (tabId === 'mixer') {
       window.dispatchEvent(new CustomEvent('close-mixer-panel'));
     } else if (tabId === 'piano-roll') {
       dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
     } else if (tabId === 'macros') {
-      onCloseMacros?.();
-    }
-  };
-
-  const handleTabClose = () => {
-    if (activeTab === 'mixer') {
-      // Close mixer — find and call the mixer toggle in App via dispatch or prop
-      // The mixer is controlled by App.tsx's setMixerPanelOpen, but we only have showMixer as a read prop.
-      // We need a callback. For now, dispatch is not available for mixer.
-      // Actually, we can just toggle the prop — but we don't have a setter here.
-      // Let's use a custom event or add an onCloseMixer prop.
-      // For minimal change: dispatch a custom action or use window event.
-      // Simplest: add onCloseMixer prop.
-      window.dispatchEvent(new CustomEvent('close-mixer-panel'));
-    } else if (activeTab === 'piano-roll') {
-      dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
-    } else if (activeTab === 'macros') {
       onCloseMacros?.();
     }
   };
@@ -145,9 +135,12 @@ export function EditorBottomDrawer({
         activeTabId={activeTab}
         onTabChange={(tabId) => setDrawerActiveTab(tabId as DrawerTabId)}
         onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as DrawerTabId[])}
-        onMenuClick={activeTab === 'macros' ? onMacrosMenuClick : undefined}
-        onClose={handleTabClose}
-        onTabClose={closeTab}
+        onMenuClick={activeTab === 'macros'
+          ? onMacrosMenuClick
+          : (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setTabMenu({ x: rect.right, y: rect.bottom });
+          }}
         onResizeStart={(e) => {
           e.preventDefault();
           const startY = e.clientY;
@@ -437,6 +430,22 @@ export function EditorBottomDrawer({
           />
         );
       })()}
+
+      {/* Mixer / Piano roll tab kebab menu — Close lives here */}
+      <ContextMenu
+        isOpen={tabMenu !== null}
+        onClose={() => setTabMenu(null)}
+        x={tabMenu?.x ?? 0}
+        y={tabMenu?.y ?? 0}
+      >
+        <ContextMenuItem
+          label="Close"
+          onClick={() => {
+            closeTab(activeTab);
+            setTabMenu(null);
+          }}
+        />
+      </ContextMenu>
     </div>
   );
 }

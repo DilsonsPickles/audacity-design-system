@@ -22,16 +22,16 @@ function renderPanel(props: Partial<React.ComponentProps<typeof FloatingPanel>> 
 }
 
 describe('FloatingPanel', () => {
-  it('renders the title and content in a fixed, non-modal panel (single tab = title mode)', () => {
+  it('renders the tab and content in a fixed, non-modal panel with no close button', () => {
     const { container } = renderPanel();
     const panel = container.querySelector('.floating-panel') as HTMLElement;
     expect(panel).not.toBeNull();
     expect(panel.getAttribute('aria-modal')).toBe('false');
     expect(panel.getAttribute('aria-label')).toBe('Macros');
     expect(container.querySelector('[data-testid="floating-content"]')).not.toBeNull();
-    // Single tab renders as a plain title, not a tab pill
-    expect(container.querySelector('[role="tab"]')).toBeNull();
-    expect(container.querySelector('.panel-header__title')?.textContent).toBe('Macros');
+    expect(container.querySelector('[role="tab"]')?.textContent).toContain('Macros');
+    // Closing lives in the kebab menu — no header close button
+    expect(container.querySelector('[aria-label^="Close"]')).toBeNull();
   });
 
   it('honors an explicit initial position and size', () => {
@@ -41,13 +41,6 @@ describe('FloatingPanel', () => {
     expect(panel.style.top).toBe('60px');
     expect(panel.style.width).toBe('300px');
     expect(panel.style.height).toBe('400px');
-  });
-
-  it('reports close from the header close button', () => {
-    const onClose = vi.fn();
-    const { container } = renderPanel({ onClose });
-    fireEvent.click(container.querySelector('button[aria-label="Close panel"]')!);
-    expect(onClose).toHaveBeenCalled();
   });
 
   it('reports menu clicks from the active tab kebab', () => {
@@ -112,11 +105,11 @@ describe('FloatingPanel', () => {
   });
 
   it('does not start a drag from the header buttons', () => {
-    const { container } = renderPanel({ initialPosition: { x: 100, y: 100 }, onClose: vi.fn() });
-    const closeButton = container.querySelector('button[aria-label="Close panel"]') as HTMLElement;
+    const { container } = renderPanel({ initialPosition: { x: 100, y: 100 }, onMenuClick: vi.fn() });
+    const menuButton = container.querySelector('button[aria-label="Macros menu"]') as HTMLElement;
     const panel = container.querySelector('.floating-panel') as HTMLElement;
 
-    fireEvent.mouseDown(closeButton, { button: 0, clientX: 150, clientY: 110 });
+    fireEvent.mouseDown(menuButton, { button: 0, clientX: 150, clientY: 110 });
     fireEvent.mouseMove(document, { clientX: 200, clientY: 160 });
     expect(panel.style.left).toBe('100px');
     expect(panel.style.top).toBe('100px');

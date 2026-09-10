@@ -23,16 +23,6 @@ export interface PanelHeaderProps {
   onTabReorder?: (tabs: PanelHeaderTab[]) => void;
   /** Called when the menu button on the active tab is clicked */
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  /** Called when the close button is clicked. In single-tab TITLE mode
-   *  this is the panel-level "Close panel" button; in tab mode it is the
-   *  fallback for the active tab's own close button when `onTabClose`
-   *  isn't provided. */
-  onClose?: () => void;
-  /** Tab mode only: called when a specific tab's close button is clicked.
-   *  When provided, every tab gets a close button (revealed on hover for
-   *  inactive tabs); without it, only the active tab shows one, wired to
-   *  `onClose`. */
-  onTabClose?: (tabId: string) => void;
   /** Called when the user drags the top edge to resize the panel */
   onResizeStart?: (e: React.MouseEvent) => void;
   /** Additional CSS class names */
@@ -44,16 +34,11 @@ const DRAG_THRESHOLD = 4; // px of movement before drag starts
 
 /**
  * PanelHeader - Tabbed header for panels.
- *
- * Two modes, decided by the tab count:
- * - ONE tab → TITLE mode: a single tab isn't a tab (there's nothing to
- *   switch to), so the header renders a plain panel title + kebab, with
- *   the panel-level close button on the right. One object, one close.
- * - TWO+ tabs → TAB mode: tab pills with close buttons ON the tabs
- *   (always on the active tab, hover-revealed on inactive ones); the
- *   panel-level close disappears, so every close control names exactly
- *   what it closes.
- *
+ * Displays tabs with the active tab highlighted and an ellipsis menu
+ * button. There is deliberately NO close button — closing a panel lives
+ * in the active tab's kebab menu (2026-09-10 decision: a header close
+ * next to a lone tab read as two controls for one object, and next to
+ * many tabs it was ambiguous about what it closed).
  * Supports top-edge resize dragging; tabs can be reordered by dragging.
  */
 export const PanelHeader: React.FC<PanelHeaderProps> = ({
@@ -62,8 +47,6 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
   onTabChange,
   onTabReorder,
   onMenuClick,
-  onClose,
-  onTabClose,
   onResizeStart,
   className = '',
 }) => {
@@ -192,45 +175,6 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
     ...(inResizeZone ? { cursor: 'ns-resize' } : {}),
   } as React.CSSProperties;
 
-  // TITLE mode — a single tab renders as a plain panel title, and the
-  // panel-level close button below is the one close affordance.
-  if (tabs.length <= 1) {
-    const only = tabs[0];
-    return (
-      <div
-        className={`panel-header panel-header--title ${className}`}
-        style={style}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseDown={handleMouseDown}
-      >
-        {only && (
-          <div className="panel-header__title-group">
-            <span className="panel-header__title">{only.label}</span>
-            {only.hasMenu !== false && (
-              <GhostButton
-                icon="menu"
-                size="small"
-                onClick={(e) => onMenuClick?.(e)}
-                ariaLabel={`${only.label} menu`}
-                tabIndex={-1}
-              />
-            )}
-          </div>
-        )}
-        {onClose && (
-          <GhostButton
-            icon="close"
-            size="small"
-            onClick={onClose}
-            ariaLabel="Close panel"
-            className="panel-header__close"
-          />
-        )}
-      </div>
-    );
-  }
-
   return (
     <div
       className={`panel-header ${className}`}
@@ -277,20 +221,6 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
                     onMenuClick?.(e);
                   }}
                   ariaLabel={`${tab.label} menu`}
-                  tabIndex={-1}
-                />
-              )}
-              {(onTabClose || (isActive && onClose)) && (
-                <GhostButton
-                  icon="close"
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onTabClose) onTabClose(tab.id);
-                    else onClose?.();
-                  }}
-                  ariaLabel={`Close ${tab.label}`}
-                  className="panel-header__tab-close"
                   tabIndex={-1}
                 />
               )}

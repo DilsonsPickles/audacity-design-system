@@ -383,17 +383,20 @@ describe('Bottom drawer', () => {
       return el as HTMLElement;
     });
 
-    // A single open panel renders PanelHeader's TITLE mode (plain title,
-    // no tab pills); two+ panels render tab mode. The helpers read both.
-    const tabLabels = () => {
-      const pills = Array.from(panelHeader.querySelectorAll('.panel-header__tab-label')).map((el) => el.textContent);
-      if (pills.length > 0) return pills;
-      const title = panelHeader.querySelector('.panel-header__title')?.textContent;
-      return title ? [title] : [];
-    };
+    const tabLabels = () =>
+      Array.from(panelHeader.querySelectorAll('.panel-header__tab-label')).map((el) => el.textContent);
     const activeTabLabel = () =>
-      panelHeader.querySelector('[role="tab"][aria-selected="true"] .panel-header__tab-label')?.textContent
-      ?? panelHeader.querySelector('.panel-header__title')?.textContent;
+      panelHeader.querySelector('[role="tab"][aria-selected="true"] .panel-header__tab-label')?.textContent;
+
+    // Closing lives in the active tab's kebab menu (no header close
+    // button by design) — open the kebab, click the "Close" item.
+    const closeViaKebab = (tabLabel: string) => {
+      fireEvent.click(panelHeader.querySelector(`[aria-label="${tabLabel} menu"]`)!);
+      const closeItem = Array.from(
+        container.querySelectorAll('.context-menu-item, [role="menuitem"]'),
+      ).find((el) => el.textContent?.trim() === 'Close');
+      fireEvent.click(closeItem!);
+    };
 
     expect(tabLabels()).toEqual(['Mixer']);
     expect(activeTabLabel()).toBe('Mixer');
@@ -439,24 +442,23 @@ describe('Bottom drawer', () => {
     fireEvent.click(pianoRollTab);
     expect(activeTabLabel()).toBe('Piano roll');
 
-    // --- Close path 1: two tabs = tab mode, so the close button lives ON
-    // the Piano roll tab. It dispatches SET_PIANO_ROLL_OPEN(false)
-    // directly — no CustomEvent involved. useDrawerTabAutoSwitch then
-    // falls the active tab back to Mixer since it's still open. ---
-    fireEvent.click(container.querySelector('[aria-label="Close Piano roll"]')!);
+    // --- Close path 1: the Piano roll tab's kebab menu "Close" item
+    // dispatches SET_PIANO_ROLL_OPEN(false) directly — no CustomEvent
+    // involved. useDrawerTabAutoSwitch then falls the active tab back
+    // to Mixer since it's still open. ---
+    closeViaKebab('Piano roll');
     await waitFor(() => {
       expect(tabLabels()).toEqual(['Mixer']);
       expect(activeTabLabel()).toBe('Mixer');
     });
 
-    // --- Close path 2: Mixer alone = TITLE mode, so the panel-level
-    // "Close panel" button is back. It dispatches the
+    // --- Close path 2: the Mixer tab's kebab "Close" dispatches the
     // `close-mixer-panel` window CustomEvent (EditorBottomDrawer
-    // handleTabClose) — App's useMixerPanelListener is the only thing
-    // that turns that into mixerPanelOpen=false. Asserting the drawer
+    // closeTab) — App's useMixerPanelListener is the only thing that
+    // turns that into mixerPanelOpen=false. Asserting the drawer
     // actually disappears proves that listener is wired end-to-end,
     // not just that the event was dispatched. ---
-    fireEvent.click(container.querySelector('[aria-label="Close panel"]')!);
+    closeViaKebab('Mixer');
     await waitFor(() => expect(container.querySelector('.panel-header')).toBeFalsy());
   });
 

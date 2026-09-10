@@ -10,10 +10,10 @@ export interface FloatingPanelProps {
   activeTabId: string;
   /** Called when a tab is clicked */
   onTabChange?: (tabId: string) => void;
-  /** Called when the active tab's ellipsis menu button is clicked */
+  /** Called when the active tab's ellipsis menu button is clicked.
+   *  Closing the panel lives in that menu — the header has no close
+   *  button by design. */
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  /** Called when the close button is clicked */
-  onClose?: () => void;
   /** Initial top-left position; defaults to viewport-centered */
   initialPosition?: { x: number; y: number };
   /** Initial panel width in pixels */
@@ -51,7 +51,6 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   activeTabId,
   onTabChange,
   onMenuClick,
-  onClose,
   initialPosition,
   width: initialWidth = 280,
   height: initialHeight = 420,
@@ -158,7 +157,6 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
           activeTabId={activeTabId}
           onTabChange={onTabChange}
           onMenuClick={onMenuClick}
-          onClose={onClose}
         />
       </div>
       <div className="floating-panel__content">

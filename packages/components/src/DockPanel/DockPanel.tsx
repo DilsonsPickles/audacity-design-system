@@ -17,12 +17,6 @@ export interface DockPanelProps {
   onTabReorder?: (tabs: PanelHeaderTab[]) => void;
   /** Called when the active tab's ellipsis menu button is clicked */
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  /** Called when the close button is clicked (closes the active tab).
-   *  Single-tab title mode's panel-level close, and the active-tab
-   *  fallback in tab mode when `onTabClose` isn't provided. */
-  onClose?: () => void;
-  /** Called when a specific tab's close button is clicked (tab mode) */
-  onTabClose?: (tabId: string) => void;
   /** Initial width in pixels */
   width?: number;
   /** Whether the panel is horizontally resizable */
@@ -53,8 +47,6 @@ export const DockPanel: React.FC<DockPanelProps> = ({
   onTabChange,
   onTabReorder,
   onMenuClick,
-  onClose,
-  onTabClose,
   width = 240,
   resizable = true,
   minWidth = 200,
@@ -87,8 +79,6 @@ export const DockPanel: React.FC<DockPanelProps> = ({
         onTabChange={onTabChange}
         onTabReorder={onTabReorder}
         onMenuClick={onMenuClick}
-        onClose={onClose}
-        onTabClose={onTabClose}
       />
       <div className="dock-panel__content">
         {children}

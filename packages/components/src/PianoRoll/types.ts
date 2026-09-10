@@ -23,6 +23,9 @@ export interface PianoRollPanelProps {
   onDeselectAll: () => void;
   onPixelsPerSecondChange?: (pps: number) => void;
   onScrollXChange?: (scrollX: number) => void;
+  /** @deprecated Panel headers no longer show a close button (2026-09-10);
+   *  closing lives in the host's kebab menu. Prop kept for API
+   *  compatibility but no longer rendered. */
   onClose?: () => void;
   /** Called when user clicks to add a note but no clip exists yet. Should create a clip and add the note. */
   onCreateClipWithNote?: (note: MidiNote, measureDuration: number) => void;
