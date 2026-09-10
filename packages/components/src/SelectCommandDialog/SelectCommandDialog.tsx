@@ -1,9 +1,15 @@
 /**
- * SelectCommandDialog - Modal for selecting macro commands
- * Based on Figma design: node-id=6516-10614
+ * SelectCommandDialog — category-driven picker for macro steps.
+ *
+ * Search across everything on top; a category rail on the left (order =
+ * first appearance in `commands`, so the data file controls it); the
+ * matching commands on the right, grouped under category headers when
+ * viewing "All commands". Double-click or Enter adds the highlighted
+ * command; the rail's counts follow the search so you can see where the
+ * hits are before narrowing.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
@@ -38,6 +44,8 @@ export interface SelectCommandDialogProps {
   os?: 'macos' | 'windows';
 }
 
+const ALL_CATEGORIES = 'all';
+
 /**
  * SelectCommandDialog component
  */
@@ -49,47 +57,75 @@ export function SelectCommandDialog({
   os = 'macos',
 }: SelectCommandDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES);
   const [selectedCommand, setSelectedCommand] = useState<Command | null>(null);
 
-  // Filter commands based on search query
-  const filteredCommands = commands.filter(cmd =>
-    cmd.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Rail order = first appearance in the data
+  const categories = useMemo(() => {
+    const seen: string[] = [];
+    for (const cmd of commands) {
+      if (!seen.includes(cmd.category)) seen.push(cmd.category);
+    }
+    return seen;
+  }, [commands]);
+
+  const query = searchQuery.trim().toLowerCase();
+  const matching = useMemo(
+    () => (query ? commands.filter((cmd) => cmd.name.toLowerCase().includes(query)) : commands),
+    [commands, query],
   );
 
-  // Group commands by first letter
-  const groupedCommands = filteredCommands.reduce((acc, cmd) => {
-    const firstLetter = cmd.name[0].toUpperCase();
-    if (!acc[firstLetter]) {
-      acc[firstLetter] = [];
+  // Per-category hit counts drive the rail badges (and disable empties
+  // while searching)
+  const countByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const cmd of matching) counts[cmd.category] = (counts[cmd.category] ?? 0) + 1;
+    return counts;
+  }, [matching]);
+
+  const visible = selectedCategory === ALL_CATEGORIES
+    ? matching
+    : matching.filter((cmd) => cmd.category === selectedCategory);
+
+  // Group in rail order; a single selected category renders as one group
+  // without its header (the rail already names it)
+  const groups = useMemo(() => {
+    const byCategory = new Map<string, Command[]>();
+    for (const cmd of visible) {
+      const list = byCategory.get(cmd.category) ?? [];
+      list.push(cmd);
+      byCategory.set(cmd.category, list);
     }
-    acc[firstLetter].push(cmd);
-    return acc;
-  }, {} as Record<string, Command[]>);
+    return categories
+      .filter((c) => byCategory.has(c))
+      .map((c) => ({ category: c, commands: byCategory.get(c)! }));
+  }, [visible, categories]);
 
-  // Sort letters alphabetically
-  const sortedLetters = Object.keys(groupedCommands).sort();
+  const showGroupHeaders = selectedCategory === ALL_CATEGORIES;
 
-  const handleCommandClick = (command: Command) => {
-    setSelectedCommand(command);
-  };
-
-  const handleAddCommand = () => {
-    if (selectedCommand) {
-      onSelectCommand?.(selectedCommand);
-      setSelectedCommand(null);
-      setSearchQuery('');
-      onClose?.();
-    }
-  };
-
-  const handleClearSearch = () => {
+  const reset = () => {
+    setSelectedCommand(null);
     setSearchQuery('');
+    setSelectedCategory(ALL_CATEGORIES);
+  };
+
+  const commit = (command: Command | null) => {
+    if (!command) return;
+    onSelectCommand?.(command);
+    reset();
+    onClose?.();
   };
 
   const handleClose = () => {
-    setSelectedCommand(null);
-    setSearchQuery('');
+    reset();
     onClose?.();
+  };
+
+  const handleListKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && selectedCommand) {
+      e.preventDefault();
+      commit(selectedCommand);
+    }
   };
 
   return (
@@ -112,13 +148,15 @@ export function SelectCommandDialog({
             className="select-command-dialog__search-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder=""
+            placeholder="Search commands"
+            aria-label="Search commands"
             autoFocus
+            onKeyDown={handleListKeyDown}
           />
           {searchQuery && (
             <button
               className="select-command-dialog__clear-button"
-              onClick={handleClearSearch}
+              onClick={() => setSearchQuery('')}
               aria-label="Clear search"
             >
               <Icon name="close" size={16} />
@@ -127,26 +165,72 @@ export function SelectCommandDialog({
         </div>
       </div>
 
-      {/* Command list */}
-      <div className="select-command-dialog__body">
-        <div className="select-command-dialog__command-list">
-          {sortedLetters.map((letter) => (
-            <div key={letter} className="select-command-dialog__group">
-              <div className="select-command-dialog__divider">
-                <span className="select-command-dialog__divider-label">{letter}</span>
-              </div>
+      <div className="select-command-dialog__content">
+        {/* Category rail */}
+        <nav className="select-command-dialog__rail" aria-label="Command categories">
+          <button
+            type="button"
+            className={`select-command-dialog__rail-item${selectedCategory === ALL_CATEGORIES ? ' select-command-dialog__rail-item--selected' : ''}`}
+            aria-pressed={selectedCategory === ALL_CATEGORIES}
+            onClick={() => setSelectedCategory(ALL_CATEGORIES)}
+          >
+            <span className="select-command-dialog__rail-label">All commands</span>
+            <span className="select-command-dialog__rail-count">{matching.length}</span>
+          </button>
+          {categories.map((category) => {
+            const count = countByCategory[category] ?? 0;
+            const isSelected = selectedCategory === category;
+            return (
+              <button
+                key={category}
+                type="button"
+                className={`select-command-dialog__rail-item${isSelected ? ' select-command-dialog__rail-item--selected' : ''}${count === 0 ? ' select-command-dialog__rail-item--empty' : ''}`}
+                aria-pressed={isSelected}
+                disabled={count === 0}
+                onClick={() => setSelectedCategory(category)}
+              >
+                <span className="select-command-dialog__rail-label">{category}</span>
+                <span className="select-command-dialog__rail-count">{count}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Command list */}
+        <div
+          className="select-command-dialog__body"
+          role="listbox"
+          aria-label="Commands"
+          tabIndex={0}
+          onKeyDown={handleListKeyDown}
+        >
+          {groups.length === 0 && (
+            <div className="select-command-dialog__empty">
+              {query ? `No commands match “${searchQuery.trim()}”` : 'No commands'}
+            </div>
+          )}
+          {groups.map((group) => (
+            <div key={group.category} className="select-command-dialog__group">
+              {showGroupHeaders && (
+                <div className="select-command-dialog__group-header">{group.category}</div>
+              )}
               <div className="select-command-dialog__commands">
-                {groupedCommands[letter].map((command) => (
-                  <div
-                    key={command.id}
-                    className={`select-command-dialog__command-item ${
-                      selectedCommand?.id === command.id ? 'select-command-dialog__command-item--selected' : ''
-                    }`}
-                    onClick={() => handleCommandClick(command)}
-                  >
-                    {command.name}
-                  </div>
-                ))}
+                {group.commands.map((command) => {
+                  const isSelected = selectedCommand?.id === command.id;
+                  return (
+                    <div
+                      key={command.id}
+                      role="option"
+                      aria-selected={isSelected}
+                      data-command-id={command.id}
+                      className={`select-command-dialog__command-item${isSelected ? ' select-command-dialog__command-item--selected' : ''}`}
+                      onClick={() => setSelectedCommand(command)}
+                      onDoubleClick={() => commit(command)}
+                    >
+                      {command.name}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -155,22 +239,29 @@ export function SelectCommandDialog({
 
       {/* Footer */}
       <div className="select-command-dialog__footer">
-        <Button
-          variant="secondary"
-          size="default"
-          onClick={() => {}}
-          disabled={!selectedCommand}
-        >
-          Edit parameters
-        </Button>
-        <Button
-          variant="primary"
-          size="default"
-          onClick={handleAddCommand}
-          disabled={!selectedCommand}
-        >
-          Add command
-        </Button>
+        <span className="select-command-dialog__footer-status">
+          {selectedCommand
+            ? `${selectedCommand.name} · ${selectedCommand.category}`
+            : `${visible.length} of ${commands.length} commands`}
+        </span>
+        <div className="select-command-dialog__footer-actions">
+          <Button
+            variant="secondary"
+            size="default"
+            onClick={() => {}}
+            disabled={!selectedCommand}
+          >
+            Edit parameters
+          </Button>
+          <Button
+            variant="primary"
+            size="default"
+            onClick={() => commit(selectedCommand)}
+            disabled={!selectedCommand}
+          >
+            Add command
+          </Button>
+        </div>
       </div>
     </Dialog>
   );

@@ -117,8 +117,8 @@ export function DebugPanel({
   // Twenty macros overflow the Macro manager list at any dock height; the
   // first one gets twelve steps so the editor's step list overflows too.
   const seedSampleMacros = () => {
-    const selectTracks: Command = { id: 'proto-select-tracks', name: 'Select Tracks', category: 'Selection (prototype)' };
-    const selectTime: Command = { id: 'proto-select-time', name: 'Select Time', category: 'Selection (prototype)' };
+    const selectTracks: Command = { id: 'proto-select-tracks', name: 'Select Tracks', category: 'Selection' };
+    const selectTime: Command = { id: 'proto-select-time', name: 'Select Time', category: 'Selection' };
     const names = [
       'Select track and select time', 'Normalize and export', 'Fade ends', 'MP3 conversion',
       'Trim silence', 'Podcast cleanup', 'Vocal isolate', 'Loudness -16 LUFS', 'Stereo to mono',
