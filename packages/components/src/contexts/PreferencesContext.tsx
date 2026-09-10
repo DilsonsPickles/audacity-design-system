@@ -57,6 +57,16 @@ export interface PreferencesState {
    *    track; explicit modifiers (Shift, Option/Alt) are required to extend
    *    or toggle a non-contiguous selection. */
   trackSelectionMode: 'classic' | 'follows-focus';
+  /** Prototyping toggle: what a plain click on a track's LANE does to
+   *  track selection (2026-09-10 exploration — the rest of the model now
+   *  selects tracks from gestures; the plain lane click is the holdout).
+   *  - 'playhead-only': park playhead + move focus, selection untouched.
+   *  - 'select-track': also select the clicked track exclusively;
+   *    any time selection survives.
+   *  - 'select-and-collapse': clicking a lane INSIDE the current time
+   *    selection's scope only parks the playhead; clicking OUTSIDE it
+   *    selects the clicked track and collapses the time selection. */
+  laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse';
 
   // Spectral Display
   enableSpectralSelection: boolean;
@@ -117,6 +127,7 @@ const defaultPreferences: PreferencesState = {
 
   // Debug
   trackSelectionMode: 'classic',
+  laneClickBehavior: 'playhead-only',
 
   // Spectral Display
   enableSpectralSelection: true,
@@ -161,6 +172,7 @@ const AppearancePrefsContext = createContext<AppearancePrefsValue | undefined>(u
 
 export interface EditingBehaviorPrefsValue {
   trackSelectionMode: PreferencesState['trackSelectionMode'];
+  laneClickBehavior: PreferencesState['laneClickBehavior'];
   updatePreference: PreferencesContextValue['updatePreference'];
 }
 
@@ -231,9 +243,10 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
   const editingBehaviorValue = useMemo<EditingBehaviorPrefsValue>(
     () => ({
       trackSelectionMode: preferences.trackSelectionMode,
+      laneClickBehavior: preferences.laneClickBehavior,
       updatePreference,
     }),
-    [preferences.trackSelectionMode, updatePreference]
+    [preferences.trackSelectionMode, preferences.laneClickBehavior, updatePreference]
   );
 
   return (

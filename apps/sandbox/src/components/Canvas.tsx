@@ -207,7 +207,7 @@ export function Canvas({
   onHoverMidiClip,
 }: CanvasProps) {
   const { theme } = useTheme();
-  const { trackSelectionMode } = useEditingBehaviorPrefs();
+  const { trackSelectionMode, laneClickBehavior } = useEditingBehaviorPrefs();
   const { clipStyle } = useAppearancePrefs();
   const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode, focusedTrackIndex, splitMode, playheadPosition } = useTracksState();
   const { spectralSelection, setSpectralSelection } = useSpectralSelection();
@@ -596,6 +596,8 @@ export function Canvas({
     selectedTrackIndices,
     selectionAnchor,
     setSelectionAnchor,
+    timeSelection,
+    laneClickBehavior,
   });
 
   // Clip and label mouse down handler - extracted to custom hook

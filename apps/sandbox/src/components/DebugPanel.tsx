@@ -63,6 +63,10 @@ export interface DebugPanelProps {
   trackSelectionMode: 'classic' | 'follows-focus';
   onTrackSelectionModeChange: (value: 'classic' | 'follows-focus') => void;
 
+  // Lane click behavior exploration (2026-09-10)
+  laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse';
+  onLaneClickBehaviorChange: (value: 'playhead-only' | 'select-track' | 'select-and-collapse') => void;
+
   // Muse ID — legacy per-service sign-in dialogs (wallet AuthDialog /
   // AdieuAuthDialog). "Continue with Muse ID" is the primary CTA everywhere;
   // this surfaces the pre-Muse-ID entry points too, for regression testing
@@ -101,6 +105,8 @@ export function DebugPanel({
   onShowMixerChange,
   trackSelectionMode,
   onTrackSelectionModeChange,
+  laneClickBehavior,
+  onLaneClickBehaviorChange,
   legacyAuthDialogsEnabled,
   onLegacyAuthDialogsEnabledChange,
 }: DebugPanelProps) {
@@ -533,6 +539,64 @@ export function DebugPanel({
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
                 <strong>Selection follows focus</strong> — plain clicks and arrow keys move focus AND replace selection. Hold <em>Alt</em> on Arrow to peek (focus moves, selection stays). Hold <em>Cmd</em> on Enter to toggle non-contiguously (Cmd+Enter, Cmd+Click on a side-panel header). Shift extends a contiguous range. Cmd+Arrow reorders tracks.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Lane Click Behavior Section — 2026-09-10 exploration: the rest
+            of the selection model now selects tracks from gestures; these
+            options try out what a plain lane click should do. */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Lane Click Behavior
+          </h3>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                value="playhead-only"
+                checked={laneClickBehavior === 'playhead-only'}
+                onChange={(e) => onLaneClickBehaviorChange(e.target.value as 'playhead-only' | 'select-track' | 'select-and-collapse')}
+                style={{ cursor: 'pointer', marginTop: '2px' }}
+              />
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+                <strong>Playhead only</strong> — a plain click on a track's lane parks the playhead and moves focus; track selection is untouched (current behavior).
+              </span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                value="select-track"
+                checked={laneClickBehavior === 'select-track'}
+                onChange={(e) => onLaneClickBehaviorChange(e.target.value as 'playhead-only' | 'select-track' | 'select-and-collapse')}
+                style={{ cursor: 'pointer', marginTop: '2px' }}
+              />
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+                <strong>Select clicked track</strong> — the click also selects that track exclusively. Any time selection survives, so its highlighted rows can diverge from the track selection.
+              </span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                value="select-and-collapse"
+                checked={laneClickBehavior === 'select-and-collapse'}
+                onChange={(e) => onLaneClickBehaviorChange(e.target.value as 'playhead-only' | 'select-track' | 'select-and-collapse')}
+                style={{ cursor: 'pointer', marginTop: '2px' }}
+              />
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+                <strong>Select + collapse</strong> — clicking a lane inside the time selection's rows just parks the playhead; clicking outside them selects that track and collapses the time selection (Audacity 3 feel).
               </span>
             </label>
           </div>

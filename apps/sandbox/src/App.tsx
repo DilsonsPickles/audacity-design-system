@@ -1158,6 +1158,7 @@ function CanvasDemoContent() {
         os={preferences.operatingSystem}
         updatePreference={updatePreference}
         trackSelectionMode={preferences.trackSelectionMode}
+        laneClickBehavior={preferences.laneClickBehavior}
         debugTrackCount={debugTrackCount}
         setDebugTrackCount={setDebugTrackCount}
         showFocusDebug={showFocusDebug}

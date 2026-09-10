@@ -1,6 +1,6 @@
 import React, { MutableRefObject } from 'react';
 import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
-import type { Track, TracksAction } from '../contexts/TracksContext';
+import type { Track, TracksAction, TimeSelection } from '../contexts/TracksContext';
 
 interface ContainerClickConfig {
   containerRef: MutableRefObject<HTMLDivElement | null>;
@@ -16,6 +16,10 @@ interface ContainerClickConfig {
   selectedTrackIndices: number[];
   selectionAnchor: number | null;
   setSelectionAnchor: (anchor: number | null) => void;
+  timeSelection: TimeSelection | null;
+  /** Prototyping toggle (Developer Tools → Lane Click Behavior) for what
+   *  a plain lane click does to track selection — see PreferencesContext. */
+  laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse';
 }
 
 /**
@@ -40,6 +44,8 @@ export function useContainerClick({
   selectedTrackIndices,
   selectionAnchor,
   setSelectionAnchor,
+  timeSelection,
+  laneClickBehavior,
 }: ContainerClickConfig) {
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -115,6 +121,32 @@ export function useContainerClick({
           newSelection.push(i);
         }
         dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      } else if (laneClickBehavior !== 'playhead-only') {
+        // Prototyping toggle (Developer Tools): a plain lane click also
+        // drives track selection. In 'select-and-collapse', clicking a
+        // lane INSIDE the current time selection's scope is "acting
+        // within the selection" — playhead only; clicking OUTSIDE it
+        // selects the clicked track and collapses the range.
+        if (laneClickBehavior === 'select-track') {
+          // Option A: always select what you clicked; any time
+          // selection survives untouched (its scope may now diverge
+          // from the track selection — deliberately visible here).
+          dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
+        } else {
+          // Option B ('select-and-collapse'): clicking inside the
+          // range's scope only parks the playhead; outside it, the
+          // click selects the track and collapses the range.
+          const tsScope = timeSelection
+            ? (timeSelection.tracks ?? selectedTrackIndices)
+            : null;
+          const insideScope = tsScope !== null && tsScope.includes(clickedTrackIndex);
+          if (!insideScope) {
+            if (timeSelection) {
+              dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            }
+            dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
+          }
+        }
       }
 
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: clickedTrackIndex });

@@ -103,6 +103,8 @@ export interface AppDialogsProps {
   updatePreference: <K extends keyof PreferencesState>(key: K, value: PreferencesState[K]) => void;
   // Track selection model (debug-only for now)
   trackSelectionMode: 'classic' | 'follows-focus';
+  // Lane click behavior exploration (debug-only)
+  laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse';
 
   // Debug panel
   debugTrackCount: number;
@@ -163,7 +165,7 @@ export function AppDialogs(props: AppDialogsProps) {
     alertDialogTitle, setAlertDialogTitle, alertDialogMessage, setAlertDialogMessage,
     zoomToggleLevel1, setZoomToggleLevel1, zoomToggleLevel2, setZoomToggleLevel2,
     scrollContainerRef, handleSaveToComputer,
-    os, updatePreference, trackSelectionMode,
+    os, updatePreference, trackSelectionMode, laneClickBehavior,
     debugTrackCount, setDebugTrackCount,
     showFocusDebug, setShowFocusDebug,
     activeProfile, profiles, setProfile,
@@ -1141,6 +1143,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onShowMixerChange={setShowMixer}
         trackSelectionMode={trackSelectionMode}
         onTrackSelectionModeChange={(mode) => updatePreference('trackSelectionMode', mode)}
+        laneClickBehavior={laneClickBehavior}
+        onLaneClickBehaviorChange={(mode) => updatePreference('laneClickBehavior', mode)}
         legacyAuthDialogsEnabled={legacyAuthDialogsEnabled}
         onLegacyAuthDialogsEnabledChange={setLegacyAuthDialogsEnabled}
       />
