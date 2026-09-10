@@ -415,6 +415,15 @@ export function EditorLayout(props: EditorLayoutProps) {
       dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
     } else if (modifiers.metaKey || modifiers.ctrlKey) {
       toggleScopeOrTrackSelection(trackIndex);
+    } else if (state.timeSelection) {
+      // Plain Enter with an active time range: TRANSFER the range to
+      // the focused track — the reducer mirrors the new scope, making
+      // it the only selected track. Idempotent on repeat presses.
+      dispatch({
+        type: 'SET_TIME_SELECTION',
+        payload: { ...state.timeSelection, tracks: [trackIndex] },
+      });
+      setSelectionAnchor(trackIndex);
     } else {
       // Plain Enter: select the track, or deselect if it's
       // already the sole selection (toggle-off).
@@ -428,7 +437,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         selectTrackExclusive(trackIndex, dispatch);
       }
     }
-  }, [selectionAnchor, state.selectedTrackIndices, setSelectionAnchor, dispatch, toggleScopeOrTrackSelection]);
+  }, [selectionAnchor, state.selectedTrackIndices, state.timeSelection, setSelectionAnchor, dispatch, toggleScopeOrTrackSelection]);
 
   const handleShiftTabFromTrack = React.useCallback((trackIndex: number) => {
     const prevIndex = trackIndex - 1;

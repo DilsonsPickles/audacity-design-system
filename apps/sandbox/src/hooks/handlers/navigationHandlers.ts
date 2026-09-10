@@ -249,6 +249,15 @@ export function handleEnterSelection(e: KeyboardEvent, deps: NavigationHandlerDe
           payload: newScope.length > 0 ? { ...ts, tracks: newScope } : null,
         });
       }
+    } else if (state.timeSelection) {
+      // Plain Enter with an active time range: TRANSFER the range to
+      // the focused track — the reducer mirrors the new scope, making
+      // it the only selected track (mirrors handleContainerEnter).
+      dispatch({
+        type: 'SET_TIME_SELECTION',
+        payload: { ...state.timeSelection, tracks: [state.focusedTrackIndex] },
+      });
+      setSelectionAnchor(state.focusedTrackIndex);
     } else {
       // Pressing Enter on a track that's already (exclusively) selected
       // toggles it OFF — same intuition as "Enter selects, Enter again

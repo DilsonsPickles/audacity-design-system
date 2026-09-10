@@ -289,9 +289,20 @@ export function useTrackPanelHandlers(
   };
 
   const onClick = (index: number) => {
+    if (timeSelection) {
+      // Active time range: a plain header click TRANSFERS the range to
+      // the clicked track — the reducer mirrors the new scope, making
+      // it the only selected track. The range itself survives.
+      dispatch({
+        type: 'SET_TIME_SELECTION',
+        payload: { ...timeSelection, tracks: [index] },
+      });
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
+      setSelectionAnchor(index);
+      return;
+    }
     selectTrackExclusive(index, dispatch);
     dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
-    dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     // Anchor the just-clicked track so a subsequent
     // Shift+Enter from another track extends the range
     // from HERE — the user's most recent explicit
