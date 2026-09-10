@@ -158,11 +158,6 @@
   background: var(--macros-list-bg, #ebedf0);
 }
 
-.select-command-dialog__body:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
-}
-
 .select-command-dialog__empty {
   padding: 16px 8px;
   font-family: 'Inter', sans-serif;
@@ -188,75 +183,45 @@
   color: var(--text-secondary, #575861);
 }
 
-/* Commands: white rows on the well with hairlines between them —
-   the same list language as the Macro manager */
+/* Commands: plain rows straight on the well — no card, no hairlines.
+   Hover lifts a row to white; the click is the commitment, so there is
+   no persistent selected state. */
 .select-command-dialog__commands {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--stroke-primary, #d4d5d9);
-  border-radius: 4px;
-  background: var(--macros-row-bg, #ffffff);
-  overflow: hidden;
 }
 
 .select-command-dialog__command-item {
   height: 28px;
-  padding: 0 10px;
+  padding: 0 8px;
   display: flex;
   align-items: center;
+  width: 100%;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
   color: var(--text-primary, #14151a);
+  text-align: left;
   cursor: pointer;
-  border-bottom: 1px solid var(--macros-row-divider, #e4e5e9);
-  transition: background 0.15s ease;
+  transition: background 0.1s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  user-select: none;
-}
-
-.select-command-dialog__command-item:last-child {
-  border-bottom: none;
 }
 
 .select-command-dialog__command-item:hover {
-  background: var(--list-item-bg-hover, #f4f4f6);
+  background: var(--macros-row-bg, #ffffff);
 }
 
-.select-command-dialog__command-item--selected,
-.select-command-dialog__command-item--selected:hover {
+.select-command-dialog__command-item:active {
   background: var(--list-item-bg-active, rgba(103, 124, 228, 0.2));
 }
 
-.select-command-dialog__footer {
-  background: var(--dialog-footer-bg, #f8f8f9);
-  border-top: 1px solid var(--dialog-footer-border, #d4d5d9);
-  height: 48px;
-  padding: 8px 12px 8px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.select-command-dialog__footer-status {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-secondary, #575861);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.select-command-dialog__footer-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+.select-command-dialog__command-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
 }

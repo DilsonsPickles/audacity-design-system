@@ -480,6 +480,14 @@ export function MacroEditorDialog({
         onSelectCommand={(command) => {
           onAddCommand?.(macro.id, command);
           setIsSelectCommandDialogOpen(false);
+          // Picking IS the commitment: if the command has adjustable
+          // parameters, go straight into editing them on the new step
+          // (its index is the current length — the step lands on the
+          // next render, and the parameters dialog waits for it).
+          const schema = getCommandParameters?.(command.name) ?? null;
+          if (schema && schema.length > 0) {
+            setEditingStepIndex(macro.steps.length);
+          }
         }}
         commands={availableCommands}
         os={os}

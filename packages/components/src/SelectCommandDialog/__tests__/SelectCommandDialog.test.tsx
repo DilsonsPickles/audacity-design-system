@@ -26,8 +26,10 @@ const railItems = (container: HTMLElement) =>
   Array.from(container.querySelectorAll<HTMLButtonElement>('.select-command-dialog__rail-item'));
 const railLabel = (el: HTMLElement) => el.querySelector('.select-command-dialog__rail-label')?.textContent;
 const railCount = (el: HTMLElement) => el.querySelector('.select-command-dialog__rail-count')?.textContent;
-const options = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll<HTMLElement>('[role="option"]')).map((el) => el.textContent);
+const rows = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll<HTMLElement>('[data-command-id]')).map((el) => el.textContent);
+const searchInput = (container: HTMLElement) =>
+  container.querySelector<HTMLInputElement>('input[aria-label="Search commands"]')!;
 
 describe('SelectCommandDialog', () => {
   it('lists categories in data order with counts, All first', () => {
@@ -41,22 +43,21 @@ describe('SelectCommandDialog', () => {
     const { container } = renderDialog();
     const headers = Array.from(container.querySelectorAll('.select-command-dialog__group-header')).map((el) => el.textContent);
     expect(headers).toEqual(['Selection', 'Clips', 'Effects']);
-    expect(options(container)).toEqual(['Select all', 'Next clip', 'Split', 'Join selected clips', 'Fade In']);
+    expect(rows(container)).toEqual(['Select all', 'Next clip', 'Split', 'Join selected clips', 'Fade In']);
   });
 
   it('narrows to one category from the rail and drops the headers', () => {
     const { container } = renderDialog();
     fireEvent.click(railItems(container).find((el) => railLabel(el) === 'Clips')!);
-    expect(options(container)).toEqual(['Split', 'Join selected clips']);
+    expect(rows(container)).toEqual(['Split', 'Join selected clips']);
     expect(container.querySelector('.select-command-dialog__group-header')).toBeNull();
   });
 
   it('searches across all categories and updates the rail counts', () => {
     const { container } = renderDialog();
-    const input = container.querySelector<HTMLInputElement>('input[aria-label="Search commands"]')!;
-    fireEvent.change(input, { target: { value: 'sel' } });
+    fireEvent.change(searchInput(container), { target: { value: 'sel' } });
     // "Select all" and "Join selected clips" match
-    expect(options(container)).toEqual(['Select all', 'Join selected clips']);
+    expect(rows(container)).toEqual(['Select all', 'Join selected clips']);
     const items = railItems(container);
     expect(items.map(railCount)).toEqual(['2', '1', '1', '0']);
     // Categories with no hits are disabled
@@ -66,46 +67,44 @@ describe('SelectCommandDialog', () => {
   it('search respects the selected category', () => {
     const { container } = renderDialog();
     fireEvent.click(railItems(container).find((el) => railLabel(el) === 'Selection')!);
-    const input = container.querySelector<HTMLInputElement>('input[aria-label="Search commands"]')!;
-    fireEvent.change(input, { target: { value: 'sel' } });
-    expect(options(container)).toEqual(['Select all']);
+    fireEvent.change(searchInput(container), { target: { value: 'sel' } });
+    expect(rows(container)).toEqual(['Select all']);
   });
 
   it('shows an empty state when nothing matches', () => {
     const { container } = renderDialog();
-    const input = container.querySelector<HTMLInputElement>('input[aria-label="Search commands"]')!;
-    fireEvent.change(input, { target: { value: 'zzz' } });
+    fireEvent.change(searchInput(container), { target: { value: 'zzz' } });
     expect(container.querySelector('.select-command-dialog__empty')?.textContent).toContain('zzz');
   });
 
-  it('adds the highlighted command via the footer button', () => {
+  it('clicking a command picks it and closes', () => {
     const onSelectCommand = vi.fn();
     const onClose = vi.fn();
-    const { container, getByText } = renderDialog({ onSelectCommand, onClose });
+    const { container } = renderDialog({ onSelectCommand, onClose });
     fireEvent.click(container.querySelector('[data-command-id="split"]')!);
-    fireEvent.click(getByText('Add command'));
     expect(onSelectCommand).toHaveBeenCalledWith(COMMANDS[2]);
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('double-clicking a command adds it immediately', () => {
+  it('Enter in the search field picks the first visible match', () => {
     const onSelectCommand = vi.fn();
     const { container } = renderDialog({ onSelectCommand });
-    fireEvent.doubleClick(container.querySelector('[data-command-id="effect:fade-in"]')!);
+    fireEvent.change(searchInput(container), { target: { value: 'fade' } });
+    fireEvent.keyDown(searchInput(container), { key: 'Enter' });
     expect(onSelectCommand).toHaveBeenCalledWith(COMMANDS[4]);
   });
 
-  it('Enter in the search field adds the highlighted command', () => {
+  it('Enter with no matches does nothing', () => {
     const onSelectCommand = vi.fn();
     const { container } = renderDialog({ onSelectCommand });
-    fireEvent.click(container.querySelector('[data-command-id="join"]')!);
-    const input = container.querySelector<HTMLInputElement>('input[aria-label="Search commands"]')!;
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(onSelectCommand).toHaveBeenCalledWith(COMMANDS[3]);
+    fireEvent.change(searchInput(container), { target: { value: 'zzz' } });
+    fireEvent.keyDown(searchInput(container), { key: 'Enter' });
+    expect(onSelectCommand).not.toHaveBeenCalled();
   });
 
-  it('keeps Add command disabled until something is highlighted', () => {
-    const { getByText } = renderDialog();
-    expect((getByText('Add command').closest('button') as HTMLButtonElement).disabled).toBe(true);
+  it('has no footer — picking is the commitment', () => {
+    const { container, queryByText } = renderDialog();
+    expect(queryByText('Add command')).toBeNull();
+    expect(container.querySelector('.select-command-dialog__footer')).toBeNull();
   });
 });

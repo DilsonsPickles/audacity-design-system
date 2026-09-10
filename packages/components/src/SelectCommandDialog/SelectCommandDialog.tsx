@@ -4,14 +4,16 @@
  * Search across everything on top; a category rail on the left (order =
  * first appearance in `commands`, so the data file controls it); the
  * matching commands on the right, grouped under category headers when
- * viewing "All commands". Double-click or Enter adds the highlighted
- * command; the rail's counts follow the search so you can see where the
- * hits are before narrowing.
+ * viewing "All commands". Clicking a command IS the commitment: it
+ * reports the command and closes (the consumer opens the parameters
+ * dialog if the command has any). Enter picks the first visible match,
+ * so "type, Enter" adds a step without touching the mouse. The rail's
+ * counts follow the search so you can see where the hits are before
+ * narrowing.
  */
 
 import React, { useState, useMemo } from 'react';
 import { Dialog } from '../Dialog';
-import { Button } from '../Button';
 import { Icon } from '../Icon';
 import './SelectCommandDialog.css';
 
@@ -31,7 +33,7 @@ export interface SelectCommandDialogProps {
    */
   onClose?: () => void;
   /**
-   * Callback when a command is selected
+   * Callback when a command is picked (the dialog closes itself after)
    */
   onSelectCommand?: (command: Command) => void;
   /**
@@ -58,7 +60,6 @@ export function SelectCommandDialog({
 }: SelectCommandDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES);
-  const [selectedCommand, setSelectedCommand] = useState<Command | null>(null);
 
   // Rail order = first appearance in the data
   const categories = useMemo(() => {
@@ -104,13 +105,11 @@ export function SelectCommandDialog({
   const showGroupHeaders = selectedCategory === ALL_CATEGORIES;
 
   const reset = () => {
-    setSelectedCommand(null);
     setSearchQuery('');
     setSelectedCategory(ALL_CATEGORIES);
   };
 
-  const commit = (command: Command | null) => {
-    if (!command) return;
+  const pick = (command: Command) => {
     onSelectCommand?.(command);
     reset();
     onClose?.();
@@ -121,10 +120,10 @@ export function SelectCommandDialog({
     onClose?.();
   };
 
-  const handleListKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && selectedCommand) {
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && visible.length > 0) {
       e.preventDefault();
-      commit(selectedCommand);
+      pick(visible[0]);
     }
   };
 
@@ -151,7 +150,7 @@ export function SelectCommandDialog({
             placeholder="Search commands"
             aria-label="Search commands"
             autoFocus
-            onKeyDown={handleListKeyDown}
+            onKeyDown={handleSearchKeyDown}
           />
           {searchQuery && (
             <button
@@ -197,13 +196,7 @@ export function SelectCommandDialog({
         </nav>
 
         {/* Command list */}
-        <div
-          className="select-command-dialog__body"
-          role="listbox"
-          aria-label="Commands"
-          tabIndex={0}
-          onKeyDown={handleListKeyDown}
-        >
+        <div className="select-command-dialog__body">
           {groups.length === 0 && (
             <div className="select-command-dialog__empty">
               {query ? `No commands match “${searchQuery.trim()}”` : 'No commands'}
@@ -215,52 +208,20 @@ export function SelectCommandDialog({
                 <div className="select-command-dialog__group-header">{group.category}</div>
               )}
               <div className="select-command-dialog__commands">
-                {group.commands.map((command) => {
-                  const isSelected = selectedCommand?.id === command.id;
-                  return (
-                    <div
-                      key={command.id}
-                      role="option"
-                      aria-selected={isSelected}
-                      data-command-id={command.id}
-                      className={`select-command-dialog__command-item${isSelected ? ' select-command-dialog__command-item--selected' : ''}`}
-                      onClick={() => setSelectedCommand(command)}
-                      onDoubleClick={() => commit(command)}
-                    >
-                      {command.name}
-                    </div>
-                  );
-                })}
+                {group.commands.map((command) => (
+                  <button
+                    key={command.id}
+                    type="button"
+                    data-command-id={command.id}
+                    className="select-command-dialog__command-item"
+                    onClick={() => pick(command)}
+                  >
+                    {command.name}
+                  </button>
+                ))}
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="select-command-dialog__footer">
-        <span className="select-command-dialog__footer-status">
-          {selectedCommand
-            ? `${selectedCommand.name} · ${selectedCommand.category}`
-            : `${visible.length} of ${commands.length} commands`}
-        </span>
-        <div className="select-command-dialog__footer-actions">
-          <Button
-            variant="secondary"
-            size="default"
-            onClick={() => {}}
-            disabled={!selectedCommand}
-          >
-            Edit parameters
-          </Button>
-          <Button
-            variant="primary"
-            size="default"
-            onClick={() => commit(selectedCommand)}
-            disabled={!selectedCommand}
-          >
-            Add command
-          </Button>
         </div>
       </div>
     </Dialog>
