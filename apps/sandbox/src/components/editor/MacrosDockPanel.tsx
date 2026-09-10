@@ -111,7 +111,9 @@ export function MacrosDockPanel() {
     <>
       <MacrosPanel
         macros={macros}
-        onCreateMacro={addMacro}
+        // Creating a macro drops you straight into the editor — the
+        // natural next act after naming it is adding steps.
+        onCreateMacro={(name) => setEditingMacroId(addMacro(name))}
         onImportMacro={handleImportMacro}
         onEditMacro={setEditingMacroId}
         onRenameMacro={renameMacro}

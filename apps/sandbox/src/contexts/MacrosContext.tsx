@@ -8,10 +8,11 @@ export interface MacrosContextValue {
   /** All macros in the project */
   macros: Macro[];
 
-  /** Create an empty macro. (No END terminator step — that's an AU3
+  /** Create an empty macro and return its id (so callers can open it
+   *  straight in the editor). No END terminator step — that's an AU3
    *  file-format artifact; the runner tolerates it on import but the
-   *  editor never shows or creates one.) */
-  addMacro: (name: string) => void;
+   *  editor never shows or creates one. */
+  addMacro: (name: string) => string;
   renameMacro: (macroId: string, newName: string) => void;
   deleteMacro: (macroId: string) => void;
   /** Add an imported macro verbatim (fresh id, name de-duplicated by caller if desired) */
@@ -55,6 +56,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
       steps: [],
     };
     setMacros((prev) => [...prev, newMacro]);
+    return newMacro.id;
   }, []);
 
   const renameMacro = React.useCallback((macroId: string, newName: string) => {
