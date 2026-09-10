@@ -13,18 +13,30 @@
 
 /**
  * Whether the given element is a keyboard-ready focus anchor after a
- * time-selection drag: the `.track` container itself, anything inside a
- * track control panel, or a vertical ruler. A CLIP element does NOT
- * count — clips take native focus when a drag's mousedown lands on
- * their body, but the app-level ArrowUp/Down handler ignores
- * clip-focused targets, so leaving focus there makes arrows dead after
- * a time drag. Canvas's onTimeSelectionFinalized re-parks focus on the
- * focused track's container whenever this returns false.
+ * time-selection drag that focused track `parkIndex` (the row the drag
+ * released on): the `.track` container OF THAT TRACK, anything inside
+ * a track control panel, or a vertical ruler.
+ *
+ * Two things deliberately do NOT count:
+ * - A CLIP element — clips take native focus when the drag's mousedown
+ *   lands on their body, but the app-level ArrowUp/Down handler
+ *   ignores clip-focused targets, so leaving focus there makes arrows
+ *   dead after a time drag.
+ * - A DIFFERENT track's `.track` container — a multi-row drag's
+ *   mousedown natively focuses the container of the row the drag
+ *   STARTED on, while the app focuses the row it RELEASED on; arrow
+ *   keys would then step from the wrong track (or dead-end at an
+ *   edge, e.g. ArrowUp after a track-1-to-track-4 drag).
+ *
+ * Canvas's onTimeSelectionFinalized re-parks focus on track
+ * `parkIndex`'s container whenever this returns false.
  */
-export function isKeyboardReadyFocusAnchor(el: Element | null): boolean {
+export function isKeyboardReadyFocusAnchor(el: Element | null, parkIndex: number): boolean {
   if (!el) return false;
-  return el.classList.contains('track')
-    || el.closest('.track-control-panel, [data-track-ruler-index]') !== null;
+  if (el.classList.contains('track')) {
+    return el.closest('.track-wrapper')?.getAttribute('data-track-index') === String(parkIndex);
+  }
+  return el.closest('.track-control-panel, [data-track-ruler-index]') !== null;
 }
 
 /** All track control panels, in track order (one per `TrackControlPanel`). */

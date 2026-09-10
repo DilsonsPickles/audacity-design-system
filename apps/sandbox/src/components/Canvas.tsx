@@ -527,13 +527,14 @@ export function Canvas({
           // parking on the closure made arrows step from the
           // previously-focused track ("strange ordering").
           requestAnimationFrame(() => {
-            const active = document.activeElement as HTMLElement | null;
-            // A clip focused by the drag's mousedown is NOT a keyboard-
-            // ready anchor (arrows would go dead) — re-park it on the
-            // focused track's container. See isKeyboardReadyFocusAnchor.
-            if (isKeyboardReadyFocusAnchor(active)) return;
             const parkIndex = parkTrackIndexRef.current;
             if (parkIndex === null) return;
+            const active = document.activeElement as HTMLElement | null;
+            // A clip, or the WRONG track's container (a multi-row
+            // drag's mousedown focuses the row it STARTED on), is not
+            // a keyboard-ready anchor — re-park on the released row's
+            // container. See isKeyboardReadyFocusAnchor.
+            if (isKeyboardReadyFocusAnchor(active, parkIndex)) return;
             const trackEl = document.querySelector<HTMLElement>(
               `.track-wrapper[data-track-index="${parkIndex}"] .track`,
             );
