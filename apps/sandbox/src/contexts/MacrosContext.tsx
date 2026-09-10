@@ -51,7 +51,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
 
   const addMacro = React.useCallback((name: string) => {
     const newMacro: Macro = {
-      id: `macro-${Date.now()}`,
+      id: `macro-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
       steps: [],
     };
@@ -70,7 +70,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
 
   const importMacro = React.useCallback((macro: Pick<Macro, 'name' | 'steps'>) => {
     const newMacro: Macro = {
-      id: `macro-${Date.now()}`,
+      id: `macro-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: macro.name,
       // Strip AU3-style END terminator steps — they're a file-format
       // artifact, not a command the editor shows.

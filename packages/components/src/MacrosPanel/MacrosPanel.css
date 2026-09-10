@@ -55,12 +55,15 @@
   line-height: 0;
 }
 
+/* List well uses the Preferences modal's secondary grey (#ebedf0) so the
+   white rows read against it; the empty area below the rows is the well. */
 .macros-panel__list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  background: var(--macros-list-bg, #ebedf0);
 }
 
 .macros-panel__empty {

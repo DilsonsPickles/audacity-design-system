@@ -9,6 +9,8 @@
  */
 
 import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@audacity-ui/components';
+import type { Command } from '@audacity-ui/components';
+import { useMacros } from '../contexts/MacrosContext';
 
 export interface DebugPanelProps {
   isOpen: boolean;
@@ -110,6 +112,36 @@ export function DebugPanel({
   legacyAuthDialogsEnabled,
   onLegacyAuthDialogsEnabledChange,
 }: DebugPanelProps) {
+  const { macros, addMacro, addCommandToMacro, deleteMacro } = useMacros();
+
+  // Twenty macros overflow the Macro manager list at any dock height; the
+  // first one gets twelve steps so the editor's step list overflows too.
+  const seedSampleMacros = () => {
+    const selectTracks: Command = { id: 'proto-select-tracks', name: 'Select Tracks', category: 'Selection (prototype)' };
+    const selectTime: Command = { id: 'proto-select-time', name: 'Select Time', category: 'Selection (prototype)' };
+    const names = [
+      'Select track and select time', 'Normalize and export', 'Fade ends', 'MP3 conversion',
+      'Trim silence', 'Podcast cleanup', 'Vocal isolate', 'Loudness -16 LUFS', 'Stereo to mono',
+      'Noise gate pass', 'Add 2s tail', 'Batch resample 48k', 'Compress dialogue', 'Reverse all',
+      'Mark chapters', 'Hard limit -1 dB', 'De-ess', 'High-pass 80 Hz', 'Split at silences', 'Export stems',
+    ];
+    names.forEach((name, i) => {
+      const id = addMacro(name);
+      const stepCount = i === 0 ? 12 : 2;
+      for (let s = 0; s < stepCount; s++) {
+        const command = s % 2 === 0 ? selectTracks : selectTime;
+        const parameters = s % 2 === 0
+          ? `Track="${s}", TrackCount="1", Mode="Set"`
+          : `Start="${s * 1.5}", End="${s * 1.5 + 3}"`;
+        addCommandToMacro(id, command, parameters);
+      }
+    });
+  };
+
+  const clearAllMacros = () => {
+    macros.forEach((m) => deleteMacro(m.id));
+  };
+
   return (
     <Dialog
       isOpen={isOpen}
@@ -497,6 +529,30 @@ export function DebugPanel({
                 Missing Plugins Modal
               </Button>
             </div>
+          </div>
+        </div>
+
+        {/* Macros Section — seeds enough macros/steps to overflow the
+            Macro manager list and the editor's step list, for checking
+            scrollbar placement and dense-list styling. */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Macros
+          </h3>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button variant="secondary" size="default" onClick={seedSampleMacros}>
+              Seed 20 Sample Macros
+            </Button>
+            <Button variant="secondary" size="default" onClick={clearAllMacros}>
+              Delete All Macros
+            </Button>
           </div>
         </div>
 
