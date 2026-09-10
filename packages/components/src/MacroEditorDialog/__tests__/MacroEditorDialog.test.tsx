@@ -75,10 +75,12 @@ describe('MacroEditorDialog', () => {
     expect(onExportMacro).toHaveBeenCalledWith('m1');
   });
 
-  it('deletes a step via its row trash button', () => {
+  it('deletes a step via its row menu', () => {
     const onDeleteStep = vi.fn();
     const { container } = renderEditor({ onDeleteStep });
-    fireEvent.click(container.querySelector('button[aria-label="Delete step 2"]')!);
+    fireEvent.click(container.querySelector('button[aria-label="Step 2 options"]')!);
+    const deleteItem = contextMenuItems(container).find((el) => el.textContent?.includes('Delete step'));
+    fireEvent.click(deleteItem!);
     expect(onDeleteStep).toHaveBeenCalledWith('m1', 1);
   });
 

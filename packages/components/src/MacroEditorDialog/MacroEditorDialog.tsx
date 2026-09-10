@@ -183,12 +183,6 @@ function StepRow({
             onClick={onEdit}
           />
           <GhostButton
-            icon="trash"
-            size="medium"
-            ariaLabel={`Delete step ${index + 1}`}
-            onClick={onDelete}
-          />
-          <GhostButton
             icon="menu"
             size="medium"
             ariaLabel={`Step ${index + 1} options`}
@@ -218,6 +212,14 @@ function StepRow({
           onClick={() => {
             setMenuOpen(false);
             if (index < stepCount - 1) onMove(1);
+          }}
+        />
+        <ContextMenuItem isDivider label="" />
+        <ContextMenuItem
+          label="Delete step"
+          onClick={() => {
+            setMenuOpen(false);
+            onDelete?.();
           }}
         />
       </ContextMenu>
