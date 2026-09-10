@@ -97,6 +97,15 @@ export interface DialogProps {
    * @default false
    */
   customLayout?: boolean;
+  /**
+   * Non-modal window mode: the app behind stays fully interactive.
+   * Same dialog chrome (header, drag, resize), but the overlay passes
+   * pointer events through, there is no focus trap or body scroll
+   * lock, Escape only closes when focus is inside the window, and it
+   * stacks below true modals (which still open on top of it).
+   * @default false
+   */
+  nonModal?: boolean;
 }
 
 /**
@@ -122,6 +131,7 @@ export function Dialog({
   style: externalStyle,
   minHeight,
   customLayout = false,
+  nonModal = false,
 }: DialogProps) {
   const { theme } = useTheme();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -145,8 +155,9 @@ export function Dialog({
     startPosY: number;
   } | null>(null);
 
-  // Enable focus trap when dialog is open
-  useFocusTrap(dialogRef, isOpen);
+  // Enable focus trap when dialog is open (never for non-modal
+  // windows — the app behind must stay keyboard-reachable)
+  useFocusTrap(dialogRef, isOpen && !nonModal);
 
   // Handle click outside
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -172,6 +183,9 @@ export function Dialog({
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || !onClose) return;
+      // Non-modal window: Escape belongs to the app (clear selection
+      // etc.) unless focus is inside this window.
+      if (nonModal && !dialogRef.current?.contains(document.activeElement)) return;
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -180,20 +194,21 @@ export function Dialog({
 
     document.addEventListener('keydown', handleEscape, true);
     return () => document.removeEventListener('keydown', handleEscape, true);
-  }, [isOpen, closeOnEscape, onClose]);
+  }, [isOpen, closeOnEscape, onClose, nonModal]);
 
-  // Prevent body scroll when dialog is open
+  // Prevent body scroll when dialog is open (modal only — a non-modal
+  // window leaves the app scrollable)
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !nonModal) {
       document.body.style.overflow = 'hidden';
-    } else {
+    } else if (!nonModal) {
       document.body.style.overflow = '';
     }
 
     return () => {
-      document.body.style.overflow = '';
+      if (!nonModal) document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, nonModal]);
 
   // Initialize dialog size from width prop
   useEffect(() => {
@@ -370,13 +385,16 @@ export function Dialog({
   const dialogStyle = { ...baseStyle, ...externalStyle };
 
   return (
-    <div className="dialog-overlay" onClick={handleOverlayClick}>
+    <div
+      className={`dialog-overlay${nonModal ? ' dialog-overlay--non-modal' : ''}`}
+      onClick={nonModal ? undefined : handleOverlayClick}
+    >
       <div
         ref={dialogRef}
         className={dialogClasses}
         style={dialogStyle}
         role="dialog"
-        aria-modal="true"
+        aria-modal={nonModal ? 'false' : 'true'}
         aria-labelledby="dialog-title"
       >
         {/* Resize handles */}

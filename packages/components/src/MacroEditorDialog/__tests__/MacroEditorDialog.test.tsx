@@ -196,3 +196,24 @@ describe('MacroEditorDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe('MacroEditorDialog — non-modal window with Run (2026-09-10)', () => {
+  it('renders as a non-modal window so the app behind stays interactive', () => {
+    const { container } = renderEditor();
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog?.getAttribute('aria-modal')).toBe('false');
+    expect(container.querySelector('.dialog-overlay--non-modal')).not.toBeNull();
+  });
+
+  it('footer Run executes the macro on the project via onRun', () => {
+    const onRun = vi.fn();
+    const { getByText } = renderEditor({ onRun });
+    fireEvent.click(getByText('Run'));
+    expect(onRun).toHaveBeenCalledWith('m1');
+  });
+
+  it('renders no Run button when onRun is not provided', () => {
+    const { queryByText } = renderEditor();
+    expect(queryByText('Run')).toBeNull();
+  });
+});

@@ -27,6 +27,10 @@ export interface MacroEditorDialogProps {
   onDeleteMacro?: (macroId: string) => void;
   /** Called when the header's Export macro button is clicked */
   onExportMacro?: (macroId: string) => void;
+  /** Called when the footer's Run button is clicked — runs the macro on
+   *  the current project. The editor is a NON-MODAL window so the
+   *  timeline stays visible and interactive: edit, run, watch, tweak. */
+  onRun?: (macroId: string) => void;
   /** Called when a command is added as a new step via "New step" */
   onAddCommand?: (macroId: string, command: Command) => void;
   /** Called when a step's parameters are edited via the row pencil */
@@ -223,8 +227,10 @@ function StepRow({
  * MacroEditorDialog — floating editor for a single macro. Owns macro-level
  * actions (rename / delete / export) plus the step list: add, edit
  * parameters, delete, and reorder (drag handle, or the row menu's Move
- * up/down). Running a macro is deliberately NOT offered here — that's the
- * MacrosPanel's job. All edits apply live (auto-save); Done just closes.
+ * up/down). A NON-MODAL window (2026-09-10): the app behind stays
+ * interactive, and the footer's Run button executes the macro on the
+ * project so you can test as you edit. All edits apply live
+ * (auto-save); Done just closes. Run-on-files stays in the MacrosPanel.
  */
 export function MacroEditorDialog({
   isOpen,
@@ -233,6 +239,7 @@ export function MacroEditorDialog({
   onRenameMacro,
   onDeleteMacro,
   onExportMacro,
+  onRun,
   onAddCommand,
   onEditStep,
   onDeleteStep,
@@ -349,6 +356,8 @@ export function MacroEditorDialog({
         title="Edit macro"
         onClose={onClose}
         os={os}
+        nonModal
+        closeOnClickOutside={false}
         width={680}
         // 480px tall by default, but yield to short viewports — the Dialog's
         // own max-height (100vh - 32px) would otherwise lose to min-height
@@ -419,6 +428,16 @@ export function MacroEditorDialog({
         </div>
 
         <div className="macro-editor__footer">
+          {onRun && (
+            <Button
+              variant="primary"
+              size="default"
+              className="macro-editor__run"
+              onClick={() => onRun(macro.id)}
+            >
+              Run
+            </Button>
+          )}
           <Button variant="secondary" size="default" onClick={onClose}>
             Done
           </Button>

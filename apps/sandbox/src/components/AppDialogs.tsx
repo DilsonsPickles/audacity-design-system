@@ -13,6 +13,7 @@ import { availableCommands } from '../data/commands';
 import { getCommandParameters, getDefaultParameters } from '../data/commandParameters';
 import { useDialogs } from '../contexts/DialogContext';
 import { useMacros } from '../contexts/MacrosContext';
+import { useMacroRunner } from '../hooks/useMacroRunner';
 import { exportMacroFile } from '../utils/macroFile';
 import { MuseIdAccountsPage } from './museid/MuseIdAccountsPage';
 import { useContextMenus } from '../contexts/ContextMenuContext';
@@ -130,6 +131,7 @@ export function AppDialogs(props: AppDialogsProps) {
   const { loopRegionEnabled, loopRegionStart, loopRegionEnd } = useLoopRegionContext();
   const dialogs = useDialogs();
   const macrosCtx = useMacros();
+  const { runOnProject: runMacroOnProject } = useMacroRunner();
   const { effectDialog, setEffectDialog, effectContextMenu, setEffectContextMenu } = useContextMenus();
   const {
     signedIn: adieuSignedIn,
@@ -699,12 +701,13 @@ export function AppDialogs(props: AppDialogsProps) {
         os={os}
       />
 
-      {/* Macro Editor Dialog — floating editor for the macro opened from
-          the docked Macros panel */}
+      {/* Macro Editor — NON-MODAL window (test as you edit: the timeline
+          stays interactive and Run executes on the project) */}
       <MacroEditorDialog
         isOpen={macrosCtx.editingMacroId !== null}
         macro={macrosCtx.macros.find((m) => m.id === macrosCtx.editingMacroId) ?? null}
         onClose={() => macrosCtx.setEditingMacroId(null)}
+        onRun={runMacroOnProject}
         onRenameMacro={macrosCtx.renameMacro}
         onDeleteMacro={macrosCtx.deleteMacro}
         onExportMacro={(macroId) => {

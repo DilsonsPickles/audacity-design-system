@@ -1,8 +1,7 @@
 import { MacrosPanel, toast, useGeneralPrefs, type Macro } from '@audacity-ui/components';
 import { useMacros } from '../../contexts/MacrosContext';
-import { useTracks } from '../../contexts/TracksContext';
 import { exportMacroFile } from '../../utils/macroFile';
-import { runMacroSteps } from '../../macros/macroActions';
+import { useMacroRunner } from '../../hooks/useMacroRunner';
 
 /** Type guard for the shape written by handleExportMacro. */
 function isImportedMacro(value: unknown): value is Pick<Macro, 'name' | 'steps'> {
@@ -33,7 +32,7 @@ export function MacrosDockPanel() {
     macros, addMacro, renameMacro, deleteMacro, importMacro, setEditingMacroId,
   } = useMacros();
   const { operatingSystem } = useGeneralPrefs();
-  const { state, dispatch } = useTracks();
+  const { runOnProject } = useMacroRunner();
 
   const handleImportMacro = () => {
     const input = document.createElement('input');
@@ -66,20 +65,6 @@ export function MacrosDockPanel() {
     if (macro) exportMacroFile(macro);
   };
 
-  const handleRunOnProject = (macroId: string) => {
-    const macro = macros.find((m) => m.id === macroId);
-    if (!macro) return;
-    const { applied, simulated } = runMacroSteps(macro, state, dispatch);
-    if (applied.length === 0 && simulated.length === 0) {
-      toast.info(`"${macro.name}" has no steps`, 'Add commands in the macro editor first.');
-      return;
-    }
-    const parts = [];
-    if (applied.length > 0) parts.push(`${applied.length} step${applied.length === 1 ? '' : 's'} applied`);
-    if (simulated.length > 0) parts.push(`${simulated.length} simulated (${simulated.join(', ')})`);
-    toast.success(`Ran "${macro.name}"`, `${parts.join('; ')}.`);
-  };
-
   const runToast = (macroId: string, target: string) => {
     const macro = macros.find((m) => m.id === macroId);
     if (!macro) return;
@@ -95,7 +80,7 @@ export function MacrosDockPanel() {
       onRenameMacro={renameMacro}
       onDeleteMacro={deleteMacro}
       onExportMacro={handleExportMacro}
-      onRunOnProject={handleRunOnProject}
+      onRunOnProject={runOnProject}
       onRunOnFiles={(id) => runToast(id, 'selected files')}
       os={operatingSystem}
     />

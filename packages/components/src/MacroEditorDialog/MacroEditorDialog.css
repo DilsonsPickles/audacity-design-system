@@ -157,6 +157,12 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-shrink: 0;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Run sits at the far left of the footer — test-as-you-go action,
+   separated from Done (close) on the right */
+.macro-editor__run {
+  margin-right: auto;
 }
