@@ -544,9 +544,12 @@ export function DebugPanel({
           </div>
         </div>
 
-        {/* Lane Click Behavior Section — 2026-09-10 exploration: the rest
-            of the selection model now selects tracks from gestures; these
-            options try out what a plain lane click should do. */}
+        {/* Lane Click Behavior Section — decided 2026-09-10:
+            'select-and-collapse' is the default ("one selection: every
+            gesture works inside it or replaces it"). The alternatives are
+            KEPT deliberately — they showcase the behavior and demonstrate
+            why the rejected options don't work (e.g. 'select-track' lets
+            the highlight and the range disagree). Don't remove them. */}
         <div>
           <h3 style={{
             fontFamily: 'Inter, sans-serif',
@@ -572,7 +575,7 @@ export function DebugPanel({
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
-                <strong>Playhead only</strong> — a plain click on a track's lane parks the playhead and moves focus; track selection is untouched (current behavior).
+                <strong>Playhead only</strong> — a plain click on a track's lane parks the playhead and moves focus; track selection is untouched.
               </span>
             </label>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
@@ -596,7 +599,7 @@ export function DebugPanel({
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
-                <strong>Select + collapse</strong> — clicking a lane inside the time selection's rows just parks the playhead; clicking outside them selects that track and collapses the time selection (Audacity 3 feel).
+                <strong>Select + collapse</strong> (default) — clicking a lane inside the time selection's rows just parks the playhead; clicking outside them selects that track and collapses the time selection (Audacity 3 feel).
               </span>
             </label>
           </div>

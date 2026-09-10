@@ -127,7 +127,12 @@ const defaultPreferences: PreferencesState = {
 
   // Debug
   trackSelectionMode: 'classic',
-  laneClickBehavior: 'playhead-only',
+  // 'select-and-collapse' won the 2026-09-10 lane-click exploration: a
+  // plain lane click inside the selection's rows parks the playhead;
+  // outside them it selects the clicked track and collapses the range
+  // ("one selection: every gesture works inside it or replaces it").
+  // The other options stay available in Developer Tools.
+  laneClickBehavior: 'select-and-collapse',
 
   // Spectral Display
   enableSpectralSelection: true,
