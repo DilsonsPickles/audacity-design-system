@@ -8,7 +8,7 @@ import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers
 import { handleDelete } from './handlers/deleteHandlers';
 import { handleSpacebar, handlePlaySelection, handlePlayToCursor, handlePlayStopSetCursor, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
-import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
+import { handlePlayheadMove, handleEscape, handleDeleteTimeRange, handleSetSelectionBoundary } from './handlers/playheadSelectionHandlers';
 import { scrollPlayheadIntoView } from '../utils/scrollPlayheadIntoView';
 import { handleTrackCreation } from './handlers/trackCreationHandlers';
 import { handleEffectsKey } from './handlers/effectsPanelHandlers';
@@ -663,6 +663,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: targetTime });
         scrollPlayheadIntoView();
+        return;
+      }
+
+      // --- [ / ] : set selection left / right boundary at the playhead ---
+      // Audacity 3's Selection: Set Left/Right Boundary. Bare keys only —
+      // Cmd+[ / Cmd+] belong to the browser (history nav).
+      if ((e.key === '[' || e.key === ']') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        if (e.defaultPrevented) return;
+        e.preventDefault();
+        handleSetSelectionBoundary(e.key === '[' ? 'left' : 'right', playheadDeps);
         return;
       }
 

@@ -103,6 +103,55 @@ export function handlePlayheadMove(
   }
 }
 
+/**
+ * [ and ] — set the selection's left / right boundary at the playhead
+ * (Audacity 3's Selection: Set Left/Right Boundary shortcuts).
+ *
+ * A pure time-edge edit: the range's row scope is untouched (an
+ * "inside" gesture under the one-selection model). If setting an edge
+ * would cross the other one, the edges swap rather than clamp. With no
+ * selection at all, creates a zero-width range at the playhead so
+ * `[` … play … `]` builds a selection from the keyboard alone; the
+ * fresh range inherits the built track selection as its scope
+ * (falling back to the focused track), matching Shift+Arrow.
+ */
+export function handleSetSelectionBoundary(
+  edge: 'left' | 'right',
+  deps: PlayheadSelectionHandlerDeps,
+): void {
+  const { state, dispatch, selectionEdgesRef } = deps;
+  const p = state.playheadPosition;
+
+  const ts = state.timeSelection;
+  let startTime: number;
+  let endTime: number;
+  if (!ts) {
+    startTime = p;
+    endTime = p;
+  } else if (edge === 'left') {
+    // New left edge at the playhead; past the right edge, swap.
+    startTime = Math.min(p, ts.endTime);
+    endTime = Math.max(p, ts.endTime);
+  } else {
+    startTime = Math.min(ts.startTime, p);
+    endTime = Math.max(ts.startTime, p);
+  }
+
+  selectionEdgesRef.current = { startTime, endTime };
+  dispatch({
+    type: 'SET_TIME_SELECTION',
+    payload: {
+      ...(ts ?? {}),
+      startTime,
+      endTime,
+      tracks: ts?.tracks
+        ?? (state.selectedTrackIndices.length > 0
+          ? state.selectedTrackIndices
+          : state.focusedTrackIndex != null ? [state.focusedTrackIndex] : undefined),
+    },
+  });
+}
+
 /** Escape: clear time selection */
 export function handleEscape(deps: PlayheadSelectionHandlerDeps): void {
   const { dispatch, selectionAnchorRef, selectionEdgesRef } = deps;

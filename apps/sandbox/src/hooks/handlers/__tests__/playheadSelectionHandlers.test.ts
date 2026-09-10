@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { handlePlayheadMove } from '../playheadSelectionHandlers';
+import { handlePlayheadMove, handleSetSelectionBoundary } from '../playheadSelectionHandlers';
 import { initialState, type TracksState } from '../../../contexts/TracksContext';
 
 const makeState = (o: Partial<TracksState> = {}): TracksState =>
@@ -74,5 +74,62 @@ describe('handlePlayheadMove — scope stamping', () => {
     expect(payload.tracks).toEqual([1]);
     const types = (deps.dispatch as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0].type);
     expect(types).not.toContain('SET_SELECTED_TRACKS');
+  });
+});
+
+describe('handleSetSelectionBoundary — [ and ] set edges at the playhead', () => {
+  const twoTracks = () => [
+    { id: 1, name: 't1', clips: [] },
+    { id: 2, name: 't2', clips: [] },
+  ] as TracksState['tracks'];
+
+  it('] extends the right edge to a playhead beyond it, keeping the scope', () => {
+    const state = makeState({
+      tracks: twoTracks(),
+      playheadPosition: 8,
+      timeSelection: { startTime: 2, endTime: 5, tracks: [0, 1] },
+    });
+    const deps = makeDeps(state);
+    handleSetSelectionBoundary('right', deps);
+    const [payload] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
+    expect(payload).toMatchObject({ startTime: 2, endTime: 8, tracks: [0, 1] });
+  });
+
+  it('] with the playhead inside the range shrinks from the right', () => {
+    const state = makeState({
+      tracks: twoTracks(),
+      playheadPosition: 4,
+      timeSelection: { startTime: 2, endTime: 5, tracks: [0] },
+    });
+    const deps = makeDeps(state);
+    handleSetSelectionBoundary('right', deps);
+    const [payload] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
+    expect(payload).toMatchObject({ startTime: 2, endTime: 4 });
+  });
+
+  it('[ past the right edge swaps the edges instead of clamping', () => {
+    const state = makeState({
+      tracks: twoTracks(),
+      playheadPosition: 9,
+      timeSelection: { startTime: 2, endTime: 5, tracks: [1] },
+    });
+    const deps = makeDeps(state);
+    handleSetSelectionBoundary('left', deps);
+    const [payload] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
+    expect(payload).toMatchObject({ startTime: 5, endTime: 9, tracks: [1] });
+  });
+
+  it('with no selection, creates a zero-width range at the playhead seeded from the track selection', () => {
+    const state = makeState({
+      tracks: twoTracks(),
+      playheadPosition: 3,
+      selectedTrackIndices: [0, 1],
+      timeSelection: null,
+    });
+    const deps = makeDeps(state);
+    handleSetSelectionBoundary('left', deps);
+    const [payload] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
+    expect(payload).toMatchObject({ startTime: 3, endTime: 3, tracks: [0, 1] });
+    expect(deps.selectionEdgesRef.current).toEqual({ startTime: 3, endTime: 3 });
   });
 });
