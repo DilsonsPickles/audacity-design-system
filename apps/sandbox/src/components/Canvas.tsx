@@ -11,6 +11,7 @@ import { useClipStretching } from '../hooks/useClipStretching';
 import { useLabelDragging } from '../hooks/useLabelDragging';
 import { useClipMouseDown } from '../hooks/useClipMouseDown';
 import { useContainerClick } from '../hooks/useContainerClick';
+import { isKeyboardReadyFocusAnchor } from '../utils/focusRouting';
 import { useMarqueeSelection } from '../hooks/useMarqueeSelection';
 import { useSplitTool } from '../hooks/useSplitTool';
 import { useCmdArrowMove } from '../hooks/useCmdArrowMove';
@@ -513,9 +514,10 @@ export function Canvas({
           // body, which sends Tab off to unrelated toolbar controls.
           requestAnimationFrame(() => {
             const active = document.activeElement as HTMLElement | null;
-            const alreadyInTracks = active
-              && active.closest('.track-wrapper, .track-control-panel, [data-track-ruler-index]');
-            if (alreadyInTracks) return;
+            // A clip focused by the drag's mousedown is NOT a keyboard-
+            // ready anchor (arrows would go dead) — re-park it on the
+            // focused track's container. See isKeyboardReadyFocusAnchor.
+            if (isKeyboardReadyFocusAnchor(active)) return;
             if (focusedTrackIndex === null || focusedTrackIndex === undefined) return;
             const trackEl = document.querySelector<HTMLElement>(
               `.track-wrapper[data-track-index="${focusedTrackIndex}"] .track`,

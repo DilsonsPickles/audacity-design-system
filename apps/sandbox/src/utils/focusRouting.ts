@@ -11,6 +11,22 @@
  * exactly where each one was extracted from.
  */
 
+/**
+ * Whether the given element is a keyboard-ready focus anchor after a
+ * time-selection drag: the `.track` container itself, anything inside a
+ * track control panel, or a vertical ruler. A CLIP element does NOT
+ * count — clips take native focus when a drag's mousedown lands on
+ * their body, but the app-level ArrowUp/Down handler ignores
+ * clip-focused targets, so leaving focus there makes arrows dead after
+ * a time drag. Canvas's onTimeSelectionFinalized re-parks focus on the
+ * focused track's container whenever this returns false.
+ */
+export function isKeyboardReadyFocusAnchor(el: Element | null): boolean {
+  if (!el) return false;
+  return el.classList.contains('track')
+    || el.closest('.track-control-panel, [data-track-ruler-index]') !== null;
+}
+
 /** All track control panels, in track order (one per `TrackControlPanel`). */
 function queryTrackControlPanels(root: ParentNode): NodeListOf<HTMLElement> {
   return root.querySelectorAll<HTMLElement>('[aria-label*="track controls"]');
