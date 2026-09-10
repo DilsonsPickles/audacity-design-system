@@ -7,6 +7,8 @@ import './SplitButton.css';
 export interface SplitButtonProps {
   /** Primary segment icon */
   icon: IconName;
+  /** Optional primary segment label, shown next to the icon */
+  label?: string;
   /** Primary segment accessible label */
   ariaLabel: string;
   /** Primary segment action */
@@ -32,6 +34,7 @@ export interface SplitButtonProps {
  */
 export function SplitButton({
   icon,
+  label,
   ariaLabel,
   onClick,
   menuAriaLabel,
@@ -47,7 +50,7 @@ export function SplitButton({
 
   return (
     <div className={`split-button ${className}`} style={style} role="group" aria-label={ariaLabel}>
-      <GhostButton icon={icon} size={size} ariaLabel={ariaLabel} onClick={onClick} />
+      <GhostButton icon={icon} label={label} size={size} ariaLabel={ariaLabel} onClick={onClick} />
       <span className="split-button__divider" aria-hidden="true" />
       <GhostButton
         icon="caret-down"

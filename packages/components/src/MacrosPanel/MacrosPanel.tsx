@@ -122,6 +122,7 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
         >
           <SplitButton
             icon="play"
+            label="Run"
             size="medium"
             ariaLabel={`Run ${macro.name} on current project`}
             onClick={onRunOnProject}
