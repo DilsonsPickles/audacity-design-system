@@ -14,6 +14,7 @@ import { getCommandParameters, getDefaultParameters } from '../data/commandParam
 import { useDialogs } from '../contexts/DialogContext';
 import { useMacros } from '../contexts/MacrosContext';
 import { useMacroRunner } from '../hooks/useMacroRunner';
+import { useRunMacroOnFiles } from '../hooks/useRunMacroOnFiles';
 import { exportMacroFile } from '../utils/macroFile';
 import { MuseIdAccountsPage } from './museid/MuseIdAccountsPage';
 import { useContextMenus } from '../contexts/ContextMenuContext';
@@ -132,6 +133,7 @@ export function AppDialogs(props: AppDialogsProps) {
   const dialogs = useDialogs();
   const macrosCtx = useMacros();
   const { runOnProject: runMacroOnProject } = useMacroRunner();
+  const { openRunOnFiles: runMacroOnFiles, runOnFilesDialog: macroRunOnFilesDialog } = useRunMacroOnFiles();
   const { effectDialog, setEffectDialog, effectContextMenu, setEffectContextMenu } = useContextMenus();
   const {
     signedIn: adieuSignedIn,
@@ -708,6 +710,7 @@ export function AppDialogs(props: AppDialogsProps) {
         macro={macrosCtx.macros.find((m) => m.id === macrosCtx.editingMacroId) ?? null}
         onClose={() => macrosCtx.setEditingMacroId(null)}
         onRun={runMacroOnProject}
+        onRunFiles={runMacroOnFiles}
         onRenameMacro={macrosCtx.renameMacro}
         onDeleteMacro={macrosCtx.deleteMacro}
         onExportMacro={(macroId) => {
@@ -725,6 +728,8 @@ export function AppDialogs(props: AppDialogsProps) {
         availableCommands={availableCommands}
         os={os}
       />
+      {/* Batch progress window for the editor's "Apply to files…" */}
+      {macroRunOnFilesDialog}
 
       {/* Audio Setup Context Menu */}
       {audioSetupMenuAnchor && (

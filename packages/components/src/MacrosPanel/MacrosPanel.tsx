@@ -53,7 +53,8 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
   const [runMenuOpen, setRunMenuOpen] = React.useState(false);
   const [runMenuPosition, setRunMenuPosition] = React.useState({ x: 0, y: 0 });
 
-  const handleRunMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleRunMenuClick = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (!e) return;
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     setRunMenuPosition({ x: rect.right, y: rect.bottom });
@@ -121,14 +122,13 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
           onKeyDown={(e) => e.stopPropagation()}
         >
           <SplitButton
-            icon="play"
             label="Run"
-            size="medium"
+            variant="secondary"
+            size="small"
             ariaLabel={`Run ${macro.name} on current project`}
             onClick={onRunOnProject}
             menuAriaLabel={`Run ${macro.name} options`}
             onMenuClick={handleRunMenuClick}
-            menuActive={runMenuOpen}
           />
           <GhostButton
             icon="menu"

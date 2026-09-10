@@ -51,6 +51,8 @@ export interface ButtonProps {
    * Keyboard event handler
    */
   onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
+  /** Accessible name override (aria-label) */
+  ariaLabel?: string;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
@@ -65,6 +67,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   type = 'button',
   tabIndex,
   onKeyDown,
+  ariaLabel,
 }, ref) => {
   const { theme } = useTheme();
 
@@ -90,6 +93,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
       disabled={disabled}
       tabIndex={tabIndex}
       onKeyDown={onKeyDown}
+      aria-label={ariaLabel}
       style={style}
     >
       {showIcon && icon && (

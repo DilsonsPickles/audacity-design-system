@@ -6,6 +6,7 @@ import { GhostButton } from '../GhostButton';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
+import { SplitButton } from '../SplitButton';
 import { SelectCommandDialog, Command } from '../SelectCommandDialog';
 import { CommandParametersDialog, type CommandParameter } from '../CommandParametersDialog';
 import { RenameMacroDialog } from '../MacroManager/MacroDialogs';
@@ -31,6 +32,8 @@ export interface MacroEditorDialogProps {
    *  the current project. The editor is a NON-MODAL window so the
    *  timeline stays visible and interactive: edit, run, watch, tweak. */
   onRun?: (macroId: string) => void;
+  /** Called from the Run split button's caret menu ("Apply to files…") */
+  onRunFiles?: (macroId: string) => void;
   /** Called when a command is added as a new step via "New step" */
   onAddCommand?: (macroId: string, command: Command) => void;
   /** Called when a step's parameters are edited via the row pencil */
@@ -240,6 +243,7 @@ export function MacroEditorDialog({
   onDeleteMacro,
   onExportMacro,
   onRun,
+  onRunFiles,
   onAddCommand,
   onEditStep,
   onDeleteStep,
@@ -251,6 +255,9 @@ export function MacroEditorDialog({
 }: MacroEditorDialogProps) {
   const [isSelectCommandDialogOpen, setIsSelectCommandDialogOpen] = React.useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
+  // Run split-button caret menu ("Apply to files…")
+  const [runMenuOpen, setRunMenuOpen] = React.useState(false);
+  const [runMenuPosition, setRunMenuPosition] = React.useState({ x: 0, y: 0 });
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const stepListRef = React.useRef<HTMLDivElement>(null);
@@ -429,20 +436,41 @@ export function MacroEditorDialog({
 
         <div className="macro-editor__footer">
           {onRun && (
-            <Button
+            <SplitButton
+              label="Run"
               variant="primary"
               size="default"
               className="macro-editor__run"
               onClick={() => onRun(macro.id)}
-            >
-              Run
-            </Button>
+              menuAriaLabel="Run options"
+              onMenuClick={(e) => {
+                if (!e) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                setRunMenuPosition({ x: rect.right, y: rect.top });
+                setRunMenuOpen(true);
+              }}
+            />
           )}
           <Button variant="secondary" size="default" onClick={onClose}>
             Done
           </Button>
         </div>
       </Dialog>
+
+      <ContextMenu
+        isOpen={runMenuOpen}
+        onClose={() => setRunMenuOpen(false)}
+        x={runMenuPosition.x}
+        y={runMenuPosition.y}
+      >
+        <ContextMenuItem
+          label="Apply to files…"
+          onClick={() => {
+            setRunMenuOpen(false);
+            onRunFiles?.(macro.id);
+          }}
+        />
+      </ContextMenu>
 
       <SelectCommandDialog
         isOpen={isSelectCommandDialogOpen}
