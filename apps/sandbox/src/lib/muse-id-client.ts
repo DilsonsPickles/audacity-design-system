@@ -20,7 +20,7 @@
 
 import { MUSEHUB_BASE, adoptTokens as museHubAdoptTokens } from './musehub-client';
 import { ADIEU_BASE, adoptTokens as adieuAdoptTokens } from './adieu-client';
-import { oauthCallbackUri } from './appBase';
+import { oauthCallbackUri, APP_BASE_PATH } from './appBase';
 import { toast } from '@audacity-ui/components';
 
 const MUSEID_BASE_URL: string =
@@ -726,18 +726,32 @@ async function sha256Base64Url(input: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(digest));
 }
 
+/** Electron's preload bridge (apps/desktop/src/preload.cjs). Absent in
+ *  the web build. */
+export interface ElectronOAuthBridge {
+  /** `http://127.0.0.1:<port>` of the local server carrying the
+   *  /oauth/callback relay — the app server when packaged, a relay-only
+   *  server in dev (where Vite serves the renderer). */
+  callbackOrigin: string | null;
+  onCallback: (cb: (payload: MuseIdCallbackPayload) => void) => () => void;
+}
+
+export function electronOAuth(): ElectronOAuthBridge | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as Window & { electronOAuth?: ElectronOAuthBridge }).electronOAuth;
+}
+
 function browserRedirectUri(): string {
-  // Electron (RFC 8252 loopback): the app is served from a local express
-  // server on 127.0.0.1 at whatever port was free. muse-id registers a
-  // loopback TEMPLATE (`http://127.0.0.1/oauth/callback`, any port), so
-  // redirect to 127.0.0.1 rather than `localhost` — its matcher treats
-  // only the literal loopback IP as a template; `localhost` needs an
-  // exact, port-specific registration. The system browser lands on the
-  // loopback server, which relays the code to us over IPC.
-  if (typeof window !== 'undefined' && 'electronOAuth' in window) {
-    const url = new URL(oauthCallbackUri());
-    url.hostname = '127.0.0.1';
-    return url.toString();
+  // Electron (RFC 8252 loopback): redirect to the local relay server's
+  // 127.0.0.1 origin — NOT the renderer's own origin, which in dev is
+  // Vite (no relay route) and in both cases is `localhost`, which
+  // muse-id's matcher only accepts as an exact, port-specific
+  // registration. `http://127.0.0.1/oauth/callback` is registered as an
+  // any-port TEMPLATE, so whatever port the relay got is fine. The system
+  // browser lands on the relay, which forwards the code to us over IPC.
+  const bridge = electronOAuth();
+  if (bridge?.callbackOrigin) {
+    return `${bridge.callbackOrigin}${APP_BASE_PATH}oauth/callback`;
   }
   // Web: base-path-aware (GitHub Pages serves the app under a subpath).
   // See appBase.ts. On `/` hosting this is identical to

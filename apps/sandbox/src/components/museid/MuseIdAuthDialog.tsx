@@ -36,6 +36,7 @@ import { useMuseId } from '../../contexts/MuseIdContext';
 import {
   beginBrowserAuthorize,
   clearBrowserAuthorizeState,
+  electronOAuth,
   MUSE_ID_CALLBACK_MESSAGE_TYPE,
   type MuseIdCallbackPayload,
   type MuseIdCallbackMessage,
@@ -43,15 +44,6 @@ import {
 import './MuseIdAuthDialog.css';
 
 type Step = 'idle' | 'waiting' | 'completing' | 'done';
-
-/** Electron's preload exposes the loopback relay here (apps/desktop/src/
- *  preload.cjs). Absent in the web build. */
-type ElectronOAuthBridge = {
-  onCallback: (cb: (payload: MuseIdCallbackPayload) => void) => () => void;
-};
-function electronOAuth(): ElectronOAuthBridge | undefined {
-  return (window as Window & { electronOAuth?: ElectronOAuthBridge }).electronOAuth;
-}
 
 function friendlyError(err: unknown): string {
   const code = (err as { code?: string }).code ?? '';

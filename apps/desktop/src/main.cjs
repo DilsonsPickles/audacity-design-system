@@ -63,14 +63,60 @@ async function startLocalRendererServer() {
   server.disable('x-powered-by');
   server.use(express.static(rendererDir, { index: 'index.html' }));
 
-  // Browser-first Muse ID sign-in: the renderer opens muse-id's /authorize
-  // in the SYSTEM browser, and muse-id redirects back to this loopback
-  // origin's /oauth/callback — in that browser, not in our window. Relay
-  // the code+state to the renderer over IPC (it holds the PKCE verifier)
-  // and hand the browser tab a "you can close this" page. Only muse-id
-  // returns are intercepted (their state carries the `mid.` prefix —
-  // see muse-id-client.ts); moose-hub's own OAuth callback still loads
-  // inside the app's iframe flow and must fall through to the SPA.
+  attachOAuthRelay(server);
+
+  // SPA fallback — the sandbox uses client-side routing.
+  server.get('*', (_req, res) => {
+    res.sendFile(path.join(rendererDir, 'index.html'));
+  });
+
+  const port = await findFreePort(PREFERRED_PORT);
+  return new Promise((resolve, reject) => {
+    const listener = server.listen(port, '127.0.0.1', () => {
+      oauthCallbackOrigin = `http://127.0.0.1:${port}`;
+      resolve(`http://localhost:${port}`);
+    });
+    listener.on('error', reject);
+  });
+}
+
+// The loopback origin muse-id should redirect back to. Set once whichever
+// server carries the relay route is listening; the preload hands it to
+// the renderer synchronously so the redirect_uri can be built before the
+// browser opens. muse-id registers `http://127.0.0.1/oauth/callback` as
+// an any-port TEMPLATE (RFC 8252), so the port is free to vary.
+let oauthCallbackOrigin = null;
+ipcMain.on('oauth:callback-origin', (event) => {
+  event.returnValue = oauthCallbackOrigin;
+});
+
+// Dev mode: the renderer is served by Vite, which knows nothing about the
+// relay — so run a relay-only server on a free loopback port. Packaged
+// builds attach the same route to the app server instead.
+async function startOAuthRelayServer() {
+  const express = require('express');
+  const server = express();
+  server.disable('x-powered-by');
+  attachOAuthRelay(server);
+  const port = await findFreePort(0);
+  return new Promise((resolve, reject) => {
+    const listener = server.listen(port, '127.0.0.1', () => {
+      oauthCallbackOrigin = `http://127.0.0.1:${listener.address().port}`;
+      resolve(oauthCallbackOrigin);
+    });
+    listener.on('error', reject);
+  });
+}
+
+// Browser-first Muse ID sign-in: the renderer opens muse-id's /authorize
+// in the SYSTEM browser, and muse-id redirects back to this loopback
+// origin's /oauth/callback — in that browser, not in our window. Relay
+// the code+state to the renderer over IPC (it holds the PKCE verifier)
+// and hand the browser tab a "you can close this" page. Only muse-id
+// returns are intercepted (their state carries the `mid.` prefix —
+// see muse-id-client.ts); moose-hub's own OAuth callback still loads
+// inside the app's iframe flow and must fall through to the SPA.
+function attachOAuthRelay(server) {
   server.get('/oauth/callback', (req, res, next) => {
     const state = typeof req.query.state === 'string' ? req.query.state : '';
     if (!state.startsWith('mid.')) return next();
@@ -93,19 +139,6 @@ async function startLocalRendererServer() {
         '</div><div style="font-size:13px;opacity:.75">You can close this tab and return to Audacity.</div></div>' +
         '<script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script></body>',
     );
-  });
-
-  // SPA fallback — the sandbox uses client-side routing.
-  server.get('*', (_req, res) => {
-    res.sendFile(path.join(rendererDir, 'index.html'));
-  });
-
-  const port = await findFreePort(PREFERRED_PORT);
-  return new Promise((resolve, reject) => {
-    const listener = server.listen(port, '127.0.0.1', () => {
-      resolve(`http://localhost:${port}`);
-    });
-    listener.on('error', reject);
   });
 }
 
@@ -264,6 +297,9 @@ app.whenReady().then(async () => {
   // server.
   const startUrl = process.env.ELECTRON_START_URL
     || (app.isPackaged ? await startLocalRendererServer() : DEV_URL);
+  // Packaged builds set the relay origin inside startLocalRendererServer;
+  // dev needs its own relay because Vite serves the renderer.
+  if (!oauthCallbackOrigin) await startOAuthRelayServer();
 
   createWindow(startUrl);
 
