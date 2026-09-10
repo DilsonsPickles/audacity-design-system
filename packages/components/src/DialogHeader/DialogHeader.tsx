@@ -143,8 +143,10 @@ export function DialogHeader({
             aria-label="Close"
             type="button"
           >
-            {/* \uE8BB isn't in the icon font - \uEF14 is its close glyph */}
-            {'\uEF14'}
+            {/* Rendered through OUR icon font (\uEF14) - the raw glyph
+                relied on 'Segoe MDL2 Assets', which only exists on
+                Windows, so this button was blank on macOS. */}
+            <Icon name="close" size={12} />
           </button>
         )}
       </div>

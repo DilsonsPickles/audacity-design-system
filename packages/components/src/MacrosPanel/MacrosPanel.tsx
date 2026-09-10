@@ -115,7 +115,7 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
             onClick={onRunOnProject}
           />
           <GhostButton
-            icon="save"
+            icon="file"
             size="medium"
             ariaLabel={`Run ${macro.name} on files`}
             onClick={onRunOnFiles}

@@ -45,8 +45,8 @@ Final review of the EditorLayout decomposition (spec: `docs/superpowers/specs/20
 The sandbox now uses the dockable `MacrosPanel` + floating `MacroEditorDialog` (2026-09-07);
 `MacroManager` stays exported from `@audacity-ui/components` only for package consumers.
 Decide whether to mark it deprecated / remove it in the next breaking release.
-Related nits while it lives: its "run on files" affordance reuses the `save` icon — the
-design wants a folder glyph, which means adding a `folder` codepoint to `Icon`'s `ICON_MAP`.
+(The old "run on files reuses the save icon" nit is resolved — 2026-09-10 added the
+`file` glyph (U+EF22) and MacrosPanel uses it; the legacy MacroManager still shows `save`.)
 
 ### Spectral view of long imported/recorded clips is decimated data (2026-09-08)
 Import and recording-complete now store decimated peak/RMS display arrays

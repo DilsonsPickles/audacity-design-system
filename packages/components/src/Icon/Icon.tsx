@@ -6,6 +6,7 @@ export type IconName =
   | 'mixer'
   | 'menu'
   | 'edit'
+  | 'file'
   | 'gripper'
   | 'undo'
   | 'redo'
@@ -108,6 +109,8 @@ const ICON_MAP: Record<IconName, string> = {
   brush: '\uF444',
   /* The pen \u2014 the correct "edit" glyph (the brush above is a paintbrush) */
   edit: '\uEF63',
+  /* Document/file glyph - e.g. the Macros panel's run-on-files action */
+  file: '\uEF22',
   volume: '\uEF4E',
   metronome: '\uEF20',
   plug: '\uF440',
