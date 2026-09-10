@@ -489,11 +489,13 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
 
   // A time selection selects the tracks it spans: a payload carrying row
   // scope (`tracks` — every canvas drag gesture) mirrors that scope into
-  // selectedTrackIndices. A scope-less payload (programmatic, e.g. the
-  // macro engine's Select Time) leaves track selection alone — the
-  // existing selection then feeds scope resolution as the fallback
+  // selectedTrackIndices. An explicitly EMPTY scope mirrors too (the
+  // user cmd+clicked every spanned track out — ruler-only selection, no
+  // tracks selected). Only a scope-LESS payload (tracks undefined —
+  // programmatic, e.g. the macro engine's Select Time) leaves track
+  // selection alone; it then feeds scope resolution as the fallback
   // (see utils/timeSelectionScope.ts).
-  if (action.type === 'SET_TIME_SELECTION' && action.payload?.tracks?.length) {
+  if (action.type === 'SET_TIME_SELECTION' && action.payload?.tracks) {
     return {
       ...innerReducer(state, action),
       selectedTrackIndices: [...action.payload.tracks].sort((a, b) => a - b),

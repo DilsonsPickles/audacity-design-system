@@ -7,8 +7,12 @@
 
 /**
  * 1. `timeSelection.tracks` — populated by the gesture that made the
- *    selection (drag rows / focused track), when non-empty.
- * 2. `selectedTrackIndices` — legacy fallback, when non-empty.
+ *    selection (drag rows / focused track), when DEFINED. An empty
+ *    array is meaningful: the user cmd+clicked every spanned track
+ *    out of the selection, so the range is ruler-only and operations
+ *    act on NO tracks — it must not fall through to the fallbacks.
+ * 2. `selectedTrackIndices` — legacy fallback (scope undefined), when
+ *    non-empty.
  * 3. `fallback` — caller-specific (all tracks for delete/copy/cut,
  *    focused-track-or-empty for the Cmd+Arrow promote).
  */
@@ -17,7 +21,7 @@ export function resolveTimeSelectionScope(
   selectedTrackIndices: number[],
   fallback: number[],
 ): number[] {
-  if (timeSelection?.tracks?.length) return timeSelection.tracks;
+  if (timeSelection?.tracks) return timeSelection.tracks;
   if (selectedTrackIndices.length > 0) return selectedTrackIndices;
   return fallback;
 }

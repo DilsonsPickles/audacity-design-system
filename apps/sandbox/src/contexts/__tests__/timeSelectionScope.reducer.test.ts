@@ -34,6 +34,18 @@ describe('DELETE_TIME_RANGE scope resolution', () => {
     expect(next.tracks[1].clips).toHaveLength(0); // in scope — cut
   });
 
+  it('an explicitly EMPTY scope acts on NO tracks (no fallback)', () => {
+    const state = stateWith({
+      tracks: twoTracks(),
+      selectedTrackIndices: [0],
+      cutMode: 'split',
+      timeSelection: { startTime: 0, endTime: 3, tracks: [] },
+    });
+    const next = tracksReducer(state, { type: 'DELETE_TIME_RANGE', payload: { startTime: 0, endTime: 3 } });
+    expect(next.tracks[0].clips).toHaveLength(1); // nothing in scope — untouched
+    expect(next.tracks[1].clips).toHaveLength(1);
+  });
+
   it('falls back to selectedTrackIndices when no scope', () => {
     const state = stateWith({
       tracks: twoTracks(),
@@ -147,6 +159,18 @@ describe('time selection selects the tracks it spans (2026-09-10 rule change)', 
     });
     expect(next.selectedTrackIndices).toEqual([1, 2]);
     expect(next.timeSelection).toEqual({ startTime: 0, endTime: 1, tracks: [2, 1] });
+  });
+
+  it('an explicitly EMPTY scope mirrors too — ruler-only selection, no tracks selected', () => {
+    const state = stateWith({
+      selectedTrackIndices: [0, 1],
+    });
+    const next = tracksReducer(state, {
+      type: 'SET_TIME_SELECTION',
+      payload: { startTime: 0, endTime: 1, tracks: [] },
+    });
+    expect(next.selectedTrackIndices).toEqual([]);
+    expect(next.timeSelection).toEqual({ startTime: 0, endTime: 1, tracks: [] });
   });
 
   it('a scope-less payload leaves selectedTrackIndices alone (they feed scope fallback)', () => {

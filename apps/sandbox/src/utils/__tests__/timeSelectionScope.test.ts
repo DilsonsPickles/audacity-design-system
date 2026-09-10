@@ -8,8 +8,11 @@ describe('resolveTimeSelectionScope', () => {
     ).toEqual([2, 3]);
   });
 
-  it('tier 2: falls back to selectedTrackIndices when scope is empty or absent', () => {
-    expect(resolveTimeSelectionScope({ tracks: [] }, [0, 1], [9])).toEqual([0, 1]);
+  it('tier 1b: an explicitly EMPTY scope means act on NO tracks — no fallback (2026-09-10)', () => {
+    expect(resolveTimeSelectionScope({ tracks: [] }, [0, 1], [9])).toEqual([]);
+  });
+
+  it('tier 2: falls back to selectedTrackIndices when scope is absent', () => {
     expect(resolveTimeSelectionScope({}, [0, 1], [9])).toEqual([0, 1]);
     expect(resolveTimeSelectionScope(null, [0, 1], [9])).toEqual([0, 1]);
   });
