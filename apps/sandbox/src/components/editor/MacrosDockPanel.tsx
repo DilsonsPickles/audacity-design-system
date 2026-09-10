@@ -58,7 +58,10 @@ export function MacrosDockPanel() {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
-    input.accept = '.aup3,.aup';
+    // No accept filter: the real product would filter to project files
+    // (.aup3), but OS dialogs GRAY OUT non-matching files and the
+    // extension set is in flux (aup/aup3/aup4) — for the mockup,
+    // being unable to select a file is worse than an honest filter.
     input.onchange = () => {
       const picked = Array.from(input.files ?? []);
       if (picked.length === 0) return;
