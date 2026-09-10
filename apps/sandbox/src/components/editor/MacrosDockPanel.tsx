@@ -1,9 +1,8 @@
 import React from 'react';
-import { MacrosPanel, RunMacroOnProjectsDialog, toast, useGeneralPrefs, type Macro, type MacroTargetProject } from '@audacity-ui/components';
+import { MacrosPanel, RunMacroOnFilesDialog, toast, useGeneralPrefs, type Macro, type MacroTargetFile } from '@audacity-ui/components';
 import { useMacros } from '../../contexts/MacrosContext';
 import { exportMacroFile } from '../../utils/macroFile';
 import { useMacroRunner } from '../../hooks/useMacroRunner';
-import { getProjects } from '../../utils/projectDatabase';
 
 /** Type guard for the shape written by handleExportMacro. */
 function isImportedMacro(value: unknown): value is Pick<Macro, 'name' | 'steps'> {
@@ -26,9 +25,11 @@ function isImportedMacro(value: unknown): value is Pick<Macro, 'name' | 'steps'>
  * Owns import (file picker) / export (JSON download) plumbing. Running on
  * the project executes steps through the macro action registry
  * (`macros/macroActions.ts`) — commands without a registered action are
- * reported as simulated. Run-on-files opens RunMacroOnProjectsDialog over
- * the user's SAVED PROJECTS (the sandbox's stand-in for .aup files);
- * processing is simulated per project.
+ * reported as simulated. Run-on-files goes straight to the OS file
+ * browser (a multi-select .aup3 file input — the genuine native open
+ * dialog in the Electron build), then opens the AU3-style
+ * RunMacroOnFilesDialog progress window. Processing is simulated; the
+ * single completion toast is batch-level (never one per file).
  */
 export function MacrosDockPanel() {
   const {
@@ -37,21 +38,39 @@ export function MacrosDockPanel() {
   const { operatingSystem } = useGeneralPrefs();
   const { runOnProject } = useMacroRunner();
 
-  // Run-on-projects dialog state: which macro, and the saved projects
-  // loaded from IndexedDB at open time.
-  const [runOnProjects, setRunOnProjects] = React.useState<{
+  // Batch progress window state: which macro, and the files picked in
+  // the OS browser.
+  const [runOnFiles, setRunOnFiles] = React.useState<{
     macro: Macro;
-    projects: MacroTargetProject[];
+    files: MacroTargetFile[];
   } | null>(null);
 
-  const openRunOnProjects = async (macroId: string) => {
+  const openRunOnFiles = (macroId: string) => {
     const macro = macros.find((m) => m.id === macroId);
     if (!macro) return;
-    const stored = await getProjects();
-    setRunOnProjects({
-      macro,
-      projects: stored.map((p) => ({ id: p.id, title: p.title, dateModified: p.dateModified })),
-    });
+    if (macro.steps.length === 0) {
+      toast.info(`"${macro.name}" has no steps`, 'Add commands in the macro editor first.');
+      return;
+    }
+    // The OS file browser IS the selection UI (AU3 model): no in-app
+    // picker phase. In Electron this input opens the native dialog and
+    // File.path carries full paths; on the web only names exist.
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.aup3,.aup';
+    input.onchange = () => {
+      const picked = Array.from(input.files ?? []);
+      if (picked.length === 0) return;
+      setRunOnFiles({
+        macro,
+        files: picked.map((f, i) => ({
+          id: `${i}-${f.name}`,
+          path: (f as File & { path?: string }).path ?? f.name,
+        })),
+      });
+    };
+    input.click();
   };
 
   const handleImportMacro = () => {
@@ -96,20 +115,23 @@ export function MacrosDockPanel() {
         onDeleteMacro={deleteMacro}
         onExportMacro={handleExportMacro}
         onRunOnProject={runOnProject}
-        onRunOnFiles={openRunOnProjects}
+        onRunOnFiles={openRunOnFiles}
         os={operatingSystem}
       />
-      <RunMacroOnProjectsDialog
-        isOpen={runOnProjects !== null}
-        onClose={() => setRunOnProjects(null)}
-        macroName={runOnProjects?.macro.name ?? ''}
-        projects={runOnProjects?.projects ?? []}
-        onRunComplete={(projectIds) => {
-          const macro = runOnProjects?.macro;
+      <RunMacroOnFilesDialog
+        isOpen={runOnFiles !== null}
+        onClose={() => setRunOnFiles(null)}
+        macroName={runOnFiles?.macro.name ?? ''}
+        files={runOnFiles?.files ?? []}
+        stepNames={runOnFiles?.macro.steps.map((s) => s.command) ?? []}
+        onRunComplete={(fileIds) => {
+          const macro = runOnFiles?.macro;
           if (!macro) return;
+          // ONE batch-level toast — with 50 files, per-file toasts
+          // would be noise; per-file feedback lives in the window.
           toast.success(
             `Applied "${macro.name}"`,
-            `${macro.steps.length} step${macro.steps.length === 1 ? '' : 's'} applied to ${projectIds.length} project${projectIds.length === 1 ? '' : 's'} (simulated).`,
+            `${macro.steps.length} step${macro.steps.length === 1 ? '' : 's'} applied to ${fileIds.length} file${fileIds.length === 1 ? '' : 's'} (simulated).`,
           );
         }}
         os={operatingSystem}

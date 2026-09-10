@@ -1,0 +1,107 @@
+/* RunMacroOnFilesDialog — AU3-style batch progress window */
+
+.run-macro-files__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  gap: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.run-macro-files__label {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--rmf-text);
+}
+
+.run-macro-files__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--rmf-border);
+  border-radius: 4px;
+  background: var(--rmf-list-bg);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+
+.run-macro-files__list-header {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--rmf-border);
+  color: var(--rmf-text);
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  background: var(--rmf-list-bg);
+}
+
+.run-macro-files__row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px 2px 2px;
+  color: var(--rmf-text);
+}
+
+.run-macro-files__arrow {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.run-macro-files__path {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The nested step "window" popping over the file list */
+.run-macro-files__step-window {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  width: 320px;
+  background: var(--rmf-step-bg);
+  border: 1px solid var(--rmf-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.run-macro-files__step-title {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--rmf-border);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rmf-text);
+  text-align: center;
+}
+
+.run-macro-files__step-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.run-macro-files__step-meta {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--rmf-muted);
+}
+
+.run-macro-files__footer {
+  height: 48px;
+  padding: 8px;
+  border-top: 1px solid var(--rmf-border, #d4d5d9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
