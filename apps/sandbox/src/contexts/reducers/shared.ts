@@ -12,6 +12,23 @@ export const TRACK_COLOR_PALETTE = [
 ] as const;
 
 /**
+ * Pure helper: indices of tracks containing at least one selected clip
+ * (audio or MIDI), ascending. Selecting a clip selects its track
+ * (2026-09-10 rule), so the clip-selection reducer cases mirror this
+ * into `selectedTrackIndices` — call it AFTER expandSelectionToGroups
+ * so grouped clips on other tracks count.
+ */
+export function tracksWithSelectedClips(tracks: Track[]): number[] {
+  const indices: number[] = [];
+  tracks.forEach((track, i) => {
+    if (track.clips.some(c => c.selected) || track.midiClips?.some(c => c.selected)) {
+      indices.push(i);
+    }
+  });
+  return indices;
+}
+
+/**
  * Pure helper: expand the `selected` flag to include every clip whose `groupId`
  * matches a currently-selected clip. Idempotent.
  */

@@ -231,10 +231,10 @@ describe('SELECT_CLIP auto-expansion', () => {
     });
     expect(next.tracks[0].clips[0].selected).toBe(true);
     expect(next.tracks[1].clips[0].selected).toBe(true);
-    // Selection axes are intentionally decoupled (see SELECT_CLIP in
-    // TracksContext): expanding a grouped clip's selection across tracks must
-    // NOT promote those tracks into selectedTrackIndices.
-    expect(next.selectedTrackIndices).toEqual([]);
+    // Selecting clips selects their tracks (2026-09-10 rule): the group
+    // expansion pulled track 1's clip into the selection, so both tracks
+    // are promoted into selectedTrackIndices.
+    expect(next.selectedTrackIndices).toEqual([0, 1]);
   });
 
   it('selecting an ungrouped clip behaves as before (single selection)', () => {

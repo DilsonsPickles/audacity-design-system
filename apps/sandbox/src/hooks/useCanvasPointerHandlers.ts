@@ -298,9 +298,13 @@ export function useCanvasPointerHandlers(
         const newScope = currentScope.includes(ti)
           ? currentScope.filter((i) => i !== ti)
           : [...currentScope, ti].sort((a, b) => a - b);
+        // Removing the LAST spanned track is a no-op — repeated
+        // cmd+clicks must never destroy the time range itself
+        // (mirrors the same guard in useTrackPanelHandlers).
+        if (newScope.length === 0) return;
         dispatch({
           type: 'SET_TIME_SELECTION',
-          payload: newScope.length > 0 ? { ...timeSelection, tracks: newScope } : null,
+          payload: { ...timeSelection, tracks: newScope },
         });
       }
       return;

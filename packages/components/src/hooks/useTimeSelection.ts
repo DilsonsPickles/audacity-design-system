@@ -277,14 +277,12 @@ export function useTimeSelection({
         const dragRange = dragStateRef.current.startedBelowAllTracks
           ? getTrackRange(0, Math.max(0, tracks.length - 1))
           : getTrackRange(clampedStartTrack, clampedCurrentTrack);
-        // If the drag started on an already-selected track, union the
-        // drag range with the full selection — the user is acting on
-        // their selection. If it started on an unselected track, scope
-        // to just the drag range (they're targeting that track only).
-        const dragStartedOnSelected = currentSelectedTracks.includes(clampedStartTrack);
-        const selectedIndices = dragStartedOnSelected
-          ? [...new Set([...dragRange, ...currentSelectedTracks])].sort((a, b) => a - b)
-          : dragRange;
+        // A new create-drag scopes to exactly the rows it crosses —
+        // it REPLACES any prior track selection rather than unioning
+        // with it (2026-09-10 decision: drawing a new selection
+        // deselects tracks outside it, even when the drag starts on a
+        // selected track).
+        const selectedIndices = dragRange;
 
         // If the drag started inside a clip (i.e., converted from spectral selection),
         // check if we should convert back to spectral when entering a spectral clip

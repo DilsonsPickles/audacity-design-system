@@ -1,5 +1,5 @@
 import type { TracksState, TracksAction, Label, TimeSelection } from '../TracksContext';
-import { expandSelectionToGroups } from './shared';
+import { expandSelectionToGroups, tracksWithSelectedClips } from './shared';
 
 export function selectionReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
@@ -33,15 +33,13 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
 
       const expandedTracks = expandSelectionToGroups(newTracks);
 
-      // Track selection is intentionally decoupled from clip
-      // selection — selecting a clip no longer promotes its track
-      // into the selection set. Callers that want the classic
-      // "clip select selects track" behaviour dispatch
-      // SET_SELECTED_TRACKS themselves.
-
+      // Selecting a clip selects the tracks holding the selected clips
+      // (2026-09-10 rule, reversing the earlier decoupling decision) —
+      // computed after group expansion so grouped clips count.
       return {
         ...state,
         tracks: expandedTracks,
+        selectedTrackIndices: tracksWithSelectedClips(expandedTracks),
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [],
         timeSelection: null,
@@ -67,15 +65,16 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
       }));
       const expandedTracks = expandSelectionToGroups(newTracks);
       const last = action.payload[action.payload.length - 1];
-      // Track selection and focus are intentionally left untouched.
-      // Clip selection no longer implies track selection, and moving
-      // focus to the last clip's track was silently dragging the
-      // user's focus during automatic promotes (e.g. Cmd+Arrow on a
-      // time selection spanning many rows). Callers that want focus
-      // to follow dispatch SET_FOCUSED_TRACK themselves.
+      // Clip selection selects the holding tracks (2026-09-10 rule).
+      // Focus is still intentionally left untouched — moving focus to
+      // the last clip's track was silently dragging the user's focus
+      // during automatic promotes (e.g. Cmd+Arrow on a time selection
+      // spanning many rows). Callers that want focus to follow
+      // dispatch SET_FOCUSED_TRACK themselves.
       return {
         ...state,
         tracks: expandedTracks,
+        selectedTrackIndices: tracksWithSelectedClips(expandedTracks),
         selectedLabelIds: [],
         // Clear the time selection — a batch clip select has no single
         // representative range to mirror in the ruler.
@@ -118,11 +117,11 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
         }));
 
         const expandedTracks = expandSelectionToGroups(newTracks);
-        // Track selection untouched — see SELECT_CLIP.
 
         return {
           ...state,
           tracks: expandedTracks,
+          selectedTrackIndices: tracksWithSelectedClips(expandedTracks),
           focusedTrackIndex: trackIndex,
           selectedLabelIds: [],
           lastSelectedClip: { trackIndex, clipId },
@@ -162,11 +161,11 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
       }));
 
       const expandedTracks = expandSelectionToGroups(newTracks);
-      // Track selection untouched — see SELECT_CLIP.
 
       return {
         ...state,
         tracks: expandedTracks,
+        selectedTrackIndices: tracksWithSelectedClips(expandedTracks),
         focusedTrackIndex: trackIndex,
         selectedLabelIds: [],
         // Preserve the anchor so chained shift-clicks always extend from
@@ -195,8 +194,6 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
 
       const expandedTracks = expandSelectionToGroups(newTracks);
 
-      // Track selection intentionally left untouched — see SELECT_CLIP.
-
       // Determine if the clip was selected (not deselected)
       const wasClipSelected = (expandedTracks[trackIndex]?.clips.find(c => c.id === clipId)?.selected
         || expandedTracks[trackIndex]?.midiClips?.find(c => c.id === clipId)?.selected) ?? false;
@@ -204,6 +201,10 @@ export function selectionReducer(state: TracksState, action: TracksAction): Trac
       return {
         ...state,
         tracks: expandedTracks,
+        // Toggling recomputes which tracks still hold selected clips
+        // (2026-09-10 rule) — deselecting a track's last clip
+        // deselects that track.
+        selectedTrackIndices: tracksWithSelectedClips(expandedTracks),
         selectedLabelIds: [], // Clear label selection when toggling clip
         timeSelection: null,
         clipDurationIndicator: null,
