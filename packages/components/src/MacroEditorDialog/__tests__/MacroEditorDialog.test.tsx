@@ -49,11 +49,10 @@ describe('MacroEditorDialog', () => {
     expect(container.querySelector('.macro-editor')).toBeNull();
   });
 
-  it('offers no run actions — running lives in the MacrosPanel only', () => {
+  it('offers no run actions when onRun is not wired', () => {
     const { container, queryByText } = renderEditor();
-    expect(queryByText('Run this macro on:')).toBeNull();
-    expect(queryByText('Current project')).toBeNull();
-    expect(container.querySelector('.macro-editor__action-bar')).toBeNull();
+    expect(queryByText('Run')).toBeNull();
+    expect(container.querySelector('.macro-editor__run')).toBeNull();
   });
 
   it('renames the macro through the header Rename macro dialog', () => {
