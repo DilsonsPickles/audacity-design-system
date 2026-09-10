@@ -62,6 +62,39 @@ async function startLocalRendererServer() {
   const server = express();
   server.disable('x-powered-by');
   server.use(express.static(rendererDir, { index: 'index.html' }));
+
+  // Browser-first Muse ID sign-in: the renderer opens muse-id's /authorize
+  // in the SYSTEM browser, and muse-id redirects back to this loopback
+  // origin's /oauth/callback — in that browser, not in our window. Relay
+  // the code+state to the renderer over IPC (it holds the PKCE verifier)
+  // and hand the browser tab a "you can close this" page. Only muse-id
+  // returns are intercepted (their state carries the `mid.` prefix —
+  // see muse-id-client.ts); moose-hub's own OAuth callback still loads
+  // inside the app's iframe flow and must fall through to the SPA.
+  server.get('/oauth/callback', (req, res, next) => {
+    const state = typeof req.query.state === 'string' ? req.query.state : '';
+    if (!state.startsWith('mid.')) return next();
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      win.webContents.send('oauth:callback', {
+        code: typeof req.query.code === 'string' ? req.query.code : undefined,
+        state,
+        error: typeof req.query.error === 'string' ? req.query.error : undefined,
+      });
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+    res.type('html').send(
+      '<!doctype html><meta charset="utf-8"><title>Audacity</title>' +
+        '<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;' +
+        'font-family:Inter,-apple-system,system-ui,sans-serif;background:#0f1116;color:#f4f5f9">' +
+        '<div style="text-align:center"><div style="font-size:18px;font-weight:600;margin-bottom:8px">' +
+        (state && !req.query.error ? 'You’re signed in' : 'Sign-in didn’t complete') +
+        '</div><div style="font-size:13px;opacity:.75">You can close this tab and return to Audacity.</div></div>' +
+        '<script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script></body>',
+    );
+  });
+
   // SPA fallback — the sandbox uses client-side routing.
   server.get('*', (_req, res) => {
     res.sendFile(path.join(rendererDir, 'index.html'));

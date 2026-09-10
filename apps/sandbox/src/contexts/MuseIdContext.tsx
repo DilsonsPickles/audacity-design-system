@@ -43,6 +43,7 @@ import {
   verify as museIdVerify,
   complete as museIdComplete,
   signIn as museIdSignInRequest,
+  completeBrowserAuthorize,
   getUserInfo,
   getAccessToken,
   unlink as museIdUnlink,
@@ -166,13 +167,17 @@ interface MuseIdContextValue {
   linkByEmailVerify: (service: ServiceName, email: string, code: string) => Promise<'linked' | 'no_account'>;
 
   // ---- Globally-mounted MuseIdAuthDialog (Task 3.2a) ---------------------
-  /** State of the globally-mounted MuseIdAuthDialog. 'sign-up' is the
-   *  primary in-app entry point (email -> code -> discovery -> profile);
-   *  'sign-in' is the secondary email+password path for a returning user.
-   *  See the design spec's "Auth surface" section for why sign-up stays
-   *  in-app while sign-in is meant to eventually prefer a browser bounce
-   *  (deferred — see MuseIdAuthDialog.tsx's file header). */
+  /** State of the globally-mounted MuseIdAuthDialog. Both modes are
+   *  browser-first (2026-09-10): the mode only decides which muse-id page
+   *  the browser opens on — `/signup` for 'sign-up', `/authorize` (→
+   *  `/login`) for 'sign-in'. The dialog itself is a launcher + waiting
+   *  state; see MuseIdAuthDialog.tsx's file header. */
   authDialog: 'closed' | 'sign-up' | 'sign-in';
+  /** Finishes a browser-first sign-in once the authorization code is back
+   *  in this window: exchanges it (PKCE), establishes the profile, and
+   *  adopts tokens for every linked service. Throws on state mismatch or a
+   *  failed exchange; nothing is left half-signed-in. */
+  completeBrowserSignIn: (code: string, state: string) => Promise<void>;
   /** Open the MuseIdAuthDialog in a given mode. */
   openAuthDialog: (mode: 'sign-up' | 'sign-in') => void;
   /** Close the MuseIdAuthDialog. No-op if already closed. */
@@ -400,6 +405,20 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
     [fetchProfile, exchangeAndAdoptAll],
   );
 
+  // Browser-first counterpart of signIn: the dialog opened muse-id in the
+  // browser and has just received the authorization code back (popup
+  // postMessage, or Electron's loopback relay). Same tail as signIn —
+  // establish the profile, then exchange+adopt every linked service.
+  const completeBrowserSignIn = useCallback(
+    async (code: string, state: string): Promise<void> => {
+      setError(null);
+      const tokens = await completeBrowserAuthorize(code, state);
+      const info = await fetchProfile();
+      await exchangeAndAdoptAll(tokens.accessToken, info?.linkedServices ?? []);
+    },
+    [fetchProfile, exchangeAndAdoptAll],
+  );
+
   const signOutEverywhere = useCallback(async (): Promise<void> => {
     setError(null);
     // "Everywhere" = everywhere THIS Muse ID is signed in: the Muse ID itself
@@ -519,6 +538,7 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       signUpVerify,
       signUpComplete,
       signIn,
+      completeBrowserSignIn,
       signOutEverywhere,
       unlinkService,
       linkByEmailStart,
@@ -541,6 +561,7 @@ export const MuseIdProvider: React.FC<{ children: React.ReactNode }> = ({
       signUpVerify,
       signUpComplete,
       signIn,
+      completeBrowserSignIn,
       signOutEverywhere,
       unlinkService,
       linkByEmailStart,

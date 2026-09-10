@@ -3,6 +3,7 @@ import { handleCallback } from '../lib/musehub-client';
 import { appHomePath } from '../lib/appBase';
 import {
   isBrowserAuthorizePending,
+  isMuseIdOAuthState,
   completeBrowserAuthorize,
   clearBrowserAuthorizeState,
   clearLocalSession,
@@ -10,11 +11,13 @@ import {
   exchangeAndAdoptServices,
   setPendingServiceAdoptFailureNotice,
   MuseIdAuthError,
+  MUSE_ID_CALLBACK_MESSAGE_TYPE,
+  type MuseIdCallbackMessage,
   type MuseIdTokens,
   type MuseIdUserInfo,
 } from '../lib/muse-id-client';
 
-type Status = 'pending' | 'error';
+type Status = 'pending' | 'error' | 'relayed';
 
 // Rendered outside the providers (see App.tsx) because the rest of the app
 // expects a hydrated MuseHubContext/AdieuContext/MuseIdContext, which can't
@@ -22,11 +25,32 @@ type Status = 'pending' | 'error';
 // the sandbox's `/oauth/callback` route:
 //   - moose-hub's own OAuth (musehub-client.ts's `handleCallback`, the
 //     original/only flow here before Task 6.4) — untouched below.
-//   - muse-id's browser-first DAW sign-in (Task 6.4) — code lives in
-//     muse-id-client.ts's "Browser-first OAuth" section; see that file's
-//     header comment for how the two returns, which share the exact same
-//     redirect_uri and query shape, are told apart (a sessionStorage
-//     marker set at initiation, checked FIRST below).
+//   - muse-id's browser-first sign-in — code lives in muse-id-client.ts's
+//     "Browser-first OAuth" section. A muse-id return is recognised by its
+//     `mid.`-prefixed state (any browser context) or, for the historical
+//     top-level-navigation case, the sessionStorage marker set at
+//     initiation. Since 2026-09-10 the dialog opens muse-id in a POPUP and
+//     waits, so the common case here is: we have a `window.opener` — post
+//     the code+state back to it (it holds the PKCE verifier) and close.
+//     Only a top-level hit (no opener) exchanges in place, below.
+
+/** Popup half of the browser-first flow: hand the result to the window
+ *  that opened us. Returns false when there is no opener (top-level). */
+function relayToOpener(): boolean {
+  const opener = window.opener && window.opener !== window ? (window.opener as Window) : null;
+  if (!opener) return false;
+  const params = new URLSearchParams(window.location.search);
+  const message: MuseIdCallbackMessage = {
+    type: MUSE_ID_CALLBACK_MESSAGE_TYPE,
+    code: params.get('code') ?? undefined,
+    state: params.get('state') ?? undefined,
+    error: params.get('error') ?? undefined,
+  };
+  opener.postMessage(message, window.location.origin);
+  try { window.close(); } catch { /* popup blockers / already closing */ }
+  return true;
+}
+
 async function handleMuseIdCallback(): Promise<void> {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
@@ -114,7 +138,15 @@ export function OAuthCallback() {
     let cancelled = false;
     (async () => {
       try {
-        if (isBrowserAuthorizePending()) {
+        const state = new URLSearchParams(window.location.search).get('state');
+        const isMuseId = isMuseIdOAuthState(state) || isBrowserAuthorizePending();
+        if (isMuseId && relayToOpener()) {
+          // The opener finishes the exchange; this popup is done (and has
+          // asked to close — if the browser refuses, show a hint).
+          if (!cancelled) setStatus('relayed');
+          return;
+        }
+        if (isMuseId) {
           await handleMuseIdCallback();
         } else {
           await handleCallback();
@@ -148,6 +180,11 @@ export function OAuthCallback() {
     >
       {status === 'pending' ? (
         <span>Signing you in…</span>
+      ) : status === 'relayed' ? (
+        <div style={{ textAlign: 'center', maxWidth: 420 }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>You’re signed in</div>
+          <div style={{ fontSize: 12, opacity: 0.8 }}>You can close this tab and return to Audacity.</div>
+        </div>
       ) : (
         <div style={{ textAlign: 'center', maxWidth: 420 }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>

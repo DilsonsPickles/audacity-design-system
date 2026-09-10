@@ -248,6 +248,36 @@
   to { transform: rotate(360deg); }
 }
 
+/* Browser-first (2026-09-10): the dialog is a launcher + waiting room.
+   The waiting row pairs a light spinner with status copy; the action row
+   underneath holds the "open again" / cancel links. */
+.museid-auth-dialog__waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.museid-auth-dialog__spinner--light {
+  flex-shrink: 0;
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: #f4f5f9;
+}
+
+.museid-auth-dialog__actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 /* Task 6.4: "Continue with Muse ID" browser-first CTA + divider above the
    in-app email/password fallback form (sign-in step). */
 

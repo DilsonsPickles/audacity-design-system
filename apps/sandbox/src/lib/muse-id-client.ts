@@ -648,17 +648,22 @@ export function notifyPendingServiceAdoptFailure(): void {
   );
 }
 
-// ---- Browser-first OAuth (authorization code + PKCE) — Task 6.4 -----------
+// ---- Browser-first OAuth (authorization code + PKCE) — Task 6.4, -----------
+// ---- made the ONLY path 2026-09-10 -----------------------------------------
 //
-// The DAW's own sign-IN step can bounce the whole browser to muse-id's
-// /authorize instead of the in-app email/password form (RFC 8252-style
-// "browser-first" sign-in — see the design spec's "Auth surface" table and
-// Phase 6's "DAW browser-first sign-in" paragraph). This is a genuine
-// top-level navigation (`window.location.assign`), not an iframe/popup
-// embed like musehub-client.ts's `startAuthorize` — so there is no
-// in-memory closure that survives the navigation; the PKCE verifier and
-// state live ONLY in sessionStorage, exactly like musehub-client.ts's own
-// top-level-fallback branch of `handleCallback`.
+// Sign-in AND sign-up go through the user's browser (MuseHub team
+// constraint: shared Muse-family identity, third-party sign-in, passkeys,
+// phishing resistance — see the design spec's "Auth surface" note). The
+// dialog opens muse-id in a NEW browser context — a popup/tab in the web
+// build, the system browser in Electron — and stays open in a waiting
+// state; the app itself never navigates away. The PKCE verifier and state
+// live in THIS window's sessionStorage, and the exchange happens here once
+// the code comes back:
+//   - web: `/oauth/callback` loads in the popup, sees `window.opener`, and
+//     posts `{ type: MUSE_ID_CALLBACK_MESSAGE_TYPE, code, state }` back
+//     (OAuthCallback.tsx), then closes itself;
+//   - Electron: the redirect lands on the loopback server in the system
+//     browser; main.cjs relays code+state over IPC (`window.electronOAuth`).
 //
 // Distinguishing this return from moose-hub's OAuth return: both flows
 // redirect back to the SAME sandbox route (`<origin>/oauth/callback`) with
@@ -666,16 +671,42 @@ export function notifyPendingServiceAdoptFailure(): void {
 // client is seeded with that exact redirect_uri, and muse-id's
 // `isAllowedRedirect` (lib/oauth/authorize.ts) requires a byte-exact match
 // for non-loopback URIs, so the URL can't carry a distinguishing query
-// param without breaking that check. The robust option is the sessionStorage
-// marker below (`OAUTH_PENDING_KEY`): `isBrowserAuthorizePending()` is the
-// FIRST thing OAuthCallback.tsx checks, before falling back to the existing
-// moose-hub handling — moose-hub's own OAuth code (musehub-client.ts) never
-// touches this key, so its absence unambiguously means "not a muse-id
-// browser-first return."
+// param without breaking that check. The `state` value can, though: muse-id
+// flows prefix theirs with `MUSE_ID_STATE_PREFIX` (moose-hub's states are
+// bare base64url, which never contains a dot), and that works in any
+// browser context — popup, system browser, or a top-level navigation. The
+// sessionStorage marker (`OAUTH_PENDING_KEY`) is kept as the belt to that
+// brace for the top-level case, where it was the original signal.
 
 const OAUTH_VERIFIER_KEY = 'muse-id-oauth-verifier';
 const OAUTH_STATE_KEY = 'muse-id-oauth-state';
 const OAUTH_PENDING_KEY = 'muse-id-oauth-pending';
+
+/** Prefix on every muse-id-originated OAuth `state`; lets the shared
+ *  `/oauth/callback` route (and Electron's loopback relay) recognise a
+ *  muse-id return without touching the redirect URI. */
+export const MUSE_ID_STATE_PREFIX = 'mid.';
+
+export function isMuseIdOAuthState(state: string | null | undefined): boolean {
+  return typeof state === 'string' && state.startsWith(MUSE_ID_STATE_PREFIX);
+}
+
+/** `postMessage` envelope the popup's `/oauth/callback` sends back to the
+ *  window that opened it (web build). Electron delivers the same payload
+ *  shape over IPC instead. */
+export const MUSE_ID_CALLBACK_MESSAGE_TYPE = 'muse-id-oauth-callback';
+
+export interface MuseIdCallbackPayload {
+  code?: string;
+  state?: string;
+  error?: string;
+}
+
+export interface MuseIdCallbackMessage extends MuseIdCallbackPayload {
+  type: typeof MUSE_ID_CALLBACK_MESSAGE_TYPE;
+}
+
+export type BrowserAuthIntent = 'sign-in' | 'sign-up';
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let str = '';
@@ -702,32 +733,45 @@ function browserRedirectUri(): string {
   return oauthCallbackUri();
 }
 
-/** Starts the browser-first sign-in: generates a PKCE verifier/challenge +
- *  random state, stashes them (plus the `OAUTH_PENDING_KEY` marker
- *  OAuthCallback.tsx checks) in sessionStorage, then navigates the whole
- *  window to muse-id's `/authorize`. There is no `complete()` closure to
- *  return, unlike musehub-client.ts's iframe-oriented `startAuthorize` — the
- *  caller unmounts on navigation. `completeBrowserAuthorize` below, called
- *  from OAuthCallback.tsx after the redirect back, finishes the exchange. */
-export async function startBrowserAuthorize(): Promise<void> {
+/** Step 1 of the browser-first flow: generates a PKCE verifier/challenge +
+ *  a `mid.`-prefixed state, stashes them (plus the `OAUTH_PENDING_KEY`
+ *  marker) in THIS window's sessionStorage, and returns the URL the caller
+ *  should open in a new browser context (`window.open` — the dialog stays
+ *  mounted and waits). Nothing navigates here.
+ *
+ *  - `'sign-in'` → muse-id `/authorize`, which sends a user with no
+ *    session to `/login` (whose "Create a Muse ID" link preserves the
+ *    return path).
+ *  - `'sign-up'` → muse-id `/signup?next=<the same /authorize path>`, so a
+ *    new user lands on account creation first and flows back into the
+ *    authorize step once done (SignupForm hands control to `next`).
+ *
+ *  `completeBrowserAuthorize` below finishes the exchange once the code
+ *  arrives back in this window. */
+export async function beginBrowserAuthorize(intent: BrowserAuthIntent): Promise<string> {
   const verifier = randomBase64Url(32);
-  const state = randomBase64Url(16);
+  const state = MUSE_ID_STATE_PREFIX + randomBase64Url(16);
   const challenge = await sha256Base64Url(verifier);
 
   window.sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier);
   window.sessionStorage.setItem(OAUTH_STATE_KEY, state);
   window.sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
 
-  const url = new URL('/authorize', MUSEID_BASE_URL);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('client_id', CLIENT_ID);
-  url.searchParams.set('redirect_uri', browserRedirectUri());
-  url.searchParams.set('scope', 'profile');
-  url.searchParams.set('state', state);
-  url.searchParams.set('code_challenge', challenge);
-  url.searchParams.set('code_challenge_method', 'S256');
+  const authorize = new URL('/authorize', MUSEID_BASE_URL);
+  authorize.searchParams.set('response_type', 'code');
+  authorize.searchParams.set('client_id', CLIENT_ID);
+  authorize.searchParams.set('redirect_uri', browserRedirectUri());
+  authorize.searchParams.set('scope', 'profile');
+  authorize.searchParams.set('state', state);
+  authorize.searchParams.set('code_challenge', challenge);
+  authorize.searchParams.set('code_challenge_method', 'S256');
 
-  window.location.assign(url.toString());
+  if (intent === 'sign-up') {
+    const signup = new URL('/signup', MUSEID_BASE_URL);
+    signup.searchParams.set('next', authorize.pathname + authorize.search);
+    return signup.toString();
+  }
+  return authorize.toString();
 }
 
 /** True when OAuthCallback.tsx should treat the current `/oauth/callback`

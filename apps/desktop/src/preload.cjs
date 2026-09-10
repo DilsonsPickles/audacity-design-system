@@ -18,3 +18,15 @@ contextBridge.exposeInMainWorld('electronMenu', {
 contextBridge.exposeInMainWorld('electronShell', {
   openNewWindow: () => ipcRenderer.send('window:open-new'),
 });
+
+// Browser-first sign-in (RFC 8252 loopback). The renderer opens muse-id's
+// /authorize in the SYSTEM browser; the redirect back lands on this app's
+// loopback server, which relays `{ code, state, error }` here over IPC so
+// the renderer — which holds the PKCE verifier — can finish the exchange.
+contextBridge.exposeInMainWorld('electronOAuth', {
+  onCallback: (cb) => {
+    const listener = (_event, payload) => cb(payload);
+    ipcRenderer.on('oauth:callback', listener);
+    return () => ipcRenderer.removeListener('oauth:callback', listener);
+  },
+});

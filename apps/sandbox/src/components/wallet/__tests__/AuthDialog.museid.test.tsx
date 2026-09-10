@@ -18,6 +18,7 @@ import { MuseHubProvider, useMuseHub } from '../../../contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from '../../../contexts/AdieuContext';
 import { MuseIdProvider, useMuseId } from '../../../contexts/MuseIdContext';
 import { createMuseIdMock, type MuseIdMockControls } from '../../../__tests__/museIdMock';
+import { MUSE_ID_CALLBACK_MESSAGE_TYPE } from '../../../lib/muse-id-client';
 
 afterEach(cleanup);
 
@@ -308,18 +309,21 @@ describe('AuthDialog — Continue with Muse ID', () => {
       within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
 
     await waitFor(() => expect(apiRef.current!.museId.authDialog).toBe('sign-in'));
-    // Sign-in's first (and only) step asks for email + password together —
-    // sign-up's first step asks only for an email, so the Password field's
-    // presence is itself proof this landed on sign-in, not create.
+    // Browser-first (2026-09-10): the dialog collects nothing in either
+    // mode; the heading and the switch link are what distinguish sign-in
+    // from create.
     expect(museIdDialog().getByRole('heading', { name: 'Sign in to Muse ID' })).toBeInTheDocument();
-    expect(museIdDialog().getByLabelText('Password')).toBeInTheDocument();
+    expect(museIdDialog().getByRole('button', { name: 'Continue in browser' })).toBeInTheDocument();
+    expect(museIdDialog().queryByLabelText('Password')).toBeNull();
     expect(museIdDialog().getByRole('button', { name: 'Create one' })).toBeInTheDocument();
   });
 
   it('state 5: signing in via the Muse ID dialog resumes the table on completion', async () => {
     mock.seedMuseUser({ email: 'e@mu.se', password: 'password1', name: 'Evan' });
+    mock.seedAuthCode('evan-code', 'e@mu.se');
     // No moose-hub service user seeded -> lands on state 3 (create) after
     // the Muse ID sign-in resolves.
+    vi.stubGlobal('open', vi.fn(() => null));
 
     const { apiRef } = renderTree();
     await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
@@ -330,10 +334,22 @@ describe('AuthDialog — Continue with Muse ID', () => {
     const museIdDialog = () =>
       within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
 
-    const emailInput = await waitFor(() => museIdDialog().getByLabelText('Email'));
-    fireEvent.change(emailInput, { target: { value: 'e@mu.se' } });
-    fireEvent.change(museIdDialog().getByLabelText('Password'), { target: { value: 'password1' } });
-    fireEvent.click(museIdDialog().getByRole('button', { name: 'Sign in' }));
+    // Browser-first: launch the browser, then simulate the popup's
+    // /oauth/callback posting the authorization code back to this window.
+    fireEvent.click(await waitFor(() => museIdDialog().getByRole('button', { name: 'Continue in browser' })));
+    await waitFor(() => expect(window.sessionStorage.getItem('muse-id-oauth-state')).toBeTruthy());
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            type: MUSE_ID_CALLBACK_MESSAGE_TYPE,
+            code: 'evan-code',
+            state: window.sessionStorage.getItem('muse-id-oauth-state'),
+          },
+          origin: window.location.origin,
+        }),
+      );
+    });
 
     fireEvent.click(await waitFor(() => museIdDialog().getByRole('button', { name: 'Continue to Audacity' })));
 
@@ -356,7 +372,7 @@ describe('AuthDialog — Continue with Muse ID', () => {
 
     const museIdDialog = () =>
       within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
-    await waitFor(() => museIdDialog().getByLabelText('Email'));
+    await waitFor(() => museIdDialog().getByRole('button', { name: 'Continue in browser' }));
     fireEvent.click(museIdDialog().getByRole('button', { name: 'Close' }));
 
     await waitFor(() => expect(screen.queryByText('Sign in to Muse ID', { selector: 'h2' })).toBeNull());

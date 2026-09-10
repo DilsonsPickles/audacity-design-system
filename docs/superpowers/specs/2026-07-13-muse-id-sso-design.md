@@ -37,7 +37,9 @@ POST /api/auth/muse-exchange   { muse_access_token, legacy_access_token? }
 
 Flow: introspect `muse_access_token` server-side against muse-id (S2S) → resolve the local user (by museId link → by legacy token if provided [live-session linking] → by verified-email match → JIT-provision) → mint the service's OWN opaque access+refresh pair via existing `tokens.ts` → return the service's standard token payload. Everything downstream (scopes, refresh rotation, revocation, both sandbox clients post-exchange) is untouched.
 
-### Auth surface: where the user signs up vs signs in (amended 2026-07-13)
+### Auth surface: where the user signs up vs signs in (amended 2026-07-13; superseded 2026-09-10)
+
+> **Superseded 2026-09-10 — both sign-up AND sign-in are browser-first.** The MuseHub team's constraint is that login and account creation always go through the user's browser (shared Muse-family identity, third-party sign-in, phishing resistance, passkeys, one signup implementation). The in-app `start → verify → complete` and email/password forms were removed from `MuseIdAuthDialog`; it is now a launcher ("Continue in browser") plus a waiting state. Sign-in opens muse-id `/authorize` (which routes a new user to `/login` → "Create a Muse ID" → `/signup?next=…/authorize`); sign-up opens `/signup?next=<authorize URL>` directly. The web build opens a popup/tab and receives the code via `postMessage` from `/oauth/callback`; the Electron build opens the system browser and the loopback server relays the code over IPC (`window.electronOAuth`). Muse-id-originated states carry a `mid.` prefix so `/oauth/callback` can tell them from moose-hub's own OAuth without a redirect-URI change. The table below is kept as the historical rationale.
 
 Muse ID has a **password** (the siblings both do; it makes password managers and the later passkey upgrade coherent). Emailed codes remain for signup verification, password reset, and future new-device checks — NOT for routine sign-in.
 
