@@ -1,6 +1,8 @@
-/* MacroEditorDialog — floating editor for a single macro.
-   Header: macro name + rename/delete/export. Body: "Macro steps" + New step
-   button above a card-style step list with drag handles. Footer: Done. */
+/* MacroEditorDialog — non-modal editor window for a single macro.
+   Header: macro name + Add step + macro menu. Body: a full-bleed grey
+   well holding numbered step cards with a grip column, pencil and
+   kebab. Footer: Run / Run on files… left, Done right. Shares the
+   MacrosPanel's language (header + primary action + filled kebab). */
 
 .macro-editor {
   display: flex;
@@ -9,9 +11,8 @@
 }
 
 .macro-editor__header {
-  min-height: 48px;
-  padding: 10px 8px 10px 16px;
-  border-bottom: 1px solid var(--header-border, #d4d5d9);
+  height: 44px;
+  padding: 8px 8px 8px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -21,9 +22,9 @@
 
 .macro-editor__macro-name {
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
   color: var(--text-primary, #14151a);
   margin: 0;
   white-space: nowrap;
@@ -33,61 +34,45 @@
 
 .macro-editor__header-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   flex-shrink: 0;
 }
 
-.macro-editor__body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 12px 16px 16px;
-  overflow: hidden;
+/* Square, filled icon buttons (the macro menu and each step's menu) built
+   on Button so they share the filled surface of Add step / Run. Button's
+   80px min-width is for dialog footers, not these. */
+.macro-editor__icon-button.button {
+  min-width: 0;
+  padding: 0;
+  width: 28px;
 }
 
-.macro-editor__steps-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 12px;
-  flex-shrink: 0;
+.macro-editor__icon-button .button__text {
+  line-height: 0;
 }
 
-.macro-editor__steps-title {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 16px;
-  color: var(--text-primary, #14151a);
-}
-
+/* Full-bleed grey well; the cards inset inside it. */
 .macro-editor__step-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  border: 1px solid var(--stroke-primary, #d4d5d9);
-  border-radius: 4px;
-  padding: 8px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Grey well behind the step cards (#f8f8f9) so the list reads as a
-     container holding items, not cards floating on the dialog bg */
   background: var(--macro-editor-list-bg, #ebedf0);
 }
 
 .macro-editor__step {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 8px 8px 4px;
-  min-height: 52px;
+  align-items: stretch;
+  gap: 0;
+  height: 46px;
+  flex-shrink: 0;
   border: 1px solid var(--stroke-primary, #d4d5d9);
   border-radius: 4px;
-  background: var(--list-item-bg-idle, #f8f8f9);
+  background: var(--macro-editor-step-bg, #ffffff);
 }
 
 .macro-editor__step--dragging {
@@ -102,12 +87,14 @@
   cursor: grabbing;
 }
 
+/* Grip column: a divided strip on the card's left edge */
 .macro-editor__step-grip {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  width: 24px;
   flex-shrink: 0;
+  border-right: 1px solid var(--stroke-primary, #d4d5d9);
   color: var(--text-secondary, #575861);
   cursor: grab;
 }
@@ -121,7 +108,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  justify-content: center;
+  gap: 0;
+  padding: 0 8px;
 }
 
 .macro-editor__step-command {
@@ -148,16 +137,17 @@
 
 .macro-editor__step-actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
   flex-shrink: 0;
 }
 
-/* Step action icons render as OUTLINE buttons: bordered surface on the
-   card rather than bare ghost glyphs. Hover/active backgrounds still
-   come from the GhostButton's own vars. */
+/* The pencil is an OUTLINE button (bordered, white) beside the filled
+   kebab — edit is the lighter of the two affordances. */
 .macro-editor__step-actions .ghost-button {
   border: 1px solid var(--stroke-primary, #d4d5d9);
-  border-radius: 4px;
+  border-radius: 2px;
   background-color: var(--macro-editor-step-action-bg, #ffffff);
 }
 
@@ -166,10 +156,8 @@
 }
 
 .macro-editor__footer {
-  height: 48px;
+  height: 44px;
   padding: 8px;
-  background: var(--dialog-footer-bg, #f8f8f9);
-  border-top: 1px solid var(--dialog-footer-border, #d4d5d9);
   display: flex;
   align-items: center;
   justify-content: flex-end;

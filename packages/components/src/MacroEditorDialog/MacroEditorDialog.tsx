@@ -22,18 +22,18 @@ export interface MacroEditorDialogProps {
   onClose?: () => void;
   /** Called when the macro is renamed via the header's Rename macro dialog */
   onRenameMacro?: (macroId: string, newName: string) => void;
-  /** Called when the header's Delete macro button is clicked (the consumer
-   *  is expected to also close the editor) */
+  /** Called when "Delete macro" is picked from the header menu (the
+   *  consumer is expected to also close the editor) */
   onDeleteMacro?: (macroId: string) => void;
-  /** Called when the header's Export macro button is clicked */
+  /** Called when "Export macro" is picked from the header menu */
   onExportMacro?: (macroId: string) => void;
   /** Called when the footer's Run button is clicked — runs the macro on
    *  the current project. The editor is a NON-MODAL window so the
    *  timeline stays visible and interactive: edit, run, watch, tweak. */
   onRun?: (macroId: string) => void;
-  /** Called from the Run split button's caret menu ("Apply to files…") */
+  /** Called when the footer's "Run on files…" button is clicked */
   onRunFiles?: (macroId: string) => void;
-  /** Called when a command is added as a new step via "New step" */
+  /** Called when a command is added as a new step via "Add step" */
   onAddCommand?: (macroId: string, command: Command) => void;
   /** Called when a step's parameters are edited via the row pencil */
   onEditStep?: (macroId: string, stepIndex: number, parameters: string) => void;
@@ -147,7 +147,8 @@ function StepRow({
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 });
 
-  const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMenuClick = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (!e) return;
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuPosition({ x: rect.right, y: rect.bottom });
@@ -182,13 +183,14 @@ function StepRow({
             ariaLabel={`Edit step ${index + 1}`}
             onClick={onEdit}
           />
-          <GhostButton
-            icon="menu"
-            size="medium"
+          <Button
+            variant="secondary"
+            className="macro-editor__icon-button"
             ariaLabel={`Step ${index + 1} options`}
-            active={menuOpen}
             onClick={handleMenuClick}
-          />
+          >
+            <Icon name="menu" />
+          </Button>
         </div>
       </div>
 
@@ -256,6 +258,9 @@ export function MacroEditorDialog({
 }: MacroEditorDialogProps) {
   const [isSelectCommandDialogOpen, setIsSelectCommandDialogOpen] = React.useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
+  // Header kebab: macro-level management actions (rename / export / delete)
+  const [macroMenuOpen, setMacroMenuOpen] = React.useState(false);
+  const [macroMenuPosition, setMacroMenuPosition] = React.useState({ x: 0, y: 0 });
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const stepListRef = React.useRef<HTMLDivElement>(null);
@@ -363,7 +368,7 @@ export function MacroEditorDialog({
         os={os}
         nonModal
         closeOnClickOutside={false}
-        width={680}
+        width={480}
         // 480px tall by default, but yield to short viewports — the Dialog's
         // own max-height (100vh - 32px) would otherwise lose to min-height
         // and push the footer off screen.
@@ -375,69 +380,55 @@ export function MacroEditorDialog({
           <h2 className="macro-editor__macro-name">{macro.name}</h2>
           <div className="macro-editor__header-actions">
             <Button
-              variant="secondary"
-              size="default"
-              onClick={() => setIsRenameDialogOpen(true)}
-            >
-              Rename macro
-            </Button>
-            <Button
-              variant="secondary"
-              size="default"
-              onClick={() => onDeleteMacro?.(macro.id)}
-            >
-              Delete macro
-            </Button>
-            <Button
-              variant="secondary"
-              size="default"
-              onClick={() => onExportMacro?.(macro.id)}
-            >
-              Export macro
-            </Button>
-          </div>
-        </div>
-
-        <div className="macro-editor__body">
-          <div className="macro-editor__steps-header">
-            <span className="macro-editor__steps-title">Macro steps</span>
-            <Button
               variant="primary"
               size="default"
               onClick={() => setIsSelectCommandDialogOpen(true)}
             >
-              New step
+              Add step
+            </Button>
+            <Button
+              variant="secondary"
+              className="macro-editor__icon-button"
+              ariaLabel="Macro options"
+              onClick={(e) => {
+                if (!e) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                setMacroMenuPosition({ x: rect.right, y: rect.bottom });
+                setMacroMenuOpen(true);
+              }}
+            >
+              <Icon name="menu" />
             </Button>
           </div>
+        </div>
 
-          <div
-            ref={stepListRef}
-            className={`macro-editor__step-list${draggedIndex !== null ? ' macro-editor__step-list--dragging' : ''}`}
-            role="list"
-            aria-label="Macro steps"
-          >
-            {macro.steps.map((step, index) => (
-              <StepRow
-                key={index}
-                step={step}
-                index={index}
-                stepCount={stepCount}
-                isDragging={draggedIndex === index}
-                onEdit={() => setEditingStepIndex(index)}
-                onDelete={() => onDeleteStep?.(macro.id, index)}
-                onMove={(direction) => onMoveStep?.(macro.id, index, direction)}
-                onGripMouseDown={handleGripMouseDown(index)}
-              />
-            ))}
-          </div>
+        <div
+          ref={stepListRef}
+          className={`macro-editor__step-list${draggedIndex !== null ? ' macro-editor__step-list--dragging' : ''}`}
+          role="list"
+          aria-label="Macro steps"
+        >
+          {macro.steps.map((step, index) => (
+            <StepRow
+              key={index}
+              step={step}
+              index={index}
+              stepCount={stepCount}
+              isDragging={draggedIndex === index}
+              onEdit={() => setEditingStepIndex(index)}
+              onDelete={() => onDeleteStep?.(macro.id, index)}
+              onMove={(direction) => onMoveStep?.(macro.id, index, direction)}
+              onGripMouseDown={handleGripMouseDown(index)}
+            />
+          ))}
         </div>
 
         <div className="macro-editor__footer">
           {/* Both run verbs spelled out — the footer has the room the
-              panel rows don't (the rows keep the split button). */}
+              panel rows don't. */}
           <div className="macro-editor__run-group">
             {onRun && (
-              <Button variant="primary" size="default" onClick={() => onRun(macro.id)}>
+              <Button variant="secondary" size="default" onClick={() => onRun(macro.id)}>
                 Run
               </Button>
             )}
@@ -452,6 +443,36 @@ export function MacroEditorDialog({
           </Button>
         </div>
       </Dialog>
+
+      <ContextMenu
+        isOpen={macroMenuOpen}
+        onClose={() => setMacroMenuOpen(false)}
+        x={macroMenuPosition.x}
+        y={macroMenuPosition.y}
+      >
+        <ContextMenuItem
+          label="Rename macro"
+          onClick={() => {
+            setMacroMenuOpen(false);
+            setIsRenameDialogOpen(true);
+          }}
+        />
+        <ContextMenuItem
+          label="Export macro"
+          onClick={() => {
+            setMacroMenuOpen(false);
+            onExportMacro?.(macro.id);
+          }}
+        />
+        <ContextMenuItem isDivider label="" />
+        <ContextMenuItem
+          label="Delete macro"
+          onClick={() => {
+            setMacroMenuOpen(false);
+            onDeleteMacro?.(macro.id);
+          }}
+        />
+      </ContextMenu>
 
       <SelectCommandDialog
         isOpen={isSelectCommandDialogOpen}

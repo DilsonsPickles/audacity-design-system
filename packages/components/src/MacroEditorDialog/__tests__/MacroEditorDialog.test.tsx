@@ -55,9 +55,14 @@ describe('MacroEditorDialog', () => {
     expect(container.querySelector('.macro-editor__run')).toBeNull();
   });
 
-  it('renames the macro through the header Rename macro dialog', () => {
+  const openMacroMenu = (container: HTMLElement) => {
+    fireEvent.click(container.querySelector('button[aria-label="Macro options"]')!);
+  };
+
+  it('renames the macro through the header menu Rename macro dialog', () => {
     const onRenameMacro = vi.fn();
     const { container, getByText } = renderEditor({ onRenameMacro });
+    openMacroMenu(container);
     fireEvent.click(getByText('Rename macro'));
     const input = container.querySelector<HTMLInputElement>('#rename-macro-input');
     fireEvent.change(input!, { target: { value: 'Fade both ends' } });
@@ -65,12 +70,14 @@ describe('MacroEditorDialog', () => {
     expect(onRenameMacro).toHaveBeenCalledWith('m1', 'Fade both ends');
   });
 
-  it('deletes and exports the macro from the header', () => {
+  it('deletes and exports the macro from the header menu', () => {
     const onDeleteMacro = vi.fn();
     const onExportMacro = vi.fn();
-    const { getByText } = renderEditor({ onDeleteMacro, onExportMacro });
+    const { container, getByText } = renderEditor({ onDeleteMacro, onExportMacro });
+    openMacroMenu(container);
     fireEvent.click(getByText('Delete macro'));
     expect(onDeleteMacro).toHaveBeenCalledWith('m1');
+    openMacroMenu(container);
     fireEvent.click(getByText('Export macro'));
     expect(onExportMacro).toHaveBeenCalledWith('m1');
   });
@@ -187,10 +194,10 @@ describe('MacroEditorDialog', () => {
     }
   });
 
-  it('adds a step via New step and closes via Done', () => {
+  it('adds a step via Add step and closes via Done', () => {
     const onClose = vi.fn();
     const { container, getByText } = renderEditor({ onClose, availableCommands: [] });
-    fireEvent.click(getByText('New step'));
+    fireEvent.click(getByText('Add step'));
     // SelectCommandDialog opens (empty command list is fine for this assertion)
     expect(container.textContent).toContain('Select command');
     fireEvent.click(getByText('Done'));
