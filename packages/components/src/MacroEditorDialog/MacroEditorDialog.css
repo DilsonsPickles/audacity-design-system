@@ -76,7 +76,7 @@
   gap: 8px;
   /* Grey well behind the step cards (#f8f8f9) so the list reads as a
      container holding items, not cards floating on the dialog bg */
-  background: var(--macro-editor-list-bg, #eef0f3);
+  background: var(--macro-editor-list-bg, #ebedf0);
 }
 
 .macro-editor__step {

@@ -44,6 +44,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Grey well holding white macro cards — mirrors the editor's
+     step-list-on-well so the two surfaces read as one card language. */
+  background: var(--macros-well-bg, #ebedf0);
 }
 
 .macros-panel__empty {
@@ -61,15 +64,16 @@
   gap: 8px;
   padding: 6px 8px 6px 12px;
   min-height: 44px;
-  border: 1px solid var(--stroke-primary, #d4d5d9);
+  /* White card on the grey well — borderless; the fill contrast is the
+     edge. Radius matches the editor step cards (4px). */
   border-radius: 4px;
-  background: var(--list-item-bg-idle, #f8f8f9);
+  background: var(--macros-card-bg, #ffffff);
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .macros-panel__row:hover {
-  background: var(--list-item-bg-hover, #e9e9ed);
+  background: var(--macros-card-bg-hover, #f4f4f6);
 }
 
 .macros-panel__row:focus-visible {
@@ -92,6 +96,19 @@
 
 .macros-panel__row-actions {
   display: flex;
+  align-items: center;
   gap: 4px;
   flex-shrink: 0;
+}
+
+/* Run split button as OUTLINE (matches the editor's step buttons) — the
+   primary action reads against the white card without the grey-on-grey
+   mush of a filled secondary button, and without per-row blue. */
+.macros-panel__run .button {
+  background: transparent;
+  border: 1px solid var(--stroke-primary, #c4c5cc);
+}
+
+.macros-panel__run .button:hover:not(.button--disabled) {
+  background: var(--macros-well-bg, #ebedf0);
 }

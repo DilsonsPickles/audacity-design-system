@@ -125,6 +125,7 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
             label="Run"
             variant="secondary"
             size="small"
+            className="macros-panel__run"
             ariaLabel={`Run ${macro.name} on current project`}
             onClick={onRunOnProject}
             menuAriaLabel={`Run ${macro.name} options`}
