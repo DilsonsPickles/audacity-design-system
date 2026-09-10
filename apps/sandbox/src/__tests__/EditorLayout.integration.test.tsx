@@ -383,10 +383,17 @@ describe('Bottom drawer', () => {
       return el as HTMLElement;
     });
 
-    const tabLabels = () =>
-      Array.from(panelHeader.querySelectorAll('.panel-header__tab-label')).map((el) => el.textContent);
+    // A single open panel renders PanelHeader's TITLE mode (plain title,
+    // no tab pills); two+ panels render tab mode. The helpers read both.
+    const tabLabels = () => {
+      const pills = Array.from(panelHeader.querySelectorAll('.panel-header__tab-label')).map((el) => el.textContent);
+      if (pills.length > 0) return pills;
+      const title = panelHeader.querySelector('.panel-header__title')?.textContent;
+      return title ? [title] : [];
+    };
     const activeTabLabel = () =>
-      panelHeader.querySelector('[role="tab"][aria-selected="true"] .panel-header__tab-label')?.textContent;
+      panelHeader.querySelector('[role="tab"][aria-selected="true"] .panel-header__tab-label')?.textContent
+      ?? panelHeader.querySelector('.panel-header__title')?.textContent;
 
     expect(tabLabels()).toEqual(['Mixer']);
     expect(activeTabLabel()).toBe('Mixer');
@@ -432,18 +439,19 @@ describe('Bottom drawer', () => {
     fireEvent.click(pianoRollTab);
     expect(activeTabLabel()).toBe('Piano roll');
 
-    // --- Close path 1: Piano roll's "Close panel" dispatches
-    // SET_PIANO_ROLL_OPEN(false) directly — no CustomEvent involved.
-    // useDrawerTabAutoSwitch then falls the active tab back to Mixer
-    // since it's still open. ---
-    fireEvent.click(container.querySelector('[aria-label="Close panel"]')!);
+    // --- Close path 1: two tabs = tab mode, so the close button lives ON
+    // the Piano roll tab. It dispatches SET_PIANO_ROLL_OPEN(false)
+    // directly — no CustomEvent involved. useDrawerTabAutoSwitch then
+    // falls the active tab back to Mixer since it's still open. ---
+    fireEvent.click(container.querySelector('[aria-label="Close Piano roll"]')!);
     await waitFor(() => {
       expect(tabLabels()).toEqual(['Mixer']);
       expect(activeTabLabel()).toBe('Mixer');
     });
 
-    // --- Close path 2: Mixer's "Close panel" dispatches the
-    // `close-mixer-panel` window CustomEvent (EditorLayout.tsx
+    // --- Close path 2: Mixer alone = TITLE mode, so the panel-level
+    // "Close panel" button is back. It dispatches the
+    // `close-mixer-panel` window CustomEvent (EditorBottomDrawer
     // handleTabClose) — App's useMixerPanelListener is the only thing
     // that turns that into mixerPanelOpen=false. Asserting the drawer
     // actually disappears proves that listener is wired end-to-end,

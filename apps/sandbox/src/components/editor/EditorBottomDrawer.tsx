@@ -94,6 +94,18 @@ export function EditorBottomDrawer({
   // Ensure active tab is valid
   const activeTab = tabs.find(t => t.id === drawerActiveTab) ? drawerActiveTab : tabs[0].id;
 
+  // Per-tab close (tab mode's on-tab close buttons). handleTabClose
+  // below stays as the single-tab title-mode close for the active tab.
+  const closeTab = (tabId: string) => {
+    if (tabId === 'mixer') {
+      window.dispatchEvent(new CustomEvent('close-mixer-panel'));
+    } else if (tabId === 'piano-roll') {
+      dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
+    } else if (tabId === 'macros') {
+      onCloseMacros?.();
+    }
+  };
+
   const handleTabClose = () => {
     if (activeTab === 'mixer') {
       // Close mixer — find and call the mixer toggle in App via dispatch or prop
@@ -135,6 +147,7 @@ export function EditorBottomDrawer({
         onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as DrawerTabId[])}
         onMenuClick={activeTab === 'macros' ? onMacrosMenuClick : undefined}
         onClose={handleTabClose}
+        onTabClose={closeTab}
         onResizeStart={(e) => {
           e.preventDefault();
           const startY = e.clientY;

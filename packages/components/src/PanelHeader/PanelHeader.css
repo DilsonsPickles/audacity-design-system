@@ -94,9 +94,50 @@
   box-shadow: inset -2px 0 0 var(--ph-focus);
 }
 
-/* Close button — pushed to the far right */
+/* Close button — pushed to the far right (TITLE mode only) */
 .panel-header__close {
   margin-left: auto;
   margin-right: 4px;
   flex-shrink: 0;
+}
+
+/* TITLE mode — single tab renders as a plain panel title, no tab pill */
+.panel-header__title-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 4px 0 12px;
+  min-width: 0;
+}
+
+.panel-header__title {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--ph-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Per-tab close (TAB mode) — always visible on the active tab,
+   hover-revealed on inactive ones */
+.panel-header__tab-close {
+  flex-shrink: 0;
+}
+
+.panel-header__tab--inactive .panel-header__tab-close {
+  opacity: 0;
+}
+
+.panel-header__tab--inactive:hover .panel-header__tab-close,
+.panel-header__tab--inactive:focus-visible .panel-header__tab-close {
+  opacity: 1;
+}
+
+.panel-header__tab--inactive {
+  gap: 6px;
+  padding-right: 6px;
 }

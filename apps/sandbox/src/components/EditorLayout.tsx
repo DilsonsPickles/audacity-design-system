@@ -260,6 +260,12 @@ export function EditorLayout(props: EditorLayoutProps) {
     }
   };
 
+  // Per-tab close for the left dock's tab mode (close button on each tab)
+  const handleLeftDockTabClose = (tabId: string) => {
+    if (tabId === 'effects') setEffectsPanel(null);
+    else if (tabId === 'macros') setIsMacrosPanelOpen(false);
+  };
+
   const openDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDockMenu({ x: rect.right, y: rect.bottom });
@@ -552,6 +558,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           onTabReorder={(newTabs) => setLeftDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
           onMenuClick={activeLeftDockTab === 'macros' ? openDockMenu : undefined}
           onClose={handleLeftDockClose}
+          onTabClose={handleLeftDockTabClose}
         >
           {activeLeftDockTab === 'effects' && effectsOpen && effectsPanel && (
             <TrackEffectsPanel

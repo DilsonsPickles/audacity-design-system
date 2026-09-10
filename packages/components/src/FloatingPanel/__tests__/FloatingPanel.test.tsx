@@ -22,14 +22,16 @@ function renderPanel(props: Partial<React.ComponentProps<typeof FloatingPanel>> 
 }
 
 describe('FloatingPanel', () => {
-  it('renders the tab and content in a fixed, non-modal panel', () => {
+  it('renders the title and content in a fixed, non-modal panel (single tab = title mode)', () => {
     const { container } = renderPanel();
     const panel = container.querySelector('.floating-panel') as HTMLElement;
     expect(panel).not.toBeNull();
     expect(panel.getAttribute('aria-modal')).toBe('false');
     expect(panel.getAttribute('aria-label')).toBe('Macros');
     expect(container.querySelector('[data-testid="floating-content"]')).not.toBeNull();
-    expect(container.querySelector('[role="tab"]')?.textContent).toContain('Macros');
+    // Single tab renders as a plain title, not a tab pill
+    expect(container.querySelector('[role="tab"]')).toBeNull();
+    expect(container.querySelector('.panel-header__title')?.textContent).toBe('Macros');
   });
 
   it('honors an explicit initial position and size', () => {
