@@ -234,7 +234,16 @@ export function handleEnterSelection(e: KeyboardEvent, deps: NavigationHandlerDe
       const end = Math.max(anchor, state.focusedTrackIndex);
       const newSelection: number[] = [];
       for (let i = start; i <= end; i++) newSelection.push(i);
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      if (state.timeSelection) {
+        // Active time range: extend the RANGE's row scope (the
+        // reducer mirrors it into the track selection).
+        dispatch({
+          type: 'SET_TIME_SELECTION',
+          payload: { ...state.timeSelection, tracks: newSelection },
+        });
+      } else {
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      }
     } else if (e.metaKey || e.ctrlKey) {
       toggleTrackSelection(state.focusedTrackIndex, state.selectedTrackIndices, dispatch);
       const ts = state.timeSelection;

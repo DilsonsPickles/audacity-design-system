@@ -329,6 +329,18 @@ export function useTrackPanelHandlers(
     for (let i = start; i <= end; i++) {
       newSelection.push(i);
     }
+    if (timeSelection) {
+      // Active time range: extend the RANGE's row scope (the reducer
+      // mirrors it into the track selection) — extending only the
+      // track selection leaves the new rows selected-but-outside-the-
+      // range, which renders the darker selected tint instead of the
+      // regular time-selection overlay.
+      dispatch({
+        type: 'SET_TIME_SELECTION',
+        payload: { ...timeSelection, tracks: newSelection },
+      });
+      return;
+    }
     dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
   };
 

@@ -405,14 +405,24 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   const handleContainerEnter = React.useCallback((trackIndex: number, modifiers: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
     if (modifiers.shiftKey && !modifiers.metaKey && !modifiers.ctrlKey) {
-      // Shift+Enter: range-select from anchor to this track
+      // Shift+Enter: range-select from anchor to this track. With an
+      // active time range, extend the RANGE's row scope instead (the
+      // reducer mirrors it) so the new rows get the regular
+      // time-selection overlay, not the selected-outside-range tint.
       const anchor = selectionAnchor ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices[0] : trackIndex);
       if (selectionAnchor === null) setSelectionAnchor(anchor);
       const start = Math.min(anchor, trackIndex);
       const end = Math.max(anchor, trackIndex);
       const newSelection: number[] = [];
       for (let i = start; i <= end; i++) newSelection.push(i);
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      if (state.timeSelection) {
+        dispatch({
+          type: 'SET_TIME_SELECTION',
+          payload: { ...state.timeSelection, tracks: newSelection },
+        });
+      } else {
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      }
     } else if (modifiers.metaKey || modifiers.ctrlKey) {
       toggleScopeOrTrackSelection(trackIndex);
     } else if (state.timeSelection) {

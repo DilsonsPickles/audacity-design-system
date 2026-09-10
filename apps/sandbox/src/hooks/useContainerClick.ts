@@ -120,7 +120,16 @@ export function useContainerClick({
         for (let i = start; i <= end; i++) {
           newSelection.push(i);
         }
-        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+        if (timeSelection) {
+          // Active time range: extend the RANGE's row scope (the
+          // reducer mirrors it into the track selection).
+          dispatch({
+            type: 'SET_TIME_SELECTION',
+            payload: { ...timeSelection, tracks: newSelection },
+          });
+        } else {
+          dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+        }
       } else if (laneClickBehavior !== 'playhead-only') {
         // Prototyping toggle (Developer Tools): a plain lane click also
         // drives track selection. In 'select-and-collapse', clicking a

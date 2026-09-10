@@ -96,7 +96,17 @@ export function useTrackKeyboardHandlers(
       const end = Math.max(anchor, targetIndex);
       const newSelection: number[] = [];
       for (let i = start; i <= end; i++) newSelection.push(i);
-      dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      if (timeSelection) {
+        // Active time range: extend the RANGE's row scope (the
+        // reducer mirrors it) so the new rows get the regular
+        // time-selection overlay, not the selected-outside-range tint.
+        dispatch({
+          type: 'SET_TIME_SELECTION',
+          payload: { ...timeSelection, tracks: newSelection },
+        });
+      } else {
+        dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
+      }
     } else if (trackSelectionMode === 'follows-focus' && !decouple) {
       // Plain arrow in follows-focus mode: selection moves
       // with focus. Cmd held = "decouple": focus moves
