@@ -155,8 +155,15 @@ const ACTIONS: MacroAction[] = [
   },
 ];
 
-export const macroActionRegistry: ReadonlyMap<string, MacroAction> =
-  new Map(ACTIONS.map((a) => [a.command, a]));
+const registry = new Map(ACTIONS.map((a) => [a.command, a]));
+// AU4-vocabulary aliases (the rebuilt command list uses the real
+// action titles): 'Select all' = select-all, 'Clear selection' =
+// clear-selection. The original names stay registered so previously
+// exported macros keep running.
+registry.set('Select all', registry.get('Select All')!);
+registry.set('Clear selection', registry.get('Select None')!);
+
+export const macroActionRegistry: ReadonlyMap<string, MacroAction> = registry;
 
 export interface MacroRunResult {
   /** Command names that executed through a registered action, in order */
