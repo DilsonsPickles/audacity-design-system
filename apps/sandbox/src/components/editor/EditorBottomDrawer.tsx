@@ -86,7 +86,7 @@ export function EditorBottomDrawer({
   const allTabDefs: Record<string, PanelHeaderTab> = {
     mixer: { id: 'mixer', label: 'Mixer' },
     'piano-roll': { id: 'piano-roll', label: 'Piano roll' },
-    macros: { id: 'macros', label: 'Macros' },
+    macros: { id: 'macros', label: 'Macro manager' },
   };
   const openIds = new Set<string>();
   if (mixerOpen) openIds.add('mixer');

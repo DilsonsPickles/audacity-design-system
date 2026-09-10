@@ -239,7 +239,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     if (isMacrosPanelOpen && macrosPanelSide === 'bottom') setDrawerActiveTab('macros');
   }, [isMacrosPanelOpen, macrosPanelSide]);
 
-  const macrosTabDef: PanelHeaderTab = { id: 'macros', label: 'Macros' };
+  const macrosTabDef: PanelHeaderTab = { id: 'macros', label: 'Macro manager' };
   const leftDockTabDefs: Record<'effects' | 'macros', PanelHeaderTab> = {
     effects: { id: 'effects', label: 'Effects' },
     macros: macrosTabDef,

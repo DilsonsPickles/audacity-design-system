@@ -13,7 +13,7 @@ export interface MacrosPanelProps {
   macros: Macro[];
   /** Called when a new macro is created via the "Create new macro" dialog */
   onCreateMacro?: (name: string) => void;
-  /** Called when "Import macro" is clicked */
+  /** Called when "Import" is clicked */
   onImportMacro?: () => void;
   /** Called when a macro should open in the macro editor (row click, or menu "Edit macro") */
   onEditMacro?: (macroId: string) => void;
@@ -196,14 +196,10 @@ export function MacrosPanel({
   const renamingMacro = macros.find((m) => m.id === macroToRename);
 
   return (
-    <div className="macros-panel" role="region" aria-label="Macros panel">
-      <div className="macros-panel__header">
-        <span className="macros-panel__title">Macros</span>
-      </div>
-
+    <div className="macros-panel" role="region" aria-label="Macro manager">
       <div className="macros-panel__actions">
         <Button variant="secondary" size="small" onClick={onImportMacro}>
-          Import macro
+          Import
         </Button>
         <Button variant="primary" size="small" onClick={() => setIsNewMacroDialogOpen(true)}>
           Create new
