@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
-import { SplitButton } from '../SplitButton';
+import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { NewMacroDialog, RenameMacroDialog } from '../MacroManager/MacroDialogs';
@@ -11,9 +11,9 @@ import './MacrosPanel.css';
 export interface MacrosPanelProps {
   /** Available macros */
   macros: Macro[];
-  /** Called when a new macro is created via the "Create new macro" dialog */
+  /** Called when a new macro is created via the "New macro" dialog */
   onCreateMacro?: (name: string) => void;
-  /** Called when "Import" is clicked */
+  /** Called when "Import macro…" is picked from the panel menu */
   onImportMacro?: () => void;
   /** Called when a macro should open in the macro editor (row click, or menu "Edit macro") */
   onEditMacro?: (macroId: string) => void;
@@ -23,9 +23,9 @@ export interface MacrosPanelProps {
   onDeleteMacro?: (macroId: string) => void;
   /** Called when "Export macro" is picked from the row menu */
   onExportMacro?: (macroId: string) => void;
-  /** Called when a row's play button is clicked (run on current project) */
+  /** Called when a row's Run button is clicked (run on current project) */
   onRunOnProject?: (macroId: string) => void;
-  /** Called when a row's run-on-files button is clicked (batch mode) */
+  /** Called when "Apply to files…" is picked from the row menu (batch mode) */
   onRunOnFiles?: (macroId: string) => void;
   /** Operating system for the nested dialogs' header controls */
   os?: 'macos' | 'windows';
@@ -45,21 +45,15 @@ interface MacroRowProps {
  *  (run on project) can cancel it. */
 const ROW_DOUBLE_CLICK_WINDOW = 250;
 
+/** Anchor a context menu to the bottom-right corner of the clicked button. */
+function menuAnchor(e: React.MouseEvent<HTMLButtonElement>) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  return { x: rect.right, y: rect.bottom };
+}
+
 function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject, onRunOnFiles }: MacroRowProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 });
-  // Run-variants menu (the split button's caret) — run actions only;
-  // management actions stay on the kebab.
-  const [runMenuOpen, setRunMenuOpen] = React.useState(false);
-  const [runMenuPosition, setRunMenuPosition] = React.useState({ x: 0, y: 0 });
-
-  const handleRunMenuClick = (e?: React.MouseEvent<HTMLButtonElement>) => {
-    if (!e) return;
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setRunMenuPosition({ x: rect.right, y: rect.bottom });
-    setRunMenuOpen(true);
-  };
 
   // Single click opens the editor (deferred); double click runs the macro
   // on the current project and swallows the pending single-click edit.
@@ -84,8 +78,7 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
 
   const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPosition({ x: rect.right, y: rect.bottom });
+    setMenuPosition(menuAnchor(e));
     setMenuOpen(true);
   };
 
@@ -121,16 +114,14 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          <SplitButton
-            label="Run"
+          <Button
             variant="secondary"
-            size="small"
-            className="macros-panel__run"
+            icon={<Icon name="play" />}
             ariaLabel={`Run ${macro.name} on current project`}
             onClick={onRunOnProject}
-            menuAriaLabel={`Run ${macro.name} options`}
-            onMenuClick={handleRunMenuClick}
-          />
+          >
+            Run
+          </Button>
           <GhostButton
             icon="menu"
             size="medium"
@@ -147,34 +138,22 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
         x={menuPosition.x}
         y={menuPosition.y}
       >
+        {menuItem('Apply to files…', onRunOnFiles)}
+        <ContextMenuItem isDivider label="" />
         {menuItem('Edit macro', onEdit)}
         {menuItem('Rename macro', onRename)}
         {menuItem('Export macro', onExport)}
         {menuItem('Delete macro', onDelete)}
-      </ContextMenu>
-
-      <ContextMenu
-        isOpen={runMenuOpen}
-        onClose={() => setRunMenuOpen(false)}
-        x={runMenuPosition.x}
-        y={runMenuPosition.y}
-      >
-        <ContextMenuItem
-          label="Apply to files…"
-          onClick={() => {
-            setRunMenuOpen(false);
-            onRunOnFiles?.();
-          }}
-        />
       </ContextMenu>
     </>
   );
 }
 
 /**
- * MacrosPanel — dockable macro management panel. Each row carries a
- * SPLIT run button (primary = run on project; caret menu = "Apply to
- * files…") and a kebab for management actions, plus import and create.
+ * MacrosPanel — dockable macro management panel. A "Macros" header carries
+ * the primary "New macro" button and a panel menu (Import); each row is a
+ * full-width list item with a Run button (run on project) and a kebab
+ * holding "Apply to files…" plus the management actions.
  * Row single-click edits; double-click runs the macro on the project.
  * Editing an individual macro happens in the separate MacroEditorDialog;
  * this panel only reports `onEditMacro`.
@@ -193,17 +172,39 @@ export function MacrosPanel({
 }: MacrosPanelProps) {
   const [isNewMacroDialogOpen, setIsNewMacroDialogOpen] = React.useState(false);
   const [macroToRename, setMacroToRename] = React.useState<string | null>(null);
+  const [panelMenuOpen, setPanelMenuOpen] = React.useState(false);
+  const [panelMenuPosition, setPanelMenuPosition] = React.useState({ x: 0, y: 0 });
   const renamingMacro = macros.find((m) => m.id === macroToRename);
+
+  const handlePanelMenuClick = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (!e) return;
+    setPanelMenuPosition(menuAnchor(e));
+    setPanelMenuOpen(true);
+  };
 
   return (
     <div className="macros-panel" role="region" aria-label="Macro manager">
-      <div className="macros-panel__actions">
-        <Button variant="secondary" size="small" onClick={onImportMacro}>
-          Import
-        </Button>
-        <Button variant="primary" size="small" onClick={() => setIsNewMacroDialogOpen(true)}>
-          Create new
-        </Button>
+      <div className="macros-panel__header">
+        <span className="macros-panel__title">Macros</span>
+        <div className="macros-panel__header-actions">
+          <Button
+            variant="primary"
+            size="small"
+            icon={<Icon name="plus" />}
+            onClick={() => setIsNewMacroDialogOpen(true)}
+          >
+            New macro
+          </Button>
+          <Button
+            variant="secondary"
+            size="small"
+            className="macros-panel__icon-button"
+            ariaLabel="Macro manager options"
+            onClick={handlePanelMenuClick}
+          >
+            <Icon name="menu" />
+          </Button>
+        </div>
       </div>
 
       <div className="macros-panel__list">
@@ -225,6 +226,21 @@ export function MacrosPanel({
           />
         ))}
       </div>
+
+      <ContextMenu
+        isOpen={panelMenuOpen}
+        onClose={() => setPanelMenuOpen(false)}
+        x={panelMenuPosition.x}
+        y={panelMenuPosition.y}
+      >
+        <ContextMenuItem
+          label="Import macro…"
+          onClick={() => {
+            setPanelMenuOpen(false);
+            onImportMacro?.();
+          }}
+        />
+      </ContextMenu>
 
       <NewMacroDialog
         isOpen={isNewMacroDialogOpen}

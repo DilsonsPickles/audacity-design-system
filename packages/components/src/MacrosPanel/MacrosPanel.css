@@ -1,4 +1,7 @@
-/* MacrosPanel — dockable macro management panel */
+/* MacrosPanel — dockable macro management panel.
+   Header ("Macros" + New macro + panel menu) on the panel background,
+   then a full-width list of white rows separated by hairlines. Each row:
+   name, filled Run button (play glyph), ghost kebab. */
 
 .macros-panel {
   display: flex;
@@ -8,35 +11,60 @@
   background: var(--dock-bg, #f8f8f9);
 }
 
-/* Panel chrome: the dock tab already names the panel, so no title row —
-   the actions sit directly under the tab. No divider below them: the
-   grey well's edge is the separation. */
-.macros-panel__actions {
+.macros-panel__header {
+  height: 40px;
+  padding: 8px 8px 8px 10px;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 12px 16px;
   flex-shrink: 0;
 }
 
-.macros-panel__actions > * {
-  flex: 1;
+.macros-panel__title {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  white-space: nowrap;
+}
+
+.macros-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Button's 80px min-width is for dialog footers; row and header buttons
+   are content-sized. */
+.macros-panel__row-actions .button,
+.macros-panel__icon-button.button {
+  min-width: 0;
+}
+
+/* The panel menu is a square, filled icon button sharing New macro's
+   height (24px) — it belongs to the header's control group. */
+.macros-panel__icon-button.button {
+  padding: 0;
+  width: 24px;
+}
+
+.macros-panel__icon-button .button__text {
+  line-height: 0;
 }
 
 .macros-panel__list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Grey well holding white macro cards — mirrors the editor's
-     step-list-on-well so the two surfaces read as one card language. */
-  background: var(--macros-well-bg, #ebedf0);
 }
 
 .macros-panel__empty {
-  padding: 16px 8px;
+  padding: 16px 10px;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   line-height: 16px;
@@ -48,23 +76,26 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 8px 6px 12px;
-  min-height: 44px;
-  /* White card on the grey well — borderless; the fill contrast is the
-     edge. Radius matches the editor step cards (4px). */
-  border-radius: 4px;
-  background: var(--macros-card-bg, #ffffff);
+  height: 44px;
+  padding: 0 8px 0 10px;
+  flex-shrink: 0;
+  background: var(--macros-row-bg, #ffffff);
+  border-bottom: 1px solid var(--macros-row-divider, #e4e5e9);
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
+.macros-panel__row:first-child {
+  border-top: 1px solid var(--macros-row-divider, #e4e5e9);
+}
+
 .macros-panel__row:hover {
-  background: var(--macros-card-bg-hover, #f4f4f6);
+  background: var(--macros-row-bg-hover, #f4f4f6);
 }
 
 .macros-panel__row:focus-visible {
   outline: 2px solid var(--accent-primary, #677ce4);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .macros-panel__row-name {
@@ -85,16 +116,4 @@
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
-}
-
-/* Run split button as OUTLINE (matches the editor's step buttons) — the
-   primary action reads against the white card without the grey-on-grey
-   mush of a filled secondary button, and without per-row blue. */
-.macros-panel__run .button {
-  background: transparent;
-  border: 1px solid var(--stroke-primary, #c4c5cc);
-}
-
-.macros-panel__run .button:hover:not(.button--disabled) {
-  background: var(--macros-well-bg, #ebedf0);
 }

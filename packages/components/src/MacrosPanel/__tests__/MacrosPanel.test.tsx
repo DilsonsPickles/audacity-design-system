@@ -46,10 +46,10 @@ describe('MacrosPanel', () => {
     expect(onRunOnProject).toHaveBeenCalledWith('m1');
   });
 
-  it('runs a macro on files via the split button caret menu', () => {
+  it('runs a macro on files via the row menu', () => {
     const onRunOnFiles = vi.fn();
     const { container } = renderPanel({ onRunOnFiles });
-    fireEvent.click(container.querySelector('button[aria-label="Run MP3 conversion options"]')!);
+    fireEvent.click(container.querySelector('button[aria-label="MP3 conversion options"]')!);
     const applyItem = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.includes('Apply to files'));
     fireEvent.click(applyItem!);
@@ -116,10 +116,20 @@ describe('MacrosPanel', () => {
     expect(onDeleteMacro).toHaveBeenCalledWith('m1');
   });
 
-  it('creates a macro through the Create new macro dialog', () => {
+  it('imports a macro via the panel menu', () => {
+    const onImportMacro = vi.fn();
+    const { container } = renderPanel({ onImportMacro });
+    fireEvent.click(container.querySelector('button[aria-label="Macro manager options"]')!);
+    const importItem = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.includes('Import macro'));
+    fireEvent.click(importItem!);
+    expect(onImportMacro).toHaveBeenCalled();
+  });
+
+  it('creates a macro through the New macro dialog', () => {
     const onCreateMacro = vi.fn();
     const { container, getByText } = renderPanel({ onCreateMacro });
-    fireEvent.click(getByText('Create new'));
+    fireEvent.click(getByText('New macro'));
 
     const input = container.querySelector<HTMLInputElement>('#macro-name-input');
     expect(input).not.toBeNull();
