@@ -1263,6 +1263,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         />
       )}
+      {dockMenu?.tab === 'macros' && <ContextMenuItem isDivider label="" />}
       <ContextMenuItem
         label="Close"
         onClick={() => {
