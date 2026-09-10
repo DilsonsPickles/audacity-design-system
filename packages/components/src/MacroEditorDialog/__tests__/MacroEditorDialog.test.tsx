@@ -217,15 +217,12 @@ describe('MacroEditorDialog — non-modal window with Run (2026-09-10)', () => {
   });
 });
 
-describe('MacroEditorDialog — Run split button', () => {
-  it('caret menu "Apply to files…" calls onRunFiles with the macro id', () => {
+describe('MacroEditorDialog — footer run actions', () => {
+  it('"Run on files…" calls onRunFiles with the macro id', () => {
     const onRun = vi.fn();
     const onRunFiles = vi.fn();
-    const { container, getByText } = renderEditor({ onRun, onRunFiles });
-    fireEvent.click(container.querySelector('button[aria-label="Run options"]')!);
-    const item = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
-      .find((el) => el.textContent?.includes('Apply to files'));
-    fireEvent.click(item!);
+    const { getByText } = renderEditor({ onRun, onRunFiles });
+    fireEvent.click(getByText('Run on files…'));
     expect(onRunFiles).toHaveBeenCalledWith('m1');
     expect(onRun).not.toHaveBeenCalled();
   });

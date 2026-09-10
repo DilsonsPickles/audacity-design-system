@@ -6,7 +6,6 @@ import { GhostButton } from '../GhostButton';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
-import { SplitButton } from '../SplitButton';
 import { SelectCommandDialog, Command } from '../SelectCommandDialog';
 import { CommandParametersDialog, type CommandParameter } from '../CommandParametersDialog';
 import { RenameMacroDialog } from '../MacroManager/MacroDialogs';
@@ -255,9 +254,6 @@ export function MacroEditorDialog({
 }: MacroEditorDialogProps) {
   const [isSelectCommandDialogOpen, setIsSelectCommandDialogOpen] = React.useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
-  // Run split-button caret menu ("Apply to files…")
-  const [runMenuOpen, setRunMenuOpen] = React.useState(false);
-  const [runMenuPosition, setRunMenuPosition] = React.useState({ x: 0, y: 0 });
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const stepListRef = React.useRef<HTMLDivElement>(null);
@@ -435,42 +431,25 @@ export function MacroEditorDialog({
         </div>
 
         <div className="macro-editor__footer">
-          {onRun && (
-            <SplitButton
-              label="Run"
-              variant="primary"
-              size="default"
-              className="macro-editor__run"
-              onClick={() => onRun(macro.id)}
-              menuAriaLabel="Run options"
-              onMenuClick={(e) => {
-                if (!e) return;
-                const rect = e.currentTarget.getBoundingClientRect();
-                setRunMenuPosition({ x: rect.right, y: rect.top });
-                setRunMenuOpen(true);
-              }}
-            />
-          )}
+          {/* Both run verbs spelled out — the footer has the room the
+              panel rows don't (the rows keep the split button). */}
+          <div className="macro-editor__run-group">
+            {onRun && (
+              <Button variant="primary" size="default" onClick={() => onRun(macro.id)}>
+                Run
+              </Button>
+            )}
+            {onRunFiles && (
+              <Button variant="secondary" size="default" onClick={() => onRunFiles(macro.id)}>
+                Run on files…
+              </Button>
+            )}
+          </div>
           <Button variant="secondary" size="default" onClick={onClose}>
             Done
           </Button>
         </div>
       </Dialog>
-
-      <ContextMenu
-        isOpen={runMenuOpen}
-        onClose={() => setRunMenuOpen(false)}
-        x={runMenuPosition.x}
-        y={runMenuPosition.y}
-      >
-        <ContextMenuItem
-          label="Apply to files…"
-          onClick={() => {
-            setRunMenuOpen(false);
-            onRunFiles?.(macro.id);
-          }}
-        />
-      </ContextMenu>
 
       <SelectCommandDialog
         isOpen={isSelectCommandDialogOpen}

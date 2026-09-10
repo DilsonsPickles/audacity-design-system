@@ -177,8 +177,11 @@
   flex-shrink: 0;
 }
 
-/* Run sits at the far left of the footer — test-as-you-go action,
+/* Run actions sit at the far left of the footer — test-as-you-go,
    separated from Done (close) on the right */
-.macro-editor__run {
+.macro-editor__run-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-right: auto;
 }
