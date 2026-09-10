@@ -4,7 +4,10 @@
 
 .toast-container {
   position: fixed;
-  z-index: 9999;
+  /* Below the non-modal macro editor window (9500) and true modals
+     (10000), above floating panels (9000) — a toast must never cover
+     the window whose action produced it. */
+  z-index: 9400;
   display: flex;
   flex-direction: column;
   gap: 12px;

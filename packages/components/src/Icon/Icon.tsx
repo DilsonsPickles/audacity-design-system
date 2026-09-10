@@ -5,6 +5,7 @@ import './Icon.css';
 export type IconName =
   | 'mixer'
   | 'menu'
+  | 'edit'
   | 'gripper'
   | 'undo'
   | 'redo'
@@ -105,6 +106,8 @@ const ICON_MAP: Record<IconName, string> = {
   user: '\uEF99',
   book: '\uF441',
   brush: '\uF444',
+  /* The pen \u2014 the correct "edit" glyph (the brush above is a paintbrush) */
+  edit: '\uEF63',
   volume: '\uEF4E',
   metronome: '\uEF20',
   plug: '\uF440',

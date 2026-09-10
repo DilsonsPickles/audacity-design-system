@@ -13,7 +13,7 @@ const MACRO: Macro = {
   steps: [
     { command: 'Select', parameters: 'Start="1", End="1"' },
     { command: 'Fade In', parameters: 'Use_Preset="<Current Settings>"' },
-    { command: 'END', parameters: '' },
+    { command: 'Normalize', parameters: '' },
   ],
 };
 

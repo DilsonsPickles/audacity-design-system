@@ -175,7 +175,7 @@ function StepRow({
         </div>
         <div className="macro-editor__step-actions">
           <GhostButton
-            icon="brush"
+            icon="edit"
             size="medium"
             ariaLabel={`Edit step ${index + 1}`}
             onClick={onEdit}

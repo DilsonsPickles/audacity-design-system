@@ -143,7 +143,8 @@ export function DialogHeader({
             aria-label="Close"
             type="button"
           >
-            {'\uE8BB'}
+            {/* \uE8BB isn't in the icon font - \uEF14 is its close glyph */}
+            {'\uEF14'}
           </button>
         )}
       </div>

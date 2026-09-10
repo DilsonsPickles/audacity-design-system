@@ -8,7 +8,9 @@ export interface MacrosContextValue {
   /** All macros in the project */
   macros: Macro[];
 
-  /** Create a macro (seeded with the END step, matching Audacity's model) */
+  /** Create an empty macro. (No END terminator step — that's an AU3
+   *  file-format artifact; the runner tolerates it on import but the
+   *  editor never shows or creates one.) */
   addMacro: (name: string) => void;
   renameMacro: (macroId: string, newName: string) => void;
   deleteMacro: (macroId: string) => void;
@@ -48,7 +50,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     const newMacro: Macro = {
       id: `macro-${Date.now()}`,
       name,
-      steps: [{ command: 'END', parameters: '' }],
+      steps: [],
     };
     setMacros((prev) => [...prev, newMacro]);
   }, []);
@@ -66,7 +68,11 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     const newMacro: Macro = {
       id: `macro-${Date.now()}`,
       name: macro.name,
-      steps: macro.steps.map((s) => ({ command: s.command, parameters: s.parameters })),
+      // Strip AU3-style END terminator steps — they're a file-format
+      // artifact, not a command the editor shows.
+      steps: macro.steps
+        .filter((s) => s.command !== 'END')
+        .map((s) => ({ command: s.command, parameters: s.parameters })),
     };
     setMacros((prev) => [...prev, newMacro]);
   }, []);

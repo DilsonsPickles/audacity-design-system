@@ -165,8 +165,10 @@ export interface MacroRunResult {
   simulated: string[];
 }
 
-/** Execute a macro's steps in order. `END` is the macro terminator, not a
- *  command. Selection changes are threaded between steps via the view. */
+/** Execute a macro's steps in order. `END` steps are skipped — the
+ *  editor no longer creates them, but AU3-style imported files may
+ *  still carry the terminator. Selection changes are threaded between
+ *  steps via the view. */
 export function runMacroSteps(
   macro: Pick<Macro, 'steps'>,
   state: TracksState,

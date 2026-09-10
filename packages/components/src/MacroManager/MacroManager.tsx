@@ -263,7 +263,7 @@ export function MacroManager({
                   <Icon name="chevron-right" size={16} />
                 </button>
                 <button className="icon-button" aria-label="Edit step">
-                  <Icon name="brush" size={16} />
+                  <Icon name="edit" size={16} />
                 </button>
                 <button className="icon-button" aria-label="Delete step">
                   <Icon name="trash" size={16} />

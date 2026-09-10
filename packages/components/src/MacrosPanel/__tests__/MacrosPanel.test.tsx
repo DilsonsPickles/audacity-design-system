@@ -8,8 +8,8 @@ import type { Macro } from '../../MacroManager/macroTypes';
 afterEach(cleanup);
 
 const MACROS: Macro[] = [
-  { id: 'm1', name: 'Fade ends', steps: [{ command: 'Fade In', parameters: '' }, { command: 'END', parameters: '' }] },
-  { id: 'm2', name: 'MP3 conversion', steps: [{ command: 'END', parameters: '' }] },
+  { id: 'm1', name: 'Fade ends', steps: [{ command: 'Fade In', parameters: '' }, { command: 'Fade Out', parameters: '' }] },
+  { id: 'm2', name: 'MP3 conversion', steps: [{ command: 'Export as MP3', parameters: '' }] },
 ];
 
 function renderPanel(props: Partial<React.ComponentProps<typeof MacrosPanel>> = {}) {
