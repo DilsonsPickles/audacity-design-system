@@ -148,8 +148,21 @@
 
 .macro-editor__step-actions {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+/* Step action icons render as OUTLINE buttons: bordered surface on the
+   card rather than bare ghost glyphs. Hover/active backgrounds still
+   come from the GhostButton's own vars. */
+.macro-editor__step-actions .ghost-button {
+  border: 1px solid var(--stroke-primary, #d4d5d9);
+  border-radius: 4px;
+  background-color: var(--macro-editor-step-action-bg, #ffffff);
+}
+
+.macro-editor__step-actions .ghost-button:hover:not(:disabled) {
+  background-color: var(--ghost-bg-hover);
 }
 
 .macro-editor__footer {
