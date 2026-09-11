@@ -80,3 +80,11 @@ export function makeSelectionColorFns(args: SelectionColorArgs): SelectionColorF
 
   return { getWaveColor, getRmsColor };
 }
+
+/** Align adjacent summary/RMS columns to shared physical-pixel boundaries.
+ * Independent subpixel fillRect calls leave antialiased transparency seams. */
+export function waveformColumnBounds(column: number, pixelRatioX: number): { left: number; width: number } {
+  const left = Math.round(column * pixelRatioX) / pixelRatioX;
+  const right = Math.round((column + 1) * pixelRatioX) / pixelRatioX;
+  return { left, width: right - left };
+}

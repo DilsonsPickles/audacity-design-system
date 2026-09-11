@@ -4,7 +4,7 @@ import type { TimeSelection } from '@audacity-ui/core';
 import { renderMonoSpectrogram, renderStereoSpectrogram, type SpectrogramScale } from '../utils/spectrogram';
 import { getScaleMinFreq } from '../utils/spectrogramScales';
 import { getEnvelopeGainAtTime, type EnvelopePointData } from '../utils/envelope';
-import { computeWaveformGeometry, makeSelectionColorFns } from './waveformGeometry';
+import { computeWaveformGeometry, makeSelectionColorFns, waveformColumnBounds } from './waveformGeometry';
 
 import { EnvelopeOverlay } from '../EnvelopeOverlay/EnvelopeOverlay';
 import { useTheme } from '../ThemeProvider';
@@ -32,6 +32,7 @@ function drawChannel(
   isRms: boolean,
   getColor?: (px: number) => string,
 ) {
+  const pixelRatioX = ctx.getTransform().a;
   for (let px = 0; px < canvasWidth; px++) {
     const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
     const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
@@ -55,7 +56,8 @@ function drawChannel(
 
     const y1 = centerY - max * maxAmplitude;
     const y2 = isRms ? centerY + max * maxAmplitude : centerY - min * maxAmplitude;
-    ctx.fillRect(px, y1, 1, Math.max(1, y2 - y1));
+    const column = waveformColumnBounds(px, pixelRatioX);
+    ctx.fillRect(column.left, y1, column.width, Math.max(1, y2 - y1));
   }
 }
 
@@ -221,7 +223,9 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     const dpr = window.devicePixelRatio || 1;
     canvas.width = canvasWidth * dpr;
     canvas.height = canvasHeight * dpr;
-    ctx.scale(dpr, dpr);
+    // Canvas dimensions are integral; use the actual backing ratios rather
+    // than the requested DPR when a clip has a fractional CSS size.
+    ctx.setTransform(canvas.width / canvasWidth, 0, 0, canvas.height / canvasHeight, 0, 0);
 
     // Clear canvas
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
