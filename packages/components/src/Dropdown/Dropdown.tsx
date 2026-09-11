@@ -1,3 +1,4 @@
+import { SkinScope } from '../SkinProvider/SkinScope';
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
@@ -226,7 +227,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       </button>
 
       {isOpen && !disabled && menuPosition && createPortal(
-        <div
+        <SkinScope><div
           ref={menuRef}
           className="dropdown__menu"
           role="listbox"
@@ -271,7 +272,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
               </div>
             );
           })}
-        </div>,
+        </div></SkinScope>,
         document.body
       )}
     </div>

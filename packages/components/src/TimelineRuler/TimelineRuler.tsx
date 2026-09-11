@@ -1,3 +1,4 @@
+import { useSkin } from '../SkinProvider/SkinContext';
 import { useEffect, useRef, useState } from 'react';
 import { TimeSelection, SpectralSelection } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
@@ -154,6 +155,7 @@ export function TimelineRuler({
   onLoopRegionHoverChange,
 }: TimelineRulerProps) {
   const { theme } = useTheme();
+  const { decoration } = useSkin();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragStateRef = useRef<{ type: 'move' | 'resize-start' | 'resize-end'; startX: number; initialStart: number; initialEnd: number } | null>(null);
   const clickStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -165,7 +167,7 @@ export function TimelineRuler({
   const txtColor = textColor ?? theme.foreground.text.primary;
   const lnColor = lineColor ?? theme.border.onElevated;
   const tckColor = tickColor ?? theme.audio.timeline.tickMajor;
-  const selColor = selectionColor ?? 'rgba(255, 255, 255, 0.5)';
+  const selColor = selectionColor ?? (decoration === 'sakura' ? theme.audio.selection.time : 'rgba(255, 255, 255, 0.5)');
   const specColor = spectralHighlightColor ?? 'rgba(130, 131, 135, 0.3)';
 
   useEffect(() => {

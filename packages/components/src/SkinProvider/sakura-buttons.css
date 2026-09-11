@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: AGPL-3.0-only
+ * Inset depth preserves the existing hit targets and workspace dimensions. */
+.audacity-skin[data-editor-skin='sakura'] :is(.button, .transport-button, .tool-button,
+  .toggle-tool-button, .toggle-button, .dropdown__trigger) {
+  --sakura-button-depth: 8px;
+  --sakura-button-offset: 3px;
+  --sakura-face-offset: calc(-1 * var(--sakura-button-offset));
+  border-radius: 7px;
+  box-shadow: inset 0 calc(-1 * var(--sakura-button-depth)) 0 #8d3159,
+    inset 0 2px 0 #ffffff99, inset 0 0 0 1px #8d3159;
+  transition: background-color 120ms ease, box-shadow 100ms ease;
+}
+.audacity-skin[data-editor-skin='sakura'] :is(.button, .transport-button, .tool-button,
+  .toggle-tool-button, .dropdown__trigger) > :is(.button__text, .button__icon, .musescore-icon, .dropdown__text) {
+  transform: translateY(var(--sakura-face-offset));
+  transition: transform 100ms ease;
+}
+.audacity-skin[data-editor-skin='sakura'] :is(.button, .transport-button, .tool-button,
+  .toggle-tool-button, .toggle-button, .dropdown__trigger):not(:disabled):is(:active, [aria-pressed='true'], [aria-expanded='true']) {
+  --sakura-face-offset: var(--sakura-button-offset);
+  box-shadow: inset 0 -2px 0 #8d3159, inset 0 2px 3px #38202f55, inset 0 0 0 1px #8d3159;
+}
+.audacity-skin[data-editor-skin='sakura'] :is(.tool-button--small, .toggle-button) {
+  --sakura-button-depth: 5px; --sakura-button-offset: 1.5px;
+}
+.audacity-skin[data-editor-skin='sakura'] .toggle-button { padding-block: 0 3px; line-height: 1; }
+.audacity-skin[data-editor-skin='sakura'] .toggle-button:not(:disabled):is(:active, [aria-pressed='true']) { padding-block: 3px 0; }
+.audacity-skin[data-editor-skin='sakura'] .toggle-tool-button[aria-pressed='true'] > .icon { color: #152132 !important; }
+@media (prefers-reduced-motion: reduce) {
+  .audacity-skin[data-editor-skin='sakura'] :is(button, button > *) { transition: none; }
+}

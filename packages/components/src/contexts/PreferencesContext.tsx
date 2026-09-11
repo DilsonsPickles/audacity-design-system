@@ -1,10 +1,11 @@
+import { normalizeSkin, type SkinId } from '../SkinProvider/skin-preferences';
 /**
  * PreferencesContext
  *
  * Manages all user preferences with localStorage persistence
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 
 export interface PreferencesState {
   // General
@@ -14,6 +15,7 @@ export interface PreferencesState {
 
   // Appearance
   theme: 'light' | 'dark';
+  skin: SkinId;
   clipStyle: 'classic' | 'colourful';
 
   // Audio Settings
@@ -89,6 +91,7 @@ const defaultPreferences: PreferencesState = {
 
   // Appearance
   theme: 'light',
+  skin: 'default',
   clipStyle: 'colourful',
 
   // Audio Settings
@@ -169,6 +172,7 @@ const GeneralPrefsContext = createContext<GeneralPrefsValue | undefined>(undefin
 
 export interface AppearancePrefsValue {
   theme: PreferencesState['theme'];
+  skin: SkinId;
   clipStyle: PreferencesState['clipStyle'];
   updatePreference: PreferencesContextValue['updatePreference'];
 }
@@ -195,7 +199,8 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        return { ...defaultPreferences, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        return { ...defaultPreferences, ...parsed, skin: normalizeSkin(parsed.skin) };
       }
     } catch (e) {
       console.error('Failed to load preferences from localStorage:', e);
@@ -212,8 +217,19 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
     }
   }, [preferences]);
 
+  const preferencesRef = useRef(preferences);
+  preferencesRef.current = preferences;
+
   const updatePreference = useCallback(
     <K extends keyof PreferencesState>(key: K, value: PreferencesState[K]) => {
+      if (key === 'skin') {
+        const next = { ...preferencesRef.current, skin: normalizeSkin(value) };
+        // Explicit adoption must succeed on disk before a URL preview ends.
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        preferencesRef.current = next;
+        setPreferences(next);
+        return;
+      }
       setPreferences((prev) => ({
         ...prev,
         [key]: value,
@@ -239,10 +255,11 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
   const appearanceValue = useMemo<AppearancePrefsValue>(
     () => ({
       theme: preferences.theme,
+      skin: preferences.skin,
       clipStyle: preferences.clipStyle,
       updatePreference,
     }),
-    [preferences.theme, preferences.clipStyle, updatePreference]
+    [preferences.theme, preferences.skin, preferences.clipStyle, updatePreference]
   );
 
   const editingBehaviorValue = useMemo<EditingBehaviorPrefsValue>(
