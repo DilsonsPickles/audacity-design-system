@@ -121,6 +121,13 @@ export interface UseMuseIdEntryArgs {
    *  service-context hook result through since this shared hook can't call
    *  useMuseHub()/useAdieu() itself (see file header). */
   adoptTokens: (tokens: MuseIdEntryTokens) => Promise<void>;
+  /** When true, a Muse ID with NO account at this service skips the
+   *  create-or-connect choice card and creates the account immediately
+   *  (the Sign-in-with-Google pattern); the settled card then offers
+   *  "connect an existing account instead" via declineClaim as the
+   *  escape hatch. Off by default so the wallet dialog keeps the
+   *  explicit fork. */
+  autoCreate?: boolean;
   /** Fully signs the caller out of this service — used by declineClaim
    *  when leaving an already-signed-in `settled` state for the
    *  different-email rung. */
@@ -170,6 +177,7 @@ export interface UseMuseIdEntryResult {
 export function useMuseIdEntry({
   service,
   adoptTokens,
+  autoCreate = false,
   signOut,
   onDone,
 }: UseMuseIdEntryArgs): UseMuseIdEntryResult {
@@ -232,6 +240,13 @@ export function useMuseIdEntry({
       if (!isExchangeSignedIn(result)) {
         if (result.accountStatus === 'email-match') {
           setPhase({ kind: 'confirm', display: result.display });
+        } else if (autoCreate) {
+          // No account found and the caller opted into seamless creation:
+          // mint it from the Muse ID identity right away. The settled card
+          // carries the "connect an existing account instead" escape,
+          // which unwinds this via declineClaim (unlink + sign out + the
+          // prove-by-email rung).
+          await commitWithIntent('create');
         } else {
           setPhase({ kind: 'choose' });
         }
@@ -252,7 +267,7 @@ export function useMuseIdEntry({
         err instanceof MuseIdAuthError || err instanceof Error ? err.message : 'Something went wrong.';
       setPhase({ kind: 'error', message });
     }
-  }, [museId, runExchange, adoptTokens, onDone]);
+  }, [museId, runExchange, adoptTokens, onDone, autoCreate, commitWithIntent]);
 
   const confirmClaim = useCallback(async () => {
     try {

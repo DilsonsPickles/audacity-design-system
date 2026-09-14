@@ -65,6 +65,10 @@ export const AdieuAuthDialog: React.FC = () => {
     service: 'adieu',
     adoptTokens,
     signOut,
+    // Product call (14 Sep 2026): a Muse ID with no audio.com account
+    // creates one seamlessly instead of stopping at the create-or-connect
+    // fork; the settled card's "different email" link is the escape hatch.
+    autoCreate: true,
     onDone: () => finishAndClose(),
   });
 
