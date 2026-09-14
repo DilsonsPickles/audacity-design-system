@@ -182,7 +182,7 @@ export function OAuthCallback() {
         <span>Signing you in…</span>
       ) : status === 'relayed' ? (
         <div style={{ textAlign: 'center', maxWidth: 420 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>You’re signed in</div>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>You’re signed in with your Muse ID</div>
           <div style={{ fontSize: 12, opacity: 0.8 }}>You can close this tab and return to Audacity.</div>
         </div>
       ) : (

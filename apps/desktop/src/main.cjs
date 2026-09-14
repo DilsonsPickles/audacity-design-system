@@ -135,7 +135,7 @@ function attachOAuthRelay(server) {
         '<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;' +
         'font-family:Inter,-apple-system,system-ui,sans-serif;background:#0f1116;color:#f4f5f9">' +
         '<div style="text-align:center"><div style="font-size:18px;font-weight:600;margin-bottom:8px">' +
-        (state && !req.query.error ? 'You’re signed in' : 'Sign-in didn’t complete') +
+        (state && !req.query.error ? 'You’re signed in with your Muse ID' : 'Sign-in didn’t complete') +
         '</div><div style="font-size:13px;opacity:.75">You can close this tab and return to Audacity.</div></div>' +
         '<script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script></body>',
     );
