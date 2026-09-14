@@ -218,7 +218,7 @@ export const AdieuAuthDialog: React.FC = () => {
       : entry.phase.kind === 'choose'
         ? 'New to audio.com?'
       : entry.phase.kind === 'settled'
-        ? "You're in"
+        ? "You're signed in"
         : entry.phase.kind === 'different-email'
           ? 'Add an account by email'
           : entry.phase.kind === 'different-email-code'
@@ -319,16 +319,19 @@ export const AdieuAuthDialog: React.FC = () => {
                 ? "We've set up your audio.com account."
                 : "You're connected to audio.com via Muse ID."}
             </p>
+            {/* No escape hatch here (product call, 14 Sep 2026): the user
+                just authenticated with their Muse ID, so this card only
+                confirms. Connecting a different-email account remains an
+                explicit, ownership-proven action from Accounts. The button
+                closes the dialog — it deliberately does NOT open
+                audio.com, hence no destination in the label. */}
             <button
               ref={focusMuseFirstRef as React.Ref<HTMLButtonElement>}
               type="button"
               className="adieu-auth-dialog__cta"
               onClick={finishAndClose}
             >
-              Continue to audio.com
-            </button>
-            <button type="button" className="adieu-auth-dialog__link" onClick={() => void entry.declineClaim()}>
-              Actually, I have an account under a different email
+              Done
             </button>
           </div>
         )}
