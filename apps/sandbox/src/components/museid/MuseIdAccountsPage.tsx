@@ -176,6 +176,13 @@ export const MuseIdAccountsPage: React.FC = () => {
             </div>
             <button
               type="button"
+              className="museid-accounts__btn museid-accounts__btn--primary"
+              onClick={() => window.open(`${(import.meta.env.VITE_MUSEID_BASE_URL as string | undefined) ?? 'http://localhost:3002'}/account`, '_blank')}
+            >
+              Manage account
+            </button>
+            <button
+              type="button"
               className="museid-accounts__btn museid-accounts__btn--ghost"
               onClick={() => { void museId.signOutEverywhere(); }}
             >

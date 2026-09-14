@@ -75,13 +75,22 @@ export const MuseIdHomeAccountCard: React.FC = () => {
           </div>
           <div className="home-tab__accounts-actions">
             {museId.signedIn ? (
-              <Button
-                variant="secondary"
-                size="default"
-                onClick={() => { void museId.signOutEverywhere(); }}
-              >
-                Sign out everywhere
-              </Button>
+              <>
+                <Button
+                  variant="primary"
+                  size="default"
+                  onClick={() => window.open(`${(import.meta.env.VITE_MUSEID_BASE_URL as string | undefined) ?? 'http://localhost:3002'}/account`, '_blank')}
+                >
+                  Manage account
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="default"
+                  onClick={() => { void museId.signOutEverywhere(); }}
+                >
+                  Sign out everywhere
+                </Button>
+              </>
             ) : (
               <>
                 <Button
