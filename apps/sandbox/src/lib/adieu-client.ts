@@ -11,8 +11,11 @@
 // same first-party password-grant + bearer + refresh trio, so the client
 // shape is intentionally familiar.
 //
-// adieu does NOT expose the marketplace OAuth (/authorize + PKCE) flow here —
-// the demo only ever uses the direct-token grant against adieu.
+// Sign-in is browser-first (authorization code + PKCE against adieu's
+// /authorize, like muse-id and moose-hub); the direct-token grant below is
+// retained for the legacy in-app dialog path and for tests.
+
+import { APP_BASE_PATH, oauthCallbackUri } from './appBase';
 
 const ADIEU_BASE_URL: string =
   (import.meta.env.VITE_ADIEU_BASE_URL as string | undefined) ??
@@ -103,6 +106,178 @@ export function adoptTokens(tokens: AdieuTokens): void {
  *  it server-side during the muse-exchange/link call before honoring it. */
 export function getAccessToken(): string | null {
   return readTokens()?.accessToken ?? null;
+}
+
+
+// ---- Browser-first sign-in (authorization code + PKCE) --------------------
+//
+// Mirrors muse-id-client.ts's browser-first flow: the app opens adieu's
+// hosted /authorize in the system browser (Electron: RFC 8252 loopback
+// relay; web: a tab on the shared /oauth/callback route) and finishes the
+// exchange when the code arrives back in this window. States are prefixed
+// 'adu.' so OAuthCallback.tsx can route a multi-provider return to the
+// right client; a sessionStorage pending marker is the belt to that
+// suspender, exactly like muse-id's. Per the established convention the
+// client files don't import each other, so the PKCE helpers are this
+// file's own copies.
+
+const OAUTH_VERIFIER_KEY = 'adieu-oauth-verifier';
+const OAUTH_STATE_KEY = 'adieu-oauth-state';
+const OAUTH_PENDING_KEY = 'adieu-oauth-pending';
+
+export const ADIEU_STATE_PREFIX = 'adu.';
+
+export function isAdieuOAuthState(state: string | null | undefined): boolean {
+  return typeof state === 'string' && state.startsWith(ADIEU_STATE_PREFIX);
+}
+
+function randomBase64Url(byteLength: number): string {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+async function sha256Base64Url(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+interface ElectronOAuthBridgeLite {
+  callbackOrigin: string | null;
+}
+
+function adieuBrowserRedirectUri(): string {
+  // Same reasoning as muse-id-client's browserRedirectUri: under Electron
+  // the system browser must land on the loopback relay's 127.0.0.1 origin
+  // (registered adieu-side as an any-port template), not the renderer's.
+  const bridge =
+    typeof window === 'undefined'
+      ? undefined
+      : (window as Window & { electronOAuth?: ElectronOAuthBridgeLite }).electronOAuth;
+  if (bridge?.callbackOrigin) {
+    return `${bridge.callbackOrigin}${APP_BASE_PATH}oauth/callback`;
+  }
+  return oauthCallbackUri();
+}
+
+/** postMessage type for adieu returns relayed from /oauth/callback popups —
+ *  the adieu twin of MUSE_ID_CALLBACK_MESSAGE_TYPE. */
+export const ADIEU_CALLBACK_MESSAGE_TYPE = 'adieu-oauth-callback';
+
+export interface AdieuCallbackMessage {
+  type: typeof ADIEU_CALLBACK_MESSAGE_TYPE;
+  code?: string;
+  state?: string;
+  error?: string;
+}
+
+export interface AdieuCallbackPayload {
+  code?: string;
+  state?: string;
+  error?: string;
+}
+
+interface ElectronOAuthBridgeFull extends ElectronOAuthBridgeLite {
+  onCallback: (cb: (payload: AdieuCallbackPayload) => void) => () => void;
+}
+
+/** The Electron loopback relay bridge, when running in the desktop shell.
+ *  Provider-agnostic on the main-process side: every loopback return is
+ *  relayed, and listeners discriminate by their own stashed state. */
+export function adieuElectronOAuth(): ElectronOAuthBridgeFull | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as Window & { electronOAuth?: ElectronOAuthBridgeFull }).electronOAuth;
+}
+
+export type AdieuBrowserAuthIntent = 'sign-in' | 'sign-up';
+
+/** Step 1: stash PKCE material + the pending marker, return the URL to open
+ *  in a new browser context. 'sign-up' routes through adieu's /signup with
+ *  the /authorize path as next, so a new user flows back into the code
+ *  grant after creating the account. */
+export async function beginBrowserAuthorize(intent: AdieuBrowserAuthIntent): Promise<string> {
+  const verifier = randomBase64Url(32);
+  const state = ADIEU_STATE_PREFIX + randomBase64Url(16);
+  const challenge = await sha256Base64Url(verifier);
+
+  window.sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier);
+  window.sessionStorage.setItem(OAUTH_STATE_KEY, state);
+  window.sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
+
+  const authorize = new URL('/authorize', ADIEU_BASE_URL);
+  authorize.searchParams.set('response_type', 'code');
+  authorize.searchParams.set('client_id', CLIENT_ID);
+  authorize.searchParams.set('redirect_uri', adieuBrowserRedirectUri());
+  authorize.searchParams.set('scope', 'profile projects:write');
+  authorize.searchParams.set('state', state);
+  authorize.searchParams.set('code_challenge', challenge);
+  authorize.searchParams.set('code_challenge_method', 'S256');
+
+  if (intent === 'sign-up') {
+    const signup = new URL('/signup', ADIEU_BASE_URL);
+    signup.searchParams.set('next', authorize.pathname + authorize.search);
+    return signup.toString();
+  }
+  return authorize.toString();
+}
+
+/** True when the current /oauth/callback hit belongs to an adieu
+ *  browser-first flow started in this tab. */
+export function isBrowserAuthorizePending(): boolean {
+  return window.sessionStorage.getItem(OAUTH_PENDING_KEY) === '1';
+}
+
+/** Clears the stashed PKCE material without exchanging — for early-failure
+ *  paths in OAuthCallback.tsx; completeBrowserAuthorize clears internally
+ *  on every path it reaches. */
+export function clearBrowserAuthorizeState(): void {
+  window.sessionStorage.removeItem(OAUTH_VERIFIER_KEY);
+  window.sessionStorage.removeItem(OAUTH_STATE_KEY);
+  window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
+}
+
+/** Step 2: verify state, exchange code + verifier for adieu tokens, write
+ *  them. Clears the stash first regardless of outcome — the code is
+ *  single-use server-side either way. */
+export async function completeBrowserAuthorize(code: string, returnedState: string): Promise<void> {
+  const expectedState = window.sessionStorage.getItem(OAUTH_STATE_KEY);
+  const verifier = window.sessionStorage.getItem(OAUTH_VERIFIER_KEY);
+  clearBrowserAuthorizeState();
+
+  if (!expectedState || returnedState !== expectedState) {
+    throw makeAuthError('oauth_state_mismatch', 'OAuth state mismatch');
+  }
+  if (!verifier) {
+    throw makeAuthError('oauth_missing_verifier', 'Missing PKCE verifier');
+  }
+
+  const res = await fetch(`${ADIEU_BASE_URL}/api/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: CLIENT_ID,
+      code,
+      redirect_uri: adieuBrowserRedirectUri(),
+      code_verifier: verifier,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw makeAuthError((data as { error?: string }).error ?? 'exchange_failed');
+  }
+  const tokens = data as { access_token: string; refresh_token: string; expires_in: number };
+  writeTokens({
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: Date.now() + tokens.expires_in * 1000,
+  });
 }
 
 // ---- First-party direct auth ---------------------------------------------

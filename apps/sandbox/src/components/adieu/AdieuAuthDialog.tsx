@@ -1,13 +1,14 @@
-// adieu sign-in / create-account dialog. Mirror of MuseHub's AuthDialog —
-// same form layout, same first-party password-grant flow — but pointed at
-// the adieu backend (a separate service from moose-hub) and visually tinted
-// rose-500 so the user can tell the two sign-in surfaces apart at a glance.
+// adieu sign-in / create-account dialog, visually tinted rose-500 so the
+// two sign-in surfaces read apart at a glance.
 //
-// Opened via AdieuContext.openAuthDialog(); submit hits adieu's
-// /api/auth/direct-token, which writes tokens to localStorage under
-// `adieu-tokens-v1` (independent from the `musehub-tokens-v1` key). The
-// dialog then calls hydrate() so the surrounding context picks up the new
-// user + project list.
+// The adieu-native path is browser-first (mirroring MuseIdAuthDialog): the
+// CTA opens adieu's hosted /authorize in the system browser (Electron:
+// loopback relay; web: popup relayed by /oauth/callback with
+// ADIEU_CALLBACK_MESSAGE_TYPE), and the exchange lands tokens in
+// localStorage under `adieu-tokens-v1`. The in-app password form this
+// replaced lives on in adieu-client's direct-token functions for tests.
+// The dialog then calls hydrate() so the surrounding context picks up the
+// new user + project list.
 //
 // Task 5.3: "Continue with Muse ID" primary CTA + divider above this legacy
 // form (never a replacement). Mirrors wallet/AuthDialog.tsx's wiring — see
@@ -21,7 +22,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdieu } from '../../contexts/AdieuContext';
 import { useMuseIdEntry } from '../../hooks/useMuseIdEntry';
-import { directLogin, directSignup } from '../../lib/adieu-client';
+import {
+  beginBrowserAuthorize,
+  completeBrowserAuthorize,
+  clearBrowserAuthorizeState,
+  adieuElectronOAuth,
+  ADIEU_CALLBACK_MESSAGE_TYPE,
+  type AdieuCallbackMessage,
+  type AdieuCallbackPayload,
+} from '../../lib/adieu-client';
 import './AdieuAuthDialog.css';
 
 export const AdieuAuthDialog: React.FC = () => {
@@ -30,11 +39,12 @@ export const AdieuAuthDialog: React.FC = () => {
   const open = authDialog !== 'closed';
   const mode = authDialog === 'create-account' ? 'create-account' : 'sign-in';
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  // Browser-first flow state for the adieu-native path: idle shows the CTA,
+  // waiting means the system browser holds the flow, completing means the
+  // code came back and the exchange is in flight.
+  const [browserStep, setBrowserStep] = useState<'idle' | 'waiting' | 'completing'>('idle');
+  const submitting = browserStep !== 'idle';
   // Rung 3 ("different email — prove by code", task 5.4) — see
   // wallet/AuthDialog.tsx's identical state for the rationale.
   const [linkEmail, setLinkEmail] = useState('');
@@ -60,9 +70,7 @@ export const AdieuAuthDialog: React.FC = () => {
 
   const finishAndClose = () => {
     closeAuthDialog();
-    setEmail('');
-    setPassword('');
-    setDisplayName('');
+    setBrowserStep('idle');
     setLinkEmail('');
     setLinkCode('');
     setLinkSubmitting(false);
@@ -72,7 +80,8 @@ export const AdieuAuthDialog: React.FC = () => {
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setSubmitting(false);
+    setBrowserStep('idle');
+    clearBrowserAuthorizeState();
     setLinkEmail('');
     setLinkCode('');
     setLinkSubmitting(false);
@@ -108,6 +117,61 @@ export const AdieuAuthDialog: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, submitting, museBusy, closeAuthDialog]);
 
+  // The authorization code arriving back in this window, from either
+  // transport (web popup postMessage, or Electron's loopback IPC).
+  const handleCallbackPayload = React.useCallback(
+    async (payload: AdieuCallbackPayload) => {
+      if (payload.error) {
+        clearBrowserAuthorizeState();
+        setError('Sign-in was cancelled in the browser.');
+        setBrowserStep('idle');
+        return;
+      }
+      if (!payload.code || !payload.state) {
+        clearBrowserAuthorizeState();
+        setError('The browser came back without a sign-in code. Try again.');
+        setBrowserStep('idle');
+        return;
+      }
+      setBrowserStep('completing');
+      setError(null);
+      try {
+        await completeBrowserAuthorize(payload.code, payload.state);
+        await hydrate();
+        completePendingSignIn();
+        finishAndClose();
+      } catch (err) {
+        const code = (err as { code?: string }).code ?? '';
+        setError(
+          code === 'oauth_state_mismatch'
+            ? 'That sign-in attempt was stale. Try again.'
+            : err instanceof Error ? err.message : 'Something went wrong.',
+        );
+        setBrowserStep('idle');
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hydrate, completePendingSignIn],
+  );
+
+  useEffect(() => {
+    if (!open || browserStep !== 'waiting') return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const data = e.data as Partial<AdieuCallbackMessage> | null;
+      if (!data || data.type !== ADIEU_CALLBACK_MESSAGE_TYPE) return;
+      void handleCallbackPayload(data);
+    };
+    window.addEventListener('message', onMessage);
+    const offElectron = adieuElectronOAuth()?.onCallback((payload) => {
+      void handleCallbackPayload(payload);
+    });
+    return () => {
+      window.removeEventListener('message', onMessage);
+      offElectron?.();
+    };
+  }, [open, browserStep, handleCallbackPayload]);
+
   if (!open) return null;
 
   // ---- Rung 3: "different email — prove by code" (task 5.4) ---------------
@@ -133,34 +197,14 @@ export const AdieuAuthDialog: React.FC = () => {
     entry.backToEmailStep();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
+  const handleBrowserContinue = async () => {
     setError(null);
-    setSubmitting(true);
-    try {
-      if (mode === 'sign-in') {
-        await directLogin(email.trim(), password);
-      } else {
-        await directSignup(email.trim(), password, displayName.trim());
-      }
-      await hydrate();
-      // Resolve any awaiting signIn() promise BEFORE closing the dialog,
-      // so closeAuthDialog doesn't see a still-pending resolver and reject it.
-      completePendingSignIn();
-      // No post-sign-in link offer — see file header (session-linking removal).
-      finishAndClose();
-    } catch (err) {
-      const code = (err as { code?: string }).code ?? '';
-      const message =
-        code === 'invalid_credentials' ? 'Incorrect email or password.' :
-        code === 'email_taken'         ? 'That email is already registered. Try signing in.' :
-        code === 'password_too_short'  ? 'Password must be at least 8 characters.' :
-        code === 'invalid_request'     ? 'Please fill in every field.' :
-        err instanceof Error ? err.message : 'Something went wrong.';
-      setError(message);
-      setSubmitting(false);
-    }
+    const url = await beginBrowserAuthorize(mode === 'create-account' ? 'sign-up' : 'sign-in');
+    setBrowserStep('waiting');
+    // Named target so a second click re-uses the popup; Electron's
+    // window-open handler denies this and hands the URL to the system
+    // browser instead (returns null — fine).
+    window.open(url, 'adieu-auth');
   };
 
   // User-facing branding is audio.com — the demo's external positioning.
@@ -186,14 +230,6 @@ export const AdieuAuthDialog: React.FC = () => {
                   : mode === 'sign-in'
                     ? 'Sign in to audio.com'
                     : 'Create your audio.com account';
-  const submitLabel =
-    submitting
-      ? mode === 'sign-in'
-        ? 'Signing in…'
-        : 'Creating account…'
-      : mode === 'sign-in'
-        ? 'Sign in'
-        : 'Create account';
   const showLegacyPanel = entry.phase.kind === 'idle';
 
   const content = (
@@ -432,61 +468,46 @@ export const AdieuAuthDialog: React.FC = () => {
         )}
 
         {showLegacyPanel && (
-        <form className="adieu-auth-dialog__form" onSubmit={handleSubmit} noValidate>
-          {mode === 'create-account' && (
-            <label className="adieu-auth-dialog__field">
-              <span>Display name</span>
-              <input
-                ref={firstInputRef}
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                autoComplete="name"
-                disabled={submitting}
-                required
-              />
-            </label>
+        <div className="adieu-auth-dialog__form">
+          {browserStep === 'idle' ? (
+            <>
+              <button
+                type="button"
+                className="adieu-auth-dialog__cta"
+                onClick={() => void handleBrowserContinue()}
+              >
+                <span>{mode === 'create-account' ? 'Create an account on audio.com' : 'Continue on audio.com'}</span>
+              </button>
+              <span className="adieu-auth-dialog__hint">
+                Your browser opens to sign in securely; you'll come straight back here.
+              </span>
+            </>
+          ) : (
+            <>
+              <button type="button" className="adieu-auth-dialog__cta" disabled>
+                <span className="adieu-auth-dialog__spinner" aria-hidden="true" />
+                <span>{browserStep === 'completing' ? 'Finishing sign-in…' : 'Waiting for your browser…'}</span>
+              </button>
+              {browserStep === 'waiting' && (
+                <button
+                  type="button"
+                  className="adieu-auth-dialog__link"
+                  onClick={() => {
+                    clearBrowserAuthorizeState();
+                    setBrowserStep('idle');
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+            </>
           )}
-
-          <label className="adieu-auth-dialog__field">
-            <span>Email</span>
-            <input
-              ref={mode === 'sign-in' ? firstInputRef : undefined}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              disabled={submitting}
-              required
-            />
-          </label>
-
-          <label className="adieu-auth-dialog__field">
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-              disabled={submitting}
-              required
-              minLength={mode === 'create-account' ? 8 : undefined}
-            />
-            <span className="adieu-auth-dialog__hint">
-              {mode === 'create-account' ? 'At least 8 characters.' : null}
-            </span>
-          </label>
 
           {error && (
             <p className="adieu-auth-dialog__error" role="alert">
               {error}
             </p>
           )}
-
-          <button type="submit" className="adieu-auth-dialog__cta" disabled={submitting}>
-            {submitting && <span className="adieu-auth-dialog__spinner" aria-hidden="true" />}
-            <span>{submitLabel}</span>
-          </button>
 
           {mode === 'sign-in' ? (
             <p className="adieu-auth-dialog__switch">
@@ -513,7 +534,7 @@ export const AdieuAuthDialog: React.FC = () => {
               </button>
             </p>
           )}
-        </form>
+        </div>
         )}
       </div>
     </div>

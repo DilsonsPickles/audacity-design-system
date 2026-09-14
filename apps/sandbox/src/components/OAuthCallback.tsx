@@ -2,6 +2,13 @@ import React from 'react';
 import { handleCallback } from '../lib/musehub-client';
 import { appHomePath } from '../lib/appBase';
 import {
+  isAdieuOAuthState,
+  isBrowserAuthorizePending as isAdieuAuthorizePending,
+  completeBrowserAuthorize as completeAdieuAuthorize,
+  clearBrowserAuthorizeState as clearAdieuAuthorizeState,
+  ADIEU_CALLBACK_MESSAGE_TYPE,
+} from '../lib/adieu-client';
+import {
   isBrowserAuthorizePending,
   isMuseIdOAuthState,
   completeBrowserAuthorize,
@@ -12,7 +19,6 @@ import {
   setPendingServiceAdoptFailureNotice,
   MuseIdAuthError,
   MUSE_ID_CALLBACK_MESSAGE_TYPE,
-  type MuseIdCallbackMessage,
   type MuseIdTokens,
   type MuseIdUserInfo,
 } from '../lib/muse-id-client';
@@ -36,19 +42,41 @@ type Status = 'pending' | 'error' | 'relayed';
 
 /** Popup half of the browser-first flow: hand the result to the window
  *  that opened us. Returns false when there is no opener (top-level). */
-function relayToOpener(): boolean {
+function relayToOpener(
+  messageType: typeof MUSE_ID_CALLBACK_MESSAGE_TYPE | typeof ADIEU_CALLBACK_MESSAGE_TYPE = MUSE_ID_CALLBACK_MESSAGE_TYPE,
+): boolean {
   const opener = window.opener && window.opener !== window ? (window.opener as Window) : null;
   if (!opener) return false;
   const params = new URLSearchParams(window.location.search);
-  const message: MuseIdCallbackMessage = {
-    type: MUSE_ID_CALLBACK_MESSAGE_TYPE,
+  const message = {
+    type: messageType,
     code: params.get('code') ?? undefined,
     state: params.get('state') ?? undefined,
     error: params.get('error') ?? undefined,
-  };
+  } satisfies { type: string; code?: string; state?: string; error?: string };
   opener.postMessage(message, window.location.origin);
   try { window.close(); } catch { /* popup blockers / already closing */ }
   return true;
+}
+
+// adieu's browser-first return: recognised by its 'adu.'-prefixed state or
+// the pending marker, exchanged by adieu-client. No post-exchange service
+// adoption — adieu is a leaf service, not the identity hub.
+async function handleAdieuCallback(): Promise<void> {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const returnedState = params.get('state');
+  const error = params.get('error');
+
+  if (error) {
+    clearAdieuAuthorizeState();
+    throw new Error(`OAuth error: ${error}`);
+  }
+  if (!code || !returnedState) {
+    clearAdieuAuthorizeState();
+    throw new Error('Missing code or state in callback URL');
+  }
+  await completeAdieuAuthorize(code, returnedState);
 }
 
 async function handleMuseIdCallback(): Promise<void> {
@@ -139,14 +167,21 @@ export function OAuthCallback() {
     (async () => {
       try {
         const state = new URLSearchParams(window.location.search).get('state');
-        const isMuseId = isMuseIdOAuthState(state) || isBrowserAuthorizePending();
-        if (isMuseId && relayToOpener()) {
+        // State prefixes route first (they survive any browser context);
+        // pending markers are the fallback for historical unprefixed
+        // returns. adieu is checked before muse-id so its prefixed states
+        // can never be claimed by a stale muse-id pending marker.
+        const isAdieu = isAdieuOAuthState(state) || (!isMuseIdOAuthState(state) && isAdieuAuthorizePending());
+        const isMuseId = !isAdieu && (isMuseIdOAuthState(state) || isBrowserAuthorizePending());
+        if ((isMuseId || isAdieu) && relayToOpener(isAdieu ? ADIEU_CALLBACK_MESSAGE_TYPE : MUSE_ID_CALLBACK_MESSAGE_TYPE)) {
           // The opener finishes the exchange; this popup is done (and has
           // asked to close — if the browser refuses, show a hint).
           if (!cancelled) setStatus('relayed');
           return;
         }
-        if (isMuseId) {
+        if (isAdieu) {
+          await handleAdieuCallback();
+        } else if (isMuseId) {
           await handleMuseIdCallback();
         } else {
           await handleCallback();

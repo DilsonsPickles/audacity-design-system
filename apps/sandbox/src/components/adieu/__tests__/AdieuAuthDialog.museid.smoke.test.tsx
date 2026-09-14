@@ -53,16 +53,17 @@ afterEach(() => {
 });
 
 describe('AdieuAuthDialog — Continue with Muse ID (smoke)', () => {
-  it('CTA is present above the demoted legacy form', async () => {
+  it('CTA is present above the demoted browser sign-in', async () => {
     const { apiRef } = renderTree();
     await waitFor(() => expect(apiRef.current?.museId.loading).toBe(false));
 
     act(() => apiRef.current!.adieu.openAuthDialog('sign-in'));
 
     expect(await screen.findByRole('button', { name: 'Continue with Muse ID' })).toBeInTheDocument();
-    // Legacy form still there, demoted beneath.
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    // The adieu-native path is browser-first now: no in-app password form,
+    // a single hand-off CTA beneath the divider.
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue on audio.com' })).toBeInTheDocument();
   });
 
   it('state 2: same-email match shows the recognition card with no monetary value, confirming signs into adieu', async () => {
