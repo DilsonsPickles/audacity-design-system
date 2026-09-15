@@ -89,8 +89,9 @@ describe('LabelRenderer (rewrite): size-derived geometry', () => {
     expect(text.style.fontSize).toBe(`${m.fontSizePx}px`);
     const ear = container.querySelector('svg')!;
     expect(ear.getAttribute('width')).toBe('8');
-    expect(ear.getAttribute('height')).toBe('20');
-    // Path stays in its native 7x14 space; the svg scales it to 8x20.
+    // Ear height always equals the strap — flush at every size.
+    expect(ear.getAttribute('height')).toBe(String(m.bannerHeight));
+    // Path stays in its native 7x14 space; the svg scales it.
     expect(ear.getAttribute('viewBox')).toBe('0 0 7 14');
   });
 
