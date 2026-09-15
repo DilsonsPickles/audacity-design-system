@@ -54,13 +54,15 @@ const PLACEHOLDER_COLOR = 'rgba(20, 21, 26, 0.45)';
 export interface LabelItemProps {
   label: Label;
   /** The region label ending exactly at this label's start (same row):
-   *  the shared boundary. This label OWNS the junction's single stalk —
-   *  it renders no left ear, and the stalk drags BOTH labels' edge. */
+   *  the shared boundary. Unselected, this label owns the junction's
+   *  single both-mover stalk and hides its left ear; SELECTED, it
+   *  reasserts its own left ear + stalk, and dragging them stretches
+   *  only this label (the unlink gesture). */
   leftNeighbor?: Label;
-  /** True when a region label starts exactly at this label's end: the
-   *  junction is owned by the neighbour, so this label renders neither
-   *  its right stalk nor its right ear. */
-  sharesRightEdge?: boolean;
+  /** The region label starting exactly at this label's end (same row).
+   *  Unselected, this label yields the junction (no right stalk/ear);
+   *  SELECTED, it reasserts its own right chrome. */
+  rightNeighbor?: Label;
   /** The label track's palette color name (see labelPalette). */
   trackColor?: string;
   trackIndex: number;
@@ -99,7 +101,7 @@ const CLASSIC_EAR_PATHS = {
 export const LabelItem: React.FC<LabelItemProps> = ({
   label,
   leftNeighbor,
-  sharesRightEdge = false,
+  rightNeighbor,
   trackColor,
   trackIndex,
   x,
@@ -125,6 +127,8 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   const palette = labelPalette(trackColor);
   const isPointLabel = label.startTime === label.endTime;
   const labelKeyId = `${trackIndex}-${label.id}`;
+  const leftNeighborSelected =
+    !!leftNeighbor && selectedLabelIds.includes(`${trackIndex}-${leftNeighbor.id}`);
   // Each SIDE's ear and stalk are one affordance and hover as a pair
   // (Figma spec: "Hovered stalk and ear"). The two sides stay independent
   // of each other and of the strap.
@@ -450,23 +454,28 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   return (
     <React.Fragment>
-      {/* Shared left boundary: this label owns the junction's single
-          stalk — no left ear, and the drag moves both labels' edge. */}
-      {!leftNeighbor && ear('left', x - m.earWidth, isLeftEarHovered, handleStretchLeft, leftEarId)}
-      {stalk(
-        x,
-        isLeftEarHovered,
-        leftNeighbor ? handleSharedEdge : isPointLabel ? handleMovePoint : handleStretchLeft,
-        leftEarId,
-        isPointLabel,
-      )}
+      {/* Shared left boundary: unselected, this label owns the junction's
+          single both-mover stalk (no left ear). Selected, it reasserts
+          its own ear + stalk and drags only ITSELF (unlink). When the
+          LEFT neighbour is the selected one, it draws the junction and
+          this label yields entirely. */}
+      {(!leftNeighbor || isSelected)
+        && ear('left', x - m.earWidth, isLeftEarHovered, handleStretchLeft, leftEarId)}
+      {!(leftNeighbor && !isSelected && leftNeighborSelected)
+        && stalk(
+          x,
+          isLeftEarHovered,
+          leftNeighbor && !isSelected ? handleSharedEdge : isPointLabel ? handleMovePoint : handleStretchLeft,
+          leftEarId,
+          isPointLabel && !leftNeighbor,
+        )}
       {/* Point labels get a mirrored ear pair at the stalk (pulling either
           ear stretches the point into a region — build behavior); region
-          labels get a stalk + ear at their far edge — unless a neighbour
-          starts exactly there (it owns the shared junction). */}
+          labels get a stalk + ear at their far edge — unless an
+          UNSELECTED junction with a right neighbour yields it. */}
       {isPointLabel
         ? ear('right', x + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)
-        : !sharesRightEdge && (
+        : (!rightNeighbor || isSelected) && (
           <>
             {stalk(x + width, isRightEarHovered, handleStretchRight, rightEarId, false)}
             {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)}

@@ -105,15 +105,16 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
             && labelRows.get(o.id) === labelRows.get(l.id),
         )
       : undefined;
-  const sharesRightEdgeOf = (l: Label): boolean =>
+  const rightNeighborOf = (l: Label): Label | undefined =>
     isRegion(l)
-    && labels.some(
-      (o) =>
-        o.id !== l.id
-        && isRegion(o)
-        && Math.abs(l.endTime! - o.startTime) < EDGE_EPS
-        && labelRows.get(o.id) === labelRows.get(l.id),
-    );
+      ? labels.find(
+          (o) =>
+            o.id !== l.id
+            && isRegion(o)
+            && Math.abs(l.endTime! - o.startTime) < EDGE_EPS
+            && labelRows.get(o.id) === labelRows.get(l.id),
+        )
+      : undefined;
 
   return (
     <>
@@ -132,7 +133,7 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
             key={label.id}
             label={label}
             leftNeighbor={leftNeighborOf(label)}
-            sharesRightEdge={sharesRightEdgeOf(label)}
+            rightNeighbor={rightNeighborOf(label)}
             trackColor={trackColor}
             trackIndex={trackIndex}
             x={x}

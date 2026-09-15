@@ -408,3 +408,66 @@ describe('LabelRenderer (rewrite): adjacent regions share a middle stalk', () =>
     expect(container.querySelectorAll('[data-label-ear]')).toHaveLength(4);
   });
 });
+
+describe('LabelRenderer (rewrite): selecting one half of an adjacent pair', () => {
+  const pair = (): Label[] => [
+    { id: 1, trackIndex: 0, text: 'verse', startTime: 1, endTime: 2 },
+    { id: 2, trackIndex: 0, text: 'chorus', startTime: 2, endTime: 3 },
+  ];
+  const renderSelected = (selectedLabelIds: string[], dispatch = vi.fn<(a: TracksAction) => void>()) => {
+    const props = {
+      labels: pair(),
+      trackColor: undefined,
+      trackIndex: 0,
+      trackHeight: 114,
+      pixelsPerSecond: 100,
+      clipContentOffset: 0,
+      selectedLabelIds,
+      hoveredEar: null,
+      hoveredBanner: null,
+      trackCount: 1,
+      selectedTrackIndices: [0],
+      setHoveredEar: () => {},
+      setHoveredBanner: () => {},
+      dispatch,
+    };
+    const utils = render(
+      <PreferencesProvider>
+        <div className="canvas-container">
+          <LabelRenderer {...props} />
+        </div>
+      </PreferencesProvider>,
+    );
+    return { ...utils, dispatch };
+  };
+
+  it('selecting the LEFT label shows both its ears; the neighbour yields the junction', () => {
+    const { container } = renderSelected(['0-1']);
+    const ears = Array.from(container.querySelectorAll('[data-label-ear]')).map((e) => e.getAttribute('data-label-ear'));
+    expect(ears).toEqual(['0-1-left', '0-1-right', '0-2-right']);
+    // Junction stalk is the selected label's own; the neighbour's is gone.
+    expect(container.querySelectorAll('[data-label-stalk]')).toHaveLength(3);
+  });
+
+  it('selecting the RIGHT label shows both its ears', () => {
+    const { container } = renderSelected(['0-2']);
+    const ears = Array.from(container.querySelectorAll('[data-label-ear]')).map((e) => e.getAttribute('data-label-ear'));
+    expect(ears).toEqual(['0-1-left', '0-2-left', '0-2-right']);
+  });
+
+  it("the selected label's junction ear stretches ONLY itself (unlink)", () => {
+    const { container, dispatch } = renderSelected(['0-1']);
+    const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;
+    fireEvent.mouseDown(rightEar, { clientX: 200 });
+    fireEvent.mouseMove(document, { clientX: 150 }); // pull the edge back to 1.5s
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 1, endTime: 1.5 } },
+    });
+    // The neighbour's start is untouched — this is the unlink gesture.
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ labelId: 2 }) }),
+    );
+    fireEvent.mouseUp(document);
+  });
+});
