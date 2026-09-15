@@ -44,7 +44,7 @@ export interface LabelMetrics {
   /** Horizontal text padding inside the banner — 0.5em (tightened from
    *  the Figma spec's 0.8em, 2026-09-15 direction). */
   padX: number;
-  /** Ear width — CONSTANT 8px at every text size. */
+  /** Ear width — CONSTANT 10px at every text size. */
   earWidth: number;
   /** Ear height — CONSTANT 20px (matching the default 10pt strap, where
    *  it sits exactly flush), top-aligned as a corner tab on taller
@@ -76,7 +76,7 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     rowGap,
     rowHeight: bannerHeight + rowGap,
     padX: Math.round(fontSizePx * 0.5),
-    earWidth: 8,
+    earWidth: 10,
     earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,
     pointFlagGap: Math.round(3 * s),
