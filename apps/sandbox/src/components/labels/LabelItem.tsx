@@ -23,10 +23,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Label, TracksAction } from '../../contexts/TracksContext';
 import type { LabelMetrics } from '../../utils/labelLayout';
 
-// Classic label palette (shared with the old renderer).
+// Chrome (ears + stalks) keeps the classic saturated palette; the text
+// strap sits one tint lighter (2026-09-15 mockup) so the type carries the
+// label and the chrome reads as accents.
 const COLOR_IDLE = '#7EB1FF';
 const COLOR_SELECTED = '#3399FF';
 const COLOR_HOVER = '#0066CC';
+const BANNER_IDLE = '#A9C8FA';
+const BANNER_SELECTED = '#7EB1FF';
+const BANNER_HOVER = '#8FB9F8';
 const TEXT_COLOR = 'rgba(0, 0, 0, 0.82)';
 const PLACEHOLDER_COLOR = 'rgba(0, 20, 60, 0.45)';
 
@@ -56,18 +61,12 @@ export interface LabelItemProps {
   dispatch: React.Dispatch<TracksAction>;
 }
 
-/** The classic flag silhouette, parameterised: a triangle hanging off the
- *  stalk, its vertical edge flush with the stalk, sweeping to the stalk's
- *  foot. `side` mirrors it. Drawn in a size-matched viewBox so strokes and
- *  corners stay crisp — never stretched. */
-function earPath(w: number, h: number, side: 'left' | 'right'): string {
-  // Left ear (right edge at x=w): rounded top-left tip, slant to (w, h).
-  const tip = Math.max(1, w * 0.23);
-  if (side === 'left') {
-    return `M ${w} 0 L ${w} ${h} L ${tip * 0.45} ${h * 0.103} Q 0 ${h * 0.056} ${tip} 0 Z`;
-  }
-  return `M 0 0 L 0 ${h} L ${w - tip * 0.45} ${h * 0.103} Q ${w} ${h * 0.056} ${w - tip} 0 Z`;
-}
+/** The original hand-tuned 7x14 flag paths. Ears are CONSTANT-size corner
+ *  tabs top-aligned with the banner — only the text strap scales. */
+const CLASSIC_EAR_PATHS = {
+  left: 'M0.723608 1.44722L7 14V0H1.61827C0.874886 0 0.391157 0.782314 0.723608 1.44722Z',
+  right: 'M6.27639 1.44722L0 14V0H5.38173C6.12511 0 6.60884 0.782314 6.27639 1.44722Z',
+} as const;
 
 export const LabelItem: React.FC<LabelItemProps> = ({
   label,
@@ -281,8 +280,8 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     <svg
       data-label-ear={`${labelKeyId}-${side}`}
       width={m.earWidth}
-      height={m.bannerHeight}
-      viewBox={`0 0 ${m.earWidth} ${m.bannerHeight}`}
+      height={m.earHeight}
+      viewBox={`0 0 ${m.earWidth} ${m.earHeight}`}
       style={{
         position: 'absolute',
         left: `${left}px`,
@@ -295,7 +294,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       onMouseLeave={() => setHoveredEar(null)}
       onMouseDown={onMouseDown}
     >
-      <path d={earPath(m.earWidth, m.bannerHeight, side)} fill={earColor(hovered)} />
+      <path d={CLASSIC_EAR_PATHS[side]} fill={earColor(hovered)} />
     </svg>
   );
 
@@ -360,7 +359,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
           top: `${topOffset}px`,
           width: `${width}px`,
           height: `${m.bannerHeight}px`,
-          backgroundColor: isBannerHovered && !isEditing ? COLOR_HOVER : isSelected ? COLOR_SELECTED : COLOR_IDLE,
+          backgroundColor: isBannerHovered && !isEditing ? BANNER_HOVER : isSelected ? BANNER_SELECTED : BANNER_IDLE,
           pointerEvents: 'auto',
           borderRadius: isPointLabel ? `${m.borderRadius}px` : '0',
           display: 'flex',

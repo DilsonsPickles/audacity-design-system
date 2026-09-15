@@ -5,7 +5,6 @@ import {
   getLabelYOffset,
   getLabelDimensions,
   isPointInLabel,
-  LABEL_LAYOUT_CONSTANTS,
   getLabelMetrics,
   labelPtToPx,
 } from '../labelLayout';
@@ -84,17 +83,16 @@ describe('getLabelYOffset', () => {
     expect(getLabelYOffset(0)).toBe(0);
   });
 
-  it('returns correct offset for row 1', () => {
-    const expected = LABEL_LAYOUT_CONSTANTS.LABEL_ROW_HEIGHT + LABEL_LAYOUT_CONSTANTS.LABEL_ROW_GAP;
-    expect(getLabelYOffset(1)).toBe(expected);
+  it('returns one row stride for row 1', () => {
+    expect(getLabelYOffset(1)).toBe(CLASSIC.rowHeight);
   });
 });
 
 describe('getLabelDimensions', () => {
-  it('returns EAR_HEIGHT as height', () => {
+  it('returns the banner height as height', () => {
     const label: Label = { id: 1, startTime: 0, endTime: 2 };
     const dims = getLabelDimensions(label, 100);
-    expect(dims.height).toBe(LABEL_LAYOUT_CONSTANTS.EAR_HEIGHT);
+    expect(dims.height).toBe(CLASSIC.bannerHeight);
   });
 
   it('calculates width from duration for region labels', () => {
@@ -132,26 +130,28 @@ describe('isPointInLabel', () => {
 });
 
 describe('getLabelMetrics (font-size-driven scaling)', () => {
-  it('at the default 12px the classic hand-tuned design is reproduced exactly', () => {
-    const m = getLabelMetrics();
-    expect(m.bannerHeight).toBe(14);
-    expect(m.rowHeight).toBe(16);
-    expect(m.earWidth).toBe(7);
-    expect(m.padX).toBe(4);
-    expect(m.pointFlagGap).toBe(3);
-    expect(m.minPointWidth).toBe(50);
-    expect(m.maxPointWidth).toBe(400);
+  it('the banner is 1.5x the font size (mockup ratio) at every size', () => {
+    const m12 = getLabelMetrics();
+    expect(m12.bannerHeight).toBe(18);
+    expect(m12.rowHeight).toBe(18 + m12.rowGap);
+    expect(m12.padX).toBe(4);
+    expect(m12.pointFlagGap).toBe(3);
+    expect(m12.minPointWidth).toBe(50);
+    expect(m12.maxPointWidth).toBe(400);
+    // The mockup's stated case: 24px text in a 36px strap.
+    expect(getLabelMetrics(24).bannerHeight).toBe(36);
   });
 
   it('48pt text (64px) scales every metric proportionally', () => {
     const m = getLabelMetrics(labelPtToPx(48));
     expect(m.fontSizePx).toBeCloseTo(64, 5);
-    // Banner comfortably taller than the text it holds
-    expect(m.bannerHeight).toBeGreaterThanOrEqual(Math.ceil(m.fontSizePx));
-    expect(m.bannerHeight).toBe(Math.round(14 * (64 / 12)));
-    // Ear grows sub-linearly — a slender flag, not a scaled-up sail.
-    expect(m.earWidth).toBe(Math.round(7 + (m.bannerHeight - 14) * 0.15));
-    expect(m.earWidth).toBeLessThan(m.bannerHeight / 3);
+    // Banner comfortably taller than the text it holds — 1.5x.
+    expect(m.bannerHeight).toBe(Math.round(m.fontSizePx * 1.5));
+    // Ears are constant classic corner tabs — they never scale.
+    expect(m.earWidth).toBe(7);
+    expect(m.earHeight).toBe(14);
+    expect(getLabelMetrics().earWidth).toBe(7);
+    expect(getLabelMetrics().earHeight).toBe(14);
     expect(m.rowHeight).toBe(m.bannerHeight + m.rowGap);
     expect(m.font).toContain('64px');
   });

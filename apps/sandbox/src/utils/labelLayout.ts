@@ -29,7 +29,8 @@ export function labelPtToPx(pt: number): number {
 export interface LabelMetrics {
   /** Text size in CSS px. */
   fontSizePx: number;
-  /** Banner (label box) height — also the ear height. */
+  /** Banner (label box) height — 1.5x the font size (24px text sits in a
+   *  36px strap, per the 2026-09-15 mockup). */
   bannerHeight: number;
   /** Vertical gap between stacked label rows. */
   rowGap: number;
@@ -37,11 +38,12 @@ export interface LabelMetrics {
   rowHeight: number;
   /** Horizontal text padding inside the banner. */
   padX: number;
-  /** Ear (resize flag) width. Grows SUB-linearly with the banner: at
-   *  display sizes a linearly-scaled ear becomes a huge sail (a grab
-   *  handle needs ~16px, not 38). The path is drawn in a size-matched
-   *  viewBox, so any width renders crisp — never stretched. */
+  /** Ear (corner tab) width — CONSTANT classic 7px at every text size
+   *  (2026-09-15 mockup + direction: ears stay the same size; only the
+   *  text strap grows). */
   earWidth: number;
+  /** Ear (corner tab) height — constant classic 14px, top-aligned. */
+  earHeight: number;
   /** Stalk (vertical guide line) width — thickens at display sizes so it
    *  doesn't read as a hairline against a tall banner. */
   stalkWidth: number;
@@ -59,7 +61,7 @@ export interface LabelMetrics {
 
 export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): LabelMetrics {
   const s = fontSizePx / DEFAULT_LABEL_FONT_PX;
-  const bannerHeight = Math.round(14 * s);
+  const bannerHeight = Math.round(fontSizePx * 1.5);
   const rowGap = Math.max(2, Math.round(2 * s));
   return {
     fontSizePx,
@@ -67,7 +69,8 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     rowGap,
     rowHeight: bannerHeight + rowGap,
     padX: Math.round(4 * s),
-    earWidth: Math.round(7 + (bannerHeight - 14) * 0.15),
+    earWidth: 7,
+    earHeight: 14,
     stalkWidth: fontSizePx >= 48 ? 3 : fontSizePx >= 24 ? 2 : 1,
     pointFlagGap: Math.round(3 * s),
     minPointWidth: Math.round(50 * s),

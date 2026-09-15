@@ -65,10 +65,10 @@ const banner = (container: HTMLElement, keyId = '0-1') =>
   container.querySelector(`[data-label-banner="${keyId}"]`) as HTMLElement;
 
 describe('LabelRenderer (rewrite): size-derived geometry', () => {
-  it('classic 9pt reproduces the hand-tuned design: 14px banner, 7px ears', () => {
+  it('classic 9pt: 18px strap (1.5x the 12px text), constant 7x14 ear tabs', () => {
     const { container } = renderLabels([region()]);
     const el = banner(container);
-    expect(el.style.height).toBe('14px');
+    expect(el.style.height).toBe('18px');
     expect(el.style.fontSize).toBe('');
     const ears = container.querySelectorAll('svg');
     expect(ears).toHaveLength(2);
@@ -76,19 +76,19 @@ describe('LabelRenderer (rewrite): size-derived geometry', () => {
     expect(ears[0].getAttribute('height')).toBe('14');
   });
 
-  it('48pt scales the banner, text, and ears together — aspect preserved', () => {
+  it('48pt: the strap and text scale (1.5x), the ear tabs stay classic 7x14', () => {
     seedLabelTextSize(48);
     const m = getLabelMetrics(labelPtToPx(48));
     const { container } = renderLabels([region()]);
     const el = banner(container);
     expect(el.style.height).toBe(`${m.bannerHeight}px`);
+    expect(m.bannerHeight).toBe(96); // 64px text x 1.5
     const text = el.firstElementChild as HTMLElement;
     expect(text.style.fontSize).toBe(`${m.fontSizePx}px`);
     const ear = container.querySelector('svg')!;
-    // Ear svg is drawn in a size-matched viewBox — never stretched.
-    expect(Number(ear.getAttribute('width'))).toBe(m.earWidth);
-    expect(Number(ear.getAttribute('height'))).toBe(m.bannerHeight);
-    expect(ear.getAttribute('viewBox')).toBe(`0 0 ${m.earWidth} ${m.bannerHeight}`);
+    expect(ear.getAttribute('width')).toBe('7');
+    expect(ear.getAttribute('height')).toBe('14');
+    expect(ear.getAttribute('viewBox')).toBe('0 0 7 14');
   });
 
   it('an empty label shows an italic placeholder instead of a blank slab', () => {
