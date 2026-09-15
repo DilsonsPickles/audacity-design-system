@@ -309,13 +309,14 @@ describe('AuthDialog — Continue with Muse ID', () => {
       within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
 
     await waitFor(() => expect(apiRef.current!.museId.authDialog).toBe('sign-in'));
-    // Browser-first (2026-09-10): the dialog collects nothing in either
-    // mode; the heading and the switch link are what distinguish sign-in
+    // Browser-first (2026-09-10; interstitial killed 2026-09-14): the
+    // dialog collects nothing and auto-launches straight into the waiting
+    // room; the subtitle and the switch link are what distinguish sign-in
     // from create.
-    expect(museIdDialog().getByRole('heading', { name: 'Sign in to Muse ID' })).toBeInTheDocument();
-    expect(museIdDialog().getByRole('button', { name: 'Continue in browser' })).toBeInTheDocument();
+    await waitFor(() => museIdDialog().getByRole('heading', { name: 'Check your browser' }));
+    expect(museIdDialog().getByText(/Sign in to Muse ID in the browser window we opened/)).toBeInTheDocument();
     expect(museIdDialog().queryByLabelText('Password')).toBeNull();
-    expect(museIdDialog().getByRole('button', { name: 'Create one' })).toBeInTheDocument();
+    expect(museIdDialog().getByRole('button', { name: 'Create one instead' })).toBeInTheDocument();
   });
 
   it('state 5: signing in via the Muse ID dialog resumes the table on completion', async () => {
@@ -334,9 +335,9 @@ describe('AuthDialog — Continue with Muse ID', () => {
     const museIdDialog = () =>
       within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
 
-    // Browser-first: launch the browser, then simulate the popup's
-    // /oauth/callback posting the authorization code back to this window.
-    fireEvent.click(await waitFor(() => museIdDialog().getByRole('button', { name: 'Continue in browser' })));
+    // Browser-first: the dialog auto-launches the browser on open, then we
+    // simulate the popup's /oauth/callback posting the code back.
+    await waitFor(() => museIdDialog().getByText('Waiting for your browser…'));
     await waitFor(() => expect(window.sessionStorage.getItem('muse-id-oauth-state')).toBeTruthy());
     act(() => {
       window.dispatchEvent(
@@ -372,10 +373,10 @@ describe('AuthDialog — Continue with Muse ID', () => {
 
     const museIdDialog = () =>
       within(document.getElementById('museid-auth-dialog-title')!.closest('[role="dialog"]') as HTMLElement);
-    await waitFor(() => museIdDialog().getByRole('button', { name: 'Continue in browser' }));
+    await waitFor(() => museIdDialog().getByText('Waiting for your browser…'));
     fireEvent.click(museIdDialog().getByRole('button', { name: 'Close' }));
 
-    await waitFor(() => expect(screen.queryByText('Sign in to Muse ID', { selector: 'h2' })).toBeNull());
+    await waitFor(() => expect(document.getElementById('museid-auth-dialog-title')).toBeNull());
     // Back on the wallet dialog's own idle state — CTA + legacy form intact.
     expect(await screen.findByRole('button', { name: 'Continue with Muse ID' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();

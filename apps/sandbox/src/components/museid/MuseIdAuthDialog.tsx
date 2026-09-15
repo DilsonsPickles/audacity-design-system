@@ -11,12 +11,18 @@
 // resistance, one signup implementation. So this dialog collects nothing.
 // It is a launcher plus a waiting room:
 //
-//   idle       "Continue in browser" — opens muse-id in a new browser
+//   (launch)   Opening the dialog LAUNCHES the browser immediately — no
+//              interstitial click (killed 2026-09-14: "Create a Muse ID"
+//              already expressed intent; the entry click's transient user
+//              activation covers the popup). muse-id opens in a new browser
 //              context (popup/tab on the web; the system browser in
 //              Electron, via setWindowOpenHandler → shell.openExternal).
 //              The mode only picks the landing page: 'sign-in' → /authorize
 //              (→ /login, which links to sign-up), 'sign-up' → /signup with
-//              a `next` back into /authorize.
+//              a `next` back into /authorize. Switching mode mid-wait
+//              relaunches with the other landing page.
+//   idle       Fallback surface only — reached via Cancel or an error.
+//              Shows the error and a "Continue in browser" retry.
 //   waiting    The app stays put. We listen for the authorization code to
 //              come back: a `postMessage` from the popup's /oauth/callback
 //              (web) or `window.electronOAuth.onCallback` (Electron's
@@ -75,16 +81,41 @@ export const MuseIdAuthDialog: React.FC = () => {
 
   const firstFocusRef = useRef<HTMLButtonElement>(null);
 
-  // Reset whenever the dialog opens or the mode switches — mirrors
-  // AuthDialog/AdieuAuthDialog's own open/mode reset effect. A mode switch
+  // Live `open` for the async launch below — a fast Escape between the
+  // launch starting and the URL resolving must not pop the browser.
+  const openRef = useRef(open);
+  openRef.current = open;
+
+  // Auto-launch: opening the dialog (or switching mode) resets the PKCE
+  // state and immediately begins the browser flow — the click that opened
+  // the dialog carries the transient user activation the popup needs, so
+  // no interstitial "Continue in browser" click. Guarded by a key so
+  // StrictMode's double-invoked effects (and re-renders) launch once; the
+  // key clears on close so reopening launches again. A mode switch
   // mid-wait abandons the previous PKCE state deliberately.
+  const launchKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      launchKeyRef.current = null;
+      return;
+    }
+    if (launchKeyRef.current === mode) return;
+    launchKeyRef.current = mode;
     clearBrowserAuthorizeState();
-    setStep('idle');
     setError(null);
     setBrowserUrl(null);
+    void (async () => {
+      const url = await beginBrowserAuthorize(mode);
+      if (!openRef.current) {
+        clearBrowserAuthorizeState();
+        return;
+      }
+      setBrowserUrl(url);
+      setStep('waiting');
+      openBrowser(url);
+    })();
     setTimeout(() => firstFocusRef.current?.focus(), 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
 
   // Escape to dismiss when nothing's in flight.
@@ -183,15 +214,15 @@ export const MuseIdAuthDialog: React.FC = () => {
 
   const header = (() => {
     if (step === 'done') {
-      return { title: "You're signed in", subtitle: 'Your Muse ID is connected to MuseHub and audio.com.' };
+      return { title: "You're signed in", subtitle: 'You can use your Muse ID to sign in to MuseHub and audio.com.' };
     }
     if (step === 'waiting' || step === 'completing') {
       return {
         title: 'Check your browser',
         subtitle:
           mode === 'sign-up'
-            ? 'Create your Muse ID in the browser window we opened, then come back here.'
-            : 'Sign in to Muse ID in the browser window we opened, then come back here.',
+            ? 'Create your Muse ID in the browser window we opened, then come back here. Your password never enters Audacity.'
+            : 'Sign in to Muse ID in the browser window we opened, then come back here. Your password never enters Audacity.',
       };
     }
     return mode === 'sign-up'
@@ -284,6 +315,23 @@ export const MuseIdAuthDialog: React.FC = () => {
               >
                 Cancel
               </button>
+            </p>
+            <p className="museid-auth-dialog__switch">
+              {mode === 'sign-up' ? (
+                <>
+                  Already have a Muse ID?{' '}
+                  <button type="button" className="museid-auth-dialog__link" onClick={() => openAuthDialog('sign-in')} disabled={busy}>
+                    Sign in instead
+                  </button>
+                </>
+              ) : (
+                <>
+                  Don't have a Muse ID?{' '}
+                  <button type="button" className="museid-auth-dialog__link" onClick={() => openAuthDialog('sign-up')} disabled={busy}>
+                    Create one instead
+                  </button>
+                </>
+              )}
             </p>
           </div>
         )}

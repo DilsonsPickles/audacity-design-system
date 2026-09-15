@@ -59,12 +59,12 @@ async function openDialog(mode: 'sign-in' | 'sign-up') {
   return apiRef;
 }
 
-/** Clicks "Continue in browser" and returns the URL the dialog opened. */
-async function continueInBrowser(): Promise<URL> {
-  fireEvent.click(await screen.findByRole('button', { name: 'Continue in browser' }));
+/** Waits for the dialog's AUTO-launch (no interstitial click) and returns
+ *  the URL it opened. */
+async function awaitBrowserLaunch(): Promise<URL> {
   await screen.findByText('Waiting for your browser…');
-  expect(openSpy).toHaveBeenCalledTimes(1);
-  return new URL(openSpy.mock.calls[0][0] as string);
+  expect(openSpy).toHaveBeenCalled();
+  return new URL(openSpy.mock.calls.at(-1)![0] as string);
 }
 
 /** Simulates the popup's /oauth/callback handing the code back. */
@@ -98,22 +98,26 @@ afterEach(() => {
 });
 
 describe('MuseIdAuthDialog (browser-first)', () => {
-  it('collects no credentials — one "Continue in browser" CTA in both modes', async () => {
+  it('collects no credentials — opening launches the browser and shows the waiting room', async () => {
     await openDialog('sign-in');
-    expect(screen.getByRole('heading', { name: 'Sign in to Muse ID' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue in browser' })).toBeInTheDocument();
+    // No interstitial: the dialog opens straight into "Check your browser"
+    // with the browser already launched.
+    await screen.findByRole('heading', { name: 'Check your browser' });
+    const url = await awaitBrowserLaunch();
+    expect(url.pathname).toBe('/authorize');
     expect(screen.queryByLabelText('Email')).toBeNull();
     expect(screen.queryByLabelText('Password')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create one' }));
-    await screen.findByRole('heading', { name: 'Create a Muse ID' });
-    expect(screen.getByRole('button', { name: 'Continue in browser' })).toBeInTheDocument();
+    // Switching mode mid-wait relaunches with the other landing page.
+    fireEvent.click(screen.getByRole('button', { name: 'Create one instead' }));
+    await waitFor(() => expect(openSpy).toHaveBeenCalledTimes(2));
+    expect(new URL(openSpy.mock.calls[1][0] as string).pathname).toBe('/signup');
     expect(screen.queryByLabelText('Email')).toBeNull();
   });
 
   it('sign-in opens muse-id /authorize with PKCE and a mid.-prefixed state, then waits', async () => {
     await openDialog('sign-in');
-    const url = await continueInBrowser();
+    const url = await awaitBrowserLaunch();
 
     expect(url.pathname).toBe('/authorize');
     expect(url.searchParams.get('client_id')).toBe('audacity-web-demo');
@@ -130,7 +134,7 @@ describe('MuseIdAuthDialog (browser-first)', () => {
 
   it('sign-up opens muse-id /signup with next= pointing back into /authorize', async () => {
     await openDialog('sign-up');
-    const url = await continueInBrowser();
+    const url = await awaitBrowserLaunch();
 
     expect(url.pathname).toBe('/signup');
     const next = url.searchParams.get('next')!;
@@ -151,7 +155,7 @@ describe('MuseIdAuthDialog (browser-first)', () => {
     mock.seedAuthCode('good-code', 'returning@mu.se');
 
     const apiRef = await openDialog('sign-in');
-    const url = await continueInBrowser();
+    const url = await awaitBrowserLaunch();
 
     postCallback({ code: 'good-code', state: url.searchParams.get('state')! });
 
@@ -170,7 +174,7 @@ describe('MuseIdAuthDialog (browser-first)', () => {
     mock.seedMuseUser({ email: 'x@mu.se', password: 'p', name: 'X' });
     mock.seedAuthCode('some-code', 'x@mu.se');
     const apiRef = await openDialog('sign-in');
-    await continueInBrowser();
+    await awaitBrowserLaunch();
 
     postCallback({ code: 'some-code', state: `${MUSE_ID_STATE_PREFIX}not-ours` });
 
@@ -181,7 +185,7 @@ describe('MuseIdAuthDialog (browser-first)', () => {
 
   it('an error from the browser (e.g. access_denied) surfaces and returns to idle', async () => {
     await openDialog('sign-in');
-    await continueInBrowser();
+    await awaitBrowserLaunch();
     postCallback({ error: 'access_denied' });
     expect((await screen.findByRole('alert')).textContent).toMatch(/cancelled in the browser/);
     expect(window.sessionStorage.getItem('muse-id-oauth-pending')).toBeNull();
@@ -189,7 +193,7 @@ describe('MuseIdAuthDialog (browser-first)', () => {
 
   it('ignores messages that are not the callback envelope, or come from another origin', async () => {
     await openDialog('sign-in');
-    await continueInBrowser();
+    await awaitBrowserLaunch();
     act(() => {
       window.dispatchEvent(new MessageEvent('message', { data: { type: 'moosehub-auth', code: 'x' }, origin: window.location.origin }));
       window.dispatchEvent(new MessageEvent('message', { data: { type: MUSE_ID_CALLBACK_MESSAGE_TYPE, code: 'x', state: 'y' }, origin: 'https://evil.example' }));
@@ -199,7 +203,7 @@ describe('MuseIdAuthDialog (browser-first)', () => {
 
   it('"Open it again" re-opens the same URL; Cancel clears the PKCE state and returns to idle', async () => {
     await openDialog('sign-in');
-    const url = await continueInBrowser();
+    const url = await awaitBrowserLaunch();
 
     fireEvent.click(screen.getByRole('button', { name: "Didn't open? Open it again" }));
     expect(openSpy).toHaveBeenCalledTimes(2);
