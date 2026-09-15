@@ -1087,6 +1087,30 @@ describe('Selection playback', () => {
     expect((panels()[0] as HTMLElement).style.height).toBe('138px');
   });
 
+  it('label track: Add new -> Label, then Add label renders build-palette chrome', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Label');
+    await waitFor(() => expect(trackPanelNames(container).join()).toMatch(/Label/));
+
+    const addLabel = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Add label',
+    );
+    expect(addLabel).toBeTruthy();
+    fireEvent.click(addLabel!);
+
+    const ear = await waitFor(() => {
+      const el = container.querySelector('[data-label-ear] path');
+      if (!el) throw new Error('no label ear yet');
+      return el;
+    });
+    // The build's clip_color_1 (labelColors.ts) — proves the real-palette
+    // wiring end-to-end through track creation and label rendering.
+    expect(ear.getAttribute('fill')).toBe('#66A3FF');
+  });
+
   it('play marks the start position; toggling playback off returns the playhead to it', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;
