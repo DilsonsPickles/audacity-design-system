@@ -137,34 +137,14 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   // ---- Ear/stalk drags (attach-on-mousedown, self-cleaning) --------------
 
-  const handleLeftMouseDown = (e: React.MouseEvent) => {
+  const beginDrag = (e: React.MouseEvent, onMove: (t: number) => void) => {
     e.preventDefault();
     e.stopPropagation();
     selectSelf(e);
-
     const containerRect = (e.target as HTMLElement).closest('.canvas-container')?.getBoundingClientRect();
     const handleMouseMove = (moveE: MouseEvent) => {
       if (!containerRect) return;
-      const newTime = timeFromClientX(moveE.clientX, containerRect);
-      if (isPointLabel) {
-        dispatch({
-          type: 'UPDATE_LABEL',
-          payload: { trackIndex, labelId: label.id, label: { startTime: newTime, endTime: newTime } },
-        });
-      } else {
-        // Resize from the left edge; dragging past the right edge inverts.
-        dispatch({
-          type: 'UPDATE_LABEL',
-          payload: {
-            trackIndex,
-            labelId: label.id,
-            label: {
-              startTime: Math.min(newTime, label.endTime!),
-              endTime: Math.max(newTime, label.endTime!),
-            },
-          },
-        });
-      }
+      onMove(timeFromClientX(moveE.clientX, containerRect));
     };
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
@@ -174,38 +154,47 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleRightMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isPointLabel) {
-      // The mirrored right ear of a point label moves the point too.
-      handleLeftMouseDown(e);
-      return;
-    }
-    selectSelf(e);
-
-    const containerRect = (e.target as HTMLElement).closest('.canvas-container')?.getBoundingClientRect();
-    const handleMouseMove = (moveE: MouseEvent) => {
-      if (!containerRect) return;
-      const newTime = timeFromClientX(moveE.clientX, containerRect);
+  // Ears ALWAYS stretch their edge, anchored on the opposite edge as it
+  // was at drag start; dragging past the anchor inverts (swap). This is
+  // the real build's model (Au3LabelsInteraction::stretchLabelLeft/Right +
+  // SelectedRegion::ensureOrdering) — and it's also how a POINT label
+  // becomes a region: pull either ear and an edge stretches away from the
+  // anchored point. Moving a point is the stalk's (and banner's) job.
+  const handleStretchLeft = (e: React.MouseEvent) => {
+    const anchor = label.endTime!;
+    beginDrag(e, (t) => {
       dispatch({
         type: 'UPDATE_LABEL',
         payload: {
           trackIndex,
           labelId: label.id,
-          label: {
-            startTime: Math.min(label.startTime, newTime),
-            endTime: Math.max(label.startTime, newTime),
-          },
+          label: { startTime: Math.min(t, anchor), endTime: Math.max(t, anchor) },
         },
       });
-    };
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    });
+  };
+
+  const handleStretchRight = (e: React.MouseEvent) => {
+    const anchor = label.startTime;
+    beginDrag(e, (t) => {
+      dispatch({
+        type: 'UPDATE_LABEL',
+        payload: {
+          trackIndex,
+          labelId: label.id,
+          label: { startTime: Math.min(anchor, t), endTime: Math.max(anchor, t) },
+        },
+      });
+    });
+  };
+
+  const handleMovePoint = (e: React.MouseEvent) => {
+    beginDrag(e, (t) => {
+      dispatch({
+        type: 'UPDATE_LABEL',
+        payload: { trackIndex, labelId: label.id, label: { startTime: t, endTime: t } },
+      });
+    });
   };
 
   // ---- Banner drag / click / expand --------------------------------------
@@ -290,6 +279,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   const ear = (side: 'left' | 'right', left: number, hovered: boolean, onMouseDown: (e: React.MouseEvent) => void, hoverId: string) => (
     <svg
+      data-label-ear={`${labelKeyId}-${side}`}
       width={m.earWidth}
       height={m.bannerHeight}
       viewBox={`0 0 ${m.earWidth} ${m.bannerHeight}`}
@@ -297,11 +287,11 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         position: 'absolute',
         left: `${left}px`,
         top: `${topOffset}px`,
-        cursor: isPointLabel ? 'move' : 'ew-resize',
+        cursor: 'ew-resize',
         pointerEvents: 'auto',
         zIndex: 3,
       }}
-      onMouseEnter={() => setHoveredEar(isPointLabel ? bothEarsId : hoverId)}
+      onMouseEnter={() => setHoveredEar(hoverId)}
       onMouseLeave={() => setHoveredEar(null)}
       onMouseDown={onMouseDown}
     >
@@ -309,7 +299,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     </svg>
   );
 
-  const stalk = (left: number, hovered: boolean, onMouseDown: (e: React.MouseEvent) => void, hoverId: string) => (
+  const stalk = (left: number, hovered: boolean, onMouseDown: (e: React.MouseEvent) => void, hoverId: string, movesPoint: boolean) => (
     <div
       style={{
         position: 'absolute',
@@ -319,9 +309,9 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         height: `${stalkHeight}px`,
         backgroundColor: earColor(hovered),
         pointerEvents: 'auto',
-        cursor: isPointLabel ? 'move' : 'ew-resize',
+        cursor: movesPoint ? 'move' : 'ew-resize',
       }}
-      onMouseEnter={() => setHoveredEar(isPointLabel ? bothEarsId : hoverId)}
+      onMouseEnter={() => setHoveredEar(movesPoint ? bothEarsId : hoverId)}
       onMouseLeave={() => setHoveredEar(null)}
       onMouseDown={onMouseDown}
     />
@@ -347,16 +337,17 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   return (
     <React.Fragment>
-      {ear('left', x - m.earWidth, isLeftEarHovered, handleLeftMouseDown, leftEarId)}
-      {stalk(x, isLeftEarHovered, handleLeftMouseDown, leftEarId)}
-      {/* Point labels get a mirrored ear pair at the stalk; region labels
-          get a stalk + ear at their far edge. */}
+      {ear('left', x - m.earWidth, isLeftEarHovered, handleStretchLeft, leftEarId)}
+      {stalk(x, isLeftEarHovered, isPointLabel ? handleMovePoint : handleStretchLeft, leftEarId, isPointLabel)}
+      {/* Point labels get a mirrored ear pair at the stalk (pulling either
+          ear stretches the point into a region — build behavior); region
+          labels get a stalk + ear at their far edge. */}
       {isPointLabel
-        ? ear('right', x + m.stalkWidth, isRightEarHovered, handleRightMouseDown, rightEarId)
+        ? ear('right', x + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)
         : (
           <>
-            {stalk(x + width, isRightEarHovered, handleRightMouseDown, rightEarId)}
-            {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleRightMouseDown, rightEarId)}
+            {stalk(x + width, isRightEarHovered, handleStretchRight, rightEarId, false)}
+            {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)}
           </>
         )}
 

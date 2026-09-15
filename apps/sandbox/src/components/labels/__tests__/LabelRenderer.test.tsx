@@ -36,13 +36,17 @@ function renderLabels(labels: Label[], dispatch = vi.fn<(a: TracksAction) => voi
   };
   const utils = render(
     <PreferencesProvider>
-      <LabelRenderer {...props} />
+      <div className="canvas-container">
+        <LabelRenderer {...props} />
+      </div>
     </PreferencesProvider>,
   );
   const rerenderLabels = (next: Label[]) =>
     utils.rerender(
       <PreferencesProvider>
-        <LabelRenderer {...props} labels={next} />
+        <div className="canvas-container">
+          <LabelRenderer {...props} labels={next} />
+        </div>
       </PreferencesProvider>,
     );
   return { ...utils, dispatch, rerenderLabels };
@@ -140,5 +144,47 @@ describe('LabelRenderer (rewrite): inline editing', () => {
       () => container.querySelector('[data-label-input="0-2"]') as HTMLInputElement,
     );
     expect(input).toBeInTheDocument();
+  });
+});
+
+describe('LabelRenderer (rewrite): ear stretching (build semantics)', () => {
+  const pointAt1 = (): Label => region({ id: 1, text: 'cue', startTime: 1, endTime: 1 });
+
+  it("pulling a point label's RIGHT ear stretches it into a region", () => {
+    const { container, dispatch } = renderLabels([pointAt1()]);
+    const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;
+    // pps=100, offset 0, jsdom rects are all-zero → time = clientX / 100
+    fireEvent.mouseDown(rightEar, { clientX: 100 });
+    fireEvent.mouseMove(document, { clientX: 250 });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 1, endTime: 2.5 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
+  it("pulling a point label's LEFT ear stretches the start out, anchored on the point", () => {
+    const { container, dispatch } = renderLabels([pointAt1()]);
+    const leftEar = container.querySelector('[data-label-ear="0-1-left"]')!;
+    fireEvent.mouseDown(leftEar, { clientX: 100 });
+    fireEvent.mouseMove(document, { clientX: 40 });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 0.4, endTime: 1 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
+  it('stretching past the anchor inverts (ensureOrdering swap), never a negative span', () => {
+    const { container, dispatch } = renderLabels([region({ id: 1, startTime: 1, endTime: 2 })]);
+    const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;
+    // Right ear anchored at startTime=1; drag left of the anchor to 0.2
+    fireEvent.mouseDown(rightEar, { clientX: 200 });
+    fireEvent.mouseMove(document, { clientX: 20 });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 0.2, endTime: 1 } },
+    });
+    fireEvent.mouseUp(document);
   });
 });
