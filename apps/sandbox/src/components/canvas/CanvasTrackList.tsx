@@ -837,6 +837,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           <div style={{ pointerEvents: 'auto' }}>
             <LabelRenderer
               labels={track.labels}
+              trackColor={track.color}
               trackIndex={trackIndex}
               trackHeight={track.height || 114}
               pixelsPerSecond={pixelsPerSecond}

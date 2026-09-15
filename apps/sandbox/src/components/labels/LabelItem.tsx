@@ -20,23 +20,34 @@
 // remove them on mouseup (self-cleaning pattern — exempt from ref-mirror).
 
 import React, { useEffect, useRef, useState } from 'react';
+import { colors } from '@audacity-ui/tokens';
 import type { Label, TracksAction } from '../../contexts/TracksContext';
 import type { LabelMetrics } from '../../utils/labelLayout';
 
-// Chrome (ears + stalks) keeps the classic saturated palette; the text
-// strap sits one tint lighter (2026-09-15 mockup) so the type carries the
-// label and the chrome reads as accents.
-const COLOR_IDLE = '#7EB1FF';
-const COLOR_SELECTED = '#3399FF';
-const COLOR_HOVER = '#0066CC';
-const BANNER_IDLE = '#A9C8FA';
-const BANNER_SELECTED = '#7EB1FF';
-const BANNER_HOVER = '#8FB9F8';
+// Labels render in the label TRACK's palette color (Track color menu).
+// Chrome (ears + stalks) uses the saturated end of the scale; the text
+// strap sits lighter (2026-09-15 mockup) so the type carries the label
+// and the chrome reads as accents. Blue is the classic default hue.
+type TrackColorName = keyof typeof colors;
+function labelPalette(trackColor: string | undefined) {
+  const name: TrackColorName = trackColor && trackColor in colors ? (trackColor as TrackColorName) : 'blue';
+  const scale = colors[name] as Record<number, string>;
+  return {
+    chromeIdle: scale[500],
+    chromeSelected: scale[700],
+    chromeHover: scale[800],
+    bannerIdle: scale[400],
+    bannerHover: scale[500],
+    bannerSelected: scale[600],
+  };
+}
 const TEXT_COLOR = 'rgba(0, 0, 0, 0.82)';
 const PLACEHOLDER_COLOR = 'rgba(0, 20, 60, 0.45)';
 
 export interface LabelItemProps {
   label: Label;
+  /** The label track's palette color name (see labelPalette). */
+  trackColor?: string;
   trackIndex: number;
   /** Banner x in canvas px (label start). */
   x: number;
@@ -70,6 +81,7 @@ const CLASSIC_EAR_PATHS = {
 
 export const LabelItem: React.FC<LabelItemProps> = ({
   label,
+  trackColor,
   trackIndex,
   x,
   width,
@@ -91,6 +103,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   onStopEditing,
   dispatch,
 }) => {
+  const palette = labelPalette(trackColor);
   const isPointLabel = label.startTime === label.endTime;
   const labelKeyId = `${trackIndex}-${label.id}`;
   const leftEarId = `${labelKeyId}-left`;
@@ -274,7 +287,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   // ---- Pieces -------------------------------------------------------------
 
-  const earColor = (hovered: boolean) => (hovered ? COLOR_HOVER : isSelected ? COLOR_SELECTED : COLOR_IDLE);
+  const earColor = (hovered: boolean) => (hovered ? palette.chromeHover : isSelected ? palette.chromeSelected : palette.chromeIdle);
 
   const ear = (side: 'left' | 'right', left: number, hovered: boolean, onMouseDown: (e: React.MouseEvent) => void, hoverId: string) => (
     <svg
@@ -377,7 +390,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
           top: `${topOffset}px`,
           width: `${width}px`,
           height: `${m.bannerHeight}px`,
-          backgroundColor: isBannerHovered && !isEditing ? BANNER_HOVER : isSelected ? BANNER_SELECTED : BANNER_IDLE,
+          backgroundColor: isBannerHovered && !isEditing ? palette.bannerHover : isSelected ? palette.bannerSelected : palette.bannerIdle,
           pointerEvents: 'auto',
           borderRadius: isPointLabel ? `${m.borderRadius}px` : '0',
           display: 'flex',

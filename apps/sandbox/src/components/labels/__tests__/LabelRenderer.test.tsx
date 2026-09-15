@@ -5,6 +5,7 @@
 import { render, cleanup, fireEvent, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PreferencesProvider } from '@audacity-ui/components';
+import { colors } from '@audacity-ui/tokens';
 import { LabelRenderer } from '../../LabelRenderer';
 import { getLabelMetrics, labelPtToPx } from '../../../utils/labelLayout';
 import type { Label, TracksAction } from '../../../contexts/TracksContext';
@@ -18,9 +19,10 @@ function seedLabelTextSize(pt: number) {
   window.localStorage.setItem('audacity-preferences', JSON.stringify({ labelTextSize: pt }));
 }
 
-function renderLabels(labels: Label[], dispatch = vi.fn<(a: TracksAction) => void>()) {
+function renderLabels(labels: Label[], dispatch = vi.fn<(a: TracksAction) => void>(), trackColor?: string) {
   const props = {
     labels,
+    trackColor,
     trackIndex: 0,
     trackHeight: 114,
     pixelsPerSecond: 100,
@@ -191,5 +193,24 @@ describe('LabelRenderer (rewrite): ear stretching (build semantics)', () => {
       payload: { trackIndex: 0, labelId: 1, label: { startTime: 0.2, endTime: 1 } },
     });
     fireEvent.mouseUp(document);
+  });
+});
+
+describe('LabelRenderer (rewrite): track color', () => {
+  const hexToRgb = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+  };
+
+  it('labels render in the label track\'s palette color', () => {
+    const { container } = renderLabels([region()], undefined, 'red');
+    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.red[400]));
+    const ear = container.querySelector('svg path')!;
+    expect(ear.getAttribute('fill')).toBe(colors.red[500]);
+  });
+
+  it('defaults to the classic blue when the track has no color', () => {
+    const { container } = renderLabels([region()]);
+    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.blue[400]));
   });
 });

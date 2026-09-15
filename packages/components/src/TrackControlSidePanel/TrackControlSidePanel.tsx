@@ -441,7 +441,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           const isLabelTrack = trackChild?.props?.trackType === 'label';
           const isMidiTrack = trackChild?.props?.trackType === 'midi';
 
-          if (isLabelTrack || isMidiTrack) return null;
+          // MIDI tracks get neither; LABEL tracks get Track color (their
+          // labels render in it) but no Track view (nothing to view).
+          if (isMidiTrack) return null;
 
           return (
             <>
@@ -474,6 +476,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   );
                 })}
               </ContextMenuItem>
+              {!isLabelTrack && (
               <ContextMenuItem
                 label="Track view"
                 hasSubmenu={true}
@@ -514,6 +517,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   </>
                 )}
               </ContextMenuItem>
+              )}
             </>
           );
         })()}

@@ -21,6 +21,9 @@ import { LabelItem } from './labels/LabelItem';
 
 interface LabelRendererProps {
   labels: Label[];
+  /** The label track's palette color — labels render in it (default blue,
+   *  the classic label hue). */
+  trackColor?: string;
   trackIndex: number;
   trackHeight: number;
   pixelsPerSecond: number;
@@ -41,6 +44,7 @@ interface LabelRendererProps {
 
 export const LabelRenderer: React.FC<LabelRendererProps> = ({
   labels,
+  trackColor,
   trackIndex,
   trackHeight,
   pixelsPerSecond,
@@ -102,6 +106,7 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
           <LabelItem
             key={label.id}
             label={label}
+            trackColor={trackColor}
             trackIndex={trackIndex}
             x={x}
             width={width}
