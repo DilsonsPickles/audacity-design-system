@@ -244,7 +244,11 @@ describe('LabelRenderer (rewrite): selected state (Figma spec)', () => {
 
   it('an unselected strap is LIGHTER than the ears (50% tint vs solid)', () => {
     const { container } = renderLabels([region()]);
-    expect(banner(container).style.backgroundColor).toContain('50%');
+    // NOTE: CSS serialization omits "50%" (color-mix's default weight),
+    // so assert the mix itself rather than the literal percentage.
+    const strap = banner(container).style.backgroundColor;
+    expect(strap).toContain('color-mix');
+    expect(strap).toContain('white');
     const ear = container.querySelector('svg path')!;
     expect(ear.getAttribute('fill')).toBe(colors.blue[500]); // solid
   });
