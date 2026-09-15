@@ -147,11 +147,11 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     expect(m.fontSizePx).toBeCloseTo(64, 5);
     // Banner comfortably taller than the text it holds — 1.5x.
     expect(m.bannerHeight).toBe(Math.round(m.fontSizePx * 1.5));
-    // Ears are constant classic corner tabs — they never scale.
-    expect(m.earWidth).toBe(7);
-    expect(m.earHeight).toBe(14);
-    expect(getLabelMetrics().earWidth).toBe(7);
-    expect(getLabelMetrics().earHeight).toBe(14);
+    // Ears are constant corner tabs — they never scale with the text.
+    expect(m.earWidth).toBe(8);
+    expect(m.earHeight).toBe(20);
+    expect(getLabelMetrics().earWidth).toBe(8);
+    expect(getLabelMetrics().earHeight).toBe(20);
     expect(m.rowHeight).toBe(m.bannerHeight + m.rowGap);
     expect(m.font).toContain('64px');
   });

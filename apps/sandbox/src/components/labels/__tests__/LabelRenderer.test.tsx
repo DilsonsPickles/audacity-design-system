@@ -67,15 +67,15 @@ const banner = (container: HTMLElement, keyId = '0-1') =>
   container.querySelector(`[data-label-banner="${keyId}"]`) as HTMLElement;
 
 describe('LabelRenderer (rewrite): size-derived geometry', () => {
-  it('default 10pt: 20px strap (1.5x the 13.33px text), constant 7x14 ear tabs', () => {
+  it('default 10pt: 20px strap (1.5x the 13.33px text), constant 8x20 ear tabs', () => {
     const { container } = renderLabels([region()]);
     const el = banner(container);
     expect(el.style.height).toBe('20px');
     expect(el.style.fontSize).toBe('');
     const ears = container.querySelectorAll('svg');
     expect(ears).toHaveLength(2);
-    expect(ears[0].getAttribute('width')).toBe('7');
-    expect(ears[0].getAttribute('height')).toBe('14');
+    expect(ears[0].getAttribute('width')).toBe('8');
+    expect(ears[0].getAttribute('height')).toBe('20');
   });
 
   it('48pt: the strap and text scale (1.5x), the ear tabs stay classic 7x14', () => {
@@ -88,8 +88,9 @@ describe('LabelRenderer (rewrite): size-derived geometry', () => {
     const text = el.firstElementChild as HTMLElement;
     expect(text.style.fontSize).toBe(`${m.fontSizePx}px`);
     const ear = container.querySelector('svg')!;
-    expect(ear.getAttribute('width')).toBe('7');
-    expect(ear.getAttribute('height')).toBe('14');
+    expect(ear.getAttribute('width')).toBe('8');
+    expect(ear.getAttribute('height')).toBe('20');
+    // Path stays in its native 7x14 space; the svg scales it to 8x20.
     expect(ear.getAttribute('viewBox')).toBe('0 0 7 14');
   });
 

@@ -73,8 +73,10 @@ export interface LabelItemProps {
   dispatch: React.Dispatch<TracksAction>;
 }
 
-/** The original hand-tuned 7x14 flag paths. Ears are CONSTANT-size corner
- *  tabs top-aligned with the banner — only the text strap scales. */
+/** The original hand-tuned flag paths, drawn in their native 7x14 space —
+ *  the svg scales them to the metrics' constant ear size. Ears are
+ *  CONSTANT-size corner tabs top-aligned with the banner — only the text
+ *  strap scales. */
 const CLASSIC_EAR_PATHS = {
   left: 'M0.723608 1.44722L7 14V0H1.61827C0.874886 0 0.391157 0.782314 0.723608 1.44722Z',
   right: 'M6.27639 1.44722L0 14V0H5.38173C6.12511 0 6.60884 0.782314 6.27639 1.44722Z',
@@ -317,7 +319,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       data-label-ear={`${labelKeyId}-${side}`}
       width={m.earWidth}
       height={m.earHeight}
-      viewBox={`0 0 ${m.earWidth} ${m.earHeight}`}
+      viewBox="0 0 7 14"
       style={{
         position: 'absolute',
         left: `${left}px`,

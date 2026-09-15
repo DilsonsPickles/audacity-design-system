@@ -41,11 +41,12 @@ export interface LabelMetrics {
   rowHeight: number;
   /** Horizontal text padding inside the banner. */
   padX: number;
-  /** Ear (corner tab) width — CONSTANT classic 7px at every text size
-   *  (2026-09-15 mockup + direction: ears stay the same size; only the
-   *  text strap grows). */
+  /** Ear (corner tab) width — CONSTANT at every text size (2026-09-15
+   *  direction: ears stay the same size; only the text strap grows).
+   *  8x20 per direction: sized to the default (10pt) strap height,
+   *  slightly slimmer than the classic 1:2 flag. */
   earWidth: number;
-  /** Ear (corner tab) height — constant classic 14px, top-aligned. */
+  /** Ear (corner tab) height — constant 20px, top-aligned. */
   earHeight: number;
   /** Stalk (vertical guide line) width — CONSTANT 1px: chrome never
    *  scales, only the text strap does. */
@@ -72,8 +73,8 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     rowGap,
     rowHeight: bannerHeight + rowGap,
     padX: Math.round(4 * s),
-    earWidth: 7,
-    earHeight: 14,
+    earWidth: 8,
+    earHeight: 20,
     stalkWidth: 1,
     pointFlagGap: Math.round(3 * s),
     minPointWidth: Math.round(50 * s),
