@@ -392,7 +392,13 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         onMouseDown={handleBannerMouseDown}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          if (!isEditing) onStartEditing(labelKeyId);
+          if (!isEditing) {
+            // Editing parks the playhead on the label's start (same
+            // contract as clip-body double-click), so Space auditions
+            // the labelled passage right after naming it.
+            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: label.startTime });
+            onStartEditing(labelKeyId);
+          }
         }}
       >
         {isEditing ? (
@@ -409,11 +415,18 @@ export const LabelItem: React.FC<LabelItemProps> = ({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
+              // Same tall box as the display text, so stacked-script ink
+              // isn't clipped WHILE TYPING either (native inputs clip at
+              // their own border box — so make that box tall and center
+              // it on the strap; the background stays the strap's).
               ...textStyle,
-              flex: 1,
-              lineHeight: 1.2,
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              height: `${inkAllowance}px`,
               color: TEXT_COLOR,
-              width: '100%',
               border: 'none',
               outline: 'none',
               background: 'transparent',

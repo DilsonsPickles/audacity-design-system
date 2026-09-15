@@ -108,6 +108,8 @@ describe('LabelRenderer (rewrite): inline editing', () => {
       () => container.querySelector('[data-label-input="0-1"]') as HTMLInputElement,
     );
     expect(input.value).toBe('Chorus');
+    // Opening the editor parks the playhead on the label's start.
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_PLAYHEAD_POSITION', payload: 1 });
 
     fireEvent.change(input, { target: { value: 'Bridge' } });
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -127,7 +129,10 @@ describe('LabelRenderer (rewrite): inline editing', () => {
     );
     fireEvent.change(input, { target: { value: 'scrapped' } });
     fireEvent.keyDown(input, { key: 'Escape' });
-    expect(dispatch).not.toHaveBeenCalled();
+    // The dblclick parks the playhead, but no text change is committed.
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'UPDATE_LABEL' }),
+    );
     expect(container.querySelector('[data-label-input="0-1"]')).toBeNull();
   });
 
