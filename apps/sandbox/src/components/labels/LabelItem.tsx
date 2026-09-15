@@ -115,6 +115,13 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   const [draft, setDraft] = useState(label.text ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Pending expand-to-all-tracks toggle (see handleBannerMouseDown): held
+  // for the double-click window so renaming a selected label doesn't also
+  // yank the track selection around.
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (expandTimerRef.current !== null) clearTimeout(expandTimerRef.current);
+  }, []);
   useEffect(() => {
     if (isEditing) {
       setDraft(label.text ?? '');
@@ -222,6 +229,9 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     if (isEditing) return; // the input owns the mouse while editing
     e.preventDefault();
     e.stopPropagation();
+    // The second press of a double-click: no fresh drag, no second
+    // expand-toggle candidate — onDoubleClick owns the gesture.
+    if (e.detail >= 2) return;
 
     const wasAlreadySelected = selectedLabelIds.includes(labelKeyId);
     selectSelf(e);
@@ -262,11 +272,14 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
       // Click (no drag) on an already-selected REGION banner toggles the
       // expand-to-all-tracks time selection (see docs/label-interactions.md).
-      // setTimeout so it runs after other click handlers, as before.
+      // Deferred past the double-click window (250ms) so a double-click —
+      // which OPENS THE EDITOR and parks the playhead — cancels it: a
+      // rename must not also yank the track selection around.
       if (!hasMoved && !isPointLabel && wasAlreadySelected) {
         const allTrackIndices = Array.from({ length: trackCount }, (_, idx) => idx);
         const allTracksSelected = allTrackIndices.every((idx) => selectedTrackIndices.includes(idx));
-        setTimeout(() => {
+        expandTimerRef.current = setTimeout(() => {
+          expandTimerRef.current = null;
           if (allTracksSelected) {
             dispatch({ type: 'SET_SELECTED_TRACKS', payload: [trackIndex] });
             dispatch({ type: 'SET_TIME_SELECTION', payload: null });
@@ -284,7 +297,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
             });
             dispatch({ type: 'SET_SELECTED_TRACKS', payload: allTrackIndices });
           }
-        }, 0);
+        }, 250);
       }
     };
 
@@ -411,6 +424,10 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         onMouseDown={handleBannerMouseDown}
         onDoubleClick={(e) => {
           e.stopPropagation();
+          if (expandTimerRef.current !== null) {
+            clearTimeout(expandTimerRef.current);
+            expandTimerRef.current = null;
+          }
           if (!isEditing) {
             // Editing parks the playhead on the label's start (same
             // contract as clip-body double-click), so Space auditions

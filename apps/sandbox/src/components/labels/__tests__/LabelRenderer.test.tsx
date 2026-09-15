@@ -228,3 +228,85 @@ describe('LabelRenderer (rewrite): track color', () => {
     expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.blue[400]));
   });
 });
+
+describe('LabelRenderer (rewrite): dblclick-rename vs expand toggle', () => {
+  it('double-clicking a SELECTED region label renames without expanding the track selection', async () => {
+    const dispatch = vi.fn<(a: TracksAction) => void>();
+    // Selected already — the single-click path would toggle expansion.
+    const props = {
+      labels: [region()],
+      trackColor: undefined,
+      trackIndex: 0,
+      trackHeight: 114,
+      pixelsPerSecond: 100,
+      clipContentOffset: 0,
+      selectedLabelIds: ['0-1'],
+      hoveredEar: null,
+      hoveredBanner: null,
+      trackCount: 3,
+      selectedTrackIndices: [0],
+      setHoveredEar: () => {},
+      setHoveredBanner: () => {},
+      dispatch,
+    };
+    const { container } = render(
+      <PreferencesProvider>
+        <div className="canvas-container">
+          <LabelRenderer {...props} />
+        </div>
+      </PreferencesProvider>,
+    );
+    const el = container.querySelector('[data-label-banner="0-1"]')!;
+    // Real double-click stream: down/up/click, down/up/click, dblclick.
+    fireEvent.mouseDown(el, { detail: 1 });
+    fireEvent.mouseUp(document);
+    fireEvent.mouseDown(el, { detail: 2 });
+    fireEvent.mouseUp(document);
+    fireEvent.doubleClick(el);
+
+    await waitFor(() => expect(container.querySelector('[data-label-input="0-1"]')).toBeTruthy());
+    // Wait out the expand window — the dblclick must have cancelled it.
+    await new Promise((r) => setTimeout(r, 350));
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SET_SELECTED_TRACKS' }),
+    );
+    // Editor open + playhead parked = the rename gesture won.
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_PLAYHEAD_POSITION', payload: 1 });
+  });
+
+  it('a plain click on a selected region label still expands after the window', async () => {
+    const dispatch = vi.fn<(a: TracksAction) => void>();
+    const props = {
+      labels: [region()],
+      trackColor: undefined,
+      trackIndex: 0,
+      trackHeight: 114,
+      pixelsPerSecond: 100,
+      clipContentOffset: 0,
+      selectedLabelIds: ['0-1'],
+      hoveredEar: null,
+      hoveredBanner: null,
+      trackCount: 3,
+      selectedTrackIndices: [0],
+      setHoveredEar: () => {},
+      setHoveredBanner: () => {},
+      dispatch,
+    };
+    const { container } = render(
+      <PreferencesProvider>
+        <div className="canvas-container">
+          <LabelRenderer {...props} />
+        </div>
+      </PreferencesProvider>,
+    );
+    const el = container.querySelector('[data-label-banner="0-1"]')!;
+    fireEvent.mouseDown(el, { detail: 1 });
+    fireEvent.mouseUp(document);
+    await waitFor(
+      () => expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'SET_SELECTED_TRACKS', payload: [0, 1, 2] }),
+      ),
+      { timeout: 1000 },
+    );
+  });
+});
