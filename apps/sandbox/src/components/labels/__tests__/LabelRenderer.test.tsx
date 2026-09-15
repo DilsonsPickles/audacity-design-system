@@ -592,3 +592,47 @@ describe('LabelRenderer (rewrite): junction stalk is ALWAYS a both-mover', () =>
     fireEvent.mouseUp(document);
   });
 });
+
+describe('LabelRenderer (rewrite): stalk hover lights BOTH ears', () => {
+  const renderHovered = (hoveredEar: string) => {
+    const props = {
+      labels: [region()],
+      trackColor: undefined,
+      trackIndex: 0,
+      trackHeight: 114,
+      pixelsPerSecond: 100,
+      clipContentOffset: 0,
+      selectedLabelIds: [] as string[],
+      hoveredEar,
+      hoveredBanner: null,
+      trackCount: 1,
+      selectedTrackIndices: [0],
+      setHoveredEar: () => {},
+      setHoveredBanner: () => {},
+      dispatch: vi.fn(),
+    };
+    return render(
+      <PreferencesProvider>
+        <div className="canvas-container">
+          <LabelRenderer {...props} />
+        </div>
+      </PreferencesProvider>,
+    );
+  };
+  const earFills = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll('[data-label-ear] path')).map((p) => p.getAttribute('fill'));
+
+  it('hovering a stalk puts BOTH ears in the hover tint', () => {
+    const { container } = renderHovered('0-1-lstalk');
+    const fills = earFills(container);
+    expect(fills).toHaveLength(2);
+    fills.forEach((f) => expect(f).toContain('30%'));
+  });
+
+  it('hovering an EAR still lights only that side', () => {
+    const { container } = renderHovered('0-1-left');
+    const fills = earFills(container);
+    expect(fills[0]).toContain('30%');
+    expect(fills[1]).not.toContain('30%');
+  });
+});

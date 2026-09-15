@@ -134,13 +134,19 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   const labelKeyId = `${trackIndex}-${label.id}`;
   const leftNeighborSelected =
     !!leftNeighbor && selectedLabelIds.includes(`${trackIndex}-${leftNeighbor.id}`);
-  // Each SIDE's ear and stalk are one affordance and hover as a pair
-  // (Figma spec: "Hovered stalk and ear"). The two sides stay independent
-  // of each other and of the strap.
+  // Hover model (2026-09-15 direction): hovering an EAR lights that
+  // side's ear+stalk pair (Figma "Hovered stalk and ear"); hovering a
+  // STALK lights the stalk AND BOTH ears — the stalk is the whole-edge
+  // affordance, so both grab points glow.
   const leftEarId = `${labelKeyId}-left`;
   const rightEarId = `${labelKeyId}-right`;
-  const isLeftEarHovered = hoveredEar === leftEarId;
-  const isRightEarHovered = hoveredEar === rightEarId;
+  const leftStalkId = `${labelKeyId}-lstalk`;
+  const rightStalkId = `${labelKeyId}-rstalk`;
+  const anyStalkHovered = hoveredEar === leftStalkId || hoveredEar === rightStalkId;
+  const isLeftEarHovered = hoveredEar === leftEarId || anyStalkHovered;
+  const isRightEarHovered = hoveredEar === rightEarId || anyStalkHovered;
+  const isLeftStalkLit = hoveredEar === leftStalkId || hoveredEar === leftEarId;
+  const isRightStalkLit = hoveredEar === rightStalkId || hoveredEar === rightEarId;
   const isBannerHovered = hoveredBanner === labelKeyId;
 
   const [draft, setDraft] = useState(label.text ?? '');
@@ -510,9 +516,9 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       {!(leftNeighbor && !isSelected && leftNeighborSelected)
         && stalk(
           x,
-          isLeftEarHovered,
+          isLeftStalkLit,
           leftNeighbor ? handleSharedEdgeLeft : isPointLabel ? handleMovePoint : handleStretchLeft,
-          leftEarId,
+          leftStalkId,
           isPointLabel && !leftNeighbor,
         )}
       {/* Point labels get a mirrored ear pair at the stalk (pulling either
@@ -525,9 +531,9 @@ export const LabelItem: React.FC<LabelItemProps> = ({
           <>
             {stalk(
               x + width,
-              isRightEarHovered,
+              isRightStalkLit,
               rightNeighbor ? handleSharedEdgeRight : handleStretchRight,
-              rightEarId,
+              rightStalkId,
               false,
             )}
             {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)}
