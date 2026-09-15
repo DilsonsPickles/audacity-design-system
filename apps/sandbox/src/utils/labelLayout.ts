@@ -41,9 +41,9 @@ export interface LabelMetrics {
   rowGap: number;
   /** bannerHeight + rowGap — the row stride for packing/stacking. */
   rowHeight: number;
-  /** Horizontal text padding inside the banner — derived purely from
-   *  the text height: 1/3 of the font size (4px at the 12px default),
-   *  no floors or special cases. */
+  /** Horizontal text padding inside the banner — 1/3 of the text size
+   *  snapped to the 4px grid (min 4): 4px at the default, stepping
+   *  8/12/16/20 up the ramp. */
   padX: number;
   /** Ear width — CONSTANT 10px at every text size. */
   earWidth: number;
@@ -56,8 +56,8 @@ export interface LabelMetrics {
    *  scales, only the text strap does. */
   stalkWidth: number;
   /** Gap between a point label's ear and its text flag — same formula
-   *  as padX (1/3 of the text size), so the flag's detachment from the
-   *  stalk keeps pace with the type. */
+   *  as padX (1/3 of the text size on the 4px grid), so the flag's
+   *  detachment from the stalk keeps pace with the type. */
   pointFlagGap: number;
   /** Point-label width clamp. */
   minPointWidth: number;
@@ -74,16 +74,19 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
   const s = fontSizePx / DEFAULT_LABEL_FONT_PX;
   const bannerHeight = Math.max(20, Math.round(fontSizePx * 1.5));
   const rowGap = Math.max(4, Math.round((2 * s) / 4) * 4);
+  // 1/3 of the text size on the 4px grid — shared by padX and the
+  // point-flag gap.
+  const textThirdOnGrid = Math.max(4, Math.round(fontSizePx / 3 / 4) * 4);
   return {
     fontSizePx,
     bannerHeight,
     rowGap,
     rowHeight: bannerHeight + rowGap,
-    padX: Math.round(fontSizePx / 3),
+    padX: textThirdOnGrid,
     earWidth: 10,
     earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,
-    pointFlagGap: Math.round(fontSizePx / 3),
+    pointFlagGap: textThirdOnGrid,
     minPointWidth: Math.round(50 * s),
     maxPointWidth: Math.round(400 * s),
     borderRadius: 2,
