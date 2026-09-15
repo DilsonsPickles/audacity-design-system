@@ -21,6 +21,15 @@ export interface UseRecordingReturn {
   punchPointPosition: number | null;
 }
 
+// Module-scoped latch (survives App remounts and HMR of this hook's
+// consumers): once a mic-access attempt fails — permission denied, no
+// device, or (Electron ad-hoc builds) an OS grant that won't stick —
+// stop AUTO-requesting for the rest of the page lifetime. Without this,
+// every App mount and every post-recording monitoring restart fired a
+// fresh getUserMedia, spamming the OS permission prompt. An explicit
+// Record press still tries again (user intent resets the latch).
+let micAutoRequestBlocked = false;
+
 /**
  * Hook for managing recording behavior
  * Handles mic monitoring, recording start/stop, and waveform capture
@@ -39,6 +48,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
   // Start mic monitoring automatically when component mounts
   useEffect(() => {
     const startAutoMonitoring = async () => {
+      if (micAutoRequestBlocked) return;
       try {
         // Create recording manager for monitoring
         recordingManagerRef.current = new RecordingManager({
@@ -61,7 +71,9 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         await recordingManagerRef.current.startMonitoring();
         setIsMicMonitoring(true);
       } catch (error) {
-        // Mic access denied or not available - silently fail
+        // Mic access denied or not available — fail silently and stop
+        // auto-requesting (see micAutoRequestBlocked above).
+        micAutoRequestBlocked = true;
       }
     };
 
@@ -167,6 +179,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
 
         // Restart monitoring after recording completes
         const restartMonitoring = async () => {
+          if (micAutoRequestBlocked) return;
           try {
             recordingManagerRef.current = new RecordingManager({
               onMeterUpdate: (level, peak) => {
@@ -187,6 +200,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
             await recordingManagerRef.current.startMonitoring();
             setIsMicMonitoring(true);
           } catch (error) {
+            micAutoRequestBlocked = true;
           }
         };
 
@@ -272,6 +286,10 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
 
       const recordingTrackIndex = trackIndex;
       const punchPoint = state.playheadPosition;
+
+      // An explicit Record press is user intent — allow the mic request
+      // (and the post-recording monitoring restart) again.
+      micAutoRequestBlocked = false;
 
       // Remember the playhead position so we can restore it on cancel
       preRecordPlayheadRef.current = punchPoint;
