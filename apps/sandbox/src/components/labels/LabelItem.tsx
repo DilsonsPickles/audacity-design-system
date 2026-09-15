@@ -53,6 +53,14 @@ const PLACEHOLDER_COLOR = 'rgba(20, 21, 26, 0.45)';
 
 export interface LabelItemProps {
   label: Label;
+  /** The region label ending exactly at this label's start (same row):
+   *  the shared boundary. This label OWNS the junction's single stalk —
+   *  it renders no left ear, and the stalk drags BOTH labels' edge. */
+  leftNeighbor?: Label;
+  /** True when a region label starts exactly at this label's end: the
+   *  junction is owned by the neighbour, so this label renders neither
+   *  its right stalk nor its right ear. */
+  sharesRightEdge?: boolean;
   /** The label track's palette color name (see labelPalette). */
   trackColor?: string;
   trackIndex: number;
@@ -90,6 +98,8 @@ const CLASSIC_EAR_PATHS = {
 
 export const LabelItem: React.FC<LabelItemProps> = ({
   label,
+  leftNeighbor,
+  sharesRightEdge = false,
   trackColor,
   trackIndex,
   x,
@@ -222,6 +232,24 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       dispatch({
         type: 'UPDATE_LABEL',
         payload: { trackIndex, labelId: label.id, label: stretchTimes(t, anchor) },
+      });
+    });
+  };
+
+  // Shared boundary drag: moves BOTH labels' edge (the left neighbour's
+  // end and this label's start), clamped inside the pair so neither
+  // inverts through the other.
+  const handleSharedEdge = (e: React.MouseEvent) => {
+    const nb = leftNeighbor!;
+    beginDrag(e, (t) => {
+      const tt = Math.min(Math.max(t, nb.startTime), label.endTime!);
+      dispatch({
+        type: 'UPDATE_LABEL',
+        payload: { trackIndex, labelId: nb.id, label: { endTime: tt } },
+      });
+      dispatch({
+        type: 'UPDATE_LABEL',
+        payload: { trackIndex, labelId: label.id, label: { startTime: tt } },
       });
     });
   };
@@ -422,14 +450,23 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   return (
     <React.Fragment>
-      {ear('left', x - m.earWidth, isLeftEarHovered, handleStretchLeft, leftEarId)}
-      {stalk(x, isLeftEarHovered, isPointLabel ? handleMovePoint : handleStretchLeft, leftEarId, isPointLabel)}
+      {/* Shared left boundary: this label owns the junction's single
+          stalk — no left ear, and the drag moves both labels' edge. */}
+      {!leftNeighbor && ear('left', x - m.earWidth, isLeftEarHovered, handleStretchLeft, leftEarId)}
+      {stalk(
+        x,
+        isLeftEarHovered,
+        leftNeighbor ? handleSharedEdge : isPointLabel ? handleMovePoint : handleStretchLeft,
+        leftEarId,
+        isPointLabel,
+      )}
       {/* Point labels get a mirrored ear pair at the stalk (pulling either
           ear stretches the point into a region — build behavior); region
-          labels get a stalk + ear at their far edge. */}
+          labels get a stalk + ear at their far edge — unless a neighbour
+          starts exactly there (it owns the shared junction). */}
       {isPointLabel
         ? ear('right', x + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)
-        : (
+        : !sharesRightEdge && (
           <>
             {stalk(x + width, isRightEarHovered, handleStretchRight, rightEarId, false)}
             {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)}

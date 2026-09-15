@@ -349,3 +349,62 @@ describe('LabelRenderer (rewrite): dblclick-rename vs expand toggle', () => {
     );
   });
 });
+
+describe('LabelRenderer (rewrite): adjacent regions share a middle stalk', () => {
+  const adjacentPair = (): Label[] => [
+    { id: 1, trackIndex: 0, text: 'verse', startTime: 1, endTime: 2 },
+    { id: 2, trackIndex: 0, text: 'chorus', startTime: 2, endTime: 3 },
+  ];
+
+  it('the junction renders ONE stalk and NO ears', () => {
+    const { container } = renderLabels(adjacentPair());
+    // Stalks: label 1 left, shared junction (owned by label 2), label 2
+    // right — three, not four.
+    expect(container.querySelectorAll('[data-label-stalk]')).toHaveLength(3);
+    // Ears: only the pair's outer edges.
+    const ears = Array.from(container.querySelectorAll('[data-label-ear]')).map((e) => e.getAttribute('data-label-ear'));
+    expect(ears).toEqual(['0-1-left', '0-2-right']);
+  });
+
+  it('dragging the shared stalk moves BOTH labels\' edge together', () => {
+    const { container, dispatch } = renderLabels(adjacentPair());
+    // The shared stalk belongs to label 2 (the right-hand label).
+    const sharedStalk = container.querySelector('[data-label-stalk="0-2"]')!;
+    fireEvent.mouseDown(sharedStalk, { clientX: 200 });
+    fireEvent.mouseMove(document, { clientX: 250 }); // t = 2.5s at pps 100
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { endTime: 2.5 } },
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 2, label: { startTime: 2.5 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
+  it('the shared edge clamps inside the pair (no inversion through either label)', () => {
+    const { container, dispatch } = renderLabels(adjacentPair());
+    const sharedStalk = container.querySelector('[data-label-stalk="0-2"]')!;
+    fireEvent.mouseDown(sharedStalk, { clientX: 200 });
+    fireEvent.mouseMove(document, { clientX: 40 }); // t = 0.4 — left of label 1's start
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { endTime: 1 } },
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 2, label: { startTime: 1 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
+  it('near-but-not-touching regions keep their own full chrome', () => {
+    const { container } = renderLabels([
+      { id: 1, trackIndex: 0, text: 'a', startTime: 1, endTime: 2 },
+      { id: 2, trackIndex: 0, text: 'b', startTime: 2.05, endTime: 3 },
+    ]);
+    expect(container.querySelectorAll('[data-label-stalk]')).toHaveLength(4);
+    expect(container.querySelectorAll('[data-label-ear]')).toHaveLength(4);
+  });
+});

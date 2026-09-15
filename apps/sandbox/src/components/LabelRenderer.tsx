@@ -90,6 +90,31 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
 
   const labelRows = calculateLabelRows(labels, pixelsPerSecond, clipContentOffset, metrics);
 
+  // Perfectly-adjacent region labels on the same row share their boundary:
+  // the junction renders ONE stalk (owned by the right-hand label) and no
+  // ears, and dragging it moves both labels' shared edge together.
+  const EDGE_EPS = 1e-6;
+  const isRegion = (l: Label) => l.endTime !== undefined && l.endTime - l.startTime > EDGE_EPS;
+  const leftNeighborOf = (l: Label): Label | undefined =>
+    isRegion(l)
+      ? labels.find(
+          (o) =>
+            o.id !== l.id
+            && isRegion(o)
+            && Math.abs(o.endTime! - l.startTime) < EDGE_EPS
+            && labelRows.get(o.id) === labelRows.get(l.id),
+        )
+      : undefined;
+  const sharesRightEdgeOf = (l: Label): boolean =>
+    isRegion(l)
+    && labels.some(
+      (o) =>
+        o.id !== l.id
+        && isRegion(o)
+        && Math.abs(l.endTime! - o.startTime) < EDGE_EPS
+        && labelRows.get(o.id) === labelRows.get(l.id),
+    );
+
   return (
     <>
       {labels.map((label) => {
@@ -106,6 +131,8 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
           <LabelItem
             key={label.id}
             label={label}
+            leftNeighbor={leftNeighborOf(label)}
+            sharesRightEdge={sharesRightEdgeOf(label)}
             trackColor={trackColor}
             trackIndex={trackIndex}
             x={x}
