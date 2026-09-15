@@ -67,10 +67,10 @@ const banner = (container: HTMLElement, keyId = '0-1') =>
   container.querySelector(`[data-label-banner="${keyId}"]`) as HTMLElement;
 
 describe('LabelRenderer (rewrite): size-derived geometry', () => {
-  it('classic 9pt: 18px strap (1.5x the 12px text), constant 7x14 ear tabs', () => {
+  it('default 10pt: 20px strap (1.5x the 13.33px text), constant 7x14 ear tabs', () => {
     const { container } = renderLabels([region()]);
     const el = banner(container);
-    expect(el.style.height).toBe('18px');
+    expect(el.style.height).toBe('20px');
     expect(el.style.fontSize).toBe('');
     const ears = container.querySelectorAll('svg');
     expect(ears).toHaveLength(2);
