@@ -212,6 +212,42 @@ describe('LabelRenderer (rewrite): ear stretching (build semantics)', () => {
   });
 });
 
+describe('LabelRenderer (rewrite): selected state', () => {
+  it('a selected label strap gets the bottom underline', () => {
+    const dispatch = vi.fn<(a: TracksAction) => void>();
+    const props = {
+      labels: [region()],
+      trackColor: undefined,
+      trackIndex: 0,
+      trackHeight: 114,
+      pixelsPerSecond: 100,
+      clipContentOffset: 0,
+      selectedLabelIds: ['0-1'],
+      hoveredEar: null,
+      hoveredBanner: null,
+      trackCount: 1,
+      selectedTrackIndices: [0],
+      setHoveredEar: () => {},
+      setHoveredBanner: () => {},
+      dispatch,
+    };
+    const { container } = render(
+      <PreferencesProvider>
+        <div className="canvas-container">
+          <LabelRenderer {...props} />
+        </div>
+      </PreferencesProvider>,
+    );
+    const el = container.querySelector('[data-label-banner="0-1"]') as HTMLElement;
+    expect(el.style.boxShadow).toContain('inset 0 -2px 0');
+  });
+
+  it('an unselected strap has no underline', () => {
+    const { container } = renderLabels([region()]);
+    expect(banner(container).style.boxShadow).toBe('');
+  });
+});
+
 describe('LabelRenderer (rewrite): track color', () => {
   const hexToRgb = (hex: string) => {
     const n = parseInt(hex.slice(1), 16);
