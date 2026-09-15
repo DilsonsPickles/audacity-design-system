@@ -275,3 +275,92 @@ describe('time-selection copy/cut — scope resolution', () => {
     expect(getClipboard()?.wholeGroupIds).toEqual([]); // member 10 not captured
   });
 });
+
+describe('label copy / cut / paste', () => {
+  const labelTrack = (labels: NonNullable<TracksState['tracks'][number]['labels']>) => ({
+    id: 9,
+    name: 'Labels',
+    type: 'label' as const,
+    clips: [],
+    labels,
+  });
+
+  it('copy with labels selected captures the labels (and no clips)', () => {
+    const state = stateWith(
+      [labelTrack([
+        { id: 1, trackIndex: 0, text: 'verse', startTime: 1, endTime: 2 },
+        { id: 2, trackIndex: 0, text: 'cue', startTime: 4, endTime: 4 },
+      ])],
+      { selectedLabelIds: ['0-1', '0-2'] },
+    );
+    const { deps, getClipboard } = makeDeps(state);
+    handleCopy(deps);
+    const cb = getClipboard();
+    expect(cb?.clips).toEqual([]);
+    expect(cb?.labels?.map((l) => l.text)).toEqual(['verse', 'cue']);
+  });
+
+  it('cut removes the labels via UPDATE_TRACK and clears the selection', () => {
+    const state = stateWith(
+      [labelTrack([
+        { id: 1, trackIndex: 0, text: 'verse', startTime: 1, endTime: 2 },
+        { id: 2, trackIndex: 0, text: 'keep', startTime: 6, endTime: 7 },
+      ])],
+      { selectedLabelIds: ['0-1'] },
+    );
+    const { deps, getClipboard } = makeDeps(state);
+    handleCut(deps);
+    expect(getClipboard()?.labels?.map((l) => l.id)).toEqual([1]);
+    expect(deps.dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_TRACK',
+      payload: { index: 0, track: { labels: [expect.objectContaining({ id: 2 })] } },
+    });
+    expect(deps.dispatch).toHaveBeenCalledWith({ type: 'SET_SELECTED_LABELS', payload: [] });
+  });
+
+  it('paste lands the earliest label at the playhead, spacing preserved, new ids, one UPDATE_TRACK', () => {
+    const state = stateWith(
+      [labelTrack([{ id: 5, trackIndex: 0, text: 'existing', startTime: 0, endTime: 0.5 }])],
+      { playheadPosition: 10, focusedTrackIndex: 0 },
+    );
+    const { deps } = makeDeps(state);
+    deps.clipboard = {
+      clips: [],
+      operation: 'copy',
+      labels: [
+        { id: 1, trackIndex: 0, text: 'verse', startTime: 1, endTime: 2 },
+        { id: 2, trackIndex: 0, text: 'cue', startTime: 4, endTime: 4 },
+      ],
+    };
+    handlePaste(deps);
+    expect(deps.dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_TRACK',
+      payload: {
+        index: 0,
+        track: {
+          labels: [
+            expect.objectContaining({ id: 5 }),
+            expect.objectContaining({ id: 6, text: 'verse', startTime: 10, endTime: 11 }),
+            expect.objectContaining({ id: 7, text: 'cue', startTime: 13, endTime: 13 }),
+          ],
+        },
+      },
+    });
+    expect(deps.dispatch).toHaveBeenCalledWith({
+      type: 'SET_SELECTED_LABELS',
+      payload: ['0-6', '0-7'],
+    });
+  });
+
+  it('paste with no label track announces and does nothing', () => {
+    const state = stateWith([{ id: 1, name: 'audio', clips: [] }], { playheadPosition: 3 });
+    const { deps } = makeDeps(state);
+    deps.clipboard = {
+      clips: [],
+      operation: 'copy',
+      labels: [{ id: 1, trackIndex: 0, text: 'x', startTime: 0, endTime: 1 }],
+    };
+    handlePaste(deps);
+    expect(deps.dispatch).not.toHaveBeenCalled();
+  });
+});

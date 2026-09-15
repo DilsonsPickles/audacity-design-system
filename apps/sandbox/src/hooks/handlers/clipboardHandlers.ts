@@ -1,5 +1,5 @@
 import { announce } from '@audacity-ui/components';
-import type { TracksState, TracksAction, Clip } from '../../contexts/TracksContext';
+import type { TracksState, TracksAction, Clip, Label } from '../../contexts/TracksContext';
 import { dissolveDegenerateGroups } from '../../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -16,8 +16,31 @@ export interface ClipboardHandlerDeps {
   audioManagerRef: React.RefObject<AudioPlaybackManager>;
 }
 
+/** Resolve the selected label ids ("trackIndex-labelId") to label objects. */
+function resolveSelectedLabels(state: TracksState): (Label & { trackIndex: number })[] {
+  const out: (Label & { trackIndex: number })[] = [];
+  state.selectedLabelIds.forEach((keyId) => {
+    const [trackIndexStr, labelIdStr] = keyId.split('-');
+    const trackIndex = parseInt(trackIndexStr, 10);
+    const labelId = parseInt(labelIdStr, 10);
+    const label = state.tracks[trackIndex]?.labels?.find((l) => l.id === labelId);
+    if (label) out.push({ ...label, trackIndex });
+  });
+  return out;
+}
+
 export function handleCopy(deps: ClipboardHandlerDeps): void {
   const { state, setClipboard } = deps;
+
+  // Priority 0: selected LABELS — an explicit label selection wins over
+  // any lingering time selection (labels were the last thing picked).
+  if (state.selectedLabelIds.length > 0) {
+    const labels = resolveSelectedLabels(state);
+    if (labels.length > 0) {
+      setClipboard({ clips: [], labels, operation: 'copy' });
+    }
+    return;
+  }
 
   // Priority 1: Copy time selection if it exists (skip clip-derived selections)
   if (state.timeSelection && state.timeSelection.renderOnCanvas !== false) {
@@ -75,6 +98,29 @@ export function handleCopy(deps: ClipboardHandlerDeps): void {
 
 export function handleCut(deps: ClipboardHandlerDeps): void {
   const { state, dispatch, setClipboard } = deps;
+
+  // Priority 0: selected LABELS — copy them, then remove (same
+  // UPDATE_TRACK-with-filtered-labels mechanism as deleteHandlers).
+  if (state.selectedLabelIds.length > 0) {
+    const labels = resolveSelectedLabels(state);
+    if (labels.length === 0) return;
+    setClipboard({ clips: [], labels, operation: 'cut' });
+    const removedByTrack = new Map<number, Set<number>>();
+    labels.forEach((l) => {
+      if (!removedByTrack.has(l.trackIndex)) removedByTrack.set(l.trackIndex, new Set());
+      removedByTrack.get(l.trackIndex)!.add(l.id);
+    });
+    removedByTrack.forEach((ids, trackIndex) => {
+      const track = state.tracks[trackIndex];
+      if (!track?.labels) return;
+      dispatch({
+        type: 'UPDATE_TRACK',
+        payload: { index: trackIndex, track: { labels: track.labels.filter((l) => !ids.has(l.id)) } },
+      });
+    });
+    dispatch({ type: 'SET_SELECTED_LABELS', payload: [] });
+    return;
+  }
 
   // Priority 1: Cut time selection if it exists (skip clip-derived selections)
   if (state.timeSelection && state.timeSelection.renderOnCanvas !== false) {
@@ -152,7 +198,51 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
 export function handlePaste(deps: ClipboardHandlerDeps): void {
   const { state, dispatch, clipboard, audioManagerRef } = deps;
 
-  if (!clipboard || clipboard.clips.length === 0) {
+  if (!clipboard) return;
+
+  // LABELS clipboard: paste onto the focused label track (or the first
+  // label track), aligned so the earliest label lands at the playhead,
+  // relative spacing preserved. One UPDATE_TRACK = one undo step.
+  if (clipboard.labels && clipboard.labels.length > 0) {
+    const focused = state.focusedTrackIndex;
+    const targetTrackIndex =
+      focused !== null && focused !== undefined && state.tracks[focused]?.type === 'label'
+        ? focused
+        : state.tracks.findIndex((t) => t.type === 'label');
+    if (targetTrackIndex === -1) {
+      announce('No label track to paste into');
+      return;
+    }
+    const targetTrack = state.tracks[targetTrackIndex];
+
+    const earliest = Math.min(...clipboard.labels.map((l) => l.startTime));
+    const timeOffset = state.playheadPosition - earliest;
+    let maxLabelId = 0;
+    state.tracks.forEach((t) => t.labels?.forEach((l) => { maxLabelId = Math.max(maxLabelId, l.id); }));
+
+    const pasted = clipboard.labels.map((l, i) => {
+      const { trackIndex: _src, ...label } = l;
+      return {
+        ...label,
+        id: maxLabelId + i + 1,
+        trackIndex: targetTrackIndex,
+        startTime: Math.max(0, label.startTime + timeOffset),
+        endTime: label.endTime !== undefined ? Math.max(0, label.endTime + timeOffset) : undefined,
+      };
+    });
+
+    dispatch({
+      type: 'UPDATE_TRACK',
+      payload: { index: targetTrackIndex, track: { labels: [...(targetTrack.labels ?? []), ...pasted] } },
+    });
+    dispatch({
+      type: 'SET_SELECTED_LABELS',
+      payload: pasted.map((l) => `${targetTrackIndex}-${l.id}`),
+    });
+    return;
+  }
+
+  if (clipboard.clips.length === 0) {
     return;
   }
 

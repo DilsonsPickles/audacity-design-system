@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { TracksState, TracksAction, Clip } from '../contexts/TracksContext';
+import type { TracksState, TracksAction, Clip, Label } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import { useEditingBehaviorPrefs, announce } from '@audacity-ui/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -20,6 +20,9 @@ import { resolveTimeSelectionScope } from '../utils/timeSelectionScope';
 
 export interface ClipboardState {
   clips: ((Clip | MidiClip) & { trackIndex: number })[];
+  /** Copied LABELS (Cmd+C with labels selected). A labels clipboard has
+   *  clips: [] — the two payloads are mutually exclusive by construction. */
+  labels?: (Label & { trackIndex: number })[];
   operation: 'copy' | 'cut';
   timeSelection?: { startTime: number; endTime: number };
   /**
