@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { Icon } from '../Icon';
 import './ContextMenuItem.css';
@@ -73,6 +73,27 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
 }) => {
   const { theme } = useTheme();
   const [submenuOpen, setSubmenuOpen] = useState(false);
+  // Vertical clamp: a submenu opens top-aligned with its parent item and
+  // grows downward — near the viewport bottom that runs off-screen (the
+  // horizontal data-align flip already existed; the vertical case
+  // didn't). Measured once per open and shifted up just enough.
+  const [submenuShiftY, setSubmenuShiftY] = useState(0);
+  useLayoutEffect(() => {
+    if (!submenuOpen) {
+      setSubmenuShiftY(0);
+      return;
+    }
+    const el = submenuRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const overflow = rect.bottom - (window.innerHeight - 8);
+    if (overflow > 0) {
+      // Shift up, but never past the viewport top.
+      const maxShift = Math.max(0, rect.top - 8);
+      setSubmenuShiftY(-Math.min(overflow, maxShift));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submenuOpen]);
   const itemRef = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
 
@@ -428,6 +449,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
         <div
           ref={submenuRef}
           className="context-menu-submenu"
+          style={submenuShiftY ? { top: `${submenuShiftY}px` } : undefined}
           role="menu"
           onMouseEnter={clearSafeTriangle}
         >
