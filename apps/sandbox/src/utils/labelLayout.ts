@@ -32,7 +32,10 @@ export interface LabelMetrics {
   /** Banner (label box) height — 1.5x the font size (24px text sits in a
    *  36px strap, per the 2026-09-15 mockup). */
   bannerHeight: number;
-  /** Vertical gap between stacked label rows. */
+  /** Vertical gap between stacked label rows — CONSTANT 2px, like the
+   *  ears: only the text strap scales, chrome stays fixed. The seam is
+   *  the dark canvas showing through, which stays perceptible at 2px
+   *  against straps of any height. */
   rowGap: number;
   /** bannerHeight + rowGap — the row stride for packing/stacking. */
   rowHeight: number;
@@ -62,7 +65,7 @@ export interface LabelMetrics {
 export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): LabelMetrics {
   const s = fontSizePx / DEFAULT_LABEL_FONT_PX;
   const bannerHeight = Math.round(fontSizePx * 1.5);
-  const rowGap = Math.max(2, Math.round(2 * s));
+  const rowGap = 2;
   return {
     fontSizePx,
     bannerHeight,
