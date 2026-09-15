@@ -88,10 +88,10 @@ describe('LabelRenderer (rewrite): size-derived geometry', () => {
     const text = el.firstElementChild as HTMLElement;
     expect(text.style.fontSize).toBe(`${m.fontSizePx}px`);
     const ear = container.querySelector('svg')!;
+    // Constant 8x20 corner tab — ears never scale with the text.
     expect(ear.getAttribute('width')).toBe('8');
-    // Ear height always equals the strap — flush at every size.
-    expect(ear.getAttribute('height')).toBe(String(m.bannerHeight));
-    // Path stays in its native 7x14 space; the svg scales it.
+    expect(ear.getAttribute('height')).toBe('20');
+    // Path stays in its native 7x14 space; the svg stretches it to fill.
     expect(ear.getAttribute('viewBox')).toBe('0 0 7 14');
   });
 

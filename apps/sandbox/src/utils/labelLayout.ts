@@ -43,8 +43,10 @@ export interface LabelMetrics {
   padX: number;
   /** Ear width — CONSTANT 8px at every text size. */
   earWidth: number;
-  /** Ear height — ALWAYS the strap height, so the triangle sits flush
-   *  with the strap at every size (2026-09-15 direction). */
+  /** Ear height — CONSTANT 20px (matching the default 10pt strap, where
+   *  it sits exactly flush), top-aligned as a corner tab on taller
+   *  straps; capped at the strap height so it never overshoots smaller
+   *  ones. Ears do NOT scale with the text — only the strap does. */
   earHeight: number;
   /** Stalk (vertical guide line) width — CONSTANT 1px: chrome never
    *  scales, only the text strap does. */
@@ -72,7 +74,7 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     rowHeight: bannerHeight + rowGap,
     padX: Math.round(4 * s),
     earWidth: 8,
-    earHeight: bannerHeight,
+    earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,
     pointFlagGap: Math.round(3 * s),
     minPointWidth: Math.round(50 * s),

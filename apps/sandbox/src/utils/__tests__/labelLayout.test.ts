@@ -147,12 +147,13 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     expect(m.fontSizePx).toBeCloseTo(64, 5);
     // Banner comfortably taller than the text it holds — 1.5x.
     expect(m.bannerHeight).toBe(Math.round(m.fontSizePx * 1.5));
-    // Ear width is constant; ear HEIGHT always equals the strap, so the
-    // triangle sits flush at every size.
+    // Ears are constant 8x20 corner tabs — they never scale with the
+    // text (capped at the strap so they can't overshoot a smaller one).
     expect(m.earWidth).toBe(8);
-    expect(m.earHeight).toBe(m.bannerHeight);
-    expect(getLabelMetrics(12).earHeight).toBe(18);
-    expect(getLabelMetrics(labelPtToPx(10)).earHeight).toBe(20);
+    expect(m.earHeight).toBe(20);
+    expect(getLabelMetrics(12).earHeight).toBe(18); // 9pt strap caps it
+    expect(getLabelMetrics(labelPtToPx(10)).earHeight).toBe(20); // flush
+    expect(getLabelMetrics(labelPtToPx(48)).earHeight).toBe(20); // tab
     expect(m.rowHeight).toBe(m.bannerHeight + m.rowGap);
     expect(m.font).toContain('64px');
   });
