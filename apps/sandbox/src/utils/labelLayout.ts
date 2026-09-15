@@ -41,8 +41,9 @@ export interface LabelMetrics {
   rowGap: number;
   /** bannerHeight + rowGap — the row stride for packing/stacking. */
   rowHeight: number;
-  /** Horizontal text padding inside the banner — 0.5em (tightened from
-   *  the Figma spec's 0.8em, 2026-09-15 direction). */
+  /** Horizontal text padding inside the banner — essentially CONSTANT
+   *  per the Figma scaling study (node 1971:244999): 6px at the smallest
+   *  text, 4px through the middle of the ramp, 8px only at 64px. */
   padX: number;
   /** Ear width — CONSTANT 10px at every text size. */
   earWidth: number;
@@ -60,7 +61,8 @@ export interface LabelMetrics {
   /** Point-label width clamp. */
   minPointWidth: number;
   maxPointWidth: number;
-  /** Point-label flag corner radius. */
+  /** Point-label flag corner radius — CONSTANT 2px (Figma scaling study
+   *  and the real build agree). */
   borderRadius: number;
   /** Canvas font string used to measure text — MUST match the rendered
    *  font (Inter 500) or measured widths lie. */
@@ -76,14 +78,14 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     bannerHeight,
     rowGap,
     rowHeight: bannerHeight + rowGap,
-    padX: Math.round(fontSizePx * 0.5),
+    padX: fontSizePx <= 12 ? 6 : fontSizePx >= 64 ? 8 : 4,
     earWidth: 10,
     earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,
     pointFlagGap: 4,
     minPointWidth: Math.round(50 * s),
     maxPointWidth: Math.round(400 * s),
-    borderRadius: Math.max(2, Math.round(2 * s)),
+    borderRadius: 2,
     font: `500 ${fontSizePx}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`,
   };
 }
