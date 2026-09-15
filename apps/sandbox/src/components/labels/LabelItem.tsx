@@ -342,23 +342,40 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     </svg>
   );
 
+  // The visible stalk is 1px — the interactive element is a transparent
+  // 9px-wide hit zone with the line centered in it. Banner and ears still
+  // win where they overlap (later DOM order / higher z), so the pad only
+  // widens the target over bare canvas.
+  const STALK_HIT_PAD = 4;
   const stalk = (left: number, hovered: boolean, onMouseDown: (e: React.MouseEvent) => void, hoverId: string, movesPoint: boolean) => (
     <div
       data-label-stalk={labelKeyId}
       style={{
         position: 'absolute',
-        left: `${left}px`,
+        left: `${left - STALK_HIT_PAD}px`,
         top: `${topOffset}px`,
-        width: `${m.stalkWidth}px`,
+        width: `${m.stalkWidth + STALK_HIT_PAD * 2}px`,
         height: `${stalkHeight}px`,
-        backgroundColor: earColor(hovered),
+        backgroundColor: 'transparent',
         pointerEvents: 'auto',
         cursor: movesPoint ? 'move' : 'ew-resize',
       }}
       onMouseEnter={() => setHoveredEar(hoverId)}
       onMouseLeave={() => setHoveredEar(null)}
       onMouseDown={onMouseDown}
-    />
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: `${STALK_HIT_PAD}px`,
+          top: 0,
+          width: `${m.stalkWidth}px`,
+          height: '100%',
+          backgroundColor: earColor(hovered),
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
   );
 
   const isEmpty = !label.text || label.text.trim() === '';
