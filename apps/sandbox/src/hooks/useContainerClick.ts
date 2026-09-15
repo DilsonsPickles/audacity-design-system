@@ -1,5 +1,6 @@
 import React, { MutableRefObject } from 'react';
 import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
+import { labelDragJustEnded } from '../components/labels/labelDragTracker';
 import type { Track, TracksAction, TimeSelection } from '../contexts/TracksContext';
 
 interface ContainerClickConfig {
@@ -52,6 +53,19 @@ export function useContainerClick({
     // Cmd / Ctrl is the grab-to-pan modifier — clicks with it held
     // shouldn't move the playhead or change track focus.
     if (e.metaKey || e.ctrlKey) return;
+
+    // Label gestures own their clicks: selecting, moving, or stretching a
+    // label must not move the playhead (only the label's own double-click
+    // parks it, on the label's start). Covers both clicks originating on
+    // label elements and the synthesized click after a drag's release
+    // (whose target can be bare canvas when the pointer outran a clamped
+    // label).
+    if (
+      (e.target as HTMLElement).closest('[data-label-banner], [data-label-ear], [data-label-stalk]')
+      || labelDragJustEnded()
+    ) {
+      return;
+    }
 
     // Only update playhead and track focus if we're not dragging
     const wasJustDragging = selectionWasJustDragging();

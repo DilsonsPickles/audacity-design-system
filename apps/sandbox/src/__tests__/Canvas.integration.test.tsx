@@ -559,3 +559,44 @@ describe('Tab roving between clips', () => {
     expect(document.activeElement).toBe(clip2);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Label gestures own their clicks: selecting or dragging a label must not
+// move the playhead. Seam: useContainerClick's label guard +
+// labelDragTracker's post-release click window.
+// ---------------------------------------------------------------------------
+
+describe('Label clicks and the playhead', () => {
+  it('clicking or dragging a label strap never moves the playhead', () => {
+    const tracks: Track[] = [
+      {
+        id: 1,
+        name: 'Labels',
+        type: 'label',
+        clips: [],
+        labels: [{ id: 1, trackIndex: 0, text: 'chorus', startTime: 1, endTime: 2 }],
+      },
+    ];
+    const { container } = renderCanvas(tracks);
+    const probe = () =>
+      (container.querySelector('[data-testid="tracks-state-probe"]') as HTMLElement).getAttribute('data-playhead');
+    const bannerEl = container.querySelector('[data-label-banner="0-1"]') as HTMLElement;
+    expect(bannerEl).toBeTruthy();
+    expect(probe()).toBe('0');
+
+    // Plain click on the strap: selects the label; playhead stays put.
+    fireEvent.mouseDown(bannerEl, { clientX: 150, clientY: 30, detail: 1 });
+    fireEvent.mouseUp(document);
+    fireEvent.click(bannerEl, { clientX: 150, clientY: 30 });
+    expect(probe()).toBe('0');
+
+    // Drag the strap and release — the synthesized click after the drag
+    // (landing on bare canvas here) must not move the playhead either.
+    fireEvent.mouseDown(bannerEl, { clientX: 150, clientY: 30, detail: 1 });
+    fireEvent.mouseMove(document, { clientX: 260, clientY: 30 });
+    fireEvent.mouseUp(document);
+    const pointerContainer = getPointerContainer(container);
+    fireEvent.click(pointerContainer, { clientX: 260, clientY: 30 });
+    expect(probe()).toBe('0');
+  });
+});

@@ -23,6 +23,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { colors } from '@audacity-ui/tokens';
 import type { Label, TracksAction } from '../../contexts/TracksContext';
 import type { LabelMetrics } from '../../utils/labelLayout';
+import { markLabelDragEnd } from './labelDragTracker';
 
 // Labels render in the label TRACK's palette color (Track color menu).
 // Chrome (ears + stalks) uses the saturated end of the scale; the text
@@ -166,6 +167,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       onMove(timeFromClientX(moveE.clientX, containerRect));
     };
     const handleMouseUp = () => {
+      markLabelDragEnd();
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -267,6 +269,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     };
 
     const handleMouseUp = () => {
+      markLabelDragEnd();
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
 
@@ -333,6 +336,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   const stalk = (left: number, hovered: boolean, onMouseDown: (e: React.MouseEvent) => void, hoverId: string, movesPoint: boolean) => (
     <div
+      data-label-stalk={labelKeyId}
       style={{
         position: 'absolute',
         left: `${left}px`,
