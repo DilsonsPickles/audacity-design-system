@@ -95,11 +95,10 @@ describe('LabelRenderer (rewrite): size-derived geometry', () => {
     expect(ear.getAttribute('viewBox')).toBe('0 0 7 14');
   });
 
-  it('an empty label shows an italic placeholder instead of a blank slab', () => {
+  it('an empty label renders an empty strap — no placeholder text', () => {
     const { container } = renderLabels([region({ text: '' })]);
     const text = banner(container).firstElementChild as HTMLElement;
-    expect(text.textContent).toBe('Label');
-    expect(text.style.fontStyle).toBe('italic');
+    expect(text.textContent).toBe('');
   });
 });
 

@@ -50,7 +50,6 @@ function labelPalette(trackColor: string | undefined) {
   };
 }
 const TEXT_COLOR = '#14151A'; // --font-primary-color
-const PLACEHOLDER_COLOR = 'rgba(20, 21, 26, 0.45)';
 
 export interface LabelItemProps {
   label: Label;
@@ -469,7 +468,6 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     </div>
   );
 
-  const isEmpty = !label.text || label.text.trim() === '';
   const bannerLeft = isPointLabel ? x + m.earWidth + m.pointFlagGap : x;
 
   const textStyle: React.CSSProperties = {
@@ -610,8 +608,8 @@ export const LabelItem: React.FC<LabelItemProps> = ({
             }}
           />
         ) : (
-          <div style={{ ...displayTextStyle, color: isEmpty ? PLACEHOLDER_COLOR : TEXT_COLOR, fontStyle: isEmpty ? 'italic' : undefined }}>
-            {isEmpty ? 'Label' : label.text}
+          <div style={{ ...displayTextStyle, color: TEXT_COLOR }}>
+            {label.text}
           </div>
         )}
       </div>
