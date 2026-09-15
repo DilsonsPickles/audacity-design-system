@@ -109,11 +109,16 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   const palette = labelPalette(trackColor);
   const isPointLabel = label.startTime === label.endTime;
   const labelKeyId = `${trackIndex}-${label.id}`;
+  // Every element hovers INDEPENDENTLY — an ear hover never lights the
+  // stalk beside it, and vice versa (2026-09-15 direction).
   const leftEarId = `${labelKeyId}-left`;
   const rightEarId = `${labelKeyId}-right`;
-  const bothEarsId = `both-${labelKeyId}`;
-  const isLeftEarHovered = hoveredEar === leftEarId || hoveredEar === bothEarsId;
-  const isRightEarHovered = hoveredEar === rightEarId || hoveredEar === bothEarsId;
+  const leftStalkId = `${labelKeyId}-lstalk`;
+  const rightStalkId = `${labelKeyId}-rstalk`;
+  const isLeftEarHovered = hoveredEar === leftEarId;
+  const isRightEarHovered = hoveredEar === rightEarId;
+  const isLeftStalkHovered = hoveredEar === leftStalkId;
+  const isRightStalkHovered = hoveredEar === rightStalkId;
   const isBannerHovered = hoveredBanner === labelKeyId;
 
   const [draft, setDraft] = useState(label.text ?? '');
@@ -350,7 +355,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         pointerEvents: 'auto',
         cursor: movesPoint ? 'move' : 'ew-resize',
       }}
-      onMouseEnter={() => setHoveredEar(movesPoint ? bothEarsId : hoverId)}
+      onMouseEnter={() => setHoveredEar(hoverId)}
       onMouseLeave={() => setHoveredEar(null)}
       onMouseDown={onMouseDown}
     />
@@ -395,7 +400,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   return (
     <React.Fragment>
       {ear('left', x - m.earWidth, isLeftEarHovered, handleStretchLeft, leftEarId)}
-      {stalk(x, isLeftEarHovered, isPointLabel ? handleMovePoint : handleStretchLeft, leftEarId, isPointLabel)}
+      {stalk(x, isLeftStalkHovered, isPointLabel ? handleMovePoint : handleStretchLeft, leftStalkId, isPointLabel)}
       {/* Point labels get a mirrored ear pair at the stalk (pulling either
           ear stretches the point into a region — build behavior); region
           labels get a stalk + ear at their far edge. */}
@@ -403,7 +408,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         ? ear('right', x + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)
         : (
           <>
-            {stalk(x + width, isRightEarHovered, handleStretchRight, rightEarId, false)}
+            {stalk(x + width, isRightStalkHovered, handleStretchRight, rightStalkId, false)}
             {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)}
           </>
         )}
