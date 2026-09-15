@@ -182,6 +182,20 @@ describe('LabelRenderer (rewrite): ear stretching (build semantics)', () => {
     fireEvent.mouseUp(document);
   });
 
+  it('dragging an edge close to the anchor snaps the region back to a POINT label', () => {
+    const { container, dispatch } = renderLabels([region({ id: 1, startTime: 1, endTime: 2 })]);
+    const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;
+    // Right ear anchored at startTime=1; release the edge 4px (0.04s at
+    // pps 100) from the anchor — inside the 6px collapse detent.
+    fireEvent.mouseDown(rightEar, { clientX: 200 });
+    fireEvent.mouseMove(document, { clientX: 104 });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 1, endTime: 1 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
   it('stretching past the anchor inverts (ensureOrdering swap), never a negative span', () => {
     const { container, dispatch } = renderLabels([region({ id: 1, startTime: 1, endTime: 2 })]);
     const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;

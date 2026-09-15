@@ -172,16 +172,27 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   // SelectedRegion::ensureOrdering) — and it's also how a POINT label
   // becomes a region: pull either ear and an edge stretches away from the
   // anchored point. Moving a point is the stalk's (and banner's) job.
+  //
+  // A sticky detent at zero width makes the REVERSE gesture practical:
+  // within a few pixels of the anchor the label snaps to a point
+  // (start === end) — otherwise collapsing a region back into a point
+  // needs a pixel-perfect release on exact equality. Pull through the
+  // detent and inversion resumes.
+  const COLLAPSE_SNAP_PX = 6;
+
+  const stretchTimes = (t: number, anchor: number) => {
+    if (Math.abs(t - anchor) * pixelsPerSecond < COLLAPSE_SNAP_PX) {
+      return { startTime: anchor, endTime: anchor };
+    }
+    return { startTime: Math.min(t, anchor), endTime: Math.max(t, anchor) };
+  };
+
   const handleStretchLeft = (e: React.MouseEvent) => {
     const anchor = label.endTime!;
     beginDrag(e, (t) => {
       dispatch({
         type: 'UPDATE_LABEL',
-        payload: {
-          trackIndex,
-          labelId: label.id,
-          label: { startTime: Math.min(t, anchor), endTime: Math.max(t, anchor) },
-        },
+        payload: { trackIndex, labelId: label.id, label: stretchTimes(t, anchor) },
       });
     });
   };
@@ -191,11 +202,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     beginDrag(e, (t) => {
       dispatch({
         type: 'UPDATE_LABEL',
-        payload: {
-          trackIndex,
-          labelId: label.id,
-          label: { startTime: Math.min(anchor, t), endTime: Math.max(anchor, t) },
-        },
+        payload: { trackIndex, labelId: label.id, label: stretchTimes(t, anchor) },
       });
     });
   };
