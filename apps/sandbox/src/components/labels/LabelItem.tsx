@@ -320,11 +320,9 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   const bannerLeft = isPointLabel ? x + m.earWidth + m.pointFlagGap : x;
 
   const textStyle: React.CSSProperties = {
-    flex: 1,
     paddingLeft: `${m.padX}px`,
     paddingRight: `${m.padX}px`,
     fontSize: `${m.fontSizePx}px`,
-    lineHeight: 1.2,
     // Display sizes read better slightly tightened.
     letterSpacing: m.fontSizePx >= 24 ? '-0.015em' : undefined,
     fontFamily: 'Inter, sans-serif',
@@ -332,6 +330,26 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+  };
+
+  // Scripts with extreme stacks (Thai tone marks, Khmer coeng subscripts)
+  // paint ink well past the Latin line box — verified clipped at 48pt
+  // (Thai +3px top, Khmer +16px bottom) when the ellipsis element's
+  // overflow:hidden hugged the strap. So the DISPLAY text lives in a line
+  // box ~2.2em tall centered on the strap: ellipsis still clips
+  // horizontally at the strap edges, while vertical ink overflows the
+  // strap freely (as text editors render these scripts).
+  const inkAllowance = Math.round(m.fontSizePx * 2.2);
+  const displayTextStyle: React.CSSProperties = {
+    ...textStyle,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    height: `${inkAllowance}px`,
+    lineHeight: `${inkAllowance}px`,
+    pointerEvents: 'none',
   };
 
   return (
@@ -364,7 +382,8 @@ export const LabelItem: React.FC<LabelItemProps> = ({
           borderRadius: isPointLabel ? `${m.borderRadius}px` : '0',
           display: 'flex',
           alignItems: 'center',
-          overflow: 'hidden',
+          // No overflow:hidden here — the display-text element does its
+          // own horizontal clipping; vertical glyph ink may breathe.
           cursor: isEditing ? 'text' : 'move',
           boxShadow: isSelected && !isEditing ? 'inset 0 0 0 1px rgba(0, 40, 120, 0.35)' : undefined,
         }}
@@ -391,6 +410,8 @@ export const LabelItem: React.FC<LabelItemProps> = ({
             onMouseDown={(e) => e.stopPropagation()}
             style={{
               ...textStyle,
+              flex: 1,
+              lineHeight: 1.2,
               color: TEXT_COLOR,
               width: '100%',
               border: 'none',
@@ -400,7 +421,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
             }}
           />
         ) : (
-          <div style={{ ...textStyle, color: isEmpty ? PLACEHOLDER_COLOR : TEXT_COLOR, fontStyle: isEmpty ? 'italic' : undefined, pointerEvents: 'none' }}>
+          <div style={{ ...displayTextStyle, color: isEmpty ? PLACEHOLDER_COLOR : TEXT_COLOR, fontStyle: isEmpty ? 'italic' : undefined }}>
             {isEmpty ? 'Label' : label.text}
           </div>
         )}
