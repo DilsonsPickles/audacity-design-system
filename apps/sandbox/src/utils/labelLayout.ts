@@ -41,10 +41,9 @@ export interface LabelMetrics {
   rowGap: number;
   /** bannerHeight + rowGap — the row stride for packing/stacking. */
   rowHeight: number;
-  /** Horizontal text padding inside the banner — 1/8 of the text size,
-   *  floored at 4px: flat 4px through reading sizes, easing to 6px at
-   *  48px and 8px at 64px (the scaling study's top endpoint). Monotonic
-   *  by construction. */
+  /** Horizontal text padding inside the banner — derived purely from
+   *  the text height: 1/3 of the font size (4px at the 12px default),
+   *  no floors or special cases. */
   padX: number;
   /** Ear width — CONSTANT 10px at every text size. */
   earWidth: number;
@@ -57,8 +56,8 @@ export interface LabelMetrics {
    *  scales, only the text strap does. */
   stalkWidth: number;
   /** Gap between a point label's ear and its text flag — same formula
-   *  as padX (1/8 of the text size, floored at 4px), so the flag's
-   *  detachment from the stalk keeps pace with the type. */
+   *  as padX (1/3 of the text size), so the flag's detachment from the
+   *  stalk keeps pace with the type. */
   pointFlagGap: number;
   /** Point-label width clamp. */
   minPointWidth: number;
@@ -80,11 +79,11 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     bannerHeight,
     rowGap,
     rowHeight: bannerHeight + rowGap,
-    padX: Math.max(4, Math.round(fontSizePx / 8)),
+    padX: Math.round(fontSizePx / 3),
     earWidth: 10,
     earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,
-    pointFlagGap: Math.max(4, Math.round(fontSizePx / 8)),
+    pointFlagGap: Math.round(fontSizePx / 3),
     minPointWidth: Math.round(50 * s),
     maxPointWidth: Math.round(400 * s),
     borderRadius: 2,

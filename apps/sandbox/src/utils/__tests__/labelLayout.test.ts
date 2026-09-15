@@ -135,12 +135,12 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     const m12 = getLabelMetrics();
     expect(m12.bannerHeight).toBe(20); // floor: default 12px text, flush ears
     expect(m12.rowHeight).toBe(20 + m12.rowGap);
-    expect(m12.padX).toBe(4); // 1/8 of text size, floored at 4
-    expect(getLabelMetrics(48).padX).toBe(6);
-    expect(getLabelMetrics(labelPtToPx(48)).padX).toBe(8); // 64px -> 8
+    expect(m12.padX).toBe(4); // 1/3 of the text size
+    expect(getLabelMetrics(48).padX).toBe(16);
+    expect(getLabelMetrics(labelPtToPx(48)).padX).toBe(21); // 64px
     expect(getLabelMetrics(labelPtToPx(48)).borderRadius).toBe(2); // constant
     expect(m12.pointFlagGap).toBe(4); // same formula as padX
-    expect(getLabelMetrics(labelPtToPx(48)).pointFlagGap).toBe(8); // 64px -> 8
+    expect(getLabelMetrics(labelPtToPx(48)).pointFlagGap).toBe(21); // 64px
     expect(m12.minPointWidth).toBe(50);
     expect(m12.maxPointWidth).toBe(400);
     // The mockup's stated case: 24px text in a 36px strap.
