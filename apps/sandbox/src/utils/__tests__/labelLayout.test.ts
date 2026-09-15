@@ -134,7 +134,7 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     const m12 = getLabelMetrics();
     expect(m12.bannerHeight).toBe(18);
     expect(m12.rowHeight).toBe(18 + m12.rowGap);
-    expect(m12.padX).toBe(4);
+    expect(m12.padX).toBe(10); // 0.8em of 12px, per the Figma spec
     expect(m12.pointFlagGap).toBe(3);
     expect(m12.minPointWidth).toBe(50);
     expect(m12.maxPointWidth).toBe(400);

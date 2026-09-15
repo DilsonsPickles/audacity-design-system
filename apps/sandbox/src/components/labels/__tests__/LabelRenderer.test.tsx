@@ -212,8 +212,8 @@ describe('LabelRenderer (rewrite): ear stretching (build semantics)', () => {
   });
 });
 
-describe('LabelRenderer (rewrite): selected state', () => {
-  it('a selected label strap gets the bottom underline', () => {
+describe('LabelRenderer (rewrite): selected state (Figma spec)', () => {
+  it('a selected label strap goes to the 40% white-mixed tint', () => {
     const dispatch = vi.fn<(a: TracksAction) => void>();
     const props = {
       labels: [region()],
@@ -239,12 +239,13 @@ describe('LabelRenderer (rewrite): selected state', () => {
       </PreferencesProvider>,
     );
     const el = container.querySelector('[data-label-banner="0-1"]') as HTMLElement;
-    expect(el.style.boxShadow).toContain('inset 0 -2px 0');
+    expect(el.style.backgroundColor).toContain('40%');
+    expect(el.style.backgroundColor).toContain('white');
   });
 
-  it('an unselected strap has no underline', () => {
+  it('an unselected strap is the SOLID track color (default 100%)', () => {
     const { container } = renderLabels([region()]);
-    expect(banner(container).style.boxShadow).toBe('');
+    expect(banner(container).style.backgroundColor).not.toContain('color-mix');
   });
 });
 
@@ -254,16 +255,16 @@ describe('LabelRenderer (rewrite): track color', () => {
     return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
   };
 
-  it('labels render in the label track\'s palette color', () => {
+  it('labels render in the label track\'s palette color (solid 500 default)', () => {
     const { container } = renderLabels([region()], undefined, 'red');
-    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.red[400]));
+    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.red[500]));
     const ear = container.querySelector('svg path')!;
     expect(ear.getAttribute('fill')).toBe(colors.red[500]);
   });
 
   it('defaults to the classic blue when the track has no color', () => {
     const { container } = renderLabels([region()]);
-    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.blue[400]));
+    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.blue[500]));
   });
 });
 

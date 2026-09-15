@@ -26,27 +26,30 @@ import type { LabelMetrics } from '../../utils/labelLayout';
 import { markLabelDragEnd } from './labelDragTracker';
 
 // Labels render in the label TRACK's palette color (Track color menu).
-// Chrome (ears + stalks) uses the saturated end of the scale; the text
-// strap sits lighter (2026-09-15 mockup) so the type carries the label
-// and the chrome reads as accents. Blue is the classic default hue.
+// State model per the Figma "Region label states" spec (17 - Labels,
+// node 446:67027): every state is the track color MIXED OVER WHITE —
+// default is the solid color, interaction goes LIGHTER:
+//   strap:        default 100%  · hover 70%  · selected 40%
+//   ear+stalk:    default 100%  · hover 30%  · selected 40%
+//                 · hovered-while-selected 10%
+// Each side's ear and stalk are ONE affordance and hover together.
 type TrackColorName = keyof typeof colors;
 function labelPalette(trackColor: string | undefined) {
   const name: TrackColorName = trackColor && trackColor in colors ? (trackColor as TrackColorName) : 'blue';
-  const scale = colors[name] as Record<number, string>;
+  const base = (colors[name] as Record<number, string>)[500];
+  const mix = (pct: number) => `color-mix(in srgb, ${base} ${pct}%, white)`;
   return {
-    chromeIdle: scale[500],
-    chromeSelected: scale[700],
-    chromeHover: scale[800],
-    bannerIdle: scale[400],
-    bannerHover: scale[500],
-    bannerSelected: scale[600],
-    // Selected-state underline along the strap's bottom edge (the
-    // mockup's dark rule) — the scale's deep end, palette-consistent.
-    selectedUnderline: scale[800],
+    strapDefault: base,
+    strapHover: mix(70),
+    strapSelected: mix(40),
+    chromeDefault: base,
+    chromeHover: mix(30),
+    chromeSelected: mix(40),
+    chromeSelectedHover: mix(10),
   };
 }
-const TEXT_COLOR = 'rgba(0, 0, 0, 0.82)';
-const PLACEHOLDER_COLOR = 'rgba(0, 20, 60, 0.45)';
+const TEXT_COLOR = '#14151A'; // --font-primary-color
+const PLACEHOLDER_COLOR = 'rgba(20, 21, 26, 0.45)';
 
 export interface LabelItemProps {
   label: Label;
@@ -112,16 +115,13 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   const palette = labelPalette(trackColor);
   const isPointLabel = label.startTime === label.endTime;
   const labelKeyId = `${trackIndex}-${label.id}`;
-  // Every element hovers INDEPENDENTLY — an ear hover never lights the
-  // stalk beside it, and vice versa (2026-09-15 direction).
+  // Each SIDE's ear and stalk are one affordance and hover as a pair
+  // (Figma spec: "Hovered stalk and ear"). The two sides stay independent
+  // of each other and of the strap.
   const leftEarId = `${labelKeyId}-left`;
   const rightEarId = `${labelKeyId}-right`;
-  const leftStalkId = `${labelKeyId}-lstalk`;
-  const rightStalkId = `${labelKeyId}-rstalk`;
   const isLeftEarHovered = hoveredEar === leftEarId;
   const isRightEarHovered = hoveredEar === rightEarId;
-  const isLeftStalkHovered = hoveredEar === leftStalkId;
-  const isRightStalkHovered = hoveredEar === rightStalkId;
   const isBannerHovered = hoveredBanner === labelKeyId;
 
   const [draft, setDraft] = useState(label.text ?? '');
@@ -320,7 +320,10 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   // ---- Pieces -------------------------------------------------------------
 
-  const earColor = (hovered: boolean) => (hovered ? palette.chromeHover : isSelected ? palette.chromeSelected : palette.chromeIdle);
+  const earColor = (hovered: boolean) =>
+    hovered
+      ? (isSelected ? palette.chromeSelectedHover : palette.chromeHover)
+      : (isSelected ? palette.chromeSelected : palette.chromeDefault);
 
   const ear = (side: 'left' | 'right', left: number, hovered: boolean, onMouseDown: (e: React.MouseEvent) => void, hoverId: string) => (
     <svg
@@ -420,7 +423,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   return (
     <React.Fragment>
       {ear('left', x - m.earWidth, isLeftEarHovered, handleStretchLeft, leftEarId)}
-      {stalk(x, isLeftStalkHovered, isPointLabel ? handleMovePoint : handleStretchLeft, leftStalkId, isPointLabel)}
+      {stalk(x, isLeftEarHovered, isPointLabel ? handleMovePoint : handleStretchLeft, leftEarId, isPointLabel)}
       {/* Point labels get a mirrored ear pair at the stalk (pulling either
           ear stretches the point into a region — build behavior); region
           labels get a stalk + ear at their far edge. */}
@@ -428,7 +431,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         ? ear('right', x + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)
         : (
           <>
-            {stalk(x + width, isRightStalkHovered, handleStretchRight, rightStalkId, false)}
+            {stalk(x + width, isRightEarHovered, handleStretchRight, rightEarId, false)}
             {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)}
           </>
         )}
@@ -442,7 +445,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
           top: `${topOffset}px`,
           width: `${width}px`,
           height: `${m.bannerHeight}px`,
-          backgroundColor: isBannerHovered && !isEditing ? palette.bannerHover : isSelected ? palette.bannerSelected : palette.bannerIdle,
+          backgroundColor: isSelected ? palette.strapSelected : isBannerHovered && !isEditing ? palette.strapHover : palette.strapDefault,
           pointerEvents: 'auto',
           borderRadius: isPointLabel ? `${m.borderRadius}px` : '0',
           display: 'flex',
@@ -450,9 +453,6 @@ export const LabelItem: React.FC<LabelItemProps> = ({
           // No overflow:hidden here — the display-text element does its
           // own horizontal clipping; vertical glyph ink may breathe.
           cursor: isEditing ? 'text' : 'move',
-          // Selected: the mockup's dark underline along the bottom edge
-          // (inset shadow, so the strap's box never shifts).
-          boxShadow: isSelected ? `inset 0 -2px 0 ${palette.selectedUnderline}` : undefined,
         }}
         onMouseEnter={() => setHoveredBanner(labelKeyId)}
         onMouseLeave={() => setHoveredBanner(null)}
