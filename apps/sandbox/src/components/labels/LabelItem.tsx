@@ -320,6 +320,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       width={m.earWidth}
       height={m.earHeight}
       viewBox="0 0 7 14"
+      preserveAspectRatio="none"
       style={{
         position: 'absolute',
         left: `${left}px`,
