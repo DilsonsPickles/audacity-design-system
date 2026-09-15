@@ -520,3 +520,71 @@ describe('LabelRenderer (rewrite): magnetic edge snapping', () => {
     fireEvent.mouseUp(document);
   });
 });
+
+describe('LabelRenderer (rewrite): junction stalk is ALWAYS a both-mover', () => {
+  const pair = (): Label[] => [
+    { id: 1, trackIndex: 0, text: 'verse', startTime: 1, endTime: 2 },
+    { id: 2, trackIndex: 0, text: 'chorus', startTime: 2, endTime: 3 },
+  ];
+  const renderPair = (selectedLabelIds: string[]) => {
+    const dispatch = vi.fn<(a: TracksAction) => void>();
+    const props = {
+      labels: pair(),
+      trackColor: undefined,
+      trackIndex: 0,
+      trackHeight: 114,
+      pixelsPerSecond: 100,
+      clipContentOffset: 0,
+      selectedLabelIds,
+      hoveredEar: null,
+      hoveredBanner: null,
+      trackCount: 1,
+      selectedTrackIndices: [0],
+      setHoveredEar: () => {},
+      setHoveredBanner: () => {},
+      dispatch,
+    };
+    const utils = render(
+      <PreferencesProvider>
+        <div className="canvas-container">
+          <LabelRenderer {...props} />
+        </div>
+      </PreferencesProvider>,
+    );
+    return { ...utils, dispatch };
+  };
+
+  it('with the RIGHT label selected, its junction stalk still moves both', () => {
+    const { container, dispatch } = renderPair(['0-2']);
+    const stalkEl = container.querySelector('[data-label-stalk="0-2"]')!;
+    fireEvent.mouseDown(stalkEl, { clientX: 200 });
+    fireEvent.mouseMove(document, { clientX: 250 });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { endTime: 2.5 } },
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 2, label: { startTime: 2.5 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
+  it('with the LEFT label selected, its right junction stalk moves both too', () => {
+    const { container, dispatch } = renderPair(['0-1']);
+    // Label 1 is selected — it reasserts its own right stalk at the seam.
+    const stalks = Array.from(container.querySelectorAll('[data-label-stalk="0-1"]'));
+    const junctionStalk = stalks[stalks.length - 1]; // left stalk first, right (junction) second
+    fireEvent.mouseDown(junctionStalk, { clientX: 200 });
+    fireEvent.mouseMove(document, { clientX: 150 });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { endTime: 1.5 } },
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 2, label: { startTime: 1.5 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+});

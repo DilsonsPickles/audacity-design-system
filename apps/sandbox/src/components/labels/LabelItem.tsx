@@ -261,10 +261,11 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     });
   };
 
-  // Shared boundary drag: moves BOTH labels' edge (the left neighbour's
-  // end and this label's start), clamped inside the pair so neither
-  // inverts through the other.
-  const handleSharedEdge = (e: React.MouseEvent) => {
+  // Shared boundary drags: the junction STALK always moves BOTH labels'
+  // edge, clamped inside the pair so neither inverts through the other —
+  // selection doesn't change this (the selected label's EARS are the
+  // stretch-one/unlink gesture instead).
+  const handleSharedEdgeLeft = (e: React.MouseEvent) => {
     const nb = leftNeighbor!;
     beginDrag(e, (t) => {
       const tt = Math.min(Math.max(t, nb.startTime), label.endTime!);
@@ -275,6 +276,21 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       dispatch({
         type: 'UPDATE_LABEL',
         payload: { trackIndex, labelId: label.id, label: { startTime: tt } },
+      });
+    });
+  };
+
+  const handleSharedEdgeRight = (e: React.MouseEvent) => {
+    const nb = rightNeighbor!;
+    beginDrag(e, (t) => {
+      const tt = Math.min(Math.max(t, label.startTime), nb.endTime!);
+      dispatch({
+        type: 'UPDATE_LABEL',
+        payload: { trackIndex, labelId: label.id, label: { endTime: tt } },
+      });
+      dispatch({
+        type: 'UPDATE_LABEL',
+        payload: { trackIndex, labelId: nb.id, label: { startTime: tt } },
       });
     });
   };
@@ -494,7 +510,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         && stalk(
           x,
           isLeftEarHovered,
-          leftNeighbor && !isSelected ? handleSharedEdge : isPointLabel ? handleMovePoint : handleStretchLeft,
+          leftNeighbor ? handleSharedEdgeLeft : isPointLabel ? handleMovePoint : handleStretchLeft,
           leftEarId,
           isPointLabel && !leftNeighbor,
         )}
@@ -506,7 +522,13 @@ export const LabelItem: React.FC<LabelItemProps> = ({
         ? ear('right', x + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)
         : (!rightNeighbor || isSelected) && (
           <>
-            {stalk(x + width, isRightEarHovered, handleStretchRight, rightEarId, false)}
+            {stalk(
+              x + width,
+              isRightEarHovered,
+              rightNeighbor ? handleSharedEdgeRight : handleStretchRight,
+              rightEarId,
+              false,
+            )}
             {ear('right', x + width + m.stalkWidth, isRightEarHovered, handleStretchRight, rightEarId)}
           </>
         )}
