@@ -139,8 +139,8 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     expect(getLabelMetrics(48).padX).toBe(6);
     expect(getLabelMetrics(labelPtToPx(48)).padX).toBe(8); // 64px -> 8
     expect(getLabelMetrics(labelPtToPx(48)).borderRadius).toBe(2); // constant
-    expect(m12.pointFlagGap).toBe(4);
-    expect(getLabelMetrics(labelPtToPx(48)).pointFlagGap).toBe(4); // constant
+    expect(m12.pointFlagGap).toBe(4); // same formula as padX
+    expect(getLabelMetrics(labelPtToPx(48)).pointFlagGap).toBe(8); // 64px -> 8
     expect(m12.minPointWidth).toBe(50);
     expect(m12.maxPointWidth).toBe(400);
     // The mockup's stated case: 24px text in a 36px strap.
