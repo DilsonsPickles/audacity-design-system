@@ -73,24 +73,29 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
 }) => {
   const { theme } = useTheme();
   const [submenuOpen, setSubmenuOpen] = useState(false);
-  // Vertical clamp: a submenu opens top-aligned with its parent item and
-  // grows downward — near the viewport bottom that runs off-screen (the
-  // horizontal data-align flip already existed; the vertical case
-  // didn't). Measured once per open and shifted up just enough.
+  // Viewport clamping, measured once per open. Vertical: a submenu opens
+  // top-aligned with its parent and grows downward — near the viewport
+  // bottom it shifts up just enough (never past the top). Horizontal:
+  // it opens to the RIGHT of the parent; if that overflows, flip to the
+  // left via data-align (the CSS rule existed but nothing ever set it).
   const [submenuShiftY, setSubmenuShiftY] = useState(0);
+  const [submenuAlign, setSubmenuAlign] = useState<'right' | 'left'>('right');
   useLayoutEffect(() => {
     if (!submenuOpen) {
       setSubmenuShiftY(0);
+      setSubmenuAlign('right');
       return;
     }
     const el = submenuRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const overflow = rect.bottom - (window.innerHeight - 8);
-    if (overflow > 0) {
-      // Shift up, but never past the viewport top.
+    const overflowY = rect.bottom - (window.innerHeight - 8);
+    if (overflowY > 0) {
       const maxShift = Math.max(0, rect.top - 8);
-      setSubmenuShiftY(-Math.min(overflow, maxShift));
+      setSubmenuShiftY(-Math.min(overflowY, maxShift));
+    }
+    if (rect.right > window.innerWidth - 8) {
+      setSubmenuAlign('left');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submenuOpen]);
@@ -449,6 +454,7 @@ export const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
         <div
           ref={submenuRef}
           className="context-menu-submenu"
+          data-align={submenuAlign === 'left' ? 'left' : undefined}
           style={submenuShiftY ? { top: `${submenuShiftY}px` } : undefined}
           role="menu"
           onMouseEnter={clearSafeTriangle}
