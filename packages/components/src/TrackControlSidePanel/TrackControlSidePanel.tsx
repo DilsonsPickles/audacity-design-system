@@ -132,6 +132,18 @@ export interface TrackControlSidePanelProps {
    * Called when "Spectrogram settings" is clicked in the track menu
    */
   onSpectrogramSettings?: (trackIndex: number) => void;
+
+  /**
+   * Current label text size in points — with onLabelTextSizeChange, adds
+   * a "Label text size" submenu to LABEL tracks' context menu. The
+   * preference is global (all label tracks share it).
+   */
+  labelTextSizePt?: number;
+
+  /**
+   * Called when a label text size is picked from the submenu
+   */
+  onLabelTextSizeChange?: (pt: number) => void;
 }
 
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
@@ -153,6 +165,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onTrackViewChange,
   onTrackColorChange,
   onSpectrogramSettings,
+  labelTextSizePt,
+  onLabelTextSizeChange,
   trackViewModes = [],
   trackColors = [],
   className = '',
@@ -476,6 +490,23 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   );
                 })}
               </ContextMenuItem>
+              {isLabelTrack && labelTextSizePt !== undefined && onLabelTextSizeChange && (
+                <ContextMenuItem label="Label text size" onClose={handleMenuClose}>
+                  {/* Keep in sync with AppearancePage's LABEL_TEXT_SIZE_OPTIONS */}
+                  {([9, 10, 12, 14, 18, 24, 36, 48] as const).map((pt) => (
+                    <ContextMenuItem
+                      key={pt}
+                      label={`${pt} pt`}
+                      icon={labelTextSizePt === pt ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+                      onClick={() => {
+                        onLabelTextSizeChange(pt);
+                        handleMenuClose();
+                      }}
+                      onClose={handleMenuClose}
+                    />
+                  ))}
+                </ContextMenuItem>
+              )}
               {!isLabelTrack && (
               <ContextMenuItem
                 label="Track view"

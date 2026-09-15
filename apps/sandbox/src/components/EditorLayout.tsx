@@ -4,7 +4,7 @@ import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, DockPanel, FloatingPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, DockPanel, FloatingPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat, ThemeTokens } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
@@ -170,6 +170,9 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   const { audioManagerRef, playbackStartTime, setPlaybackStartTime } = usePlayback();
   const { trackSelectionMode } = useEditingBehaviorPrefs();
+  // Label text size — surfaced in the label track's context menu (global
+  // preference; all label tracks share it).
+  const { labelTextSizePt, updatePreference: updateAppearancePreference } = useAppearancePrefs();
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
     effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
@@ -655,6 +658,8 @@ export function EditorLayout(props: EditorLayoutProps) {
           onSpectrogramSettings={() => {
             setIsSpectrogramSettingsOpen(true);
           }}
+          labelTextSizePt={labelTextSizePt}
+          onLabelTextSizeChange={(pt) => updateAppearancePreference('labelTextSizePt', pt)}
         >
           {state.tracks.map((track, index: number) => {
             let trackType: 'mono' | 'stereo' | 'label' | 'midi' = 'mono';
