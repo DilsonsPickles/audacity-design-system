@@ -120,7 +120,8 @@ describe('isPointInLabel', () => {
   });
 
   it('returns false for point outside label (too far down)', () => {
-    expect(isPointInLabel(150, 20, label, row, pps, clipOffset, trackY)).toBe(false);
+    // The default banner is 20px tall (floor) — 25 is clearly below it.
+    expect(isPointInLabel(150, 25, label, row, pps, clipOffset, trackY)).toBe(false);
   });
 
   it('returns true on label boundary (edge)', () => {
