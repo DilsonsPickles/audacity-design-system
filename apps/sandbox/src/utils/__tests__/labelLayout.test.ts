@@ -149,7 +149,9 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     // Banner comfortably taller than the text it holds
     expect(m.bannerHeight).toBeGreaterThanOrEqual(Math.ceil(m.fontSizePx));
     expect(m.bannerHeight).toBe(Math.round(14 * (64 / 12)));
-    expect(m.earWidth).toBe(Math.round(7 * (64 / 12)));
+    // Ear grows sub-linearly — a slender flag, not a scaled-up sail.
+    expect(m.earWidth).toBe(Math.round(7 + (m.bannerHeight - 14) * 0.15));
+    expect(m.earWidth).toBeLessThan(m.bannerHeight / 3);
     expect(m.rowHeight).toBe(m.bannerHeight + m.rowGap);
     expect(m.font).toContain('64px');
   });

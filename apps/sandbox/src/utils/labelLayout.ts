@@ -37,8 +37,14 @@ export interface LabelMetrics {
   rowHeight: number;
   /** Horizontal text padding inside the banner. */
   padX: number;
-  /** Ear (resize flag) width. */
+  /** Ear (resize flag) width. Grows SUB-linearly with the banner: at
+   *  display sizes a linearly-scaled ear becomes a huge sail (a grab
+   *  handle needs ~16px, not 38). The path is drawn in a size-matched
+   *  viewBox, so any width renders crisp — never stretched. */
   earWidth: number;
+  /** Stalk (vertical guide line) width — thickens at display sizes so it
+   *  doesn't read as a hairline against a tall banner. */
+  stalkWidth: number;
   /** Gap between a point label's ear and its text flag. */
   pointFlagGap: number;
   /** Point-label width clamp. */
@@ -61,7 +67,8 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     rowGap,
     rowHeight: bannerHeight + rowGap,
     padX: Math.round(4 * s),
-    earWidth: Math.round(7 * s),
+    earWidth: Math.round(7 + (bannerHeight - 14) * 0.15),
+    stalkWidth: fontSizePx >= 48 ? 3 : fontSizePx >= 24 ? 2 : 1,
     pointFlagGap: Math.round(3 * s),
     minPointWidth: Math.round(50 * s),
     maxPointWidth: Math.round(400 * s),
