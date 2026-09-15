@@ -47,8 +47,8 @@ export interface LabelMetrics {
   earWidth: number;
   /** Ear (corner tab) height — constant classic 14px, top-aligned. */
   earHeight: number;
-  /** Stalk (vertical guide line) width — thickens at display sizes so it
-   *  doesn't read as a hairline against a tall banner. */
+  /** Stalk (vertical guide line) width — CONSTANT 1px: chrome never
+   *  scales, only the text strap does. */
   stalkWidth: number;
   /** Gap between a point label's ear and its text flag. */
   pointFlagGap: number;
@@ -74,7 +74,7 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     padX: Math.round(4 * s),
     earWidth: 7,
     earHeight: 14,
-    stalkWidth: fontSizePx >= 48 ? 3 : fontSizePx >= 24 ? 2 : 1,
+    stalkWidth: 1,
     pointFlagGap: Math.round(3 * s),
     minPointWidth: Math.round(50 * s),
     maxPointWidth: Math.round(400 * s),
