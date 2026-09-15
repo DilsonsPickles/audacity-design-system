@@ -39,8 +39,8 @@ export interface LabelMetrics {
   rowGap: number;
   /** bannerHeight + rowGap — the row stride for packing/stacking. */
   rowHeight: number;
-  /** Horizontal text padding inside the banner — 0.8em per the Figma
-   *  label spec (8px at 10px text). */
+  /** Horizontal text padding inside the banner — 0.5em (tightened from
+   *  the Figma spec's 0.8em, 2026-09-15 direction). */
   padX: number;
   /** Ear width — CONSTANT 8px at every text size. */
   earWidth: number;
@@ -73,7 +73,7 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     bannerHeight,
     rowGap,
     rowHeight: bannerHeight + rowGap,
-    padX: Math.round(fontSizePx * 0.8),
+    padX: Math.round(fontSizePx * 0.5),
     earWidth: 8,
     earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,
