@@ -116,6 +116,19 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
         )
       : undefined;
 
+  // Magnetic edges: every OTHER label's start/end (and point time) on
+  // this track is a snap target, so drags can actually reach perfect
+  // adjacency (and the shared stalk) by mouse.
+  const snapTargetsFor = (l: Label): number[] => {
+    const targets: number[] = [];
+    labels.forEach((o) => {
+      if (o.id === l.id) return;
+      targets.push(o.startTime);
+      if (o.endTime !== undefined && o.endTime !== o.startTime) targets.push(o.endTime);
+    });
+    return targets;
+  };
+
   return (
     <>
       {labels.map((label) => {
@@ -134,6 +147,7 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
             label={label}
             leftNeighbor={leftNeighborOf(label)}
             rightNeighbor={rightNeighborOf(label)}
+            snapTargets={snapTargetsFor(label)}
             trackColor={trackColor}
             trackIndex={trackIndex}
             x={x}

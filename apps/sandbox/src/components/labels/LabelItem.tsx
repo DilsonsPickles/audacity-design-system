@@ -63,6 +63,9 @@ export interface LabelItemProps {
    *  Unselected, this label yields the junction (no right stalk/ear);
    *  SELECTED, it reasserts its own right chrome. */
   rightNeighbor?: Label;
+  /** Other labels' edge times on this track — magnetic snap targets for
+   *  drags (8px window), so perfect adjacency is reachable by mouse. */
+  snapTargets?: number[];
   /** The label track's palette color name (see labelPalette). */
   trackColor?: string;
   trackIndex: number;
@@ -102,6 +105,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   label,
   leftNeighbor,
   rightNeighbor,
+  snapTargets = [],
   trackColor,
   trackIndex,
   x,
@@ -212,6 +216,23 @@ export const LabelItem: React.FC<LabelItemProps> = ({
   // needs a pixel-perfect release on exact equality. Pull through the
   // detent and inversion resumes.
   const COLLAPSE_SNAP_PX = 6;
+  const EDGE_SNAP_PX = 8;
+
+  // Magnetic edges: pull `t` onto the nearest snap target within the
+  // pixel window. Applied before the collapse detent, which wins near
+  // the anchor.
+  const snapTime = (t: number, targets: number[]): number => {
+    let best = t;
+    let bestDist = EDGE_SNAP_PX / pixelsPerSecond;
+    for (const target of targets) {
+      const d = Math.abs(t - target);
+      if (d < bestDist) {
+        bestDist = d;
+        best = target;
+      }
+    }
+    return best;
+  };
 
   const stretchTimes = (t: number, anchor: number) => {
     if (Math.abs(t - anchor) * pixelsPerSecond < COLLAPSE_SNAP_PX) {
@@ -225,7 +246,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     beginDrag(e, (t) => {
       dispatch({
         type: 'UPDATE_LABEL',
-        payload: { trackIndex, labelId: label.id, label: stretchTimes(t, anchor) },
+        payload: { trackIndex, labelId: label.id, label: stretchTimes(snapTime(t, snapTargets), anchor) },
       });
     });
   };
@@ -235,7 +256,7 @@ export const LabelItem: React.FC<LabelItemProps> = ({
     beginDrag(e, (t) => {
       dispatch({
         type: 'UPDATE_LABEL',
-        payload: { trackIndex, labelId: label.id, label: stretchTimes(t, anchor) },
+        payload: { trackIndex, labelId: label.id, label: stretchTimes(snapTime(t, snapTargets), anchor) },
       });
     });
   };
@@ -260,9 +281,10 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   const handleMovePoint = (e: React.MouseEvent) => {
     beginDrag(e, (t) => {
+      const tt = snapTime(t, snapTargets);
       dispatch({
         type: 'UPDATE_LABEL',
-        payload: { trackIndex, labelId: label.id, label: { startTime: t, endTime: t } },
+        payload: { trackIndex, labelId: label.id, label: { startTime: tt, endTime: tt } },
       });
     });
   };
@@ -291,14 +313,21 @@ export const LabelItem: React.FC<LabelItemProps> = ({
       }
       if (!hasMoved) return;
 
-      const newTime = Math.max(0, (startLeft + (moveE.clientX - startX) - clipContentOffset) / pixelsPerSecond);
+      const rawTime = Math.max(0, (startLeft + (moveE.clientX - startX) - clipContentOffset) / pixelsPerSecond);
       if (isPointLabel) {
+        const newTime = snapTime(rawTime, snapTargets);
         dispatch({
           type: 'UPDATE_LABEL',
           payload: { trackIndex, labelId: label.id, label: { startTime: newTime, endTime: newTime } },
         });
       } else {
         const duration = label.endTime! - label.startTime;
+        // Whole-label snap: the START can land on a target, or the END
+        // can (start = target - duration) — nearest within window wins.
+        const newTime = Math.max(0, snapTime(rawTime, [
+          ...snapTargets,
+          ...snapTargets.map((t) => t - duration),
+        ]));
         dispatch({
           type: 'UPDATE_LABEL',
           payload: {

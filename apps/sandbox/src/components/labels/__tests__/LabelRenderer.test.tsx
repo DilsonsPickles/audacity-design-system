@@ -471,3 +471,52 @@ describe('LabelRenderer (rewrite): selecting one half of an adjacent pair', () =
     fireEvent.mouseUp(document);
   });
 });
+
+describe('LabelRenderer (rewrite): magnetic edge snapping', () => {
+  it('stretching an edge within 8px of a neighbour edge snaps to exact adjacency', () => {
+    const { container, dispatch } = renderLabels([
+      { id: 1, trackIndex: 0, text: 'a', startTime: 1, endTime: 1.5 },
+      { id: 2, trackIndex: 0, text: 'b', startTime: 2, endTime: 3 },
+    ]);
+    const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;
+    fireEvent.mouseDown(rightEar, { clientX: 150 });
+    fireEvent.mouseMove(document, { clientX: 195 }); // 5px shy of label 2's start
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 1, endTime: 2 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
+  it('dragging a whole label snaps its END onto a neighbour START', () => {
+    const { container, dispatch } = renderLabels([
+      { id: 1, trackIndex: 0, text: 'a', startTime: 0.2, endTime: 0.7 },
+      { id: 2, trackIndex: 0, text: 'b', startTime: 2, endTime: 3 },
+    ]);
+    const bannerEl = container.querySelector('[data-label-banner="0-1"]') as HTMLElement;
+    fireEvent.mouseDown(bannerEl, { clientX: 40, detail: 1 });
+    // Move by +125px → raw start 1.45s, raw end 1.95s: end is 5px shy of
+    // label 2's start → whole label snaps so end = 2.
+    fireEvent.mouseMove(document, { clientX: 165 });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 1.5, endTime: 2 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+
+  it('outside the window there is no snap', () => {
+    const { container, dispatch } = renderLabels([
+      { id: 1, trackIndex: 0, text: 'a', startTime: 1, endTime: 1.5 },
+      { id: 2, trackIndex: 0, text: 'b', startTime: 2, endTime: 3 },
+    ]);
+    const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;
+    fireEvent.mouseDown(rightEar, { clientX: 150 });
+    fireEvent.mouseMove(document, { clientX: 180 }); // 20px away — no snap
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'UPDATE_LABEL',
+      payload: { trackIndex: 0, labelId: 1, label: { startTime: 1, endTime: 1.8 } },
+    });
+    fireEvent.mouseUp(document);
+  });
+});
