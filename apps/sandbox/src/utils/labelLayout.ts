@@ -41,9 +41,10 @@ export interface LabelMetrics {
   rowGap: number;
   /** bannerHeight + rowGap — the row stride for packing/stacking. */
   rowHeight: number;
-  /** Horizontal text padding inside the banner — essentially CONSTANT
-   *  per the Figma scaling study (node 1971:244999): 6px at the smallest
-   *  text, 4px through the middle of the ramp, 8px only at 64px. */
+  /** Horizontal text padding inside the banner — CONSTANT 4px (the
+   *  Figma scaling study's dominant value and the real build's point
+   *  flag pad; the study's 6px/8px endpoints were drawing noise —
+   *  padding that shrinks as text grows has no rationale). */
   padX: number;
   /** Ear width — CONSTANT 10px at every text size. */
   earWidth: number;
@@ -78,7 +79,7 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     bannerHeight,
     rowGap,
     rowHeight: bannerHeight + rowGap,
-    padX: fontSizePx <= 12 ? 6 : fontSizePx >= 64 ? 8 : 4,
+    padX: 4,
     earWidth: 10,
     earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,

@@ -135,9 +135,8 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     const m12 = getLabelMetrics();
     expect(m12.bannerHeight).toBe(20); // floor: default 12px text, flush ears
     expect(m12.rowHeight).toBe(20 + m12.rowGap);
-    expect(m12.padX).toBe(6); // smallest-size padding per the scaling study
-    expect(getLabelMetrics(24).padX).toBe(4); // constant through the ramp
-    expect(getLabelMetrics(labelPtToPx(48)).padX).toBe(8); // 64px endpoint
+    expect(m12.padX).toBe(4); // constant at every size
+    expect(getLabelMetrics(labelPtToPx(48)).padX).toBe(4);
     expect(getLabelMetrics(labelPtToPx(48)).borderRadius).toBe(2); // constant
     expect(m12.pointFlagGap).toBe(4);
     expect(getLabelMetrics(labelPtToPx(48)).pointFlagGap).toBe(4); // constant
