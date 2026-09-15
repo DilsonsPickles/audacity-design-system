@@ -1,5 +1,17 @@
 import { LabeledRadio } from '../../LabeledRadio';
+import { Dropdown, DropdownOption } from '../../Dropdown';
 import { usePreferences } from '../../contexts/PreferencesContext';
+
+// Type-ramp presets, in points; 9pt is the classic label design.
+const LABEL_TEXT_SIZE_OPTIONS: DropdownOption[] = [
+  { value: '9', label: '9 pt (default)' },
+  { value: '12', label: '12 pt' },
+  { value: '14', label: '14 pt' },
+  { value: '18', label: '18 pt' },
+  { value: '24', label: '24 pt' },
+  { value: '36', label: '36 pt' },
+  { value: '48', label: '48 pt' },
+];
 
 // Appearance Page Content
 export function AppearancePage() {
@@ -49,6 +61,15 @@ export function AppearancePage() {
             value="classic"
           />
         </div>
+      </div>
+
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Label text size</h3>
+        <Dropdown
+          options={LABEL_TEXT_SIZE_OPTIONS}
+          value={String(preferences.labelTextSize)}
+          onChange={(value) => updatePreference('labelTextSize', Number(value))}
+        />
       </div>
     </div>
   );

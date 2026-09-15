@@ -1,6 +1,7 @@
 import React from 'react';
+import { useAppearancePrefs } from '@audacity-ui/components';
 import type { Label, TracksAction } from '../contexts/TracksContext';
-import { calculateLabelRows, calculatePointLabelWidth } from '../utils/labelLayout';
+import { calculateLabelRows, calculatePointLabelWidth, getLabelMetrics, labelPtToPx } from '../utils/labelLayout';
 
 interface LabelRendererProps {
   labels: Label[];
@@ -37,11 +38,14 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
   setHoveredBanner,
   dispatch,
 }) => {
-  const LABEL_HEIGHT = 14;
-  const LABEL_GAP = 2;
+  // ALL label geometry scales from the label-text-size preference (points;
+  // 9pt = the classic 14px-banner design) via getLabelMetrics. Hit-testing
+  // in useClipMouseDown derives the SAME metrics — keep them in lockstep.
+  const { labelTextSize } = useAppearancePrefs();
+  const m = getLabelMetrics(labelPtToPx(labelTextSize));
 
   // Calculate label rows using utility function
-  const labelRows = calculateLabelRows(labels, pixelsPerSecond, clipContentOffset);
+  const labelRows = calculateLabelRows(labels, pixelsPerSecond, clipContentOffset, m);
 
   return (
     <>
@@ -50,12 +54,12 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
         const isPointLabel = label.startTime === label.endTime;
         // Point labels use dynamic width based on text content, region labels use time duration
         const width = isPointLabel
-          ? calculatePointLabelWidth(label.text)
+          ? calculatePointLabelWidth(label.text, m)
           : (label.endTime! - label.startTime) * pixelsPerSecond;
         const labelKeyId = `${trackIndex}-${label.id}`;
         const isSelected = selectedLabelIds.includes(labelKeyId);
         const row = labelRows.get(label.id) ?? 0;
-        const topOffset = row * (LABEL_HEIGHT + LABEL_GAP);
+        const topOffset = row * m.rowHeight;
         const stalkHeight = trackHeight - topOffset;
 
         const leftEarId = `${labelKeyId}-left`;
@@ -266,12 +270,13 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
           <React.Fragment key={label.id}>
             {/* Left ear (resize handle) */}
             <svg
-              width="7"
-              height="14"
+              width={m.earWidth}
+              height={m.bannerHeight}
               viewBox="0 0 7 14"
+              preserveAspectRatio="none"
               style={{
                 position: 'absolute',
-                left: `${x - 7}px`,
+                left: `${x - m.earWidth}px`,
                 top: `${topOffset}px`,
                 cursor: isPointLabel ? 'move' : 'ew-resize',
                 pointerEvents: 'auto',
@@ -337,9 +342,10 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
 
             {/* Right ear (resize handle) */}
             <svg
-              width="7"
-              height="14"
+              width={m.earWidth}
+              height={m.bannerHeight}
               viewBox="0 0 7 14"
+              preserveAspectRatio="none"
               style={{
                 position: 'absolute',
                 left: `${x + width}px`,
@@ -362,13 +368,13 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
             <div
               style={{
                 position: 'absolute',
-                left: isPointLabel ? `${x + 10}px` : `${x}px`, // Offset flag to the right for point labels (7px ear + 3px gap)
+                left: isPointLabel ? `${x + m.earWidth + m.pointFlagGap}px` : `${x}px`, // Offset flag right of the ear for point labels
                 top: `${topOffset}px`,
                 width: `${width}px`,
-                height: '14px',
+                height: `${m.bannerHeight}px`,
                 backgroundColor: isBannerHovered ? '#0066CC' : (isSelected ? '#3399FF' : '#7EB1FF'),
                 pointerEvents: 'auto',
-                borderRadius: isPointLabel ? '2px' : '0',
+                borderRadius: isPointLabel ? `${m.borderRadius}px` : '0',
                 display: 'flex',
                 alignItems: 'center',
                 overflow: 'hidden',
@@ -382,9 +388,12 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
               <div
                 style={{
                   flex: 1,
-                  paddingLeft: '4px',
-                  paddingRight: '4px',
-                  fontSize: '12px',
+                  paddingLeft: `${m.padX}px`,
+                  paddingRight: `${m.padX}px`,
+                  fontSize: `${m.fontSizePx}px`,
+                  lineHeight: 1.2,
+                  // Large display sizes read better slightly tightened.
+                  letterSpacing: m.fontSizePx >= 24 ? '-0.015em' : undefined,
                   fontFamily: 'Inter, sans-serif',
                   fontWeight: 500,
                   color: 'rgba(0, 0, 0, 0.8)',

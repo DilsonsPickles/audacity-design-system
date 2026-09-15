@@ -1,6 +1,6 @@
 import { MutableRefObject } from 'react';
-import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
-import { calculateLabelRows, isPointInLabel } from '../utils/labelLayout';
+import { CLIP_CONTENT_OFFSET, useAppearancePrefs } from '@audacity-ui/components';
+import { calculateLabelRows, isPointInLabel, getLabelMetrics, labelPtToPx } from '../utils/labelLayout';
 import type { Track, Clip, TracksAction, ClipDragState } from '../contexts/TracksContext';
 import type { SpectralSelection } from '../contexts/SpectralSelectionContext';
 import { resolveTimeSelectionScope } from '../utils/timeSelectionScope';
@@ -62,6 +62,10 @@ export function useClipMouseDown({
   CLIP_HEADER_HEIGHT,
   onDragStart,
 }: ClipMouseDownConfig) {
+  // Label hit-testing must use the SAME size-derived metrics the renderer
+  // draws with (see LabelRenderer) or clicks land beside the pixels.
+  const { labelTextSize } = useAppearancePrefs();
+  const labelMetrics = getLabelMetrics(labelPtToPx(labelTextSize));
 
   const handleClipMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     // Only handle left mouse button (button 0)
@@ -289,14 +293,14 @@ export function useClipMouseDown({
         // Check for label clicks (for immediate selection on mouse down, like clips)
         if (track.labels && track.labels.length > 0 && !e.shiftKey) {
           // Calculate label rows using utility function
-          const labelRowsMap = calculateLabelRows(track.labels, pixelsPerSecond, CLIP_CONTENT_OFFSET);
+          const labelRowsMap = calculateLabelRows(track.labels, pixelsPerSecond, CLIP_CONTENT_OFFSET, labelMetrics);
 
           // Check if click is on any label
           for (const label of track.labels) {
             const row = labelRowsMap.get(label.id) ?? 0;
 
             // Check if point is in label using utility function
-            if (isPointInLabel(x, y, label, row, pixelsPerSecond, CLIP_CONTENT_OFFSET, currentY)) {
+            if (isPointInLabel(x, y, label, row, pixelsPerSecond, CLIP_CONTENT_OFFSET, currentY, labelMetrics)) {
               const labelKeyId = `${trackIndex}-${label.id}`;
               const isLabelSelected = selectedLabelIds.includes(labelKeyId);
 

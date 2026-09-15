@@ -6,9 +6,14 @@ import {
   getLabelDimensions,
   isPointInLabel,
   LABEL_LAYOUT_CONSTANTS,
-  POINT_LABEL_MIN_WIDTH,
-  POINT_LABEL_MAX_WIDTH,
+  getLabelMetrics,
+  labelPtToPx,
 } from '../labelLayout';
+
+// The classic (scale-1) metrics — width clamps referenced throughout.
+const CLASSIC = getLabelMetrics();
+const POINT_LABEL_MIN_WIDTH = CLASSIC.minPointWidth;
+const POINT_LABEL_MAX_WIDTH = CLASSIC.maxPointWidth;
 import type { Label } from '../labelLayout';
 
 describe('calculatePointLabelWidth', () => {
@@ -123,5 +128,45 @@ describe('isPointInLabel', () => {
   it('returns true on label boundary (edge)', () => {
     // Exactly on left edge, top edge
     expect(isPointInLabel(100, 0, label, row, pps, clipOffset, trackY)).toBe(true);
+  });
+});
+
+describe('getLabelMetrics (font-size-driven scaling)', () => {
+  it('at the default 12px the classic hand-tuned design is reproduced exactly', () => {
+    const m = getLabelMetrics();
+    expect(m.bannerHeight).toBe(14);
+    expect(m.rowHeight).toBe(16);
+    expect(m.earWidth).toBe(7);
+    expect(m.padX).toBe(4);
+    expect(m.pointFlagGap).toBe(3);
+    expect(m.minPointWidth).toBe(50);
+    expect(m.maxPointWidth).toBe(400);
+  });
+
+  it('48pt text (64px) scales every metric proportionally', () => {
+    const m = getLabelMetrics(labelPtToPx(48));
+    expect(m.fontSizePx).toBeCloseTo(64, 5);
+    // Banner comfortably taller than the text it holds
+    expect(m.bannerHeight).toBeGreaterThanOrEqual(Math.ceil(m.fontSizePx));
+    expect(m.bannerHeight).toBe(Math.round(14 * (64 / 12)));
+    expect(m.earWidth).toBe(Math.round(7 * (64 / 12)));
+    expect(m.rowHeight).toBe(m.bannerHeight + m.rowGap);
+    expect(m.font).toContain('64px');
+  });
+
+  it('labelPtToPx converts at CSS 96dpi (9pt = classic 12px)', () => {
+    expect(labelPtToPx(9)).toBe(12);
+    expect(labelPtToPx(48)).toBeCloseTo(64, 5);
+  });
+
+  it('row stacking and hit-testing follow the scaled metrics', () => {
+    const m = getLabelMetrics(labelPtToPx(48));
+    expect(getLabelYOffset(2, m)).toBe(2 * m.rowHeight);
+    const label: Label = { id: 1, startTime: 1, endTime: 2 };
+    // Inside the scaled banner on row 1
+    const y = 10 + m.rowHeight + m.bannerHeight / 2;
+    expect(isPointInLabel(150, y, label, 1, 100, 0, 10, m)).toBe(true);
+    // Same point misses under CLASSIC metrics (row 1 sits far higher)
+    expect(isPointInLabel(150, y, label, 1, 100, 0, 10)).toBe(false);
   });
 });

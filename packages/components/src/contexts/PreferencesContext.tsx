@@ -15,6 +15,10 @@ export interface PreferencesState {
   // Appearance
   theme: 'light' | 'dark';
   clipStyle: 'classic' | 'colourful';
+  /** Label track text size in POINTS (9pt = the classic 12px design).
+   *  Every label metric (banner, ears, row stride) scales from it —
+   *  see apps/sandbox/src/utils/labelLayout.ts getLabelMetrics. */
+  labelTextSize: number;
 
   // Audio Settings
   audioHost: string;
@@ -90,6 +94,7 @@ const defaultPreferences: PreferencesState = {
   // Appearance
   theme: 'light',
   clipStyle: 'colourful',
+  labelTextSize: 9,
 
   // Audio Settings
   audioHost: 'core-audio',
@@ -170,6 +175,7 @@ const GeneralPrefsContext = createContext<GeneralPrefsValue | undefined>(undefin
 export interface AppearancePrefsValue {
   theme: PreferencesState['theme'];
   clipStyle: PreferencesState['clipStyle'];
+  labelTextSize: PreferencesState['labelTextSize'];
   updatePreference: PreferencesContextValue['updatePreference'];
 }
 
@@ -240,9 +246,10 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
     () => ({
       theme: preferences.theme,
       clipStyle: preferences.clipStyle,
+      labelTextSize: preferences.labelTextSize,
       updatePreference,
     }),
-    [preferences.theme, preferences.clipStyle, updatePreference]
+    [preferences.theme, preferences.clipStyle, preferences.labelTextSize, updatePreference]
   );
 
   const editingBehaviorValue = useMemo<EditingBehaviorPrefsValue>(
