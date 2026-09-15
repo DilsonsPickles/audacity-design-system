@@ -39,10 +39,6 @@ function labelPalette(trackColor: string | undefined) {
     bannerIdle: scale[400],
     bannerHover: scale[500],
     bannerSelected: scale[600],
-    // Selected-state inset keyline: the scale's deep end, so it deepens
-    // the strap's own hue instead of greying it (a hardcoded navy read
-    // as a dirty grey outline on yellow).
-    keyline: scale[700],
   };
 }
 const TEXT_COLOR = 'rgba(0, 0, 0, 0.82)';
@@ -402,7 +398,6 @@ export const LabelItem: React.FC<LabelItemProps> = ({
           // No overflow:hidden here — the display-text element does its
           // own horizontal clipping; vertical glyph ink may breathe.
           cursor: isEditing ? 'text' : 'move',
-          boxShadow: isSelected && !isEditing ? `inset 0 0 0 1px ${palette.keyline}` : undefined,
         }}
         onMouseEnter={() => setHoveredBanner(labelKeyId)}
         onMouseLeave={() => setHoveredBanner(null)}
