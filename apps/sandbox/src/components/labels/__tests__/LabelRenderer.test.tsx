@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 
 function seedLabelTextSize(pt: number) {
-  window.localStorage.setItem('audacity-preferences', JSON.stringify({ labelTextSize: pt }));
+  window.localStorage.setItem('audacity-preferences', JSON.stringify({ labelTextSizePt: pt }));
 }
 
 function renderLabels(labels: Label[], dispatch = vi.fn<(a: TracksAction) => void>(), trackColor?: string) {

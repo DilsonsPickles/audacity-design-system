@@ -64,8 +64,8 @@ export function useClipMouseDown({
 }: ClipMouseDownConfig) {
   // Label hit-testing must use the SAME size-derived metrics the renderer
   // draws with (see LabelRenderer) or clicks land beside the pixels.
-  const { labelTextSize } = useAppearancePrefs();
-  const labelMetrics = getLabelMetrics(labelPtToPx(labelTextSize));
+  const { labelTextSizePt } = useAppearancePrefs();
+  const labelMetrics = getLabelMetrics(labelPtToPx(labelTextSizePt));
 
   const handleClipMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     // Only handle left mouse button (button 0)

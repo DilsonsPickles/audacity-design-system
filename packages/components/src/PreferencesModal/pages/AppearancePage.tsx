@@ -68,8 +68,8 @@ export function AppearancePage() {
         <h3 className="preferences-page__section-title">Label text size</h3>
         <Dropdown
           options={LABEL_TEXT_SIZE_OPTIONS}
-          value={String(preferences.labelTextSize)}
-          onChange={(value) => updatePreference('labelTextSize', Number(value))}
+          value={String(preferences.labelTextSizePt)}
+          onChange={(value) => updatePreference('labelTextSizePt', Number(value))}
         />
       </div>
     </div>

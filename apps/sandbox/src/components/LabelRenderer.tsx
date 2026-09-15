@@ -58,8 +58,8 @@ export const LabelRenderer: React.FC<LabelRendererProps> = ({
   setHoveredBanner,
   dispatch,
 }) => {
-  const { labelTextSize } = useAppearancePrefs();
-  const metrics = getLabelMetrics(labelPtToPx(labelTextSize));
+  const { labelTextSizePt } = useAppearancePrefs();
+  const metrics = getLabelMetrics(labelPtToPx(labelTextSizePt));
 
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
 

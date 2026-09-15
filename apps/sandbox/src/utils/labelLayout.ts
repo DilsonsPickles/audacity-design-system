@@ -46,7 +46,8 @@ export interface LabelMetrics {
    *  8x20 per direction: sized to the default (10pt) strap height,
    *  slightly slimmer than the classic 1:2 flag. */
   earWidth: number;
-  /** Ear (corner tab) height — constant 20px, top-aligned. */
+  /** Ear (corner tab) height — constant 20px, top-aligned, capped at the
+   *  strap height so tabs never poke past a smaller strap (9pt = 18px). */
   earHeight: number;
   /** Stalk (vertical guide line) width — CONSTANT 1px: chrome never
    *  scales, only the text strap does. */
@@ -74,7 +75,7 @@ export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): Lab
     rowHeight: bannerHeight + rowGap,
     padX: Math.round(4 * s),
     earWidth: 8,
-    earHeight: 20,
+    earHeight: Math.min(20, bannerHeight),
     stalkWidth: 1,
     pointFlagGap: Math.round(3 * s),
     minPointWidth: Math.round(50 * s),
