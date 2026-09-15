@@ -1,6 +1,13 @@
 /**
  * Label layout utilities
- * Handles row calculation to prevent label overlaps
+ * Handles row calculation to prevent label overlaps.
+ *
+ * All geometry derives from ONE scale source — the label font size — via
+ * `getLabelMetrics()`. At the default size (12px / 9pt) every metric equals
+ * the classic hand-tuned design (14px banner, 7px ears, 4px padding…);
+ * larger sizes scale the whole system proportionally so labels stay
+ * balanced up to 48pt text. Renderer and hit-testing must use the SAME
+ * metrics object or clicks land beside the pixels.
  */
 
 export interface Label {
@@ -9,6 +16,75 @@ export interface Label {
   endTime?: number;
   text?: string;
 }
+
+/** The classic design's font size — the scale-1 reference point. */
+export const DEFAULT_LABEL_FONT_PX = 12;
+
+/** pt → px at CSS's fixed 96dpi (1pt = 4/3 px). The preference stores
+ *  points (how type is sized everywhere else); rendering wants px. */
+export function labelPtToPx(pt: number): number {
+  return (pt * 4) / 3;
+}
+
+export interface LabelMetrics {
+  /** Text size in CSS px. */
+  fontSizePx: number;
+  /** Banner (label box) height — 1.5x the font size (24px text sits in a
+   *  36px strap, per the 2026-09-15 mockup). */
+  bannerHeight: number;
+  /** Vertical gap between stacked label rows — CONSTANT 2px, like the
+   *  ears: only the text strap scales, chrome stays fixed. The seam is
+   *  the dark canvas showing through, which stays perceptible at 2px
+   *  against straps of any height. */
+  rowGap: number;
+  /** bannerHeight + rowGap — the row stride for packing/stacking. */
+  rowHeight: number;
+  /** Horizontal text padding inside the banner. */
+  padX: number;
+  /** Ear width — CONSTANT 8px at every text size. */
+  earWidth: number;
+  /** Ear height — CONSTANT 20px (matching the default 10pt strap, where
+   *  it sits exactly flush), top-aligned as a corner tab on taller
+   *  straps; capped at the strap height so it never overshoots smaller
+   *  ones. Ears do NOT scale with the text — only the strap does. */
+  earHeight: number;
+  /** Stalk (vertical guide line) width — CONSTANT 1px: chrome never
+   *  scales, only the text strap does. */
+  stalkWidth: number;
+  /** Gap between a point label's ear and its text flag. */
+  pointFlagGap: number;
+  /** Point-label width clamp. */
+  minPointWidth: number;
+  maxPointWidth: number;
+  /** Point-label flag corner radius. */
+  borderRadius: number;
+  /** Canvas font string used to measure text — MUST match the rendered
+   *  font (Inter 500) or measured widths lie. */
+  font: string;
+}
+
+export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): LabelMetrics {
+  const s = fontSizePx / DEFAULT_LABEL_FONT_PX;
+  const bannerHeight = Math.round(fontSizePx * 1.5);
+  const rowGap = 2;
+  return {
+    fontSizePx,
+    bannerHeight,
+    rowGap,
+    rowHeight: bannerHeight + rowGap,
+    padX: Math.round(4 * s),
+    earWidth: 8,
+    earHeight: Math.min(20, bannerHeight),
+    stalkWidth: 1,
+    pointFlagGap: Math.round(3 * s),
+    minPointWidth: Math.round(50 * s),
+    maxPointWidth: Math.round(400 * s),
+    borderRadius: Math.max(2, Math.round(2 * s)),
+    font: `500 ${fontSizePx}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`,
+  };
+}
+
+const CLASSIC_METRICS = getLabelMetrics();
 
 export interface LabelLayoutConstants {
   EAR_HEIGHT: number;
@@ -28,21 +104,20 @@ export const LABEL_LAYOUT_CONSTANTS: LabelLayoutConstants = {
   DEFAULT_REGION_LABEL_WIDTH: 225,
 };
 
-// Point label width constraints for dynamic text sizing
-export const POINT_LABEL_MIN_WIDTH = 50;
-export const POINT_LABEL_MAX_WIDTH = 400;
-
 // Canvas for measuring text (created once, reused)
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureContext: CanvasRenderingContext2D | null = null;
 
 /**
- * Calculate the width needed for a point label's text
- * Returns a width between POINT_LABEL_MIN_WIDTH and POINT_LABEL_MAX_WIDTH
+ * Calculate the width needed for a point label's text (text + padding),
+ * clamped to the metrics' min/max.
  */
-export function calculatePointLabelWidth(text: string | undefined): number {
+export function calculatePointLabelWidth(
+  text: string | undefined,
+  metrics: LabelMetrics = CLASSIC_METRICS,
+): number {
   if (!text || text.trim() === '') {
-    return POINT_LABEL_MIN_WIDTH;
+    return metrics.minPointWidth;
   }
 
   // Create canvas context for measuring text if not already created
@@ -52,18 +127,16 @@ export function calculatePointLabelWidth(text: string | undefined): number {
   }
 
   if (!measureContext) {
-    return POINT_LABEL_MIN_WIDTH;
+    return metrics.minPointWidth;
   }
 
-  // Set font to match label rendering (12px system font)
-  measureContext.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  measureContext.font = metrics.font;
 
-  const metrics = measureContext.measureText(text);
-  // No padding - use exact text width
-  const textWidth = Math.ceil(metrics.width);
+  // Text plus the banner's own horizontal padding, so what we measure is
+  // what the flag actually needs to show the text un-truncated.
+  const textWidth = Math.ceil(measureContext.measureText(text).width) + metrics.padX * 2;
 
-  // Clamp between min and max
-  return Math.max(POINT_LABEL_MIN_WIDTH, Math.min(textWidth, POINT_LABEL_MAX_WIDTH));
+  return Math.max(metrics.minPointWidth, Math.min(textWidth, metrics.maxPointWidth));
 }
 
 /**
@@ -73,7 +146,8 @@ export function calculatePointLabelWidth(text: string | undefined): number {
 export function calculateLabelRows(
   labels: Label[],
   pixelsPerSecond: number,
-  clipContentOffset: number
+  clipContentOffset: number,
+  metrics: LabelMetrics = CLASSIC_METRICS,
 ): Map<number, number> {
   const labelRows = new Map<number, number>();
 
@@ -85,7 +159,7 @@ export function calculateLabelRows(
     // Point labels: startTime === endTime, use dynamic width based on text content
     const isPointLabel = label.startTime === label.endTime;
     const labelWidth = isPointLabel
-      ? calculatePointLabelWidth(label.text)
+      ? calculatePointLabelWidth(label.text, metrics)
       : (label.endTime! - label.startTime) * pixelsPerSecond;
 
     let row = 0;
@@ -102,7 +176,7 @@ export function calculateLabelRows(
           const prevX = clipContentOffset + prevLabel.startTime * pixelsPerSecond;
           const isPrevPointLabel = prevLabel.startTime === prevLabel.endTime;
           const prevWidth = isPrevPointLabel
-            ? calculatePointLabelWidth(prevLabel.text)
+            ? calculatePointLabelWidth(prevLabel.text, metrics)
             : (prevLabel.endTime! - prevLabel.startTime) * pixelsPerSecond;
 
           // Check for overlap
@@ -130,22 +204,26 @@ export function calculateLabelRows(
 /**
  * Calculate the Y offset for a label based on its row
  */
-export function getLabelYOffset(row: number): number {
-  return row * (LABEL_LAYOUT_CONSTANTS.LABEL_ROW_HEIGHT + LABEL_LAYOUT_CONSTANTS.LABEL_ROW_GAP);
+export function getLabelYOffset(row: number, metrics: LabelMetrics = CLASSIC_METRICS): number {
+  return row * metrics.rowHeight;
 }
 
 /**
  * Calculate label dimensions
  */
-export function getLabelDimensions(label: Label, pixelsPerSecond: number) {
+export function getLabelDimensions(
+  label: Label,
+  pixelsPerSecond: number,
+  metrics: LabelMetrics = CLASSIC_METRICS,
+) {
   const isPointLabel = label.startTime === label.endTime;
   const width = isPointLabel
-    ? calculatePointLabelWidth(label.text)
+    ? calculatePointLabelWidth(label.text, metrics)
     : (label.endTime! - label.startTime) * pixelsPerSecond;
 
   return {
     width,
-    height: LABEL_LAYOUT_CONSTANTS.EAR_HEIGHT,
+    height: metrics.bannerHeight,
   };
 }
 
@@ -159,11 +237,12 @@ export function isPointInLabel(
   row: number,
   pixelsPerSecond: number,
   clipContentOffset: number,
-  trackY: number
+  trackY: number,
+  metrics: LabelMetrics = CLASSIC_METRICS,
 ): boolean {
   const labelX = clipContentOffset + label.startTime * pixelsPerSecond;
-  const { width, height } = getLabelDimensions(label, pixelsPerSecond);
-  const labelY = trackY + getLabelYOffset(row);
+  const { width, height } = getLabelDimensions(label, pixelsPerSecond, metrics);
+  const labelY = trackY + getLabelYOffset(row, metrics);
 
   return (
     x >= labelX &&

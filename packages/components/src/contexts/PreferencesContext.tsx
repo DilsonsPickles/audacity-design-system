@@ -15,6 +15,12 @@ export interface PreferencesState {
   // Appearance
   theme: 'light' | 'dark';
   clipStyle: 'classic' | 'colourful';
+  /** Label track text size in POINTS. Every label metric (strap, row
+   *  stride) scales from it — see apps/sandbox/src/utils/labelLayout.ts
+   *  getLabelMetrics. Renamed from labelTextSize (2026-09-15) so the
+   *  10pt default reaches profiles whose persisted blob froze the old
+   *  9pt default; a size the user picks NOW persists under this key. */
+  labelTextSizePt: number;
 
   // Audio Settings
   audioHost: string;
@@ -90,6 +96,7 @@ const defaultPreferences: PreferencesState = {
   // Appearance
   theme: 'light',
   clipStyle: 'colourful',
+  labelTextSizePt: 10,
 
   // Audio Settings
   audioHost: 'core-audio',
@@ -170,6 +177,7 @@ const GeneralPrefsContext = createContext<GeneralPrefsValue | undefined>(undefin
 export interface AppearancePrefsValue {
   theme: PreferencesState['theme'];
   clipStyle: PreferencesState['clipStyle'];
+  labelTextSizePt: PreferencesState['labelTextSizePt'];
   updatePreference: PreferencesContextValue['updatePreference'];
 }
 
@@ -240,9 +248,10 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
     () => ({
       theme: preferences.theme,
       clipStyle: preferences.clipStyle,
+      labelTextSizePt: preferences.labelTextSizePt,
       updatePreference,
     }),
-    [preferences.theme, preferences.clipStyle, updatePreference]
+    [preferences.theme, preferences.clipStyle, preferences.labelTextSizePt, updatePreference]
   );
 
   const editingBehaviorValue = useMemo<EditingBehaviorPrefsValue>(
