@@ -5,7 +5,7 @@
 import { render, cleanup, fireEvent, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PreferencesProvider } from '@audacity-ui/components';
-import { colors } from '@audacity-ui/tokens';
+import { BUILD_LABEL_COLORS } from '../labelColors';
 import { LabelRenderer } from '../../LabelRenderer';
 import { getLabelMetrics, labelPtToPx } from '../../../utils/labelLayout';
 import type { Label, TracksAction } from '../../../contexts/TracksContext';
@@ -250,7 +250,7 @@ describe('LabelRenderer (rewrite): selected state (Figma spec)', () => {
     expect(strap).toContain('color-mix');
     expect(strap).toContain('white');
     const ear = container.querySelector('svg path')!;
-    expect(ear.getAttribute('fill')).toBe(colors.blue[500]); // solid
+    expect(ear.getAttribute('fill')).toBe(BUILD_LABEL_COLORS.blue); // solid
   });
 });
 
@@ -264,14 +264,14 @@ describe('LabelRenderer (rewrite): track color', () => {
     const { container } = renderLabels([region()], undefined, 'red');
     const strap = banner(container).style.backgroundColor;
     expect(strap).toContain('color-mix');
-    expect(strap).toContain(hexToRgb(colors.red[500]));
+    expect(strap).toContain(hexToRgb(BUILD_LABEL_COLORS.red));
     const ear = container.querySelector('svg path')!;
-    expect(ear.getAttribute('fill')).toBe(colors.red[500]);
+    expect(ear.getAttribute('fill')).toBe(BUILD_LABEL_COLORS.red);
   });
 
   it('defaults to the classic blue when the track has no color', () => {
     const { container } = renderLabels([region()]);
-    expect(banner(container).style.backgroundColor).toContain(hexToRgb(colors.blue[500]));
+    expect(banner(container).style.backgroundColor).toContain(hexToRgb(BUILD_LABEL_COLORS.blue));
   });
 });
 

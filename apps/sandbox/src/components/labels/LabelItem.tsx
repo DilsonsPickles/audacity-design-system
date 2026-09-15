@@ -20,9 +20,9 @@
 // remove them on mouseup (self-cleaning pattern — exempt from ref-mirror).
 
 import React, { useEffect, useRef, useState } from 'react';
-import { colors } from '@audacity-ui/tokens';
 import type { Label, TracksAction } from '../../contexts/TracksContext';
 import type { LabelMetrics } from '../../utils/labelLayout';
+import { BUILD_LABEL_COLORS } from './labelColors';
 import { markLabelDragEnd } from './labelDragTracker';
 
 // Labels render in the label TRACK's palette color (Track color menu).
@@ -34,10 +34,9 @@ import { markLabelDragEnd } from './labelDragTracker';
 //   ear+stalk:    default 100% · hover 30%  · selected 40%
 //                 · hovered-while-selected 10%
 // Each side's ear and stalk are ONE affordance and hover together.
-type TrackColorName = keyof typeof colors;
 function labelPalette(trackColor: string | undefined) {
-  const name: TrackColorName = trackColor && trackColor in colors ? (trackColor as TrackColorName) : 'blue';
-  const base = (colors[name] as Record<number, string>)[500];
+  const name = trackColor && trackColor in BUILD_LABEL_COLORS ? trackColor : 'blue';
+  const base = BUILD_LABEL_COLORS[name];
   const mix = (pct: number) => `color-mix(in srgb, ${base} ${pct}%, white)`;
   return {
     strapDefault: mix(50),
