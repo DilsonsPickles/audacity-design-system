@@ -636,3 +636,19 @@ describe('LabelRenderer (rewrite): stalk hover lights BOTH ears', () => {
     expect(fills[1]).not.toContain('30%');
   });
 });
+
+describe('LabelRenderer (rewrite): resizing does not select', () => {
+  it('an ear stretch dispatches no selection change', () => {
+    const { container, dispatch } = renderLabels([region()]);
+    const rightEar = container.querySelector('[data-label-ear="0-1-right"]')!;
+    fireEvent.mouseDown(rightEar, { clientX: 300 });
+    fireEvent.mouseMove(document, { clientX: 350 });
+    fireEvent.mouseUp(document);
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SET_SELECTED_LABELS' }),
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'UPDATE_LABEL' }),
+    );
+  });
+});

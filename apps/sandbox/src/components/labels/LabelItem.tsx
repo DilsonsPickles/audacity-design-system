@@ -192,10 +192,11 @@ export const LabelItem: React.FC<LabelItemProps> = ({
 
   // ---- Ear/stalk drags (attach-on-mousedown, self-cleaning) --------------
 
+  // Ear/stalk gestures manipulate geometry WITHOUT selecting — selection
+  // is the banner's job (2026-09-15 direction: resizing must not select).
   const beginDrag = (e: React.MouseEvent, onMove: (t: number) => void) => {
     e.preventDefault();
     e.stopPropagation();
-    selectSelf(e);
     const containerRect = (e.target as HTMLElement).closest('.canvas-container')?.getBoundingClientRect();
     const handleMouseMove = (moveE: MouseEvent) => {
       if (!containerRect) return;
