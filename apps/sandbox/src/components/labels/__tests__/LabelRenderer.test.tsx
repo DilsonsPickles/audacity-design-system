@@ -212,7 +212,7 @@ describe('LabelRenderer (rewrite): ear stretching (build semantics)', () => {
 });
 
 describe('LabelRenderer (rewrite): selected state (Figma spec)', () => {
-  it('a selected label strap goes to the 40% white-mixed tint', () => {
+  it('a selected label strap goes to the 30% white-mixed tint', () => {
     const dispatch = vi.fn<(a: TracksAction) => void>();
     const props = {
       labels: [region()],
@@ -238,13 +238,13 @@ describe('LabelRenderer (rewrite): selected state (Figma spec)', () => {
       </PreferencesProvider>,
     );
     const el = container.querySelector('[data-label-banner="0-1"]') as HTMLElement;
-    expect(el.style.backgroundColor).toContain('40%');
+    expect(el.style.backgroundColor).toContain('30%');
     expect(el.style.backgroundColor).toContain('white');
   });
 
-  it('an unselected strap is LIGHTER than the ears (60% tint vs solid)', () => {
+  it('an unselected strap is LIGHTER than the ears (50% tint vs solid)', () => {
     const { container } = renderLabels([region()]);
-    expect(banner(container).style.backgroundColor).toContain('60%');
+    expect(banner(container).style.backgroundColor).toContain('50%');
     const ear = container.querySelector('svg path')!;
     expect(ear.getAttribute('fill')).toBe(colors.blue[500]); // solid
   });

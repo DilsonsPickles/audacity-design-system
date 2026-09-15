@@ -30,7 +30,7 @@ import { markLabelDragEnd } from './labelDragTracker';
 // (17 - Labels, node 446:67027) with one standing amendment — the STRAP
 // is always LIGHTER than the ears (2026-09-15 direction; the spec's
 // solid default strap made strap and chrome indistinguishable):
-//   strap:        default 60%  · hover 70%  · selected 40%
+//   strap:        default 50%  · hover 70%  · selected 30%
 //   ear+stalk:    default 100% · hover 30%  · selected 40%
 //                 · hovered-while-selected 10%
 // Each side's ear and stalk are ONE affordance and hover together.
@@ -40,9 +40,9 @@ function labelPalette(trackColor: string | undefined) {
   const base = (colors[name] as Record<number, string>)[500];
   const mix = (pct: number) => `color-mix(in srgb, ${base} ${pct}%, white)`;
   return {
-    strapDefault: mix(60),
+    strapDefault: mix(50),
     strapHover: mix(70),
-    strapSelected: mix(40),
+    strapSelected: mix(30),
     chromeDefault: base,
     chromeHover: mix(30),
     chromeSelected: mix(40),
