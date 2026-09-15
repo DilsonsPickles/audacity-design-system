@@ -96,7 +96,7 @@ const defaultPreferences: PreferencesState = {
   // Appearance
   theme: 'light',
   clipStyle: 'colourful',
-  labelTextSizePt: 10,
+  labelTextSizePt: 9,
 
   // Audio Settings
   audioHost: 'core-audio',

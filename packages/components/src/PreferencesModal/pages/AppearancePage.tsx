@@ -4,8 +4,8 @@ import { usePreferences } from '../../contexts/PreferencesContext';
 
 // Type-ramp presets, in points.
 const LABEL_TEXT_SIZE_OPTIONS: DropdownOption[] = [
-  { value: '9', label: '9 pt' },
-  { value: '10', label: '10 pt (default)' },
+  { value: '9', label: '9 pt (default)' },
+  { value: '10', label: '10 pt' },
   { value: '12', label: '12 pt' },
   { value: '14', label: '14 pt' },
   { value: '18', label: '18 pt' },

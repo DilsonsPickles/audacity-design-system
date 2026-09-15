@@ -67,7 +67,7 @@ const banner = (container: HTMLElement, keyId = '0-1') =>
   container.querySelector(`[data-label-banner="${keyId}"]`) as HTMLElement;
 
 describe('LabelRenderer (rewrite): size-derived geometry', () => {
-  it('default 10pt: 20px strap (1.5x the 13.33px text), constant 8x20 ear tabs', () => {
+  it('default 9pt/12px: 20px strap (floor), constant 8x20 ear tabs', () => {
     const { container } = renderLabels([region()]);
     const el = banner(container);
     expect(el.style.height).toBe('20px');

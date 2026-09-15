@@ -130,10 +130,10 @@ describe('isPointInLabel', () => {
 });
 
 describe('getLabelMetrics (font-size-driven scaling)', () => {
-  it('the banner is 1.5x the font size (mockup ratio) at every size', () => {
+  it('the banner is 1.5x the font size (mockup ratio) with a 20px floor', () => {
     const m12 = getLabelMetrics();
-    expect(m12.bannerHeight).toBe(18);
-    expect(m12.rowHeight).toBe(18 + m12.rowGap);
+    expect(m12.bannerHeight).toBe(20); // floor: default 12px text, flush ears
+    expect(m12.rowHeight).toBe(20 + m12.rowGap);
     expect(m12.padX).toBe(6); // 0.5em of 12px
     expect(m12.pointFlagGap).toBe(3);
     expect(m12.minPointWidth).toBe(50);
@@ -151,8 +151,8 @@ describe('getLabelMetrics (font-size-driven scaling)', () => {
     // text (capped at the strap so they can't overshoot a smaller one).
     expect(m.earWidth).toBe(8);
     expect(m.earHeight).toBe(20);
-    expect(getLabelMetrics(12).earHeight).toBe(18); // 9pt strap caps it
-    expect(getLabelMetrics(labelPtToPx(10)).earHeight).toBe(20); // flush
+    expect(getLabelMetrics(12).earHeight).toBe(20); // flush at the floor
+    expect(getLabelMetrics(labelPtToPx(10)).earHeight).toBe(20);
     expect(getLabelMetrics(labelPtToPx(48)).earHeight).toBe(20); // tab
     expect(m.rowHeight).toBe(m.bannerHeight + m.rowGap);
     expect(m.font).toContain('64px');

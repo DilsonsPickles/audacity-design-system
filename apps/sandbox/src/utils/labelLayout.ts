@@ -29,8 +29,10 @@ export function labelPtToPx(pt: number): number {
 export interface LabelMetrics {
   /** Text size in CSS px. */
   fontSizePx: number;
-  /** Banner (label box) height — 1.5x the font size (24px text sits in a
-   *  36px strap, per the 2026-09-15 mockup). */
+  /** Banner (label box) height — 1.5x the font size (24px text sits in
+   *  a 36px strap, per the 2026-09-15 mockup) with a 20px FLOOR so the
+   *  default 12px text sits in a 20px strap, flush with the constant
+   *  8x20 ears. */
   bannerHeight: number;
   /** Vertical gap between stacked label rows — scales with the text
    *  (bigger straps get proportionally more air) but snapped to
@@ -66,7 +68,7 @@ export interface LabelMetrics {
 
 export function getLabelMetrics(fontSizePx: number = DEFAULT_LABEL_FONT_PX): LabelMetrics {
   const s = fontSizePx / DEFAULT_LABEL_FONT_PX;
-  const bannerHeight = Math.round(fontSizePx * 1.5);
+  const bannerHeight = Math.max(20, Math.round(fontSizePx * 1.5));
   const rowGap = Math.max(4, Math.round((2 * s) / 4) * 4);
   return {
     fontSizePx,
