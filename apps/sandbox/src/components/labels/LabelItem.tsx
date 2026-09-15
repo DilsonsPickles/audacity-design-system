@@ -26,11 +26,12 @@ import type { LabelMetrics } from '../../utils/labelLayout';
 import { markLabelDragEnd } from './labelDragTracker';
 
 // Labels render in the label TRACK's palette color (Track color menu).
-// State model per the Figma "Region label states" spec (17 - Labels,
-// node 446:67027): every state is the track color MIXED OVER WHITE —
-// default is the solid color, interaction goes LIGHTER:
-//   strap:        default 100%  · hover 70%  · selected 40%
-//   ear+stalk:    default 100%  · hover 30%  · selected 40%
+// State model: the Figma "Region label states" white-mix system
+// (17 - Labels, node 446:67027) with one standing amendment — the STRAP
+// is always LIGHTER than the ears (2026-09-15 direction; the spec's
+// solid default strap made strap and chrome indistinguishable):
+//   strap:        default 60%  · hover 70%  · selected 40%
+//   ear+stalk:    default 100% · hover 30%  · selected 40%
 //                 · hovered-while-selected 10%
 // Each side's ear and stalk are ONE affordance and hover together.
 type TrackColorName = keyof typeof colors;
@@ -39,7 +40,7 @@ function labelPalette(trackColor: string | undefined) {
   const base = (colors[name] as Record<number, string>)[500];
   const mix = (pct: number) => `color-mix(in srgb, ${base} ${pct}%, white)`;
   return {
-    strapDefault: base,
+    strapDefault: mix(60),
     strapHover: mix(70),
     strapSelected: mix(40),
     chromeDefault: base,

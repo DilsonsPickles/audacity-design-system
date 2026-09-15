@@ -243,9 +243,11 @@ describe('LabelRenderer (rewrite): selected state (Figma spec)', () => {
     expect(el.style.backgroundColor).toContain('white');
   });
 
-  it('an unselected strap is the SOLID track color (default 100%)', () => {
+  it('an unselected strap is LIGHTER than the ears (60% tint vs solid)', () => {
     const { container } = renderLabels([region()]);
-    expect(banner(container).style.backgroundColor).not.toContain('color-mix');
+    expect(banner(container).style.backgroundColor).toContain('60%');
+    const ear = container.querySelector('svg path')!;
+    expect(ear.getAttribute('fill')).toBe(colors.blue[500]); // solid
   });
 });
 
@@ -255,16 +257,18 @@ describe('LabelRenderer (rewrite): track color', () => {
     return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
   };
 
-  it('labels render in the label track\'s palette color (solid 500 default)', () => {
+  it('labels render in the label track\'s palette color (strap tinted, ears solid)', () => {
     const { container } = renderLabels([region()], undefined, 'red');
-    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.red[500]));
+    const strap = banner(container).style.backgroundColor;
+    expect(strap).toContain('color-mix');
+    expect(strap).toContain(hexToRgb(colors.red[500]));
     const ear = container.querySelector('svg path')!;
     expect(ear.getAttribute('fill')).toBe(colors.red[500]);
   });
 
   it('defaults to the classic blue when the track has no color', () => {
     const { container } = renderLabels([region()]);
-    expect(banner(container).style.backgroundColor).toBe(hexToRgb(colors.blue[500]));
+    expect(banner(container).style.backgroundColor).toContain(hexToRgb(colors.blue[500]));
   });
 });
 
