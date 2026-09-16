@@ -40,8 +40,8 @@ const stepRows = (container: HTMLElement) =>
   Array.from(container.querySelectorAll<HTMLElement>('[data-step-index]'));
 const searchInput = (container: HTMLElement) =>
   container.querySelector<HTMLInputElement>('input[aria-label="Search commands"]')!;
-const transferButton = (container: HTMLElement) =>
-  container.querySelector<HTMLButtonElement>('button[aria-label="Add command to macro"]')!;
+const selectionAdd = (container: HTMLElement) =>
+  container.querySelector<HTMLButtonElement>('.macro-builder__selection-add');
 const openStepMenu = (container: HTMLElement, stepNumber: number) => {
   fireEvent.click(container.querySelector<HTMLButtonElement>(`button[aria-label="Step ${stepNumber} options"]`)!);
   return (label: string) =>
@@ -50,22 +50,23 @@ const openStepMenu = (container: HTMLElement, stepNumber: number) => {
 };
 
 describe('MacroBuilderDialog', () => {
-  it('renders the command list, scoped search and step list in one window', () => {
+  it('renders the command list, header band and step cards in one window', () => {
     const { container } = renderBuilder();
-    // The category filter is a scope segment inside the search field
-    const scope = container.querySelector('.macro-builder__search-container .macro-builder__scope');
-    expect(scope?.textContent).toContain('All commands');
+    // The commands header holds the category dropdown + search side by side
+    const header = container.querySelector('.macro-builder__commands-header');
+    expect(header?.querySelector('.macro-builder__scope')?.textContent).toContain('All commands');
+    expect(header?.querySelector('input[aria-label="Search commands"]')).toBeTruthy();
+    // The steps pane's header is the macro itself
+    expect(container.querySelector('.macro-builder__steps-header')?.textContent).toContain('Podcast prep');
     expect(commandRows(container).map((el) => el.textContent)).toEqual([
       'Select all', 'Next clip', 'Split', 'Join selected clips', 'Fade In',
     ]);
-    // Query the text block, not the row — the row's textContent also
-    // carries the pencil button's (invisible) icon glyph
+    // Query the text block, not the card — the card also carries the
+    // grip/pencil/kebab icon glyphs. No numbering: position is order.
     const stepTexts = stepRows(container).map(
       (el) => el.querySelector('.macro-builder__step-text')?.textContent,
     );
-    expect(stepTexts).toEqual(['1. Select all', '2. Fade Induration=2', '3. Split']);
-    // The search field is always present — no picker window to open
-    expect(searchInput(container)).toBeTruthy();
+    expect(stepTexts).toEqual(['Select all', 'Fade Induration=2', 'Split']);
   });
 
   it('narrows the command list from the scope menu, showing the scope on the field', () => {
@@ -82,16 +83,6 @@ describe('MacroBuilderDialog', () => {
     const { container } = renderBuilder();
     fireEvent.change(searchInput(container), { target: { value: 'sel' } });
     expect(commandRows(container).map((el) => el.textContent)).toEqual(['Select all', 'Join selected clips']);
-  });
-
-  it('the transfer button adds the highlighted command without parameters', () => {
-    const onAddCommand = vi.fn();
-    const { container } = renderBuilder({ onAddCommand });
-    expect(transferButton(container).disabled).toBe(true);
-    fireEvent.click(commandRows(container)[2]); // Split
-    expect(transferButton(container).disabled).toBe(false);
-    fireEvent.click(transferButton(container));
-    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[2]);
   });
 
   it('double-clicking a command adds it directly', () => {
@@ -112,14 +103,14 @@ describe('MacroBuilderDialog', () => {
     fireEvent.click(clipsItem);
     fireEvent.click(commandRows(container)[0], { metaKey: true }); // Split
     fireEvent.click(commandRows(container)[1], { metaKey: true }); // Join selected clips
-    // The pane-header summary shows how many the → will add
+    // The selection bar shows how many its Add will append
     expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('3 selected');
-    fireEvent.click(transferButton(container));
+    fireEvent.click(selectionAdd(container)!);
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
       'Fade In', 'Split', 'Join selected clips',
     ]);
-    // Selection clears after the add
-    expect(transferButton(container).disabled).toBe(true);
+    // Selection (and its bar) clears after the add
+    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
   });
 
   it('Shift+click extends the selection through the visible range', () => {
@@ -127,7 +118,7 @@ describe('MacroBuilderDialog', () => {
     const { container } = renderBuilder({ onAddCommand });
     fireEvent.click(commandRows(container)[1]); // Next clip
     fireEvent.click(commandRows(container)[3], { shiftKey: true }); // through Join
-    fireEvent.click(transferButton(container));
+    fireEvent.click(selectionAdd(container)!);
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
       'Next clip', 'Split', 'Join selected clips',
     ]);
@@ -146,7 +137,6 @@ describe('MacroBuilderDialog', () => {
     expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
     fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__selection-clear')!);
     expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
-    expect(transferButton(container).disabled).toBe(true);
   });
 
   it('Cmd+click on a selected command removes it from the selection', () => {
@@ -218,12 +208,12 @@ describe('MacroBuilderDialog', () => {
     expect(onDeleteStep).toHaveBeenCalledWith('m1', 1);
   });
 
-  it('the row menu opens the parameters editor for its step', () => {
+  it('the card pencil opens the parameters editor for its step', () => {
     const getCommandParameters = vi.fn(() => [
       { key: 'duration', label: 'Duration', type: 'number' as const, defaultValue: '1' },
     ]);
     const { container } = renderBuilder({ getCommandParameters });
-    fireEvent.click(openStepMenu(container, 2)('Edit step'));
+    fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Edit step 2"]')!);
     expect(getCommandParameters).toHaveBeenCalledWith('Fade In');
   });
 

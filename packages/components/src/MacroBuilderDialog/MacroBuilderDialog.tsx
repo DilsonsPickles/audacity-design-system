@@ -350,23 +350,6 @@ export function MacroBuilderDialog({
         customLayout
         className="macro-builder"
       >
-        <div className="macro-builder__header">
-          <h2 className="macro-builder__macro-name">{macro.name}</h2>
-          <Button
-            variant="secondary"
-            className="macro-builder__icon-button"
-            ariaLabel="Macro options"
-            onClick={(e) => {
-              if (!e) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              setMacroMenuPosition({ x: rect.right, y: rect.bottom });
-              setMacroMenuOpen(true);
-            }}
-          >
-            <Icon name="menu" />
-          </Button>
-        </div>
-
         <div ref={columnsRef} className={`macro-builder__columns${splitterActive ? ' macro-builder__columns--resizing' : ''}`}>
           {/* Command pane — the mockup's "Instruments" pane with the
               category scope folded into the search field */}
@@ -375,10 +358,8 @@ export function MacroBuilderDialog({
             className="macro-builder__commands-pane"
             style={commandsPaneWidth !== null ? { flex: `0 0 ${commandsPaneWidth}px` } : undefined}
           >
-            <div className="macro-builder__pane-title">Commands</div>
-            {/* Scoped search: the category is a segment INSIDE the search
-                field — one control reading "search within ⟨scope⟩" */}
-            <div className="macro-builder__search-container">
+            {/* One header band, two jobs: this half filters the list */}
+            <div className="macro-builder__commands-header">
               <button
                 type="button"
                 className="macro-builder__scope"
@@ -396,7 +377,7 @@ export function MacroBuilderDialog({
                 </span>
                 <Icon name="caret-down" size={12} />
               </button>
-              <div className="macro-builder__search-field">
+              <div className="macro-builder__search-container">
                 <Icon name="zoom-in" size={16} />
                 <input
                   ref={searchInputRef}
@@ -444,18 +425,27 @@ export function MacroBuilderDialog({
                 );
               })}
             </div>
-            {/* Selection bar — docked to the list it describes, in the
-                same band as the → that will consume it */}
+            {/* Selection bar — docked to the list it describes. With no
+                transfer column, the batch's mouse path lives here too. */}
             {showSelectionSummary && (
               <div className="macro-builder__selection-summary">
                 <span>{selectedCommands.length} selected</span>
-                <button
-                  type="button"
-                  className="macro-builder__selection-clear"
-                  onClick={() => setSelectedCommandIds([])}
-                >
-                  Clear
-                </button>
+                <span className="macro-builder__selection-actions">
+                  <button
+                    type="button"
+                    className="macro-builder__selection-add"
+                    onClick={() => addCommands(selectedCommands)}
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    className="macro-builder__selection-clear"
+                    onClick={() => setSelectedCommandIds([])}
+                  >
+                    Clear
+                  </button>
+                </span>
               </div>
             )}
           </div>
@@ -471,23 +461,23 @@ export function MacroBuilderDialog({
             onDoubleClick={() => setCommandsPaneWidth(null)}
           />
 
-          {/* Transfer column — the mockup's → button, batch-aware */}
-          <div className="macro-builder__transfer">
-            <Button
-              variant="secondary"
-              className="macro-builder__icon-button"
-              ariaLabel="Add command to macro"
-              disabled={selectedCommands.length === 0}
-              onClick={() => addCommands(selectedCommands)}
-            >
-              <Icon name="chevron-right" />
-            </Button>
-          </div>
-
-          {/* Steps pane — the mockup's "Your score" pane */}
+          {/* Steps pane — its header IS the macro: name + macro menu */}
           <div className="macro-builder__steps-pane">
             <div className="macro-builder__steps-header">
-              <div className="macro-builder__pane-title">Your macro</div>
+              <h2 className="macro-builder__macro-name">{macro.name}</h2>
+              <Button
+                variant="secondary"
+                className="macro-builder__icon-button"
+                ariaLabel="Macro options"
+                onClick={(e) => {
+                  if (!e) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setMacroMenuPosition({ x: rect.right, y: rect.bottom });
+                  setMacroMenuOpen(true);
+                }}
+              >
+                <Icon name="menu" />
+              </Button>
             </div>
             <div
               ref={stepListRef}
@@ -517,27 +507,41 @@ export function MacroBuilderDialog({
                       if (e.key === 'Enter') setEditingStepIndex(index);
                     }}
                   >
+                    <span className="macro-builder__step-grip" aria-hidden="true">
+                      <Icon name="gripper" size={16} />
+                    </span>
                     <div className="macro-builder__step-text">
-                      <span className="macro-builder__step-command">{index + 1}. {step.command}</span>
+                      <span className="macro-builder__step-command">{step.command}</span>
                       {step.parameters && (
                         <span className="macro-builder__step-parameters" title={step.parameters}>
                           {step.parameters}
                         </span>
                       )}
                     </div>
-                    <GhostButton
-                      icon="menu"
-                      size="medium"
-                      className="macro-builder__step-menu-button"
-                      ariaLabel={`Step ${index + 1} options`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedStepIndex(index);
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setStepMenuPosition({ x: rect.right, y: rect.bottom });
-                        setStepMenuIndex(index);
-                      }}
-                    />
+                    <div className="macro-builder__step-actions">
+                      <GhostButton
+                        icon="edit"
+                        size="medium"
+                        ariaLabel={`Edit step ${index + 1}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedStepIndex(index);
+                          setEditingStepIndex(index);
+                        }}
+                      />
+                      <GhostButton
+                        icon="menu"
+                        size="medium"
+                        ariaLabel={`Step ${index + 1} options`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedStepIndex(index);
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setStepMenuPosition({ x: rect.right, y: rect.bottom });
+                          setStepMenuIndex(index);
+                        }}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -573,13 +577,6 @@ export function MacroBuilderDialog({
           x={stepMenuPosition.x}
           y={stepMenuPosition.y}
         >
-          <ContextMenuItem
-            label="Edit step"
-            onClick={() => {
-              setStepMenuIndex(null);
-              setEditingStepIndex(stepMenuIndex);
-            }}
-          />
           <ContextMenuItem
             label="Move up"
             disabled={stepMenuIndex === 0}
