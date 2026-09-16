@@ -204,7 +204,8 @@ describe('MacroBuilderDialog', () => {
     fireEvent.mouseUp(document);
     expect(pane.style.flex).toBe('0 0 180px');
     fireEvent.doubleClick(splitter);
-    expect(pane.style.flex).toBe('');
+    // Reset returns to the spec's 322px default
+    expect(pane.style.flex).toBe('0 0 322px');
   });
 
   it('Enter on a selected command row adds it — or the whole selection it belongs to', () => {

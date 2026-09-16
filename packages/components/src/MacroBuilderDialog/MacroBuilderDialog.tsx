@@ -114,7 +114,7 @@ export function MacroBuilderDialog({
   const [stepMenuPosition, setStepMenuPosition] = React.useState({ x: 0, y: 0 });
   const commandListRef = React.useRef<HTMLDivElement>(null);
   // Splitter: explicit commands-pane width once the user drags (null =
-  // the default even split). Session-scoped, survives macro switches.
+  // the spec's 322px default). Session-scoped, survives macro switches.
   const [commandsPaneWidth, setCommandsPaneWidth] = React.useState<number | null>(null);
   const [splitterActive, setSplitterActive] = React.useState(false);
   const columnsRef = React.useRef<HTMLDivElement>(null);
@@ -393,7 +393,7 @@ export function MacroBuilderDialog({
         os={os}
         nonModal
         closeOnClickOutside={false}
-        width={760}
+        width={816}
         minHeight="min(600px, calc(100vh - 32px))"
         customLayout
         className="macro-builder"
@@ -404,7 +404,7 @@ export function MacroBuilderDialog({
           <div
             ref={commandsPaneRef}
             className="macro-builder__commands-pane"
-            style={commandsPaneWidth !== null ? { flex: `0 0 ${commandsPaneWidth}px` } : undefined}
+            style={{ flex: `0 0 ${commandsPaneWidth ?? 322}px` }}
           >
             {/* One header band, two jobs: this half filters the list */}
             <div className="macro-builder__commands-header">
@@ -426,7 +426,7 @@ export function MacroBuilderDialog({
                 <Icon name="caret-down" size={12} />
               </button>
               <div className="macro-builder__search-container">
-                <Icon name="zoom-in" size={16} />
+                <Icon name="search" size={16} />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -536,19 +536,16 @@ export function MacroBuilderDialog({
           <div className="macro-builder__steps-pane">
             <div className="macro-builder__steps-header">
               <h2 className="macro-builder__macro-name">{macro.name}</h2>
-              <Button
-                variant="secondary"
-                className="macro-builder__icon-button"
+              <GhostButton
+                icon="menu"
+                size="medium"
                 ariaLabel="Macro options"
                 onClick={(e) => {
-                  if (!e) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   setMacroMenuPosition({ x: rect.right, y: rect.bottom });
                   setMacroMenuOpen(true);
                 }}
-              >
-                <Icon name="menu" />
-              </Button>
+              />
             </div>
             <div className="macro-builder__step-table-head">
               <span className="macro-builder__step-grip macro-builder__step-head-cell" />

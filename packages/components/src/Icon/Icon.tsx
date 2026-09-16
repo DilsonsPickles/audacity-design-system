@@ -64,7 +64,8 @@ export type IconName =
   | 'lock'
   | 'eye'
   | 'refresh'
-  | 'check';
+  | 'check'
+  | 'search';
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
@@ -132,6 +133,9 @@ const ICON_MAP: Record<IconName, string> = {
   eye: '\uEF23',
   refresh: '\uF358',
   check: '\uEF31',
+  /* Plain magnifier (the zoom-in/out glyphs carry +/- marks) \u2014 the
+     Macro manager Figma spec's search-field icon */
+  search: '\uEF17',
 };
 
 export interface IconProps {
