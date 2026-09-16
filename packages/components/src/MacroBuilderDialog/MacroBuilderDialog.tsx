@@ -98,7 +98,6 @@ export function MacroBuilderDialog({
   // a double-click's first half collapses a multi-selection, and the
   // dblclick handler needs to know what it landed on to add all of it
   const preClickSelectionRef = React.useRef<string[]>([]);
-  const [selectedStepIndex, setSelectedStepIndex] = React.useState<number | null>(null);
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [macroMenuOpen, setMacroMenuOpen] = React.useState(false);
@@ -125,7 +124,6 @@ export function MacroBuilderDialog({
     setSearchQuery('');
     setSelectedCategory(ALL_CATEGORIES);
     setSelectedCommandIds([]);
-    setSelectedStepIndex(null);
     setEditingStepIndex(null);
     setDraggedIndex(null);
     setStepMenuIndex(null);
@@ -203,11 +201,10 @@ export function MacroBuilderDialog({
     addCommands([command]);
   };
 
-  // Add in selection (click) order; the last new step ends up selected
+  // Add in selection (click) order
   const addCommands = (commands: Command[]) => {
     if (commands.length === 0) return;
     for (const command of commands) onAddCommand?.(macro.id, command);
-    setSelectedStepIndex(stepCount + commands.length - 1);
     setSelectedCommandIds([]);
     preClickSelectionRef.current = [];
   };
@@ -286,23 +283,20 @@ export function MacroBuilderDialog({
     const target = index + direction;
     if (target < 0 || target >= stepCount) return;
     onMoveStep?.(macro.id, index, direction);
-    setSelectedStepIndex(target);
   };
 
   const deleteStepAt = (index: number) => {
     onDeleteStep?.(macro.id, index);
-    setSelectedStepIndex(null);
   };
 
-  // Whole-row drag-to-reorder (no grip — the row IS the handle, with a
-  // 3px threshold so plain clicks still select and double-clicks still
-  // edit). Same live-swap + edge auto-scroll machinery as
-  // MacroEditorDialog's grip drag: document listeners are attached on
-  // mousedown and removed on mouseup (self-cleaning, exempt from the
-  // ref-mirror rule), the row whose bounds the pointer enters swaps
-  // with the dragged row, and near the list's top/bottom edge a rAF
-  // loop scrolls while re-running the swap test each frame. The
-  // selection follows the dragged row throughout.
+  // Whole-row drag-to-reorder (the row IS the handle, with a 3px
+  // threshold so double-clicks still edit). Same live-swap + edge
+  // auto-scroll machinery as MacroEditorDialog's grip drag: document
+  // listeners are attached on mousedown and removed on mouseup
+  // (self-cleaning, exempt from the ref-mirror rule), the row whose
+  // bounds the pointer enters swaps with the dragged row, and near the
+  // list's top/bottom edge a rAF loop scrolls while re-running the
+  // swap test each frame.
   const handleStepMouseDown = (index: number) => (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     // The pencil (or any other row control) owns its own clicks
@@ -317,7 +311,6 @@ export function MacroBuilderDialog({
     let currentIndex = index;
     let lastClientY = e.clientY;
     let rafId: number | null = null;
-    setSelectedStepIndex(index);
 
     const swapAt = (clientY: number) => {
       const list = stepListRef.current;
@@ -331,7 +324,6 @@ export function MacroBuilderDialog({
           onReorderStep?.(macroId, currentIndex, targetIndex);
           currentIndex = targetIndex;
           setDraggedIndex(targetIndex);
-          setSelectedStepIndex(targetIndex);
           break;
         }
       }
@@ -556,7 +548,7 @@ export function MacroBuilderDialog({
             <div
               ref={stepListRef}
               className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
-              role="listbox"
+              role="list"
               aria-label="Macro steps"
             >
               {stepCount === 0 && (
@@ -565,17 +557,14 @@ export function MacroBuilderDialog({
                 </div>
               )}
               {macro.steps.map((step, index) => {
-                const isSelected = index === selectedStepIndex;
                 return (
                   <div
                     key={index}
-                    role="option"
-                    aria-selected={isSelected}
+                    role="listitem"
                     tabIndex={0}
                     data-step-index={index}
-                    className={`macro-builder__step${isSelected ? ' macro-builder__step--selected' : ''}${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
+                    className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
                     onMouseDown={handleStepMouseDown(index)}
-                    onClick={() => setSelectedStepIndex(index)}
                     onDoubleClick={() => setEditingStepIndex(index)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') setEditingStepIndex(index);
@@ -600,7 +589,6 @@ export function MacroBuilderDialog({
                         ariaLabel={`Edit step ${index + 1}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedStepIndex(index);
                           setEditingStepIndex(index);
                         }}
                       />
@@ -610,7 +598,6 @@ export function MacroBuilderDialog({
                         ariaLabel={`Step ${index + 1} options`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedStepIndex(index);
                           const rect = e.currentTarget.getBoundingClientRect();
                           setStepMenuPosition({ x: rect.right, y: rect.bottom });
                           setStepMenuIndex(index);

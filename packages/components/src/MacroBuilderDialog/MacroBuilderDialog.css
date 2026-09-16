@@ -411,10 +411,6 @@
   flex-shrink: 0;
 }
 
-.macro-builder__step--selected {
-  background: var(--button-ghost-hover, rgba(194, 196, 207, 0.5));
-}
-
 .macro-builder__step:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
