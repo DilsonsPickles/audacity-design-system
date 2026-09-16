@@ -222,15 +222,20 @@ export function EditorLayout(props: EditorLayoutProps) {
   } = useMacros();
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<'effects' | 'macros'>('effects');
   const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
-  // Effects panel placement — docked left (the classic position) or
-  // floating, moved via its tab's kebab menu like the Macros panel.
-  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'floating'>('left');
+  // Effects panel placement — docked left (the classic position), docked
+  // right, or floating, moved via its tab's kebab menu like the Macros
+  // panel.
+  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'right' | 'floating'>('left');
+  // The right dock hosts Effects and/or Macros as tabs, mirroring the left
+  const [rightDockActiveTab, setRightDockActiveTab] = React.useState<'effects' | 'macros'>('macros');
+  const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
   // Which tab's kebab menu is open. Closing a panel lives in this menu —
   // panel headers deliberately have no close button (2026-09-10).
   const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number; tab: 'macros' | 'effects' } | null>(null);
 
   const effectsOpen = activeMenuItem !== 'export' && !!effectsPanel?.isOpen;
   const effectsDockedLeft = effectsOpen && effectsPanelSide === 'left';
+  const effectsDockedRight = effectsOpen && effectsPanelSide === 'right';
   const effectsFloating = effectsOpen && effectsPanelSide === 'floating';
   const macrosDockedLeft = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'left';
   const macrosDockedRight = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'right';
@@ -241,9 +246,11 @@ export function EditorLayout(props: EditorLayoutProps) {
   // drawer's useDrawerTabAutoSwitch behavior).
   React.useEffect(() => {
     if (effectsPanel?.isOpen && effectsPanelSide === 'left') setLeftDockActiveTab('effects');
+    if (effectsPanel?.isOpen && effectsPanelSide === 'right') setRightDockActiveTab('effects');
   }, [effectsPanel?.isOpen, effectsPanelSide]);
   React.useEffect(() => {
     if (isMacrosPanelOpen && macrosPanelSide === 'left') setLeftDockActiveTab('macros');
+    if (isMacrosPanelOpen && macrosPanelSide === 'right') setRightDockActiveTab('macros');
     if (isMacrosPanelOpen && macrosPanelSide === 'bottom') setDrawerActiveTab('macros');
   }, [isMacrosPanelOpen, macrosPanelSide]);
 
@@ -262,6 +269,16 @@ export function EditorLayout(props: EditorLayoutProps) {
     ? leftDockActiveTab
     : (leftDockTabs[0]?.id as 'effects' | 'macros' | undefined);
 
+  const openRightDockIds = new Set<string>();
+  if (effectsDockedRight) openRightDockIds.add('effects');
+  if (macrosDockedRight) openRightDockIds.add('macros');
+  const rightDockTabs: PanelHeaderTab[] = rightDockTabOrder
+    .filter((id) => openRightDockIds.has(id))
+    .map((id) => leftDockTabDefs[id]);
+  const activeRightDockTab = rightDockTabs.find((t) => t.id === rightDockActiveTab)
+    ? rightDockActiveTab
+    : (rightDockTabs[0]?.id as 'effects' | 'macros' | undefined);
+
   const openDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDockMenu({ x: rect.right, y: rect.bottom, tab: 'macros' });
@@ -270,6 +287,11 @@ export function EditorLayout(props: EditorLayoutProps) {
   const openLeftDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDockMenu({ x: rect.right, y: rect.bottom, tab: activeLeftDockTab === 'effects' ? 'effects' : 'macros' });
+  };
+
+  const openRightDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: activeRightDockTab === 'effects' ? 'effects' : 'macros' });
   };
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
@@ -1200,18 +1222,36 @@ export function EditorLayout(props: EditorLayoutProps) {
 
       </div>
 
-      {/* Right dock — Macros panel when docked right. Hidden on export tab. */}
-      {macrosDockedRight && (
+      {/* Right dock — Effects and Macros as tabs, mirroring the left.
+          Hidden on export tab. */}
+      {rightDockTabs.length > 0 && (
         <DockPanel
           position="right"
           width={280}
           minWidth={220}
           maxWidth={400}
-          tabs={[macrosTabDef]}
-          activeTabId="macros"
-          onMenuClick={openDockMenu}
+          tabs={rightDockTabs}
+          activeTabId={activeRightDockTab ?? rightDockTabs[0].id}
+          onTabChange={(tabId) => setRightDockActiveTab(tabId as 'effects' | 'macros')}
+          onTabReorder={(newTabs) => setRightDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
+          onMenuClick={openRightDockMenu}
         >
-          <MacrosDockPanel />
+          {activeRightDockTab === 'effects' && effectsDockedRight && effectsPanel && (
+            <TrackEffectsPanel
+              effectsPanel={effectsPanel}
+              tracks={state.tracks}
+              masterEffects={state.masterEffects}
+              masterEffectsEnabled={state.masterEffectsEnabled}
+              museHubSignedIn={museHubSignedIn}
+              installedEffects={installedEffects}
+              disabledPluginIds={disabledPluginIds}
+              setEffectPicker={setEffectPicker}
+              setEffectDialog={setEffectDialog}
+              setEffectsPanel={setEffectsPanel}
+              setMarketplaceModal={setMarketplaceModal}
+            />
+          )}
+          {activeRightDockTab === 'macros' && macrosDockedRight && <MacrosDockPanel />}
         </DockPanel>
       )}
     </div>
@@ -1316,6 +1356,15 @@ export function EditorLayout(props: EditorLayoutProps) {
           label="Dock left"
           onClick={() => {
             setEffectsPanelSide('left');
+            setDockMenu(null);
+          }}
+        />
+      )}
+      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'right' && (
+        <ContextMenuItem
+          label="Dock right"
+          onClick={() => {
+            setEffectsPanelSide('right');
             setDockMenu(null);
           }}
         />

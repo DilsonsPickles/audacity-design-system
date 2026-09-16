@@ -1523,10 +1523,18 @@ describe('Focus routing', () => {
     expect(floating.textContent).toContain('Effects');
     expect(floating.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
 
-    // Dock it back left
+    // Dock it right — the right dock hosts the Effects tab
     fireEvent.click(floating.querySelector('button[aria-label="Effects menu"]')!);
-    fireEvent.click(menuItem('Dock left'));
+    fireEvent.click(menuItem('Dock right'));
     await waitFor(() => expect(container.querySelector('.floating-panel')).toBeNull());
+    const rightDock = container.querySelector('.side-panel--right')!;
+    expect(rightDock).toBeTruthy();
+    expect(rightDock.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
+
+    // Dock it back left
+    fireEvent.click(rightDock.querySelector('button[aria-label="Effects menu"]')!);
+    fireEvent.click(menuItem('Dock left'));
+    await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeNull());
     expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
   });
 });
