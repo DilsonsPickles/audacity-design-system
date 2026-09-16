@@ -42,12 +42,12 @@ const searchInput = (container: HTMLElement) =>
   container.querySelector<HTMLInputElement>('input[aria-label="Search commands"]')!;
 const transferButton = (container: HTMLElement) =>
   container.querySelector<HTMLButtonElement>('button[aria-label="Add command to macro"]')!;
-const trashButton = (container: HTMLElement) =>
-  container.querySelector<HTMLButtonElement>('button[aria-label="Remove selected step"]')!;
-const upButton = (container: HTMLElement) =>
-  container.querySelector<HTMLButtonElement>('button[aria-label="Move step up"]')!;
-const downButton = (container: HTMLElement) =>
-  container.querySelector<HTMLButtonElement>('button[aria-label="Move step down"]')!;
+const openStepMenu = (container: HTMLElement, stepNumber: number) => {
+  fireEvent.click(container.querySelector<HTMLButtonElement>(`button[aria-label="Step ${stepNumber} options"]`)!);
+  return (label: string) =>
+    Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.trim() === label)!;
+};
 
 describe('MacroBuilderDialog', () => {
   it('renders the command list, scoped search and step list in one window', () => {
@@ -109,46 +109,38 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[3]);
   });
 
-  it('reorder buttons move the selected step and follow it', () => {
+  it('the row menu moves its step up and down', () => {
     const onMoveStep = vi.fn();
     const { container } = renderBuilder({ onMoveStep });
-    expect(upButton(container).disabled).toBe(true);
-    expect(downButton(container).disabled).toBe(true);
-    fireEvent.click(stepRows(container)[1]);
-    fireEvent.click(upButton(container));
+    const item = openStepMenu(container, 2);
+    fireEvent.click(item('Move up'));
     expect(onMoveStep).toHaveBeenCalledWith('m1', 1, -1);
-    // Selection followed the step to index 0 — up is now pinned
-    expect(upButton(container).disabled).toBe(true);
+    const item2 = openStepMenu(container, 2);
+    fireEvent.click(item2('Move down'));
+    expect(onMoveStep).toHaveBeenCalledWith('m1', 1, 1);
   });
 
-  it('down is disabled on the last step', () => {
-    const { container } = renderBuilder();
-    fireEvent.click(stepRows(container)[2]);
-    expect(downButton(container).disabled).toBe(true);
-    expect(upButton(container).disabled).toBe(false);
+  it('Move up is inert on the first step, Move down on the last', () => {
+    const onMoveStep = vi.fn();
+    const { container } = renderBuilder({ onMoveStep });
+    fireEvent.click(openStepMenu(container, 1)('Move up'));
+    fireEvent.click(openStepMenu(container, 3)('Move down'));
+    expect(onMoveStep).not.toHaveBeenCalled();
   });
 
-  it('the trash removes the selected step and clears the selection', () => {
+  it('the row menu deletes its step', () => {
     const onDeleteStep = vi.fn();
     const { container } = renderBuilder({ onDeleteStep });
-    expect(trashButton(container).disabled).toBe(true);
-    fireEvent.click(stepRows(container)[1]);
-    fireEvent.click(trashButton(container));
+    fireEvent.click(openStepMenu(container, 2)('Delete step'));
     expect(onDeleteStep).toHaveBeenCalledWith('m1', 1);
-    expect(trashButton(container).disabled).toBe(true);
   });
 
-  it('the edit button opens the parameters editor for the selected step', () => {
+  it('the row menu opens the parameters editor for its step', () => {
     const getCommandParameters = vi.fn(() => [
       { key: 'duration', label: 'Duration', type: 'number' as const, defaultValue: '1' },
     ]);
     const { container } = renderBuilder({ getCommandParameters });
-    const editButton = container.querySelector<HTMLButtonElement>('button[aria-label="Edit selected step"]')!;
-    // Select-first: disabled until a step is selected, like the trash
-    expect(editButton.disabled).toBe(true);
-    fireEvent.click(stepRows(container)[1]);
-    expect(editButton.disabled).toBe(false);
-    fireEvent.click(editButton);
+    fireEvent.click(openStepMenu(container, 2)('Edit step'));
     expect(getCommandParameters).toHaveBeenCalledWith('Fade In');
   });
 

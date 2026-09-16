@@ -101,6 +101,9 @@ export function MacroBuilderDialog({
   const [categoryMenuOpen, setCategoryMenuOpen] = React.useState(false);
   const [categoryMenuPosition, setCategoryMenuPosition] = React.useState({ x: 0, y: 0 });
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  // Per-row ⋯ menu: which step's menu is open, and where
+  const [stepMenuIndex, setStepMenuIndex] = React.useState<number | null>(null);
+  const [stepMenuPosition, setStepMenuPosition] = React.useState({ x: 0, y: 0 });
 
   // Reset transient state whenever a different macro opens
   React.useEffect(() => {
@@ -110,6 +113,7 @@ export function MacroBuilderDialog({
     setSelectedStepIndex(null);
     setEditingStepIndex(null);
     setDraggedIndex(null);
+    setStepMenuIndex(null);
   }, [macro?.id, isOpen]);
 
   // Rail order = first appearance in the data (same rule as the picker)
@@ -157,17 +161,15 @@ export function MacroBuilderDialog({
     }
   };
 
-  const moveSelectedStep = (direction: -1 | 1) => {
-    if (selectedStepIndex === null) return;
-    const target = selectedStepIndex + direction;
+  const moveStepAt = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
     if (target < 0 || target >= stepCount) return;
-    onMoveStep?.(macro.id, selectedStepIndex, direction);
+    onMoveStep?.(macro.id, index, direction);
     setSelectedStepIndex(target);
   };
 
-  const deleteSelectedStep = () => {
-    if (selectedStepIndex === null) return;
-    onDeleteStep?.(macro.id, selectedStepIndex);
+  const deleteStepAt = (index: number) => {
+    onDeleteStep?.(macro.id, index);
     setSelectedStepIndex(null);
   };
 
@@ -386,24 +388,6 @@ export function MacroBuilderDialog({
           <div className="macro-builder__steps-pane">
             <div className="macro-builder__steps-header">
               <div className="macro-builder__pane-title">Your macro</div>
-              {/* Select-first: BOTH step actions live here and act on the
-                  selected step — no per-row controls */}
-              <div className="macro-builder__steps-actions">
-                <GhostButton
-                  icon="edit"
-                  size="medium"
-                  ariaLabel="Edit selected step"
-                  disabled={selectedStepIndex === null}
-                  onClick={() => setEditingStepIndex(selectedStepIndex)}
-                />
-                <GhostButton
-                  icon="trash"
-                  size="medium"
-                  ariaLabel="Remove selected step"
-                  disabled={selectedStepIndex === null}
-                  onClick={deleteSelectedStep}
-                />
-              </div>
             </div>
             <div
               ref={stepListRef}
@@ -441,33 +425,25 @@ export function MacroBuilderDialog({
                         </span>
                       )}
                     </div>
+                    <GhostButton
+                      icon="menu"
+                      size="medium"
+                      className="macro-builder__step-menu-button"
+                      ariaLabel={`Step ${index + 1} options`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedStepIndex(index);
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setStepMenuPosition({ x: rect.right, y: rect.bottom });
+                        setStepMenuIndex(index);
+                      }}
+                    />
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Reorder column — the mockup's right-edge ↑/↓ */}
-          <div className="macro-builder__reorder">
-            <Button
-              variant="secondary"
-              className="macro-builder__icon-button"
-              ariaLabel="Move step up"
-              disabled={selectedStepIndex === null || selectedStepIndex === 0}
-              onClick={() => moveSelectedStep(-1)}
-            >
-              <Icon name="caret-down" className="macro-builder__caret-up" />
-            </Button>
-            <Button
-              variant="secondary"
-              className="macro-builder__icon-button"
-              ariaLabel="Move step down"
-              disabled={selectedStepIndex === null || selectedStepIndex === stepCount - 1}
-              onClick={() => moveSelectedStep(1)}
-            >
-              <Icon name="caret-down" />
-            </Button>
-          </div>
         </div>
 
         <div className="macro-builder__footer">
@@ -488,6 +464,48 @@ export function MacroBuilderDialog({
           </Button>
         </div>
       </Dialog>
+
+      {/* Per-row ⋯ menu — every step action in one place */}
+      {stepMenuIndex !== null && (
+        <ContextMenu
+          isOpen
+          onClose={() => setStepMenuIndex(null)}
+          x={stepMenuPosition.x}
+          y={stepMenuPosition.y}
+        >
+          <ContextMenuItem
+            label="Edit step"
+            onClick={() => {
+              setStepMenuIndex(null);
+              setEditingStepIndex(stepMenuIndex);
+            }}
+          />
+          <ContextMenuItem
+            label="Move up"
+            disabled={stepMenuIndex === 0}
+            onClick={() => {
+              setStepMenuIndex(null);
+              moveStepAt(stepMenuIndex, -1);
+            }}
+          />
+          <ContextMenuItem
+            label="Move down"
+            disabled={stepMenuIndex === stepCount - 1}
+            onClick={() => {
+              setStepMenuIndex(null);
+              moveStepAt(stepMenuIndex, 1);
+            }}
+          />
+          <ContextMenuItem isDivider label="" />
+          <ContextMenuItem
+            label="Delete step"
+            onClick={() => {
+              setStepMenuIndex(null);
+              deleteStepAt(stepMenuIndex);
+            }}
+          />
+        </ContextMenu>
+      )}
 
       <ContextMenu
         isOpen={categoryMenuOpen}
