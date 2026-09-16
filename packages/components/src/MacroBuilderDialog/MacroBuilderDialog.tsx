@@ -216,9 +216,6 @@ export function MacroBuilderDialog({
     .map((id) => availableCommands.find((cmd) => cmd.id === id))
     .filter((cmd): cmd is Command => cmd !== undefined);
 
-  // The selection bar shows for ANY selection — its Add is the always-
-  // visible button for the current selection, single or batch
-  const showSelectionSummary = selectedCommands.length > 0;
 
   const focusCommandRow = (id: string) => {
     // Ids carry ':' and '/' — quoting the attribute value is enough
@@ -495,19 +492,13 @@ export function MacroBuilderDialog({
                 );
               })}
             </div>
-            {/* Selection bar — docked to the list it describes. With no
-                transfer column, the batch's mouse path lives here too. */}
-            {showSelectionSummary && (
-              <div className="macro-builder__selection-summary">
-                <span>{selectedCommands.length} selected</span>
-                <span className="macro-builder__selection-actions">
-                  <button
-                    type="button"
-                    className="macro-builder__selection-add"
-                    onClick={() => addCommands(selectedCommands)}
-                  >
-                    Add
-                  </button>
+            {/* Selection bar — permanently docked to the list. The Add
+                button is always visible (disabled until something is
+                selected); double-click and Enter stay the fast paths. */}
+            <div className="macro-builder__selection-summary">
+              <span>{selectedCommands.length} selected</span>
+              <span className="macro-builder__selection-actions">
+                {selectedCommands.length > 0 && (
                   <button
                     type="button"
                     className="macro-builder__selection-clear"
@@ -515,9 +506,18 @@ export function MacroBuilderDialog({
                   >
                     Clear
                   </button>
-                </span>
-              </div>
-            )}
+                )}
+                <Button
+                  variant="secondary"
+                  size="small"
+                  className="macro-builder__selection-add"
+                  disabled={selectedCommands.length === 0}
+                  onClick={() => addCommands(selectedCommands)}
+                >
+                  Add
+                </Button>
+              </span>
+            </div>
           </div>
 
           {/* Splitter — drag to resize the commands pane; double-click

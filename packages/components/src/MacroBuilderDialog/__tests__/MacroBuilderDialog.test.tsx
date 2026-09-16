@@ -121,8 +121,9 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
       'Fade In', 'Split', 'Join selected clips',
     ]);
-    // Selection (and its bar) clears after the add
-    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+    // Selection clears after the add; the bar stays, disabled
+    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('0 selected');
+    expect(selectionAdd(container)!.disabled).toBe(true);
   });
 
   it('Shift+click extends the selection through the visible range', () => {
@@ -136,16 +137,19 @@ describe('MacroBuilderDialog', () => {
     ]);
   });
 
-  it('the selection bar shows for any selection — its Add works for a single command too', () => {
+  it('the selection bar is always visible — Add disabled until something is selected', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
-    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('0 selected');
+    expect(selectionAdd(container)!.disabled).toBe(true);
+    // Clear only appears when there is something to clear
+    expect(container.querySelector('.macro-builder__selection-clear')).toBeNull();
     fireEvent.click(commandRows(container)[4]); // Fade In
     expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
+    expect(selectionAdd(container)!.disabled).toBe(false);
     fireEvent.click(selectionAdd(container)!);
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
-    // Selection (and the bar) clears after the add
-    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+    expect(selectionAdd(container)!.disabled).toBe(true);
   });
 
   it('the selection bar survives scoping away from a hidden selection, and Clear empties it', () => {
@@ -157,7 +161,8 @@ describe('MacroBuilderDialog', () => {
     fireEvent.click(clipsItem);
     expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
     fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__selection-clear')!);
-    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('0 selected');
+    expect(container.querySelector('.macro-builder__selection-clear')).toBeNull();
   });
 
   it('Cmd+click on a selected command removes it from the selection', () => {

@@ -61,10 +61,10 @@
    picker's "N items selected" strip. Quiet text, no badge. */
 .macro-builder__selection-summary {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 6px 8px 6px 12px;
   border-top: 1px solid var(--stroke-primary, #d4d5d9);
   flex-shrink: 0;
   font-family: 'Inter', sans-serif;
@@ -76,11 +76,10 @@
 
 .macro-builder__selection-actions {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 
-.macro-builder__selection-add,
 .macro-builder__selection-clear {
   border: none;
   background: transparent;
@@ -92,20 +91,19 @@
   cursor: pointer;
 }
 
-.macro-builder__selection-add {
-  font-weight: 600;
-}
-
-.macro-builder__selection-add:hover,
 .macro-builder__selection-clear:hover {
   text-decoration: underline;
 }
 
-.macro-builder__selection-add:focus-visible,
 .macro-builder__selection-clear:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
   border-radius: 2px;
+}
+
+/* The permanent Add is a compact real button, not a text link */
+.macro-builder__selection-add.button {
+  min-width: 56px;
 }
 
 /* Command pane */
