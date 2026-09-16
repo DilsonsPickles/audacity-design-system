@@ -1494,4 +1494,39 @@ describe('Focus routing', () => {
     const ruler0 = container.querySelector('[data-track-ruler-index="0"]');
     expect(document.activeElement).toBe(ruler0);
   });
+
+  it('effects panel floats via its tab menu and docks back left', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+
+    // Open the effects panel from the track's Effects button — it docks left
+    const effectsButton = Array.from(container.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Effects')!;
+    fireEvent.click(effectsButton);
+    await waitFor(() =>
+      expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
+    );
+    expect(container.querySelector('.floating-panel')).toBeNull();
+
+    const menuItem = (label: string) =>
+      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+        .find((el) => el.textContent?.trim() === label)!;
+
+    // Float it from the tab kebab
+    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+    fireEvent.click(menuItem('Float'));
+    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeTruthy());
+    // The dock is gone; the floating panel hosts the Effects tab
+    const floating = container.querySelector('.floating-panel')!;
+    expect(floating.textContent).toContain('Effects');
+    expect(floating.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
+
+    // Dock it back left
+    fireEvent.click(floating.querySelector('button[aria-label="Effects menu"]')!);
+    fireEvent.click(menuItem('Dock left'));
+    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeNull());
+    expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
+  });
 });

@@ -222,11 +222,16 @@ export function EditorLayout(props: EditorLayoutProps) {
   } = useMacros();
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<'effects' | 'macros'>('effects');
   const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
+  // Effects panel placement — docked left (the classic position) or
+  // floating, moved via its tab's kebab menu like the Macros panel.
+  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'floating'>('left');
   // Which tab's kebab menu is open. Closing a panel lives in this menu —
   // panel headers deliberately have no close button (2026-09-10).
   const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number; tab: 'macros' | 'effects' } | null>(null);
 
   const effectsOpen = activeMenuItem !== 'export' && !!effectsPanel?.isOpen;
+  const effectsDockedLeft = effectsOpen && effectsPanelSide === 'left';
+  const effectsFloating = effectsOpen && effectsPanelSide === 'floating';
   const macrosDockedLeft = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'left';
   const macrosDockedRight = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'right';
   const macrosFloating = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'floating';
@@ -235,8 +240,8 @@ export function EditorLayout(props: EditorLayoutProps) {
   // Auto-activate a dock tab when its panel opens (mirrors the bottom
   // drawer's useDrawerTabAutoSwitch behavior).
   React.useEffect(() => {
-    if (effectsPanel?.isOpen) setLeftDockActiveTab('effects');
-  }, [effectsPanel?.isOpen]);
+    if (effectsPanel?.isOpen && effectsPanelSide === 'left') setLeftDockActiveTab('effects');
+  }, [effectsPanel?.isOpen, effectsPanelSide]);
   React.useEffect(() => {
     if (isMacrosPanelOpen && macrosPanelSide === 'left') setLeftDockActiveTab('macros');
     if (isMacrosPanelOpen && macrosPanelSide === 'bottom') setDrawerActiveTab('macros');
@@ -248,7 +253,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     macros: macrosTabDef,
   };
   const openLeftDockIds = new Set<string>();
-  if (effectsOpen) openLeftDockIds.add('effects');
+  if (effectsDockedLeft) openLeftDockIds.add('effects');
   if (macrosDockedLeft) openLeftDockIds.add('macros');
   const leftDockTabs: PanelHeaderTab[] = leftDockTabOrder
     .filter((id) => openLeftDockIds.has(id))
@@ -554,7 +559,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           onTabReorder={(newTabs) => setLeftDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
           onMenuClick={openLeftDockMenu}
         >
-          {activeLeftDockTab === 'effects' && effectsOpen && effectsPanel && (
+          {activeLeftDockTab === 'effects' && effectsDockedLeft && effectsPanel && (
             <TrackEffectsPanel
               effectsPanel={effectsPanel}
               tracks={state.tracks}
@@ -1224,6 +1229,35 @@ export function EditorLayout(props: EditorLayoutProps) {
       </FloatingPanel>
     )}
 
+    {/* Floating Effects panel — undocked via the tab's kebab menu. Same
+        content component as the left dock; only the host differs. */}
+    {effectsFloating && effectsPanel && (
+      <FloatingPanel
+        width={280}
+        height={480}
+        tabs={[leftDockTabDefs.effects]}
+        activeTabId="effects"
+        onMenuClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setDockMenu({ x: rect.right, y: rect.bottom, tab: 'effects' });
+        }}
+      >
+        <TrackEffectsPanel
+          effectsPanel={effectsPanel}
+          tracks={state.tracks}
+          masterEffects={state.masterEffects}
+          masterEffectsEnabled={state.masterEffectsEnabled}
+          museHubSignedIn={museHubSignedIn}
+          installedEffects={installedEffects}
+          disabledPluginIds={disabledPluginIds}
+          setEffectPicker={setEffectPicker}
+          setEffectDialog={setEffectDialog}
+          setEffectsPanel={setEffectsPanel}
+          setMarketplaceModal={setMarketplaceModal}
+        />
+      </FloatingPanel>
+    )}
+
     {/* Tab kebab menu — placement (Macros) and Close. Closing a panel
         lives HERE: panel headers have no close button (2026-09-10). */}
     <ContextMenu
@@ -1268,7 +1302,25 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         />
       )}
-      {dockMenu?.tab === 'macros' && <ContextMenuItem isDivider label="" />}
+      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'floating' && (
+        <ContextMenuItem
+          label="Float"
+          onClick={() => {
+            setEffectsPanelSide('floating');
+            setDockMenu(null);
+          }}
+        />
+      )}
+      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'left' && (
+        <ContextMenuItem
+          label="Dock left"
+          onClick={() => {
+            setEffectsPanelSide('left');
+            setDockMenu(null);
+          }}
+        />
+      )}
+      <ContextMenuItem isDivider label="" />
       <ContextMenuItem
         label="Close"
         onClick={() => {
