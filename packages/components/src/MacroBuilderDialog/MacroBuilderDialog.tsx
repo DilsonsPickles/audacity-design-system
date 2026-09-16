@@ -108,6 +108,7 @@ export function MacroBuilderDialog({
   // Per-row ⋯ menu: which step's menu is open, and where
   const [stepMenuIndex, setStepMenuIndex] = React.useState<number | null>(null);
   const [stepMenuPosition, setStepMenuPosition] = React.useState({ x: 0, y: 0 });
+  const commandListRef = React.useRef<HTMLDivElement>(null);
   // Splitter: explicit commands-pane width once the user drags (null =
   // the default even split). Session-scoped, survives macro switches.
   const [commandsPaneWidth, setCommandsPaneWidth] = React.useState<number | null>(null);
@@ -199,7 +200,37 @@ export function MacroBuilderDialog({
   );
   const showSelectionSummary = selectedCommands.length > 1 || anySelectionHidden;
 
+  const focusCommandRow = (id: string) => {
+    // Ids carry ':' and '/' — quoting the attribute value is enough
+    commandListRef.current
+      ?.querySelector<HTMLButtonElement>(`[data-command-id="${id}"]`)
+      ?.focus();
+  };
+
+  // Arrow keys walk the visible list as a single selection, with DOM
+  // focus following so Enter adds whatever the arrows landed on
+  const moveCommandSelection = (fromId: string, delta: -1 | 1) => {
+    const idx = visible.findIndex((cmd) => cmd.id === fromId);
+    if (idx === -1) return;
+    const target = visible[Math.min(visible.length - 1, Math.max(0, idx + delta))];
+    if (!target || target.id === fromId) return;
+    anchorCommandIdRef.current = target.id;
+    setSelectedCommandIds([target.id]);
+    focusCommandRow(target.id);
+  };
+
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      // Drop from the search into the list: select + focus the first hit
+      e.preventDefault();
+      const first = visible[0];
+      if (first) {
+        anchorCommandIdRef.current = first.id;
+        setSelectedCommandIds([first.id]);
+        focusCommandRow(first.id);
+      }
+      return;
+    }
     if (e.key !== 'Enter') return;
     e.preventDefault();
     // A built-up selection wins; otherwise the first visible match
@@ -401,7 +432,7 @@ export function MacroBuilderDialog({
                 )}
               </div>
             </div>
-            <div className="macro-builder__command-list" role="listbox" aria-label="Available commands">
+            <div ref={commandListRef} className="macro-builder__command-list" role="listbox" aria-label="Available commands">
               {visible.length === 0 && (
                 <div className="macro-builder__empty">
                   {query ? `No commands match “${searchQuery.trim()}”` : 'No commands'}
@@ -420,6 +451,11 @@ export function MacroBuilderDialog({
                     onClick={(e) => handleCommandClick(command, e)}
                     onDoubleClick={() => addCommands([command])}
                     onKeyDown={(e) => {
+                      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        moveCommandSelection(command.id, e.key === 'ArrowDown' ? 1 : -1);
+                        return;
+                      }
                       if (e.key !== 'Enter') return;
                       // Suppress the button's synthetic click — Enter is
                       // the add gesture, not another select

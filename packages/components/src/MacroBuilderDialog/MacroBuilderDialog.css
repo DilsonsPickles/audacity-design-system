@@ -117,9 +117,13 @@
   min-height: 0;
 }
 
-/* Splitter owns the divider line the commands pane used to draw */
+/* Splitter owns the divider line the commands pane used to draw.
+   The 7px grab zone OVERLAPS both panes (negative margins) so its
+   visual footprint is only the 1px line — no gutter beside the well. */
 .macro-builder__splitter {
   width: 7px;
+  margin: 0 -3px;
+  z-index: 2;
   flex-shrink: 0;
   cursor: col-resize;
   position: relative;

@@ -189,6 +189,24 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Fade In', 'Select all']);
   });
 
+  it('arrow keys walk the selection through the list; ArrowDown from search enters it', () => {
+    const { container } = renderBuilder();
+    // Drop from the search into the first row
+    fireEvent.keyDown(searchInput(container), { key: 'ArrowDown' });
+    expect(commandRows(container)[0].getAttribute('aria-selected')).toBe('true');
+    // Walk down two, up one
+    fireEvent.keyDown(commandRows(container)[0], { key: 'ArrowDown' });
+    fireEvent.keyDown(commandRows(container)[1], { key: 'ArrowDown' });
+    expect(commandRows(container)[2].getAttribute('aria-selected')).toBe('true');
+    expect(commandRows(container)[1].getAttribute('aria-selected')).toBe('false');
+    fireEvent.keyDown(commandRows(container)[2], { key: 'ArrowUp' });
+    expect(commandRows(container)[1].getAttribute('aria-selected')).toBe('true');
+    // Pinned at the top — ArrowUp on the first row stays put
+    fireEvent.keyDown(commandRows(container)[1], { key: 'ArrowUp' });
+    fireEvent.keyDown(commandRows(container)[0], { key: 'ArrowUp' });
+    expect(commandRows(container)[0].getAttribute('aria-selected')).toBe('true');
+  });
+
   it('Enter in the search field adds the first visible match', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
