@@ -1,8 +1,8 @@
 /* MacroBuilderDialog — MuseScore "New score" layout for building a
-   macro. One window, four columns: category rail | searchable command
-   list | transfer → | step list with ↑/↓ + trash on the flanks. Shares
-   the SelectCommandDialog's rail/search language and the
-   MacroEditorDialog's header/footer language. */
+   macro. One window, three columns: searchable command list (with a
+   category dropdown on top) | transfer → | step list with ↑/↓ + trash
+   on the flanks. Shares the SelectCommandDialog's search language and
+   the MacroEditorDialog's header/footer language. */
 
 .macro-builder {
   display: flex;
@@ -69,91 +69,6 @@
   flex-shrink: 0;
 }
 
-/* Category rail */
-.macro-builder__rail {
-  width: 190px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--dialog-bg, #f8f8f9);
-  border-right: 1px solid var(--stroke-primary, #d4d5d9);
-}
-
-.macro-builder__rail-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 8px;
-  display: flex;
-  flex-direction: column;
-}
-
-.macro-builder__rail-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  height: 32px;
-  padding: 0 12px 0 16px;
-  background: transparent;
-  border: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-primary, #14151a);
-  text-align: left;
-  cursor: pointer;
-  position: relative;
-  transition: background-color 0.15s ease;
-}
-
-.macro-builder__rail-item:hover:not(:disabled) {
-  background-color: rgba(103, 124, 228, 0.1);
-}
-
-.macro-builder__rail-item:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
-}
-
-.macro-builder__rail-item--selected {
-  background-color: rgba(103, 124, 228, 0.2);
-  font-weight: 600;
-}
-
-.macro-builder__rail-item--selected::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background-color: var(--accent-primary, #677ce4);
-}
-
-.macro-builder__rail-item--empty {
-  color: var(--text-disabled, #9a9ba5);
-  cursor: default;
-}
-
-.macro-builder__rail-label {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.macro-builder__rail-count {
-  font-variant-numeric: tabular-nums;
-  font-weight: 400;
-  color: var(--text-secondary, #575861);
-}
-
-.macro-builder__rail-item--empty .macro-builder__rail-count {
-  color: inherit;
-}
-
 /* Command pane */
 .macro-builder__commands-pane {
   flex: 1;
@@ -162,6 +77,12 @@
   flex-direction: column;
   min-height: 0;
   border-right: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* The category filter, folded into a dropdown above the search */
+.macro-builder__category-dropdown {
+  margin: 0 12px 8px;
+  flex-shrink: 0;
 }
 
 .macro-builder__search-container {
@@ -353,6 +274,21 @@
 .macro-builder__step:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__step--dragging {
+  opacity: 0.5;
+}
+
+/* While a row drag is active, suppress text selection and keep the
+   grabbing cursor everywhere in the list */
+.macro-builder__step-list--dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.macro-builder__step-list--dragging .macro-builder__step {
+  cursor: grabbing;
 }
 
 .macro-builder__step-text {

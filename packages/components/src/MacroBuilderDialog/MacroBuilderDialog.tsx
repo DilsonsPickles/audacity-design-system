@@ -3,6 +3,7 @@ import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
 import { Icon } from '../Icon';
+import { Dropdown } from '../Dropdown';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { CommandParametersDialog, type CommandParameter } from '../CommandParametersDialog';
@@ -45,6 +46,8 @@ export interface MacroBuilderDialogProps {
   onDeleteStep?: (macroId: string, stepIndex: number) => void;
   /** Called when the selected step is moved up (-1) or down (+1) */
   onMoveStep?: (macroId: string, stepIndex: number, direction: -1 | 1) => void;
+  /** Called while dragging a step row over another row to reorder steps */
+  onReorderStep?: (macroId: string, fromIndex: number, toIndex: number) => void;
   /** Available commands for the command pane */
   availableCommands?: Command[];
   /** Parameter schema lookup for a step's command — same contract as
@@ -58,14 +61,14 @@ const ALL_CATEGORIES = 'all';
 
 /**
  * MacroBuilderDialog — the MuseScore-"New score" layout for building a
- * macro. Everything lives in ONE window: a category rail (Family), a
- * searchable command list (Instruments) and the macro's step list (Your
- * score), joined by a transfer button. The search field is always
- * visible, so adding a step never opens a picker window — type, Enter
- * (or select and →, or double-click) and the step lands in the macro.
- * Steps are added with default parameters and edited in place via the
- * row pencil; ↑/↓ reorder the selected step and the trash removes it.
- * Non-modal and auto-saving, like MacroEditorDialog.
+ * macro. Everything lives in ONE window: a searchable command list
+ * (Instruments) with a category dropdown on top, and the macro's step
+ * list (Your score), joined by a transfer button. The search field is
+ * always visible, so adding a step never opens a picker window — type,
+ * Enter (or select and →, or double-click) and the step lands in the
+ * macro. Steps are added with default parameters and edited in place
+ * via the row pencil; drag a row (or ↑/↓) to reorder and the trash
+ * removes it. Non-modal and auto-saving, like MacroEditorDialog.
  */
 export function MacroBuilderDialog({
   isOpen,
@@ -80,6 +83,7 @@ export function MacroBuilderDialog({
   onEditStep,
   onDeleteStep,
   onMoveStep,
+  onReorderStep,
   availableCommands = [],
   getCommandParameters,
   os = 'macos',
@@ -92,6 +96,8 @@ export function MacroBuilderDialog({
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [macroMenuOpen, setMacroMenuOpen] = React.useState(false);
   const [macroMenuPosition, setMacroMenuPosition] = React.useState({ x: 0, y: 0 });
+  const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
+  const stepListRef = React.useRef<HTMLDivElement>(null);
 
   // Reset transient state whenever a different macro opens
   React.useEffect(() => {
@@ -100,6 +106,7 @@ export function MacroBuilderDialog({
     setSelectedCommandId(null);
     setSelectedStepIndex(null);
     setEditingStepIndex(null);
+    setDraggedIndex(null);
   }, [macro?.id, isOpen]);
 
   // Rail order = first appearance in the data (same rule as the picker)
@@ -117,11 +124,13 @@ export function MacroBuilderDialog({
     [availableCommands, query],
   );
 
-  const countByCategory = React.useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const cmd of matching) counts[cmd.category] = (counts[cmd.category] ?? 0) + 1;
-    return counts;
-  }, [matching]);
+  const categoryOptions = React.useMemo(
+    () => [
+      { value: ALL_CATEGORIES, label: 'All commands' },
+      ...categories.map((category) => ({ value: category, label: category })),
+    ],
+    [categories],
+  );
 
   const visible = selectedCategory === ALL_CATEGORIES
     ? matching
@@ -160,6 +169,96 @@ export function MacroBuilderDialog({
     setSelectedStepIndex(null);
   };
 
+  // Whole-row drag-to-reorder (no grip — the row IS the handle, with a
+  // 3px threshold so plain clicks still select and double-clicks still
+  // edit). Same live-swap + edge auto-scroll machinery as
+  // MacroEditorDialog's grip drag: document listeners are attached on
+  // mousedown and removed on mouseup (self-cleaning, exempt from the
+  // ref-mirror rule), the row whose bounds the pointer enters swaps
+  // with the dragged row, and near the list's top/bottom edge a rAF
+  // loop scrolls while re-running the swap test each frame. The
+  // selection follows the dragged row throughout.
+  const handleStepMouseDown = (index: number) => (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    // The pencil (or any other row control) owns its own clicks
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    const macroId = macro.id;
+    const DRAG_THRESHOLD = 3; // px of vertical travel before a press becomes a drag
+    const EDGE_ZONE = 32; // px from the list edge where auto-scroll engages
+    const MAX_SCROLL_SPEED = 14; // px per frame at full depth
+    const startY = e.clientY;
+    let dragging = false;
+    let currentIndex = index;
+    let lastClientY = e.clientY;
+    let rafId: number | null = null;
+    setSelectedStepIndex(index);
+
+    const swapAt = (clientY: number) => {
+      const list = stepListRef.current;
+      if (!list) return;
+      const rows = list.querySelectorAll<HTMLElement>('[data-step-index]');
+      for (const row of rows) {
+        const targetIndex = Number(row.dataset.stepIndex);
+        if (targetIndex === currentIndex) continue;
+        const rect = row.getBoundingClientRect();
+        if (clientY >= rect.top && clientY <= rect.bottom) {
+          onReorderStep?.(macroId, currentIndex, targetIndex);
+          currentIndex = targetIndex;
+          setDraggedIndex(targetIndex);
+          setSelectedStepIndex(targetIndex);
+          break;
+        }
+      }
+    };
+
+    const scrollVelocity = (clientY: number): number => {
+      const list = stepListRef.current;
+      if (!list) return 0;
+      const rect = list.getBoundingClientRect();
+      if (clientY < rect.top + EDGE_ZONE) {
+        const depth = Math.min(1, (rect.top + EDGE_ZONE - clientY) / EDGE_ZONE);
+        return -Math.ceil(depth * MAX_SCROLL_SPEED);
+      }
+      if (clientY > rect.bottom - EDGE_ZONE) {
+        const depth = Math.min(1, (clientY - (rect.bottom - EDGE_ZONE)) / EDGE_ZONE);
+        return Math.ceil(depth * MAX_SCROLL_SPEED);
+      }
+      return 0;
+    };
+
+    const scrollLoop = () => {
+      const list = stepListRef.current;
+      if (list) {
+        const velocity = scrollVelocity(lastClientY);
+        if (velocity !== 0) {
+          list.scrollTop += velocity;
+          swapAt(lastClientY);
+        }
+      }
+      rafId = requestAnimationFrame(scrollLoop);
+    };
+
+    const onMouseMove = (ev: MouseEvent) => {
+      lastClientY = ev.clientY;
+      if (!dragging) {
+        if (Math.abs(ev.clientY - startY) < DRAG_THRESHOLD) return;
+        dragging = true;
+        setDraggedIndex(currentIndex);
+        rafId = requestAnimationFrame(scrollLoop);
+      }
+      swapAt(ev.clientY);
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      setDraggedIndex(null);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
   return (
     <>
       <Dialog
@@ -169,7 +268,7 @@ export function MacroBuilderDialog({
         os={os}
         nonModal
         closeOnClickOutside={false}
-        width={960}
+        width={760}
         minHeight="min(600px, calc(100vh - 32px))"
         customLayout
         className="macro-builder"
@@ -192,42 +291,18 @@ export function MacroBuilderDialog({
         </div>
 
         <div className="macro-builder__columns">
-          {/* Category rail — the mockup's "Family" pane */}
-          <nav className="macro-builder__rail" aria-label="Command categories">
-            <div className="macro-builder__pane-title">Category</div>
-            <div className="macro-builder__rail-list">
-              <button
-                type="button"
-                className={`macro-builder__rail-item${selectedCategory === ALL_CATEGORIES ? ' macro-builder__rail-item--selected' : ''}`}
-                aria-pressed={selectedCategory === ALL_CATEGORIES}
-                onClick={() => setSelectedCategory(ALL_CATEGORIES)}
-              >
-                <span className="macro-builder__rail-label">All commands</span>
-                <span className="macro-builder__rail-count">{matching.length}</span>
-              </button>
-              {categories.map((category) => {
-                const count = countByCategory[category] ?? 0;
-                const isSelected = selectedCategory === category;
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    className={`macro-builder__rail-item${isSelected ? ' macro-builder__rail-item--selected' : ''}${count === 0 ? ' macro-builder__rail-item--empty' : ''}`}
-                    aria-pressed={isSelected}
-                    disabled={count === 0}
-                    onClick={() => setSelectedCategory(category)}
-                  >
-                    <span className="macro-builder__rail-label">{category}</span>
-                    <span className="macro-builder__rail-count">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-
-          {/* Command pane — the mockup's "Instruments" pane, search always on */}
+          {/* Command pane — the mockup's "Instruments" pane with the
+              category filter folded into a dropdown, search always on */}
           <div className="macro-builder__commands-pane">
             <div className="macro-builder__pane-title">Commands</div>
+            <div className="macro-builder__category-dropdown">
+              <Dropdown
+                options={categoryOptions}
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                width="100%"
+              />
+            </div>
             <div className="macro-builder__search-container">
               <Icon name="zoom-in" size={16} />
               <input
@@ -303,7 +378,12 @@ export function MacroBuilderDialog({
                 onClick={deleteSelectedStep}
               />
             </div>
-            <div className="macro-builder__step-list" role="listbox" aria-label="Macro steps">
+            <div
+              ref={stepListRef}
+              className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
+              role="listbox"
+              aria-label="Macro steps"
+            >
               {stepCount === 0 && (
                 <div className="macro-builder__steps-hint">
                   Build your macro by adding commands to this list
@@ -318,7 +398,8 @@ export function MacroBuilderDialog({
                     aria-selected={isSelected}
                     tabIndex={0}
                     data-step-index={index}
-                    className={`macro-builder__step${isSelected ? ' macro-builder__step--selected' : ''}`}
+                    className={`macro-builder__step${isSelected ? ' macro-builder__step--selected' : ''}${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
+                    onMouseDown={handleStepMouseDown(index)}
                     onClick={() => setSelectedStepIndex(index)}
                     onDoubleClick={() => setEditingStepIndex(index)}
                     onKeyDown={(e) => {

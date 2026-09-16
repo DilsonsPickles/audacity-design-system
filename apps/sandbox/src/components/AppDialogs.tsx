@@ -725,6 +725,7 @@ export function AppDialogs(props: AppDialogsProps) {
         onEditStep={macrosCtx.updateStepParameters}
         onDeleteStep={macrosCtx.deleteStep}
         onMoveStep={macrosCtx.moveStep}
+        onReorderStep={macrosCtx.reorderStep}
         getCommandParameters={getCommandParameters}
         availableCommands={availableCommands}
         os={os}

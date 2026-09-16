@@ -50,10 +50,11 @@ const downButton = (container: HTMLElement) =>
   container.querySelector<HTMLButtonElement>('button[aria-label="Move step down"]')!;
 
 describe('MacroBuilderDialog', () => {
-  it('renders the rail, command list and step list in one window', () => {
+  it('renders the command list, category dropdown and step list in one window', () => {
     const { container } = renderBuilder();
-    const railLabels = Array.from(container.querySelectorAll('.macro-builder__rail-label')).map((el) => el.textContent);
-    expect(railLabels).toEqual(['All commands', 'Selection', 'Clips', 'Effects']);
+    // The category filter is a dropdown atop the commands column
+    const dropdown = container.querySelector('.macro-builder__category-dropdown');
+    expect(dropdown?.textContent).toContain('All commands');
     expect(commandRows(container).map((el) => el.textContent)).toEqual([
       'Select all', 'Next clip', 'Split', 'Join selected clips', 'Fade In',
     ]);
@@ -67,11 +68,14 @@ describe('MacroBuilderDialog', () => {
     expect(searchInput(container)).toBeTruthy();
   });
 
-  it('narrows the command list from the category rail', () => {
-    const { container } = renderBuilder();
-    const clipsRail = Array.from(container.querySelectorAll<HTMLButtonElement>('.macro-builder__rail-item'))
-      .find((el) => el.textContent?.includes('Clips'))!;
-    fireEvent.click(clipsRail);
+  it('narrows the command list from the category dropdown', () => {
+    const { container, baseElement } = renderBuilder();
+    const trigger = container.querySelector<HTMLButtonElement>('.macro-builder__category-dropdown button')!;
+    fireEvent.click(trigger);
+    // The dropdown menu portals to document.body — scope to this render's baseElement
+    const clipsOption = Array.from(baseElement.querySelectorAll<HTMLElement>('.dropdown__option'))
+      .find((el) => el.textContent?.trim() === 'Clips')!;
+    fireEvent.click(clipsOption);
     expect(commandRows(container).map((el) => el.textContent)).toEqual(['Split', 'Join selected clips']);
   });
 
@@ -142,6 +146,47 @@ describe('MacroBuilderDialog', () => {
     const { container } = renderBuilder({ getCommandParameters });
     fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Edit step 2"]')!);
     expect(getCommandParameters).toHaveBeenCalledWith('Fade In');
+  });
+
+  it('reorders steps by dragging a row', () => {
+    const onReorderStep = vi.fn();
+    const { container } = renderBuilder({ onReorderStep });
+    // jsdom has no layout — give each row a real vertical extent (40px pitch)
+    const rows = stepRows(container);
+    rows.forEach((row, i) => {
+      row.getBoundingClientRect = () => ({
+        top: i * 40, bottom: i * 40 + 32, left: 0, right: 300,
+        width: 300, height: 32, x: 0, y: i * 40,
+        toJSON: () => ({}),
+      });
+    });
+
+    fireEvent.mouseDown(rows[0], { button: 0, clientY: 10 });
+    // Under the 3px threshold — still a click, no reorder
+    fireEvent.mouseMove(document, { clientY: 11 });
+    expect(onReorderStep).not.toHaveBeenCalled();
+    // Drag into the second row's bounds
+    fireEvent.mouseMove(document, { clientY: 50 });
+    expect(onReorderStep).toHaveBeenCalledWith('m1', 0, 1);
+    // Continue into the third row — the dragged index followed the swap
+    fireEvent.mouseMove(document, { clientY: 90 });
+    expect(onReorderStep).toHaveBeenCalledWith('m1', 1, 2);
+    fireEvent.mouseUp(document);
+
+    // After release, further movement does nothing
+    onReorderStep.mockClear();
+    fireEvent.mouseMove(document, { clientY: 10 });
+    expect(onReorderStep).not.toHaveBeenCalled();
+  });
+
+  it('a drag on the row pencil never starts a reorder', () => {
+    const onReorderStep = vi.fn();
+    const { container } = renderBuilder({ onReorderStep });
+    const pencil = container.querySelector('button[aria-label="Edit step 1"]')!;
+    fireEvent.mouseDown(pencil, { button: 0, clientY: 10 });
+    fireEvent.mouseMove(document, { clientY: 90 });
+    fireEvent.mouseUp(document);
+    expect(onReorderStep).not.toHaveBeenCalled();
   });
 
   it('shows the empty-state hint when the macro has no steps', () => {
