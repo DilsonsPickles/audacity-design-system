@@ -1,0 +1,578 @@
+/* MacroBuilderDialog — MuseScore "New score" layout for building a
+   macro. One window, three columns: searchable command list (with a
+   category dropdown on top) | transfer → | step list with ↑/↓ + trash
+   on the flanks. Shares the SelectCommandDialog's search language and
+   the MacroEditorDialog's header/footer language. */
+
+.macro-builder {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* A window, not a sheet: fixed height so the lists scroll inside it */
+  height: min(600px, calc(100vh - 32px));
+}
+
+.macro-builder__macro-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  margin: 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Square, filled icon buttons (kebab, transfer →, reorder ↑/↓) */
+.macro-builder__icon-button.button {
+  min-width: 0;
+  padding: 0;
+  width: 28px;
+}
+
+.macro-builder__icon-button .button__text {
+  line-height: 0;
+}
+
+/* ── Columns ─────────────────────────────────────────────────────── */
+
+.macro-builder__columns {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* One header band across both panes: this half holds the category
+   dropdown + search, the other half the macro name */
+.macro-builder__commands-header {
+  height: 44px;
+  padding: 8px;
+  background: var(--dialog-header-bg, #f8f8f9);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* Selection bar docked to the bottom of the command list — the file
+   picker's "N items selected" strip. Quiet text, no badge. */
+.macro-builder__selection-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  background: var(--dialog-header-bg, #f8f8f9);
+  border-top: 1px solid var(--stroke-primary, #d4d5d9);
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+  font-variant-numeric: tabular-nums;
+}
+
+.macro-builder__selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.macro-builder__selection-clear {
+  border: none;
+  background: transparent;
+  padding: 0 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  cursor: pointer;
+}
+
+.macro-builder__selection-clear:hover {
+  text-decoration: underline;
+}
+
+.macro-builder__selection-clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
+  border-radius: 2px;
+}
+
+/* The permanent Add is a compact real button, not a text link */
+.macro-builder__selection-add.button {
+  min-width: 56px;
+}
+
+/* Command pane */
+.macro-builder__commands-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Splitter owns the divider line the commands pane used to draw.
+   The 7px grab zone OVERLAPS both panes (negative margins) so its
+   visual footprint is only the 1px line — no gutter beside the well. */
+.macro-builder__splitter {
+  width: 7px;
+  margin: 0 -3px;
+  z-index: 2;
+  flex-shrink: 0;
+  cursor: col-resize;
+  position: relative;
+}
+
+.macro-builder__splitter::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__splitter:hover::before,
+.macro-builder__columns--resizing .macro-builder__splitter::before {
+  left: 2px;
+  width: 3px;
+  background: var(--accent-primary, #677ce4);
+}
+
+/* While resizing, suppress selection and keep the resize cursor */
+.macro-builder__columns--resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/* Category dropdown — a standalone filled control beside the search.
+   Fixed width so it never jumps as the label changes (sized to "All
+   commands"; longer names ellipsize and read in full in the menu). */
+.macro-builder__scope {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  width: 124px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--button-ghost-hover, rgba(194, 196, 207, 0.5));
+  border: none;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  cursor: pointer;
+}
+
+.macro-builder__scope:hover {
+  background: rgba(194, 196, 207, 0.7);
+}
+
+.macro-builder__scope:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__scope-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.macro-builder__scope .icon {
+  flex-shrink: 0;
+  color: var(--text-secondary, #575861);
+}
+
+/* Search — its own bordered field, filling the rest of the band */
+.macro-builder__search-container {
+  flex: 1;
+  min-width: 0;
+  background: var(--input-bg, white);
+  border: 1px solid var(--input-border, #d4d5d9);
+  border-radius: 3px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  position: relative;
+}
+
+.macro-builder__search-container:focus-within {
+  border-color: var(--input-border-active, #677ce4);
+}
+
+.macro-builder__search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+}
+
+.macro-builder__search-input::placeholder {
+  color: var(--text-secondary, #6b6d79);
+}
+
+.macro-builder__clear-button {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.macro-builder__clear-button:hover {
+  background: var(--button-ghost-hover, rgba(0, 0, 0, 0.05));
+}
+
+.macro-builder__command-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Spec rev 2026-09-16: the list darkened to bg-surface-menu so the
+     left pane grades against the lighter table rows */
+  background: var(--macro-builder-list-bg, #ebedf0);
+}
+
+.macro-builder__command-item {
+  min-height: 28px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.macro-builder__command-item:hover {
+  background: rgba(194, 196, 207, 0.3);
+}
+
+/* Selection: an accent TINT, not the full fill — a dozen selected
+   rows should read as highlights, not a wall of solid blue */
+.macro-builder__command-item--selected,
+.macro-builder__command-item--selected:hover {
+  background: var(--accent-primary-tint, rgba(103, 124, 228, 0.25));
+}
+
+.macro-builder__command-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__empty {
+  padding: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+}
+
+/* Steps pane */
+.macro-builder__steps-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The steps pane's header shares the band with the commands header */
+.macro-builder__steps-header {
+  height: 44px;
+  padding: 8px 8px 8px 12px;
+  background: var(--dialog-header-bg, #f8f8f9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* Table header row: Step | Command | Actions (grip column unlabeled) */
+.macro-builder__step-table-head {
+  display: flex;
+  align-items: stretch;
+  min-height: 32px;
+  flex-shrink: 0;
+  background: var(--bg-table-header, #ebebef);
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* Two-class selector so the head styling beats the shared cell rules */
+.macro-builder__step-table-head .macro-builder__step-head-cell {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary, #14151a);
+  cursor: default;
+}
+
+/* Header cells inherit each column's width/border from the shared cell
+   classes; center the labels vertically */
+.macro-builder__step-table-head .macro-builder__step-number,
+.macro-builder__step-table-head .macro-builder__step-actions {
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 16px 0 8px;
+}
+
+/* Head cells keep the pane-level stroke; row cells use the lighter one */
+.macro-builder__step-table-head .macro-builder__step-grip,
+.macro-builder__step-table-head .macro-builder__step-number,
+.macro-builder__step-table-head .macro-builder__step-text {
+  border-right-color: var(--stroke-primary, #d4d5d9);
+}
+
+/* The head's twin of the body's scrollbar gutter — keeps the Actions
+   column aligned and runs the gutter hairline up through the header */
+.macro-builder__step-head-gutter {
+  width: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
+  border-left: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__step-table-head .macro-builder__step-text {
+  justify-content: center;
+}
+
+/* Rows sit flush; the light well shows below the last row (a quieter
+   grey than the left list, so the panes grade left-dark to right-light) */
+.macro-builder__step-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--macro-builder-well-bg, #f4f4f6);
+}
+
+/* Centered empty-state hint, the mockup's "Choose your instruments by
+   adding them to this list" */
+.macro-builder__steps-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+}
+
+/* Table rows: white, hairline-separated, column grid via fixed cells */
+.macro-builder__step {
+  display: flex;
+  align-items: stretch;
+  /* 44px keeps every row the same height whether or not it carries a
+     parameters line — two lines + 6px of air each side */
+  min-height: 44px;
+  border-bottom: 1px solid var(--stroke-table-item, #e2e3e6);
+  /* Back on the spec token — the file resolved the pane-merging issue
+     upstream by darkening the command list to #ebedf0 instead */
+  background: var(--bg-table-item-idle, #f8f8f9);
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.macro-builder__step:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__step--dragging {
+  opacity: 0.5;
+}
+
+/* Grip column */
+.macro-builder__step-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--stroke-table-item, #e2e3e6);
+  color: var(--text-primary, #14151a);
+  cursor: grab;
+}
+
+.macro-builder__step--dragging .macro-builder__step-grip {
+  cursor: grabbing;
+}
+
+/* Step column: the processing position */
+.macro-builder__step-number {
+  display: flex;
+  align-items: center;
+  width: 64px;
+  padding: 0 24px 0 16px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--stroke-table-item, #e2e3e6);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary, #14151a);
+  font-variant-numeric: tabular-nums;
+}
+
+/* While a row drag is active, suppress text selection and keep the
+   grabbing cursor everywhere in the list */
+.macro-builder__step-list--dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.macro-builder__step-list--dragging .macro-builder__step {
+  cursor: grabbing;
+}
+
+/* Command column (parameters as the muted second line) */
+.macro-builder__step-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 16px 6px 8px;
+  border-right: 1px solid var(--stroke-table-item, #e2e3e6);
+}
+
+.macro-builder__step-command {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.macro-builder__step-parameters {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Actions column: pencil + kebab as flat ghost icons (spec) */
+.macro-builder__step-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 84px;
+  padding: 0 12px 0 8px;
+  flex-shrink: 0;
+}
+
+/* Persistent scrollbars — overflow-y: scroll plus custom styling
+   forces a classic always-visible gutter (macOS overlay bars would
+   otherwise hide until scrolled). 16px gutter per the spec, thumb in
+   the app's scrollbar language. */
+.macro-builder__command-list::-webkit-scrollbar,
+.macro-builder__step-list::-webkit-scrollbar {
+  width: 16px;
+}
+
+/* The command list's track continues its own body, divided by the
+   stroke line; the table's is the lighter gutter with its hairline */
+.macro-builder__command-list::-webkit-scrollbar-track {
+  background: var(--macro-builder-list-bg, #ebedf0);
+  border-left: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__step-list::-webkit-scrollbar-track {
+  background: var(--dialog-header-bg, #f8f8f9);
+  border-left: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* Thumb per spec: 6px, black at 40%, fully rounded */
+.macro-builder__command-list::-webkit-scrollbar-thumb,
+.macro-builder__step-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 999px;
+  border: 5px solid transparent;
+  background-clip: padding-box;
+}
+
+.macro-builder__command-list::-webkit-scrollbar-thumb:hover,
+.macro-builder__step-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.55);
+  background-clip: padding-box;
+}
+
+/* Footer */
+.macro-builder__footer {
+  height: 44px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__run-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+}

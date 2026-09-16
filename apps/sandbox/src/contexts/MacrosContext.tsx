@@ -21,6 +21,8 @@ export interface MacrosContextValue {
    *  step's serialized parameters string (defaults to empty). */
   addCommandToMacro: (macroId: string, command: Command, parameters?: string) => void;
   deleteStep: (macroId: string, stepIndex: number) => void;
+  /** Remove every step from a macro (the builder's "Remove all steps") */
+  clearSteps: (macroId: string) => void;
   moveStep: (macroId: string, stepIndex: number, direction: -1 | 1) => void;
   /** Move a step from one index to another (drag reorder) */
   reorderStep: (macroId: string, fromIndex: number, toIndex: number) => void;
@@ -95,6 +97,10 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const clearSteps = React.useCallback((macroId: string) => {
+    setMacros((prev) => prev.map((m) => (m.id === macroId ? { ...m, steps: [] } : m)));
+  }, []);
+
   const moveStep = React.useCallback((macroId: string, stepIndex: number, direction: -1 | 1) => {
     setMacros((prev) => prev.map((m) => {
       if (m.id !== macroId) return m;
@@ -137,6 +143,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     importMacro,
     addCommandToMacro,
     deleteStep,
+    clearSteps,
     moveStep,
     reorderStep,
     updateStepParameters,
@@ -148,7 +155,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     setEditingMacroId,
   }), [
     macros, addMacro, renameMacro, deleteMacro, importMacro,
-    addCommandToMacro, deleteStep, moveStep, reorderStep, updateStepParameters,
+    addCommandToMacro, deleteStep, clearSteps, moveStep, reorderStep, updateStepParameters,
     isMacrosPanelOpen, macrosPanelSide, editingMacroId,
   ]);
 

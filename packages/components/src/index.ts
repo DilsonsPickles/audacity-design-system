@@ -102,6 +102,7 @@ export * from './PluginManagerDialog';
 export * from './MacroManager';
 export * from './MacrosPanel';
 export * from './MacroEditorDialog';
+export * from './MacroBuilderDialog';
 export * from './RunMacroOnFilesDialog';
 export * from './CommandParametersDialog';
 export * from './SelectCommandDialog';
