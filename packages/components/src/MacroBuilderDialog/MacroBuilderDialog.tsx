@@ -191,6 +191,14 @@ export function MacroBuilderDialog({
     .map((id) => availableCommands.find((cmd) => cmd.id === id))
     .filter((cmd): cmd is Command => cmd !== undefined);
 
+  // The selection summary appears once it stops being self-evident:
+  // more than one command, or any selected command scrolled out of
+  // sight behind another scope/search.
+  const anySelectionHidden = selectedCommands.some(
+    (cmd) => !visible.some((visibleCmd) => visibleCmd.id === cmd.id),
+  );
+  const showSelectionSummary = selectedCommands.length > 1 || anySelectionHidden;
+
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -367,7 +375,21 @@ export function MacroBuilderDialog({
             className="macro-builder__commands-pane"
             style={commandsPaneWidth !== null ? { flex: `0 0 ${commandsPaneWidth}px` } : undefined}
           >
-            <div className="macro-builder__pane-title">Commands</div>
+            <div className="macro-builder__pane-header">
+              <div className="macro-builder__pane-title">Commands</div>
+              {showSelectionSummary && (
+                <div className="macro-builder__selection-summary">
+                  <span>{selectedCommands.length} selected</span>
+                  <button
+                    type="button"
+                    className="macro-builder__selection-clear"
+                    onClick={() => setSelectedCommandIds([])}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
             {/* Scoped search: the category is a segment INSIDE the search
                 field — one control reading "search within ⟨scope⟩" */}
             <div className="macro-builder__search-container">
@@ -460,11 +482,6 @@ export function MacroBuilderDialog({
             >
               <Icon name="chevron-right" />
             </Button>
-            {selectedCommands.length > 1 && (
-              <span className="macro-builder__transfer-count" aria-hidden="true">
-                {selectedCommands.length}
-              </span>
-            )}
           </div>
 
           {/* Steps pane — the mockup's "Your score" pane */}

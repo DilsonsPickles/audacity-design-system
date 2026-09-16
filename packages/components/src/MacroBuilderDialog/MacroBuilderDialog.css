@@ -55,6 +55,48 @@
   overflow: hidden;
 }
 
+/* Pane header row: title left, optional selection summary right */
+.macro-builder__pane-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-right: 12px;
+  flex-shrink: 0;
+}
+
+/* "N selected · Clear" — quiet text, no badge */
+.macro-builder__selection-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+  font-variant-numeric: tabular-nums;
+}
+
+.macro-builder__selection-clear {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--accent-primary, #677ce4);
+  cursor: pointer;
+}
+
+.macro-builder__selection-clear:hover {
+  text-decoration: underline;
+}
+
+.macro-builder__selection-clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
+  border-radius: 2px;
+}
+
 /* Small uppercase pane titles — the mockup's Family / Instruments /
    Your score labels */
 .macro-builder__pane-title {
@@ -280,25 +322,8 @@
   width: 48px;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-}
-
-/* How many commands the → will add (shown for 2+) */
-.macro-builder__transfer-count {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 14px;
-  min-width: 18px;
-  text-align: center;
-  padding: 0 4px;
-  border-radius: 7px;
-  background: var(--list-item-bg-active, rgba(103, 124, 228, 0.25));
-  color: var(--text-primary, #14151a);
-  font-variant-numeric: tabular-nums;
 }
 
 /* Steps pane */

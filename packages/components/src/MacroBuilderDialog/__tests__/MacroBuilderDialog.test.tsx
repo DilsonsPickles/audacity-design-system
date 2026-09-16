@@ -112,8 +112,8 @@ describe('MacroBuilderDialog', () => {
     fireEvent.click(clipsItem);
     fireEvent.click(commandRows(container)[0], { metaKey: true }); // Split
     fireEvent.click(commandRows(container)[1], { metaKey: true }); // Join selected clips
-    // The count badge shows how many the → will add
-    expect(container.querySelector('.macro-builder__transfer-count')?.textContent).toBe('3');
+    // The pane-header summary shows how many the → will add
+    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('3 selected');
     fireEvent.click(transferButton(container));
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
       'Fade In', 'Split', 'Join selected clips',
@@ -131,6 +131,22 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
       'Next clip', 'Split', 'Join selected clips',
     ]);
+  });
+
+  it('the selection summary appears when the selection is hidden or plural, and Clear empties it', () => {
+    const { container } = renderBuilder();
+    // A single visible selection is self-evident — no summary
+    fireEvent.click(commandRows(container)[4]); // Fade In (Effects)
+    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+    // Scope away from it — now it's hidden, so the summary surfaces
+    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__scope')!);
+    const clipsItem = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.trim() === 'Clips')!;
+    fireEvent.click(clipsItem);
+    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
+    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__selection-clear')!);
+    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+    expect(transferButton(container).disabled).toBe(true);
   });
 
   it('Cmd+click on a selected command removes it from the selection', () => {
