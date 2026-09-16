@@ -94,6 +94,10 @@ export function MacroBuilderDialog({
   // another, so one → can add commands spanning categories.
   const [selectedCommandIds, setSelectedCommandIds] = React.useState<string[]>([]);
   const anchorCommandIdRef = React.useRef<string | null>(null);
+  // What the selection was before the last plain click collapsed it —
+  // a double-click's first half collapses a multi-selection, and the
+  // dblclick handler needs to know what it landed on to add all of it
+  const preClickSelectionRef = React.useRef<string[]>([]);
   const [selectedStepIndex, setSelectedStepIndex] = React.useState<number | null>(null);
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
@@ -160,6 +164,9 @@ export function MacroBuilderDialog({
   // Click = replace selection; Cmd/Ctrl+click = toggle; Shift+click =
   // extend from the anchor through the visible list.
   const handleCommandClick = (command: Command, e: React.MouseEvent) => {
+    // The second click of a double-click changes nothing — the dblclick
+    // handler owns that gesture (and reads preClickSelectionRef)
+    if (e.detail >= 2) return;
     if (e.shiftKey && anchorCommandIdRef.current) {
       const anchorIdx = visible.findIndex((cmd) => cmd.id === anchorCommandIdRef.current);
       const clickIdx = visible.findIndex((cmd) => cmd.id === command.id);
@@ -177,7 +184,23 @@ export function MacroBuilderDialog({
       );
       return;
     }
+    preClickSelectionRef.current = selectedCommandIds;
     setSelectedCommandIds([command.id]);
+  };
+
+  // Double-click is the add shortcut. On a row that was part of a
+  // multi-selection (before the pair's first click collapsed it), it
+  // adds the WHOLE selection — the mouse twin of Enter.
+  const handleCommandDoubleClick = (command: Command) => {
+    const before = preClickSelectionRef.current;
+    if (before.length > 1 && before.includes(command.id)) {
+      const commands = before
+        .map((id) => availableCommands.find((cmd) => cmd.id === id))
+        .filter((cmd): cmd is Command => cmd !== undefined);
+      addCommands(commands);
+      return;
+    }
+    addCommands([command]);
   };
 
   // Add in selection (click) order; the last new step ends up selected
@@ -186,6 +209,7 @@ export function MacroBuilderDialog({
     for (const command of commands) onAddCommand?.(macro.id, command);
     setSelectedStepIndex(stepCount + commands.length - 1);
     setSelectedCommandIds([]);
+    preClickSelectionRef.current = [];
   };
 
   const selectedCommands = selectedCommandIds
@@ -449,7 +473,7 @@ export function MacroBuilderDialog({
                     data-command-id={command.id}
                     className={`macro-builder__command-item${isSelected ? ' macro-builder__command-item--selected' : ''}`}
                     onClick={(e) => handleCommandClick(command, e)}
-                    onDoubleClick={() => addCommands([command])}
+                    onDoubleClick={() => handleCommandDoubleClick(command)}
                     onKeyDown={(e) => {
                       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                         e.preventDefault();
@@ -537,7 +561,7 @@ export function MacroBuilderDialog({
             >
               {stepCount === 0 && (
                 <div className="macro-builder__steps-hint">
-                  Build your macro by adding commands to this list
+                  Double-click a command to add it to your macro
                 </div>
               )}
               {macro.steps.map((step, index) => {

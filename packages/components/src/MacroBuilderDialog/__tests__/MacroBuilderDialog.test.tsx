@@ -92,6 +92,18 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
   });
 
+  it('double-clicking a member of a multi-selection adds the whole selection', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[4]); // Fade In
+    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Select all
+    // The double-click's first half is a plain click that collapses the
+    // selection — the dblclick must still add what it landed on
+    fireEvent.click(commandRows(container)[0]);
+    fireEvent.doubleClick(commandRows(container)[0]);
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Fade In', 'Select all']);
+  });
+
   it('Cmd+click builds a multi-selection spanning categories, added in click order', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
@@ -284,7 +296,7 @@ describe('MacroBuilderDialog', () => {
   it('shows the empty-state hint when the macro has no steps', () => {
     const { container } = renderBuilder({ macro: { id: 'm2', name: 'Empty', steps: [] } });
     expect(container.querySelector('.macro-builder__steps-hint')?.textContent).toBe(
-      'Build your macro by adding commands to this list',
+      'Double-click a command to add it to your macro',
     );
   });
 });
