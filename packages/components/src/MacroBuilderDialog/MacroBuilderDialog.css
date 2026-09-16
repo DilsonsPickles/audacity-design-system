@@ -369,6 +369,15 @@
   border-right-color: var(--stroke-primary, #d4d5d9);
 }
 
+/* The head's twin of the body's scrollbar gutter — keeps the Actions
+   column aligned and runs the gutter hairline up through the header */
+.macro-builder__step-head-gutter {
+  width: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
+  border-left: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
 .macro-builder__step-table-head .macro-builder__step-text {
   justify-content: center;
 }
@@ -408,7 +417,11 @@
      parameters line — two lines + 6px of air each side */
   min-height: 44px;
   border-bottom: 1px solid var(--stroke-table-item, #e2e3e6);
-  background: var(--bg-table-item-idle, #f8f8f9);
+  /* Deliberately WHITE, not the spec's bg-table-item-idle (#f8f8f9):
+     that token matches the left pane's surface, so a full table erased
+     the pane boundary. White keeps a distinct level at every boundary
+     (left pane f8f8f9 → rows fff → empty well ebedf0). */
+  background: var(--bg-table-item-idle, #ffffff);
   cursor: default;
   flex-shrink: 0;
 }

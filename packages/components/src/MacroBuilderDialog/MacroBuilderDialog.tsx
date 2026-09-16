@@ -551,6 +551,10 @@ export function MacroBuilderDialog({
               <span className="macro-builder__step-number macro-builder__step-head-cell">Step</span>
               <span className="macro-builder__step-text macro-builder__step-head-cell">Command</span>
               <span className="macro-builder__step-actions macro-builder__step-head-cell">Actions</span>
+              {/* Offsets the head by the body's 16px scrollbar gutter so
+                  the Actions column lines up with the rows (the spec
+                  draws this same gutter segment in the header) */}
+              <span className="macro-builder__step-head-gutter" aria-hidden="true" />
             </div>
             <div
               ref={stepListRef}
@@ -584,7 +588,10 @@ export function MacroBuilderDialog({
                     <div className="macro-builder__step-text">
                       <span className="macro-builder__step-command">{step.command}</span>
                       {step.parameters && (
-                        <span className="macro-builder__step-parameters" title={step.parameters}>
+                        <span
+                          className="macro-builder__step-parameters"
+                          title={prettyParameters(step.parameters)}
+                        >
                           {prettyParameters(step.parameters)}
                         </span>
                       )}
