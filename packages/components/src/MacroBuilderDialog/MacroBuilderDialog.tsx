@@ -398,24 +398,6 @@ export function MacroBuilderDialog({
         customLayout
         className="macro-builder"
       >
-        {/* Full-width band: the macro's name + macro menu, above both panes */}
-        <div className="macro-builder__header">
-          <h2 className="macro-builder__macro-name">{macro.name}</h2>
-          <Button
-            variant="secondary"
-            className="macro-builder__icon-button"
-            ariaLabel="Macro options"
-            onClick={(e) => {
-              if (!e) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              setMacroMenuPosition({ x: rect.right, y: rect.bottom });
-              setMacroMenuOpen(true);
-            }}
-          >
-            <Icon name="menu" />
-          </Button>
-        </div>
-
         <div ref={columnsRef} className={`macro-builder__columns${splitterActive ? ' macro-builder__columns--resizing' : ''}`}>
           {/* Command pane — the mockup's "Instruments" pane with the
               category scope folded into the search field */}
@@ -549,8 +531,31 @@ export function MacroBuilderDialog({
             onDoubleClick={() => setCommandsPaneWidth(null)}
           />
 
-          {/* Steps pane — the cards start right under the name band */}
+          {/* Steps pane — its header shares the band: macro name + menu.
+              Below it, the macro as a TABLE: Step | Command | Actions. */}
           <div className="macro-builder__steps-pane">
+            <div className="macro-builder__steps-header">
+              <h2 className="macro-builder__macro-name">{macro.name}</h2>
+              <Button
+                variant="secondary"
+                className="macro-builder__icon-button"
+                ariaLabel="Macro options"
+                onClick={(e) => {
+                  if (!e) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setMacroMenuPosition({ x: rect.right, y: rect.bottom });
+                  setMacroMenuOpen(true);
+                }}
+              >
+                <Icon name="menu" />
+              </Button>
+            </div>
+            <div className="macro-builder__step-table-head">
+              <span className="macro-builder__step-grip macro-builder__step-head-cell" />
+              <span className="macro-builder__step-number macro-builder__step-head-cell">Step</span>
+              <span className="macro-builder__step-text macro-builder__step-head-cell">Command</span>
+              <span className="macro-builder__step-actions macro-builder__step-head-cell">Actions</span>
+            </div>
             <div
               ref={stepListRef}
               className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
@@ -582,8 +587,6 @@ export function MacroBuilderDialog({
                     <span className="macro-builder__step-grip" aria-hidden="true">
                       <Icon name="gripper" size={16} />
                     </span>
-                    {/* Processing order — position IS the order, and the
-                        ordinal says so (renumbers live while dragging) */}
                     <span className="macro-builder__step-number">{index + 1}</span>
                     <div className="macro-builder__step-text">
                       <span className="macro-builder__step-command">{step.command}</span>

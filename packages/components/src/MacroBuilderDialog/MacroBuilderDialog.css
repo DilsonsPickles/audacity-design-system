@@ -12,18 +12,6 @@
   height: min(600px, calc(100vh - 32px));
 }
 
-/* Full-width name band above both panes */
-.macro-builder__header {
-  height: 44px;
-  padding: 8px 8px 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
-}
-
 .macro-builder__macro-name {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
@@ -330,16 +318,58 @@
   min-height: 0;
 }
 
-/* Grey well behind the step cards */
+/* The steps pane's header shares the band with the commands header */
+.macro-builder__steps-header {
+  height: 48px;
+  padding: 10px 8px 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* Table header row: Step | Command | Actions (grip column unlabeled) */
+.macro-builder__step-table-head {
+  display: flex;
+  align-items: stretch;
+  min-height: 40px;
+  flex-shrink: 0;
+  background: var(--dialog-header-bg, #f8f8f9);
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* Two-class selector so the head styling beats the shared cell rules */
+.macro-builder__step-table-head .macro-builder__step-head-cell {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #14151a);
+  cursor: default;
+}
+
+/* Header cells inherit each column's width/border from the shared cell
+   classes; center the labels vertically */
+.macro-builder__step-table-head .macro-builder__step-number,
+.macro-builder__step-table-head .macro-builder__step-actions {
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.macro-builder__step-table-head .macro-builder__step-text {
+  justify-content: center;
+}
+
+/* Rows sit flush; the grey shows below the last row */
 .macro-builder__step-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   position: relative;
   background: var(--macro-editor-list-bg, #ebedf0);
 }
@@ -359,39 +389,36 @@
   color: var(--text-secondary, #575861);
 }
 
-/* Step cards on the well — the old editor's card language: grip
-   column, text, pencil + kebab */
+/* Table rows: white, hairline-separated, column grid via fixed cells */
 .macro-builder__step {
   display: flex;
   align-items: stretch;
-  min-height: 46px;
-  border: 1px solid var(--stroke-primary, #d4d5d9);
-  border-radius: 4px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
   background: var(--macro-editor-step-bg, #ffffff);
   cursor: default;
   flex-shrink: 0;
 }
 
 .macro-builder__step--selected {
-  border-color: var(--accent-primary, #677ce4);
+  background: var(--macro-builder-selected-bg, #e3e4e8);
 }
 
 .macro-builder__step:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
 }
 
 .macro-builder__step--dragging {
   opacity: 0.5;
-  border-color: var(--accent-primary, #677ce4);
 }
 
-/* Grip column: a divided strip on the card's left edge */
+/* Grip column */
 .macro-builder__step-grip {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: 28px;
   flex-shrink: 0;
   border-right: 1px solid var(--stroke-primary, #d4d5d9);
   color: var(--text-secondary, #575861);
@@ -402,18 +429,18 @@
   cursor: grabbing;
 }
 
-/* Ordinal slot: the card's processing position, muted and fixed-width
-   so command names stay aligned from 1 through 99 */
+/* Step column: the processing position */
 .macro-builder__step-number {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-width: 24px;
+  width: 56px;
+  padding: 0 12px;
   flex-shrink: 0;
+  border-right: 1px solid var(--stroke-primary, #d4d5d9);
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
-  color: var(--text-secondary, #575861);
+  color: var(--text-primary, #14151a);
   font-variant-numeric: tabular-nums;
 }
 
@@ -428,19 +455,21 @@
   cursor: grabbing;
 }
 
+/* Command column (parameters as the muted second line) */
 .macro-builder__step-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 8px;
+  padding: 4px 12px;
+  border-right: 1px solid var(--stroke-primary, #d4d5d9);
 }
 
 .macro-builder__step-command {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 16px;
   color: var(--text-primary, #14151a);
   white-space: nowrap;
@@ -459,12 +488,13 @@
   text-overflow: ellipsis;
 }
 
-/* Pencil + kebab, always visible on the card (mockup's language) */
+/* Actions column: pencil + kebab, always visible */
 .macro-builder__step-actions {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding-right: 8px;
+  width: 92px;
+  padding: 0 12px;
   flex-shrink: 0;
 }
 
