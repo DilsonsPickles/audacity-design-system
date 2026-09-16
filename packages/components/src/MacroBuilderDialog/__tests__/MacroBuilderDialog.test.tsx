@@ -315,6 +315,16 @@ describe('MacroBuilderDialog', () => {
     expect(onReorderStep).not.toHaveBeenCalled();
   });
 
+  it('the macro menu\'s "Remove all steps" clears the macro', () => {
+    const onClearSteps = vi.fn();
+    const { container } = renderBuilder({ onClearSteps });
+    fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Macro options"]')!);
+    const item = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.trim() === 'Remove all steps')!;
+    fireEvent.click(item);
+    expect(onClearSteps).toHaveBeenCalledWith('m1');
+  });
+
   it('shows the empty-state hint when the macro has no steps', () => {
     const { container } = renderBuilder({ macro: { id: 'm2', name: 'Empty', steps: [] } });
     expect(container.querySelector('.macro-builder__steps-hint')?.textContent).toBe(

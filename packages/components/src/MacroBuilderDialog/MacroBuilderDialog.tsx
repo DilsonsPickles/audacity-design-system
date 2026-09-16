@@ -41,8 +41,10 @@ export interface MacroBuilderDialogProps {
   onAddCommand?: (macroId: string, command: Command, parameters?: string) => void;
   /** Called when a step's parameters are edited via the row pencil */
   onEditStep?: (macroId: string, stepIndex: number, parameters: string) => void;
-  /** Called when the steps pane's trash button removes the selected step */
+  /** Called when a row's ⋯ menu removes its step */
   onDeleteStep?: (macroId: string, stepIndex: number) => void;
+  /** Called when "Remove all steps" is picked from the macro menu */
+  onClearSteps?: (macroId: string) => void;
   /** Called when the selected step is moved up (-1) or down (+1) */
   onMoveStep?: (macroId: string, stepIndex: number, direction: -1 | 1) => void;
   /** Called while dragging a step row over another row to reorder steps */
@@ -88,6 +90,7 @@ export function MacroBuilderDialog({
   onAddCommand,
   onEditStep,
   onDeleteStep,
+  onClearSteps,
   onMoveStep,
   onReorderStep,
   availableCommands = [],
@@ -723,6 +726,14 @@ export function MacroBuilderDialog({
           }}
         />
         <ContextMenuItem isDivider label="" />
+        <ContextMenuItem
+          label="Remove all steps"
+          disabled={stepCount === 0}
+          onClick={() => {
+            setMacroMenuOpen(false);
+            onClearSteps?.(macro.id);
+          }}
+        />
         <ContextMenuItem
           label="Delete macro"
           onClick={() => {
