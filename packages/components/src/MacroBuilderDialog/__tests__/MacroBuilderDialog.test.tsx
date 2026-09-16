@@ -101,6 +101,73 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
   });
 
+  it('Cmd+click builds a multi-selection spanning categories, added in click order', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    // Pick one command, then narrow to another category and pick two more
+    fireEvent.click(commandRows(container)[4]); // Fade In (Effects)
+    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__scope')!);
+    const clipsItem = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.trim() === 'Clips')!;
+    fireEvent.click(clipsItem);
+    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Split
+    fireEvent.click(commandRows(container)[1], { metaKey: true }); // Join selected clips
+    // The count badge shows how many the → will add
+    expect(container.querySelector('.macro-builder__transfer-count')?.textContent).toBe('3');
+    fireEvent.click(transferButton(container));
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
+      'Fade In', 'Split', 'Join selected clips',
+    ]);
+    // Selection clears after the add
+    expect(transferButton(container).disabled).toBe(true);
+  });
+
+  it('Shift+click extends the selection through the visible range', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[1]); // Next clip
+    fireEvent.click(commandRows(container)[3], { shiftKey: true }); // through Join
+    fireEvent.click(transferButton(container));
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
+      'Next clip', 'Split', 'Join selected clips',
+    ]);
+  });
+
+  it('Cmd+click on a selected command removes it from the selection', () => {
+    const { container } = renderBuilder();
+    fireEvent.click(commandRows(container)[0]);
+    fireEvent.click(commandRows(container)[1], { metaKey: true });
+    fireEvent.click(commandRows(container)[0], { metaKey: true }); // deselect first
+    const selected = Array.from(container.querySelectorAll('.macro-builder__command-item--selected'))
+      .map((el) => el.textContent);
+    expect(selected).toEqual(['Next clip']);
+  });
+
+  it('the splitter drag resizes the commands pane; double-click resets it', () => {
+    const { container } = renderBuilder();
+    const columns = container.querySelector<HTMLElement>('.macro-builder__columns')!;
+    const pane = container.querySelector<HTMLElement>('.macro-builder__commands-pane')!;
+    // jsdom has no layout — give the panes real horizontal extents
+    columns.getBoundingClientRect = () => ({
+      top: 0, bottom: 500, left: 0, right: 700, width: 700, height: 500, x: 0, y: 0, toJSON: () => ({}),
+    });
+    pane.getBoundingClientRect = () => ({
+      top: 0, bottom: 500, left: 0, right: 300, width: 300, height: 500, x: 0, y: 0, toJSON: () => ({}),
+    });
+    const splitter = container.querySelector<HTMLElement>('.macro-builder__splitter')!;
+    fireEvent.mouseDown(splitter, { button: 0, clientX: 300 });
+    fireEvent.mouseMove(document, { clientX: 380 });
+    fireEvent.mouseUp(document);
+    expect(pane.style.flex).toBe('0 0 380px');
+    // Clamped at the minimum on the way down
+    fireEvent.mouseDown(splitter, { button: 0, clientX: 300 });
+    fireEvent.mouseMove(document, { clientX: 0 });
+    fireEvent.mouseUp(document);
+    expect(pane.style.flex).toBe('0 0 180px');
+    fireEvent.doubleClick(splitter);
+    expect(pane.style.flex).toBe('');
+  });
+
   it('Enter in the search field adds the first visible match', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });

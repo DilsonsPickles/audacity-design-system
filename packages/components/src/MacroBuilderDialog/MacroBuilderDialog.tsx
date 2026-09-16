@@ -89,7 +89,11 @@ export function MacroBuilderDialog({
 }: MacroBuilderDialogProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<string>(ALL_CATEGORIES);
-  const [selectedCommandId, setSelectedCommandId] = React.useState<string | null>(null);
+  // Multi-select, in click order. DELIBERATELY not keyed to the current
+  // scope — a selection built in one category survives switching to
+  // another, so one → can add commands spanning categories.
+  const [selectedCommandIds, setSelectedCommandIds] = React.useState<string[]>([]);
+  const anchorCommandIdRef = React.useRef<string | null>(null);
   const [selectedStepIndex, setSelectedStepIndex] = React.useState<number | null>(null);
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
@@ -104,12 +108,18 @@ export function MacroBuilderDialog({
   // Per-row ⋯ menu: which step's menu is open, and where
   const [stepMenuIndex, setStepMenuIndex] = React.useState<number | null>(null);
   const [stepMenuPosition, setStepMenuPosition] = React.useState({ x: 0, y: 0 });
+  // Splitter: explicit commands-pane width once the user drags (null =
+  // the default even split). Session-scoped, survives macro switches.
+  const [commandsPaneWidth, setCommandsPaneWidth] = React.useState<number | null>(null);
+  const [splitterActive, setSplitterActive] = React.useState(false);
+  const columnsRef = React.useRef<HTMLDivElement>(null);
+  const commandsPaneRef = React.useRef<HTMLDivElement>(null);
 
   // Reset transient state whenever a different macro opens
   React.useEffect(() => {
     setSearchQuery('');
     setSelectedCategory(ALL_CATEGORIES);
-    setSelectedCommandId(null);
+    setSelectedCommandIds([]);
     setSelectedStepIndex(null);
     setEditingStepIndex(null);
     setDraggedIndex(null);
@@ -138,7 +148,6 @@ export function MacroBuilderDialog({
   if (!macro) return null;
 
   const stepCount = macro.steps.length;
-  const selectedCommand = visible.find((cmd) => cmd.id === selectedCommandId) ?? null;
 
   const pickCategory = (category: string) => {
     setSelectedCategory(category);
@@ -147,18 +156,74 @@ export function MacroBuilderDialog({
     searchInputRef.current?.focus();
   };
 
-  const addCommand = (command: Command) => {
-    onAddCommand?.(macro.id, command);
-    // The new step lands at the end — select it so ↑/trash act on it
-    setSelectedStepIndex(stepCount);
+  // Click = replace selection; Cmd/Ctrl+click = toggle; Shift+click =
+  // extend from the anchor through the visible list.
+  const handleCommandClick = (command: Command, e: React.MouseEvent) => {
+    if (e.shiftKey && anchorCommandIdRef.current) {
+      const anchorIdx = visible.findIndex((cmd) => cmd.id === anchorCommandIdRef.current);
+      const clickIdx = visible.findIndex((cmd) => cmd.id === command.id);
+      if (anchorIdx !== -1 && clickIdx !== -1) {
+        const [from, to] = anchorIdx < clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
+        const range = visible.slice(from, to + 1).map((cmd) => cmd.id);
+        setSelectedCommandIds((prev) => [...prev, ...range.filter((id) => !prev.includes(id))]);
+        return;
+      }
+    }
+    anchorCommandIdRef.current = command.id;
+    if (e.metaKey || e.ctrlKey) {
+      setSelectedCommandIds((prev) =>
+        prev.includes(command.id) ? prev.filter((id) => id !== command.id) : [...prev, command.id],
+      );
+      return;
+    }
+    setSelectedCommandIds([command.id]);
   };
 
+  // Add in selection (click) order; the last new step ends up selected
+  const addCommands = (commands: Command[]) => {
+    if (commands.length === 0) return;
+    for (const command of commands) onAddCommand?.(macro.id, command);
+    setSelectedStepIndex(stepCount + commands.length - 1);
+    setSelectedCommandIds([]);
+  };
+
+  const selectedCommands = selectedCommandIds
+    .map((id) => availableCommands.find((cmd) => cmd.id === id))
+    .filter((cmd): cmd is Command => cmd !== undefined);
+
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && visible.length > 0) {
-      e.preventDefault();
-      // A highlighted command wins; otherwise the first visible match
-      addCommand(selectedCommand ?? visible[0]);
-    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    // A built-up selection wins; otherwise the first visible match
+    if (selectedCommands.length > 0) addCommands(selectedCommands);
+    else if (visible.length > 0) addCommands([visible[0]]);
+  };
+
+  // Splitter between the commands pane and the rest: drag sets an
+  // explicit width (clamped so neither pane collapses); double-click
+  // resets to the even split. Self-cleaning document listeners.
+  const handleSplitterMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = commandsPaneRef.current?.getBoundingClientRect().width ?? 0;
+    const columnsWidth = columnsRef.current?.getBoundingClientRect().width ?? 0;
+    const MIN_PANE = 180;
+    setSplitterActive(true);
+
+    const onMouseMove = (ev: MouseEvent) => {
+      let width = startWidth + (ev.clientX - startX);
+      width = Math.max(MIN_PANE, width);
+      if (columnsWidth > 0) width = Math.min(width, columnsWidth - MIN_PANE - 60);
+      setCommandsPaneWidth(width);
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      setSplitterActive(false);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 
   const moveStepAt = (index: number, direction: -1 | 1) => {
@@ -294,10 +359,14 @@ export function MacroBuilderDialog({
           </Button>
         </div>
 
-        <div className="macro-builder__columns">
+        <div ref={columnsRef} className={`macro-builder__columns${splitterActive ? ' macro-builder__columns--resizing' : ''}`}>
           {/* Command pane — the mockup's "Instruments" pane with the
-              category filter folded into a dropdown, search always on */}
-          <div className="macro-builder__commands-pane">
+              category scope folded into the search field */}
+          <div
+            ref={commandsPaneRef}
+            className="macro-builder__commands-pane"
+            style={commandsPaneWidth !== null ? { flex: `0 0 ${commandsPaneWidth}px` } : undefined}
+          >
             <div className="macro-builder__pane-title">Commands</div>
             {/* Scoped search: the category is a segment INSIDE the search
                 field — one control reading "search within ⟨scope⟩" */}
@@ -350,7 +419,7 @@ export function MacroBuilderDialog({
                 </div>
               )}
               {visible.map((command) => {
-                const isSelected = command.id === selectedCommandId;
+                const isSelected = selectedCommandIds.includes(command.id);
                 return (
                   <button
                     key={command.id}
@@ -359,8 +428,8 @@ export function MacroBuilderDialog({
                     aria-selected={isSelected}
                     data-command-id={command.id}
                     className={`macro-builder__command-item${isSelected ? ' macro-builder__command-item--selected' : ''}`}
-                    onClick={() => setSelectedCommandId(command.id)}
-                    onDoubleClick={() => addCommand(command)}
+                    onClick={(e) => handleCommandClick(command, e)}
+                    onDoubleClick={() => addCommands([command])}
                   >
                     {command.name}
                   </button>
@@ -369,19 +438,33 @@ export function MacroBuilderDialog({
             </div>
           </div>
 
-          {/* Transfer column — the mockup's → button */}
+          {/* Splitter — drag to resize the commands pane; double-click
+              resets the even split */}
+          <div
+            className="macro-builder__splitter"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize command list"
+            onMouseDown={handleSplitterMouseDown}
+            onDoubleClick={() => setCommandsPaneWidth(null)}
+          />
+
+          {/* Transfer column — the mockup's → button, batch-aware */}
           <div className="macro-builder__transfer">
             <Button
               variant="secondary"
               className="macro-builder__icon-button"
               ariaLabel="Add command to macro"
-              disabled={!selectedCommand}
-              onClick={() => {
-                if (selectedCommand) addCommand(selectedCommand);
-              }}
+              disabled={selectedCommands.length === 0}
+              onClick={() => addCommands(selectedCommands)}
             >
               <Icon name="chevron-right" />
             </Button>
+            {selectedCommands.length > 1 && (
+              <span className="macro-builder__transfer-count" aria-hidden="true">
+                {selectedCommands.length}
+              </span>
+            )}
           </div>
 
           {/* Steps pane — the mockup's "Your score" pane */}

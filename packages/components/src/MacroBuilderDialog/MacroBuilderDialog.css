@@ -76,7 +76,37 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-right: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+/* Splitter owns the divider line the commands pane used to draw */
+.macro-builder__splitter {
+  width: 7px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  position: relative;
+}
+
+.macro-builder__splitter::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__splitter:hover::before,
+.macro-builder__columns--resizing .macro-builder__splitter::before {
+  left: 2px;
+  width: 3px;
+  background: var(--accent-primary, #677ce4);
+}
+
+/* While resizing, suppress selection and keep the resize cursor */
+.macro-builder__columns--resizing {
+  user-select: none;
+  cursor: col-resize;
 }
 
 /* Scoped search: one bordered control — category segment | search.
@@ -250,8 +280,25 @@
   width: 48px;
   flex-shrink: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
+}
+
+/* How many commands the → will add (shown for 2+) */
+.macro-builder__transfer-count {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  min-width: 18px;
+  text-align: center;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--list-item-bg-active, rgba(103, 124, 228, 0.25));
+  color: var(--text-primary, #14151a);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Steps pane */
