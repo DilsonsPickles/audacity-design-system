@@ -195,15 +195,16 @@ export function MacrosPanel({
           >
             New macro
           </Button>
-          <Button
-            variant="secondary"
-            size="small"
-            className="macros-panel__icon-button"
+          {/* Solid kebab — paired with the primary New macro button, per
+              the Figma kebab rule (ghost when standing alone in a row) */}
+          <GhostButton
+            icon="menu"
+            variant="solid"
+            size="compact"
             ariaLabel="Macro manager options"
+            active={panelMenuOpen}
             onClick={handlePanelMenuClick}
-          >
-            <Icon name="menu" />
-          </Button>
+          />
         </div>
       </div>
 

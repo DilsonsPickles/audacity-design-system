@@ -25,17 +25,6 @@
   text-overflow: ellipsis;
 }
 
-/* Square, filled icon buttons (kebab, transfer →, reorder ↑/↓) */
-.macro-builder__icon-button.button {
-  min-width: 0;
-  padding: 0;
-  width: 28px;
-}
-
-.macro-builder__icon-button .button__text {
-  line-height: 0;
-}
-
 /* ── Columns ─────────────────────────────────────────────────────── */
 
 .macro-builder__columns {

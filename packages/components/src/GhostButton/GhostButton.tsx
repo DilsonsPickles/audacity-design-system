@@ -12,10 +12,21 @@ export interface GhostButtonProps {
    * Button size
    * - tiny: 16px × 16px, 14px icon (table headers)
    * - small: 20px × 20px, 16px icon (default, icon-only)
+   * - compact: 24px × 24px, 16px icon (pairs with `Button size="small"` —
+   *   e.g. the solid kebab beside a 24px primary button)
    * - medium: 28px × 28px, 16px icon (toolbar-aligned icon-only buttons)
    * - large: 48px × 48px, 32px icon (carousel buttons)
    */
-  size?: 'tiny' | 'small' | 'medium' | 'large';
+  size?: 'tiny' | 'small' | 'compact' | 'medium' | 'large';
+  /**
+   * Visual variant (Figma "27 - Macro manager" 6844:63068 kebab rule):
+   * - ghost (default): transparent at rest, background on hover — for an
+   *   icon button standing alone in a row/table
+   * - solid: filled with the secondary-button surface at rest — for an
+   *   icon button PAIRED with a solid/primary action button, so the pair
+   *   reads as one control group
+   */
+  variant?: 'ghost' | 'solid';
   /**
    * Optional label text to display next to the icon
    */
@@ -53,6 +64,7 @@ export interface GhostButtonProps {
 export const GhostButton: React.FC<GhostButtonProps> = ({
   icon = 'menu',
   size = 'small',
+  variant = 'ghost',
   label,
   onClick,
   disabled = false,
@@ -71,11 +83,17 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
 
   const iconSize = size === 'large' ? 32 : size === 'tiny' ? 14 : 16;
 
+  // The solid variant swaps in the secondary-button surface tokens — the
+  // CSS reads the same custom properties either way
+  const bg = variant === 'solid'
+    ? theme.background.control.button.secondary
+    : theme.background.control.button.ghost;
+
   const style = {
-    '--ghost-bg-idle': theme.background.control.button.ghost.idle,
-    '--ghost-bg-hover': theme.background.control.button.ghost.hover,
-    '--ghost-bg-active': theme.background.control.button.ghost.active,
-    '--ghost-bg-disabled': theme.background.control.button.ghost.disabled,
+    '--ghost-bg-idle': bg.idle,
+    '--ghost-bg-hover': bg.hover,
+    '--ghost-bg-active': bg.active,
+    '--ghost-bg-disabled': bg.disabled,
     '--ghost-icon-color': theme.foreground.icon.primary,
     '--ghost-label-color': theme.foreground.text.primary,
   } as React.CSSProperties;
@@ -83,7 +101,7 @@ export const GhostButton: React.FC<GhostButtonProps> = ({
   return (
     <button
       type="button"
-      className={`ghost-button ghost-button--${size} ${label ? 'ghost-button--with-label' : ''} ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
+      className={`ghost-button ghost-button--${size} ghost-button--variant-${variant} ${label ? 'ghost-button--with-label' : ''} ${disabled ? 'ghost-button--disabled' : ''} ${active ? 'ghost-button--active' : ''} ${className}`}
       onClick={handleClick}
       disabled={disabled}
       aria-label={ariaLabel}

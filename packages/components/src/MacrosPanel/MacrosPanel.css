@@ -37,22 +37,11 @@
   flex-shrink: 0;
 }
 
-/* Button's 80px min-width is for dialog footers; row and header buttons
-   are content-sized. */
-.macros-panel__row-actions .button,
-.macros-panel__icon-button.button {
+/* Button's 80px min-width is for dialog footers; row buttons are
+   content-sized. (The header kebab is now GhostButton variant="solid"
+   size="compact" — no width hack needed.) */
+.macros-panel__row-actions .button {
   min-width: 0;
-}
-
-/* The panel menu is a square, filled icon button sharing New macro's
-   height (24px) — it belongs to the header's control group. */
-.macros-panel__icon-button.button {
-  padding: 0;
-  width: 24px;
-}
-
-.macros-panel__icon-button .button__text {
-  line-height: 0;
 }
 
 /* List well uses the Preferences modal's secondary grey (#ebedf0) so the

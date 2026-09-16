@@ -28,6 +28,14 @@
   border-radius: 2px;
 }
 
+/* Compact size - 24px × 24px, pairs with Button size="small" (24px) so a
+   kebab beside a small action button matches its height */
+.ghost-button--compact {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+}
+
 /* Medium size - 28px × 28px, matches the toolbar button footprint so
    icon-only ghost buttons living in a toolbar (undo / redo, etc.) line up
    with the rest of the controls. The background only paints on hover, so
@@ -43,6 +51,13 @@
   width: 48px;
   height: 48px;
   border-radius: 4px;
+}
+
+/* Solid variant: filled with the secondary-button surface at rest (the
+   background custom properties are already swapped in by the component);
+   the Figma kebab spec draws these at 3px radius */
+.ghost-button--variant-solid {
+  border-radius: 3px;
 }
 
 /* Ghost button with label (for project toolbar) */
