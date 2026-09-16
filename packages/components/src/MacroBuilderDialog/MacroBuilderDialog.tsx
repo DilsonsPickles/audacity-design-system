@@ -122,6 +122,10 @@ export function MacroBuilderDialog({
   const [stepMenuIndex, setStepMenuIndex] = React.useState<number | null>(null);
   const [stepMenuPosition, setStepMenuPosition] = React.useState({ x: 0, y: 0 });
   const commandListRef = React.useRef<HTMLDivElement>(null);
+  // Whether the step table actually overflows — the scrollbar gutter
+  // (and the header's matching segment) only exist when there is
+  // something to scroll
+  const [stepsOverflowing, setStepsOverflowing] = React.useState(false);
   // Splitter: explicit commands-pane width once the user drags (null =
   // the spec's 322px default). Session-scoped, survives macro switches.
   const [commandsPaneWidth, setCommandsPaneWidth] = React.useState<number | null>(null);
@@ -138,6 +142,17 @@ export function MacroBuilderDialog({
     setDraggedIndex(null);
     setStepMenuIndex(null);
   }, [macro?.id, isOpen]);
+
+  // Track step-table overflow (steps added/removed, window resized)
+  React.useEffect(() => {
+    const list = stepListRef.current;
+    if (!list) return;
+    const update = () => setStepsOverflowing(list.scrollHeight > list.clientHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [macro?.steps.length, isOpen]);
 
   // Rail order = first appearance in the data (same rule as the picker)
   const categories = React.useMemo(() => {
@@ -555,9 +570,12 @@ export function MacroBuilderDialog({
               <span className="macro-builder__step-text macro-builder__step-head-cell">Command</span>
               <span className="macro-builder__step-actions macro-builder__step-head-cell">Actions</span>
               {/* Offsets the head by the body's 16px scrollbar gutter so
-                  the Actions column lines up with the rows (the spec
-                  draws this same gutter segment in the header) */}
-              <span className="macro-builder__step-head-gutter" aria-hidden="true" />
+                  the Actions column lines up with the rows — only while
+                  the table actually scrolls (the gutter exists only
+                  when there is something to scroll) */}
+              {stepsOverflowing && (
+                <span className="macro-builder__step-head-gutter" aria-hidden="true" />
+              )}
             </div>
             <div
               ref={stepListRef}

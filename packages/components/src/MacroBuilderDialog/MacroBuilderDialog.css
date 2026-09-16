@@ -257,13 +257,15 @@
 .macro-builder__command-list {
   flex: 1;
   min-height: 0;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: var(--dialog-header-bg, #f8f8f9);
+  /* Spec rev 2026-09-16: the list darkened to bg-surface-menu so the
+     left pane grades against the lighter table rows */
+  background: var(--macro-builder-list-bg, #ebedf0);
 }
 
 .macro-builder__command-item {
@@ -382,16 +384,17 @@
   justify-content: center;
 }
 
-/* Rows sit flush; the grey shows below the last row */
+/* Rows sit flush; the light well shows below the last row (a quieter
+   grey than the left list, so the panes grade left-dark to right-light) */
 .macro-builder__step-list {
   flex: 1;
   min-height: 0;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
-  background: var(--macro-editor-list-bg, #ebedf0);
+  background: var(--macro-builder-well-bg, #f4f4f6);
 }
 
 /* Centered empty-state hint, the mockup's "Choose your instruments by
@@ -417,11 +420,9 @@
      parameters line — two lines + 6px of air each side */
   min-height: 44px;
   border-bottom: 1px solid var(--stroke-table-item, #e2e3e6);
-  /* Deliberately WHITE, not the spec's bg-table-item-idle (#f8f8f9):
-     that token matches the left pane's surface, so a full table erased
-     the pane boundary. White keeps a distinct level at every boundary
-     (left pane f8f8f9 → rows fff → empty well ebedf0). */
-  background: var(--bg-table-item-idle, #ffffff);
+  /* Back on the spec token — the file resolved the pane-merging issue
+     upstream by darkening the command list to #ebedf0 instead */
+  background: var(--bg-table-item-idle, #f8f8f9);
   cursor: default;
   flex-shrink: 0;
 }
@@ -529,29 +530,26 @@
   width: 16px;
 }
 
-/* Each track continues its own content body: the command list's
-   gutter is seamless pane surface, the table's is the spec's white
-   column with its hairline */
-.macro-builder__command-list::-webkit-scrollbar-track {
-  background: var(--dialog-header-bg, #f8f8f9);
-}
-
+/* Both tracks per the spec rev: #f8f8f9 gutter with a hairline off
+   the content it scrolls */
+.macro-builder__command-list::-webkit-scrollbar-track,
 .macro-builder__step-list::-webkit-scrollbar-track {
-  background: #ffffff;
+  background: var(--dialog-header-bg, #f8f8f9);
   border-left: 1px solid var(--stroke-primary, #d4d5d9);
 }
 
+/* Thumb per spec: 6px, black at 40%, fully rounded */
 .macro-builder__command-list::-webkit-scrollbar-thumb,
 .macro-builder__step-list::-webkit-scrollbar-thumb {
-  background: rgba(20, 21, 26, 0.3);
-  border-radius: 8px;
-  border: 4px solid transparent;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 999px;
+  border: 5px solid transparent;
   background-clip: padding-box;
 }
 
 .macro-builder__command-list::-webkit-scrollbar-thumb:hover,
 .macro-builder__step-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(20, 21, 26, 0.4);
+  background: rgba(0, 0, 0, 0.55);
   background-clip: padding-box;
 }
 
