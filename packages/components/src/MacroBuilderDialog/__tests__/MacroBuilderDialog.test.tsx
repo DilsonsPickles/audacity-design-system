@@ -67,6 +67,11 @@ describe('MacroBuilderDialog', () => {
       (el) => el.querySelector('.macro-builder__step-text')?.textContent,
     );
     expect(stepTexts).toEqual(['Select all', 'Fade Induration=2', 'Split']);
+    // Each card carries its processing ordinal — position is the order
+    const ordinals = stepRows(container).map(
+      (el) => el.querySelector('.macro-builder__step-number')?.textContent,
+    );
+    expect(ordinals).toEqual(['1', '2', '3']);
   });
 
   it('narrows the command list from the scope menu, showing the scope on the field', () => {

@@ -582,6 +582,9 @@ export function MacroBuilderDialog({
                     <span className="macro-builder__step-grip" aria-hidden="true">
                       <Icon name="gripper" size={16} />
                     </span>
+                    {/* Processing order — position IS the order, and the
+                        ordinal says so (renumbers live while dragging) */}
+                    <span className="macro-builder__step-number">{index + 1}</span>
                     <div className="macro-builder__step-text">
                       <span className="macro-builder__step-command">{step.command}</span>
                       {step.parameters && (

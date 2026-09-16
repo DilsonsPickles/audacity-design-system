@@ -402,6 +402,21 @@
   cursor: grabbing;
 }
 
+/* Ordinal slot: the card's processing position, muted and fixed-width
+   so command names stay aligned from 1 through 99 */
+.macro-builder__step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary, #575861);
+  font-variant-numeric: tabular-nums;
+}
+
 /* While a row drag is active, suppress text selection and keep the
    grabbing cursor everywhere in the list */
 .macro-builder__step-list--dragging {
