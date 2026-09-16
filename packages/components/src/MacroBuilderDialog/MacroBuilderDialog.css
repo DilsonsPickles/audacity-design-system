@@ -55,20 +55,16 @@
   overflow: hidden;
 }
 
-/* Pane header row: title left, optional selection summary right */
-.macro-builder__pane-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding-right: 12px;
-  flex-shrink: 0;
-}
-
-/* "N selected · Clear" — quiet text, no badge */
+/* Selection bar docked to the bottom of the command list — the file
+   picker's "N items selected" strip. Quiet text, no badge. */
 .macro-builder__selection-summary {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--stroke-primary, #d4d5d9);
+  flex-shrink: 0;
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   line-height: 16px;

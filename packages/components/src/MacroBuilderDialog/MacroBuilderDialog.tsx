@@ -375,21 +375,7 @@ export function MacroBuilderDialog({
             className="macro-builder__commands-pane"
             style={commandsPaneWidth !== null ? { flex: `0 0 ${commandsPaneWidth}px` } : undefined}
           >
-            <div className="macro-builder__pane-header">
-              <div className="macro-builder__pane-title">Commands</div>
-              {showSelectionSummary && (
-                <div className="macro-builder__selection-summary">
-                  <span>{selectedCommands.length} selected</span>
-                  <button
-                    type="button"
-                    className="macro-builder__selection-clear"
-                    onClick={() => setSelectedCommandIds([])}
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
-            </div>
+            <div className="macro-builder__pane-title">Commands</div>
             {/* Scoped search: the category is a segment INSIDE the search
                 field — one control reading "search within ⟨scope⟩" */}
             <div className="macro-builder__search-container">
@@ -458,6 +444,20 @@ export function MacroBuilderDialog({
                 );
               })}
             </div>
+            {/* Selection bar — docked to the list it describes, in the
+                same band as the → that will consume it */}
+            {showSelectionSummary && (
+              <div className="macro-builder__selection-summary">
+                <span>{selectedCommands.length} selected</span>
+                <button
+                  type="button"
+                  className="macro-builder__selection-clear"
+                  onClick={() => setSelectedCommandIds([])}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Splitter — drag to resize the commands pane; double-click
