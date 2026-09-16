@@ -268,21 +268,25 @@ afterEach(cleanup);
 - `useCanvasScrollSync.ts` - Wheel-zoom + two-pane scroll echo-absorb sync
 - App-level: `useProjectLifecycle`, `useMenuDefinitions`, `useElectronMenuBridge`, `usePlugins`, `useDraggableToolbar`, `useMasterMeter`, `useAudioDeviceMenu` (see codebase-map for the full list)
 
-**Label Rendering:**
-- `LabelRenderer.tsx` - Dedicated component for rendering labels
-  - Renders label ears (resize handles), stalks, and banners
-  - Handles all label mouse interactions (resize, drag, selection)
-  - Implements label expansion behavior (click to expand to all tracks)
-  - Uses absolute positioning with proper z-index management
+**Label Rendering (rewritten 2026-09 — see `docs/label-interactions.md` for the full model):**
+- `LabelRenderer.tsx` - Coordinator: maps labels to `components/labels/LabelItem.tsx`,
+  owns inline-editing state, adjacency (shared junction stalks), and snap targets
+- `components/labels/LabelItem.tsx` - One label: banner/ears/stalks, all gesture
+  handlers (ears always stretch; banner is the only selecting element; double-click
+  edits + parks the playhead), state colors from the build's clip palette
+  (`labels/labelColors.ts`) via `color-mix` ladders — strap always lighter than ears
+- `labels/labelDragTracker.ts` - Singleton letting `useContainerClick` swallow
+  label-originated clicks so label gestures never move the playhead
 
 **Label Utilities:**
-- `labelLayout.ts` - Label layout calculation utilities
-  - `calculateLabelRows()` - Greedy packing algorithm for label row assignment
-  - Sorts labels by start time (left-most label gets row 0 at top)
-  - Point labels use fixed 60px width for overlap detection
-  - Region labels use actual duration * pixelsPerSecond for width
-  - `isPointInLabel()` - Hit testing for label click detection
-  - Constants: `EAR_HEIGHT=14`, `LABEL_BOX_GAP=2`, `DEFAULT_POINT_LABEL_WIDTH=60`
+- `labelLayout.ts` - Label metrics engine + layout
+  - `getLabelMetrics(fontSizePx)` — ALL geometry derives from the label text size
+    (pref `labelTextSizePt`, default 9pt = 12px): banner `max(20, round(1.5×text))`,
+    4px-grid row gaps, text-derived padX/pointFlagGap. Constant chrome: ears 10×20,
+    stalk 1px (9px hit zone), radius 2px. `labelPtToPx` converts at CSS 96dpi
+  - `calculateLabelRows()` - Greedy packing (left-most label gets row 0); point-label
+    width is measured text clamped to metrics min/max, not a fixed 60px
+  - `isPointInLabel()` - Hit testing; takes the metrics param like the rest
 
 **Track Type System:**
 - Tracks have `type?: 'audio' | 'label'` property
