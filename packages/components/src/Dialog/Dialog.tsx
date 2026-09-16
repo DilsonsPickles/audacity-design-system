@@ -146,6 +146,8 @@ export function Dialog({
     startY: number;
     startWidth: number;
     startHeight: number;
+    startLeft: number;
+    startTop: number;
     edge: string;
   } | null>(null);
   const dragStateRef = useRef<{
@@ -255,8 +257,17 @@ export function Dialog({
       startY: e.clientY,
       startWidth: rect.width,
       startHeight: rect.height,
+      startLeft: rect.left,
+      startTop: rect.top,
       edge,
     };
+
+    // Pin the dialog where it stands before resizing. While centered by
+    // the overlay's flex layout, a size change grows it symmetrically
+    // from the middle — a real window anchors the opposite edge instead.
+    if (dialogPosition.x === 0 && dialogPosition.y === 0) {
+      setDialogPosition({ x: rect.left, y: rect.top });
+    }
 
     setIsResizing(true);
   };
@@ -285,26 +296,43 @@ export function Dialog({
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizeStateRef.current) return;
 
-      const { startX, startY, startWidth, startHeight, edge } = resizeStateRef.current;
+      const { startX, startY, startWidth, startHeight, startLeft, startTop, edge } = resizeStateRef.current;
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
 
       let newWidth = startWidth;
       let newHeight = startHeight;
+      // Dragging the left/top edge moves that edge and keeps the
+      // opposite one pinned, so the position shifts by however much
+      // the size actually changed (clamps included). The JS clamps
+      // must mirror the CSS caps (max 100vw/vh - 32px) — otherwise
+      // the position compensates for growth the stylesheet refuses,
+      // and the whole window slides instead of resizing.
+      let newLeft = startLeft;
+      let newTop = startTop;
+      const maxWidth = window.innerWidth - 32;
+      const maxHeight = window.innerHeight - 32;
+      const clampWidth = (w: number) => Math.min(Math.max(400, w), Math.max(400, maxWidth));
+      const clampHeight = (h: number) => Math.min(Math.max(300, h), Math.max(300, maxHeight));
 
       if (edge.includes('right')) {
-        newWidth = Math.max(400, startWidth + deltaX);
+        newWidth = clampWidth(startWidth + deltaX);
       } else if (edge.includes('left')) {
-        newWidth = Math.max(400, startWidth - deltaX);
+        newWidth = clampWidth(startWidth - deltaX);
+        newLeft = startLeft + (startWidth - newWidth);
       }
 
       if (edge.includes('bottom')) {
-        newHeight = Math.max(300, startHeight + deltaY);
+        newHeight = clampHeight(startHeight + deltaY);
       } else if (edge.includes('top')) {
-        newHeight = Math.max(300, startHeight - deltaY);
+        newHeight = clampHeight(startHeight - deltaY);
+        newTop = startTop + (startHeight - newHeight);
       }
 
       setDialogSize({ width: newWidth, height: newHeight });
+      if (edge.includes('left') || edge.includes('top')) {
+        setDialogPosition({ x: newLeft, y: newTop });
+      }
     };
 
     const handleMouseUp = () => {
@@ -370,7 +398,10 @@ export function Dialog({
     : {
         width: dialogSize.width > 0 ? `${dialogSize.width}px` : (typeof width === 'number' ? `${width}px` : width),
         height: dialogSize.height > 0 ? `${dialogSize.height}px` : undefined,
-        minHeight: minHeight && (typeof minHeight === 'string' || minHeight > 0) ? (typeof minHeight === 'number' ? `${minHeight}px` : minHeight) : undefined,
+        // The declarative min-height yields once the user has resized by
+        // hand — otherwise it silently refuses their shrink and the
+        // top-edge drag slides the window instead
+        minHeight: dialogSize.height === 0 && minHeight && (typeof minHeight === 'string' || minHeight > 0) ? (typeof minHeight === 'number' ? `${minHeight}px` : minHeight) : undefined,
         position: dialogPosition.x !== 0 || dialogPosition.y !== 0 ? 'fixed' : undefined,
         left: dialogPosition.x !== 0 ? `${dialogPosition.x}px` : undefined,
         top: dialogPosition.y !== 0 ? `${dialogPosition.y}px` : undefined,
