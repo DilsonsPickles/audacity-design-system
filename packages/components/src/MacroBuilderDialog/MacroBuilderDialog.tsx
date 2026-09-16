@@ -453,6 +453,11 @@ export function MacroBuilderDialog({
                     onKeyDown={(e) => {
                       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                         e.preventDefault();
+                        // Fully consumed: keep it from the app's document-
+                        // level track navigation, which would otherwise
+                        // steal focus into the main window (the builder is
+                        // non-modal, so document listeners still run)
+                        e.stopPropagation();
                         moveCommandSelection(command.id, e.key === 'ArrowDown' ? 1 : -1);
                         return;
                       }
@@ -460,6 +465,7 @@ export function MacroBuilderDialog({
                       // Suppress the button's synthetic click — Enter is
                       // the add gesture, not another select
                       e.preventDefault();
+                      e.stopPropagation();
                       if (isSelected && selectedCommands.length > 0) addCommands(selectedCommands);
                       else addCommands([command]);
                     }}
