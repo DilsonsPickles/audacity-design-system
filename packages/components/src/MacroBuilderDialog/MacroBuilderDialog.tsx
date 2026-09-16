@@ -419,6 +419,14 @@ export function MacroBuilderDialog({
                     className={`macro-builder__command-item${isSelected ? ' macro-builder__command-item--selected' : ''}`}
                     onClick={(e) => handleCommandClick(command, e)}
                     onDoubleClick={() => addCommands([command])}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return;
+                      // Suppress the button's synthetic click — Enter is
+                      // the add gesture, not another select
+                      e.preventDefault();
+                      if (isSelected && selectedCommands.length > 0) addCommands(selectedCommands);
+                      else addCommands([command]);
+                    }}
                   >
                     {command.name}
                   </button>

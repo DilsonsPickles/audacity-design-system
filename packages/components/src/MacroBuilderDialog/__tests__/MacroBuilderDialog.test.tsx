@@ -174,6 +174,21 @@ describe('MacroBuilderDialog', () => {
     expect(pane.style.flex).toBe('');
   });
 
+  it('Enter on a selected command row adds it — or the whole selection it belongs to', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    // Single: Enter on a focused row adds that row's command
+    fireEvent.click(commandRows(container)[2]); // Split
+    fireEvent.keyDown(commandRows(container)[2], { key: 'Enter' });
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Split']);
+    // Multi: Enter on any selected row adds the whole selection in click order
+    onAddCommand.mockClear();
+    fireEvent.click(commandRows(container)[4]); // Fade In
+    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Select all
+    fireEvent.keyDown(commandRows(container)[0], { key: 'Enter' });
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Fade In', 'Select all']);
+  });
+
   it('Enter in the search field adds the first visible match', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
