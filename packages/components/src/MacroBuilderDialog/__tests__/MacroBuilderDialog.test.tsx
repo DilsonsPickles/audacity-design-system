@@ -56,8 +56,8 @@ describe('MacroBuilderDialog', () => {
     const header = container.querySelector('.macro-builder__commands-header');
     expect(header?.querySelector('.macro-builder__scope')?.textContent).toContain('All commands');
     expect(header?.querySelector('input[aria-label="Search commands"]')).toBeTruthy();
-    // The steps pane's header is the macro itself
-    expect(container.querySelector('.macro-builder__steps-header')?.textContent).toContain('Podcast prep');
+    // The full-width band above both panes carries the macro's name
+    expect(container.querySelector('.macro-builder__header')?.textContent).toContain('Podcast prep');
     expect(commandRows(container).map((el) => el.textContent)).toEqual([
       'Select all', 'Next clip', 'Split', 'Join selected clips', 'Fade In',
     ]);

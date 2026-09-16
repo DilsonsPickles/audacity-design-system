@@ -12,6 +12,18 @@
   height: min(600px, calc(100vh - 32px));
 }
 
+/* Full-width name band above both panes */
+.macro-builder__header {
+  height: 44px;
+  padding: 8px 8px 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
 .macro-builder__macro-name {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
@@ -289,9 +301,10 @@
   background: rgba(103, 124, 228, 0.1);
 }
 
+/* Neutral grey selection pill (the mockups' language — not accent) */
 .macro-builder__command-item--selected,
 .macro-builder__command-item--selected:hover {
-  background: var(--list-item-bg-active, rgba(103, 124, 228, 0.25));
+  background: var(--macro-builder-selected-bg, #e3e4e8);
   font-weight: 600;
 }
 
@@ -315,19 +328,6 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-/* The steps pane's header IS the macro: name + macro menu, sharing
-   the band with the commands header */
-.macro-builder__steps-header {
-  height: 48px;
-  padding: 10px 8px 10px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
 }
 
 /* Grey well behind the step cards */

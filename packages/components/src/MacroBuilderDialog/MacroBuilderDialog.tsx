@@ -388,7 +388,7 @@ export function MacroBuilderDialog({
     <>
       <Dialog
         isOpen={isOpen}
-        title="Macro builder"
+        title="Edit macro"
         onClose={onClose}
         os={os}
         nonModal
@@ -398,6 +398,24 @@ export function MacroBuilderDialog({
         customLayout
         className="macro-builder"
       >
+        {/* Full-width band: the macro's name + macro menu, above both panes */}
+        <div className="macro-builder__header">
+          <h2 className="macro-builder__macro-name">{macro.name}</h2>
+          <Button
+            variant="secondary"
+            className="macro-builder__icon-button"
+            ariaLabel="Macro options"
+            onClick={(e) => {
+              if (!e) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMacroMenuPosition({ x: rect.right, y: rect.bottom });
+              setMacroMenuOpen(true);
+            }}
+          >
+            <Icon name="menu" />
+          </Button>
+        </div>
+
         <div ref={columnsRef} className={`macro-builder__columns${splitterActive ? ' macro-builder__columns--resizing' : ''}`}>
           {/* Command pane — the mockup's "Instruments" pane with the
               category scope folded into the search field */}
@@ -531,24 +549,8 @@ export function MacroBuilderDialog({
             onDoubleClick={() => setCommandsPaneWidth(null)}
           />
 
-          {/* Steps pane — its header IS the macro: name + macro menu */}
+          {/* Steps pane — the cards start right under the name band */}
           <div className="macro-builder__steps-pane">
-            <div className="macro-builder__steps-header">
-              <h2 className="macro-builder__macro-name">{macro.name}</h2>
-              <Button
-                variant="secondary"
-                className="macro-builder__icon-button"
-                ariaLabel="Macro options"
-                onClick={(e) => {
-                  if (!e) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setMacroMenuPosition({ x: rect.right, y: rect.bottom });
-                  setMacroMenuOpen(true);
-                }}
-              >
-                <Icon name="menu" />
-              </Button>
-            </div>
             <div
               ref={stepListRef}
               className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
