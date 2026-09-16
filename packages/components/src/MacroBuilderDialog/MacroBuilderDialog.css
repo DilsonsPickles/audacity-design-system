@@ -79,28 +79,70 @@
   border-right: 1px solid var(--stroke-primary, #d4d5d9);
 }
 
-/* The category filter, folded into a dropdown above the search */
-.macro-builder__category-dropdown {
-  margin: 0 12px 8px;
-  flex-shrink: 0;
-}
-
+/* Scoped search: one bordered control — category segment | search.
+   The segment reads as part of the field, not a second filter. */
 .macro-builder__search-container {
   background: var(--input-bg, white);
   border: 1px solid var(--input-border, #d4d5d9);
   border-radius: 3px;
   height: 28px;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 8px;
-  position: relative;
+  align-items: stretch;
   margin: 0 12px 8px;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .macro-builder__search-container:focus-within {
   border-color: var(--input-border-active, #677ce4);
+}
+
+.macro-builder__scope {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  max-width: 45%;
+  flex-shrink: 0;
+  background: var(--dialog-bg, #f8f8f9);
+  border: none;
+  border-right: 1px solid var(--input-border, #d4d5d9);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  cursor: pointer;
+}
+
+.macro-builder__scope:hover {
+  background: rgba(103, 124, 228, 0.1);
+}
+
+.macro-builder__scope:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__scope-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.macro-builder__scope .icon {
+  flex-shrink: 0;
+  color: var(--text-secondary, #575861);
+}
+
+.macro-builder__search-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  position: relative;
 }
 
 .macro-builder__search-input {
@@ -224,6 +266,13 @@
   flex-shrink: 0;
 }
 
+/* Select-first step actions: edit + delete, aimed at the selection */
+.macro-builder__steps-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .macro-builder__step-list {
   flex: 1;
   min-height: 0;
@@ -253,9 +302,8 @@
 .macro-builder__step {
   display: flex;
   align-items: center;
-  gap: 4px;
   min-height: 32px;
-  padding: 4px 4px 4px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   cursor: default;
   flex-shrink: 0;
@@ -318,17 +366,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* The pencil only surfaces on hover/selection — the row itself is the
-   selection target */
-.macro-builder__step-edit {
-  visibility: hidden;
-}
-
-.macro-builder__step:hover .macro-builder__step-edit,
-.macro-builder__step--selected .macro-builder__step-edit {
-  visibility: visible;
 }
 
 /* Reorder column */

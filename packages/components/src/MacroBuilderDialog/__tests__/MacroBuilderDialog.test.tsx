@@ -50,11 +50,11 @@ const downButton = (container: HTMLElement) =>
   container.querySelector<HTMLButtonElement>('button[aria-label="Move step down"]')!;
 
 describe('MacroBuilderDialog', () => {
-  it('renders the command list, category dropdown and step list in one window', () => {
+  it('renders the command list, scoped search and step list in one window', () => {
     const { container } = renderBuilder();
-    // The category filter is a dropdown atop the commands column
-    const dropdown = container.querySelector('.macro-builder__category-dropdown');
-    expect(dropdown?.textContent).toContain('All commands');
+    // The category filter is a scope segment inside the search field
+    const scope = container.querySelector('.macro-builder__search-container .macro-builder__scope');
+    expect(scope?.textContent).toContain('All commands');
     expect(commandRows(container).map((el) => el.textContent)).toEqual([
       'Select all', 'Next clip', 'Split', 'Join selected clips', 'Fade In',
     ]);
@@ -68,15 +68,14 @@ describe('MacroBuilderDialog', () => {
     expect(searchInput(container)).toBeTruthy();
   });
 
-  it('narrows the command list from the category dropdown', () => {
-    const { container, baseElement } = renderBuilder();
-    const trigger = container.querySelector<HTMLButtonElement>('.macro-builder__category-dropdown button')!;
-    fireEvent.click(trigger);
-    // The dropdown menu portals to document.body — scope to this render's baseElement
-    const clipsOption = Array.from(baseElement.querySelectorAll<HTMLElement>('.dropdown__option'))
+  it('narrows the command list from the scope menu, showing the scope on the field', () => {
+    const { container } = renderBuilder();
+    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__scope')!);
+    const clipsItem = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.trim() === 'Clips')!;
-    fireEvent.click(clipsOption);
+    fireEvent.click(clipsItem);
     expect(commandRows(container).map((el) => el.textContent)).toEqual(['Split', 'Join selected clips']);
+    expect(container.querySelector('.macro-builder__scope')?.textContent).toContain('Clips');
   });
 
   it('search filters across all categories', () => {
@@ -139,12 +138,17 @@ describe('MacroBuilderDialog', () => {
     expect(trashButton(container).disabled).toBe(true);
   });
 
-  it('the step pencil opens the parameters editor for that step', () => {
+  it('the edit button opens the parameters editor for the selected step', () => {
     const getCommandParameters = vi.fn(() => [
       { key: 'duration', label: 'Duration', type: 'number' as const, defaultValue: '1' },
     ]);
     const { container } = renderBuilder({ getCommandParameters });
-    fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Edit step 2"]')!);
+    const editButton = container.querySelector<HTMLButtonElement>('button[aria-label="Edit selected step"]')!;
+    // Select-first: disabled until a step is selected, like the trash
+    expect(editButton.disabled).toBe(true);
+    fireEvent.click(stepRows(container)[1]);
+    expect(editButton.disabled).toBe(false);
+    fireEvent.click(editButton);
     expect(getCommandParameters).toHaveBeenCalledWith('Fade In');
   });
 
@@ -176,16 +180,6 @@ describe('MacroBuilderDialog', () => {
     // After release, further movement does nothing
     onReorderStep.mockClear();
     fireEvent.mouseMove(document, { clientY: 10 });
-    expect(onReorderStep).not.toHaveBeenCalled();
-  });
-
-  it('a drag on the row pencil never starts a reorder', () => {
-    const onReorderStep = vi.fn();
-    const { container } = renderBuilder({ onReorderStep });
-    const pencil = container.querySelector('button[aria-label="Edit step 1"]')!;
-    fireEvent.mouseDown(pencil, { button: 0, clientY: 10 });
-    fireEvent.mouseMove(document, { clientY: 90 });
-    fireEvent.mouseUp(document);
     expect(onReorderStep).not.toHaveBeenCalled();
   });
 

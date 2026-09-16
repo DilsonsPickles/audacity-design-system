@@ -3,7 +3,6 @@ import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
 import { Icon } from '../Icon';
-import { Dropdown } from '../Dropdown';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { CommandParametersDialog, type CommandParameter } from '../CommandParametersDialog';
@@ -98,6 +97,10 @@ export function MacroBuilderDialog({
   const [macroMenuPosition, setMacroMenuPosition] = React.useState({ x: 0, y: 0 });
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const stepListRef = React.useRef<HTMLDivElement>(null);
+  // Category scope menu (the segment inside the search field)
+  const [categoryMenuOpen, setCategoryMenuOpen] = React.useState(false);
+  const [categoryMenuPosition, setCategoryMenuPosition] = React.useState({ x: 0, y: 0 });
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   // Reset transient state whenever a different macro opens
   React.useEffect(() => {
@@ -124,14 +127,6 @@ export function MacroBuilderDialog({
     [availableCommands, query],
   );
 
-  const categoryOptions = React.useMemo(
-    () => [
-      { value: ALL_CATEGORIES, label: 'All commands' },
-      ...categories.map((category) => ({ value: category, label: category })),
-    ],
-    [categories],
-  );
-
   const visible = selectedCategory === ALL_CATEGORIES
     ? matching
     : matching.filter((cmd) => cmd.category === selectedCategory);
@@ -140,6 +135,13 @@ export function MacroBuilderDialog({
 
   const stepCount = macro.steps.length;
   const selectedCommand = visible.find((cmd) => cmd.id === selectedCommandId) ?? null;
+
+  const pickCategory = (category: string) => {
+    setSelectedCategory(category);
+    setCategoryMenuOpen(false);
+    // The scope is part of the search control — hand focus straight back
+    searchInputRef.current?.focus();
+  };
 
   const addCommand = (command: Command) => {
     onAddCommand?.(macro.id, command);
@@ -295,35 +297,49 @@ export function MacroBuilderDialog({
               category filter folded into a dropdown, search always on */}
           <div className="macro-builder__commands-pane">
             <div className="macro-builder__pane-title">Commands</div>
-            <div className="macro-builder__category-dropdown">
-              <Dropdown
-                options={categoryOptions}
-                value={selectedCategory}
-                onChange={setSelectedCategory}
-                width="100%"
-              />
-            </div>
+            {/* Scoped search: the category is a segment INSIDE the search
+                field — one control reading "search within ⟨scope⟩" */}
             <div className="macro-builder__search-container">
-              <Icon name="zoom-in" size={16} />
-              <input
-                type="text"
-                className="macro-builder__search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search"
-                aria-label="Search commands"
-                autoFocus
-                onKeyDown={handleSearchKeyDown}
-              />
-              {searchQuery && (
-                <button
-                  className="macro-builder__clear-button"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Clear search"
-                >
-                  <Icon name="close" size={16} />
-                </button>
-              )}
+              <button
+                type="button"
+                className="macro-builder__scope"
+                aria-haspopup="menu"
+                aria-expanded={categoryMenuOpen}
+                aria-label="Filter by category"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setCategoryMenuPosition({ x: rect.left, y: rect.bottom + 2 });
+                  setCategoryMenuOpen(true);
+                }}
+              >
+                <span className="macro-builder__scope-label">
+                  {selectedCategory === ALL_CATEGORIES ? 'All commands' : selectedCategory}
+                </span>
+                <Icon name="caret-down" size={12} />
+              </button>
+              <div className="macro-builder__search-field">
+                <Icon name="zoom-in" size={16} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="macro-builder__search-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search"
+                  aria-label="Search commands"
+                  autoFocus
+                  onKeyDown={handleSearchKeyDown}
+                />
+                {searchQuery && (
+                  <button
+                    className="macro-builder__clear-button"
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Clear search"
+                  >
+                    <Icon name="close" size={16} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="macro-builder__command-list" role="listbox" aria-label="Available commands">
               {visible.length === 0 && (
@@ -370,13 +386,24 @@ export function MacroBuilderDialog({
           <div className="macro-builder__steps-pane">
             <div className="macro-builder__steps-header">
               <div className="macro-builder__pane-title">Your macro</div>
-              <GhostButton
-                icon="trash"
-                size="medium"
-                ariaLabel="Remove selected step"
-                disabled={selectedStepIndex === null}
-                onClick={deleteSelectedStep}
-              />
+              {/* Select-first: BOTH step actions live here and act on the
+                  selected step — no per-row controls */}
+              <div className="macro-builder__steps-actions">
+                <GhostButton
+                  icon="edit"
+                  size="medium"
+                  ariaLabel="Edit selected step"
+                  disabled={selectedStepIndex === null}
+                  onClick={() => setEditingStepIndex(selectedStepIndex)}
+                />
+                <GhostButton
+                  icon="trash"
+                  size="medium"
+                  ariaLabel="Remove selected step"
+                  disabled={selectedStepIndex === null}
+                  onClick={deleteSelectedStep}
+                />
+              </div>
             </div>
             <div
               ref={stepListRef}
@@ -414,17 +441,6 @@ export function MacroBuilderDialog({
                         </span>
                       )}
                     </div>
-                    <GhostButton
-                      icon="edit"
-                      size="medium"
-                      className="macro-builder__step-edit"
-                      ariaLabel={`Edit step ${index + 1}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedStepIndex(index);
-                        setEditingStepIndex(index);
-                      }}
-                    />
                   </div>
                 );
               })}
@@ -472,6 +488,28 @@ export function MacroBuilderDialog({
           </Button>
         </div>
       </Dialog>
+
+      <ContextMenu
+        isOpen={categoryMenuOpen}
+        onClose={() => setCategoryMenuOpen(false)}
+        x={categoryMenuPosition.x}
+        y={categoryMenuPosition.y}
+      >
+        <ContextMenuItem
+          label="All commands"
+          checked={selectedCategory === ALL_CATEGORIES}
+          onClick={() => pickCategory(ALL_CATEGORIES)}
+        />
+        <ContextMenuItem isDivider label="" />
+        {categories.map((category) => (
+          <ContextMenuItem
+            key={category}
+            label={category}
+            checked={selectedCategory === category}
+            onClick={() => pickCategory(category)}
+          />
+        ))}
+      </ContextMenu>
 
       <ContextMenu
         isOpen={macroMenuOpen}
