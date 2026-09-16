@@ -295,11 +295,11 @@
   background: rgba(194, 196, 207, 0.3);
 }
 
-/* Selection: the spec's btn-ghost-hover pill, name in accent */
+/* Selection: accent-filled pill, name in white */
 .macro-builder__command-item--selected,
 .macro-builder__command-item--selected:hover {
-  background: var(--button-ghost-hover, rgba(194, 196, 207, 0.5));
-  color: var(--accent-primary, #677ce4);
+  background: var(--accent-primary, #677ce4);
+  color: #ffffff;
 }
 
 .macro-builder__command-item:focus-visible {
@@ -531,10 +531,11 @@
   width: 16px;
 }
 
-/* The command list's track continues its own body, seamless; the
-   table's is the lighter gutter with its hairline */
+/* The command list's track continues its own body, divided by the
+   stroke line; the table's is the lighter gutter with its hairline */
 .macro-builder__command-list::-webkit-scrollbar-track {
   background: var(--macro-builder-list-bg, #ebedf0);
+  border-left: 1px solid var(--stroke-primary, #d4d5d9);
 }
 
 .macro-builder__step-list::-webkit-scrollbar-track {
