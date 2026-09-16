@@ -72,6 +72,10 @@ export function useFocusTrap(
     if (tabbableElements.length > 0) {
       // Small delay to ensure the dialog is fully rendered
       setTimeout(() => {
+        // Respect focus the dialog has already placed itself — an
+        // autoFocus input must not be clobbered by the trap seeding
+        // focus onto the first tabbable (a titlebar control)
+        if (container.contains(document.activeElement)) return;
         const firstElement = tabbableElements[0];
         // Mark as programmatically focused to hide focus outline
         firstElement.setAttribute('data-focus-method', 'auto');

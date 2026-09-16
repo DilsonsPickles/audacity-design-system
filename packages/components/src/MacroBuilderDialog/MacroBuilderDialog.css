@@ -295,11 +295,11 @@
   background: rgba(194, 196, 207, 0.3);
 }
 
-/* Selection: accent-filled pill, name in white */
+/* Selection: an accent TINT, not the full fill — a dozen selected
+   rows should read as highlights, not a wall of solid blue */
 .macro-builder__command-item--selected,
 .macro-builder__command-item--selected:hover {
-  background: var(--accent-primary, #677ce4);
-  color: #ffffff;
+  background: var(--accent-primary-tint, rgba(103, 124, 228, 0.25));
 }
 
 .macro-builder__command-item:focus-visible {
