@@ -1,5 +1,5 @@
 import React from 'react';
-import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroEditorDialog, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, type PreferencesState, type StoredProject } from '@audacity-ui/components';
+import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroBuilderDialog, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, type PreferencesState, type StoredProject } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { AccessibilityProfile } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
@@ -703,9 +703,11 @@ export function AppDialogs(props: AppDialogsProps) {
         os={os}
       />
 
-      {/* Macro Editor — NON-MODAL window (test as you edit: the timeline
-          stays interactive and Run executes on the project) */}
-      <MacroEditorDialog
+      {/* Macro builder — NON-MODAL window (test as you edit: the timeline
+          stays interactive and Run executes on the project). The
+          MuseScore-inspired layout: category rail + always-visible
+          command search + step list in ONE window, no stacked picker. */}
+      <MacroBuilderDialog
         isOpen={macrosCtx.editingMacroId !== null}
         macro={macrosCtx.macros.find((m) => m.id === macrosCtx.editingMacroId) ?? null}
         onClose={() => macrosCtx.setEditingMacroId(null)}
@@ -723,7 +725,6 @@ export function AppDialogs(props: AppDialogsProps) {
         onEditStep={macrosCtx.updateStepParameters}
         onDeleteStep={macrosCtx.deleteStep}
         onMoveStep={macrosCtx.moveStep}
-        onReorderStep={macrosCtx.reorderStep}
         getCommandParameters={getCommandParameters}
         availableCommands={availableCommands}
         os={os}

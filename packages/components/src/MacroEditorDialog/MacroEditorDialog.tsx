@@ -58,7 +58,7 @@ export interface MacroEditorDialogProps {
   os?: 'macos' | 'windows';
 }
 
-interface EditStepDialogProps {
+export interface EditStepDialogProps {
   isOpen: boolean;
   step: MacroStep | null;
   onClose: () => void;
@@ -66,8 +66,9 @@ interface EditStepDialogProps {
   os?: 'macos' | 'windows';
 }
 
-/** Small dialog for editing a step's parameters string. */
-function EditStepDialog({ isOpen, step, onClose, onSave, os = 'macos' }: EditStepDialogProps) {
+/** Small dialog for editing a step's parameters string. Exported for
+ *  reuse by MacroBuilderDialog (the schema-less parameters fallback). */
+export function EditStepDialog({ isOpen, step, onClose, onSave, os = 'macos' }: EditStepDialogProps) {
   const [parameters, setParameters] = React.useState('');
 
   React.useEffect(() => {

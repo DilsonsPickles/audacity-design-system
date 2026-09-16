@@ -1,0 +1,431 @@
+/* MacroBuilderDialog — MuseScore "New score" layout for building a
+   macro. One window, four columns: category rail | searchable command
+   list | transfer → | step list with ↑/↓ + trash on the flanks. Shares
+   the SelectCommandDialog's rail/search language and the
+   MacroEditorDialog's header/footer language. */
+
+.macro-builder {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* A window, not a sheet: fixed height so the lists scroll inside it */
+  height: min(600px, calc(100vh - 32px));
+}
+
+.macro-builder__header {
+  height: 44px;
+  padding: 8px 8px 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__macro-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Square, filled icon buttons (kebab, transfer →, reorder ↑/↓) */
+.macro-builder__icon-button.button {
+  min-width: 0;
+  padding: 0;
+  width: 28px;
+}
+
+.macro-builder__icon-button .button__text {
+  line-height: 0;
+}
+
+/* ── Columns ─────────────────────────────────────────────────────── */
+
+.macro-builder__columns {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Small uppercase pane titles — the mockup's Family / Instruments /
+   Your score labels */
+.macro-builder__pane-title {
+  padding: 12px 12px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #575861);
+  flex-shrink: 0;
+}
+
+/* Category rail */
+.macro-builder__rail {
+  width: 190px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--dialog-bg, #f8f8f9);
+  border-right: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__rail-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.macro-builder__rail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px 0 16px;
+  background: transparent;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary, #14151a);
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+
+.macro-builder__rail-item:hover:not(:disabled) {
+  background-color: rgba(103, 124, 228, 0.1);
+}
+
+.macro-builder__rail-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__rail-item--selected {
+  background-color: rgba(103, 124, 228, 0.2);
+  font-weight: 600;
+}
+
+.macro-builder__rail-item--selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--accent-primary, #677ce4);
+}
+
+.macro-builder__rail-item--empty {
+  color: var(--text-disabled, #9a9ba5);
+  cursor: default;
+}
+
+.macro-builder__rail-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.macro-builder__rail-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  color: var(--text-secondary, #575861);
+}
+
+.macro-builder__rail-item--empty .macro-builder__rail-count {
+  color: inherit;
+}
+
+/* Command pane */
+.macro-builder__commands-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__search-container {
+  background: var(--input-bg, white);
+  border: 1px solid var(--input-border, #d4d5d9);
+  border-radius: 3px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  position: relative;
+  margin: 0 12px 8px;
+  flex-shrink: 0;
+}
+
+.macro-builder__search-container:focus-within {
+  border-color: var(--input-border-active, #677ce4);
+}
+
+.macro-builder__search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+}
+
+.macro-builder__search-input::placeholder {
+  color: var(--text-secondary, #6b6d79);
+}
+
+.macro-builder__clear-button {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.macro-builder__clear-button:hover {
+  background: var(--button-ghost-hover, rgba(0, 0, 0, 0.05));
+}
+
+.macro-builder__command-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.macro-builder__command-item {
+  min-height: 28px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.macro-builder__command-item:hover {
+  background: rgba(103, 124, 228, 0.1);
+}
+
+.macro-builder__command-item--selected,
+.macro-builder__command-item--selected:hover {
+  background: var(--list-item-bg-active, rgba(103, 124, 228, 0.25));
+  font-weight: 600;
+}
+
+.macro-builder__command-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__empty {
+  padding: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+}
+
+/* Transfer column */
+.macro-builder__transfer {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Steps pane */
+.macro-builder__steps-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__steps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 8px;
+  flex-shrink: 0;
+}
+
+.macro-builder__step-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px 12px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Centered empty-state hint, the mockup's "Choose your instruments by
+   adding them to this list" */
+.macro-builder__steps-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+}
+
+.macro-builder__step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 4px 4px 8px;
+  border-radius: 4px;
+  cursor: default;
+  flex-shrink: 0;
+  transition: background 0.1s ease;
+}
+
+.macro-builder__step:hover {
+  background: rgba(103, 124, 228, 0.1);
+}
+
+.macro-builder__step--selected,
+.macro-builder__step--selected:hover {
+  background: var(--list-item-bg-active, rgba(103, 124, 228, 0.25));
+}
+
+.macro-builder__step:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-border-color, #677ce4);
+}
+
+.macro-builder__step-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.macro-builder__step-command {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.macro-builder__step-parameters {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-secondary, #575861);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The pencil only surfaces on hover/selection — the row itself is the
+   selection target */
+.macro-builder__step-edit {
+  visibility: hidden;
+}
+
+.macro-builder__step:hover .macro-builder__step-edit,
+.macro-builder__step--selected .macro-builder__step-edit {
+  visibility: visible;
+}
+
+/* Reorder column */
+.macro-builder__reorder {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.macro-builder__caret-up {
+  display: inline-block;
+  transform: rotate(180deg);
+}
+
+/* Footer */
+.macro-builder__footer {
+  height: 44px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macro-builder__run-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+}
