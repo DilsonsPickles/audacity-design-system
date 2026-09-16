@@ -529,7 +529,13 @@
   width: 16px;
 }
 
-.macro-builder__command-list::-webkit-scrollbar-track,
+/* Each track continues its own content body: the command list's
+   gutter is seamless pane surface, the table's is the spec's white
+   column with its hairline */
+.macro-builder__command-list::-webkit-scrollbar-track {
+  background: var(--dialog-header-bg, #f8f8f9);
+}
+
 .macro-builder__step-list::-webkit-scrollbar-track {
   background: #ffffff;
   border-left: 1px solid var(--stroke-primary, #d4d5d9);
