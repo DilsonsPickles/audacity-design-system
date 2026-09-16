@@ -136,12 +136,21 @@ describe('MacroBuilderDialog', () => {
     ]);
   });
 
-  it('the selection summary appears when the selection is hidden or plural, and Clear empties it', () => {
-    const { container } = renderBuilder();
-    // A single visible selection is self-evident — no summary
-    fireEvent.click(commandRows(container)[4]); // Fade In (Effects)
+  it('the selection bar shows for any selection — its Add works for a single command too', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
     expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
-    // Scope away from it — now it's hidden, so the summary surfaces
+    fireEvent.click(commandRows(container)[4]); // Fade In
+    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
+    fireEvent.click(selectionAdd(container)!);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
+    // Selection (and the bar) clears after the add
+    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+  });
+
+  it('the selection bar survives scoping away from a hidden selection, and Clear empties it', () => {
+    const { container } = renderBuilder();
+    fireEvent.click(commandRows(container)[4]); // Fade In (Effects)
     fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__scope')!);
     const clipsItem = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.trim() === 'Clips')!;

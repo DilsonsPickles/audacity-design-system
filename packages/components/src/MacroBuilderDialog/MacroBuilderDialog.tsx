@@ -216,13 +216,9 @@ export function MacroBuilderDialog({
     .map((id) => availableCommands.find((cmd) => cmd.id === id))
     .filter((cmd): cmd is Command => cmd !== undefined);
 
-  // The selection summary appears once it stops being self-evident:
-  // more than one command, or any selected command scrolled out of
-  // sight behind another scope/search.
-  const anySelectionHidden = selectedCommands.some(
-    (cmd) => !visible.some((visibleCmd) => visibleCmd.id === cmd.id),
-  );
-  const showSelectionSummary = selectedCommands.length > 1 || anySelectionHidden;
+  // The selection bar shows for ANY selection — its Add is the always-
+  // visible button for the current selection, single or batch
+  const showSelectionSummary = selectedCommands.length > 0;
 
   const focusCommandRow = (id: string) => {
     // Ids carry ':' and '/' — quoting the attribute value is enough
