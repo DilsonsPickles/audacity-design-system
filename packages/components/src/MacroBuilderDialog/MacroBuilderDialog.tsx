@@ -509,7 +509,7 @@ export function MacroBuilderDialog({
                 )}
                 <Button
                   variant="secondary"
-                  size="small"
+                  size="default"
                   className="macro-builder__selection-add"
                   disabled={selectedCommands.length === 0}
                   onClick={() => addCommands(selectedCommands)}
