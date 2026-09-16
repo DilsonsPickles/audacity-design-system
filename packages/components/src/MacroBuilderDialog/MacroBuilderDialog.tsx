@@ -58,6 +58,13 @@ export interface MacroBuilderDialogProps {
 
 const ALL_CATEGORIES = 'all';
 
+/** Display-only prettifying of a step's serialized parameters:
+ *  `Start="0", End="1"` reads as `Start: 0, End: 1`. The raw string
+ *  stays the source of truth for editing and the row's title. */
+function prettyParameters(parameters: string): string {
+  return parameters.replace(/="([^"]*)"/g, ': $1');
+}
+
 /**
  * MacroBuilderDialog — the MuseScore-"New score" layout for building a
  * macro. Everything lives in ONE window: a searchable command list
@@ -578,7 +585,7 @@ export function MacroBuilderDialog({
                       <span className="macro-builder__step-command">{step.command}</span>
                       {step.parameters && (
                         <span className="macro-builder__step-parameters" title={step.parameters}>
-                          {step.parameters}
+                          {prettyParameters(step.parameters)}
                         </span>
                       )}
                     </div>
