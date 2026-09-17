@@ -1537,4 +1537,52 @@ describe('Focus routing', () => {
     await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeNull());
     expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
   });
+
+  it('effects panel opens in its own window and re-docks when that window closes', async () => {
+    // Stand in for window.open with an iframe-backed REAL document so the
+    // portal has somewhere to render (jsdom can't open actual windows)
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    const popoutWindow = iframe.contentWindow!;
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popoutWindow as Window & typeof globalThis);
+
+    try {
+      const rendered = renderApp();
+      const { container } = rendered;
+      await gotoProject(rendered);
+      await addTrackType(container, 'Mono');
+
+      const effectsButton = Array.from(container.querySelectorAll('button'))
+        .find((b) => b.textContent?.trim() === 'Effects')!;
+      fireEvent.click(effectsButton);
+      await waitFor(() =>
+        expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
+      );
+
+      const menuItem = (label: string) =>
+        Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+          .find((el) => el.textContent?.trim() === label)!;
+
+      fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+      fireEvent.click(menuItem('Open in window'));
+
+      // The panel's DOM portals into the popout document; the in-app dock is gone
+      await waitFor(() => {
+        const root = popoutWindow.document.querySelector('.popout-panel-root');
+        expect(root).toBeTruthy();
+        expect(root!.childElementCount).toBeGreaterThan(0);
+      });
+      expect(container.querySelector('button[aria-label="Effects menu"]')).toBeNull();
+      expect(popoutWindow.document.title).toBe('Effects');
+
+      // Closing the OS window re-docks the panel left
+      popoutWindow.dispatchEvent(new Event('pagehide'));
+      await waitFor(() =>
+        expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
+      );
+    } finally {
+      openSpy.mockRestore();
+      iframe.remove();
+    }
+  });
 });

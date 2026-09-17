@@ -31,6 +31,7 @@ import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
 import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
+import { PopoutPanel } from './editor/PopoutPanel';
 import { useMacros } from '../contexts/MacrosContext';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
 import {
@@ -223,9 +224,9 @@ export function EditorLayout(props: EditorLayoutProps) {
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<'effects' | 'macros'>('effects');
   const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
   // Effects panel placement — docked left (the classic position), docked
-  // right, or floating, moved via its tab's kebab menu like the Macros
-  // panel.
-  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'right' | 'floating'>('left');
+  // right, floating, or in its own OS window, moved via its tab's kebab
+  // menu like the Macros panel.
+  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'right' | 'floating' | 'window'>('left');
   // The right dock hosts Effects and/or Macros as tabs, mirroring the left
   const [rightDockActiveTab, setRightDockActiveTab] = React.useState<'effects' | 'macros'>('macros');
   const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
@@ -237,10 +238,12 @@ export function EditorLayout(props: EditorLayoutProps) {
   const effectsDockedLeft = effectsOpen && effectsPanelSide === 'left';
   const effectsDockedRight = effectsOpen && effectsPanelSide === 'right';
   const effectsFloating = effectsOpen && effectsPanelSide === 'floating';
+  const effectsInWindow = effectsOpen && effectsPanelSide === 'window';
   const macrosDockedLeft = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'left';
   const macrosDockedRight = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'right';
   const macrosFloating = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'floating';
   const macrosDockedBottom = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'bottom';
+  const macrosInWindow = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'window';
 
   // Auto-activate a dock tab when its panel opens (mirrors the bottom
   // drawer's useDrawerTabAutoSwitch behavior).
@@ -1298,6 +1301,45 @@ export function EditorLayout(props: EditorLayoutProps) {
       </FloatingPanel>
     )}
 
+    {/* Effects panel in its OWN OS window (Electron child window /
+        browser popup). The React tree stays mounted here — PopoutPanel
+        portals the DOM across. Closing the window docks it back left. */}
+    {effectsInWindow && effectsPanel && (
+      <PopoutPanel
+        title="Effects"
+        width={320}
+        height={560}
+        onClose={() => setEffectsPanelSide('left')}
+      >
+        <TrackEffectsPanel
+          effectsPanel={effectsPanel}
+          tracks={state.tracks}
+          masterEffects={state.masterEffects}
+          masterEffectsEnabled={state.masterEffectsEnabled}
+          museHubSignedIn={museHubSignedIn}
+          installedEffects={installedEffects}
+          disabledPluginIds={disabledPluginIds}
+          setEffectPicker={setEffectPicker}
+          setEffectDialog={setEffectDialog}
+          setEffectsPanel={setEffectsPanel}
+          setMarketplaceModal={setMarketplaceModal}
+        />
+      </PopoutPanel>
+    )}
+
+    {/* Macros panel in its own OS window; closing returns it to its
+        default floating placement. */}
+    {macrosInWindow && (
+      <PopoutPanel
+        title="Macro manager"
+        width={320}
+        height={480}
+        onClose={() => setMacrosPanelSide('floating')}
+      >
+        <MacrosDockPanel />
+      </PopoutPanel>
+    )}
+
     {/* Tab kebab menu — placement (Macros) and Close. Closing a panel
         lives HERE: panel headers have no close button (2026-09-10). */}
     <ContextMenu
@@ -1342,6 +1384,15 @@ export function EditorLayout(props: EditorLayoutProps) {
           }}
         />
       )}
+      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'window' && (
+        <ContextMenuItem
+          label="Open in window"
+          onClick={() => {
+            setMacrosPanelSide('window');
+            setDockMenu(null);
+          }}
+        />
+      )}
       {dockMenu?.tab === 'effects' && effectsPanelSide !== 'floating' && (
         <ContextMenuItem
           label="Float"
@@ -1365,6 +1416,15 @@ export function EditorLayout(props: EditorLayoutProps) {
           label="Dock right"
           onClick={() => {
             setEffectsPanelSide('right');
+            setDockMenu(null);
+          }}
+        />
+      )}
+      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'window' && (
+        <ContextMenuItem
+          label="Open in window"
+          onClick={() => {
+            setEffectsPanelSide('window');
             setDockMenu(null);
           }}
         />
