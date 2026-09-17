@@ -75,7 +75,17 @@ export function PopoutPanel({ title, width, height, onClose, children }: PopoutP
     // Unique frame name per panel so two popouts never reuse one window;
     // the prefix is what main.cjs keys the frameless override on
     const frameName = `audacity-panel-popout-${title.replace(/\W+/g, '-')}`;
-    const popout = window.open('', frameName, `popup=yes,width=${width},height=${height}`);
+    // EXPLICIT position: Chromium's default places a popup to the RIGHT
+    // of the opener window, which for a full-width main window is
+    // entirely off-screen — the popout "disappears". Land it over the
+    // opener instead (Chromium clamps it into the display regardless).
+    const left = Math.max(0, Math.round((window.screenX || 0) + 120));
+    const top = Math.max(0, Math.round((window.screenY || 0) + 120));
+    const popout = window.open(
+      '',
+      frameName,
+      `popup=yes,width=${width},height=${height},left=${left},top=${top}`,
+    );
     if (!popout) {
       // Popup blocked (plain browser without a user gesture) — bail out
       // and let the consumer fall back to an in-app placement
