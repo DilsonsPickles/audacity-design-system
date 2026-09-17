@@ -48,6 +48,8 @@ function adoptParentStyles(popoutDocument: Document) {
     popoutDocument.head.appendChild(node.cloneNode(true));
   });
   const chrome = popoutDocument.createElement('style');
+  // Mirrors PanelHeader's docked chrome: an elevated 32px strip whose
+  // bottom hairline the active tab overlaps, tab on the default surface
   chrome.textContent = `
     .popout-panel__header {
       user-select: none;
@@ -55,17 +57,38 @@ function adoptParentStyles(popoutDocument: Document) {
       height: 32px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 6px 0 10px;
       flex-shrink: 0;
-      background: #f8f8f9;
-      border-bottom: 1px solid #d4d5d9;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      color: #14151a;
+      background: #ebedf0;
+      position: relative;
+    }
+    .popout-panel__header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 1px;
+      background: #d4d5d9;
+      pointer-events: none;
     }
     .popout-panel__header:active { cursor: grabbing; }
+    .popout-panel__tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 8px 0 12px;
+      background: #f8f8f9;
+      border-right: 1px solid #d4d5d9;
+      position: relative;
+      z-index: 1;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 16px;
+      color: #14151a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .popout-panel__header button { cursor: pointer; }
   `;
   popoutDocument.head.appendChild(chrome);
@@ -246,13 +269,15 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
   return createPortal(
     <>
       <div className="popout-panel__header" ref={setHeaderEl}>
-        <span>{title}</span>
-        <GhostButton
-          icon="close"
-          size="small"
-          ariaLabel={`Close ${title} window`}
-          onClick={() => onCloseRef.current()}
-        />
+        <div className="popout-panel__tab">
+          <span>{title}</span>
+          <GhostButton
+            icon="close"
+            size="small"
+            ariaLabel={`Close ${title} window`}
+            onClick={() => onCloseRef.current()}
+          />
+        </div>
       </div>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {children}
