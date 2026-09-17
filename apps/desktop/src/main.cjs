@@ -195,7 +195,7 @@ function createWindow(url) {
           resizable: true,
           minWidth: 240,
           minHeight: 200,
-          // The renderer draws its own 8px corner radius (PopoutPanel),
+          // The renderer draws its own 4px corner radius (PopoutPanel),
           // matching the app's dialogs — macOS's default frameless
           // rounding is far larger. Square OS corners + a transparent
           // window let that radius show; the shadow follows the

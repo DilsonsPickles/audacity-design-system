@@ -279,14 +279,14 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
       root.className = 'popout-panel-root';
       root.style.cssText = 'height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#f8f8f9;';
       // Under Electron the popout is a frameless TRANSPARENT window
-      // (main.cjs) — the panel draws its own corner radius, matching
-      // the app's dialogs. A plain browser popup keeps its OS chrome,
-      // where rounding our content would leave white corners behind it.
+      // (main.cjs) — the panel draws its own corner radius. A plain
+      // browser popup keeps its OS chrome, where rounding our content
+      // would leave white corners behind it.
       const isElectron = Boolean((window as { electronMenu?: unknown }).electronMenu);
       if (isElectron) {
         popout.document.documentElement.style.background = 'transparent';
         popout.document.body.style.background = 'transparent';
-        root.style.borderRadius = '8px';
+        root.style.borderRadius = '4px';
       }
       popout.document.body.appendChild(root);
 
