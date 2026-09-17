@@ -195,7 +195,13 @@ function createWindow(url) {
           resizable: true,
           minWidth: 240,
           minHeight: 200,
-          backgroundColor: '#f8f8f9',
+          // The renderer draws its own 8px corner radius (PopoutPanel),
+          // matching the app's dialogs — macOS's default frameless
+          // rounding is far larger. Square OS corners + a transparent
+          // window let that radius show; the shadow follows the
+          // opaque content shape.
+          transparent: true,
+          roundedCorners: false,
           // Tool-palette behavior: as a CHILD of the main window the
           // panel always stays above it (but never above other apps,
           // which plain alwaysOnTop would do) and closes with it
