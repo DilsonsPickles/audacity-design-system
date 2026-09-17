@@ -86,7 +86,23 @@ AudioBuffer is still retained by AudioPlaybackManager; the proper fix is to
 render spectrograms from it on demand. Short clips and the demo content are
 unaffected (full rate below the cap).
 
+### Panel windowing — polish tail (2026-09-17)
+The panel system (docked left/right/bottom vs frameless OS popout, drag-to-dock with
+zone highlights, tab tear-off straight into the popout) landed on `labels-rewrite`.
+Remaining polish, none blocking:
+- **Bottom-drawer Macros tab tear-off** — the drawer's PanelHeader doesn't wire
+  `onTabTearOff` yet; docks do.
+- **Popout position/size persistence** — a reopened popout gets the default
+  placement; stash its last screen bounds and feed them back as window.open
+  left/top/width/height.
+- **Popout chrome theming** — PopoutPanel's header/shell hard-codes light-theme
+  hexes; switch to theme tokens when dark mode reaches the popouts.
+- **Dialogs from popout content open in the MAIN window** (effect dialogs, context
+  menus are portaled to the main document) — known cross-document portal
+  limitation; revisit if it grates in practice.
+
 ## Minor (batch into related work, don't do standalone)
+
 
 - `stretchFactor` onto the sandbox `Clip` type — would remove 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` (plain `as Clip` does NOT typecheck today).
 - Relocate `CanvasProps` out of Canvas.tsx (type-only import cycle with `useCanvasPointerHandlers`).
