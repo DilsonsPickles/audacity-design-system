@@ -1538,6 +1538,56 @@ describe('Focus routing', () => {
     expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
   });
 
+  it('dragging a floating panel over a dock zone highlights it and docks on release', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+
+    // jsdom has no layout — give the editor row a real extent for the
+    // dock-zone math (zones are 88px bands along its edges)
+    const editorRow = container.querySelector<HTMLElement>('.editor-main-row')!;
+    editorRow.getBoundingClientRect = () => ({
+      top: 100, bottom: 700, left: 0, right: 1200,
+      width: 1200, height: 600, x: 0, y: 100, toJSON: () => ({}),
+    });
+
+    // Open the effects panel and float it
+    const effectsButton = Array.from(container.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Effects')!;
+    fireEvent.click(effectsButton);
+    await waitFor(() =>
+      expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
+    );
+    const menuItem = (label: string) =>
+      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+        .find((el) => el.textContent?.trim() === label)!;
+    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+    fireEvent.click(menuItem('Float'));
+    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeTruthy());
+
+    // Drag the panel by its header toward the RIGHT dock zone
+    const header = container.querySelector<HTMLElement>('.floating-panel__header')!;
+    fireEvent.mouseDown(header, { button: 0, clientX: 600, clientY: 400 });
+    // Mid-row: zones render, none hovered
+    fireEvent.mouseMove(document, { clientX: 600, clientY: 402 });
+    expect(container.querySelector('[data-dock-zone="left"]')).toBeTruthy();
+    expect(container.querySelector('[data-dock-zone="left"]')?.getAttribute('data-active')).toBe('false');
+    // Effects offers no bottom zone
+    expect(container.querySelector('[data-dock-zone="bottom"]')).toBeNull();
+    // Into the right band: it lights up
+    fireEvent.mouseMove(document, { clientX: 1160, clientY: 400 });
+    expect(container.querySelector('[data-dock-zone="right"]')?.getAttribute('data-active')).toBe('true');
+    // Release: docked right, overlays gone, floating panel gone
+    fireEvent.mouseUp(document);
+    await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeTruthy());
+    expect(container.querySelector('.floating-panel')).toBeNull();
+    expect(container.querySelector('[data-dock-zone="right"]')).toBeNull();
+    expect(
+      container.querySelector('.side-panel--right button[aria-label="Effects menu"]'),
+    ).toBeTruthy();
+  });
+
   it('effects panel opens in its own window and re-docks when that window closes', async () => {
     // Stand in for window.open with iframe-backed REAL documents so the
     // portal has somewhere to render (jsdom can't open actual windows).

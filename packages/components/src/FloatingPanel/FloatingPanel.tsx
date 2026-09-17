@@ -30,6 +30,12 @@ export interface FloatingPanelProps {
   maxHeight?: number;
   /** Additional CSS class */
   className?: string;
+  /** Reports the pointer position while the panel is being dragged by
+   *  its header — lets a host render dock-zone highlights */
+  onDragMove?: (clientX: number, clientY: number) => void;
+  /** Reports the pointer position when a header drag ends — lets a host
+   *  dock the panel when released over a zone */
+  onDragEnd?: (clientX: number, clientY: number) => void;
   /** Content of the active tab */
   children: React.ReactNode;
 }
@@ -60,6 +66,8 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   maxWidth = 640,
   maxHeight = 800,
   className = '',
+  onDragMove,
+  onDragEnd,
   children,
 }) => {
   const { theme } = useTheme();
@@ -82,7 +90,13 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
     const startX = e.clientX;
     const startY = e.clientY;
     const origin = position;
+    let lastX = startX;
+    let lastY = startY;
+    let moved = false;
     const onMouseMove = (ev: MouseEvent) => {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      moved = true;
       setPosition({
         x: Math.min(
           window.innerWidth - DRAG_MARGIN,
@@ -93,10 +107,13 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
           Math.max(0, origin.y + ev.clientY - startY),
         ),
       });
+      onDragMove?.(ev.clientX, ev.clientY);
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      // A plain header click never counts as a drop
+      if (moved) onDragEnd?.(lastX, lastY);
     };
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);

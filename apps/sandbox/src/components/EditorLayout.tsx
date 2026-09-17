@@ -296,6 +296,51 @@ export function EditorLayout(props: EditorLayoutProps) {
     const rect = e.currentTarget.getBoundingClientRect();
     setDockMenu({ x: rect.right, y: rect.bottom, tab: activeRightDockTab === 'effects' ? 'effects' : 'macros' });
   };
+
+  // ── Drag-to-dock ────────────────────────────────────────────────────
+  // While a floating panel's header is dragged, the candidate dock
+  // zones light up along the editor row's edges; releasing over one
+  // docks the panel there. Effects docks left/right; Macros also bottom
+  // (the drawer).
+  const editorRowRef = React.useRef<HTMLDivElement>(null);
+  const [panelDrag, setPanelDrag] = React.useState<{
+    panel: 'effects' | 'macros';
+    zone: 'left' | 'right' | 'bottom' | null;
+    rowRect: DOMRect;
+  } | null>(null);
+
+  const DOCK_ZONE_SIZE = 88;
+  const dockZoneAt = (
+    x: number,
+    y: number,
+    panel: 'effects' | 'macros',
+    rect: DOMRect,
+  ): 'left' | 'right' | 'bottom' | null => {
+    if (y < rect.top || y > rect.bottom || x < rect.left || x > rect.right) return null;
+    if (x <= rect.left + DOCK_ZONE_SIZE) return 'left';
+    if (x >= rect.right - DOCK_ZONE_SIZE) return 'right';
+    if (panel === 'macros' && y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
+    return null;
+  };
+
+  const handlePanelDragMove = (panel: 'effects' | 'macros') => (x: number, y: number) => {
+    const rowRect = editorRowRef.current?.getBoundingClientRect();
+    if (!rowRect) return;
+    setPanelDrag({ panel, zone: dockZoneAt(x, y, panel, rowRect), rowRect });
+  };
+
+  const handlePanelDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) => {
+    const rowRect = editorRowRef.current?.getBoundingClientRect();
+    setPanelDrag(null);
+    if (!rowRect) return;
+    const zone = dockZoneAt(x, y, panel, rowRect);
+    if (!zone) return;
+    if (panel === 'effects') {
+      if (zone !== 'bottom') setEffectsPanelSide(zone);
+    } else {
+      setMacrosPanelSide(zone);
+    }
+  };
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
 
@@ -570,7 +615,7 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
-    <div style={STYLE_FLEX_ROW_OVERFLOW}>
+    <div ref={editorRowRef} className="editor-main-row" style={STYLE_FLEX_ROW_OVERFLOW}>
       {/* Left dock — Effects and Macros as tabs. Hidden on export tab. */}
       {leftDockTabs.length > 0 && (
         <DockPanel
@@ -1267,6 +1312,8 @@ export function EditorLayout(props: EditorLayoutProps) {
         tabs={[macrosTabDef]}
         activeTabId="macros"
         onMenuClick={openDockMenu}
+        onDragMove={handlePanelDragMove('macros')}
+        onDragEnd={handlePanelDragEnd('macros')}
       >
         <MacrosDockPanel />
       </FloatingPanel>
@@ -1284,6 +1331,8 @@ export function EditorLayout(props: EditorLayoutProps) {
           const rect = e.currentTarget.getBoundingClientRect();
           setDockMenu({ x: rect.right, y: rect.bottom, tab: 'effects' });
         }}
+        onDragMove={handlePanelDragMove('effects')}
+        onDragEnd={handlePanelDragEnd('effects')}
       >
         <TrackEffectsPanel
           effectsPanel={effectsPanel}
@@ -1300,6 +1349,44 @@ export function EditorLayout(props: EditorLayoutProps) {
         />
       </FloatingPanel>
     )}
+
+    {/* Dock-zone highlights — visible while a floating panel is being
+        dragged; the hovered zone glows to say "drop to dock here" */}
+    {panelDrag && (() => {
+      const r = panelDrag.rowRect;
+      const inset = 4;
+      const zoneStyles: Record<'left' | 'right' | 'bottom', React.CSSProperties> = {
+        left: { left: r.left + inset, top: r.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: r.height - inset * 2 },
+        right: { left: r.right - DOCK_ZONE_SIZE + inset, top: r.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: r.height - inset * 2 },
+        bottom: { left: r.left + DOCK_ZONE_SIZE + inset, top: r.bottom - DOCK_ZONE_SIZE + inset, width: r.width - DOCK_ZONE_SIZE * 2 - inset * 2, height: DOCK_ZONE_SIZE - inset * 2 },
+      };
+      const zones: Array<'left' | 'right' | 'bottom'> = panelDrag.panel === 'macros'
+        ? ['left', 'right', 'bottom']
+        : ['left', 'right'];
+      return (
+        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9500 }}>
+          {zones.map((zone) => {
+            const active = panelDrag.zone === zone;
+            return (
+              <div
+                key={zone}
+                data-dock-zone={zone}
+                data-active={active ? 'true' : 'false'}
+                style={{
+                  position: 'fixed',
+                  ...zoneStyles[zone],
+                  boxSizing: 'border-box',
+                  borderRadius: 6,
+                  background: active ? 'rgba(103, 124, 228, 0.25)' : 'rgba(103, 124, 228, 0.08)',
+                  border: active ? '2px solid #677CE4' : '1px dashed rgba(103, 124, 228, 0.55)',
+                  transition: 'background 0.12s ease, border-color 0.12s ease',
+                }}
+              />
+            );
+          })}
+        </div>
+      );
+    })()}
 
     {/* Effects panel in its OWN OS window (Electron child window /
         browser popup). The React tree stays mounted here — PopoutPanel
