@@ -1539,12 +1539,19 @@ describe('Focus routing', () => {
   });
 
   it('effects panel opens in its own window and re-docks when that window closes', async () => {
-    // Stand in for window.open with an iframe-backed REAL document so the
-    // portal has somewhere to render (jsdom can't open actual windows)
-    const iframe = document.createElement('iframe');
-    document.body.appendChild(iframe);
-    const popoutWindow = iframe.contentWindow!;
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popoutWindow as Window & typeof globalThis);
+    // Stand in for window.open with iframe-backed REAL documents so the
+    // portal has somewhere to render (jsdom can't open actual windows).
+    // A FRESH iframe per call — popout.close() destroys a jsdom window,
+    // so a reopened popout needs a new one.
+    const iframes: HTMLIFrameElement[] = [];
+    let popoutWindow!: Window;
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {
+      const iframe = document.createElement('iframe');
+      document.body.appendChild(iframe);
+      iframes.push(iframe);
+      popoutWindow = iframe.contentWindow!;
+      return popoutWindow as Window & typeof globalThis;
+    });
 
     try {
       const rendered = renderApp();
@@ -1574,15 +1581,32 @@ describe('Focus routing', () => {
       });
       expect(container.querySelector('button[aria-label="Effects menu"]')).toBeNull();
       expect(popoutWindow.document.title).toBe('Effects');
+      // The popout draws its own header (drag region for the frameless
+      // Electron window) with a close button
+      const popoutClose = popoutWindow.document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Close Effects window"]',
+      );
+      expect(popoutClose).toBeTruthy();
 
-      // Closing the OS window re-docks the panel left
+      // Closing the OS window (pagehide) re-docks the panel left
       popoutWindow.dispatchEvent(new Event('pagehide'));
+      await waitFor(() =>
+        expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
+      );
+
+      // Round two: the in-header ✕ is the same re-dock gesture
+      fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+      fireEvent.click(menuItem('Open in window'));
+      await waitFor(() =>
+        expect(popoutWindow.document.querySelector('button[aria-label="Close Effects window"]')).toBeTruthy(),
+      );
+      fireEvent.click(popoutWindow.document.querySelector('button[aria-label="Close Effects window"]')!);
       await waitFor(() =>
         expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
       );
     } finally {
       openSpy.mockRestore();
-      iframe.remove();
+      iframes.forEach((el) => el.remove());
     }
   });
 });

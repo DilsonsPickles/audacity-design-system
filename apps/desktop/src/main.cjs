@@ -179,10 +179,25 @@ function createWindow(url) {
   // Open external links in the system browser rather than spawning a
   // second BrowserWindow — keeps "View on audio.com" feeling like a
   // normal handoff to the user's default browser.
-  win.webContents.setWindowOpenHandler(({ url: target }) => {
+  win.webContents.setWindowOpenHandler(({ url: target, frameName }) => {
     if (/^https?:\/\//.test(target)) {
       void shell.openExternal(target);
       return { action: 'deny' };
+    }
+    // Panel popouts (PopoutPanel.tsx opens with this frame-name prefix)
+    // become FRAMELESS child windows — the panel draws its own header,
+    // which carries the drag region and close button.
+    if (frameName && frameName.startsWith('audacity-panel-popout')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          frame: false,
+          resizable: true,
+          minWidth: 240,
+          minHeight: 200,
+          backgroundColor: '#f8f8f9',
+        },
+      };
     }
     return { action: 'allow' };
   });

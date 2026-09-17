@@ -1,15 +1,16 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { GhostButton } from '@audacity-ui/components';
 
 export interface PopoutPanelProps {
-  /** OS window title */
+  /** OS window title (also the in-panel header label) */
   title: string;
   /** Initial window size */
   width: number;
   height: number;
-  /** Called when the popout window is closed by the user (or when the
-   *  popup could not be opened at all — blocked in a plain browser).
-   *  The consumer re-docks the panel in response. */
+  /** Called when the popout window is closed by the user (its ✕ or the
+   *  OS close), or when the popup could not be opened at all — blocked
+   *  in a plain browser. The consumer re-docks the panel in response. */
   onClose: () => void;
   children: React.ReactNode;
 }
@@ -18,7 +19,9 @@ export interface PopoutPanelProps {
  *  panel renders identically. A <base> pointing at the parent's baseURI
  *  goes in FIRST — the popout is about:blank, so without it every
  *  relative url() (fonts, images) in the cloned sheets would resolve
- *  against nothing. */
+ *  against nothing. Also injects the popout's own chrome styles: the
+ *  header is the frameless window's drag region (-webkit-app-region),
+ *  with interactive children opted back out. */
 function adoptParentStyles(popoutDocument: Document) {
   const base = popoutDocument.createElement('base');
   base.href = document.baseURI;
@@ -26,15 +29,39 @@ function adoptParentStyles(popoutDocument: Document) {
   document.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
     popoutDocument.head.appendChild(node.cloneNode(true));
   });
+  const chrome = popoutDocument.createElement('style');
+  chrome.textContent = `
+    .popout-panel__header {
+      -webkit-app-region: drag;
+      user-select: none;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 6px 0 10px;
+      flex-shrink: 0;
+      background: #f8f8f9;
+      border-bottom: 1px solid #d4d5d9;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: #14151a;
+    }
+    .popout-panel__header button { -webkit-app-region: no-drag; }
+  `;
+  popoutDocument.head.appendChild(chrome);
 }
 
 /**
- * PopoutPanel — hosts children in a REAL separate window (an OS child
- * window under Electron, a popup in a plain browser) while their React
- * tree stays mounted in the main app: `window.open('')` is same-origin,
- * so `createPortal` renders straight into the popout's document and all
- * state/context/handlers keep living here. Closing the window (or the
- * popup being blocked) reports through `onClose`.
+ * PopoutPanel — hosts children in a REAL separate window (a FRAMELESS
+ * OS child window under Electron — main.cjs's setWindowOpenHandler
+ * strips the frame for the `audacity-panel-popout` frame-name prefix —
+ * or a regular popup in a plain browser) while their React tree stays
+ * mounted in the main app: `window.open('')` is same-origin, so
+ * `createPortal` renders straight into the popout's document and all
+ * state/context/handlers keep living here. The panel draws its own
+ * 32px header: the drag region for the frameless window, the title,
+ * and the ✕ (which, like the OS close, re-docks via `onClose`).
  */
 export function PopoutPanel({ title, width, height, onClose, children }: PopoutPanelProps) {
   const [popoutRoot, setPopoutRoot] = React.useState<HTMLElement | null>(null);
@@ -45,7 +72,10 @@ export function PopoutPanel({ title, width, height, onClose, children }: PopoutP
   React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   React.useEffect(() => {
-    const popout = window.open('', '_blank', `popup=yes,width=${width},height=${height}`);
+    // Unique frame name per panel so two popouts never reuse one window;
+    // the prefix is what main.cjs keys the frameless override on
+    const frameName = `audacity-panel-popout-${title.replace(/\W+/g, '-')}`;
+    const popout = window.open('', frameName, `popup=yes,width=${width},height=${height}`);
     if (!popout) {
       // Popup blocked (plain browser without a user gesture) — bail out
       // and let the consumer fall back to an in-app placement
@@ -76,6 +106,7 @@ export function PopoutPanel({ title, width, height, onClose, children }: PopoutP
       popout.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pagehide', closePopout);
       setPopoutRoot(null);
+      root.remove();
       popout.close();
     };
     // Mount-once by design: title/size only apply to the initial open
@@ -83,7 +114,23 @@ export function PopoutPanel({ title, width, height, onClose, children }: PopoutP
   }, []);
 
   if (!popoutRoot) return null;
-  return createPortal(children, popoutRoot);
+  return createPortal(
+    <>
+      <div className="popout-panel__header">
+        <span>{title}</span>
+        <GhostButton
+          icon="close"
+          size="small"
+          ariaLabel={`Close ${title} window`}
+          onClick={() => onCloseRef.current()}
+        />
+      </div>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {children}
+      </div>
+    </>,
+    popoutRoot,
+  );
 }
 
 export default PopoutPanel;
