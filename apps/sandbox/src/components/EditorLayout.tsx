@@ -1396,6 +1396,12 @@ export function EditorLayout(props: EditorLayoutProps) {
         onDragMove={handlePanelDragMove('effects')}
         onDragEnd={handlePopoutDragEnd('effects')}
         continueDragFrom={panelTearDrag?.panel === 'effects' ? panelTearDrag : null}
+        menuItems={[
+          { label: 'Dock left', onClick: () => setEffectsPanelSide('left') },
+          { label: 'Dock right', onClick: () => setEffectsPanelSide('right') },
+          { label: '', isDivider: true },
+          { label: 'Close', onClick: () => setEffectsPanel(null) },
+        ]}
       >
         <TrackEffectsPanel
           effectsPanel={effectsPanel}
@@ -1423,6 +1429,13 @@ export function EditorLayout(props: EditorLayoutProps) {
         onDragMove={handlePanelDragMove('macros')}
         onDragEnd={handlePopoutDragEnd('macros')}
         continueDragFrom={panelTearDrag?.panel === 'macros' ? panelTearDrag : null}
+        menuItems={[
+          { label: 'Dock left', onClick: () => setMacrosPanelSide('left') },
+          { label: 'Dock right', onClick: () => setMacrosPanelSide('right') },
+          { label: 'Dock bottom', onClick: () => setMacrosPanelSide('bottom') },
+          { label: '', isDivider: true },
+          { label: 'Close', onClick: () => setIsMacrosPanelOpen(false) },
+        ]}
       >
         <MacrosDockPanel />
       </PopoutPanel>

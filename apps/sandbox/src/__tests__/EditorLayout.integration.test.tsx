@@ -1710,11 +1710,11 @@ describe('Focus routing', () => {
       expect(container.querySelector('button[aria-label="Effects menu"]')).toBeNull();
       expect(popoutWindow.document.title).toBe('Effects');
       // The popout draws its own header (drag region for the frameless
-      // Electron window) with a close button
-      const popoutClose = popoutWindow.document.querySelector<HTMLButtonElement>(
-        'button[aria-label="Close Effects window"]',
-      );
-      expect(popoutClose).toBeTruthy();
+      // Electron window) carrying the same ⋯ menu as the docked tab —
+      // no ✕: Close lives in the menu (2026-09-10 decision)
+      const popoutMenuButton = () =>
+        popoutWindow.document.querySelector<HTMLButtonElement>('button[aria-label="Effects menu"]');
+      expect(popoutMenuButton()).toBeTruthy();
 
       // Closing the OS window (pagehide) re-docks the panel left
       popoutWindow.dispatchEvent(new Event('pagehide'));
@@ -1722,13 +1722,18 @@ describe('Focus routing', () => {
         expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
       );
 
-      // Round two: the in-header ✕ is the same re-dock gesture
+      // Round two: the ⋯ menu works from INSIDE the popout document
+      // (menu + items portal there too) — Dock right brings it home
       fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
       fireEvent.click(menuItem('Open in window'));
-      await waitFor(() =>
-        expect(popoutWindow.document.querySelector('button[aria-label="Close Effects window"]')).toBeTruthy(),
-      );
-      fireEvent.click(popoutWindow.document.querySelector('button[aria-label="Close Effects window"]')!);
+      await waitFor(() => expect(popoutMenuButton()).toBeTruthy());
+      const popoutMenuItem = (label: string) =>
+        Array.from(
+          popoutWindow.document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'),
+        ).find((el) => el.textContent?.trim() === label);
+      fireEvent.click(popoutMenuButton()!);
+      await waitFor(() => expect(popoutMenuItem('Dock right')).toBeTruthy());
+      fireEvent.click(popoutMenuItem('Dock right')!);
       await waitFor(() =>
         expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
       );

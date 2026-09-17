@@ -71,10 +71,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   const style = { ...internalStyle, ...externalStyle };
 
+  // The menu can be portaled into ANOTHER document (a panel popout
+  // window) — every global listener/measure below must target the
+  // document the menu actually lives in, not the module-global one.
+  const ownerDoc = () => menuRef.current?.ownerDocument ?? document;
+
   // Store the trigger element when menu opens
   useEffect(() => {
     if (isOpen) {
-      triggerElementRef.current = document.activeElement as HTMLElement;
+      triggerElementRef.current = ownerDoc().activeElement as HTMLElement;
     }
   }, [isOpen]);
 
@@ -103,17 +108,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     };
 
     // Add slight delay to prevent immediate close from the button click that opened it
+    const doc = ownerDoc();
     setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
+      doc.addEventListener('mousedown', handleClickOutside);
     }, 0);
 
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => doc.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
 
   // Handle keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
 
+    const doc = ownerDoc();
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!menuRef.current) return;
 
@@ -125,10 +132,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
       if (items.length === 0) return;
 
-      const currentIndex = items.findIndex(item => item === document.activeElement);
+      const currentIndex = items.findIndex(item => item === doc.activeElement);
 
       // Only handle navigation if focus is within this menu level (not in a submenu)
-      const focusedElement = document.activeElement;
+      const focusedElement = doc.activeElement;
       const isInSubmenu = focusedElement &&
         !items.includes(focusedElement as HTMLElement) &&
         menuRef.current.contains(focusedElement);
@@ -194,8 +201,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
+    doc.addEventListener('keydown', handleKeyDown, true);
+    return () => doc.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose]);
 
   // Adjust position if menu would go off-screen
@@ -204,8 +211,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
     const menu = menuRef.current;
     const rect = menu.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+    const win = menu.ownerDocument.defaultView ?? window;
+    const viewportWidth = win.innerWidth;
+    const viewportHeight = win.innerHeight;
 
     let adjustedX = x;
     let adjustedY = y;

@@ -1,6 +1,12 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { GhostButton } from '@audacity-ui/components';
+import { ContextMenu, ContextMenuItem, GhostButton } from '@audacity-ui/components';
+
+export interface PopoutMenuItem {
+  label: string;
+  onClick?: () => void;
+  isDivider?: boolean;
+}
 
 export interface PopoutPanelProps {
   /** OS window title (also the in-panel header label) */
@@ -24,6 +30,9 @@ export interface PopoutPanelProps {
    *  MAIN-document pointer events until release, feeding the same
    *  onDragMove/onDragEnd stream. The host clears it in onDragEnd. */
   continueDragFrom?: { clientX: number; clientY: number; screenX: number; screenY: number } | null;
+  /** Items for the tab's ⋯ menu — the same placement/Close entries the
+   *  panel shows when docked. Rendered INSIDE the popout document. */
+  menuItems?: PopoutMenuItem[];
   children: React.ReactNode;
 }
 
@@ -112,7 +121,9 @@ function adoptParentStyles(popoutDocument: Document) {
  * `createPortal` renders straight into the popout's document and all
  * state/context/handlers keep living here. The panel draws its own
  * 32px header: the drag region for the frameless window, the title,
- * and the ✕ (which, like the OS close, re-docks via `onClose`).
+ * and the same ⋯ menu the docked tab carries (per the 2026-09-10
+ * decision, Close lives in that menu — headers get no ✕). The OS
+ * window closing still re-docks via `onClose`.
  */
 interface PopoutEntry {
   win: Window;
@@ -127,9 +138,11 @@ interface PopoutEntry {
  *  same named window — which killed the popout the instant it opened. */
 const popoutEntries = new Map<string, PopoutEntry>();
 
-export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, continueDragFrom, children }: PopoutPanelProps) {
+export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, continueDragFrom, menuItems, children }: PopoutPanelProps) {
   const [popoutRoot, setPopoutRoot] = React.useState<HTMLElement | null>(null);
   const [headerEl, setHeaderEl] = React.useState<HTMLDivElement | null>(null);
+  // Tab ⋯ menu, positioned in the POPOUT's viewport coordinates
+  const [menuPos, setMenuPos] = React.useState<{ x: number; y: number } | null>(null);
   // The tear-off start captured at MOUNT — the prop lives until the
   // host's onDragEnd clears it, but only the first render's value opens
   // a session
@@ -334,14 +347,43 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
       <div className="popout-panel__header" ref={setHeaderEl}>
         <div className="popout-panel__tab">
           <span>{title}</span>
-          <GhostButton
-            icon="close"
-            size="small"
-            ariaLabel={`Close ${title} window`}
-            onClick={() => onCloseRef.current()}
-          />
+          {menuItems && menuItems.length > 0 && (
+            <GhostButton
+              icon="menu"
+              size="small"
+              ariaLabel={`${title} menu`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setMenuPos({ x: rect.right, y: rect.bottom });
+              }}
+            />
+          )}
         </div>
       </div>
+      {menuItems && (
+        <ContextMenu
+          isOpen={menuPos !== null}
+          onClose={() => setMenuPos(null)}
+          x={menuPos?.x ?? 0}
+          y={menuPos?.y ?? 0}
+        >
+          {menuItems.map((item, i) =>
+            item.isDivider ? (
+              <ContextMenuItem key={`divider-${i}`} isDivider label="" />
+            ) : (
+              <ContextMenuItem
+                key={item.label}
+                label={item.label}
+                onClick={() => {
+                  setMenuPos(null);
+                  item.onClick?.();
+                }}
+              />
+            ),
+          )}
+        </ContextMenu>
+      )}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {children}
       </div>
