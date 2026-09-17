@@ -23,6 +23,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Desktop-app feel: UI text is not selectable. `user-select` cascades
+ * (auto resolves against the parent's used value), so one rule on body
+ * covers the app AND the OS popout windows, which clone this stylesheet.
+ * Only genuinely editable text opts back in. */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable]:not([contenteditable='false']) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* Grab-to-pan: while Cmd/Ctrl is held the cursor switches to a hand
  * app-wide — the !important wins over each clip / resize handle /
  * etc. that has its own cursor. `pan-active` is set during the actual
