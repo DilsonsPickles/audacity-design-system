@@ -19,8 +19,17 @@ export interface PopoutPanelProps {
   /** Reports the pointer position when the header drag is RELEASED —
    *  the host docks the panel if it landed on a zone */
   onDragEnd?: (x: number, y: number) => void;
+  /** When set at mount, the popout opens mid-drag (a tab torn off a
+   *  dock): the window appears under the pointer and follows it via
+   *  MAIN-document pointer events until release, feeding the same
+   *  onDragMove/onDragEnd stream. The host clears it in onDragEnd. */
+  continueDragFrom?: { clientX: number; clientY: number; screenX: number; screenY: number } | null;
   children: React.ReactNode;
 }
+
+/** Offsets keeping the popout's header under the pointer mid-drag */
+const DRAG_OFFSET_X = 120;
+const DRAG_OFFSET_Y = 16;
 
 /** Translate a screen-coordinate pointer position into the MAIN
  *  window's viewport coordinates — the space the dock zones live in.
@@ -118,9 +127,14 @@ interface PopoutEntry {
  *  same named window — which killed the popout the instant it opened. */
 const popoutEntries = new Map<string, PopoutEntry>();
 
-export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, children }: PopoutPanelProps) {
+export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, continueDragFrom, children }: PopoutPanelProps) {
   const [popoutRoot, setPopoutRoot] = React.useState<HTMLElement | null>(null);
   const [headerEl, setHeaderEl] = React.useState<HTMLDivElement | null>(null);
+  // The tear-off start captured at MOUNT — the prop lives until the
+  // host's onDragEnd clears it, but only the first render's value opens
+  // a session
+  const continueFromRef = React.useRef(continueDragFrom ?? null);
+  const continueSessionStartedRef = React.useRef(false);
 
   // Ref-mirror: the popout's listeners bind once and read the live
   // callbacks through refs
@@ -130,6 +144,43 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
   React.useEffect(() => { onDragMoveRef.current = onDragMove; }, [onDragMove]);
   const onDragEndRef = React.useRef(onDragEnd);
   React.useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
+
+  // Continued tear-off drag: the popout opened mid-gesture, so the
+  // pointer is still held over the MAIN window — its document keeps
+  // receiving the pointer events (EditorLayout captured the pointer on
+  // body, so they keep flowing even outside the app window). The popout
+  // follows via moveTo until release.
+  React.useEffect(() => {
+    const start = continueFromRef.current;
+    if (!popoutRoot || !start || continueSessionStartedRef.current) return;
+    continueSessionStartedRef.current = true;
+    const popout = popoutRoot.ownerDocument.defaultView;
+    if (!popout) return;
+
+    let lastClientX = start.clientX;
+    let lastClientY = start.clientY;
+    const end = (report: boolean) => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      if (report) onDragEndRef.current?.(lastClientX, lastClientY);
+    };
+    const onPointerMove = (ev: PointerEvent) => {
+      // Released before we attached (ultra-fast tear): settle in place
+      if (ev.buttons === 0) { end(true); return; }
+      lastClientX = ev.clientX;
+      lastClientY = ev.clientY;
+      try { popout.moveTo(ev.screenX - DRAG_OFFSET_X, ev.screenY - DRAG_OFFSET_Y); } catch { /* jsdom */ }
+      onDragMoveRef.current?.(ev.clientX, ev.clientY);
+    };
+    const onPointerUp = (ev: PointerEvent) => {
+      lastClientX = ev.clientX;
+      lastClientY = ev.clientY;
+      end(true);
+    };
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+    return () => end(false);
+  }, [popoutRoot]);
 
   // JS-driven window drag from the popout's own header. Deliberately
   // NOT a native -webkit-app-region drag: a native drag starves the
@@ -202,10 +253,12 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
     if (!entry) {
       // EXPLICIT position: Chromium's default places a popup to the
       // RIGHT of the opener window, which for a full-width main window
-      // is entirely off-screen — the popout "disappears". Land it over
-      // the opener instead (Chromium clamps it into the display).
-      const left = Math.max(0, Math.round((window.screenX || 0) + 120));
-      const top = Math.max(0, Math.round((window.screenY || 0) + 120));
+      // is entirely off-screen — the popout "disappears". A torn-off
+      // panel opens under the pointer; otherwise land it over the
+      // opener (Chromium clamps into the display either way).
+      const tear = continueFromRef.current;
+      const left = Math.max(0, Math.round(tear ? tear.screenX - DRAG_OFFSET_X : (window.screenX || 0) + 120));
+      const top = Math.max(0, Math.round(tear ? tear.screenY - DRAG_OFFSET_Y : (window.screenY || 0) + 120));
       const popout = window.open(
         '',
         frameName,

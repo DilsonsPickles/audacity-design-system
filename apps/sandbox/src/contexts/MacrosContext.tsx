@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 import type { Macro } from '@audacity-ui/components';
 import type { Command } from '@audacity-ui/components';
 
-export type MacrosPanelSide = 'left' | 'right' | 'bottom' | 'floating' | 'window';
+export type MacrosPanelSide = 'left' | 'right' | 'bottom' | 'window';
 
 export interface MacrosContextValue {
   /** All macros in the project */

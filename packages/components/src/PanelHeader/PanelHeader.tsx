@@ -24,9 +24,12 @@ export interface PanelHeaderProps {
   /** Called when the menu button on the active tab is clicked */
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /** Called when a tab is dragged OUT of the header band (vertically,
-   *  past the tear-off threshold) — the host typically floats the
-   *  panel and continues the drag. Horizontal drags stay reorders. */
-  onTabTearOff?: (tabId: string, e: { clientX: number; clientY: number }) => void;
+   *  past the tear-off threshold) — the host typically pops the panel
+   *  out and continues the drag. Horizontal drags stay reorders. */
+  onTabTearOff?: (
+    tabId: string,
+    e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
+  ) => void;
   /** Called when the user drags the top edge to resize the panel */
   onResizeStart?: (e: React.MouseEvent) => void;
   /** Additional CSS class names */
@@ -122,7 +125,13 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
         dropTargetRef.current = null;
         setDragTabId(null);
         setDropTargetId(null);
-        onTabTearOffRef.current(tornTabId, { clientX: ev.clientX, clientY: ev.clientY });
+        onTabTearOffRef.current(tornTabId, {
+          clientX: ev.clientX,
+          clientY: ev.clientY,
+          screenX: ev.screenX,
+          screenY: ev.screenY,
+          pointerId: ev.pointerId,
+        });
         return;
       }
 

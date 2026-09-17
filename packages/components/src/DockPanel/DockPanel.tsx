@@ -18,7 +18,10 @@ export interface DockPanelProps {
   /** Called when the active tab's ellipsis menu button is clicked */
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /** Called when a tab is dragged out of the header (tear-off) */
-  onTabTearOff?: (tabId: string, e: { clientX: number; clientY: number }) => void;
+  onTabTearOff?: (
+    tabId: string,
+    e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
+  ) => void;
   /** Initial width in pixels */
   width?: number;
   /** Whether the panel is horizontally resizable */

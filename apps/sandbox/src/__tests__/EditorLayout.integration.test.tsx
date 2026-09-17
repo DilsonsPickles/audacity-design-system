@@ -1495,7 +1495,7 @@ describe('Focus routing', () => {
     expect(document.activeElement).toBe(ruler0);
   });
 
-  it('effects panel floats via its tab menu and docks back left', async () => {
+  it('effects panel moves between docks via its tab menu (no in-app Float)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1508,124 +1508,87 @@ describe('Focus routing', () => {
     await waitFor(() =>
       expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
     );
-    expect(container.querySelector('.floating-panel')).toBeNull();
 
     const menuItem = (label: string) =>
       Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
-        .find((el) => el.textContent?.trim() === label)!;
+        .find((el) => el.textContent?.trim() === label);
 
-    // Float it from the tab kebab
+    // The in-app Float placement is gone — the OS window is THE floating form
     fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
-    fireEvent.click(menuItem('Float'));
-    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeTruthy());
-    // The dock is gone; the floating panel hosts the Effects tab
-    const floating = container.querySelector('.floating-panel')!;
-    expect(floating.textContent).toContain('Effects');
-    expect(floating.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
+    expect(menuItem('Float')).toBeUndefined();
+    expect(menuItem('Open in window')).toBeTruthy();
 
     // Dock it right — the right dock hosts the Effects tab
-    fireEvent.click(floating.querySelector('button[aria-label="Effects menu"]')!);
-    fireEvent.click(menuItem('Dock right'));
-    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeNull());
+    fireEvent.click(menuItem('Dock right')!);
+    await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeTruthy());
     const rightDock = container.querySelector('.side-panel--right')!;
-    expect(rightDock).toBeTruthy();
     expect(rightDock.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
 
     // Dock it back left
     fireEvent.click(rightDock.querySelector('button[aria-label="Effects menu"]')!);
-    fireEvent.click(menuItem('Dock left'));
+    fireEvent.click(menuItem('Dock left')!);
     await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeNull());
     expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
   });
 
-  it('dragging a floating panel over a dock zone highlights it and docks on release', async () => {
-    const rendered = renderApp();
-    const { container } = rendered;
-    await gotoProject(rendered);
-    await addTrackType(container, 'Mono');
-
-    // jsdom has no layout — give the editor row a real extent for the
-    // dock-zone math (zones are 88px bands along its edges)
-    const editorRow = container.querySelector<HTMLElement>('.editor-main-row')!;
-    editorRow.getBoundingClientRect = () => ({
-      top: 100, bottom: 700, left: 0, right: 1200,
-      width: 1200, height: 600, x: 0, y: 100, toJSON: () => ({}),
+  it('tearing a docked tab pops the panel into its OS window mid-drag and docks on release', async () => {
+    const iframes: HTMLIFrameElement[] = [];
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {
+      const iframe = document.createElement('iframe');
+      document.body.appendChild(iframe);
+      iframes.push(iframe);
+      return iframe.contentWindow! as Window & typeof globalThis;
     });
 
-    // Open the effects panel and float it
-    const effectsButton = Array.from(container.querySelectorAll('button'))
-      .find((b) => b.textContent?.trim() === 'Effects')!;
-    fireEvent.click(effectsButton);
-    await waitFor(() =>
-      expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
-    );
-    const menuItem = (label: string) =>
-      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
-        .find((el) => el.textContent?.trim() === label)!;
-    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
-    fireEvent.click(menuItem('Float'));
-    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeTruthy());
+    try {
+      const rendered = renderApp();
+      const { container } = rendered;
+      await gotoProject(rendered);
+      await addTrackType(container, 'Mono');
 
-    // Drag the panel by its header toward the RIGHT dock zone
-    const header = container.querySelector<HTMLElement>('.floating-panel__header')!;
-    fireEvent.mouseDown(header, { button: 0, clientX: 600, clientY: 400 });
-    // Mid-row: zones render, none hovered
-    fireEvent.mouseMove(document, { clientX: 600, clientY: 402 });
-    expect(container.querySelector('[data-dock-zone="left"]')).toBeTruthy();
-    expect(container.querySelector('[data-dock-zone="left"]')?.getAttribute('data-active')).toBe('false');
-    // Effects offers no bottom zone
-    expect(container.querySelector('[data-dock-zone="bottom"]')).toBeNull();
-    // Into the right band: it lights up
-    fireEvent.mouseMove(document, { clientX: 1160, clientY: 400 });
-    expect(container.querySelector('[data-dock-zone="right"]')?.getAttribute('data-active')).toBe('true');
-    // Release: docked right, overlays gone, floating panel gone
-    fireEvent.mouseUp(document);
-    await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeTruthy());
-    expect(container.querySelector('.floating-panel')).toBeNull();
-    expect(container.querySelector('[data-dock-zone="right"]')).toBeNull();
-    expect(
-      container.querySelector('.side-panel--right button[aria-label="Effects menu"]'),
-    ).toBeTruthy();
-  });
+      const editorRow = container.querySelector<HTMLElement>('.editor-main-row')!;
+      editorRow.getBoundingClientRect = () => ({
+        top: 100, bottom: 700, left: 0, right: 1200,
+        width: 1200, height: 600, x: 0, y: 100, toJSON: () => ({}),
+      });
 
-  it('tearing a docked tab out of its header floats the panel mid-drag and re-docks on release', async () => {
-    const rendered = renderApp();
-    const { container } = rendered;
-    await gotoProject(rendered);
-    await addTrackType(container, 'Mono');
+      // Open the effects panel — docked left, its tab in the dock header
+      const effectsButton = Array.from(container.querySelectorAll('button'))
+        .find((b) => b.textContent?.trim() === 'Effects')!;
+      fireEvent.click(effectsButton);
+      await waitFor(() =>
+        expect(container.querySelector('[role="tab"][data-tab-id="effects"]')).toBeTruthy(),
+      );
+      const tab = container.querySelector<HTMLElement>('[role="tab"][data-tab-id="effects"]')!;
 
-    const editorRow = container.querySelector<HTMLElement>('.editor-main-row')!;
-    editorRow.getBoundingClientRect = () => ({
-      top: 100, bottom: 700, left: 0, right: 1200,
-      width: 1200, height: 600, x: 0, y: 100, toJSON: () => ({}),
-    });
+      // Drag the tab DOWN past the tear-off threshold — the panel pops
+      // into its OS window under the pointer, mid-gesture
+      fireEvent.pointerDown(tab, { button: 0, clientX: 60, clientY: 110 });
+      fireEvent.pointerMove(document, { clientX: 70, clientY: 160, screenX: 70, screenY: 160 });
+      await waitFor(() => {
+        const win = iframes[iframes.length - 1]?.contentWindow;
+        expect(win?.document.querySelector('.popout-panel-root')).toBeTruthy();
+      });
+      // The in-app dock is gone
+      expect(container.querySelector('button[aria-label="Effects menu"]')).toBeNull();
 
-    // Open the effects panel — docked left, its tab in the dock header
-    const effectsButton = Array.from(container.querySelectorAll('button'))
-      .find((b) => b.textContent?.trim() === 'Effects')!;
-    fireEvent.click(effectsButton);
-    await waitFor(() =>
-      expect(container.querySelector('[role="tab"][data-tab-id="effects"]')).toBeTruthy(),
-    );
-    const tab = container.querySelector<HTMLElement>('[role="tab"][data-tab-id="effects"]')!;
+      // The SAME drag continues: moving lights up zones
+      fireEvent.pointerMove(document, { clientX: 1160, clientY: 400, screenX: 1160, screenY: 400, buttons: 1 });
+      expect(container.querySelector('[data-dock-zone="right"]')?.getAttribute('data-active')).toBe('true');
+      // Still held — nothing docked yet
+      expect(container.querySelector('.side-panel--right')).toBeNull();
 
-    // Drag the tab DOWN past the tear-off threshold — the panel floats
-    // mid-gesture and follows the pointer
-    fireEvent.pointerDown(tab, { button: 0, clientX: 60, clientY: 110 });
-    fireEvent.pointerMove(document, { clientX: 70, clientY: 160 });
-    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeTruthy());
-
-    // The drag continues without re-pressing: moving lights up zones
-    fireEvent.mouseMove(document, { clientX: 1160, clientY: 400, buttons: 1 });
-    expect(container.querySelector('[data-dock-zone="right"]')?.getAttribute('data-active')).toBe('true');
-    // Still held — nothing docked yet
-    expect(container.querySelector('.side-panel--right')).toBeNull();
-
-    // Release over the right zone: docked right
-    fireEvent.mouseUp(document, { clientX: 1160, clientY: 400 });
-    await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeTruthy());
-    expect(container.querySelector('.floating-panel')).toBeNull();
-    expect(container.querySelector('[data-dock-zone="right"]')).toBeNull();
+      // Release over the right zone: docked right, popout torn down
+      fireEvent.pointerUp(document, { clientX: 1160, clientY: 400, screenX: 1160, screenY: 400 });
+      await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeTruthy());
+      expect(container.querySelector('[data-dock-zone="right"]')).toBeNull();
+      expect(
+        container.querySelector('.side-panel--right button[aria-label="Effects menu"]'),
+      ).toBeTruthy();
+    } finally {
+      openSpy.mockRestore();
+      iframes.forEach((el) => el.remove());
+    }
   });
 
   it('dragging the OS popout by its header highlights zones and docks ONLY on release', async () => {

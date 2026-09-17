@@ -4,7 +4,7 @@ import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, DockPanel, FloatingPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, DockPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat, ThemeTokens } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracks } from '../contexts/TracksContext';
@@ -239,9 +239,9 @@ export function EditorLayout(props: EditorLayoutProps) {
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<'effects' | 'macros'>('effects');
   const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
   // Effects panel placement — docked left (the classic position), docked
-  // right, floating, or in its own OS window, moved via its tab's kebab
-  // menu like the Macros panel.
-  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'right' | 'floating' | 'window'>('left');
+  // right, or floating in its own OS window, moved via its tab's kebab
+  // menu or by dragging its tab/header.
+  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'right' | 'window'>('left');
   // The right dock hosts Effects and/or Macros as tabs, mirroring the left
   const [rightDockActiveTab, setRightDockActiveTab] = React.useState<'effects' | 'macros'>('macros');
   const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
@@ -252,11 +252,9 @@ export function EditorLayout(props: EditorLayoutProps) {
   const effectsOpen = activeMenuItem !== 'export' && !!effectsPanel?.isOpen;
   const effectsDockedLeft = effectsOpen && effectsPanelSide === 'left';
   const effectsDockedRight = effectsOpen && effectsPanelSide === 'right';
-  const effectsFloating = effectsOpen && effectsPanelSide === 'floating';
   const effectsInWindow = effectsOpen && effectsPanelSide === 'window';
   const macrosDockedLeft = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'left';
   const macrosDockedRight = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'right';
-  const macrosFloating = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'floating';
   const macrosDockedBottom = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'bottom';
   const macrosInWindow = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'window';
 
@@ -345,31 +343,34 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   const handlePanelDragMove = (panel: 'effects' | 'macros') => (x: number, y: number) =>
     dockDragMove(panel, x, y);
-  const handlePanelDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) =>
-    dockDragEnd(panel, x, y);
 
-  // Tear-off: dragging a dock tab vertically out of its header floats
-  // the panel mid-gesture — the FloatingPanel mounts under the pointer
-  // (continueDragFrom) and the drag continues seamlessly into the
-  // zone-highlight/dock flow. The kebab menu items stay as the
+  // Tear-off: dragging a dock tab vertically out of its header pops the
+  // panel into its OS window mid-gesture — the PopoutPanel opens under
+  // the pointer (continueDragFrom) and the drag continues seamlessly
+  // into the zone-highlight/dock flow. The kebab menu items stay as the
   // discoverable path; the drag is the direct one.
   const [panelTearDrag, setPanelTearDrag] = React.useState<{
     panel: 'effects' | 'macros';
-    x: number;
-    y: number;
+    clientX: number;
+    clientY: number;
+    screenX: number;
+    screenY: number;
   } | null>(null);
 
-  const handleDockTabTearOff = (tabId: string, e: { clientX: number; clientY: number }) => {
-    if (tabId === 'effects') {
-      setEffectsPanelSide('floating');
-      setPanelTearDrag({ panel: 'effects', x: e.clientX, y: e.clientY });
-    } else if (tabId === 'macros') {
-      setMacrosPanelSide('floating');
-      setPanelTearDrag({ panel: 'macros', x: e.clientX, y: e.clientY });
-    }
+  const handleDockTabTearOff = (
+    tabId: string,
+    e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
+  ) => {
+    if (tabId !== 'effects' && tabId !== 'macros') return;
+    // Keep pointer events flowing to this document even when the cursor
+    // leaves the app window mid-drag (the torn panel is an OS window)
+    try { document.body.setPointerCapture(e.pointerId); } catch { /* jsdom / no capture */ }
+    if (tabId === 'effects') setEffectsPanelSide('window');
+    else setMacrosPanelSide('window');
+    setPanelTearDrag({ panel: tabId, clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY });
   };
 
-  const handleFloatingDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) => {
+  const handlePopoutDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) => {
     setPanelTearDrag(null);
     dockDragEnd(panel, x, y);
   };
@@ -1345,54 +1346,6 @@ export function EditorLayout(props: EditorLayoutProps) {
       )}
     </div>
 
-    {/* Floating Macros panel — the default placement on first open. */}
-    {macrosFloating && (
-      <FloatingPanel
-        width={280}
-        height={420}
-        tabs={[macrosTabDef]}
-        activeTabId="macros"
-        onMenuClick={openDockMenu}
-        onDragMove={handlePanelDragMove('macros')}
-        onDragEnd={handleFloatingDragEnd('macros')}
-        continueDragFrom={panelTearDrag?.panel === 'macros' ? panelTearDrag : null}
-      >
-        <MacrosDockPanel />
-      </FloatingPanel>
-    )}
-
-    {/* Floating Effects panel — undocked via the tab's kebab menu. Same
-        content component as the left dock; only the host differs. */}
-    {effectsFloating && effectsPanel && (
-      <FloatingPanel
-        width={280}
-        height={480}
-        tabs={[leftDockTabDefs.effects]}
-        activeTabId="effects"
-        onMenuClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          setDockMenu({ x: rect.right, y: rect.bottom, tab: 'effects' });
-        }}
-        onDragMove={handlePanelDragMove('effects')}
-        onDragEnd={handleFloatingDragEnd('effects')}
-        continueDragFrom={panelTearDrag?.panel === 'effects' ? panelTearDrag : null}
-      >
-        <TrackEffectsPanel
-          effectsPanel={effectsPanel}
-          tracks={state.tracks}
-          masterEffects={state.masterEffects}
-          masterEffectsEnabled={state.masterEffectsEnabled}
-          museHubSignedIn={museHubSignedIn}
-          installedEffects={installedEffects}
-          disabledPluginIds={disabledPluginIds}
-          setEffectPicker={setEffectPicker}
-          setEffectDialog={setEffectDialog}
-          setEffectsPanel={setEffectsPanel}
-          setMarketplaceModal={setMarketplaceModal}
-        />
-      </FloatingPanel>
-    )}
-
     {/* Dock-zone highlights — visible while a floating panel is being
         dragged; the hovered zone glows to say "drop to dock here" */}
     {panelDrag && (() => {
@@ -1441,7 +1394,8 @@ export function EditorLayout(props: EditorLayoutProps) {
         height={560}
         onClose={() => setEffectsPanelSide('left')}
         onDragMove={handlePanelDragMove('effects')}
-        onDragEnd={handlePanelDragEnd('effects')}
+        onDragEnd={handlePopoutDragEnd('effects')}
+        continueDragFrom={panelTearDrag?.panel === 'effects' ? panelTearDrag : null}
       >
         <TrackEffectsPanel
           effectsPanel={effectsPanel}
@@ -1459,16 +1413,16 @@ export function EditorLayout(props: EditorLayoutProps) {
       </PopoutPanel>
     )}
 
-    {/* Macros panel in its own OS window; closing returns it to its
-        default floating placement. */}
+    {/* Macros panel in its own OS window; closing docks it back right. */}
     {macrosInWindow && (
       <PopoutPanel
         title="Macro manager"
         width={320}
         height={480}
-        onClose={() => setMacrosPanelSide('floating')}
+        onClose={() => setMacrosPanelSide('right')}
         onDragMove={handlePanelDragMove('macros')}
-        onDragEnd={handlePanelDragEnd('macros')}
+        onDragEnd={handlePopoutDragEnd('macros')}
+        continueDragFrom={panelTearDrag?.panel === 'macros' ? panelTearDrag : null}
       >
         <MacrosDockPanel />
       </PopoutPanel>
@@ -1482,15 +1436,6 @@ export function EditorLayout(props: EditorLayoutProps) {
       x={dockMenu?.x ?? 0}
       y={dockMenu?.y ?? 0}
     >
-      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'floating' && (
-        <ContextMenuItem
-          label="Float"
-          onClick={() => {
-            setMacrosPanelSide('floating');
-            setDockMenu(null);
-          }}
-        />
-      )}
       {dockMenu?.tab === 'macros' && macrosPanelSide !== 'left' && (
         <ContextMenuItem
           label="Dock left"
@@ -1523,15 +1468,6 @@ export function EditorLayout(props: EditorLayoutProps) {
           label="Open in window"
           onClick={() => {
             setMacrosPanelSide('window');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'floating' && (
-        <ContextMenuItem
-          label="Float"
-          onClick={() => {
-            setEffectsPanelSide('floating');
             setDockMenu(null);
           }}
         />
