@@ -147,10 +147,6 @@ const STYLE_FLEX_ROW_OVERFLOW_HIDDEN: React.CSSProperties = { flex: 1, display: 
 
 /** Width of the drag-to-dock bands along the editor row's edges */
 const DOCK_ZONE_SIZE = 88;
-/** Ignore popout move events this long after the window opens — the
- *  OS emits positioning moves during creation that aren't user drags */
-const POPOUT_DRAG_ARM_DELAY_MS = 500;
-
 function dockZoneAt(
   x: number,
   y: number,
@@ -352,48 +348,12 @@ export function EditorLayout(props: EditorLayoutProps) {
   const handlePanelDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) =>
     dockDragEnd(panel, x, y);
 
-  // OS-window popouts join drag-to-dock through the Electron bridge:
-  // native window drags give the renderer no mouse events, so main.cjs
-  // forwards the child window's moves as cursor positions ALREADY
-  // translated into this window's content coordinates — the same space
-  // as the floating-panel drags. The arm delay swallows the window's
-  // own positioning moves right after it opens.
-  const popoutArmedAtRef = React.useRef<Record<'effects' | 'macros', number>>({ effects: 0, macros: 0 });
-  React.useEffect(() => {
-    if (effectsPanelSide === 'window') popoutArmedAtRef.current.effects = Date.now();
-  }, [effectsPanelSide]);
-  React.useEffect(() => {
-    if (macrosPanelSide === 'window') popoutArmedAtRef.current.macros = Date.now();
-  }, [macrosPanelSide]);
-
-  React.useEffect(() => {
-    const bridge = (window as {
-      panelPopout?: {
-        onDragMove: (cb: (p: { frameName: string; x: number; y: number }) => void) => () => void;
-        onDragEnd: (cb: (p: { frameName: string; x: number; y: number }) => void) => () => void;
-      };
-    }).panelPopout;
-    if (!bridge) return;
-    const panelOf = (frameName: string): 'effects' | 'macros' | null => {
-      if (frameName.includes('Effects')) return 'effects';
-      if (frameName.includes('Macro')) return 'macros';
-      return null;
-    };
-    const armed = (panel: 'effects' | 'macros') =>
-      Date.now() - popoutArmedAtRef.current[panel] > POPOUT_DRAG_ARM_DELAY_MS;
-    const offMove = bridge.onDragMove(({ frameName, x, y }) => {
-      const panel = panelOf(frameName);
-      if (panel && armed(panel)) dockDragMove(panel, x, y);
-    });
-    const offEnd = bridge.onDragEnd(({ frameName, x, y }) => {
-      const panel = panelOf(frameName);
-      if (panel && armed(panel)) dockDragEnd(panel, x, y);
-    });
-    return () => {
-      offMove();
-      offEnd();
-    };
-  }, [dockDragMove, dockDragEnd]);
+  // OS-window popouts join drag-to-dock too: PopoutPanel implements a
+  // JS pointer-capture drag in its own header (not a native app-region
+  // drag, which would starve the page of mouse events) and reports
+  // positions already translated into this window's viewport — the
+  // same space as the floating-panel drags. Docking happens ONLY on
+  // pointer release.
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
 
@@ -1450,6 +1410,8 @@ export function EditorLayout(props: EditorLayoutProps) {
         width={320}
         height={560}
         onClose={() => setEffectsPanelSide('left')}
+        onDragMove={handlePanelDragMove('effects')}
+        onDragEnd={handlePanelDragEnd('effects')}
       >
         <TrackEffectsPanel
           effectsPanel={effectsPanel}
@@ -1475,6 +1437,8 @@ export function EditorLayout(props: EditorLayoutProps) {
         width={320}
         height={480}
         onClose={() => setMacrosPanelSide('floating')}
+        onDragMove={handlePanelDragMove('macros')}
+        onDragEnd={handlePanelDragEnd('macros')}
       >
         <MacrosDockPanel />
       </PopoutPanel>

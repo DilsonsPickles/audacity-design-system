@@ -18,7 +18,7 @@
 //     cross-origin fetch the sandbox makes.
 // A loopback http server sidesteps all three with no allowlist changes.
 
-const { app, BrowserWindow, shell, Menu, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('node:path');
 const net = require('node:net');
 
@@ -206,29 +206,13 @@ function createWindow(url) {
     return { action: 'allow' };
   });
 
-  // Panel popouts are dragged by the OS (frameless header drag region),
-  // so the renderer sees no mouse events during the drag — the MAIN
-  // process forwards it instead: on every child-window 'move' the
-  // current cursor position is translated into the parent's CONTENT
-  // coordinates and sent to the parent renderer, which runs the same
-  // dock-zone highlighting as for in-app floating panels. 'moved'
-  // (fires once when a move ends on macOS) is the drop gesture.
-  win.webContents.on('did-create-window', (child, { frameName }) => {
-    if (!frameName || !frameName.startsWith('audacity-panel-popout')) return;
-    const forward = (channel) => () => {
-      if (win.isDestroyed() || child.isDestroyed()) return;
-      const cursor = screen.getCursorScreenPoint();
-      const content = win.getContentBounds();
-      win.webContents.send(channel, {
-        frameName,
-        x: cursor.x - content.x,
-        y: cursor.y - content.y,
-      });
-    };
-    child.on('move', forward('panel-popout:drag-move'));
-    child.on('moved', forward('panel-popout:drag-end'));
-  });
-
+  // NOTE on popout drag-to-dock: the panel popouts are dragged by a
+  // JS pointer-capture drag in their own header (PopoutPanel.tsx),
+  // NOT a native -webkit-app-region drag — a native drag would starve
+  // the renderer of mouse events, and forwarding the child window's
+  // 'move'/'moved' from here can't work either: on macOS 'moved' fires
+  // continuously during the drag, so there is no reliable release
+  // signal in the main process.
   win.loadURL(url);
   return win;
 }

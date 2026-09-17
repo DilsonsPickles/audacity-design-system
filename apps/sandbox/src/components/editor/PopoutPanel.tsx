@@ -12,7 +12,25 @@ export interface PopoutPanelProps {
    *  OS close), or when the popup could not be opened at all — blocked
    *  in a plain browser. The consumer re-docks the panel in response. */
   onClose: () => void;
+  /** Reports the pointer position (in the MAIN window's viewport
+   *  coordinates) while the popout is dragged by its header — lets the
+   *  host light up its dock zones */
+  onDragMove?: (x: number, y: number) => void;
+  /** Reports the pointer position when the header drag is RELEASED —
+   *  the host docks the panel if it landed on a zone */
+  onDragEnd?: (x: number, y: number) => void;
   children: React.ReactNode;
+}
+
+/** Translate a screen-coordinate pointer position into the MAIN
+ *  window's viewport coordinates — the space the dock zones live in.
+ *  The vertical chrome offset (titlebar) is outerHeight - innerHeight. */
+function screenToMainViewport(screenX: number, screenY: number): { x: number; y: number } {
+  const chromeY = Math.max(0, (window.outerHeight || 0) - window.innerHeight);
+  return {
+    x: screenX - (window.screenX || 0),
+    y: screenY - (window.screenY || 0) - chromeY,
+  };
 }
 
 /** Copy the parent document's styles into the popout so the portaled
@@ -32,8 +50,8 @@ function adoptParentStyles(popoutDocument: Document) {
   const chrome = popoutDocument.createElement('style');
   chrome.textContent = `
     .popout-panel__header {
-      -webkit-app-region: drag;
       user-select: none;
+      cursor: grab;
       height: 32px;
       display: flex;
       align-items: center;
@@ -47,7 +65,8 @@ function adoptParentStyles(popoutDocument: Document) {
       font-weight: 600;
       color: #14151a;
     }
-    .popout-panel__header button { -webkit-app-region: no-drag; }
+    .popout-panel__header:active { cursor: grabbing; }
+    .popout-panel__header button { cursor: pointer; }
   `;
   popoutDocument.head.appendChild(chrome);
 }
@@ -76,13 +95,69 @@ interface PopoutEntry {
  *  same named window — which killed the popout the instant it opened. */
 const popoutEntries = new Map<string, PopoutEntry>();
 
-export function PopoutPanel({ title, width, height, onClose, children }: PopoutPanelProps) {
+export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, children }: PopoutPanelProps) {
   const [popoutRoot, setPopoutRoot] = React.useState<HTMLElement | null>(null);
+  const [headerEl, setHeaderEl] = React.useState<HTMLDivElement | null>(null);
 
-  // Ref-mirror: the popout's pagehide listener binds once and reads the
-  // live callback through the ref
+  // Ref-mirror: the popout's listeners bind once and read the live
+  // callbacks through refs
   const onCloseRef = React.useRef(onClose);
   React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const onDragMoveRef = React.useRef(onDragMove);
+  React.useEffect(() => { onDragMoveRef.current = onDragMove; }, [onDragMove]);
+  const onDragEndRef = React.useRef(onDragEnd);
+  React.useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
+
+  // JS-driven window drag from the popout's own header. Deliberately
+  // NOT a native -webkit-app-region drag: a native drag starves the
+  // page of mouse events, so there'd be no way to highlight dock zones
+  // live or to dock ONLY on release (macOS's 'moved' fires all through
+  // the drag). Pointer capture keeps move/up flowing to the header even
+  // when the pointer leaves the little window; window.moveTo is
+  // permitted for script-opened windows. NOTE: React synthetic handlers
+  // don't fire across documents (delegation lives in the main doc), so
+  // these are native listeners on the portaled element.
+  React.useEffect(() => {
+    if (!headerEl) return;
+    const popout = headerEl.ownerDocument.defaultView;
+    if (!popout) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if ((e.target as HTMLElement).closest('button')) return;
+      e.preventDefault();
+      try { headerEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+      const startCursorX = e.screenX;
+      const startCursorY = e.screenY;
+      const startWinX = popout.screenX;
+      const startWinY = popout.screenY;
+      let dragging = false;
+
+      const onPointerMove = (ev: PointerEvent) => {
+        const dx = ev.screenX - startCursorX;
+        const dy = ev.screenY - startCursorY;
+        if (!dragging && Math.abs(dx) + Math.abs(dy) < 3) return;
+        dragging = true;
+        try { popout.moveTo(startWinX + dx, startWinY + dy); } catch { /* jsdom */ }
+        const p = screenToMainViewport(ev.screenX, ev.screenY);
+        onDragMoveRef.current?.(p.x, p.y);
+      };
+      const onPointerUp = (ev: PointerEvent) => {
+        headerEl.removeEventListener('pointermove', onPointerMove);
+        headerEl.removeEventListener('pointerup', onPointerUp);
+        try { headerEl.releasePointerCapture(e.pointerId); } catch { /* jsdom */ }
+        if (!dragging) return;
+        // THE drop gesture — dock zones only act on actual release
+        const p = screenToMainViewport(ev.screenX, ev.screenY);
+        onDragEndRef.current?.(p.x, p.y);
+      };
+      headerEl.addEventListener('pointermove', onPointerMove);
+      headerEl.addEventListener('pointerup', onPointerUp);
+    };
+
+    headerEl.addEventListener('pointerdown', onPointerDown);
+    return () => headerEl.removeEventListener('pointerdown', onPointerDown);
+  }, [headerEl]);
 
   React.useEffect(() => {
     // Unique frame name per panel so two popouts never reuse one window;
@@ -170,7 +245,7 @@ export function PopoutPanel({ title, width, height, onClose, children }: PopoutP
   if (!popoutRoot) return null;
   return createPortal(
     <>
-      <div className="popout-panel__header">
+      <div className="popout-panel__header" ref={setHeaderEl}>
         <span>{title}</span>
         <GhostButton
           icon="close"

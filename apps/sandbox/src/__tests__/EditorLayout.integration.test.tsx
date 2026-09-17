@@ -1588,15 +1588,7 @@ describe('Focus routing', () => {
     ).toBeTruthy();
   });
 
-  it('dragging the OS popout window over a dock zone highlights it and docks on drop (bridge path)', async () => {
-    // Fake the Electron preload bridge that forwards native window drags
-    type BridgePayload = { frameName: string; x: number; y: number };
-    let moveCb: ((p: BridgePayload) => void) | null = null;
-    let endCb: ((p: BridgePayload) => void) | null = null;
-    (window as unknown as { panelPopout?: object }).panelPopout = {
-      onDragMove: (cb: (p: BridgePayload) => void) => { moveCb = cb; return () => { moveCb = null; }; },
-      onDragEnd: (cb: (p: BridgePayload) => void) => { endCb = cb; return () => { endCb = null; }; },
-    };
+  it('dragging the OS popout by its header highlights zones and docks ONLY on release', async () => {
     const iframes: HTMLIFrameElement[] = [];
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {
       const iframe = document.createElement('iframe');
@@ -1604,6 +1596,13 @@ describe('Focus routing', () => {
       iframes.push(iframe);
       return iframe.contentWindow! as Window & typeof globalThis;
     });
+    // Make screen→main-viewport translation the identity: origin (0,0),
+    // zero chrome offset
+    const screenXDesc = Object.getOwnPropertyDescriptor(window, 'screenX');
+    const outerHeightDesc = Object.getOwnPropertyDescriptor(window, 'outerHeight');
+    Object.defineProperty(window, 'screenX', { value: 0, configurable: true });
+    Object.defineProperty(window, 'screenY', { value: 0, configurable: true });
+    Object.defineProperty(window, 'outerHeight', { value: window.innerHeight, configurable: true });
 
     try {
       const rendered = renderApp();
@@ -1628,20 +1627,30 @@ describe('Focus routing', () => {
           .find((el) => el.textContent?.trim() === label)!;
       fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
       fireEvent.click(menuItem('Open in window'));
-      await waitFor(() => expect(container.querySelector('button[aria-label="Effects menu"]')).toBeNull());
-      expect(moveCb).toBeTruthy();
 
-      // Inside the arm window, moves are ignored (creation positioning)
-      act(() => moveCb!({ frameName: 'audacity-panel-popout-Effects', x: 40, y: 400 }));
-      expect(container.querySelector('[data-dock-zone="left"]')).toBeNull();
+      const popoutWindow = () => iframes[iframes.length - 1].contentWindow!;
+      await waitFor(() =>
+        expect(popoutWindow().document.querySelector('.popout-panel__header')).toBeTruthy(),
+      );
+      const header = popoutWindow().document.querySelector<HTMLElement>('.popout-panel__header')!;
 
-      // Past the arm delay: a drag over the left band lights it up
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      act(() => moveCb!({ frameName: 'audacity-panel-popout-Effects', x: 40, y: 400 }));
+      const pev = (type: string, screenX: number, screenY: number) =>
+        act(() => {
+          header.dispatchEvent(new MouseEvent(type, {
+            bubbles: true, cancelable: true, button: 0, screenX, screenY,
+          }));
+        });
+
+      // Grab the header and drag over the left dock band
+      pev('pointerdown', 500, 300);
+      pev('pointermove', 480, 320); // past the 3px threshold
+      pev('pointermove', 40, 400);  // into the left band
       expect(container.querySelector('[data-dock-zone="left"]')?.getAttribute('data-active')).toBe('true');
+      // Still HELD: nothing docks while hovering the zone
+      expect(container.querySelector('button[aria-label="Effects menu"]')).toBeNull();
 
-      // Drop: docked left, overlays gone, popout torn down
-      act(() => endCb!({ frameName: 'audacity-panel-popout-Effects', x: 40, y: 400 }));
+      // Release: NOW it docks, overlays clear, popout torn down
+      pev('pointerup', 40, 400);
       await waitFor(() =>
         expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
       );
@@ -1649,7 +1658,8 @@ describe('Focus routing', () => {
     } finally {
       openSpy.mockRestore();
       iframes.forEach((el) => el.remove());
-      delete (window as unknown as { panelPopout?: object }).panelPopout;
+      if (screenXDesc) Object.defineProperty(window, 'screenX', screenXDesc);
+      if (outerHeightDesc) Object.defineProperty(window, 'outerHeight', outerHeightDesc);
     }
   });
 
