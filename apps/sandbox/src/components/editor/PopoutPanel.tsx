@@ -63,6 +63,19 @@ function adoptParentStyles(popoutDocument: Document) {
  * 32px header: the drag region for the frameless window, the title,
  * and the ✕ (which, like the OS close, re-docks via `onClose`).
  */
+interface PopoutEntry {
+  win: Window;
+  root: HTMLElement;
+  /** Pending deferred-close timer (see cleanup below) */
+  closeTimer: number | null;
+}
+
+/** Live popout windows by frame name. Module-scoped so a StrictMode
+ *  remount (mount → cleanup → mount, synchronously in dev) RECLAIMS the
+ *  window its doppelgänger opened instead of racing open/close on the
+ *  same named window — which killed the popout the instant it opened. */
+const popoutEntries = new Map<string, PopoutEntry>();
+
 export function PopoutPanel({ title, width, height, onClose, children }: PopoutPanelProps) {
   const [popoutRoot, setPopoutRoot] = React.useState<HTMLElement | null>(null);
 
@@ -75,36 +88,57 @@ export function PopoutPanel({ title, width, height, onClose, children }: PopoutP
     // Unique frame name per panel so two popouts never reuse one window;
     // the prefix is what main.cjs keys the frameless override on
     const frameName = `audacity-panel-popout-${title.replace(/\W+/g, '-')}`;
-    // EXPLICIT position: Chromium's default places a popup to the RIGHT
-    // of the opener window, which for a full-width main window is
-    // entirely off-screen — the popout "disappears". Land it over the
-    // opener instead (Chromium clamps it into the display regardless).
-    const left = Math.max(0, Math.round((window.screenX || 0) + 120));
-    const top = Math.max(0, Math.round((window.screenY || 0) + 120));
-    const popout = window.open(
-      '',
-      frameName,
-      `popup=yes,width=${width},height=${height},left=${left},top=${top}`,
-    );
-    if (!popout) {
-      // Popup blocked (plain browser without a user gesture) — bail out
-      // and let the consumer fall back to an in-app placement
-      onCloseRef.current();
-      return;
+
+    // Reclaim a window the previous mount opened (StrictMode remount),
+    // cancelling its pending deferred close
+    let entry = popoutEntries.get(frameName) ?? null;
+    if (entry && entry.win.closed) {
+      popoutEntries.delete(frameName);
+      entry = null;
+    }
+    if (entry && entry.closeTimer !== null) {
+      window.clearTimeout(entry.closeTimer);
+      entry.closeTimer = null;
     }
 
-    popout.document.title = title;
-    adoptParentStyles(popout.document);
-    popout.document.body.style.margin = '0';
+    if (!entry) {
+      // EXPLICIT position: Chromium's default places a popup to the
+      // RIGHT of the opener window, which for a full-width main window
+      // is entirely off-screen — the popout "disappears". Land it over
+      // the opener instead (Chromium clamps it into the display).
+      const left = Math.max(0, Math.round((window.screenX || 0) + 120));
+      const top = Math.max(0, Math.round((window.screenY || 0) + 120));
+      const popout = window.open(
+        '',
+        frameName,
+        `popup=yes,width=${width},height=${height},left=${left},top=${top}`,
+      );
+      if (!popout) {
+        // Popup blocked (plain browser without a user gesture) — bail
+        // out and let the consumer fall back to an in-app placement
+        onCloseRef.current();
+        return;
+      }
 
-    const root = popout.document.createElement('div');
-    root.className = 'popout-panel-root';
-    root.style.cssText = 'height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#f8f8f9;';
-    popout.document.body.appendChild(root);
+      popout.document.title = title;
+      adoptParentStyles(popout.document);
+      popout.document.body.style.margin = '0';
+
+      const root = popout.document.createElement('div');
+      root.className = 'popout-panel-root';
+      root.style.cssText = 'height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#f8f8f9;';
+      popout.document.body.appendChild(root);
+
+      entry = { win: popout, root, closeTimer: null };
+      popoutEntries.set(frameName, entry);
+    }
+
+    const { win: popout, root } = entry;
+    const claimed = entry;
     setPopoutRoot(root);
 
     // The user closing the OS window is the "re-dock" gesture. pagehide
-    // also fires for our own cleanup close() below — the listener is
+    // also fires for our own deferred close below — the listener is
     // removed first so unmounting never reports a close.
     const handlePageHide = () => onCloseRef.current();
     popout.addEventListener('pagehide', handlePageHide);
@@ -116,8 +150,18 @@ export function PopoutPanel({ title, width, height, onClose, children }: PopoutP
       popout.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pagehide', closePopout);
       setPopoutRoot(null);
-      root.remove();
-      popout.close();
+      // DEFERRED close: a StrictMode remount runs synchronously before
+      // timers, reclaims the entry above and cancels this — only a real
+      // unmount lets it fire.
+      claimed.closeTimer = window.setTimeout(() => {
+        if (popoutEntries.get(frameName) === claimed) popoutEntries.delete(frameName);
+        try {
+          root.remove();
+          popout.close();
+        } catch {
+          // The window may already be gone (user closed it first)
+        }
+      }, 0);
     };
     // Mount-once by design: title/size only apply to the initial open
     // eslint-disable-next-line react-hooks/exhaustive-deps
