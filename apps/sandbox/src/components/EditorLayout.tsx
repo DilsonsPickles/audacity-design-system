@@ -1347,14 +1347,25 @@ export function EditorLayout(props: EditorLayoutProps) {
     </div>
 
     {/* Dock-zone highlights — visible while a floating panel is being
-        dragged; the hovered zone glows to say "drop to dock here" */}
+        dragged. Un-hovered zones show a subtle band affordance; the
+        HOVERED zone previews the panel's actual docked footprint (full
+        row height at the dock's width — per Alexander's build mockup),
+        so "drop to dock here" also says exactly WHERE it will land. */}
     {panelDrag && (() => {
       const r = panelDrag.rowRect;
       const inset = 4;
-      const zoneStyles: Record<'left' | 'right' | 'bottom', React.CSSProperties> = {
+      const bandStyles: Record<'left' | 'right' | 'bottom', React.CSSProperties> = {
         left: { left: r.left + inset, top: r.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: r.height - inset * 2 },
         right: { left: r.right - DOCK_ZONE_SIZE + inset, top: r.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: r.height - inset * 2 },
         bottom: { left: r.left + DOCK_ZONE_SIZE + inset, top: r.bottom - DOCK_ZONE_SIZE + inset, width: r.width - DOCK_ZONE_SIZE * 2 - inset * 2, height: DOCK_ZONE_SIZE - inset * 2 },
+      };
+      // The docked footprints: docks mount at their default widths
+      // (left 240 / right 280); bottom is the drawer at its current height
+      const bottomPreviewH = Math.min(drawerHeight, Math.round(r.height * 0.6));
+      const previewStyles: Record<'left' | 'right' | 'bottom', React.CSSProperties> = {
+        left: { left: r.left, top: r.top, width: 240, height: r.height },
+        right: { left: r.right - 280, top: r.top, width: 280, height: r.height },
+        bottom: { left: r.left, top: r.bottom - bottomPreviewH, width: r.width, height: bottomPreviewH },
       };
       const zones: Array<'left' | 'right' | 'bottom'> = panelDrag.panel === 'macros'
         ? ['left', 'right', 'bottom']
@@ -1370,12 +1381,12 @@ export function EditorLayout(props: EditorLayoutProps) {
                 data-active={active ? 'true' : 'false'}
                 style={{
                   position: 'fixed',
-                  ...zoneStyles[zone],
+                  ...(active ? previewStyles[zone] : bandStyles[zone]),
                   boxSizing: 'border-box',
-                  borderRadius: 6,
+                  borderRadius: active ? 4 : 6,
                   background: active ? 'rgba(103, 124, 228, 0.25)' : 'rgba(103, 124, 228, 0.08)',
                   border: active ? '2px solid #677CE4' : '1px dashed rgba(103, 124, 228, 0.55)',
-                  transition: 'background 0.12s ease, border-color 0.12s ease',
+                  transition: 'background 0.12s ease, border-color 0.12s ease, left 0.12s ease, top 0.12s ease, width 0.12s ease, height 0.12s ease',
                 }}
               />
             );
