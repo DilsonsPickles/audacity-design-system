@@ -18,7 +18,7 @@
 //     cross-origin fetch the sandbox makes.
 // A loopback http server sidesteps all three with no allowlist changes.
 
-const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain, screen } = require('electron');
 const path = require('node:path');
 const net = require('node:net');
 
@@ -204,6 +204,29 @@ function createWindow(url) {
       };
     }
     return { action: 'allow' };
+  });
+
+  // Panel popouts are dragged by the OS (frameless header drag region),
+  // so the renderer sees no mouse events during the drag — the MAIN
+  // process forwards it instead: on every child-window 'move' the
+  // current cursor position is translated into the parent's CONTENT
+  // coordinates and sent to the parent renderer, which runs the same
+  // dock-zone highlighting as for in-app floating panels. 'moved'
+  // (fires once when a move ends on macOS) is the drop gesture.
+  win.webContents.on('did-create-window', (child, { frameName }) => {
+    if (!frameName || !frameName.startsWith('audacity-panel-popout')) return;
+    const forward = (channel) => () => {
+      if (win.isDestroyed() || child.isDestroyed()) return;
+      const cursor = screen.getCursorScreenPoint();
+      const content = win.getContentBounds();
+      win.webContents.send(channel, {
+        frameName,
+        x: cursor.x - content.x,
+        y: cursor.y - content.y,
+      });
+    };
+    child.on('move', forward('panel-popout:drag-move'));
+    child.on('moved', forward('panel-popout:drag-end'));
   });
 
   win.loadURL(url);

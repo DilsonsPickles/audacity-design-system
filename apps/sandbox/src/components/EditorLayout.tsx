@@ -145,6 +145,25 @@ const STYLE_RELATIVE_FLEX_OVERFLOW: React.CSSProperties = { position: 'relative'
 const STYLE_FULL_WIDTH_RELATIVE: React.CSSProperties = { width: '100%', position: 'relative' };
 const STYLE_FLEX_ROW_OVERFLOW_HIDDEN: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'row' as const, overflow: 'hidden' };
 
+/** Width of the drag-to-dock bands along the editor row's edges */
+const DOCK_ZONE_SIZE = 88;
+/** Ignore popout move events this long after the window opens — the
+ *  OS emits positioning moves during creation that aren't user drags */
+const POPOUT_DRAG_ARM_DELAY_MS = 500;
+
+function dockZoneAt(
+  x: number,
+  y: number,
+  panel: 'effects' | 'macros',
+  rect: DOMRect,
+): 'left' | 'right' | 'bottom' | null {
+  if (y < rect.top || y > rect.bottom || x < rect.left || x > rect.right) return null;
+  if (x <= rect.left + DOCK_ZONE_SIZE) return 'left';
+  if (x >= rect.right - DOCK_ZONE_SIZE) return 'right';
+  if (panel === 'macros' && y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
+  return null;
+}
+
 export function EditorLayout(props: EditorLayoutProps) {
   const { state, dispatch } = useTracks();
   const {
@@ -309,27 +328,13 @@ export function EditorLayout(props: EditorLayoutProps) {
     rowRect: DOMRect;
   } | null>(null);
 
-  const DOCK_ZONE_SIZE = 88;
-  const dockZoneAt = (
-    x: number,
-    y: number,
-    panel: 'effects' | 'macros',
-    rect: DOMRect,
-  ): 'left' | 'right' | 'bottom' | null => {
-    if (y < rect.top || y > rect.bottom || x < rect.left || x > rect.right) return null;
-    if (x <= rect.left + DOCK_ZONE_SIZE) return 'left';
-    if (x >= rect.right - DOCK_ZONE_SIZE) return 'right';
-    if (panel === 'macros' && y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
-    return null;
-  };
-
-  const handlePanelDragMove = (panel: 'effects' | 'macros') => (x: number, y: number) => {
+  const dockDragMove = React.useCallback((panel: 'effects' | 'macros', x: number, y: number) => {
     const rowRect = editorRowRef.current?.getBoundingClientRect();
     if (!rowRect) return;
     setPanelDrag({ panel, zone: dockZoneAt(x, y, panel, rowRect), rowRect });
-  };
+  }, []);
 
-  const handlePanelDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) => {
+  const dockDragEnd = React.useCallback((panel: 'effects' | 'macros', x: number, y: number) => {
     const rowRect = editorRowRef.current?.getBoundingClientRect();
     setPanelDrag(null);
     if (!rowRect) return;
@@ -340,7 +345,55 @@ export function EditorLayout(props: EditorLayoutProps) {
     } else {
       setMacrosPanelSide(zone);
     }
-  };
+  }, [setMacrosPanelSide]);
+
+  const handlePanelDragMove = (panel: 'effects' | 'macros') => (x: number, y: number) =>
+    dockDragMove(panel, x, y);
+  const handlePanelDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) =>
+    dockDragEnd(panel, x, y);
+
+  // OS-window popouts join drag-to-dock through the Electron bridge:
+  // native window drags give the renderer no mouse events, so main.cjs
+  // forwards the child window's moves as cursor positions ALREADY
+  // translated into this window's content coordinates — the same space
+  // as the floating-panel drags. The arm delay swallows the window's
+  // own positioning moves right after it opens.
+  const popoutArmedAtRef = React.useRef<Record<'effects' | 'macros', number>>({ effects: 0, macros: 0 });
+  React.useEffect(() => {
+    if (effectsPanelSide === 'window') popoutArmedAtRef.current.effects = Date.now();
+  }, [effectsPanelSide]);
+  React.useEffect(() => {
+    if (macrosPanelSide === 'window') popoutArmedAtRef.current.macros = Date.now();
+  }, [macrosPanelSide]);
+
+  React.useEffect(() => {
+    const bridge = (window as {
+      panelPopout?: {
+        onDragMove: (cb: (p: { frameName: string; x: number; y: number }) => void) => () => void;
+        onDragEnd: (cb: (p: { frameName: string; x: number; y: number }) => void) => () => void;
+      };
+    }).panelPopout;
+    if (!bridge) return;
+    const panelOf = (frameName: string): 'effects' | 'macros' | null => {
+      if (frameName.includes('Effects')) return 'effects';
+      if (frameName.includes('Macro')) return 'macros';
+      return null;
+    };
+    const armed = (panel: 'effects' | 'macros') =>
+      Date.now() - popoutArmedAtRef.current[panel] > POPOUT_DRAG_ARM_DELAY_MS;
+    const offMove = bridge.onDragMove(({ frameName, x, y }) => {
+      const panel = panelOf(frameName);
+      if (panel && armed(panel)) dockDragMove(panel, x, y);
+    });
+    const offEnd = bridge.onDragEnd(({ frameName, x, y }) => {
+      const panel = panelOf(frameName);
+      if (panel && armed(panel)) dockDragEnd(panel, x, y);
+    });
+    return () => {
+      offMove();
+      offEnd();
+    };
+  }, [dockDragMove, dockDragEnd]);
   const canvasContainerRef = React.useRef<HTMLDivElement>(null);
   const timelineRulerRef = React.useRef<HTMLDivElement>(null);
 

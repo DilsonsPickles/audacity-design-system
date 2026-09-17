@@ -1588,6 +1588,71 @@ describe('Focus routing', () => {
     ).toBeTruthy();
   });
 
+  it('dragging the OS popout window over a dock zone highlights it and docks on drop (bridge path)', async () => {
+    // Fake the Electron preload bridge that forwards native window drags
+    type BridgePayload = { frameName: string; x: number; y: number };
+    let moveCb: ((p: BridgePayload) => void) | null = null;
+    let endCb: ((p: BridgePayload) => void) | null = null;
+    (window as unknown as { panelPopout?: object }).panelPopout = {
+      onDragMove: (cb: (p: BridgePayload) => void) => { moveCb = cb; return () => { moveCb = null; }; },
+      onDragEnd: (cb: (p: BridgePayload) => void) => { endCb = cb; return () => { endCb = null; }; },
+    };
+    const iframes: HTMLIFrameElement[] = [];
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {
+      const iframe = document.createElement('iframe');
+      document.body.appendChild(iframe);
+      iframes.push(iframe);
+      return iframe.contentWindow! as Window & typeof globalThis;
+    });
+
+    try {
+      const rendered = renderApp();
+      const { container } = rendered;
+      await gotoProject(rendered);
+      await addTrackType(container, 'Mono');
+
+      const editorRow = container.querySelector<HTMLElement>('.editor-main-row')!;
+      editorRow.getBoundingClientRect = () => ({
+        top: 100, bottom: 700, left: 0, right: 1200,
+        width: 1200, height: 600, x: 0, y: 100, toJSON: () => ({}),
+      });
+
+      const effectsButton = Array.from(container.querySelectorAll('button'))
+        .find((b) => b.textContent?.trim() === 'Effects')!;
+      fireEvent.click(effectsButton);
+      await waitFor(() =>
+        expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
+      );
+      const menuItem = (label: string) =>
+        Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+          .find((el) => el.textContent?.trim() === label)!;
+      fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+      fireEvent.click(menuItem('Open in window'));
+      await waitFor(() => expect(container.querySelector('button[aria-label="Effects menu"]')).toBeNull());
+      expect(moveCb).toBeTruthy();
+
+      // Inside the arm window, moves are ignored (creation positioning)
+      act(() => moveCb!({ frameName: 'audacity-panel-popout-Effects', x: 40, y: 400 }));
+      expect(container.querySelector('[data-dock-zone="left"]')).toBeNull();
+
+      // Past the arm delay: a drag over the left band lights it up
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      act(() => moveCb!({ frameName: 'audacity-panel-popout-Effects', x: 40, y: 400 }));
+      expect(container.querySelector('[data-dock-zone="left"]')?.getAttribute('data-active')).toBe('true');
+
+      // Drop: docked left, overlays gone, popout torn down
+      act(() => endCb!({ frameName: 'audacity-panel-popout-Effects', x: 40, y: 400 }));
+      await waitFor(() =>
+        expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
+      );
+      expect(container.querySelector('[data-dock-zone="left"]')).toBeNull();
+    } finally {
+      openSpy.mockRestore();
+      iframes.forEach((el) => el.remove());
+      delete (window as unknown as { panelPopout?: object }).panelPopout;
+    }
+  });
+
   it('effects panel opens in its own window and re-docks when that window closes', async () => {
     // Stand in for window.open with iframe-backed REAL documents so the
     // portal has somewhere to render (jsdom can't open actual windows).

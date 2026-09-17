@@ -13,6 +13,23 @@ contextBridge.exposeInMainWorld('electronMenu', {
   },
 });
 
+// Frameless panel popouts are dragged natively, so main forwards the
+// drag as content-relative cursor positions (see main.cjs's
+// did-create-window handler) — the renderer uses them to highlight its
+// dock zones and dock the panel on drop.
+contextBridge.exposeInMainWorld('panelPopout', {
+  onDragMove: (cb) => {
+    const listener = (_event, payload) => cb(payload);
+    ipcRenderer.on('panel-popout:drag-move', listener);
+    return () => ipcRenderer.removeListener('panel-popout:drag-move', listener);
+  },
+  onDragEnd: (cb) => {
+    const listener = (_event, payload) => cb(payload);
+    ipcRenderer.on('panel-popout:drag-end', listener);
+    return () => ipcRenderer.removeListener('panel-popout:drag-end', listener);
+  },
+});
+
 // Window-level commands the renderer can ask the main process to perform.
 // Kept narrow on purpose — only what the UI explicitly needs.
 contextBridge.exposeInMainWorld('electronShell', {
