@@ -196,6 +196,10 @@ function createWindow(url) {
           minWidth: 240,
           minHeight: 200,
           backgroundColor: '#f8f8f9',
+          // Tool-palette behavior: as a CHILD of the main window the
+          // panel always stays above it (but never above other apps,
+          // which plain alwaysOnTop would do) and closes with it
+          parent: win,
         },
       };
     }
