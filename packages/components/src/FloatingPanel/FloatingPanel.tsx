@@ -36,6 +36,11 @@ export interface FloatingPanelProps {
   /** Reports the pointer position when a header drag ends — lets a host
    *  dock the panel when released over a zone */
   onDragEnd?: (clientX: number, clientY: number) => void;
+  /** When set, the panel mounts mid-drag (a tab torn off a dock) and
+   *  immediately follows the pointer until release — the same
+   *  onDragMove/onDragEnd stream as a header drag. The host clears it
+   *  in onDragEnd. */
+  continueDragFrom?: { x: number; y: number } | null;
   /** Content of the active tab */
   children: React.ReactNode;
 }
@@ -68,6 +73,7 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   className = '',
   onDragMove,
   onDragEnd,
+  continueDragFrom,
   children,
 }) => {
   const { theme } = useTheme();
@@ -78,6 +84,55 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
     y: Math.max(16, Math.round((window.innerHeight - initialHeight) / 2)),
   });
   const { width, height } = size;
+
+  // Continued drag: mounted mid-gesture (a tab torn off a dock) — the
+  // panel snaps under the pointer and follows it until release, feeding
+  // the same onDragMove/onDragEnd stream as a header drag. Ref-mirror
+  // the callbacks: this document-level listener binds once per session.
+  const onDragMoveRef = React.useRef(onDragMove);
+  React.useEffect(() => { onDragMoveRef.current = onDragMove; }, [onDragMove]);
+  const onDragEndRef = React.useRef(onDragEnd);
+  React.useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
+  const continuedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!continueDragFrom || continuedRef.current) return;
+    continuedRef.current = true;
+    // Keep the header under the pointer
+    const offsetX = 120;
+    const offsetY = 16;
+    let lastX = continueDragFrom.x;
+    let lastY = continueDragFrom.y;
+    const place = (x: number, y: number) => setPosition({
+      x: Math.min(window.innerWidth - DRAG_MARGIN, Math.max(DRAG_MARGIN - width, x - offsetX)),
+      y: Math.min(window.innerHeight - DRAG_MARGIN / 2, Math.max(0, y - offsetY)),
+    });
+    place(lastX, lastY);
+
+    const end = (report: boolean) => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      if (report) onDragEndRef.current?.(lastX, lastY);
+    };
+    const onMouseMove = (ev: MouseEvent) => {
+      // The button was released before we attached (ultra-fast tear):
+      // end the session where it stands
+      if (ev.buttons === 0) { end(true); return; }
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      place(lastX, lastY);
+      onDragMoveRef.current?.(lastX, lastY);
+    };
+    const onMouseUp = (ev: MouseEvent) => {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      end(true);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return () => end(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [continueDragFrom]);
 
   // Window drag by the header. Self-cleaning attach-on-mousedown handlers
   // (no ref-mirror needed): the origin position is captured per drag and

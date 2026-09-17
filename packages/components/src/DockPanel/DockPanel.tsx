@@ -17,6 +17,8 @@ export interface DockPanelProps {
   onTabReorder?: (tabs: PanelHeaderTab[]) => void;
   /** Called when the active tab's ellipsis menu button is clicked */
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Called when a tab is dragged out of the header (tear-off) */
+  onTabTearOff?: (tabId: string, e: { clientX: number; clientY: number }) => void;
   /** Initial width in pixels */
   width?: number;
   /** Whether the panel is horizontally resizable */
@@ -47,6 +49,7 @@ export const DockPanel: React.FC<DockPanelProps> = ({
   onTabChange,
   onTabReorder,
   onMenuClick,
+  onTabTearOff,
   width = 240,
   resizable = true,
   minWidth = 200,
@@ -79,6 +82,7 @@ export const DockPanel: React.FC<DockPanelProps> = ({
         onTabChange={onTabChange}
         onTabReorder={onTabReorder}
         onMenuClick={onMenuClick}
+        onTabTearOff={onTabTearOff}
       />
       <div className="dock-panel__content">
         {children}

@@ -348,6 +348,32 @@ export function EditorLayout(props: EditorLayoutProps) {
   const handlePanelDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) =>
     dockDragEnd(panel, x, y);
 
+  // Tear-off: dragging a dock tab vertically out of its header floats
+  // the panel mid-gesture — the FloatingPanel mounts under the pointer
+  // (continueDragFrom) and the drag continues seamlessly into the
+  // zone-highlight/dock flow. The kebab menu items stay as the
+  // discoverable path; the drag is the direct one.
+  const [panelTearDrag, setPanelTearDrag] = React.useState<{
+    panel: 'effects' | 'macros';
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const handleDockTabTearOff = (tabId: string, e: { clientX: number; clientY: number }) => {
+    if (tabId === 'effects') {
+      setEffectsPanelSide('floating');
+      setPanelTearDrag({ panel: 'effects', x: e.clientX, y: e.clientY });
+    } else if (tabId === 'macros') {
+      setMacrosPanelSide('floating');
+      setPanelTearDrag({ panel: 'macros', x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleFloatingDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) => {
+    setPanelTearDrag(null);
+    dockDragEnd(panel, x, y);
+  };
+
   // OS-window popouts join drag-to-dock too: PopoutPanel implements a
   // JS pointer-capture drag in its own header (not a native app-region
   // drag, which would starve the page of mouse events) and reports
@@ -641,6 +667,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           onTabChange={(tabId) => setLeftDockActiveTab(tabId as 'effects' | 'macros')}
           onTabReorder={(newTabs) => setLeftDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
           onMenuClick={openLeftDockMenu}
+          onTabTearOff={handleDockTabTearOff}
         >
           {activeLeftDockTab === 'effects' && effectsDockedLeft && effectsPanel && (
             <TrackEffectsPanel
@@ -1296,6 +1323,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           onTabChange={(tabId) => setRightDockActiveTab(tabId as 'effects' | 'macros')}
           onTabReorder={(newTabs) => setRightDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
           onMenuClick={openRightDockMenu}
+          onTabTearOff={handleDockTabTearOff}
         >
           {activeRightDockTab === 'effects' && effectsDockedRight && effectsPanel && (
             <TrackEffectsPanel
@@ -1326,7 +1354,8 @@ export function EditorLayout(props: EditorLayoutProps) {
         activeTabId="macros"
         onMenuClick={openDockMenu}
         onDragMove={handlePanelDragMove('macros')}
-        onDragEnd={handlePanelDragEnd('macros')}
+        onDragEnd={handleFloatingDragEnd('macros')}
+        continueDragFrom={panelTearDrag?.panel === 'macros' ? panelTearDrag : null}
       >
         <MacrosDockPanel />
       </FloatingPanel>
@@ -1345,7 +1374,8 @@ export function EditorLayout(props: EditorLayoutProps) {
           setDockMenu({ x: rect.right, y: rect.bottom, tab: 'effects' });
         }}
         onDragMove={handlePanelDragMove('effects')}
-        onDragEnd={handlePanelDragEnd('effects')}
+        onDragEnd={handleFloatingDragEnd('effects')}
+        continueDragFrom={panelTearDrag?.panel === 'effects' ? panelTearDrag : null}
       >
         <TrackEffectsPanel
           effectsPanel={effectsPanel}

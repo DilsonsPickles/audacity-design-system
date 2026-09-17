@@ -1588,6 +1588,46 @@ describe('Focus routing', () => {
     ).toBeTruthy();
   });
 
+  it('tearing a docked tab out of its header floats the panel mid-drag and re-docks on release', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+
+    const editorRow = container.querySelector<HTMLElement>('.editor-main-row')!;
+    editorRow.getBoundingClientRect = () => ({
+      top: 100, bottom: 700, left: 0, right: 1200,
+      width: 1200, height: 600, x: 0, y: 100, toJSON: () => ({}),
+    });
+
+    // Open the effects panel — docked left, its tab in the dock header
+    const effectsButton = Array.from(container.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Effects')!;
+    fireEvent.click(effectsButton);
+    await waitFor(() =>
+      expect(container.querySelector('[role="tab"][data-tab-id="effects"]')).toBeTruthy(),
+    );
+    const tab = container.querySelector<HTMLElement>('[role="tab"][data-tab-id="effects"]')!;
+
+    // Drag the tab DOWN past the tear-off threshold — the panel floats
+    // mid-gesture and follows the pointer
+    fireEvent.pointerDown(tab, { button: 0, clientX: 60, clientY: 110 });
+    fireEvent.pointerMove(document, { clientX: 70, clientY: 160 });
+    await waitFor(() => expect(container.querySelector('.floating-panel')).toBeTruthy());
+
+    // The drag continues without re-pressing: moving lights up zones
+    fireEvent.mouseMove(document, { clientX: 1160, clientY: 400, buttons: 1 });
+    expect(container.querySelector('[data-dock-zone="right"]')?.getAttribute('data-active')).toBe('true');
+    // Still held — nothing docked yet
+    expect(container.querySelector('.side-panel--right')).toBeNull();
+
+    // Release over the right zone: docked right
+    fireEvent.mouseUp(document, { clientX: 1160, clientY: 400 });
+    await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeTruthy());
+    expect(container.querySelector('.floating-panel')).toBeNull();
+    expect(container.querySelector('[data-dock-zone="right"]')).toBeNull();
+  });
+
   it('dragging the OS popout by its header highlights zones and docks ONLY on release', async () => {
     const iframes: HTMLIFrameElement[] = [];
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {

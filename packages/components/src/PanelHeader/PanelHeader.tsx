@@ -23,6 +23,10 @@ export interface PanelHeaderProps {
   onTabReorder?: (tabs: PanelHeaderTab[]) => void;
   /** Called when the menu button on the active tab is clicked */
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Called when a tab is dragged OUT of the header band (vertically,
+   *  past the tear-off threshold) — the host typically floats the
+   *  panel and continues the drag. Horizontal drags stay reorders. */
+  onTabTearOff?: (tabId: string, e: { clientX: number; clientY: number }) => void;
   /** Called when the user drags the top edge to resize the panel */
   onResizeStart?: (e: React.MouseEvent) => void;
   /** Additional CSS class names */
@@ -31,6 +35,7 @@ export interface PanelHeaderProps {
 
 const RESIZE_ZONE = 4; // px from top edge that triggers resize cursor
 const DRAG_THRESHOLD = 4; // px of movement before drag starts
+const TEAR_OFF_THRESHOLD = 24; // px of vertical travel that tears a tab out
 
 /**
  * PanelHeader - Tabbed header for panels.
@@ -47,6 +52,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
   onTabChange,
   onTabReorder,
   onMenuClick,
+  onTabTearOff,
   onResizeStart,
   className = '',
 }) => {
@@ -64,6 +70,8 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
   tabsRef.current = tabs;
   const onTabReorderRef = useRef(onTabReorder);
   onTabReorderRef.current = onTabReorder;
+  const onTabTearOffRef = useRef(onTabTearOff);
+  onTabTearOffRef.current = onTabTearOff;
   const dragRef = useRef<{
     tabId: string;
     startX: number;
@@ -90,17 +98,35 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
     }
   }, [inResizeZone, onResizeStart]);
 
-  // Tab drag handlers
+  // Tab drag handlers — horizontal drags reorder (multi-tab), vertical
+  // escape past TEAR_OFF_THRESHOLD tears the tab out of the dock
   const handleTabPointerDown = useCallback((e: React.PointerEvent, tabId: string) => {
-    // Only reorder if there are multiple tabs
-    if (tabs.length < 2 || !onTabReorder) return;
+    const canReorder = tabs.length >= 2 && !!onTabReorder;
+    if (!canReorder && !onTabTearOffRef.current) return;
     // Only left mouse button
     if (e.button !== 0) return;
 
+    const startY = e.clientY;
     dragRef.current = { tabId, startX: e.clientX, started: false };
 
     const onPointerMove = (ev: PointerEvent) => {
       if (!dragRef.current) return;
+
+      // Vertical escape = tear-off: hand the drag to the host and stop
+      // all reorder bookkeeping
+      if (onTabTearOffRef.current && Math.abs(ev.clientY - startY) > TEAR_OFF_THRESHOLD) {
+        const tornTabId = dragRef.current.tabId;
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        dragRef.current = null;
+        dropTargetRef.current = null;
+        setDragTabId(null);
+        setDropTargetId(null);
+        onTabTearOffRef.current(tornTabId, { clientX: ev.clientX, clientY: ev.clientY });
+        return;
+      }
+
+      if (!canReorder) return;
 
       if (!dragRef.current.started) {
         if (Math.abs(ev.clientX - dragRef.current.startX) < DRAG_THRESHOLD) return;
