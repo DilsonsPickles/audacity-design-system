@@ -558,16 +558,36 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         ? { start: inClip.start, end: inClip.start + Math.min(inFade, inClip.duration) }
         : { start: r.start, end: r.end };
       const point = crossfadeIntersection(outRegion, inRegion, r.start, r.end);
-      return { outgoingClipId: r.outgoingClipId, incomingClipId: r.incomingClipId, point };
+      return {
+        outgoingClipId: r.outgoingClipId,
+        incomingClipId: r.incomingClipId,
+        point,
+        overlapStart: r.start,
+        overlapEnd: r.end,
+        outgoingDuration: outClip.duration,
+        incomingDuration: inClip.duration,
+      };
     }).filter((n): n is NonNullable<typeof n> => n !== null);
   }, [clips]);
 
+  // Edges owned by a crossfade — their quick-fade handles hide; the
+  // intersection node does the work there (2026-09-21 decision)
+  const crossfadedEdges = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const n of crossfadeNodes) {
+      set.add(`${n.outgoingClipId}:out`);
+      set.add(`${n.incomingClipId}:in`);
+    }
+    return set;
+  }, [crossfadeNodes]);
+
   const renderCrossfadeNodes = () => {
-    if (!onCrossfadeRoll || crossfadeNodes.length === 0) return null;
+    if ((!onClipFadeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
     const NODE_R = 5;
+    const MIN_HALF = 0.01;
     return crossfadeNodes.map((n) => {
       const x = CLIP_CONTENT_OFFSET + n.point.time * pixelsPerSecond;
       const y = bodyTop + (1 - n.point.gain) * bodyHeight;
@@ -576,7 +596,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           key={`crossfade-node-${n.outgoingClipId}-${n.incomingClipId}`}
           data-crossfade-node={`${n.outgoingClipId}-${n.incomingClipId}`}
           role="slider"
-          aria-label="Crossfade position"
+          aria-label="Crossfade centre"
           aria-valuenow={n.point.time}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
@@ -586,11 +606,33 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             e.preventDefault();
             const nodeEl = e.currentTarget as HTMLElement;
             try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+            // Alt+drag = ROLL (content edit: both clip edges slide,
+            // clamped to hidden material). Plain drag = move the
+            // crossing point by rewriting BOTH quick fades so the
+            // curves cross under the pointer at constant power — pure
+            // fade state, always available.
+            const rollMode = e.altKey && !!onCrossfadeRoll;
+            const startClientX = e.clientX;
+            const startCenter = n.point.time;
             let lastX = e.clientX;
             const onMove = (ev: PointerEvent) => {
-              const dx = (ev.clientX - lastX) / pixelsPerSecond;
-              lastX = ev.clientX;
-              if (dx !== 0) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
+              if (rollMode) {
+                const dx = (ev.clientX - lastX) / pixelsPerSecond;
+                lastX = ev.clientX;
+                if (dx !== 0) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
+                return;
+              }
+              if (!onClipFadeChange) return;
+              const rawCenter = startCenter + (ev.clientX - startClientX) / pixelsPerSecond;
+              // The centre maps to fades of 2×(distance to each overlap
+              // edge); clamp so neither fade outgrows its clip and the
+              // centre stays inside the overlap
+              const lo = Math.max(n.overlapStart + MIN_HALF, n.overlapEnd - n.outgoingDuration / 2);
+              const hi = Math.min(n.overlapEnd - MIN_HALF, n.overlapStart + n.incomingDuration / 2);
+              if (lo > hi) return;
+              const center = Math.max(lo, Math.min(hi, rawCenter));
+              onClipFadeChange(n.outgoingClipId, 'out', 2 * (n.overlapEnd - center));
+              onClipFadeChange(n.incomingClipId, 'in', 2 * (center - n.overlapStart));
             };
             const onUp = () => {
               nodeEl.removeEventListener('pointermove', onMove);
@@ -1194,10 +1236,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     };
 
     if (!showHandles) return null;
+    // A crossfaded edge's quick-fade handle hides — the crossfade's
+    // intersection node does the work there
     return (
       <>
-        {handle('in')}
-        {handle('out')}
+        {!crossfadedEdges.has(`${clip.id}:in`) && handle('in')}
+        {!crossfadedEdges.has(`${clip.id}:out`) && handle('out')}
       </>
     );
   };

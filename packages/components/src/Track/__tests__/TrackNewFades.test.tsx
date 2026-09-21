@@ -141,6 +141,86 @@ describe('clip fades', () => {
     fireEvent.pointerUp(outHandle, { pointerId: 2 });
   });
 
+  it('crossfaded edges hide their quick-fade handles; free edges keep them', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5, selected: true },
+            { id: 2, name: 'B', start: 3, duration: 4, selected: true },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const clip1 = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
+    // A's tail and B's head belong to the crossfade — node owns them
+    expect(clip1.querySelector('[data-fade-handle="in"]')).toBeTruthy();
+    expect(clip1.querySelector('[data-fade-handle="out"]')).toBeNull();
+    expect(clip2.querySelector('[data-fade-handle="in"]')).toBeNull();
+    expect(clip2.querySelector('[data-fade-handle="out"]')).toBeTruthy();
+  });
+
+  it('dragging the intersection node rewrites both quick fades so the crossing follows the pointer', () => {
+    const onClipFadeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5 },
+            { id: 2, name: 'B', start: 3, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+        />
+      </Providers>,
+    );
+    // default crossing = overlap midpoint (4s); overlap 3..5
+    const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
+    expect(node).toBeTruthy();
+    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 3 });
+    // +50px = +0.5s → centre 4.5 → fadeOut 2*(5-4.5)=1, fadeIn 2*(4.5-3)=3
+    fireEvent.pointerMove(node, { clientX: 450, clientY: 60, pointerId: 3 });
+    expect(onClipFadeChange).toHaveBeenCalledWith(1, 'out', expect.closeTo(1, 5));
+    expect(onClipFadeChange).toHaveBeenCalledWith(2, 'in', expect.closeTo(3, 5));
+    // far right clamps: hi = min(5-0.01, 3+4/2=5) = 4.99 → fadeOut 0.02, fadeIn 3.98
+    fireEvent.pointerMove(node, { clientX: 900, clientY: 60, pointerId: 3 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(2, 'in', expect.closeTo(3.98, 5));
+    fireEvent.pointerUp(node, { pointerId: 3 });
+  });
+
+  it('Alt+drag on the node rolls instead (content edit)', () => {
+    const onCrossfadeRoll = vi.fn();
+    const onClipFadeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5 },
+            { id: 2, name: 'B', start: 3, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          onCrossfadeRoll={onCrossfadeRoll}
+        />
+      </Providers>,
+    );
+    const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
+    fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 60, pointerId: 4 });
+    fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 4 });
+    expect(onCrossfadeRoll).toHaveBeenCalledWith(1, 2, expect.closeTo(0.3, 5));
+    expect(onClipFadeChange).not.toHaveBeenCalled();
+    fireEvent.pointerUp(node, { pointerId: 4 });
+  });
+
   it('fade handle pointerdown does not leak into the clip mousedown path', () => {
     const parentSpy = vi.fn();
     const { container } = render(
