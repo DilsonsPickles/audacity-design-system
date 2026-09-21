@@ -714,6 +714,17 @@ const CanvasTrack = React.memo(function CanvasTrack({
 
           // The actual trimming happens in the mousemove handler
         }}
+        onCrossfadeRoll={(outgoingClipId, incomingClipId, deltaSeconds) => {
+          dispatch({
+            type: 'ROLL_CROSSFADE',
+            payload: {
+              trackIndex,
+              outgoingClipId: outgoingClipId as number,
+              incomingClipId: incomingClipId as number,
+              deltaSeconds,
+            },
+          });
+        }}
         onClipFadeChange={(clipId, side, seconds) => {
           dispatch({
             type: 'SET_CLIP_FADE',

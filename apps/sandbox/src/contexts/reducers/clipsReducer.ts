@@ -1,6 +1,7 @@
 import type { TracksState, TracksAction, Clip } from '../TracksContext';
 import { applyCut } from '../../utils/cutOperations';
 import { dissolveDegenerateGroups } from './shared';
+import { computeCrossfadeRoll } from '../../utils/crossfadeRoll';
 import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
 
 /** Clips may overlap (2026-09-21): array position IS the z-order —
@@ -193,6 +194,30 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
               }
             : clip
         ),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
+    case 'ROLL_CROSSFADE': {
+      // Roll edit from the crossfade's intersection node: both clip
+      // edges slide together (utils/crossfadeRoll.ts does the clamped
+      // math), the seam moves, the overlap length stays.
+      const { trackIndex, outgoingClipId, incomingClipId, deltaSeconds } = action.payload;
+      const track = state.tracks[trackIndex];
+      if (!track) return state;
+      const outgoing = track.clips.find(c => c.id === outgoingClipId);
+      const incoming = track.clips.find(c => c.id === incomingClipId);
+      if (!outgoing || !incoming) return state;
+      const roll = computeCrossfadeRoll(outgoing, incoming, deltaSeconds);
+      if (!roll) return state;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...track,
+        clips: track.clips.map(clip => {
+          if (clip.id === outgoingClipId) return { ...clip, ...roll.outgoing };
+          if (clip.id === incomingClipId) return { ...clip, ...roll.incoming };
+          return clip;
+        }),
       };
       return { ...state, tracks: newTracks };
     }

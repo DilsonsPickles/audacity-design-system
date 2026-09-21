@@ -108,6 +108,47 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
   return regions.sort((a, b) => a.start - b.start || String(a.clipId).localeCompare(String(b.clipId)));
 }
 
+export interface CrossfadeIntersection {
+  /** Timeline seconds of the curves' crossing */
+  time: number;
+  /** Gain (0..1) both sides carry at the crossing */
+  gain: number;
+}
+
+/** The X's crossing point. The out-curve is 1 before its region and 0
+ *  after (its region always ENDS at the outgoing clip's tail = the
+ *  overlap end); the in-curve is 0 before its region (which always
+ *  STARTS at the incoming clip's head = the overlap start) — so their
+ *  difference is strictly decreasing across the overlap and crosses
+ *  zero exactly once. Bisection; both curves may be authored fades
+ *  with extents different from the overlap. */
+export function crossfadeIntersection(
+  outRegion: { start: number; end: number },
+  inRegion: { start: number; end: number },
+  overlapStart: number,
+  overlapEnd: number,
+): CrossfadeIntersection {
+  const gainOut = (x: number) => {
+    if (x <= outRegion.start) return 1;
+    if (x >= outRegion.end) return 0;
+    return fadeOutGain((x - outRegion.start) / (outRegion.end - outRegion.start));
+  };
+  const gainIn = (x: number) => {
+    if (x <= inRegion.start) return 0;
+    if (x >= inRegion.end) return 1;
+    return fadeInGain((x - inRegion.start) / (inRegion.end - inRegion.start));
+  };
+  let lo = overlapStart;
+  let hi = overlapEnd;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (gainOut(mid) - gainIn(mid) > 0) lo = mid;
+    else hi = mid;
+  }
+  const t = (lo + hi) / 2;
+  return { time: t, gain: (gainOut(t) + gainIn(t)) / 2 };
+}
+
 /** Equal-power gain for the OUTGOING side at normalized position t (0..1). */
 export function fadeOutGain(t: number): number {
   return Math.cos((Math.max(0, Math.min(1, t)) * Math.PI) / 2);

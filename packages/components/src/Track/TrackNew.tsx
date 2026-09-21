@@ -4,7 +4,7 @@ import { Clip } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeFadeCurves, fadeCurvePath } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, fadeCurvePath } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -172,6 +172,11 @@ export interface TrackProps {
   /** Called while a fade handle is dragged — `seconds` is the new fade
    *  length for that side (0 removes the fade). */
   onClipFadeChange?: (clipId: string | number, side: 'in' | 'out', seconds: number) => void;
+
+  /** Called while a crossfade's intersection node is dragged — a ROLL:
+   *  both clip edges slide by `deltaSeconds` (the seam moves, the
+   *  overlap length stays). Fired incrementally during the drag. */
+  onCrossfadeRoll?: (outgoingClipId: string | number, incomingClipId: string | number, deltaSeconds: number) => void;
 
   /**
    * Tab index for keyboard navigation
@@ -388,6 +393,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipTrimEdge,
   onClipStretchEdge,
   onClipFadeChange,
+  onCrossfadeRoll,
   tabIndex,
   onFocusChange,
   onClipMove,
@@ -534,6 +540,95 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // inherited fade stays visible even where its clip is buried under
   // the incoming one.
   const fadeCurves = React.useMemo(() => computeFadeCurves(clips), [clips]);
+
+  // The X's crossing point per crossfade — the roll-edit grab node.
+  // Each side's curve extent honours an authored fade (inherit rule).
+  const crossfadeNodes = React.useMemo(() => {
+    return computeCrossfades(clips).map((r) => {
+      const outClip = clips.find((c) => c.id === r.outgoingClipId);
+      const inClip = clips.find((c) => c.id === r.incomingClipId);
+      if (!outClip || !inClip) return null;
+      const outFade = Math.max(0, outClip.fadeOut ?? 0);
+      const inFade = Math.max(0, inClip.fadeIn ?? 0);
+      const outEnd = outClip.start + outClip.duration;
+      const outRegion = outFade > 0
+        ? { start: outEnd - Math.min(outFade, outClip.duration), end: outEnd }
+        : { start: r.start, end: r.end };
+      const inRegion = inFade > 0
+        ? { start: inClip.start, end: inClip.start + Math.min(inFade, inClip.duration) }
+        : { start: r.start, end: r.end };
+      const point = crossfadeIntersection(outRegion, inRegion, r.start, r.end);
+      return { outgoingClipId: r.outgoingClipId, incomingClipId: r.incomingClipId, point };
+    }).filter((n): n is NonNullable<typeof n> => n !== null);
+  }, [clips]);
+
+  const renderCrossfadeNodes = () => {
+    if (!onCrossfadeRoll || crossfadeNodes.length === 0) return null;
+    const CLIP_HEADER_H = 20;
+    const bodyTop = CLIP_HEADER_H + 1;
+    const bodyHeight = Math.max(0, height - bodyTop - 1);
+    const NODE_R = 5;
+    return crossfadeNodes.map((n) => {
+      const x = CLIP_CONTENT_OFFSET + n.point.time * pixelsPerSecond;
+      const y = bodyTop + (1 - n.point.gain) * bodyHeight;
+      return (
+        <div
+          key={`crossfade-node-${n.outgoingClipId}-${n.incomingClipId}`}
+          data-crossfade-node={`${n.outgoingClipId}-${n.incomingClipId}`}
+          role="slider"
+          aria-label="Crossfade position"
+          aria-valuenow={n.point.time}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            e.preventDefault();
+            const nodeEl = e.currentTarget as HTMLElement;
+            try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+            let lastX = e.clientX;
+            const onMove = (ev: PointerEvent) => {
+              const dx = (ev.clientX - lastX) / pixelsPerSecond;
+              lastX = ev.clientX;
+              if (dx !== 0) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
+            };
+            const onUp = () => {
+              nodeEl.removeEventListener('pointermove', onMove);
+              nodeEl.removeEventListener('pointerup', onUp);
+            };
+            nodeEl.addEventListener('pointermove', onMove);
+            nodeEl.addEventListener('pointerup', onUp);
+          }}
+          style={{
+            position: 'absolute',
+            left: `${Math.round(x - NODE_R - 3)}px`,
+            top: `${Math.round(y - NODE_R - 3)}px`,
+            // Generous hit area around the visible dot
+            width: (NODE_R + 3) * 2,
+            height: (NODE_R + 3) * 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'ew-resize',
+            // Above the fade curves (450), below envelope layers (500+)
+            zIndex: 460,
+          }}
+        >
+          <div
+            style={{
+              width: NODE_R * 2,
+              height: NODE_R * 2,
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              border: '1.5px solid rgba(0, 0, 0, 0.6)',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      );
+    });
+  };
+
 
   const renderFadeCurveOverlays = () => {
     if (fadeCurves.length === 0) return null;
@@ -1049,7 +1144,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         <div
           data-fade-handle={side}
           role="slider"
-          aria-label={side === 'in' ? 'Fade in' : 'Fade out'}
+          aria-label={side === 'in' ? 'Quick fade in' : 'Quick fade out'}
           aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
           // The clip body is the time-selection surface — a fade drag
           // must not bubble into it (mirrors the trim handles)
@@ -1465,6 +1560,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
         {renderClips()}
         {renderFadeCurveOverlays()}
+        {renderCrossfadeNodes()}
         {renderEnvelopeInteractionLayers()}
 
         {/* Split view divider - draggable horizontal line */}
