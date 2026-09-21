@@ -796,6 +796,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     return fadeCurves.map((region) => {
       const left = CLIP_CONTENT_OFFSET + region.start * pixelsPerSecond;
       const width = Math.max(1, (region.end - region.start) * pixelsPerSecond);
+      // Selected clip bodies are far more saturated, so the same white
+      // wash reads weaker there — compensate with a stronger veil
+      const regionClipSelected = clips.find((c) => c.id === region.clipId)?.selected ?? false;
       return (
         <div
           key={`fade-${region.clipId}-${region.side}-${region.authored ? 'authored' : 'default'}-${region.start}`}
@@ -813,7 +816,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // crossfade stack their veils in the shared region, which
             // reads as "denser = shared".
             zIndex: 450,
-            background: 'rgba(255, 255, 255, 0.2)',
+            background: regionClipSelected ? 'rgba(255, 255, 255, 0.38)' : 'rgba(255, 255, 255, 0.2)',
           }}
         >
           <svg
@@ -821,12 +824,21 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             height="100%"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
-            style={{ display: 'block' }}
+            style={{ display: 'block', overflow: 'visible' }}
           >
+            {/* Haloed stroke — a white casing under a dark core keeps
+                the curve legible on every clip colour, light or dark */}
             <path
               d={fadeCurvePath(region.side, 64, region.shape)}
               fill="none"
-              stroke="rgba(0, 0, 0, 0.45)"
+              stroke="rgba(255, 255, 255, 0.9)"
+              strokeWidth={3.5}
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d={fadeCurvePath(region.side, 64, region.shape)}
+              fill="none"
+              stroke="rgba(0, 0, 0, 0.55)"
               strokeWidth={1.5}
               vectorEffect="non-scaling-stroke"
             />
