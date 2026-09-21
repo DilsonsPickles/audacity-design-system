@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeCrossfades,
+  computeFadeCurves,
   fadeInGain,
   fadeOutGain,
   fadeCurvePath,
@@ -40,6 +41,39 @@ describe('computeCrossfades', () => {
       { start: 4, end: 5, outgoingClipId: 1, incomingClipId: 2 },
       { start: 8, end: 9, outgoingClipId: 2, incomingClipId: 3 },
     ]);
+  });
+});
+
+describe('computeFadeCurves — one fade per edge, authored wins', () => {
+  it('a plain edge overlap yields the two default ramps over the shared region', () => {
+    expect(computeFadeCurves([clip(1, 0, 5), clip(2, 3, 4)])).toEqual([
+      { clipId: 1, side: 'out', start: 3, end: 5, authored: false },
+      { clipId: 2, side: 'in', start: 3, end: 5, authored: false },
+    ]);
+  });
+
+  it('an authored fade owns its edge: no default ramp for that side, own extent kept', () => {
+    const faded = { ...clip(1, 0, 5), fadeOut: 3 }; // longer than the 2s overlap
+    const curves = computeFadeCurves([faded, clip(2, 3, 4)]);
+    expect(curves).toEqual([
+      { clipId: 1, side: 'out', start: 2, end: 5, authored: true },
+      { clipId: 2, side: 'in', start: 3, end: 5, authored: false },
+    ]);
+  });
+
+  it('lone clip fades render at their own extents', () => {
+    const curves = computeFadeCurves([{ ...clip(1, 2, 6), fadeIn: 1, fadeOut: 2 }]);
+    expect(curves).toEqual([
+      { clipId: 1, side: 'in', start: 2, end: 3, authored: true },
+      { clipId: 1, side: 'out', start: 6, end: 8, authored: true },
+    ]);
+  });
+
+  it('a fade on the NON-overlapped edge coexists with the default ramp', () => {
+    const curves = computeFadeCurves([{ ...clip(1, 0, 5), fadeIn: 1 }, clip(2, 3, 4)]);
+    expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 1, authored: true });
+    expect(curves).toContainEqual({ clipId: 1, side: 'out', start: 3, end: 5, authored: false });
+    expect(curves).toContainEqual({ clipId: 2, side: 'in', start: 3, end: 5, authored: false });
   });
 });
 

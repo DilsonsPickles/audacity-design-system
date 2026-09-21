@@ -76,8 +76,12 @@ export function computeClipGainSegments(
       }
 
       const [earlier, later] = lower.start <= upper.start ? [lower, upper] : [upper, lower];
-      push(earlier, s, e, 'fadeOut');
-      push(later, s, e, 'fadeIn');
+      // ONE fade per clip edge — authored wins ("inherit", 2026-09-21):
+      // the overlap-default ramp applies only to a side whose clip has
+      // no authored fade on that edge; an authored fade is honoured at
+      // its own extent by the per-clip pass below (and never doubles up)
+      if (Math.max(0, earlier.fadeOut ?? 0) <= EPSILON) push(earlier, s, e, 'fadeOut');
+      if (Math.max(0, later.fadeIn ?? 0) <= EPSILON) push(later, s, e, 'fadeIn');
     }
   }
 

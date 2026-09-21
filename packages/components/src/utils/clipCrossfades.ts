@@ -21,6 +21,10 @@ export interface CrossfadeClipLike {
   id: number | string;
   start: number;
   duration: number;
+  /** Authored clip fades in seconds. An authored fade OWNS its edge:
+   *  a crossfade honours it instead of the overlap-default ramp. */
+  fadeIn?: number;
+  fadeOut?: number;
 }
 
 export interface CrossfadeRegion {
@@ -60,6 +64,48 @@ export function computeCrossfades(clips: readonly CrossfadeClipLike[]): Crossfad
     }
   }
   return regions.sort((x, y) => x.start - y.start);
+}
+
+export interface FadeCurveRegion {
+  clipId: number | string;
+  side: 'in' | 'out';
+  /** Timeline seconds */
+  start: number;
+  end: number;
+  /** True when the region is the clip's own fadeIn/fadeOut; false when
+   *  it is the overlap-default crossfade ramp. */
+  authored: boolean;
+}
+
+/** ONE fade per clip edge — authored wins, the overlap supplies the
+ *  default (2026-09-21 "inherit" decision): every authored fadeIn/
+ *  fadeOut yields a region at its own extent, and each edge overlap
+ *  contributes a default equal-power ramp only for a side whose clip
+ *  has NO authored fade on that edge. This is the drawn mirror of
+ *  crossfadeGain.ts in @audacity-ui/audio — keep them in agreement. */
+export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurveRegion[] {
+  const regions: FadeCurveRegion[] = [];
+  for (const c of clips) {
+    const fadeIn = Math.max(0, c.fadeIn ?? 0);
+    const fadeOut = Math.max(0, c.fadeOut ?? 0);
+    if (fadeIn > EPSILON) {
+      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + Math.min(fadeIn, c.duration), authored: true });
+    }
+    if (fadeOut > EPSILON) {
+      regions.push({ clipId: c.id, side: 'out', start: c.start + Math.max(0, c.duration - fadeOut), end: c.start + c.duration, authored: true });
+    }
+  }
+  for (const r of computeCrossfades(clips)) {
+    const outClip = clips.find((c) => c.id === r.outgoingClipId);
+    const inClip = clips.find((c) => c.id === r.incomingClipId);
+    if (outClip && Math.max(0, outClip.fadeOut ?? 0) <= EPSILON) {
+      regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false });
+    }
+    if (inClip && Math.max(0, inClip.fadeIn ?? 0) <= EPSILON) {
+      regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false });
+    }
+  }
+  return regions.sort((a, b) => a.start - b.start || String(a.clipId).localeCompare(String(b.clipId)));
 }
 
 /** Equal-power gain for the OUTGOING side at normalized position t (0..1). */

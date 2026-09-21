@@ -4,7 +4,7 @@ import { Clip } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, fadeCurvePath } from '../utils/clipCrossfades';
+import { computeFadeCurves, fadeCurvePath } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -527,25 +527,27 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // visible while the pointer is captured, even off-hover)
   const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
 
-  // Crossfade regions are DERIVED from clip geometry (see
-  // utils/clipCrossfades.ts): a partial edge overlap between two clips
-  // renders as the classic X — the earlier clip's fade-out curve
-  // crossing the later clip's fade-in — plus a light veil marking the
-  // shared region. Containment renders nothing (top clip occludes).
-  const crossfades = React.useMemo(() => computeCrossfades(clips), [clips]);
+  // Fade curves are DERIVED per clip edge (utils/clipCrossfades.ts):
+  // an authored fadeIn/fadeOut owns its edge; an edge overlap supplies
+  // the default equal-power ramp only for unauthored sides ("inherit",
+  // 2026-09-21). Drawn at TRACK level, above every stacked clip, so an
+  // inherited fade stays visible even where its clip is buried under
+  // the incoming one.
+  const fadeCurves = React.useMemo(() => computeFadeCurves(clips), [clips]);
 
-  const renderCrossfadeOverlays = () => {
-    if (crossfades.length === 0) return null;
-    const CLIP_HEADER_HEIGHT = 20;
-    const bodyTop = CLIP_HEADER_HEIGHT;
-    const bodyHeight = Math.max(0, height - CLIP_HEADER_HEIGHT);
-    return crossfades.map((cf) => {
-      const left = CLIP_CONTENT_OFFSET + cf.start * pixelsPerSecond;
-      const width = Math.max(1, (cf.end - cf.start) * pixelsPerSecond);
+  const renderFadeCurveOverlays = () => {
+    if (fadeCurves.length === 0) return null;
+    const CLIP_HEADER_H = 20;
+    const bodyTop = CLIP_HEADER_H;
+    const bodyHeight = Math.max(0, height - CLIP_HEADER_H);
+    return fadeCurves.map((region) => {
+      const left = CLIP_CONTENT_OFFSET + region.start * pixelsPerSecond;
+      const width = Math.max(1, (region.end - region.start) * pixelsPerSecond);
       return (
         <div
-          key={`crossfade-${cf.outgoingClipId}-${cf.incomingClipId}`}
-          data-crossfade-region={`${cf.outgoingClipId}-${cf.incomingClipId}`}
+          key={`fade-${region.clipId}-${region.side}-${region.authored ? 'authored' : 'default'}-${region.start}`}
+          data-fade-overlay={region.side}
+          data-fade-authored={region.authored ? 'true' : 'false'}
           style={{
             position: 'absolute',
             left: `${Math.round(left)}px`,
@@ -554,9 +556,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             height: `${bodyHeight}px`,
             pointerEvents: 'none',
             // Above every stacked clip (2+index band), below the
-            // envelope layers (500+) so fade curves never block editing
+            // envelope layers (500+). The two default ramps of a plain
+            // crossfade stack their veils in the shared region, which
+            // reads as "denser = shared".
             zIndex: 450,
-            background: 'rgba(255, 255, 255, 0.28)',
+            background: 'rgba(255, 255, 255, 0.2)',
           }}
         >
           <svg
@@ -567,14 +571,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             style={{ display: 'block' }}
           >
             <path
-              d={fadeCurvePath('out')}
-              fill="none"
-              stroke="rgba(0, 0, 0, 0.45)"
-              strokeWidth={1.5}
-              vectorEffect="non-scaling-stroke"
-            />
-            <path
-              d={fadeCurvePath('in')}
+              d={fadeCurvePath(region.side)}
               fill="none"
               stroke="rgba(0, 0, 0, 0.45)"
               strokeWidth={1.5}
@@ -1028,48 +1025,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     });
   };
 
-  // Per-clip fade curves + drag handles. Rendered INSIDE the clip's
-  // wrapper so they stack with the clip (a buried clip's fades hide
-  // under the top clip, like the rest of its body). Same visual
-  // language as the crossfade X: light veil + equal-power curve.
+  // Per-clip fade HANDLES (the curves render in the track-level pass,
+  // renderFadeCurveOverlays, so an inherited fade stays visible where
+  // its clip is buried). Rendered inside the wrapper so they ride the
+  // clip's position and z.
   const renderClipFades = (clip: TrackClip, clipWidth: number, clipSelected: boolean) => {
     if (isMidiTrack) return null;
     const HEADER_H = 20;
-    const bodyH = Math.max(0, height - HEADER_H);
     const fadeInSec = Math.max(0, clip.fadeIn ?? 0);
     const fadeOutSec = Math.max(0, clip.fadeOut ?? 0);
     // Handles show on the SELECTED clip only (2026-09-21 decision);
     // the drag guard keeps them up while the pointer is captured.
     const showHandles = !!onClipFadeChange && (clipSelected || fadeDragClipId === clip.id);
-
-    const curve = (side: 'in' | 'out', seconds: number) => {
-      const w = Math.max(1, Math.round(seconds * pixelsPerSecond));
-      return (
-        <div
-          data-fade-overlay={side}
-          style={{
-            position: 'absolute',
-            top: HEADER_H,
-            left: side === 'in' ? 0 : undefined,
-            right: side === 'out' ? 0 : undefined,
-            width: `${Math.min(w, Math.round(clipWidth))}px`,
-            height: `${bodyH}px`,
-            pointerEvents: 'none',
-            background: 'rgba(255, 255, 255, 0.28)',
-          }}
-        >
-          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ display: 'block' }}>
-            <path
-              d={fadeCurvePath(side)}
-              fill="none"
-              stroke="rgba(0, 0, 0, 0.45)"
-              strokeWidth={1.5}
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
-        </div>
-      );
-    };
 
     const handle = (side: 'in' | 'out') => {
       const boundaryX = side === 'in'
@@ -1129,12 +1096,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       );
     };
 
+    if (!showHandles) return null;
     return (
       <>
-        {fadeInSec > 0 && curve('in', fadeInSec)}
-        {fadeOutSec > 0 && curve('out', fadeOutSec)}
-        {showHandles && handle('in')}
-        {showHandles && handle('out')}
+        {handle('in')}
+        {handle('out')}
       </>
     );
   };
@@ -1496,7 +1462,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         )}
 
         {renderClips()}
-        {renderCrossfadeOverlays()}
+        {renderFadeCurveOverlays()}
         {renderEnvelopeInteractionLayers()}
 
         {/* Split view divider - draggable horizontal line */}
