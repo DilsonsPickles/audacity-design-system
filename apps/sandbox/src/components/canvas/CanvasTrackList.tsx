@@ -32,6 +32,9 @@ export interface CanvasTrackListProps {
   clipStyle: 'classic' | 'colourful';
   recordingClipId: number | null;
   showRmsInWaveform: boolean;
+  /** View > Show quick fade handles — gates the fade drag controls
+   *  (handles + shape dots); the curves themselves always render */
+  showQuickFadeHandles: boolean;
   draggingClipIds: Set<number>;
   raisedClipIds: Set<number>;
   hoveredMidiClipId?: number | null;
@@ -163,6 +166,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   clipStyle,
   recordingClipId,
   showRmsInWaveform,
+  showQuickFadeHandles,
   draggingClipIds,
   raisedClipIds,
   hoveredMidiClipId,
@@ -714,12 +718,12 @@ const CanvasTrack = React.memo(function CanvasTrack({
 
           // The actual trimming happens in the mousemove handler
         }}
-        onClipFadeShapeChange={(clipId, side, shape) => {
+        onClipFadeShapeChange={showQuickFadeHandles ? (clipId, side, shape) => {
           dispatch({
             type: 'SET_CLIP_FADE_SHAPE',
             payload: { trackIndex, clipId: clipId as number, side, shape },
           });
-        }}
+        } : undefined}
         onCrossfadeShapeChange={(outgoingClipId, incomingClipId, outShape, inShape) => {
           dispatch({
             type: 'SET_CROSSFADE_SHAPE',
@@ -743,12 +747,12 @@ const CanvasTrack = React.memo(function CanvasTrack({
             },
           });
         }}
-        onClipFadeChange={(clipId, side, seconds) => {
+        onClipFadeChange={showQuickFadeHandles ? (clipId, side, seconds) => {
           dispatch({
             type: 'SET_CLIP_FADE',
             payload: { trackIndex, clipId: clipId as number, side, seconds },
           });
-        }}
+        } : undefined}
         onClipStretchEdge={(clipId, edge) => {
           // Only initialize once per drag — Clip.tsx calls back on every
           // mousemove. Subsequent mousemoves are handled inside the

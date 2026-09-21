@@ -260,6 +260,9 @@ function CanvasDemoContent() {
   // View options
   const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(false);
   const [showVerticalRulers, setShowVerticalRulers] = React.useState(true);
+  // View > Show quick fade handles — hides the drag controls only; the
+  // fade curves themselves stay visible
+  const [showQuickFadeHandles, setShowQuickFadeHandles] = React.useState(true);
 
   // Timeline ruler format options
   const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
@@ -702,6 +705,8 @@ function CanvasDemoContent() {
     setShowRmsInWaveform,
     showVerticalRulers,
     setShowVerticalRulers,
+    showQuickFadeHandles,
+    setShowQuickFadeHandles,
     state,
     rollInTimeEnabled,
     setRollInTimeEnabled,
@@ -977,6 +982,7 @@ function CanvasDemoContent() {
           controlPointStyle={controlPointStyle}
           spectrogramScale={spectrogramScale}
           showVerticalRulers={showVerticalRulers}
+          showQuickFadeHandles={showQuickFadeHandles}
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}
           trackMeterLevels={trackMeterLevels}

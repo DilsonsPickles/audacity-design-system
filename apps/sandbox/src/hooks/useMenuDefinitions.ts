@@ -20,6 +20,9 @@ export interface UseMenuDefinitionsOptions {
   setShowRmsInWaveform: React.Dispatch<React.SetStateAction<boolean>>;
   showVerticalRulers: boolean;
   setShowVerticalRulers: React.Dispatch<React.SetStateAction<boolean>>;
+  /** View > Show quick fade handles (fade curves stay visible) */
+  showQuickFadeHandles: boolean;
+  setShowQuickFadeHandles: React.Dispatch<React.SetStateAction<boolean>>;
   state: TracksState;
   rollInTimeEnabled: boolean;
   setRollInTimeEnabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -56,6 +59,8 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     setShowRmsInWaveform,
     showVerticalRulers,
     setShowVerticalRulers,
+    showQuickFadeHandles,
+    setShowQuickFadeHandles,
     state,
     rollInTimeEnabled,
     setRollInTimeEnabled,
@@ -139,6 +144,8 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onToggleEffectsPanel: handleToggleEffectsPanel,
     onToggleRmsInWaveform: () => setShowRmsInWaveform(!showRmsInWaveform),
     onToggleVerticalRulers: () => setShowVerticalRulers(!showVerticalRulers),
+    showQuickFadeHandles,
+    onToggleQuickFadeHandles: () => setShowQuickFadeHandles(!showQuickFadeHandles),
     pianoRollOpen: state.pianoRollOpen,
     onTogglePianoRoll: handleTogglePianoRoll,
     rollInTimeEnabled,

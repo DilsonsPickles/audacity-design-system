@@ -71,6 +71,8 @@ export interface EditorLayoutProps {
 
   // Canvas options
   showRmsInWaveform: boolean;
+  /** View > Show quick fade handles (curves stay visible) */
+  showQuickFadeHandles: boolean;
   controlPointStyle: EnvelopePointStyleKey;
   spectrogramScale: SpectrogramScale;
   showVerticalRulers: boolean;
@@ -168,7 +170,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
-    showRmsInWaveform, controlPointStyle, spectrogramScale, showVerticalRulers,
+    showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers,
     isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
     selectionAnchor, setSelectionAnchor, setControlPanelHasFocus,
     containerFocusedTrack, setContainerFocusedTrack,
@@ -1057,6 +1059,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     snap={state.canvasSnap}
                     snapEnabled={snapEnabled}
                     showRmsInWaveform={showRmsInWaveform}
+                    showQuickFadeHandles={showQuickFadeHandles}
                     controlPointStyle={controlPointStyle}
                     viewportHeight={scrollContainerRef.current?.clientHeight || 0}
                     bottomBuffer={scrollBuffer}

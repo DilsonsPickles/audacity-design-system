@@ -80,6 +80,8 @@ export interface CanvasProps {
    * @default true
    */
   showRmsInWaveform?: boolean;
+  /** View > Show quick fade handles (curves stay visible) */
+  showQuickFadeHandles?: boolean;
   /**
    * Control point style for envelope points
    * @default 'default'
@@ -187,6 +189,7 @@ export function Canvas({
   onTrackFocusChange,
   onTrackContainerFocusChange,
   showRmsInWaveform = true,
+  showQuickFadeHandles = true,
   controlPointStyle = 'default',
   viewportHeight = 0,
   bottomBuffer = 0,
@@ -744,6 +747,7 @@ export function Canvas({
           clipStyle={clipStyle}
           recordingClipId={recordingClipId}
           showRmsInWaveform={showRmsInWaveform}
+          showQuickFadeHandles={showQuickFadeHandles}
           draggingClipIds={draggingClipIds}
           raisedClipIds={raisedClipIds}
           hoveredMidiClipId={hoveredMidiClipId}
