@@ -275,7 +275,7 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-quickfade-node]')).toBeNull();
   });
 
-  it('the corner handle edits both axes: horizontal extent + vertical shape', () => {
+  it('the corner handle is extent-only: vertical input never touches the shape', () => {
     const onClipFadeChange = vi.fn();
     const onClipFadeShapeChange = vi.fn();
     const { container } = render(
@@ -297,11 +297,10 @@ describe('clip fades', () => {
     });
     const inHandle = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
     fireEvent.pointerDown(inHandle, { button: 0, clientX: 0, clientY: 30, pointerId: 7 });
-    // diagonal: +150px extent, +19px down → fade 1.5s, shape ≈ 2
+    // diagonal input: only the horizontal component registers
     fireEvent.pointerMove(inHandle, { clientX: 150, clientY: 49, pointerId: 7 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
-    const [, , shape] = onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1];
-    expect(shape).toBeCloseTo(2, 1);
+    expect(onClipFadeShapeChange).not.toHaveBeenCalled();
     fireEvent.pointerUp(inHandle, { pointerId: 7 });
   });
 
