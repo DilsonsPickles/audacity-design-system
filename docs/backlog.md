@@ -101,6 +101,27 @@ Remaining polish, none blocking:
   menus are portaled to the main document) — known cross-document portal
   limitation; revisit if it grates in practice.
 
+### Clip crossfades v1 — parked follow-ups (2026-09-21)
+Overlap-based crossfades landed (edge fades only; containment = z-order occlusion,
+hard cuts). Deliberately deferred, waiting on live feel / product calls:
+- **Overlap legibility** — the top clip fully covers the bottom one outside the X
+  veil; candidate treatments: ghost the buried waveform, translucent top clip in
+  the shared region, header stacking polish.
+- **Curve options** — equal-power only, no UI. A per-overlap curve choice (linear/
+  S) would be the feature's first stored state; deferred on purpose.
+- **Plain fade-in/out handles** on a lone clip's corners — same primitive, no
+  neighbour; gesture surface not designed yet.
+- **Send to back / bring to front** context-menu mirror for z-order (today only
+  moving a clip raises it).
+- **Snap-target policy under overlap** — every clip edge is still a snap target,
+  including buried interior edges; may want topmost-visible-only.
+- **Tie-breaks** in "next clip" logic (post-delete focus, vertical navigation)
+  when clips share a start time — arbitrary today, harmless.
+- **MIDI clips** — overlap rules apply to audio clips only; midiClips were left
+  alone (positional pianoRollClipIndex).
+- **stretchFactor** — fade bake maps source time without stretch compensation,
+  same as the envelope bake (parity kept deliberately).
+
 ## Minor (batch into related work, don't do standalone)
 
 
