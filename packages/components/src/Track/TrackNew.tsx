@@ -484,11 +484,19 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // Use theme tokens (semi-transparent so grid lines show through)
   const getTrackBackgroundColor = () => isSelected ? theme.background.canvas.track.selected : theme.background.canvas.track.idle;
 
-  // Sort clips by start time so tab order follows timeline position
+  // Sort clips by start time so tab order follows timeline position.
+  // DOM order stays chronological; PAINT order is the array position
+  // (see zIndex below): clips may overlap (2026-09-21) and the array
+  // index is the z-order — later = on top = wins clicks.
   const sortedClips = React.useMemo(
     () => [...clips].sort((a, b) => a.start - b.start),
     [clips],
   );
+  const clipZIndex = React.useMemo(() => {
+    const z = new Map<number | string, number>();
+    clips.forEach((c, i) => z.set(c.id, 2 + i));
+    return z;
+  }, [clips]);
 
   // Calculate clip dimensions and positions
   const renderClips = () => {
@@ -564,10 +572,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // a near-zero rect.
             width: `${Math.round(clipWidth)}px`,
             height: `${height}px`,
-            // Dragged and Cmd+Arrow-raised clips float above siblings
+            // Stacking follows array position (overlap z-order); a
+            // dragged or Cmd+Arrow-raised clip floats above everything
             // (mouse drag also dims to a 50% ghost; keyboard raise
             // stays solid so the moving clip reads as "still there").
-            zIndex: isDragging || isRaised ? 10 : 2,
+            zIndex: isDragging || isRaised ? 1000 : (clipZIndex.get(clip.id) ?? 2),
             opacity: isDragging ? 0.5 : undefined,
           }}
           tabIndex={isFlatNavigation ? 0 : (isFirstClip && tabIndex !== undefined ? tabIndex : -1)}
@@ -936,7 +945,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
     const CLIP_HEADER_HEIGHT = 20;
 
-    return clips.map((clip) => {
+    return clips.map((clip, envIndex) => {
       const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
 
@@ -984,6 +993,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           duration={clip.duration}
           x={clipX}
           y={CLIP_HEADER_HEIGHT}
+          zIndex={500 + envIndex}
         />
       );
     });
@@ -1307,7 +1317,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               height: dividerHover || isDraggingDivider ? '3px' : '1px',
               backgroundColor: dividerHover || isDraggingDivider ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)',
               cursor: 'ns-resize',
-              zIndex: 10,
+              // Above every stacked clip (clips band at 2+index)
+              zIndex: 900,
               transform: dividerHover || isDraggingDivider ? 'translateY(-1px)' : 'none',
               transition: isDraggingDivider ? 'none' : 'all 0.1s ease',
             }}

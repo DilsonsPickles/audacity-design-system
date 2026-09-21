@@ -56,8 +56,8 @@ function Harness({ onState }: { onState: (s: ReturnType<typeof useTracksState>) 
   );
 }
 
-describe('useClipDragging — overlap resolution', () => {
-  it('drag clip 2 onto right side of clip 1, release → clip 1 is trimmed to 3s', () => {
+describe('useClipDragging — overlap is legal (2026-09-21)', () => {
+  it('drag clip 2 onto clip 1, release → both keep their full extents and clip 2 is raised to the top of the stack', () => {
     let lastState: ReturnType<typeof useTracksState>;
 
     // clip 1: 0→5s, clip 2: 8→12s (at 100 px/s = pixels 800→1200)
@@ -90,7 +90,9 @@ describe('useClipDragging — overlap resolution', () => {
     fireEvent.mouseDown(el, { clientX: 800, clientY: 50 });
 
     // Mousemove to px 300 → newStartTime = (300 - 0) / 100 = 3.0s
-    // Clip 2 lands at 3→7s, overlapping clip 1 (0→5s) on its right → trim clip 1 to duration=3
+    // Clip 2 lands at 3→7s, overlapping clip 1 (0→5s). Overlap is
+    // legal: NOTHING is trimmed, split, or deleted — the overlap region
+    // (3→5s) is a crossfade.
     act(() => {
       fireEvent.mouseMove(document, { clientX: 300, clientY: 50 });
     });
@@ -103,10 +105,12 @@ describe('useClipDragging — overlap resolution', () => {
     const clip1 = track.clips.find((c: any) => c.id === 1);
     const clip2 = track.clips.find((c: any) => c.id === 2);
 
-    // Clip 2 should have moved to start=3
+    // Clip 2 moved to start=3; clip 1 keeps its full 5s
     expect(clip2?.start).toBe(3);
-    // Clip 1 should have been trimmed: its right side (start=3→5) is now occupied by clip 2
-    // resolveOverlap trim: newDuration = mStart - uStart = 3 - 0 = 3
-    expect(clip1?.duration).toBe(3);
+    expect(clip1?.duration).toBe(5);
+    expect(clip1?.start).toBe(0);
+    // The moved clip was raised: array position IS the z-order, and the
+    // clip in hand lands on top
+    expect(track.clips[track.clips.length - 1].id).toBe(2);
   });
 });

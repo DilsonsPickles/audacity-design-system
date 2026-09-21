@@ -27,6 +27,10 @@ export interface EnvelopeInteractionLayerProps {
   /** Whether envelope editing is enabled */
   enabled?: boolean;
 
+  /** Stacking context for the layer. TrackNew bands this per clip so
+   *  overlapping clips' layers keep the same z-order as the clips. */
+  zIndex?: number;
+
   /** Width of the interaction area in pixels */
   width: number;
 
@@ -166,6 +170,7 @@ const EnvelopeInteractionLayerComponent: React.FC<EnvelopeInteractionLayerProps>
   duration,
   x = 0,
   y = 0,
+  zIndex = 3,
   hiddenPointIndices = EMPTY_NUMBER_ARRAY,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -629,7 +634,10 @@ const EnvelopeInteractionLayerComponent: React.FC<EnvelopeInteractionLayerProps>
           height,
           cursor: isDragging ? 'grabbing' : (isHoveringPoint ? 'pointer' : (isNearEnvelope ? 'copy' : 'text')),
           pointerEvents: enabled ? 'auto' : 'none',
-          zIndex: 3, // Above canvas (z-index: 2) and dark overlay (z-index: 1)
+          // Above canvas/dark overlay by default; TrackNew passes a
+          // banded value so stacked (overlapping) clips' layers keep
+          // the same z-order as their clips
+          zIndex,
         }}
       />
       {tooltip && (

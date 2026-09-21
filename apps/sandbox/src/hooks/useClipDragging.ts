@@ -2,7 +2,6 @@ import { useRef, useEffect, useState } from 'react';
 import { ClipDragState, useTracksDispatch, Track } from '../contexts/TracksContext';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 import { snapToClipEdges } from '../utils/snapToClipEdges';
-import { resolveOverlap, ClipPlacement } from '../utils/resolveOverlap';
 
 export interface UseClipDraggingOptions {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -419,37 +418,10 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       const wasDragging = didDragRef.current;
 
       if (wasDragging) {
-        const movingIds = new Set<number>(
-          dragState.selectedClipsInitialPositions && dragState.selectedClipsInitialPositions.length > 1
-            ? dragState.selectedClipsInitialPositions.map((p: { clipId: number }) => p.clipId)
-            : [dragState.clip.id]
-        );
-
-        // Standard settle: resolve any overlap the drag created against
-        // the existing tracks and commit as APPLY_CLIP_PLACEMENT. Any
-        // provisional tracks the mousemove path materialised will be
-        // in `tracks` here — if they're occupied they behave like
-        // regular rows for overlap resolution; if they were vacated
-        // by an upward drag they're empty and the safety-net below
-        // trims them.
-        const intent: ClipPlacement[] = [];
-        for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
-          for (const clip of tracks[trackIndex].clips) {
-            if (movingIds.has(clip.id)) {
-              intent.push({
-                clipId: clip.id,
-                trackIndex,
-                start: clip.start,
-                duration: clip.duration,
-              });
-            }
-          }
-        }
-
-        const resolution = resolveOverlap(tracks, intent, movingIds);
-        if (resolution.mutations.length > 0) {
-          dispatch({ type: 'APPLY_CLIP_PLACEMENT', payload: resolution });
-        }
+        // Overlap is legal (2026-09-21): the drop is already committed by
+        // the live MOVE_* dispatches, and the reducer raised the moved
+        // clips to the top of their track's stack. No neighbour is
+        // trimmed, split, or deleted any more.
 
         // Safety net: if any of the provisional tracks we added during
         // the drag are still empty at mouseup (nothing landed on them),

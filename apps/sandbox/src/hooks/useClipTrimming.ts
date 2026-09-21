@@ -1,7 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { useTracksDispatch, Track, Clip } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
-import { resolveOverlap, ClipPlacement } from '../utils/resolveOverlap';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
 export interface ClipTrimState {
@@ -409,33 +408,10 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
       const trimState = clipTrimStateRef.current;
       if (!trimState) return;
 
-      const tracks = tracksRef.current;
-
-      // Build intent from final positions of all clips that were being trimmed
-      // (every selected clip on every track).
-      const intent: ClipPlacement[] = [];
-      const movingIds = new Set<number>();
-      tracks.forEach((track, trackIndex) => {
-        track.clips.forEach((clip) => {
-          if (clip.selected) {
-            intent.push({
-              clipId: clip.id,
-              trackIndex,
-              start: clip.start,
-              duration: clip.duration,
-            });
-            movingIds.add(clip.id);
-          }
-        });
-      });
-
-      if (intent.length > 0) {
-        const resolution = resolveOverlap(tracks, intent, movingIds);
-        if (resolution.mutations.length > 0) {
-          dispatch({ type: 'APPLY_CLIP_PLACEMENT', payload: resolution });
-        }
-      }
-
+      // Overlap is legal (2026-09-21): a trim that extends across a
+      // neighbour simply overlaps it — no neighbour is trimmed, split,
+      // or deleted. The TRIM_CLIP dispatches during the drag already
+      // committed the final edges.
       snapHysteresisRef.current = null;
       cancelTrim();
 

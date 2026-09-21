@@ -138,9 +138,10 @@ export function useTimeSelection({
 
       // Check if y is within this track (including both header and body)
       if (y >= currentY && y < currentY + trackHeight) {
-        // Check each clip in this track
+        // Check each clip in this track. Clips may overlap: array
+        // position is the z-order, so walk in REVERSE — topmost wins.
         if (track.clips) {
-          for (const clip of track.clips) {
+          for (const clip of [...track.clips].reverse()) {
             const clipStartX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
             const clipEndX = clipStartX + clip.duration * pixelsPerSecond;
 

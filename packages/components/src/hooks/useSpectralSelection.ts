@@ -164,8 +164,9 @@ export function useSpectralSelection(
 
       // Check if y is within this track
       if (y >= currentY && y < currentY + trackHeight) {
-        // Check each clip in this track
-        for (const clip of track.clips) {
+        // Check each clip in this track. Clips may overlap: array
+        // position is the z-order, so walk in REVERSE — topmost wins.
+        for (const clip of [...track.clips].reverse()) {
           // Clips are rendered WITH CLIP_CONTENT_OFFSET for visual alignment
           const clipStartX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
           const clipEndX = clipStartX + clip.duration * pixelsPerSecond;

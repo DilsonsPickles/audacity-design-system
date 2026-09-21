@@ -115,8 +115,10 @@ export function useClipMouseDown({
       const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
 
       if (y >= currentY && y < currentY + trackHeight) {
-        // Check both audio clips and midi clips
-        const allClips = [...track.clips, ...(track.midiClips || [])];
+        // Check both audio clips and midi clips. Clips may overlap
+        // (2026-09-21): array position is the z-order, so walk in
+        // REVERSE — the topmost (last) clip under the cursor wins.
+        const allClips = [...track.clips, ...(track.midiClips || [])].reverse();
         for (const clip of allClips) {
           const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
           const clipWidth = clip.duration * pixelsPerSecond;

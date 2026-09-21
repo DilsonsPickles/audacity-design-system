@@ -30,7 +30,9 @@ export function handleSplitAtPlayhead(e: KeyboardEvent, deps: SplitHandlerDeps):
 
   const findClipUnderPlayhead = (trackIndex: number) => {
     const t = state.tracks[trackIndex];
-    return t?.clips.find(
+    // Clips may overlap: array position is the z-order — split the
+    // topmost (last matching) clip, the one the user sees.
+    return [...(t?.clips ?? [])].reverse().find(
       (c) =>
         playhead > c.start + EDGE_EPSILON
         && playhead < c.start + c.duration - EDGE_EPSILON,

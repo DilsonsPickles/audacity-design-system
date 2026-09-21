@@ -16,7 +16,9 @@ export function resolveTrackIndexFromY(y: number, tracks: Track[]): number | nul
 export function buildSplitForTrack(trackIndex: number, time: number, tracks: Track[]) {
   const track = tracks[trackIndex];
   if (!track) return null;
-  const hit = track.clips.find((c) => {
+  // Clips may overlap: array position is the z-order, so findLast —
+  // the split tool cuts the clip the user SEES at that x (topmost).
+  const hit = [...track.clips].reverse().find((c) => {
     const start = c.start;
     const end = c.start + c.duration;
     return time > start + 0.0001 && time < end - 0.0001;

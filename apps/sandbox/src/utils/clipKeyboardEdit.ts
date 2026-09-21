@@ -10,14 +10,9 @@
  * dispatches or announces — pure state in, intent out.
  */
 
-import type { Clip, Track } from '../contexts/TracksContext';
+import type { Clip } from '../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import { formatTimeForA11y } from '@audacity-ui/components';
-import {
-  resolveOverlap,
-  type ClipPlacement,
-  type ClipMutation,
-} from './resolveOverlap';
 
 const MIN_CLIP_DURATION = 0.1;
 const NO_OP_EPSILON = 0.0005;
@@ -140,46 +135,28 @@ export interface KeyboardTrimUpdate {
 
 export interface KeyboardTrimBatchResult {
   updates: KeyboardTrimUpdate[];
-  mutations: ClipMutation[];
 }
 
 /**
  * Runs computeKeyboardTrim across every target clip (the already
- * selection-expanded, deduped list Canvas builds) and folds the
- * resulting placements through the already-tested resolveOverlap to
- * produce the non-destructive eat/trim/split/delete mutations for any
- * neighbor a trim pushed into. Canvas dispatches TRIM_CLIP for each
- * update and APPLY_CLIP_PLACEMENT for the mutations (if any).
+ * selection-expanded, deduped list Canvas builds). Overlap is legal
+ * (2026-09-21): a trim that extends across a neighbour just overlaps
+ * it, so the batch is purely the per-clip TRIM_CLIP updates.
  */
 export function computeKeyboardTrimBatch(
   targets: KeyboardTrimTarget[],
   edge: 'left' | 'right',
   deltaSeconds: number,
-  tracks: Track[],
 ): KeyboardTrimBatchResult {
   const updates: KeyboardTrimUpdate[] = [];
-  const trimIntent: ClipPlacement[] = [];
-  const movingIds = new Set<number>();
 
   for (const { trackIndex, clip } of targets) {
     const result = computeKeyboardTrim({ clip, edge, deltaSeconds });
     if (!result) continue;
-
     updates.push({ trackIndex, clipId: clip.id, ...result });
-    trimIntent.push({
-      clipId: clip.id,
-      trackIndex,
-      start: edge === 'left' ? (result.newStart as number) : clip.start,
-      duration: result.newDuration,
-    });
-    movingIds.add(clip.id);
   }
 
-  const mutations = trimIntent.length > 0
-    ? resolveOverlap(tracks, trimIntent, movingIds).mutations
-    : [];
-
-  return { updates, mutations };
+  return { updates };
 }
 
 // ---------------------------------------------------------------------

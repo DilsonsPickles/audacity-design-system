@@ -38,7 +38,7 @@ describe('useCmdArrowMove', () => {
     pendingClipMoveResolution.current = false;
   });
 
-  it('resolves overlap and clears isCmdArrowMoving on Cmd/Ctrl release', () => {
+  it('clears isCmdArrowMoving on Cmd/Ctrl release and leaves overlapping clips intact', () => {
     let last: {
       tracksState: ReturnType<typeof useTracksState>;
       isCmdArrowMoving: boolean;
@@ -46,8 +46,8 @@ describe('useCmdArrowMove', () => {
     };
 
     // clip 1: 0→5s, stays put (unselected). clip 2: selected, final resting
-    // position 3→7s (as if a Cmd+Arrow nudge landed it there) — overlaps
-    // clip 1's right side, so release should trim clip 1 to duration=3.
+    // position 3→7s (as if a Cmd+Arrow nudge landed it there) — overlap
+    // is legal (2026-09-21), so release must leave BOTH clips untouched.
     const initialClips = [
       { id: 1, name: '', start: 0, duration: 5, trimStart: 0, envelopePoints: [] },
       { id: 2, name: '', start: 3, duration: 4, trimStart: 0, envelopePoints: [], selected: true },
@@ -76,11 +76,15 @@ describe('useCmdArrowMove', () => {
     expect(last!.isCmdArrowMoving).toBe(false);
     expect(pendingClipMoveResolution.current).toBe(false);
 
-    // clip 1 (0→5s) should have been trimmed since clip 2 (selected, 3→7s)
-    // now occupies the overlapping range — mirrors resolveOverlap's trim.
+    // Overlap is legal: clip 1 keeps its full 5s alongside clip 2 (3→7s);
+    // the overlap region is a crossfade, not an eviction.
     const track = last!.tracksState.tracks[0];
     const clip1 = track.clips.find((c: any) => c.id === 1);
-    expect(clip1?.duration).toBe(3);
+    const clip2 = track.clips.find((c: any) => c.id === 2);
+    expect(clip1?.duration).toBe(5);
+    expect(clip1?.start).toBe(0);
+    expect(clip2?.start).toBe(3);
+    expect(clip2?.duration).toBe(4);
   });
 
   it('does nothing on keyup when no pending resolution', () => {

@@ -7,7 +7,7 @@ import {
   computeKeyboardStretchAnnouncement,
   type KeyboardTrimTarget,
 } from '../clipKeyboardEdit';
-import type { Clip, Track } from '../../contexts/TracksContext';
+import type { Clip } from '../../contexts/TracksContext';
 
 function makeClip(overrides: Partial<Clip> = {}): Clip {
   return {
@@ -20,10 +20,6 @@ function makeClip(overrides: Partial<Clip> = {}): Clip {
     fullDuration: 5,
     ...overrides,
   };
-}
-
-function makeTrack(clips: Clip[]): Track {
-  return { id: 0, name: 'Track 1', clips };
 }
 
 describe('computeKeyboardTrim', () => {
@@ -112,21 +108,18 @@ describe('computeKeyboardTrimAnnouncement', () => {
 });
 
 describe('computeKeyboardTrimBatch', () => {
-  it('dispatches a trim update for a single selected clip and produces no overlap mutations', () => {
+  it('dispatches a trim update for a single selected clip', () => {
     const clip = makeClip({ id: 1, duration: 5, start: 0, trimStart: 0, fullDuration: 5, selected: true });
-    const tracks: Track[] = [makeTrack([clip])];
     const targets: KeyboardTrimTarget[] = [{ trackIndex: 0, clip }];
-    const result = computeKeyboardTrimBatch(targets, 'right', 0.5, tracks);
+    const result = computeKeyboardTrimBatch(targets, 'right', 0.5);
     expect(result.updates).toEqual([
       { trackIndex: 0, clipId: 1, newTrimStart: 0, newDuration: 4.5, newStart: undefined },
     ]);
-    expect(result.mutations).toEqual([]);
   });
 
-  it('skips a target whose trim is a no-op and still resolves overlap for the ones that moved', () => {
+  it('skips a target whose trim is a no-op', () => {
     const maxedClip = makeClip({ id: 1, duration: 5, start: 0, trimStart: 0, fullDuration: 5, selected: true });
     const neighbor = makeClip({ id: 2, duration: 3, start: 6, trimStart: 0, fullDuration: 5, selected: true });
-    const tracks: Track[] = [makeTrack([maxedClip, neighbor])];
     const targets: KeyboardTrimTarget[] = [
       { trackIndex: 0, clip: maxedClip },
       { trackIndex: 0, clip: neighbor },
@@ -134,30 +127,19 @@ describe('computeKeyboardTrimBatch', () => {
     // Extending right (negative delta) on a clip already at max duration
     // is a no-op for maxedClip; neighbor still trims normally (its own
     // extend has room).
-    const result = computeKeyboardTrimBatch(targets, 'right', -0.5, tracks);
+    const result = computeKeyboardTrimBatch(targets, 'right', -0.5);
     expect(result.updates).toHaveLength(1);
     expect(result.updates[0].clipId).toBe(2);
   });
 
-  it('eats a neighbor the trim pushes into (reuses resolveOverlap)', () => {
+  it('extends across a neighbour without mutating it — overlap is legal', () => {
     const moving = makeClip({ id: 1, duration: 5, start: 0, trimStart: 0, fullDuration: 10, selected: true });
-    const neighbor = makeClip({ id: 2, duration: 3, start: 6, trimStart: 0, fullDuration: 3 });
-    const tracks: Track[] = [makeTrack([moving, neighbor])];
     const targets: KeyboardTrimTarget[] = [{ trackIndex: 0, clip: moving }];
-    // Shrink right edge by -3 (extend right by 3): 0..5 -> 0..8, overlapping neighbor's 6..9.
-    const result = computeKeyboardTrimBatch(targets, 'right', -3, tracks);
+    // Extend right by 3: 0..5 -> 0..8, overlapping a neighbour at 6..9.
+    // The batch is ONLY the mover's own trim — the neighbour overlaps.
+    const result = computeKeyboardTrimBatch(targets, 'right', -3);
     expect(result.updates).toEqual([
       { trackIndex: 0, clipId: 1, newTrimStart: 0, newDuration: 8, newStart: undefined },
-    ]);
-    expect(result.mutations).toEqual([
-      {
-        type: 'trim',
-        clipId: 2,
-        trackIndex: 0,
-        newStart: 8,
-        newDuration: 1,
-        newTrimStart: 2,
-      },
     ]);
   });
 });

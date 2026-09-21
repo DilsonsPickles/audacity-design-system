@@ -509,13 +509,11 @@ const CanvasTrack = React.memo(function CanvasTrack({
             return true;
           });
 
-          // Per-clip trim math + overlap resolution (eating any
-          // neighbor the trim pushed into) is pure — computed in
-          // clipKeyboardEdit.ts and unit-tested there. This mirrors
-          // the mouse-trim path: once a trim moves an edge into a
-          // neighbor, the neighbor gets non-destructively eaten
-          // (trim / split / delete) the same way it does on drop.
-          const { updates, mutations } = computeKeyboardTrimBatch(uniqueTargets, edge, deltaSeconds, tracksRef.current);
+          // Per-clip trim math is pure — computed in clipKeyboardEdit.ts
+          // and unit-tested there. Overlap is legal (2026-09-21): a trim
+          // that extends across a neighbour overlaps it, same as the
+          // mouse-trim path — no neighbour is eaten.
+          const { updates } = computeKeyboardTrimBatch(uniqueTargets, edge, deltaSeconds);
 
           for (const update of updates) {
             dispatch({
@@ -527,13 +525,6 @@ const CanvasTrack = React.memo(function CanvasTrack({
                 newDuration: update.newDuration,
                 newStart: update.newStart,
               },
-            });
-          }
-
-          if (mutations.length > 0) {
-            dispatch({
-              type: 'APPLY_CLIP_PLACEMENT',
-              payload: { placements: [], mutations },
             });
           }
 

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTracksDispatch, type Track } from '../contexts/TracksContext';
-import { resolveOverlap, type ClipPlacement } from '../utils/resolveOverlap';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
 
@@ -47,10 +46,11 @@ export function useCmdArrowMove(options: UseCmdArrowMoveOptions): UseCmdArrowMov
   const tracksRef = useRef(tracks);
   useEffect(() => { tracksRef.current = tracks; }, [tracks]);
 
-  // Cmd/Ctrl release → apply the deferred overlap resolution from any
-  // Cmd+Arrow clip moves. We build the intent from the *current* clip
-  // positions (post-nudge) so only the final resting places are
-  // reconciled with underlying clips — nothing in between gets eaten.
+  // Cmd/Ctrl release ends the keyboard-move "hold". Overlap is legal
+  // (2026-09-21) so there is nothing to resolve any more — the nudges
+  // themselves committed the final positions (and raised the moved
+  // clips' z). All that remains is dropping the raised-while-moving
+  // visual state and sweeping up empty provisional tracks.
   useEffect(() => {
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.key !== 'Meta' && e.key !== 'Control') return;
@@ -70,32 +70,6 @@ export function useCmdArrowMove(options: UseCmdArrowMoveOptions): UseCmdArrowMov
         }
       }
       provisionalKeyboardTrackIds.current.clear();
-
-      const tracks = tracksRef.current;
-      const intent: ClipPlacement[] = [];
-      const movingIds = new Set<number>();
-      tracks.forEach((t, tIndex) => {
-        t.clips.forEach((c) => {
-          if (c.selected) {
-            intent.push({
-              clipId: c.id,
-              trackIndex: tIndex,
-              start: c.start,
-              duration: c.duration,
-            });
-            movingIds.add(c.id);
-          }
-        });
-      });
-      if (intent.length === 0) return;
-
-      const resolution = resolveOverlap(tracks, intent, movingIds);
-      if (resolution.mutations.length > 0) {
-        dispatch({
-          type: 'APPLY_CLIP_PLACEMENT',
-          payload: { placements: [], mutations: resolution.mutations },
-        });
-      }
     };
     document.addEventListener('keyup', onKeyUp);
     return () => document.removeEventListener('keyup', onKeyUp);

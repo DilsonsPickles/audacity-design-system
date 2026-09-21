@@ -450,8 +450,8 @@ describe('Track ArrowDown navigation', () => {
 // in the design table and the one that arms pendingClipMoveResolution.
 // ---------------------------------------------------------------------------
 
-describe('Cmd+ArrowDown reorder + Meta-release overlap resolution', () => {
-  it('moves the selected clip to the next track; releasing Meta trims the overlapped neighbor', async () => {
+describe('Cmd+ArrowDown reorder — overlap is legal (2026-09-21)', () => {
+  it('moves the selected clip to the next track; releasing Meta leaves the overlapped neighbor intact', async () => {
     const tracks: Track[] = [
       {
         id: 1,
@@ -483,16 +483,18 @@ describe('Cmd+ArrowDown reorder + Meta-release overlap resolution', () => {
       expect(clipEl(container, 2).getAttribute('data-track-index')).toBe('1');
     });
 
-    // Overlap not yet resolved — clip 1 is still its original width.
+    // Both clips coexist — clip 1 keeps its original width.
     expect(clipEl(container, 1).style.width).toBe('500px');
 
     fireEvent.keyUp(document, { key: 'Meta' });
 
-    // Overlap-resolution half: clip 1 (0..5s) trimmed to 3s (0..3s) since
-    // clip 2 (selected, now 3..7s on the same track) wins the overlap.
+    // Releasing Meta only ends the keyboard-move hold. Overlap is legal:
+    // clip 1 (0..5s) stays 500px wide alongside clip 2 (3..7s) — the
+    // overlapping region is a crossfade, not an eviction.
     await waitFor(() => {
-      expect(clipEl(container, 1).style.width).toBe('300px');
+      expect(clipEl(container, 2).getAttribute('data-track-index')).toBe('1');
     });
+    expect(clipEl(container, 1).style.width).toBe('500px');
   });
 });
 

@@ -3,6 +3,19 @@ import { applyCut } from '../../utils/cutOperations';
 import { dissolveDegenerateGroups } from './shared';
 import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
 
+/** Clips may overlap (2026-09-21): array position IS the z-order —
+ *  later = painted on top = wins clicks, and the overlap region plays
+ *  as a crossfade. Moving a clip "picks it up", so moves raise the
+ *  moved clip(s) to the top of the stack, preserving the moved set's
+ *  relative order. Cross-track moves already append (same effect).
+ *  midiClips are never reordered — pianoRollClipIndex is positional. */
+function raiseClips(clips: Clip[], shouldRaise: (c: Clip) => boolean): Clip[] {
+  const staying: Clip[] = [];
+  const raised: Clip[] = [];
+  for (const c of clips) (shouldRaise(c) ? raised : staying).push(c);
+  return raised.length > 0 ? [...staying, ...raised] : clips;
+}
+
 export function clipsReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
     case 'ADD_CLIP': {
@@ -104,8 +117,11 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
         } else {
           newTracks[fromTrackIndex] = {
             ...newTracks[fromTrackIndex],
-            clips: newTracks[fromTrackIndex].clips.map(c =>
-              c.id === clipId ? { ...c, start: newStartTime } : c
+            clips: raiseClips(
+              newTracks[fromTrackIndex].clips.map(c =>
+                c.id === clipId ? { ...c, start: newStartTime } : c
+              ),
+              c => c.id === clipId,
             ),
           };
         }
@@ -401,10 +417,13 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
 
       const newTracks = state.tracks.map(track => ({
         ...track,
-        clips: track.clips.map(clip => {
-          if (!clip.selected) return clip;
-          return { ...clip, start: clip.start + clampedDelta };
-        }),
+        clips: raiseClips(
+          track.clips.map(clip => {
+            if (!clip.selected) return clip;
+            return { ...clip, start: clip.start + clampedDelta };
+          }),
+          clip => !!clip.selected,
+        ),
         midiClips: track.midiClips?.map(clip => {
           if (!clip.selected) return clip;
           return { ...clip, start: clip.start + clampedDelta };
