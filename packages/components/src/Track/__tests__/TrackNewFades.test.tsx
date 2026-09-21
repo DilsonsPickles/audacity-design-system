@@ -300,12 +300,12 @@ describe('clip fades', () => {
     // diagonal: +150px extent, +19px down → fade 1.5s, shape ≈ 2
     fireEvent.pointerMove(inHandle, { clientX: 150, clientY: 49, pointerId: 7 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
-    const [, , shape] = onClipFadeShapeChange.mock.calls.at(-1)!;
+    const [, , shape] = onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1];
     expect(shape).toBeCloseTo(2, 1);
     fireEvent.pointerUp(inHandle, { pointerId: 7 });
   });
 
-  it('the midpoint node edits both axes: vertical shape + horizontal extent', () => {
+  it('the midpoint node is Y-axis only: shape changes, extent untouched', () => {
     const onClipFadeChange = vi.fn();
     const onClipFadeShapeChange = vi.fn();
     const { container } = render(
@@ -322,10 +322,10 @@ describe('clip fades', () => {
     );
     const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 48, pointerId: 8 });
-    // diagonal: +50px right (midpoint 0.5→1.0s → fade 2s), +19px down (shape ≈ 2)
+    // diagonal input: only the vertical component registers (shape ≈ 2)
     fireEvent.pointerMove(node, { clientX: 112, clientY: 67, pointerId: 8 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', expect.closeTo(2, 5));
-    const [, , shape] = onClipFadeShapeChange.mock.calls.at(-1)!;
+    expect(onClipFadeChange).not.toHaveBeenCalled();
+    const [, , shape] = onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1];
     expect(shape).toBeCloseTo(2, 1);
     fireEvent.pointerUp(node, { pointerId: 8 });
   });

@@ -746,31 +746,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const nodeEl = e.currentTarget as HTMLElement;
               try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
               setShapeDrag(dragKey);
-              const startClientX = e.clientX;
               const startClientY = e.clientY;
               const startGain = gain;
-              const startMidTime = midTime;
-              // Both controls edit both axes (2026-09-21): the node's
-              // vertical bows the curve, its horizontal sets the extent
-              // (midpoint tracks the pointer → fade = 2×(mid − edge)).
-              // Extent clamps at a small floor so the node never deletes
-              // the fade under itself — removal stays the handle's job.
-              const otherFade = Math.max(0, (side === 'in' ? clip.fadeOut : clip.fadeIn) ?? 0);
-              const clipEnd = clip.start + clip.duration;
-              let lastFade = side === 'in' ? (clip.fadeIn ?? 0) : (clip.fadeOut ?? 0);
+              // The dot is Y-AXIS ONLY (2026-09-21): it bows the curve;
+              // extent belongs to the corner handle (which edits both).
               const onMove = (ev: PointerEvent) => {
                 const g = Math.max(0.05, Math.min(0.95, startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight)));
                 const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(MID_BASE)));
                 if (Number.isFinite(next)) onClipFadeShapeChange(clip.id, side, next);
-                if (onClipFadeChange) {
-                  const mid = startMidTime + (ev.clientX - startClientX) / pixelsPerSecond;
-                  let fade = side === 'in' ? 2 * (mid - clip.start) : 2 * (clipEnd - mid);
-                  fade = Math.max(0.05, Math.min(Math.max(0.05, clip.duration - otherFade), fade));
-                  if (Math.abs(fade - lastFade) > 0.0005) {
-                    lastFade = fade;
-                    onClipFadeChange(clip.id, side, fade);
-                  }
-                }
               };
               const onUp = () => {
                 nodeEl.removeEventListener('pointermove', onMove);
@@ -789,7 +772,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'move',
+              cursor: 'ns-resize',
               zIndex: 460,
             }}
           >
