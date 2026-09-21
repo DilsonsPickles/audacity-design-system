@@ -1295,16 +1295,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // the drag guard keeps them up while the pointer is captured.
     const showHandles = !!onClipFadeChange && (clipSelected || fadeDragClipId === clip.id);
 
+    const boundaryInX = fadeInSec * pixelsPerSecond;
+    const boundaryOutX = clipWidth - fadeOutSec * pixelsPerSecond;
+    // Audition-style adaptive placement: each handle sits on the BODY
+    // side of its boundary (the natural spot) until the two would
+    // collide — then both retreat INSIDE their own fade regions, so at
+    // a mid-clip meeting each handle stays on its own curve instead of
+    // swapping sides. 40px = two 16px handles + breathing room.
+    const handlesRetreat = boundaryOutX - boundaryInX < 40;
     const handle = (side: 'in' | 'out') => {
-      const boundaryX = side === 'in'
-        ? fadeInSec * pixelsPerSecond
-        : clipWidth - fadeOutSec * pixelsPerSecond;
-      // Each handle lives INSIDE its own fade's region (the in-handle's
-      // right edge touches its boundary; the out-handle mirrors), so
-      // when the two fades meet mid-clip the handles sit at the apex on
-      // their own curves instead of swapping sides. With no fade the
-      // boundary is at the corner and the handle rests there as before.
-      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, side === 'in' ? boundaryX - 16 : boundaryX)));
+      const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
+      const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
+      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, inward ? boundaryX : boundaryX - 16)));
       return (
         <div
           data-fade-handle={side}
