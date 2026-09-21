@@ -375,6 +375,22 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-buried-handle]')).toBeNull();
   });
 
+  it('handles hide when the clip is too narrow at the current zoom', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          // 4s at 10 px/s = 40px — under the 64px floor
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={10}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    expect(container.querySelector('[data-fade-handle]')).toBeNull();
+  });
+
   it('fade handle pointerdown does not leak into the clip mousedown path', () => {
     const parentSpy = vi.fn();
     const { container } = render(

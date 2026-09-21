@@ -1380,11 +1380,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (isMidiTrack || !onClipFadeChange) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
+    // Below this rendered width there is no room to grab (or read) the
+    // two corner handles — zoom in to edit fades on a narrow clip
+    const FADE_HANDLE_MIN_CLIP_PX = 64;
     for (const clip of clips) {
       // Handles show on the SELECTED clip only (2026-09-21 decision);
       // the drag guard keeps them up while the pointer is captured.
       if (!(clip.selected || fadeDragClipId === clip.id)) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
+      if (clipWidth < FADE_HANDLE_MIN_CLIP_PX) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       // Positions use EFFECTIVE fades (clamped to the free window and
       // to each other) so the controls sit on the drawn curves
