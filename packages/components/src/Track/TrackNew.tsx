@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MidiNote } from '@audacity-ui/core';
-import { Clip } from '../Clip/Clip';
+import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
@@ -1284,6 +1284,80 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // renderFadeCurveOverlays, so an inherited fade stays visible where
   // its clip is buried). Rendered inside the wrapper so they ride the
   // clip's position and z.
+  // Buried-edge trim/stretch handles: a SELECTED clip's edge that lies
+  // under a higher-z overlapping clip gets its handle buttons
+  // re-rendered here at track level, above the stack — the originals
+  // inside the Clip are covered. Visible edges keep only the originals.
+  const renderBuriedEdgeHandles = () => {
+    if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge)) return null;
+    const nodes: React.ReactNode[] = [];
+    for (const clip of clips) {
+      if (!clip.selected) continue;
+      const z = clipZIndex.get(clip.id) ?? 2;
+      const clipWidth = clip.duration * pixelsPerSecond;
+      const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
+      const covered = (t: number) => clips.some((d) =>
+        d.id !== clip.id
+        && (clipZIndex.get(d.id) ?? 2) > z
+        && d.start < t && t < d.start + d.duration);
+      const edges: Array<'left' | 'right'> = [];
+      if (covered(clip.start)) edges.push('left');
+      if (covered(clip.start + clip.duration)) edges.push('right');
+      for (const edge of edges) {
+        // Same geometry as Clip.css: buttons hug the edge from outside
+        // (±26px), trim at top 28, stretch at 60
+        const xLeft = Math.round(edge === 'left' ? xBase - 26 : xBase + clipWidth + 4);
+        const startDrag = (kind: 'trim' | 'stretch') => (e: React.MouseEvent) => {
+          e.stopPropagation();
+          e.preventDefault();
+          const cb = kind === 'trim' ? onClipTrimEdge : onClipStretchEdge;
+          if (!cb) return;
+          // Self-cleaning attach-on-mousedown pair, mirroring Clip's
+          // in-place handles: the callback streams clientX until mouseup
+          const onMove = (ev: MouseEvent) => cb(clip.id, edge, ev.clientX);
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+          cb(clip.id, edge, e.clientX);
+        };
+        if (onClipTrimEdge) {
+          nodes.push(
+            <button
+              key={`buried-trim-${clip.id}-${edge}`}
+              type="button"
+              tabIndex={-1}
+              data-buried-handle={`trim-${edge}`}
+              className={`clip-display__handle clip-display__handle--trim-${edge}`}
+              aria-label={`Trim ${edge} edge`}
+              onMouseDown={startDrag('trim')}
+              style={{ position: 'absolute', left: xLeft, right: 'auto', top: 28, zIndex: 455 }}
+            >
+              {edge === 'left' ? <TrimLeftIcon /> : <TrimRightIcon />}
+            </button>,
+          );
+        }
+        nodes.push(
+          <button
+            key={`buried-stretch-${clip.id}-${edge}`}
+            type="button"
+            tabIndex={-1}
+            data-buried-handle={`stretch-${edge}`}
+            className={`clip-display__handle clip-display__handle--stretch-${edge}`}
+            aria-label={`Stretch ${edge} edge`}
+            onMouseDown={startDrag('stretch')}
+            style={{ position: 'absolute', left: xLeft, right: 'auto', top: 60, zIndex: 455 }}
+          >
+            <StretchIcon />
+          </button>,
+        );
+      }
+    }
+    return nodes.length > 0 ? nodes : null;
+  };
+
   // Quick-fade HANDLES — rendered at TRACK level (like the shape dots)
   // so they sit ABOVE the fade veils (z 450); inside the clip wrapper
   // they were trapped under its low stacking context and the veil
@@ -1750,6 +1824,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         {renderCrossfadeNodes()}
         {renderQuickFadeNodes()}
         {renderFadeHandles()}
+        {renderBuriedEdgeHandles()}
         {renderEnvelopeInteractionLayers()}
 
         {/* Split view divider - draggable horizontal line */}

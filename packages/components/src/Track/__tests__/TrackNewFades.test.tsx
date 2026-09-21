@@ -325,6 +325,56 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 8 });
   });
 
+  it('a selected buried clip re-renders its covered edge handles at track level', () => {
+    const onClipTrimEdge = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            // clip 1 selected, BELOW in z; its right edge (5s) lies
+            // inside clip 2's span → covered
+            { id: 1, name: 'A', start: 0, duration: 5, selected: true },
+            { id: 2, name: 'B', start: 3, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipTrimEdge={onClipTrimEdge}
+        />
+      </Providers>,
+    );
+    // Covered right edge gets duplicates; visible left edge gets none
+    const trim = container.querySelector('[data-buried-handle="trim-right"]') as HTMLElement;
+    expect(trim).toBeTruthy();
+    expect(container.querySelector('[data-buried-handle="stretch-right"]')).toBeTruthy();
+    expect(container.querySelector('[data-buried-handle="trim-left"]')).toBeNull();
+    // The duplicate drives the same trim callback stream
+    fireEvent.mouseDown(trim, { clientX: 500 });
+    fireEvent.mouseMove(document, { clientX: 480 });
+    expect(onClipTrimEdge).toHaveBeenLastCalledWith(1, 'right', 480);
+    fireEvent.mouseUp(document);
+  });
+
+  it('no buried-edge duplicates when the selected clip is on top', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5 },
+            // clip 2 on top (later in array) and selected — both its
+            // edges are visible
+            { id: 2, name: 'B', start: 3, duration: 4, selected: true },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipTrimEdge={vi.fn()}
+        />
+      </Providers>,
+    );
+    expect(container.querySelector('[data-buried-handle]')).toBeNull();
+  });
+
   it('fade handle pointerdown does not leak into the clip mousedown path', () => {
     const parentSpy = vi.fn();
     const { container } = render(

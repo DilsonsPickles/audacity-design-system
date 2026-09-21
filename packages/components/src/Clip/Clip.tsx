@@ -12,15 +12,18 @@ import './Clip.css';
 // ---- Handle icons ---------------------------------------------------------
 // MusescoreIcon font glyphs. Codepoints come from design.
 
-const TrimLeftIcon = () => (
+// Exported for TrackNew's buried-edge duplicates (a selected clip's
+// edge hidden under a higher-z overlapping clip gets its handles
+// re-rendered at track level, above the stack).
+export const TrimLeftIcon = () => (
   <span className="musescore-icon" aria-hidden="true">{'\uF4B1'}</span>
 );
 
-const TrimRightIcon = () => (
+export const TrimRightIcon = () => (
   <span className="musescore-icon" aria-hidden="true">{'\uF4B0'}</span>
 );
 
-const StretchIcon = () => (
+export const StretchIcon = () => (
   <span className="musescore-icon" aria-hidden="true">{'\uF475'}</span>
 );
 
