@@ -4,6 +4,48 @@
 
 import { TrackLike } from '../types';
 
+/** Rendered height of a track folder's own slim row. */
+export const FOLDER_ROW_HEIGHT = 28;
+
+/** Only the fields the row-height rule reads — so every layer
+ *  (core, components, sandbox) can call it with its own track shape. */
+export interface RowHeightTrackLike {
+  id?: number | string;
+  type?: string;
+  folderId?: number;
+  collapsed?: boolean;
+  height?: number;
+}
+
+/**
+ * CANONICAL row-height rule (track folders v1, 2026-09-21). Every
+ * y↔track computation in the app — canvas layout, hit tests, drags,
+ * rulers, scroll math — must agree with this or clicks resolve to the
+ * wrong row:
+ *  - a `type: 'folder'` row is slim (FOLDER_ROW_HEIGHT)
+ *  - a child of a COLLAPSED folder contributes NOTHING (0 — and no
+ *    gap either; callers must skip the gap when this returns 0)
+ *  - everything else is its own height, else the default
+ */
+export function effectiveRowHeight(
+  tracks: readonly RowHeightTrackLike[],
+  index: number,
+  defaultHeight: number
+): number {
+  const track = tracks[index];
+  if (!track) return 0;
+  if (track.type === 'folder') return FOLDER_ROW_HEIGHT;
+  if (track.folderId !== undefined) {
+    const folder = tracks.find((t) => t.type === 'folder' && t.id === track.folderId);
+    if (folder?.collapsed) return 0;
+  }
+  // `||` not `??`: a falsy/absent height means "unset" everywhere else
+  // in the app (canvasLayout, trackLayout, the panel column), and a
+  // characterization test pins that. Zero height is expressed by the
+  // collapse rule above, never by `height: 0`.
+  return track.height || defaultHeight;
+}
+
 /**
  * Convert pixel X position to time in seconds
  * @param x - Pixel position on canvas
@@ -45,7 +87,9 @@ export function yToTrackIndex(
   let currentY = initialGap;
 
   for (let i = 0; i < tracks.length; i++) {
-    const trackHeight = tracks[i].height ?? defaultTrackHeight;
+    const trackHeight = effectiveRowHeight(tracks, i, defaultTrackHeight);
+    // Hidden row (collapsed-folder child): no band, no gap
+    if (trackHeight === 0) continue;
 
     // Check if y is within this track
     if (y >= currentY && y < currentY + trackHeight) {
@@ -79,7 +123,8 @@ export function trackIndexToY(
   let y = initialGap;
 
   for (let i = 0; i < trackIndex && i < tracks.length; i++) {
-    const trackHeight = tracks[i].height ?? defaultTrackHeight;
+    const trackHeight = effectiveRowHeight(tracks, i, defaultTrackHeight);
+    if (trackHeight === 0) continue; // hidden row: no height, no gap
     y += trackHeight + trackGap;
   }
 

@@ -16,6 +16,8 @@
  * has zero routing semantics — the folder-as-bus layer arrives in a
  * later release.
  */
+import { effectiveRowHeight, FOLDER_ROW_HEIGHT as CORE_FOLDER_ROW_HEIGHT } from '@audacity-ui/core';
+
 /** Structural track shape so geometry layers can share these helpers
  *  without importing the full TracksContext Track. */
 export interface FolderTrackLike {
@@ -28,8 +30,9 @@ export interface FolderTrackLike {
   soloed?: boolean;
 }
 
-/** Slim rendered height of a folder's own row (canvas + panel). */
-export const FOLDER_ROW_HEIGHT = 28;
+/** Slim rendered height of a folder's own row (canvas + panel).
+ *  Re-exported from core, which owns the canonical rule. */
+export const FOLDER_ROW_HEIGHT = CORE_FOLDER_ROW_HEIGHT;
 
 export const isFolderTrack = (track: FolderTrackLike | undefined): boolean =>
   track?.type === 'folder';
@@ -59,19 +62,18 @@ export function isHiddenByCollapse(tracks: readonly FolderTrackLike[], index: nu
   return parentFolderOf(tracks, index)?.collapsed === true;
 }
 
-/** The height a track contributes to vertical layout. THE single rule
- *  every y↔track computation must share: folder rows are slim, hidden
- *  children contribute nothing, everything else is as before. */
+/** The height a track contributes to vertical layout — DELEGATES to
+ *  the canonical rule in @audacity-ui/core so the sandbox, the
+ *  components hit-tests and core's own coordinate math can never
+ *  disagree (they did once: folder rows counted as full-height tracks
+ *  in core's yToTrackIndex and every time-selection click resolved to
+ *  the row above). */
 export function effectiveTrackHeight(
   tracks: readonly FolderTrackLike[],
   index: number,
   defaultHeight: number,
 ): number {
-  const track = tracks[index];
-  if (!track) return 0;
-  if (track.type === 'folder') return FOLDER_ROW_HEIGHT;
-  if (isHiddenByCollapse(tracks, index)) return 0;
-  return track.height || defaultHeight;
+  return effectiveRowHeight(tracks, index, defaultHeight);
 }
 
 /** The height + gap a track contributes when stacking rows: hidden

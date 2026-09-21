@@ -113,6 +113,14 @@ export interface TrackLike {
   clips: ClipLike[];
   height?: number;
   viewMode?: 'waveform' | 'spectrogram' | 'split';
+  /** Track folders (v1): a `type: 'folder'` row renders slim, and a
+   *  child (carrying `folderId`) of a COLLAPSED folder renders at zero
+   *  height. See effectiveRowHeight in utils/coordinates.ts — the
+   *  CANONICAL row-height rule every y↔track computation shares. */
+  id?: number | string;
+  type?: string;
+  folderId?: number;
+  collapsed?: boolean;
 }
 
 /**

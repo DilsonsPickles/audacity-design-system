@@ -143,8 +143,9 @@ ungroup). Deliberately deferred:
   not audibly until that gap is fixed. Mixdown applies no mute/solo at all.
 - **Clip drag onto a folder's slim canvas band** falls through to no
   target (deliberate); dropping INTO a folder should re-parent one day.
-- **packages/core coordinates.ts** duplicate y-math is unimported/dead —
-  update or delete in a cleanup pass.
+- ~~packages/core coordinates.ts duplicate y-math~~ — it was NOT dead
+  (`useTimeSelection` imports `yToTrackIndex`); it is now the CANONICAL
+  folder-aware rule that the other two layers delegate to.
 
 ## Minor (batch into related work, don't do standalone)
 

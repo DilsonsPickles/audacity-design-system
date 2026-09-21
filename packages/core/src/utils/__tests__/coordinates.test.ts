@@ -133,3 +133,38 @@ describe('trackIndexToY', () => {
     expect(trackIndexToY(2, tracks, 10, 5, 114)).toBe(270);
   });
 });
+
+describe('yToTrackIndex with track folders', () => {
+  // folder row (28) + two children (114 each), gap 2, initialGap 2
+  const folded = [
+    { clips: [], id: 10, type: 'folder' },
+    { clips: [], id: 1, folderId: 10, height: 114 },
+    { clips: [], id: 2, folderId: 10, height: 114 },
+  ];
+
+  it('counts a folder row as its SLIM height, so children resolve correctly', () => {
+    // folder band 2..30; child 1 band 32..146; child 2 band 148..262.
+    // Before the fix the folder counted as a full 114px track and a
+    // click on child 2 resolved to child 1.
+    expect(yToTrackIndex(10, folded, 2, 2, 114)).toBe(0);
+    expect(yToTrackIndex(100, folded, 2, 2, 114)).toBe(1);
+    expect(yToTrackIndex(200, folded, 2, 2, 114)).toBe(2);
+  });
+
+  it('gives a collapsed folder\'s children no band at all', () => {
+    const collapsed = [
+      { clips: [], id: 10, type: 'folder', collapsed: true },
+      { clips: [], id: 1, folderId: 10, height: 114 },
+      { clips: [], id: 2, folderId: 10, height: 114 },
+      { clips: [], id: 3, height: 114 },
+    ];
+    // folder 2..30, then the NEXT VISIBLE row (track 3) starts at 32
+    expect(yToTrackIndex(10, collapsed, 2, 2, 114)).toBe(0);
+    expect(yToTrackIndex(100, collapsed, 2, 2, 114)).toBe(3);
+  });
+
+  it('trackIndexToY agrees with the same rule', () => {
+    expect(trackIndexToY(1, folded, 2, 2, 114)).toBe(32);
+    expect(trackIndexToY(2, folded, 2, 2, 114)).toBe(148);
+  });
+});
