@@ -1501,9 +1501,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         );
       };
       // A crossfaded edge's quick-fade handle hides — the crossfade's
-      // intersection node does the work there
-      if (!crossfadedEdges.has(`${clip.id}:in`)) nodes.push(handle('in'));
-      if (!crossfadedEdges.has(`${clip.id}:out`)) nodes.push(handle('out'));
+      // intersection node does the work there. A ZERO-extent handle
+      // whose fade has no room left to grow (the opposite fade consumed
+      // the window) also hides — otherwise it stacks uselessly on top
+      // of the other handle at the boundary.
+      const NO_ROOM_PX = 24;
+      const roomFor = (own: number, other: number) =>
+        own > 0 || (windowLen - other) * pixelsPerSecond >= NO_ROOM_PX;
+      if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec, fadeOutSec)) nodes.push(handle('in'));
+      if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec, fadeInSec)) nodes.push(handle('out'));
     }
     return nodes.length > 0 ? nodes : null;
   };

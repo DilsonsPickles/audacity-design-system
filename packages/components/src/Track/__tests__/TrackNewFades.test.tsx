@@ -391,6 +391,24 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-fade-handle]')).toBeNull();
   });
 
+  it('a zero-extent handle hides when the opposite fade consumed the whole clip', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeOut: 4, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    // fade-out spans the clip → its boundary is at the clip start; the
+    // roomless zero-extent fade-in handle must not stack on top of it
+    expect(container.querySelector('[data-fade-handle="out"]')).toBeTruthy();
+    expect(container.querySelector('[data-fade-handle="in"]')).toBeNull();
+  });
+
   it('fade handle pointerdown does not leak into the clip mousedown path', () => {
     const parentSpy = vi.fn();
     const { container } = render(
