@@ -175,6 +175,7 @@ export * from './hooks';
  * Utilities
  */
 export * from './utils/waveform';
+export * from './utils/clipCrossfades';
 export * from './utils/spectrogram';
 export * from './utils/projectStorage';
 export * from './utils/scrollIntoViewIfNeeded';

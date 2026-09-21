@@ -4,6 +4,7 @@ import { Clip } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
+import { computeCrossfades, fadeCurvePath } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -497,6 +498,65 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     clips.forEach((c, i) => z.set(c.id, 2 + i));
     return z;
   }, [clips]);
+
+  // Crossfade regions are DERIVED from clip geometry (see
+  // utils/clipCrossfades.ts): a partial edge overlap between two clips
+  // renders as the classic X — the earlier clip's fade-out curve
+  // crossing the later clip's fade-in — plus a light veil marking the
+  // shared region. Containment renders nothing (top clip occludes).
+  const crossfades = React.useMemo(() => computeCrossfades(clips), [clips]);
+
+  const renderCrossfadeOverlays = () => {
+    if (crossfades.length === 0) return null;
+    const CLIP_HEADER_HEIGHT = 20;
+    const bodyTop = CLIP_HEADER_HEIGHT;
+    const bodyHeight = Math.max(0, height - CLIP_HEADER_HEIGHT);
+    return crossfades.map((cf) => {
+      const left = CLIP_CONTENT_OFFSET + cf.start * pixelsPerSecond;
+      const width = Math.max(1, (cf.end - cf.start) * pixelsPerSecond);
+      return (
+        <div
+          key={`crossfade-${cf.outgoingClipId}-${cf.incomingClipId}`}
+          data-crossfade-region={`${cf.outgoingClipId}-${cf.incomingClipId}`}
+          style={{
+            position: 'absolute',
+            left: `${Math.round(left)}px`,
+            top: `${bodyTop}px`,
+            width: `${Math.round(width)}px`,
+            height: `${bodyHeight}px`,
+            pointerEvents: 'none',
+            // Above every stacked clip (2+index band), below the
+            // envelope layers (500+) so fade curves never block editing
+            zIndex: 450,
+            background: 'rgba(255, 255, 255, 0.28)',
+          }}
+        >
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            style={{ display: 'block' }}
+          >
+            <path
+              d={fadeCurvePath('out')}
+              fill="none"
+              stroke="rgba(0, 0, 0, 0.45)"
+              strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d={fadeCurvePath('in')}
+              fill="none"
+              stroke="rgba(0, 0, 0, 0.45)"
+              strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        </div>
+      );
+    });
+  };
 
   // Calculate clip dimensions and positions
   const renderClips = () => {
@@ -1296,6 +1356,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         )}
 
         {renderClips()}
+        {renderCrossfadeOverlays()}
         {renderEnvelopeInteractionLayers()}
 
         {/* Split view divider - draggable horizontal line */}
