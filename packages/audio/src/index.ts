@@ -5,3 +5,4 @@
 
 export { AudioPlaybackManager, getAudioPlaybackManager } from './AudioPlaybackManager';
 export * from './envelopeGain';
+export * from './crossfadeGain';

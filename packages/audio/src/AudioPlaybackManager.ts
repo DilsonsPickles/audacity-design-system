@@ -1,5 +1,6 @@
 import * as Tone from 'tone';
 import { applyEnvelopeToChannel, type EnvelopeGainPoint } from './envelopeGain';
+import { applyGainSegmentsToChannel, computeClipGainSegments } from './crossfadeGain';
 import audioBufferToWav from 'audiobuffer-to-wav';
 
 /**
@@ -296,6 +297,10 @@ export class AudioPlaybackManager {
 
     // Create players for all clips that have audio buffers
     tracks.forEach((track, trackIndex) => {
+      // Overlapping clips (legal since 2026-09-21) crossfade at edges
+      // and occlude under containment — per-clip gain segments derived
+      // from this track's clip geometry, baked into the buffers below
+      const trackGainSegments = computeClipGainSegments(track.clips);
       track.clips.forEach((clip: any) => { // justified: Clip type not imported into audio package — pending audio-package sweep
         // Split right-segments carry `sourceClipId` pointing back to the
         // original clip that owns the audio buffer. Fall back to id for
@@ -332,13 +337,23 @@ export class AudioPlaybackManager {
           // the copy/bake when the source or envelope actually changed.
           const envelopePoints = (clip.envelopePoints ?? []) as EnvelopeGainPoint[];
           const hasEnvelope = envelopePoints.length > 0;
-          const cacheKey = hasEnvelope ? `clip:${clip.id}` : `src:${bufferKey}`;
-          const sig = hasEnvelope ? `${JSON.stringify(envelopePoints)}|${clip.duration}` : '';
+          // Crossfade/occlusion gains bake the same way the envelope
+          // does (crossfadeGain.ts) — per-clip buffer whenever either
+          // applies, signed so geometry changes re-bake.
+          const gainSegments = trackGainSegments.get(String(clip.id)) ?? [];
+          const hasFades = gainSegments.length > 0;
+          const cacheKey = hasEnvelope || hasFades ? `clip:${clip.id}` : `src:${bufferKey}`;
+          const sig = hasEnvelope || hasFades
+            ? `${JSON.stringify(envelopePoints)}|${clip.duration}|${JSON.stringify(gainSegments)}`
+            : '';
           let cached = this.toneBufferCache.get(cacheKey);
           if (!cached || cached.sig !== sig) {
-            const channelData: Float32Array = hasEnvelope
+            let channelData: Float32Array = hasEnvelope
               ? applyEnvelopeToChannel(buffer.getChannelData(0), envelopePoints, buffer.sampleRate, clip.duration)
               : buffer.getChannelData(0);
+            if (hasFades) {
+              channelData = applyGainSegmentsToChannel(channelData, gainSegments, buffer.sampleRate);
+            }
             cached = { sig, toneBuffer: Tone.ToneAudioBuffer.fromArray(channelData) };
             this.toneBufferCache.set(cacheKey, cached);
           }
@@ -817,6 +832,8 @@ export class AudioPlaybackManager {
     const offlineCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * sampleRate), sampleRate);
 
     for (const track of tracks) {
+      // Same crossfade/occlusion gains live playback bakes (crossfadeGain.ts)
+      const trackGainSegments = computeClipGainSegments(track.clips ?? []);
       for (const clip of track.clips ?? []) {
         const audioBuffer = this.audioBuffers.get(String(clip.id));
         if (!audioBuffer) continue;
@@ -828,10 +845,14 @@ export class AudioPlaybackManager {
         // ramps here read `pt.value`, but envelope points carry `db`, so
         // envelopes never actually applied to exports).
         const envelopePoints = (clip.envelopePoints ?? []) as EnvelopeGainPoint[];
+        const gainSegments = trackGainSegments.get(String(clip.id)) ?? [];
         for (let ch = 0; ch < numChannels; ch++) {
-          const channelData = envelopePoints.length > 0
+          let channelData = envelopePoints.length > 0
             ? applyEnvelopeToChannel(audioBuffer.getChannelData(ch), envelopePoints, audioBuffer.sampleRate, clip.duration)
             : audioBuffer.getChannelData(ch);
+          if (gainSegments.length > 0) {
+            channelData = applyGainSegmentsToChannel(channelData, gainSegments, audioBuffer.sampleRate);
+          }
           offlineBuffer.copyToChannel(channelData, ch);
         }
 
