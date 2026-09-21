@@ -11,6 +11,7 @@
  */
 
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { effectiveRowHeight } from '../utils/trackRowGeometry';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { ClipLike, SpectralSelection, TrackLike } from '@audacity-ui/core';
 
@@ -109,7 +110,8 @@ export function useSpectralSelection(
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackHeight = track.height || defaultTrackHeight;
+      const trackHeight = effectiveRowHeight(tracks, trackIndex, defaultTrackHeight);
+      if (trackHeight === 0) continue;
       const clipBodyY = currentY + clipHeaderHeight;
       const clipBodyHeight = trackHeight - clipHeaderHeight;
 
@@ -160,7 +162,8 @@ export function useSpectralSelection(
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackHeight = track.height || defaultTrackHeight;
+      const trackHeight = effectiveRowHeight(tracks, trackIndex, defaultTrackHeight);
+      if (trackHeight === 0) continue;
 
       // Check if y is within this track
       if (y >= currentY && y < currentY + trackHeight) {
@@ -219,11 +222,11 @@ export function useSpectralSelection(
 
     let trackY = initialGap;
     for (let i = 0; i < trackIndex; i++) {
-      trackY += (tracks[i].height || defaultTrackHeight) + trackGap;
+      trackY += effectiveRowHeight(tracks, i, defaultTrackHeight) === 0 ? 0 : effectiveRowHeight(tracks, i, defaultTrackHeight) + trackGap;
     }
 
     const track = tracks[trackIndex];
-    const trackHeight = track.height || defaultTrackHeight;
+    const trackHeight = effectiveRowHeight(tracks, trackIndex, defaultTrackHeight);
 
     // Check boundaries with hysteresis only for downward direction
     // Up: immediate conversion (no resistance - header provides natural buffer)
@@ -284,11 +287,11 @@ export function useSpectralSelection(
   const yToFrequency = useCallback((y: number, trackIndex: number): number => {
     let trackY = initialGap;
     for (let i = 0; i < trackIndex; i++) {
-      trackY += (tracks[i].height || defaultTrackHeight) + trackGap;
+      trackY += effectiveRowHeight(tracks, i, defaultTrackHeight) === 0 ? 0 : effectiveRowHeight(tracks, i, defaultTrackHeight) + trackGap;
     }
 
     const track = tracks[trackIndex];
-    const trackHeight = track.height || defaultTrackHeight;
+    const trackHeight = effectiveRowHeight(tracks, trackIndex, defaultTrackHeight);
     const clipBodyY = trackY + clipHeaderHeight;
     const clipBodyHeight = trackHeight - clipHeaderHeight;
 
@@ -333,11 +336,11 @@ export function useSpectralSelection(
   const frequencyToY = useCallback((frequency: number, trackIndex: number): number => {
     let trackY = initialGap;
     for (let i = 0; i < trackIndex; i++) {
-      trackY += (tracks[i].height || defaultTrackHeight) + trackGap;
+      trackY += effectiveRowHeight(tracks, i, defaultTrackHeight) === 0 ? 0 : effectiveRowHeight(tracks, i, defaultTrackHeight) + trackGap;
     }
 
     const track = tracks[trackIndex];
-    const trackHeight = track.height || defaultTrackHeight;
+    const trackHeight = effectiveRowHeight(tracks, trackIndex, defaultTrackHeight);
     const clipBodyY = trackY + clipHeaderHeight;
     const clipBodyHeight = trackHeight - clipHeaderHeight;
 
@@ -359,11 +362,11 @@ export function useSpectralSelection(
   const isSelectionFullFrequencyRange = useCallback((minFreq: number, maxFreq: number, trackIndex: number): boolean => {
     let trackY = initialGap;
     for (let i = 0; i < trackIndex; i++) {
-      trackY += (tracks[i].height || defaultTrackHeight) + trackGap;
+      trackY += effectiveRowHeight(tracks, i, defaultTrackHeight) === 0 ? 0 : effectiveRowHeight(tracks, i, defaultTrackHeight) + trackGap;
     }
 
     const track = tracks[trackIndex];
-    const trackHeight = track.height || defaultTrackHeight;
+    const trackHeight = effectiveRowHeight(tracks, trackIndex, defaultTrackHeight);
     const clipBodyY = trackY + clipHeaderHeight;
     const clipBodyHeight = trackHeight - clipHeaderHeight;
 

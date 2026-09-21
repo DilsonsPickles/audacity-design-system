@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { isHiddenByCollapse } from '../utils/trackFolders';
 import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -214,7 +215,12 @@ export function useTrackPanelHandlers(
   };
 
   const onNavigateVertical = (direction: 'up' | 'down', shiftKey: boolean | undefined, index: number) => {
-    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+    const step = direction === 'up' ? -1 : 1;
+    // Folders v1: skip children hidden by a collapsed folder
+    let nextIndex = index + step;
+    while (nextIndex >= 0 && nextIndex < tracks.length && isHiddenByCollapse(tracks, nextIndex)) {
+      nextIndex += step;
+    }
     if (nextIndex >= 0 && nextIndex < tracks.length) {
       flushSync(() => {
         dispatch({ type: 'SET_FOCUSED_TRACK', payload: nextIndex });

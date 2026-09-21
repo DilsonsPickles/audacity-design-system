@@ -24,6 +24,8 @@ export interface MenuDefinitionDeps {
   onToggleRmsInWaveform: () => void;
   onToggleVerticalRulers: () => void;
   onToggleQuickFadeHandles: () => void;
+  /** Tracks > Group selected tracks (folders v1) */
+  onGroupSelectedTracks: () => void;
   onTogglePianoRoll: () => void;
   onFitTracksToHeight: () => void;
   onExpandAllTracks: () => void;
@@ -148,6 +150,14 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     },
   ];
 
+  const tracksMenuItems: MenuItem[] = [
+    {
+      label: 'Group selected tracks',
+      shortcut: 'Ctrl+G',
+      onClick: deps.onGroupSelectedTracks,
+    },
+  ];
+
   const toolsMenuItems: MenuItem[] = [
     {
       label: 'Manage macros...',
@@ -160,6 +170,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     Edit: editMenuItems,
     View: viewMenuItems,
     Record: recordMenuItems,
+    Tracks: tracksMenuItems,
     Effect: effectMenuItems,
     Generate: generateMenuItems,
     Tools: toolsMenuItems,

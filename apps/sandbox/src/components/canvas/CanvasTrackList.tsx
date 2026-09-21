@@ -14,6 +14,13 @@ import {
 import { pendingClipMoveResolution } from '../../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrackIds';
 import { calculateTrackYOffset } from '../../utils/trackLayout';
+import {
+  FOLDER_ROW_HEIGHT,
+  effectiveTrackMuted,
+  effectiveTrackSoloed,
+  folderChildIndices,
+  isHiddenByCollapse,
+} from '../../utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../../constants/canvas';
 import { LabelRenderer } from '../LabelRenderer';
 
@@ -119,23 +126,63 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
 
   // Solo overrides per-track mute visuals: when any track is soloed,
   // every non-soloed track reads as effectively muted (matches the audio
-  // behaviour). Computed once per render.
-  const anySoloed = tracks.some((t) => t.soloed);
+  // behaviour). Computed once per render. Folder solo counts through
+  // its children (cascade), never through the folder row itself.
+  const anySoloed = tracks.some((t, i) => t.type !== 'folder' && effectiveTrackSoloed(tracks, i));
 
   return (
     <>
-      {tracks.map((track, trackIndex) => (
-        <CanvasTrack
-          key={track.id}
-          {...rest}
-          track={track}
-          trackIndex={trackIndex}
-          anySoloed={anySoloed}
-          tracksRef={tracksRef}
-          yOffset={calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT)}
-          trackCount={tracks.length}
-        />
-      ))}
+      {tracks.map((track, trackIndex) => {
+        // Folders v1: children of a collapsed folder render nowhere
+        // (still fully functional); the folder itself is a slim row.
+        if (isHiddenByCollapse(tracks, trackIndex)) return null;
+        const yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
+        if (track.type === 'folder') {
+          const childCount = folderChildIndices(tracks, trackIndex).length;
+          return (
+            <div
+              key={track.id}
+              data-track-index={trackIndex}
+              data-folder-row
+              style={{
+                position: 'absolute',
+                top: yOffset,
+                left: 0,
+                right: 0,
+                height: FOLDER_ROW_HEIGHT,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '0 12px',
+                background: 'rgba(255, 255, 255, 0.06)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.10)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
+                color: 'rgba(255, 255, 255, 0.75)',
+                fontSize: 12,
+                fontFamily: 'Inter, sans-serif',
+                pointerEvents: 'none',
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{track.name}</span>
+              <span style={{ opacity: 0.6 }}>
+                {childCount} track{childCount === 1 ? '' : 's'}{track.collapsed ? ' · collapsed' : ''}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <CanvasTrack
+            key={track.id}
+            {...rest}
+            track={track}
+            trackIndex={trackIndex}
+            anySoloed={anySoloed}
+            tracksRef={tracksRef}
+            yOffset={yOffset}
+            trackCount={tracks.length}
+          />
+        );
+      })}
     </>
   );
 }
@@ -232,8 +279,8 @@ const CanvasTrack = React.memo(function CanvasTrack({
   const isSelected = selectedTrackIndices.includes(trackIndex);
   const isFocused = focusedTrackIndex === trackIndex;
   const effectivelyMuted =
-    track.muted === true
-    || (anySoloed && track.soloed !== true);
+    effectiveTrackMuted(tracksRef.current, trackIndex)
+    || (anySoloed && !effectiveTrackSoloed(tracksRef.current, trackIndex));
 
   return (
     <div

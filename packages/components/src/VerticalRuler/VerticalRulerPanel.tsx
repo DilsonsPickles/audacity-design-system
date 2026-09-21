@@ -27,7 +27,7 @@ export interface TrackRulerConfig {
   /** View mode - determines which ruler to show */
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   /** Track type - label and midi tracks show no ruler */
-  trackType?: 'audio' | 'label' | 'midi';
+  trackType?: 'audio' | 'label' | 'midi' | 'folder';
   /** Split ratio for split view (0-1, default 0.5) */
   channelSplitRatio?: number;
   /** Waveform ruler format for this track */

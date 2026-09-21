@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { effectiveTrackHeight } from '../utils/trackFolders';
 import type { Track } from '../contexts/TracksContext';
 import { findTrackRulerByIndex } from '../utils/focusRouting';
 import { TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
@@ -57,7 +58,8 @@ export function useRulerFlyout(deps: UseRulerFlyoutDeps): UseRulerFlyoutResult {
     let targetTrackIndex = 0;
     for (let i = 0; i < tracks.length; i++) {
       const track = tracks[i];
-      const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
+      const trackHeight = effectiveTrackHeight(tracks, i, DEFAULT_TRACK_HEIGHT);
+      if (trackHeight === 0) continue;
       if (relativeY >= accumulatedHeight && relativeY < accumulatedHeight + trackHeight) {
         targetTrackIndex = i;
         if (track.viewMode === 'spectrogram') {

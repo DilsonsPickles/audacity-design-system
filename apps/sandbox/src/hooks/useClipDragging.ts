@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
+import { effectiveTrackHeight } from '../utils/trackFolders';
 import { ClipDragState, useTracksDispatch, Track } from '../contexts/TracksContext';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 import { snapToClipEdges } from '../utils/snapToClipEdges';
@@ -183,8 +184,11 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       let currentY = topGap;
       let newTrackIndex = -1;
       for (let i = 0; i < tracks.length; i++) {
-        const trackHeight = tracks[i].height || defaultTrackHeight;
-        if (y >= currentY && y < currentY + trackHeight) {
+        const trackHeight = effectiveTrackHeight(tracks, i, defaultTrackHeight);
+        if (trackHeight === 0) continue;
+        // Folder rows are not drop targets — their slim band maps to
+        // the row above (fall through by not matching)
+        if (tracks[i].type !== 'folder' && y >= currentY && y < currentY + trackHeight) {
           newTrackIndex = i;
           break;
         }

@@ -381,7 +381,32 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         tabIndex={-1}
       >
         {childArray.map((child, index) => {
-          const height = trackHeights[index] || 114; // Default to 114px
+          // Folders v1: a height of 0 = child of a collapsed folder —
+          // keep the node in the DOM (panel ordinals must stay aligned
+          // with track indices for focus/drag routing) but render
+          // nothing. Folder rows are slim and NOT resizable.
+          const rawHeight = trackHeights[index];
+          if (rawHeight === 0) {
+            return <div key={child.key || index} style={{ display: 'none' }} data-hidden-track-row />;
+          }
+          if ((child.props as { trackType?: string }).trackType === 'folder') {
+            const isFocusedFolder = focusedTrackIndex === index;
+            return (
+              <div
+                key={child.key || index}
+                className={`track-control-side-panel__track ${isFocusedFolder ? 'track-control-side-panel__track--focused' : ''}`}
+                style={{ height: rawHeight || 28, flexShrink: 0 }}
+              >
+                {cloneElement(child, {
+                  ...child.props,
+                  isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
+                  onMenuClick: (event: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(index, event),
+                  trackHeight: rawHeight || 28,
+                })}
+              </div>
+            );
+          }
+          const height = rawHeight || 114; // Default to 114px
           // Use child's isFocused prop if provided, otherwise calculate from focusedTrackIndex
           const isFocused = child.props.isFocused !== undefined
             ? child.props.isFocused

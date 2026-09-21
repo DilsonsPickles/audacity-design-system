@@ -1,4 +1,5 @@
 import { MutableRefObject } from 'react';
+import { effectiveTrackHeight } from '../utils/trackFolders';
 import { CLIP_CONTENT_OFFSET, useAppearancePrefs } from '@audacity-ui/components';
 import { calculateLabelRows, isPointInLabel, getLabelMetrics, labelPtToPx } from '../utils/labelLayout';
 import type { Track, Clip, TracksAction, ClipDragState } from '../contexts/TracksContext';
@@ -112,7 +113,8 @@ export function useClipMouseDown({
     let currentY = TOP_GAP;
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackHeight = track.height || DEFAULT_TRACK_HEIGHT;
+      const trackHeight = effectiveTrackHeight(tracks, trackIndex, DEFAULT_TRACK_HEIGHT);
+      if (trackHeight === 0) continue;
 
       if (y >= currentY && y < currentY + trackHeight) {
         // Check both audio clips and midi clips. Clips may overlap

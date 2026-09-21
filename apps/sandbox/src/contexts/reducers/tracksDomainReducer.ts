@@ -1,5 +1,6 @@
 import type { TracksState, TracksAction, Track } from '../TracksContext';
 import { TRACK_COLOR_PALETTE, dissolveDegenerateGroups } from './shared';
+import { folderChildIndices, isFolderTrack, normalizeFolders } from '../../utils/trackFolders';
 
 /** Remap a time-selection's scope after tracks are removed or
  *  reordered. `remap` returns the new index for an old index, or null
@@ -157,7 +158,9 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
     }
 
     case 'DELETE_TRACK': {
-      const newTracks = state.tracks.filter((_, index) => index !== action.payload);
+      // Deleting a FOLDER row is an ungroup: the children survive in
+      // place (normalizeFolders drops their dangling folderId).
+      const newTracks = normalizeFolders(state.tracks.filter((_, index) => index !== action.payload));
       const newFocused = newTracks.length === 0
         ? null
         : Math.min(action.payload, newTracks.length - 1);
@@ -227,6 +230,36 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
     case 'MOVE_TRACK': {
       const { fromIndex, toIndex } = action.payload;
       if (toIndex < 0 || toIndex >= state.tracks.length) return state;
+      // Folders v1: a folder row drags its FAMILY (folder + contiguous
+      // children) as one block; membership editing is a separate
+      // gesture. Implemented as a block splice with selection/scope
+      // cleared to the folder row (index remapping across a block move
+      // is not worth its edge cases for v1).
+      if (isFolderTrack(state.tracks[fromIndex])) {
+        const children = folderChildIndices(state.tracks, fromIndex);
+        const blockSize = 1 + children.length;
+        const blockStart = fromIndex;
+        const tracksCopy = [...state.tracks];
+        const block = tracksCopy.splice(blockStart, blockSize);
+        // Clamp the landing index so the block stays inside the array
+        // and never lands INSIDE another folder's family
+        let insert = Math.max(0, Math.min(tracksCopy.length, toIndex > fromIndex ? toIndex - blockSize + 1 : toIndex));
+        const landingOn = tracksCopy[insert];
+        if (landingOn?.folderId !== undefined) {
+          // walk up out of the family we'd be splitting
+          while (insert > 0 && tracksCopy[insert - 1] && (tracksCopy[insert - 1].folderId === landingOn.folderId || (isFolderTrack(tracksCopy[insert - 1]) && tracksCopy[insert - 1].id === landingOn.folderId))) {
+            insert -= 1;
+          }
+        }
+        tracksCopy.splice(insert, 0, ...block);
+        return {
+          ...state,
+          tracks: tracksCopy,
+          focusedTrackIndex: insert,
+          selectedTrackIndices: [],
+          timeSelection: null,
+        };
+      }
       const TRACK_COLORS = ['blue', 'violet', 'magenta'] as const;
       // Stamp current index-based colors onto clips before reordering
       const newTracks = state.tracks.map((track, i) => {
@@ -259,6 +292,77 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
           return i;
         }),
       };
+    }
+
+    case 'GROUP_SELECTED_TRACKS': {
+      // Folders v1: wrap the selected (non-folder) tracks in a new
+      // folder row. The folder inserts where the first selected track
+      // was; the children move to sit CONTIGUOUSLY below it, preserving
+      // their relative order (the folder-family invariant every other
+      // folder operation relies on). Tracks already in a folder are
+      // re-parented; a folder emptied by that dissolves (normalize).
+      const eligible = state.selectedTrackIndices
+        .filter((i) => state.tracks[i] && state.tracks[i].type !== 'folder')
+        .sort((a, b) => a - b);
+      if (eligible.length === 0) return state;
+
+      const folderId = state.tracks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+      const folderCount = state.tracks.filter((t) => t.type === 'folder').length;
+      const folder: Track = {
+        id: folderId,
+        name: `Group ${folderCount + 1}`,
+        type: 'folder',
+        clips: [],
+        collapsed: false,
+      };
+
+      const eligibleSet = new Set(eligible);
+      const children = eligible.map((i) => ({ ...state.tracks[i], folderId }));
+      const rest = state.tracks.filter((_, i) => !eligibleSet.has(i));
+      // Insert position: count remaining tracks before the first child
+      const insertAt = state.tracks.slice(0, eligible[0]).filter((_, i) => !eligibleSet.has(i)).length;
+      const newTracks = [...rest];
+      newTracks.splice(insertAt, 0, folder, ...children);
+
+      return {
+        ...state,
+        tracks: normalizeFolders(newTracks),
+        focusedTrackIndex: insertAt,
+        // The children stay selected at their new, contiguous indices
+        selectedTrackIndices: children.map((_, k) => insertAt + 1 + k),
+        timeSelection: null,
+      };
+    }
+
+    case 'UNGROUP_FOLDER': {
+      const folder = state.tracks[action.payload.trackIndex];
+      if (!folder || folder.type !== 'folder') return state;
+      const newTracks = state.tracks
+        .filter((_, i) => i !== action.payload.trackIndex)
+        .map((t) => {
+          if (t.folderId !== folder.id) return t;
+          const { folderId: _dropped, ...rest } = t;
+          return rest as Track;
+        });
+      return {
+        ...state,
+        tracks: newTracks,
+        focusedTrackIndex: Math.min(action.payload.trackIndex, Math.max(0, newTracks.length - 1)),
+        selectedTrackIndices: state.selectedTrackIndices
+          .filter((i) => i !== action.payload.trackIndex)
+          .map((i) => (i > action.payload.trackIndex ? i - 1 : i)),
+        timeSelection: remapTimeSelectionTracks(state.timeSelection, (i) =>
+          i === action.payload.trackIndex ? null : i > action.payload.trackIndex ? i - 1 : i,
+        ),
+      };
+    }
+
+    case 'TOGGLE_FOLDER_COLLAPSED': {
+      const folder = state.tracks[action.payload.trackIndex];
+      if (!folder || folder.type !== 'folder') return state;
+      const newTracks = [...state.tracks];
+      newTracks[action.payload.trackIndex] = { ...folder, collapsed: !folder.collapsed };
+      return { ...state, tracks: newTracks };
     }
 
     case 'UPDATE_TRACK_HEIGHT': {

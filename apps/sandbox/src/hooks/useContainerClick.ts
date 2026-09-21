@@ -1,4 +1,5 @@
 import React, { MutableRefObject } from 'react';
+import { effectiveTrackHeight, effectiveTrackStride } from '../utils/trackFolders';
 import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 import { labelDragJustEnded } from '../components/labels/labelDragTracker';
 import type { Track, TracksAction, TimeSelection } from '../contexts/TracksContext';
@@ -85,7 +86,8 @@ export function useContainerClick({
     let clickedTrackIndex: number | null = null;
     let currentY = TOP_GAP;
     for (let i = 0; i < tracks.length; i++) {
-      const trackHeight = tracks[i].height || DEFAULT_TRACK_HEIGHT;
+      const trackHeight = effectiveTrackHeight(tracks, i, DEFAULT_TRACK_HEIGHT);
+      if (trackHeight === 0) continue;
       if (y >= currentY && y < currentY + trackHeight) {
         clickedTrackIndex = i;
         break;
@@ -94,7 +96,10 @@ export function useContainerClick({
     }
 
     // Check if click was below all tracks (in empty space)
-    const totalTracksHeight = tracks.reduce((sum, track) => sum + (track.height || DEFAULT_TRACK_HEIGHT), 0) + TOP_GAP + (TRACK_GAP * (tracks.length - 1));
+    const totalTracksHeight = TOP_GAP - TRACK_GAP + tracks.reduce(
+      (sum, _t, i) => sum + effectiveTrackStride(tracks, i, DEFAULT_TRACK_HEIGHT, TRACK_GAP),
+      0,
+    );
 
     if (y > totalTracksHeight) {
       // Clicked in empty space below all tracks — deselect all

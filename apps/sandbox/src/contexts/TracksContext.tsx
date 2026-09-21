@@ -79,8 +79,14 @@ export interface Effect {
 export interface Track {
   id: number;
   name: string;
-  type?: 'audio' | 'label' | 'midi'; // Track type: audio (default), label, or midi
+  type?: 'audio' | 'label' | 'midi' | 'folder'; // Track type: audio (default), label, midi, or folder (organisational container row)
   color?: typeof TRACK_COLOR_PALETTE[number]; // Assigned at creation, persists across reorder
+  /** Track-ID of the folder this track belongs to (folders v1: one
+   *  nesting level — folders never carry a folderId). Children sit
+   *  contiguously below their folder row. */
+  folderId?: number;
+  /** Folder rows only: children hidden (zero effective height). */
+  collapsed?: boolean;
   height?: number;
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
@@ -326,6 +332,9 @@ export type TracksAction =
   | { type: 'REORDER_MASTER_EFFECTS'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean }
   | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } }
+  | { type: 'GROUP_SELECTED_TRACKS' }
+  | { type: 'UNGROUP_FOLDER'; payload: { trackIndex: number } }
+  | { type: 'TOGGLE_FOLDER_COLLAPSED'; payload: { trackIndex: number } }
   | { type: 'MOVE_SELECTED_CLIPS'; payload: { deltaSeconds: number } }
   | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } }
   | { type: 'MOVE_SELECTED_CLIPS_TO_NEW_TRACK'; payload: { newTrack: Track } }
@@ -405,6 +414,8 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'DELETE_TRACK',
   'DELETE_TRACKS',
   'MOVE_TRACK',
+  'GROUP_SELECTED_TRACKS',
+  'UNGROUP_FOLDER',
   'UPDATE_TRACK_HEIGHT',
   'UPDATE_CHANNEL_SPLIT_RATIO',
   // Clip lifecycle / edits

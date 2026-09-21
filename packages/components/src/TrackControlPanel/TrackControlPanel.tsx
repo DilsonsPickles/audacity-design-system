@@ -13,7 +13,7 @@ import './TrackControlPanel.css';
 
 export interface TrackControlPanelProps {
   trackName: string;
-  trackType?: 'mono' | 'stereo' | 'label' | 'midi';
+  trackType?: 'mono' | 'stereo' | 'label' | 'midi' | 'folder';
   volume?: number; // 0-100
   pan?: number; // -100 to 100
   isMuted?: boolean;
@@ -52,6 +52,11 @@ export interface TrackControlPanelProps {
    *  stays inert (no flyout is offered). */
   onIconChange?: (icon: IconName) => void;
   onMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Folder rows: collapsed state + chevron toggle (folders v1) */
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  /** Indent level for folder children (0 or 1 in v1) */
+  indentLevel?: number;
   onClick?: () => void;
   onToggleSelection?: () => void; // Cmd/Ctrl+Click to toggle
   onRangeSelection?: () => void; // Shift+Click for range selection
@@ -114,6 +119,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   icon,
   onIconChange,
   onMenuClick,
+  isCollapsed,
+  onToggleCollapse,
+  indentLevel = 0,
   onClick,
   onToggleSelection,
   onRangeSelection,
@@ -640,6 +648,106 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     // Regular click: Select only this track
     onClick?.();
   };
+
+
+  // Folders v1: a folder renders as ONE slim row — chevron, name,
+  // mute/solo (cascading to children), kebab. None of the audio-track
+  // machinery below applies.
+  if (trackType === 'folder') {
+    return (
+      <div
+        className="track-control-panel track-control-panel--folder"
+        data-focused={isFocused ? 'true' : 'false'}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          height: '100%',
+          padding: '0 6px 0 8px',
+          boxSizing: 'border-box',
+          background: theme.background.surface.default,
+          borderBottom: `1px solid ${theme.border.default}`,
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 12,
+          color: theme.foreground.text.primary,
+        }}
+      >
+        <button
+          type="button"
+          aria-label={isCollapsed ? 'Expand folder' : 'Collapse folder'}
+          aria-expanded={!isCollapsed}
+          data-folder-chevron
+          onClick={onToggleCollapse}
+          style={{
+            border: 0,
+            background: 'transparent',
+            cursor: 'pointer',
+            padding: 2,
+            display: 'flex',
+            alignItems: 'center',
+            color: 'inherit',
+            transform: isCollapsed ? 'rotate(-90deg)' : 'none',
+            transition: 'transform 0.12s ease',
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <path d="M1 3 L5 7 L9 3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        </button>
+        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+          {trackName}
+        </span>
+        <button
+          type="button"
+          aria-label="Mute folder"
+          aria-pressed={isMuted}
+          onClick={(e) => onMuteToggle?.(e)}
+          style={{
+            border: `1px solid ${theme.border.default}`,
+            borderRadius: 3,
+            width: 18,
+            height: 18,
+            fontSize: 10,
+            lineHeight: 1,
+            cursor: 'pointer',
+            background: isMuted ? '#677CE4' : 'transparent',
+            color: isMuted ? '#FFFFFF' : 'inherit',
+            padding: 0,
+          }}
+        >
+          M
+        </button>
+        <button
+          type="button"
+          aria-label="Solo folder"
+          aria-pressed={isSolo}
+          onClick={(e) => onSoloToggle?.(e)}
+          style={{
+            border: `1px solid ${theme.border.default}`,
+            borderRadius: 3,
+            width: 18,
+            height: 18,
+            fontSize: 10,
+            lineHeight: 1,
+            cursor: 'pointer',
+            background: isSolo ? '#677CE4' : 'transparent',
+            color: isSolo ? '#FFFFFF' : 'inherit',
+            padding: 0,
+          }}
+        >
+          S
+        </button>
+        <button
+          type="button"
+          aria-label={`${trackName} menu`}
+          onClick={(e) => onMenuClick?.(e)}
+          style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'inherit', padding: 2 }}
+        >
+          ⋯
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

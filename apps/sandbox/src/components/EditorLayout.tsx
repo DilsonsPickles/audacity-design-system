@@ -31,6 +31,7 @@ import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
 import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
+import { effectiveTrackHeight, effectiveTrackStride, trackDepth } from '../utils/trackFolders';
 import { PopoutPanel } from './editor/PopoutPanel';
 import { useMacros } from '../contexts/MacrosContext';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
@@ -694,7 +695,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       {/* Track Control Side Panel - Hidden on export tab */}
       {activeMenuItem !== 'export' && (
         <TrackControlSidePanel
-          trackHeights={state.tracks.map((t) => t.height || 114)}
+          trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
           trackViewModes={state.tracks.map((t) => t.viewMode)}
           focusedTrackIndex={state.focusedTrackIndex}
           scrollRef={trackHeaderScrollRef}
@@ -780,8 +781,10 @@ export function EditorLayout(props: EditorLayoutProps) {
           onLabelTextSizeChange={(pt) => updateAppearancePreference('labelTextSizePt', pt)}
         >
           {state.tracks.map((track, index: number) => {
-            let trackType: 'mono' | 'stereo' | 'label' | 'midi' = 'mono';
-            if (track.type === 'label') {
+            let trackType: 'mono' | 'stereo' | 'label' | 'midi' | 'folder' = 'mono';
+            if (track.type === 'folder') {
+              trackType = 'folder';
+            } else if (track.type === 'label') {
               trackType = 'label';
             } else if (track.type === 'midi') {
               trackType = 'midi';
@@ -821,6 +824,9 @@ export function EditorLayout(props: EditorLayoutProps) {
                 }}
                 isMuted={track.muted ?? false}
                 isSolo={track.soloed ?? false}
+                isCollapsed={track.collapsed ?? false}
+                onToggleCollapse={() => dispatch({ type: 'TOGGLE_FOLDER_COLLAPSED', payload: { trackIndex: index } })}
+                indentLevel={trackDepth(state.tracks, index)}
                 isFocused={state.focusedTrackIndex === index}
                 containerFocused={containerFocusedTrack === index}
                 meterLevel={
@@ -1028,9 +1034,13 @@ export function EditorLayout(props: EditorLayoutProps) {
                   let overTrack = false;
                   let currentY = 0;
 
-                  for (const track of state.tracks) {
-                    const trackHeight = track.height || 114;
-                    if (y >= currentY + CLIP_HEADER_HEIGHT && y < currentY + trackHeight) {
+                  for (let i = 0; i < state.tracks.length; i++) {
+                    const trackHeight = effectiveTrackHeight(state.tracks, i, 114);
+                    if (trackHeight === 0) continue;
+                    if (
+                      state.tracks[i].type !== 'folder'
+                      && y >= currentY + CLIP_HEADER_HEIGHT && y < currentY + trackHeight
+                    ) {
                       overTrack = true;
                       break;
                     }
@@ -1151,7 +1161,7 @@ export function EditorLayout(props: EditorLayoutProps) {
               <VerticalRulerPanel
                 tracks={state.tracks.map((track, index: number) => ({
                   id: track.id.toString(),
-                  height: track.height || 114,
+                  height: effectiveTrackHeight(state.tracks, index, 114),
                   selected: state.selectedTrackIndices.includes(index),
                   focused: state.focusedTrackIndex === index,
                   containerFocused: containerFocusedTrack === index,
@@ -1226,8 +1236,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                         if (scrollEl) {
                           const trackTop = state.tracks
                             .slice(0, target)
-                            .reduce((sum, t) => sum + ((t.height || 114) + 2), 0);
-                          const trackHeight = state.tracks[target].height || 114;
+                            .reduce((sum, _t, i) => sum + effectiveTrackStride(state.tracks, i, 114, 2), 0);
+                          const trackHeight = effectiveTrackHeight(state.tracks, target, 114);
                           const viewportTop = scrollEl.scrollTop;
                           const viewportBottom = viewportTop + scrollEl.clientHeight;
                           if (trackTop < viewportTop) {

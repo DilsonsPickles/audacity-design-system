@@ -146,6 +146,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onToggleVerticalRulers: () => setShowVerticalRulers(!showVerticalRulers),
     showQuickFadeHandles,
     onToggleQuickFadeHandles: () => setShowQuickFadeHandles(!showQuickFadeHandles),
+    onGroupSelectedTracks: () => dispatch({ type: 'GROUP_SELECTED_TRACKS' }),
     pianoRollOpen: state.pianoRollOpen,
     onTogglePianoRoll: handleTogglePianoRoll,
     rollInTimeEnabled,

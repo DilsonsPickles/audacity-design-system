@@ -1,3 +1,4 @@
+import { effectiveTrackStride } from './trackFolders';
 /**
  * Canvas height calculation utilities
  */
@@ -35,10 +36,16 @@ export function computeCanvasHeights(
   opts: CanvasHeightOptions
 ): CanvasHeights {
   const { topGap, trackGap, defaultTrackHeight, bottomBuffer } = opts;
-  const tracksHeight =
-    tracks.reduce((sum, track) => sum + (track.height || defaultTrackHeight), 0) +
-    topGap +
-    trackGap * (tracks.length - 1);
+  // Folder-aware: hidden children contribute nothing (height OR gap);
+  // the trailing gap of the last visible row is trimmed back off.
+  const trackList = tracks as unknown as import('./trackFolders').FolderTrackLike[]; // justified: CanvasHeightTrack is a structural subset — folder fields flow through at runtime
+  const stacked = trackList.reduce(
+    (sum, _t, i) => sum + effectiveTrackStride(trackList, i, defaultTrackHeight, trackGap),
+    0,
+  );
+  // (topGap + stacked - trackGap) preserves the source formula's
+  // characterized empty-array quirk: 0 tracks → topGap - trackGap
+  const tracksHeight = topGap + stacked - trackGap;
   const totalHeight = tracksHeight;
   const containerHeight = totalHeight + bottomBuffer;
 

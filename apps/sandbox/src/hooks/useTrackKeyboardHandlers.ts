@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { isHiddenByCollapse } from '../utils/trackFolders';
 import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
@@ -74,7 +75,15 @@ export function useTrackKeyboardHandlers(
     shiftKey?: boolean,
     decouple?: boolean,
   ) => {
-    const targetIndex = trackIndex + direction;
+    // Folders v1: canvas vertical nav steps OVER folder rows (they
+    // have no canvas focus target) and over hidden collapsed children
+    let targetIndex = trackIndex + direction;
+    while (
+      targetIndex >= 0 && targetIndex < tracks.length
+      && (tracks[targetIndex].type === 'folder' || isHiddenByCollapse(tracks, targetIndex))
+    ) {
+      targetIndex += direction;
+    }
     if (targetIndex < 0 || targetIndex >= tracks.length) return;
     dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
 

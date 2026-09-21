@@ -122,6 +122,30 @@ hard cuts). Deliberately deferred, waiting on live feel / product calls:
 - **stretchFactor** — fade bake maps source time without stretch compensation,
   same as the envelope bake (parity kept deliberately).
 
+### Track folders v1 — deferred tail (2026-09-21)
+Organisational folders landed (flat array, `type: 'folder'` + `folderId`,
+collapse = derived zero height, mute/solo cascade, family drag, delete =
+ungroup). Deliberately deferred:
+- **Marquee selection** (`useMarqueeSelection`) still uses raw heights —
+  band-select across a collapsed folder may pick hidden tracks' clips.
+- **Fit/expand/collapse-all track heights** (`trackManagement.computeFitTrackHeight`,
+  EditorLayout 401-416) divide by ALL tracks — should use visible non-folder rows.
+- **Folder duplication** (`buildDuplicatedTracks`) — duplicating a folder row
+  doesn't deep-copy children; refuse or implement properly.
+- **AddTrackFlyout** has no Folder entry (creation is select→Group only);
+  no `folder` icon in the icon font.
+- **Track kebab menu** has no Ungroup/Collapse items (chevron + delete-as-
+  ungroup cover it); membership editing (drag a track in/out of a folder
+  span) not implemented — MOVE_TRACK of a child is a plain move that can
+  break contiguity (normalizeFolders only cleans dangling/empty).
+- **Solo is still visual-only in playback** (pre-existing:
+  `applyTrackGains` ignores `soloed`); folder-solo cascades visually but
+  not audibly until that gap is fixed. Mixdown applies no mute/solo at all.
+- **Clip drag onto a folder's slim canvas band** falls through to no
+  target (deliberate); dropping INTO a folder should re-parent one day.
+- **packages/core coordinates.ts** duplicate y-math is unimported/dead —
+  update or delete in a cleanup pass.
+
 ## Minor (batch into related work, don't do standalone)
 
 

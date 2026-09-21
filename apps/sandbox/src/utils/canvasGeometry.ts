@@ -1,11 +1,15 @@
 import type { Track } from '../contexts/TracksContext';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
+import { effectiveTrackHeight } from './trackFolders';
 
-/** Resolve which track index a Y pixel falls in; null when outside any row. */
+/** Resolve which track index a Y pixel falls in; null when outside any
+ *  row. Folder-aware: hidden children have no band; a folder's slim
+ *  row resolves to the folder's index (callers guard on type). */
 export function resolveTrackIndexFromY(y: number, tracks: Track[]): number | null {
   let cursor = TOP_GAP;
   for (let i = 0; i < tracks.length; i++) {
-    const h = tracks[i].height || DEFAULT_TRACK_HEIGHT;
+    const h = effectiveTrackHeight(tracks, i, DEFAULT_TRACK_HEIGHT);
+    if (h === 0) continue;
     if (y >= cursor && y < cursor + h) return i;
     cursor += h + TRACK_GAP;
   }

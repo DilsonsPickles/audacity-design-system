@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { effectiveTrackMuted } from '../utils/trackFolders';
 import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audio';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { RecordingManager } from '../utils/RecordingManager';
@@ -152,9 +153,11 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // Apply per-track gain/mute to the audio manager after loading clips
   const applyTrackGains = (audioManager: AudioPlaybackManager, tracks: TracksState['tracks']) => {
     tracks.forEach((track, index) => {
-      if (track.type === 'label') return;
+      if (track.type === 'label' || track.type === 'folder') return;
       const gain = track.gain ?? -6;
-      if (track.muted) {
+      // Folder mute CASCADES to children (folders v1 — behaviour
+      // ganging; the folder row itself carries no audio)
+      if (effectiveTrackMuted(tracks, index)) {
         audioManager.setTrackMuted(index, true);
       } else {
         audioManager.setTrackGain(index, gain);

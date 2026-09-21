@@ -262,7 +262,7 @@ export class AudioPlaybackManager {
 
     // Create gain nodes and meters for each track
     tracks.forEach((track, trackIndex) => {
-      if (track.type !== 'label') {
+      if (track.type !== 'label' && track.type !== 'folder') {
         const gain = new Tone.Gain(1);
         const meter = new Tone.Meter();
 

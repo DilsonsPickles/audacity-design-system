@@ -27,6 +27,7 @@ import { computeCanvasHeights } from '../utils/canvasLayout';
 import { resolveSnapGuideline } from '../utils/snapGuideline';
 import { deriveEnvelopePointSizes } from '../utils/envelopePointSizes';
 import { useDragHighlightIds } from '../hooks/useDragHighlightIds';
+import { effectiveTrackHeight } from '../utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT, CLIP_HEADER_HEIGHT } from '../constants/canvas';
 import type { SnapOptions } from '../utils/snapToGrid';
 import './Canvas.css';
@@ -287,7 +288,7 @@ export function Canvas({
       id: nextId,
       name: `${prefix} ${nextNameNumber}`,
       type,
-      height: source?.height ?? 114,
+      height: source && source.type !== 'folder' ? (source.height ?? 114) : 114,
       // Inherit the source's view so a spectrogram clip lands on a
       // spectrogram-configured row and looks right immediately.
       ...(source?.viewMode ? { viewMode: source.viewMode } : {}),
@@ -792,7 +793,7 @@ export function Canvas({
         <SpectralSelectionOverlay
           spectralSelection={spectralSelection}
           pixelsPerSecond={pixelsPerSecond}
-          trackHeights={tracks.map(t => t.height || DEFAULT_TRACK_HEIGHT)}
+          trackHeights={tracks.map((_t, i) => effectiveTrackHeight(tracks, i, DEFAULT_TRACK_HEIGHT))}
           trackGap={TRACK_GAP}
           initialGap={TOP_GAP}
           clipHeaderHeight={20}

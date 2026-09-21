@@ -295,6 +295,12 @@ function setApplicationMenu() {
       ],
     },
     {
+      label: 'Tracks',
+      submenu: [
+        { label: 'Group Selected Tracks', accelerator: 'CmdOrCtrl+G', click: send('tracks:group-selected') },
+      ],
+    },
+    {
       label: 'Record',
       submenu: [
         { label: 'Enable Lead-In Time', click: send('record:toggle-lead-in') },

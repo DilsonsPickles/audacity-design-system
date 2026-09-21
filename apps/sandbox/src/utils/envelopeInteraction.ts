@@ -4,6 +4,7 @@
  */
 
 import { dbToYNonLinear, yToDbNonLinear, distanceToLineSegment } from './envelopeUtils';
+import { effectiveTrackHeight } from './trackFolders';
 import type { EnvelopeDragState, EnvelopeSegmentDragState } from '../contexts/TracksContext';
 
 interface EnvelopePoint {
@@ -55,7 +56,8 @@ export function handleEnvelopeClick(
 
   for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
     const track = tracks[trackIndex];
-    const trackHeight = track.height || 114;
+    const trackHeight = effectiveTrackHeight(tracks, trackIndex, 114);
+    if (trackHeight === 0) continue;
 
     if (y < currentY || y > currentY + trackHeight) {
       currentY += trackHeight + trackGap;

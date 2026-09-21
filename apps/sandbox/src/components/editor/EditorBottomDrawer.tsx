@@ -165,7 +165,7 @@ export function EditorBottomDrawer({
 
       {/* Mixer content */}
       {activeTab === 'mixer' && mixerOpen && (() => {
-        const audioTracks = state.tracks.filter((t) => t.type !== 'label');
+        const audioTracks = state.tracks.filter((t) => t.type !== 'label' && t.type !== 'folder');
         const mixerChannels: MixerPanelChannel[] = audioTracks.map((track) => {
           const trackIndex = state.tracks.findIndex((t) => t.id === track.id);
           const trackGain = track.gain ?? -6;

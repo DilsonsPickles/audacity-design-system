@@ -199,7 +199,7 @@ export function useCanvasPointerHandlers(
       const y = e.clientY - rect.top;
       const ti = resolveTrackIndexFromY(y, tracks);
       const track = ti !== null ? tracks[ti] : undefined;
-      if (ti !== null && track && track.type !== 'label') {
+      if (ti !== null && track && track.type !== 'label' && track.type !== 'folder') {
         let trackEnd = 0;
         track.clips.forEach((c) => { trackEnd = Math.max(trackEnd, c.start + c.duration); });
         (track.midiClips || []).forEach((c) => { trackEnd = Math.max(trackEnd, c.start + c.duration); });
@@ -399,7 +399,7 @@ export function useCanvasPointerHandlers(
     const y = e.clientY - rect.top;
     const ti = resolveTrackIndexFromY(y, tracks);
     const track = ti !== null ? tracks[ti] : undefined;
-    if (ti === null || !track || track.type === 'label') return;
+    if (ti === null || !track || track.type === 'label' || track.type === 'folder') return;
     const time = (x - leftPadding) / pixelsPerSecond;
     if (time < 0) return;
 

@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback, RefObject } from 'react';
+import { effectiveRowHeight } from '../utils/trackRowGeometry';
 import {
   TimeSelection,
   TimeSelectionDragState,
@@ -134,7 +135,8 @@ export function useTimeSelection({
 
     for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
       const track = tracks[trackIndex];
-      const trackHeight = track.height || defaultTrackHeight;
+      const trackHeight = effectiveRowHeight(tracks, trackIndex, defaultTrackHeight);
+      if (trackHeight === 0) continue;
 
       // Check if y is within this track (including both header and body)
       if (y >= currentY && y < currentY + trackHeight) {
