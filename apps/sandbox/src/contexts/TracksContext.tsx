@@ -3,6 +3,7 @@ import type { CutMode } from '../utils/cutOperations';
 import type { Label as CoreLabel } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { ACTION_DOMAIN } from './reducers/domains';
+import { normalizeTracksZOrder } from '../utils/clipZOrder';
 import { selectionReducer } from './reducers/selectionReducer';
 import { viewReducer } from './reducers/viewReducer';
 import { recordingReducer } from './reducers/recordingReducer';
@@ -506,7 +507,16 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
   // undoable action. We only push to `past` when the reducer actually
   // mutates tracks (checked below).
   const before = state.tracks;
-  const next = innerReducer(state, action);
+  let next = innerReducer(state, action);
+  // Overlap z-order invariant (see utils/clipZOrder.ts): in every
+  // edge-overlapping pair the right-most clip stacks on top; containment
+  // pairs keep their move-controlled order. Enforced here — the one
+  // funnel every tracks change passes through — and identity-preserving,
+  // so unaffected actions return the same tracks reference.
+  if (next.tracks !== before) {
+    const normalized = normalizeTracksZOrder(next.tracks);
+    if (normalized !== next.tracks) next = { ...next, tracks: normalized };
+  }
   if (UNDOABLE_ACTIONS.has(action.type) && next.tracks !== before) {
     const group = UNDO_COALESCE_GROUP[action.type] ?? null;
     const now = Date.now();
