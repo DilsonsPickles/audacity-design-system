@@ -826,15 +826,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             preserveAspectRatio="none"
             style={{ display: 'block', overflow: 'visible' }}
           >
-            {/* Haloed stroke — a white casing under a dark core keeps
-                the curve legible on every clip colour, light or dark */}
-            <path
-              d={fadeCurvePath(region.side, 64, region.shape)}
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.9)"
-              strokeWidth={3.5}
-              vectorEffect="non-scaling-stroke"
-            />
             <path
               d={fadeCurvePath(region.side, 64, region.shape)}
               fill="none"
