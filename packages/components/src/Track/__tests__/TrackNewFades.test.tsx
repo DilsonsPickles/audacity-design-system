@@ -275,6 +275,61 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-quickfade-node]')).toBeNull();
   });
 
+  it('the corner handle edits both axes: horizontal extent + vertical shape', () => {
+    const onClipFadeChange = vi.fn();
+    const onClipFadeShapeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          onClipFadeShapeChange={onClipFadeShapeChange}
+        />
+      </Providers>,
+    );
+    const wrapper = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    Object.defineProperty(wrapper, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, right: 400, bottom: 100, width: 400, height: 100, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+    const inHandle = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
+    fireEvent.pointerDown(inHandle, { button: 0, clientX: 0, clientY: 30, pointerId: 7 });
+    // diagonal: +150px extent, +19px down → fade 1.5s, shape ≈ 2
+    fireEvent.pointerMove(inHandle, { clientX: 150, clientY: 49, pointerId: 7 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
+    const [, , shape] = onClipFadeShapeChange.mock.calls.at(-1)!;
+    expect(shape).toBeCloseTo(2, 1);
+    fireEvent.pointerUp(inHandle, { pointerId: 7 });
+  });
+
+  it('the midpoint node edits both axes: vertical shape + horizontal extent', () => {
+    const onClipFadeChange = vi.fn();
+    const onClipFadeShapeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          onClipFadeShapeChange={onClipFadeShapeChange}
+        />
+      </Providers>,
+    );
+    const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
+    fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 48, pointerId: 8 });
+    // diagonal: +50px right (midpoint 0.5→1.0s → fade 2s), +19px down (shape ≈ 2)
+    fireEvent.pointerMove(node, { clientX: 112, clientY: 67, pointerId: 8 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', expect.closeTo(2, 5));
+    const [, , shape] = onClipFadeShapeChange.mock.calls.at(-1)!;
+    expect(shape).toBeCloseTo(2, 1);
+    fireEvent.pointerUp(node, { pointerId: 8 });
+  });
+
   it('fade handle pointerdown does not leak into the clip mousedown path', () => {
     const parentSpy = vi.fn();
     const { container } = render(

@@ -461,7 +461,7 @@ const UNDO_COALESCE_GROUP: Partial<Record<TracksAction['type'], string>> = {
   SET_CLIP_FADE: 'clip-fade-drag',
   ROLL_CROSSFADE: 'crossfade-roll',
   SET_CROSSFADE_SHAPE: 'crossfade-shape',
-  SET_CLIP_FADE_SHAPE: 'clip-fade-shape',
+  SET_CLIP_FADE_SHAPE: 'clip-fade-drag',
   UPDATE_CLIP_ENVELOPE_POINTS: 'envelope-drag',
   UPDATE_TRACK_HEIGHT: 'track-resize',
   UPDATE_CHANNEL_SPLIT_RATIO: 'track-resize',

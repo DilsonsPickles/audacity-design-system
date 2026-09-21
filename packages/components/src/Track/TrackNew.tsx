@@ -746,12 +746,31 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const nodeEl = e.currentTarget as HTMLElement;
               try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
               setShapeDrag(dragKey);
+              const startClientX = e.clientX;
               const startClientY = e.clientY;
               const startGain = gain;
+              const startMidTime = midTime;
+              // Both controls edit both axes (2026-09-21): the node's
+              // vertical bows the curve, its horizontal sets the extent
+              // (midpoint tracks the pointer → fade = 2×(mid − edge)).
+              // Extent clamps at a small floor so the node never deletes
+              // the fade under itself — removal stays the handle's job.
+              const otherFade = Math.max(0, (side === 'in' ? clip.fadeOut : clip.fadeIn) ?? 0);
+              const clipEnd = clip.start + clip.duration;
+              let lastFade = side === 'in' ? (clip.fadeIn ?? 0) : (clip.fadeOut ?? 0);
               const onMove = (ev: PointerEvent) => {
                 const g = Math.max(0.05, Math.min(0.95, startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight)));
                 const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(MID_BASE)));
                 if (Number.isFinite(next)) onClipFadeShapeChange(clip.id, side, next);
+                if (onClipFadeChange) {
+                  const mid = startMidTime + (ev.clientX - startClientX) / pixelsPerSecond;
+                  let fade = side === 'in' ? 2 * (mid - clip.start) : 2 * (clipEnd - mid);
+                  fade = Math.max(0.05, Math.min(Math.max(0.05, clip.duration - otherFade), fade));
+                  if (Math.abs(fade - lastFade) > 0.0005) {
+                    lastFade = fade;
+                    onClipFadeChange(clip.id, side, fade);
+                  }
+                }
               };
               const onUp = () => {
                 nodeEl.removeEventListener('pointermove', onMove);
@@ -770,7 +789,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'ns-resize',
+              cursor: 'move',
               zIndex: 460,
             }}
           >
@@ -1324,12 +1343,29 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // The clip is static during a fade drag, so the rect and the
             // opposite fade captured here stay valid for the session
             const otherFade = side === 'in' ? fadeOutSec : fadeInSec;
+            // Both controls edit both axes (2026-09-21): the handle's
+            // horizontal sets the extent, its vertical bows the curve
+            // (same shape solve the midpoint node uses)
+            const MID_BASE = Math.cos(Math.PI / 4);
+            const startShape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? 1;
+            const startGain = MID_BASE ** startShape;
+            const startClientY = e.clientY;
+            const bodyH = Math.max(1, height - 22);
+            let lastShape = startShape;
             const onMove = (ev: PointerEvent) => {
               const rel = (ev.clientX - rect.left) / pixelsPerSecond;
               let seconds = side === 'in' ? rel : clip.duration - rel;
               seconds = Math.max(0, Math.min(clip.duration - otherFade, seconds));
               if (seconds < 0.02) seconds = 0; // snap tiny fades away
               onClipFadeChange?.(clip.id, side, seconds);
+              if (onClipFadeShapeChange) {
+                const g = Math.max(0.05, Math.min(0.95, startGain - (ev.clientY - startClientY) / bodyH));
+                const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(MID_BASE)));
+                if (Number.isFinite(next) && Math.abs(next - lastShape) > 0.001) {
+                  lastShape = next;
+                  onClipFadeShapeChange(clip.id, side, next);
+                }
+              }
             };
             const onUp = () => {
               handleEl.removeEventListener('pointermove', onMove);
