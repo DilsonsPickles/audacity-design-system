@@ -138,7 +138,22 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
         if (isHiddenByCollapse(tracks, trackIndex)) return null;
         const yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
         if (track.type === 'folder') {
-          const childCount = folderChildIndices(tracks, trackIndex).length;
+          const childIndices = folderChildIndices(tracks, trackIndex);
+          const childCount = childIndices.length;
+          // COLLAPSED: the children's clip SHAPES squash into the strip
+          // so the folder still shows where its content sits in time
+          // (Cubase "folder parts"). Outlines only — the detail lives
+          // in the tracks themselves, one expand away.
+          const squashedClips = track.collapsed
+            ? childIndices.flatMap((ci) => {
+                const child = tracks[ci];
+                return [...(child.clips ?? []), ...(child.midiClips ?? [])].map((clip) => ({
+                  key: `${child.id}-${clip.id}`,
+                  left: CLIP_CONTENT_OFFSET + clip.start * props.pixelsPerSecond,
+                  width: Math.max(2, clip.duration * props.pixelsPerSecond),
+                }));
+              })
+            : [];
           return (
             <div
               key={track.id}
@@ -163,10 +178,32 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 pointerEvents: 'none',
               }}
             >
-              <span style={{ fontWeight: 600 }}>{track.name}</span>
-              <span style={{ opacity: 0.6 }}>
-                {childCount} track{childCount === 1 ? '' : 's'}{track.collapsed ? ' · collapsed' : ''}
-              </span>
+              {track.collapsed ? (
+                squashedClips.map((c) => (
+                  <div
+                    key={c.key}
+                    data-folder-squashed-clip
+                    style={{
+                      position: 'absolute',
+                      left: `${Math.round(c.left)}px`,
+                      width: `${Math.round(c.width)}px`,
+                      top: 4,
+                      bottom: 4,
+                      boxSizing: 'border-box',
+                      border: '1px solid rgba(255, 255, 255, 0.55)',
+                      borderRadius: 2,
+                      background: 'rgba(255, 255, 255, 0.10)',
+                    }}
+                  />
+                ))
+              ) : (
+                <>
+                  <span style={{ fontWeight: 600 }}>{track.name}</span>
+                  <span style={{ opacity: 0.6 }}>
+                    {childCount} track{childCount === 1 ? '' : 's'}
+                  </span>
+                </>
+              )}
             </div>
           );
         }
