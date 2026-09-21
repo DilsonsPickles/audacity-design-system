@@ -1299,7 +1299,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const boundaryX = side === 'in'
         ? fadeInSec * pixelsPerSecond
         : clipWidth - fadeOutSec * pixelsPerSecond;
-      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, side === 'in' ? boundaryX : boundaryX - 16)));
+      // Each handle lives INSIDE its own fade's region (the in-handle's
+      // right edge touches its boundary; the out-handle mirrors), so
+      // when the two fades meet mid-clip the handles sit at the apex on
+      // their own curves instead of swapping sides. With no fade the
+      // boundary is at the corner and the handle rests there as before.
+      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, side === 'in' ? boundaryX - 16 : boundaryX)));
       return (
         <div
           data-fade-handle={side}
