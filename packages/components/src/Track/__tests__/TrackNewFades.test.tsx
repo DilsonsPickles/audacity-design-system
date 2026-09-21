@@ -165,7 +165,8 @@ describe('clip fades', () => {
     expect(clip2.querySelector('[data-fade-handle="out"]')).toBeTruthy();
   });
 
-  it('dragging the intersection node rewrites both quick fades so the crossing follows the pointer', () => {
+  it('dragging the intersection node bends both curves — extents never move', () => {
+    const onCrossfadeShapeChange = vi.fn();
     const onClipFadeChange = vi.fn();
     const { container } = render(
       <Providers>
@@ -178,20 +179,26 @@ describe('clip fades', () => {
           trackIndex={0}
           pixelsPerSecond={100}
           onClipFadeChange={onClipFadeChange}
+          onCrossfadeShapeChange={onCrossfadeShapeChange}
         />
       </Providers>,
     );
-    // default crossing = overlap midpoint (4s); overlap 3..5
+    // symmetric default: crossing at 4.0s, gain cos(π/4)≈0.7071;
+    // track height 114 → bodyHeight 92
     const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
     expect(node).toBeTruthy();
-    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 3 });
-    // +50px = +0.5s → centre 4.5 → fadeOut 2*(5-4.5)=1, fadeIn 2*(4.5-3)=3
-    fireEvent.pointerMove(node, { clientX: 450, clientY: 60, pointerId: 3 });
-    expect(onClipFadeChange).toHaveBeenCalledWith(1, 'out', expect.closeTo(1, 5));
-    expect(onClipFadeChange).toHaveBeenCalledWith(2, 'in', expect.closeTo(3, 5));
-    // far right clamps: hi = min(5-0.01, 3+4/2=5) = 4.99 → fadeOut 0.02, fadeIn 3.98
-    fireEvent.pointerMove(node, { clientX: 900, clientY: 60, pointerId: 3 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(2, 'in', expect.closeTo(3.98, 5));
+    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 48, pointerId: 3 });
+    // drag straight DOWN 19px → gain ≈ 0.7071 - 19/92 ≈ 0.5006 at t=0.5
+    // → both shapes = ln(0.5006)/ln(0.7071) ≈ 2 (a deeper dip)
+    fireEvent.pointerMove(node, { clientX: 400, clientY: 67, pointerId: 3 });
+    expect(onCrossfadeShapeChange).toHaveBeenCalledTimes(1);
+    const [outId, inId, outShape, inShape] = onCrossfadeShapeChange.mock.calls[0];
+    expect(outId).toBe(1);
+    expect(inId).toBe(2);
+    expect(outShape).toBeCloseTo(2, 1);
+    expect(inShape).toBeCloseTo(2, 1);
+    // extents were never touched
+    expect(onClipFadeChange).not.toHaveBeenCalled();
     fireEvent.pointerUp(node, { pointerId: 3 });
   });
 

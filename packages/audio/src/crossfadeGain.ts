@@ -29,6 +29,10 @@ export interface OverlapClipLike {
    *  overlap crossfades). Absent/0 = none. */
   fadeIn?: number;
   fadeOut?: number;
+  /** Curve shape exponents (default 1 = equal-power) — the crossfade
+   *  intersection node's state. MUST MATCH clipCrossfades.ts. */
+  fadeInShape?: number;
+  fadeOutShape?: number;
 }
 
 export interface ClipGainSegment {
@@ -36,6 +40,8 @@ export interface ClipGainSegment {
   startSec: number;
   endSec: number;
   shape: 'fadeOut' | 'fadeIn' | 'mute';
+  /** Curve shape exponent for fade segments (1 = equal-power) */
+  curve?: number;
 }
 
 const EPSILON = 1e-9;
@@ -48,11 +54,15 @@ export function computeClipGainSegments(
   const push = (clip: OverlapClipLike, startAbs: number, endAbs: number, shape: ClipGainSegment['shape']) => {
     const key = String(clip.id);
     const trimStart = clip.trimStart ?? 0;
+    const curve = shape === 'fadeOut' ? (clip.fadeOutShape ?? 1)
+      : shape === 'fadeIn' ? (clip.fadeInShape ?? 1)
+      : undefined;
     const list = out.get(key) ?? [];
     list.push({
       startSec: trimStart + (startAbs - clip.start),
       endSec: trimStart + (endAbs - clip.start),
       shape,
+      ...(curve !== undefined && curve !== 1 ? { curve } : {}),
     });
     out.set(key, list);
   };
@@ -122,10 +132,10 @@ export function applyGainSegmentsToChannel(
         continue;
       }
       const t = Math.max(0, Math.min(1, (i / sampleRate - seg.startSec) / span));
-      const gain = seg.shape === 'fadeOut'
+      const base = seg.shape === 'fadeOut'
         ? Math.cos((t * Math.PI) / 2)
         : Math.sin((t * Math.PI) / 2);
-      out[i] *= gain;
+      out[i] *= base ** (seg.curve ?? 1);
     }
   }
   return out;

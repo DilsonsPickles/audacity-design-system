@@ -56,6 +56,10 @@ export interface Clip {
    *  mixdown by @audacity-ui/audio's crossfadeGain. */
   fadeIn?: number;
   fadeOut?: number;
+  /** Curve shape exponents (default 1 = equal-power) — the crossfade
+   *  intersection node's state; extents never move, curves bend. */
+  fadeInShape?: number;
+  fadeOutShape?: number;
   /**
    * Original clip id that owns the audio buffer. When a clip is split,
    * the right segment gets a new id but should still play from the
@@ -280,6 +284,7 @@ export type TracksAction =
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'SET_CLIP_FADE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; seconds: number } }
   | { type: 'ROLL_CROSSFADE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; deltaSeconds: number } }
+  | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: number; inShape: number } }
   | {
       type: 'APPLY_CLIP_PLACEMENT';
       payload: {
@@ -412,6 +417,7 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'STRETCH_CLIP',
   'SET_CLIP_FADE',
   'ROLL_CROSSFADE',
+  'SET_CROSSFADE_SHAPE',
   'MOVE_SELECTED_CLIPS',
   'MOVE_SELECTED_CLIPS_TO_TRACK',
   'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
@@ -452,6 +458,7 @@ const UNDO_COALESCE_GROUP: Partial<Record<TracksAction['type'], string>> = {
   STRETCH_CLIP: 'clip-drag',
   SET_CLIP_FADE: 'clip-fade-drag',
   ROLL_CROSSFADE: 'crossfade-roll',
+  SET_CROSSFADE_SHAPE: 'crossfade-shape',
   UPDATE_CLIP_ENVELOPE_POINTS: 'envelope-drag',
   UPDATE_TRACK_HEIGHT: 'track-resize',
   UPDATE_CHANNEL_SPLIT_RATIO: 'track-resize',

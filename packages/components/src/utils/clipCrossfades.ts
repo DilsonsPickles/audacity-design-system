@@ -25,6 +25,11 @@ export interface CrossfadeClipLike {
    *  a crossfade honours it instead of the overlap-default ramp. */
   fadeIn?: number;
   fadeOut?: number;
+  /** Curve shape exponents (default 1 = equal-power). Set by dragging
+   *  the crossfade's intersection node: the base curve is raised to
+   *  this power, bending the fade without moving its extent. */
+  fadeInShape?: number;
+  fadeOutShape?: number;
 }
 
 export interface CrossfadeRegion {
@@ -75,6 +80,8 @@ export interface FadeCurveRegion {
   /** True when the region is the clip's own fadeIn/fadeOut; false when
    *  it is the overlap-default crossfade ramp. */
   authored: boolean;
+  /** Curve shape exponent (1 = equal-power) */
+  shape: number;
 }
 
 /** ONE fade per clip edge — authored wins, the overlap supplies the
@@ -89,20 +96,20 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
     const fadeIn = Math.max(0, c.fadeIn ?? 0);
     const fadeOut = Math.max(0, c.fadeOut ?? 0);
     if (fadeIn > EPSILON) {
-      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + Math.min(fadeIn, c.duration), authored: true });
+      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + Math.min(fadeIn, c.duration), authored: true, shape: c.fadeInShape ?? 1 });
     }
     if (fadeOut > EPSILON) {
-      regions.push({ clipId: c.id, side: 'out', start: c.start + Math.max(0, c.duration - fadeOut), end: c.start + c.duration, authored: true });
+      regions.push({ clipId: c.id, side: 'out', start: c.start + Math.max(0, c.duration - fadeOut), end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? 1 });
     }
   }
   for (const r of computeCrossfades(clips)) {
     const outClip = clips.find((c) => c.id === r.outgoingClipId);
     const inClip = clips.find((c) => c.id === r.incomingClipId);
     if (outClip && Math.max(0, outClip.fadeOut ?? 0) <= EPSILON) {
-      regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false });
+      regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false, shape: outClip.fadeOutShape ?? 1 });
     }
     if (inClip && Math.max(0, inClip.fadeIn ?? 0) <= EPSILON) {
-      regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false });
+      regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false, shape: inClip.fadeInShape ?? 1 });
     }
   }
   return regions.sort((a, b) => a.start - b.start || String(a.clipId).localeCompare(String(b.clipId)));
@@ -123,20 +130,20 @@ export interface CrossfadeIntersection {
  *  zero exactly once. Bisection; both curves may be authored fades
  *  with extents different from the overlap. */
 export function crossfadeIntersection(
-  outRegion: { start: number; end: number },
-  inRegion: { start: number; end: number },
+  outRegion: { start: number; end: number; shape?: number },
+  inRegion: { start: number; end: number; shape?: number },
   overlapStart: number,
   overlapEnd: number,
 ): CrossfadeIntersection {
   const gainOut = (x: number) => {
     if (x <= outRegion.start) return 1;
     if (x >= outRegion.end) return 0;
-    return fadeOutGain((x - outRegion.start) / (outRegion.end - outRegion.start));
+    return fadeOutGain((x - outRegion.start) / (outRegion.end - outRegion.start), outRegion.shape ?? 1);
   };
   const gainIn = (x: number) => {
     if (x <= inRegion.start) return 0;
     if (x >= inRegion.end) return 1;
-    return fadeInGain((x - inRegion.start) / (inRegion.end - inRegion.start));
+    return fadeInGain((x - inRegion.start) / (inRegion.end - inRegion.start), inRegion.shape ?? 1);
   };
   let lo = overlapStart;
   let hi = overlapEnd;
@@ -149,24 +156,25 @@ export function crossfadeIntersection(
   return { time: t, gain: (gainOut(t) + gainIn(t)) / 2 };
 }
 
-/** Equal-power gain for the OUTGOING side at normalized position t (0..1). */
-export function fadeOutGain(t: number): number {
-  return Math.cos((Math.max(0, Math.min(1, t)) * Math.PI) / 2);
+/** Gain for the OUTGOING side at normalized position t (0..1).
+ *  `shape` bends the equal-power base curve (1 = equal-power). */
+export function fadeOutGain(t: number, shape = 1): number {
+  return Math.cos((Math.max(0, Math.min(1, t)) * Math.PI) / 2) ** shape;
 }
 
-/** Equal-power gain for the INCOMING side at normalized position t (0..1). */
-export function fadeInGain(t: number): number {
-  return Math.sin((Math.max(0, Math.min(1, t)) * Math.PI) / 2);
+/** Gain for the INCOMING side at normalized position t (0..1). */
+export function fadeInGain(t: number, shape = 1): number {
+  return Math.sin((Math.max(0, Math.min(1, t)) * Math.PI) / 2) ** shape;
 }
 
 /** SVG path (0..100 × 0..100 viewBox, y=0 is full gain) for one side
  *  of the X. Sampled polyline — smooth enough at clip sizes, and
  *  `preserveAspectRatio="none"` stretches it to the region. */
-export function fadeCurvePath(side: 'out' | 'in', samples = 16): string {
+export function fadeCurvePath(side: 'out' | 'in', samples = 16, shape = 1): string {
   const pts: string[] = [];
   for (let k = 0; k <= samples; k++) {
     const t = k / samples;
-    const gain = side === 'out' ? fadeOutGain(t) : fadeInGain(t);
+    const gain = side === 'out' ? fadeOutGain(t, shape) : fadeInGain(t, shape);
     const xPos = t * 100;
     const yPos = (1 - gain) * 100;
     pts.push(`${xPos.toFixed(2)},${yPos.toFixed(2)}`);

@@ -49,6 +49,10 @@ export interface TrackClip {
    *  crossfade X). Absent/0 = no fade. */
   fadeIn?: number;
   fadeOut?: number;
+  /** Curve shape exponents (default 1 = equal-power), set by dragging
+   *  the crossfade intersection node. */
+  fadeInShape?: number;
+  fadeOutShape?: number;
 }
 
 export interface TrackProps {
@@ -173,10 +177,19 @@ export interface TrackProps {
    *  length for that side (0 removes the fade). */
   onClipFadeChange?: (clipId: string | number, side: 'in' | 'out', seconds: number) => void;
 
-  /** Called while a crossfade's intersection node is dragged — a ROLL:
-   *  both clip edges slide by `deltaSeconds` (the seam moves, the
-   *  overlap length stays). Fired incrementally during the drag. */
+  /** Alt+drag on the crossfade's intersection node — a ROLL: both clip
+   *  edges slide by `deltaSeconds` (the seam moves, the overlap length
+   *  stays). Fired incrementally during the drag. */
   onCrossfadeRoll?: (outgoingClipId: string | number, incomingClipId: string | number, deltaSeconds: number) => void;
+
+  /** Plain drag on the intersection node — reshapes BOTH curves (fade
+   *  extents never move) so the crossing lands under the pointer. */
+  onCrossfadeShapeChange?: (
+    outgoingClipId: string | number,
+    incomingClipId: string | number,
+    outShape: number,
+    inShape: number,
+  ) => void;
 
   /**
    * Tab index for keyboard navigation
@@ -394,6 +407,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipStretchEdge,
   onClipFadeChange,
   onCrossfadeRoll,
+  onCrossfadeShapeChange,
   tabIndex,
   onFocusChange,
   onClipMove,
@@ -557,15 +571,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const inRegion = inFade > 0
         ? { start: inClip.start, end: inClip.start + Math.min(inFade, inClip.duration) }
         : { start: r.start, end: r.end };
-      const point = crossfadeIntersection(outRegion, inRegion, r.start, r.end);
+      const shapedOut = { ...outRegion, shape: outClip.fadeOutShape ?? 1 };
+      const shapedIn = { ...inRegion, shape: inClip.fadeInShape ?? 1 };
+      const point = crossfadeIntersection(shapedOut, shapedIn, r.start, r.end);
       return {
         outgoingClipId: r.outgoingClipId,
         incomingClipId: r.incomingClipId,
         point,
+        outRegion: shapedOut,
+        inRegion: shapedIn,
         overlapStart: r.start,
         overlapEnd: r.end,
-        outgoingDuration: outClip.duration,
-        incomingDuration: inClip.duration,
       };
     }).filter((n): n is NonNullable<typeof n> => n !== null);
   }, [clips]);
@@ -582,12 +598,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   }, [crossfadeNodes]);
 
   const renderCrossfadeNodes = () => {
-    if ((!onClipFadeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
+    if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
     const NODE_R = 5;
-    const MIN_HALF = 0.01;
     return crossfadeNodes.map((n) => {
       const x = CLIP_CONTENT_OFFSET + n.point.time * pixelsPerSecond;
       const y = bodyTop + (1 - n.point.gain) * bodyHeight;
@@ -607,13 +622,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             const nodeEl = e.currentTarget as HTMLElement;
             try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
             // Alt+drag = ROLL (content edit: both clip edges slide,
-            // clamped to hidden material). Plain drag = move the
-            // crossing point by rewriting BOTH quick fades so the
-            // curves cross under the pointer at constant power — pure
-            // fade state, always available.
+            // clamped to hidden material). Plain drag = SHAPE: the fade
+            // extents never move — both curves bend (shape exponents)
+            // so the crossing lands under the pointer. Closed form:
+            // shape = ln(gain) / ln(baseCurve(t)).
             const rollMode = e.altKey && !!onCrossfadeRoll;
             const startClientX = e.clientX;
-            const startCenter = n.point.time;
+            const startClientY = e.clientY;
+            const startPoint = n.point;
             let lastX = e.clientX;
             const onMove = (ev: PointerEvent) => {
               if (rollMode) {
@@ -622,17 +638,25 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 if (dx !== 0) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
                 return;
               }
-              if (!onClipFadeChange) return;
-              const rawCenter = startCenter + (ev.clientX - startClientX) / pixelsPerSecond;
-              // The centre maps to fades of 2×(distance to each overlap
-              // edge); clamp so neither fade outgrows its clip and the
-              // centre stays inside the overlap
-              const lo = Math.max(n.overlapStart + MIN_HALF, n.overlapEnd - n.outgoingDuration / 2);
-              const hi = Math.min(n.overlapEnd - MIN_HALF, n.overlapStart + n.incomingDuration / 2);
-              if (lo > hi) return;
-              const center = Math.max(lo, Math.min(hi, rawCenter));
-              onClipFadeChange(n.outgoingClipId, 'out', 2 * (n.overlapEnd - center));
-              onClipFadeChange(n.incomingClipId, 'in', 2 * (center - n.overlapStart));
+              if (!onCrossfadeShapeChange) return;
+              const time = startPoint.time + (ev.clientX - startClientX) / pixelsPerSecond;
+              const gain = startPoint.gain - (ev.clientY - startClientY) / Math.max(1, bodyHeight);
+              // The pointer must stay strictly inside BOTH curve regions
+              // (and the gain away from 0/1) for the solve to exist
+              const xLo = Math.max(n.outRegion.start, n.inRegion.start);
+              const xHi = Math.min(n.outRegion.end, n.inRegion.end);
+              const span = xHi - xLo;
+              if (span <= 0) return;
+              const x = Math.max(xLo + span * 0.02, Math.min(xHi - span * 0.02, time));
+              const g = Math.max(0.05, Math.min(0.95, gain));
+              const tOut = (x - n.outRegion.start) / (n.outRegion.end - n.outRegion.start);
+              const tIn = (x - n.inRegion.start) / (n.inRegion.end - n.inRegion.start);
+              const clampShape = (v: number) => Math.max(0.15, Math.min(6, v));
+              const outShape = clampShape(Math.log(g) / Math.log(Math.cos((tOut * Math.PI) / 2)));
+              const inShape = clampShape(Math.log(g) / Math.log(Math.sin((tIn * Math.PI) / 2)));
+              if (Number.isFinite(outShape) && Number.isFinite(inShape)) {
+                onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, outShape, inShape);
+              }
             };
             const onUp = () => {
               nodeEl.removeEventListener('pointermove', onMove);
@@ -710,7 +734,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             style={{ display: 'block' }}
           >
             <path
-              d={fadeCurvePath(region.side)}
+              d={fadeCurvePath(region.side, 24, region.shape)}
               fill="none"
               stroke="rgba(0, 0, 0, 0.45)"
               strokeWidth={1.5}

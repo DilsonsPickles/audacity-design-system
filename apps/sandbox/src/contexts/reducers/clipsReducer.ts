@@ -222,6 +222,25 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       return { ...state, tracks: newTracks };
     }
 
+    case 'SET_CROSSFADE_SHAPE': {
+      // The crossfade node bends both curves (extents untouched).
+      // A shape of ~1 clears the field so stored projects stay clean.
+      const { trackIndex, outgoingClipId, incomingClipId, outShape, inShape } = action.payload;
+      const track = state.tracks[trackIndex];
+      if (!track) return state;
+      const norm = (v: number) => (Math.abs(v - 1) < 0.01 ? undefined : v);
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...track,
+        clips: track.clips.map(clip => {
+          if (clip.id === outgoingClipId) return { ...clip, fadeOutShape: norm(outShape) };
+          if (clip.id === incomingClipId) return { ...clip, fadeInShape: norm(inShape) };
+          return clip;
+        }),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
     case 'APPLY_CLIP_PLACEMENT': {
       const { placements, mutations } = action.payload;
 
