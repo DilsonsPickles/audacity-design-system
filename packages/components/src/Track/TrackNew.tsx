@@ -539,9 +539,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (fadeCurves.length === 0) return null;
     const CLIP_HEADER_H = 20;
     // The clip draws with a 1px border, so the header's true bottom is
-    // wrapper-top + 21. Start another pixel lower so the curve's long
-    // near-gain-1 plateau never rides the header hairline.
-    const bodyTop = CLIP_HEADER_H + 2;
+    // wrapper-top + 21 — the overlay starts exactly there.
+    const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
     return fadeCurves.map((region) => {
       const left = CLIP_CONTENT_OFFSET + region.start * pixelsPerSecond;
