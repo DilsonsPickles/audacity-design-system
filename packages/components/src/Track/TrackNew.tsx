@@ -796,30 +796,54 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // wrapper-top + 21 — the overlay starts exactly there.
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
-    return fadeCurves.map((region) => {
-      const left = CLIP_CONTENT_OFFSET + region.start * pixelsPerSecond;
-      const width = Math.max(1, (region.end - region.start) * pixelsPerSecond);
+    const geometry = (region: (typeof fadeCurves)[number]) => ({
+      left: Math.round(CLIP_CONTENT_OFFSET + region.start * pixelsPerSecond),
+      width: Math.max(1, Math.round((region.end - region.start) * pixelsPerSecond)),
+      key: `${region.clipId}-${region.side}-${region.authored ? 'authored' : 'default'}-${region.start}`,
+    });
+    // TWO passes: every veil first (449), every curve above them (450)
+    // — in a crossfade the two regions overlap, and a single-pass DOM
+    // order would wash one region's curve under the other's veil.
+    const veils = fadeCurves.map((region) => {
+      const g = geometry(region);
       // Selected clip bodies are far more saturated, so the same white
       // wash reads weaker there — compensate with a stronger veil
       const regionClipSelected = clips.find((c) => c.id === region.clipId)?.selected ?? false;
       return (
         <div
-          key={`fade-${region.clipId}-${region.side}-${region.authored ? 'authored' : 'default'}-${region.start}`}
+          key={`fade-veil-${g.key}`}
           data-fade-overlay={region.side}
           data-fade-authored={region.authored ? 'true' : 'false'}
           style={{
             position: 'absolute',
-            left: `${Math.round(left)}px`,
+            left: `${g.left}px`,
             top: `${bodyTop}px`,
-            width: `${Math.round(width)}px`,
+            width: `${g.width}px`,
             height: `${bodyHeight}px`,
             pointerEvents: 'none',
-            // Above every stacked clip (2+index band), below the
-            // envelope layers (500+). The two default ramps of a plain
-            // crossfade stack their veils in the shared region, which
-            // reads as "denser = shared".
-            zIndex: 450,
+            // Above every stacked clip (2+index band), below the curves.
+            // The two default ramps of a plain crossfade stack their
+            // veils in the shared region: "denser = shared".
+            zIndex: 449,
             background: regionClipSelected ? 'rgba(255, 255, 255, 0.38)' : 'rgba(255, 255, 255, 0.2)',
+          }}
+        />
+      );
+    });
+    const curves = fadeCurves.map((region) => {
+      const g = geometry(region);
+      return (
+        <div
+          key={`fade-curve-${g.key}`}
+          data-fade-curve={region.side}
+          style={{
+            position: 'absolute',
+            left: `${g.left}px`,
+            top: `${bodyTop}px`,
+            width: `${g.width}px`,
+            height: `${bodyHeight}px`,
+            pointerEvents: 'none',
+            zIndex: 450,
           }}
         >
           <svg
@@ -840,6 +864,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         </div>
       );
     });
+    return [...veils, ...curves];
   };
 
   // Calculate clip dimensions and positions
