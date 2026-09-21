@@ -82,6 +82,18 @@ describe('quick fades never cross on one clip (audio mirror)', () => {
   });
 });
 
+describe('quick fades never overlap a crossfade (audio mirror)', () => {
+  it('a free-edge quick fade clamps to the crossfade boundary', () => {
+    // B[3..7] head crossfaded to 5; fadeOut 3 → clamped to the free
+    // window [5, 7] = 2s → source time 2..4 (trimStart 0)
+    const segs = computeClipGainSegments([clip(1, 0, 5), { ...clip(2, 3, 4), fadeOut: 3 }]);
+    expect(segs.get('2')).toEqual([
+      { startSec: 0, endSec: 2, shape: 'fadeIn' },  // crossfade ramp
+      { startSec: 2, endSec: 4, shape: 'fadeOut' }, // clamped quick fade
+    ]);
+  });
+});
+
 describe('applyGainSegmentsToChannel', () => {
   const ones = (n: number) => new Float32Array(n).fill(1);
 

@@ -88,6 +88,26 @@ export function effectiveFades(
   return { fadeIn: fi * scale, fadeOut: fo * scale };
 }
 
+/** The span of a clip NOT consumed by crossfades — quick fades must
+ *  live inside it (a quick fade may never overlap a crossfade). A
+ *  crossfade region always touches the incoming clip's head or the
+ *  outgoing clip's tail, so consumption only ever moves the window's
+ *  edges inward. */
+export function quickFadeWindows(
+  clips: readonly CrossfadeClipLike[],
+): Map<string, { start: number; end: number }> {
+  const windows = new Map<string, { start: number; end: number }>(
+    clips.map((c) => [String(c.id), { start: c.start, end: c.start + c.duration }]),
+  );
+  for (const r of computeCrossfades(clips)) {
+    const inWindow = windows.get(String(r.incomingClipId));
+    if (inWindow) inWindow.start = Math.max(inWindow.start, r.end);
+    const outWindow = windows.get(String(r.outgoingClipId));
+    if (outWindow) outWindow.end = Math.min(outWindow.end, r.start);
+  }
+  return windows;
+}
+
 export interface FadeCurveRegion {
   clipId: number | string;
   side: 'in' | 'out';
@@ -126,12 +146,20 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
       regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false, shape: inClip.fadeInShape ?? 1 });
     }
   }
+  const windows = quickFadeWindows(clips);
   for (const c of clips) {
-    const { fadeIn, fadeOut } = effectiveFades(c.fadeIn, c.fadeOut, c.duration);
-    if (fadeIn > EPSILON && !crossfadedIn.has(String(c.id))) {
+    // Quick fades are confined to the free window (never overlapping a
+    // crossfade) and may not cross each other within it
+    const w = windows.get(String(c.id)) ?? { start: c.start, end: c.start + c.duration };
+    const { fadeIn, fadeOut } = effectiveFades(
+      crossfadedIn.has(String(c.id)) ? 0 : c.fadeIn,
+      crossfadedOut.has(String(c.id)) ? 0 : c.fadeOut,
+      Math.max(0, w.end - w.start),
+    );
+    if (fadeIn > EPSILON) {
       regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + fadeIn, authored: true, shape: c.fadeInShape ?? 1 });
     }
-    if (fadeOut > EPSILON && !crossfadedOut.has(String(c.id))) {
+    if (fadeOut > EPSILON) {
       regions.push({ clipId: c.id, side: 'out', start: c.start + c.duration - fadeOut, end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? 1 });
     }
   }

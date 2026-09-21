@@ -53,6 +53,11 @@ export function computeClipGainSegments(
   const out = new Map<string, ClipGainSegment[]>();
   const crossfadedIn = new Set<string>();
   const crossfadedOut = new Set<string>();
+  // Free-window bounds per clip (crossfades consume the edges; quick
+  // fades must live inside — MUST MATCH quickFadeWindows in
+  // clipCrossfades.ts)
+  const headConsumedTo = new Map<string, number>();
+  const tailConsumedFrom = new Map<string, number>();
   const push = (clip: OverlapClipLike, startAbs: number, endAbs: number, shape: ClipGainSegment['shape']) => {
     const key = String(clip.id);
     const trimStart = clip.trimStart ?? 0;
@@ -96,6 +101,8 @@ export function computeClipGainSegments(
       // apply via `push`.
       crossfadedOut.add(String(earlier.id));
       crossfadedIn.add(String(later.id));
+      tailConsumedFrom.set(String(earlier.id), Math.min(tailConsumedFrom.get(String(earlier.id)) ?? Infinity, s));
+      headConsumedTo.set(String(later.id), Math.max(headConsumedTo.get(String(later.id)) ?? -Infinity, e));
       push(earlier, s, e, 'fadeOut');
       push(later, s, e, 'fadeIn');
     }
@@ -107,18 +114,24 @@ export function computeClipGainSegments(
   // shrank under its fades plays them proportionally scaled to fit,
   // stored values untouched.
   for (const clip of clips) {
-    let fadeIn = Math.min(Math.max(0, clip.fadeIn ?? 0), clip.duration);
-    let fadeOut = Math.min(Math.max(0, clip.fadeOut ?? 0), clip.duration);
+    const key = String(clip.id);
+    // Quick fades live in the FREE WINDOW: crossfade regions consume
+    // the clip's edges, and quick fades may not overlap them
+    const windowStart = Math.max(clip.start, headConsumedTo.get(key) ?? clip.start);
+    const windowEnd = Math.min(clip.start + clip.duration, tailConsumedFrom.get(key) ?? clip.start + clip.duration);
+    const windowLen = Math.max(0, windowEnd - windowStart);
+    let fadeIn = crossfadedIn.has(key) ? 0 : Math.min(Math.max(0, clip.fadeIn ?? 0), windowLen);
+    let fadeOut = crossfadedOut.has(key) ? 0 : Math.min(Math.max(0, clip.fadeOut ?? 0), windowLen);
     const sum = fadeIn + fadeOut;
-    if (sum > clip.duration && sum > 0) {
-      const scale = clip.duration / sum;
+    if (sum > windowLen && sum > 0) {
+      const scale = windowLen / sum;
       fadeIn *= scale;
       fadeOut *= scale;
     }
-    if (fadeIn > EPSILON && !crossfadedIn.has(String(clip.id))) {
+    if (fadeIn > EPSILON) {
       push(clip, clip.start, clip.start + fadeIn, 'fadeIn');
     }
-    if (fadeOut > EPSILON && !crossfadedOut.has(String(clip.id))) {
+    if (fadeOut > EPSILON) {
       push(clip, clip.start + clip.duration - fadeOut, clip.start + clip.duration, 'fadeOut');
     }
   }

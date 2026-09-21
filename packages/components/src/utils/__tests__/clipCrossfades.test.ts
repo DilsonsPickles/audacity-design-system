@@ -103,6 +103,22 @@ describe('effectiveFades — quick fades never cross on one clip', () => {
   });
 });
 
+describe('quick fades never overlap a crossfade', () => {
+  it('a free-edge quick fade clamps to the crossfade boundary', () => {
+    // A[0..5] × B[3..7]: B's head is crossfaded to 5; its 3s fade-out
+    // may only span the free window [5, 7] → clamped to 2s
+    const curves = computeFadeCurves([clip(1, 0, 5), { ...clip(2, 3, 4), fadeOut: 3 }]);
+    expect(curves).toContainEqual({ clipId: 2, side: 'out', start: 5, end: 7, authored: true, shape: 1 });
+  });
+
+  it('the outgoing clip\'s head fade clamps against its tail crossfade', () => {
+    // A[0..5] fades in over 4.5s but its tail from 3 is crossfaded →
+    // free window [0, 3] → fade-in clamped to 3s
+    const curves = computeFadeCurves([{ ...clip(1, 0, 5), fadeIn: 4.5 }, clip(2, 3, 4)]);
+    expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 3, authored: true, shape: 1 });
+  });
+});
+
 describe('equal-power gains', () => {
   it('sum of squares is 1 across the fade (constant power)', () => {
     for (const t of [0, 0.25, 0.5, 0.75, 1]) {

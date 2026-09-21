@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -561,6 +561,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // inherited fade stays visible even where its clip is buried under
   // the incoming one.
   const fadeCurves = React.useMemo(() => computeFadeCurves(clips), [clips]);
+  // Free windows (crossfades consume the edges) — quick-fade controls
+  // clamp to them so a quick fade can never overlap a crossfade
+  const fadeWindows = React.useMemo(() => quickFadeWindows(clips), [clips]);
 
   // The X's crossing point per crossfade — the roll-edit grab node.
   // Each side's curve extent honours an authored fade (inherit rule).
@@ -708,7 +711,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const MID_BASE = Math.cos(Math.PI / 4); // both sin/cos at t=0.5
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
-      const eff = effectiveFades(clip.fadeIn, clip.fadeOut, clip.duration);
+      const eff = clipQuickFadeGeometry(clip);
       for (const side of ['in', 'out'] as const) {
         const fade = side === 'in' ? eff.fadeIn : eff.fadeOut;
         if (fade <= 0) continue;
@@ -1358,6 +1361,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     return nodes.length > 0 ? nodes : null;
   };
 
+  const clipQuickFadeGeometry = (clip: TrackClip) => {
+    const w = fadeWindows.get(String(clip.id)) ?? { start: clip.start, end: clip.start + clip.duration };
+    const windowLen = Math.max(0, w.end - w.start);
+    const eff = effectiveFades(
+      crossfadedEdges.has(`${clip.id}:in`) ? 0 : clip.fadeIn,
+      crossfadedEdges.has(`${clip.id}:out`) ? 0 : clip.fadeOut,
+      windowLen,
+    );
+    return { windowLen, ...eff };
+  };
+
   // Quick-fade HANDLES — rendered at TRACK level (like the shape dots)
   // so they sit ABOVE the fade veils (z 450); inside the clip wrapper
   // they were trapped under its low stacking context and the veil
@@ -1372,9 +1386,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       if (!(clip.selected || fadeDragClipId === clip.id)) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
-      // Positions use EFFECTIVE fades (may be scaled down when the clip
-      // shrank under them) so the controls sit on the drawn curves
-      const { fadeIn: fadeInSec, fadeOut: fadeOutSec } = effectiveFades(clip.fadeIn, clip.fadeOut, clip.duration);
+      // Positions use EFFECTIVE fades (clamped to the free window and
+      // to each other) so the controls sit on the drawn curves
+      const { windowLen, fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
       const boundaryInX = fadeInSec * pixelsPerSecond;
       const boundaryOutX = clipWidth - fadeOutSec * pixelsPerSecond;
       // Audition-style adaptive placement: each handle sits on the BODY
@@ -1428,7 +1442,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const onMove = (ev: PointerEvent) => {
                 const rel = (ev.clientX - rect.left) / pixelsPerSecond;
                 let seconds = side === 'in' ? rel : clip.duration - rel;
-                seconds = Math.max(0, Math.min(clip.duration - otherFade, seconds));
+                // Clamp to the free window: a quick fade never overlaps
+                // a crossfade (or the opposite quick fade)
+                seconds = Math.max(0, Math.min(windowLen - otherFade, seconds));
                 if (seconds < 0.02) seconds = 0; // snap tiny fades away
                 onClipFadeChange?.(clip.id, side, seconds);
               };
