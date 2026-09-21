@@ -168,9 +168,11 @@ export function fadeInGain(t: number, shape = 1): number {
 }
 
 /** SVG path (0..100 × 0..100 viewBox, y=0 is full gain) for one side
- *  of the X. Sampled polyline — smooth enough at clip sizes, and
- *  `preserveAspectRatio="none"` stretches it to the region. */
-export function fadeCurvePath(side: 'out' | 'in', samples = 16, shape = 1): string {
+ *  of the X. Sampled polyline stretched to the region via
+ *  `preserveAspectRatio="none"`. A bent shape exponent concentrates
+ *  all the curvature near one end, so the sample count must be high
+ *  enough that no segment reads as an angle. */
+export function fadeCurvePath(side: 'out' | 'in', samples = 64, shape = 1): string {
   const pts: string[] = [];
   for (let k = 0; k <= samples; k++) {
     const t = k / samples;

@@ -734,7 +734,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             style={{ display: 'block' }}
           >
             <path
-              d={fadeCurvePath(region.side, 24, region.shape)}
+              d={fadeCurvePath(region.side, 64, region.shape)}
               fill="none"
               stroke="rgba(0, 0, 0, 0.45)"
               strokeWidth={1.5}
