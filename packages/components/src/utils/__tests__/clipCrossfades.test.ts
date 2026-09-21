@@ -86,8 +86,12 @@ describe('effectiveFades — quick fades never cross on one clip', () => {
   it('a clip that shrank under its fades scales them proportionally', () => {
     // stored 4 + 4 on a 4s clip → 2 + 2
     expect(effectiveFades(4, 4, 4)).toEqual({ fadeIn: 2, fadeOut: 2 });
-    // asymmetric: 3 + 1 on a 2s clip → 1.5 + 0.5
-    expect(effectiveFades(3, 1, 2)).toEqual({ fadeIn: 1.5, fadeOut: 0.5 });
+    // asymmetric: 3 + 1 on a 2s clip — each clamps to the duration
+    // first (2 + 1), then scales to fit: 4/3 + 2/3
+    const eff = effectiveFades(3, 1, 2);
+    expect(eff.fadeIn).toBeCloseTo(4 / 3, 6);
+    expect(eff.fadeOut).toBeCloseTo(2 / 3, 6);
+    expect(eff.fadeIn + eff.fadeOut).toBeCloseTo(2, 6);
   });
 
   it('computeFadeCurves emits the scaled regions — no overlap', () => {
