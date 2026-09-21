@@ -1275,7 +1275,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 : undefined
             }
           />
-          {renderClipFades(clip, clipWidth, clipSelected)}
         </div>
       );
     });
@@ -1285,103 +1284,109 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // renderFadeCurveOverlays, so an inherited fade stays visible where
   // its clip is buried). Rendered inside the wrapper so they ride the
   // clip's position and z.
-  const renderClipFades = (clip: TrackClip, clipWidth: number, clipSelected: boolean) => {
-    if (isMidiTrack) return null;
+  // Quick-fade HANDLES — rendered at TRACK level (like the shape dots)
+  // so they sit ABOVE the fade veils (z 450); inside the clip wrapper
+  // they were trapped under its low stacking context and the veil
+  // sheeted over them.
+  const renderFadeHandles = () => {
+    if (isMidiTrack || !onClipFadeChange) return null;
     const HEADER_H = 20;
-    // Positions use EFFECTIVE fades (may be scaled down when the clip
-    // shrank under them) so the controls sit on the drawn curves
-    const { fadeIn: fadeInSec, fadeOut: fadeOutSec } = effectiveFades(clip.fadeIn, clip.fadeOut, clip.duration);
-    // Handles show on the SELECTED clip only (2026-09-21 decision);
-    // the drag guard keeps them up while the pointer is captured.
-    const showHandles = !!onClipFadeChange && (clipSelected || fadeDragClipId === clip.id);
-
-    const boundaryInX = fadeInSec * pixelsPerSecond;
-    const boundaryOutX = clipWidth - fadeOutSec * pixelsPerSecond;
-    // Audition-style adaptive placement: each handle sits on the BODY
-    // side of its boundary (the natural spot) until the two would
-    // collide — then both retreat INSIDE their own fade regions, so at
-    // a mid-clip meeting each handle stays on its own curve instead of
-    // swapping sides. 40px = two 16px handles + breathing room.
-    const handlesRetreat = boundaryOutX - boundaryInX < 40;
-    const handle = (side: 'in' | 'out') => {
-      const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
-      const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
-      // The glyph is asymmetric inside its 16px box (the square spans
-      // [6.5, 15.5] unmirrored; [0.5, 9.5] mirrored), so the box is
-      // positioned by the VISIBLE SQUARE: its near edge keeps a
-      // constant 2px gap to the boundary whichever side it sits on.
-      const PAD = 2;
-      const mirrored = side === 'out';
-      const squareLeft = mirrored ? 0.5 : 6.5;   // square's left edge within the box
-      const squareRight = mirrored ? 9.5 : 15.5; // square's right edge within the box
-      // Box extending right of the boundary: square's LEFT edge sits
-      // PAD past it; extending left: square's RIGHT edge sits PAD short
-      const raw = inward ? boundaryX + PAD - squareLeft : boundaryX - PAD - squareRight;
-      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, raw)));
-      return (
-        <div
-          data-fade-handle={side}
-          role="slider"
-          aria-label={side === 'in' ? 'Quick fade in' : 'Quick fade out'}
-          aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
-          // The clip body is the time-selection surface — a fade drag
-          // must not bubble into it (mirrors the trim handles)
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => {
-            if (e.button !== 0) return;
-            e.stopPropagation();
-            e.preventDefault();
-            const handleEl = e.currentTarget as HTMLElement;
-            const wrapper = handleEl.closest('[data-clip-id]') as HTMLElement | null;
-            if (!wrapper) return;
-            const rect = wrapper.getBoundingClientRect();
-            try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
-            setFadeDragClipId(clip.id);
-            // The clip is static during a fade drag, so the rect and the
-            // opposite fade captured here stay valid for the session.
-            // The handle is EXTENT ONLY (2026-09-21: "keep them
-            // separate") — the midpoint dot owns the shape.
-            const otherFade = side === 'in' ? fadeOutSec : fadeInSec;
-            const onMove = (ev: PointerEvent) => {
-              const rel = (ev.clientX - rect.left) / pixelsPerSecond;
-              let seconds = side === 'in' ? rel : clip.duration - rel;
-              seconds = Math.max(0, Math.min(clip.duration - otherFade, seconds));
-              if (seconds < 0.02) seconds = 0; // snap tiny fades away
-              onClipFadeChange?.(clip.id, side, seconds);
-            };
-            const onUp = () => {
-              handleEl.removeEventListener('pointermove', onMove);
-              handleEl.removeEventListener('pointerup', onUp);
-              setFadeDragClipId(null);
-            };
-            handleEl.addEventListener('pointermove', onMove);
-            handleEl.addEventListener('pointerup', onUp);
-          }}
-          style={{
-            position: 'absolute',
-            top: HEADER_H + 2,
-            left: `${left}px`,
-            width: 16,
-            height: 16,
-            cursor: 'ew-resize',
-            zIndex: 20,
-          }}
-        >
-          <FadeHandleGlyph mirrored={side === 'out'} />
-        </div>
-      );
-    };
-
-    if (!showHandles) return null;
-    // A crossfaded edge's quick-fade handle hides — the crossfade's
-    // intersection node does the work there
-    return (
-      <>
-        {!crossfadedEdges.has(`${clip.id}:in`) && handle('in')}
-        {!crossfadedEdges.has(`${clip.id}:out`) && handle('out')}
-      </>
-    );
+    const nodes: React.ReactNode[] = [];
+    for (const clip of clips) {
+      // Handles show on the SELECTED clip only (2026-09-21 decision);
+      // the drag guard keeps them up while the pointer is captured.
+      if (!(clip.selected || fadeDragClipId === clip.id)) continue;
+      const clipWidth = clip.duration * pixelsPerSecond;
+      const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
+      // Positions use EFFECTIVE fades (may be scaled down when the clip
+      // shrank under them) so the controls sit on the drawn curves
+      const { fadeIn: fadeInSec, fadeOut: fadeOutSec } = effectiveFades(clip.fadeIn, clip.fadeOut, clip.duration);
+      const boundaryInX = fadeInSec * pixelsPerSecond;
+      const boundaryOutX = clipWidth - fadeOutSec * pixelsPerSecond;
+      // Audition-style adaptive placement: each handle sits on the BODY
+      // side of its boundary (the natural spot) until the two would
+      // collide — then both retreat INSIDE their own fade regions, so at
+      // a mid-clip meeting each handle stays on its own curve instead of
+      // swapping sides. 40px = two 16px handles + breathing room.
+      const handlesRetreat = boundaryOutX - boundaryInX < 40;
+      const handle = (side: 'in' | 'out') => {
+        const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
+        const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
+        // The glyph is asymmetric inside its 16px box (the square spans
+        // [6.5, 15.5] unmirrored; [0.5, 9.5] mirrored), so the box is
+        // positioned by the VISIBLE SQUARE: its near edge keeps a
+        // constant 2px gap to the boundary whichever side it sits on.
+        const PAD = 2;
+        const mirrored = side === 'out';
+        const squareLeft = mirrored ? 0.5 : 6.5;   // square's left edge within the box
+        const squareRight = mirrored ? 9.5 : 15.5; // square's right edge within the box
+        // Box extending right of the boundary: square's LEFT edge sits
+        // PAD past it; extending left: square's RIGHT edge sits PAD short
+        const raw = inward ? boundaryX + PAD - squareLeft : boundaryX - PAD - squareRight;
+        const left = xBase + Math.round(Math.max(0, Math.min(clipWidth - 16, raw)));
+        return (
+          <div
+            key={`fade-handle-${clip.id}-${side}`}
+            data-fade-handle={side}
+            data-fade-clip={clip.id}
+            role="slider"
+            aria-label={side === 'in' ? 'Quick fade in' : 'Quick fade out'}
+            aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
+            // The clip body is the time-selection surface — a fade drag
+            // must not bubble into it (mirrors the trim handles)
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.stopPropagation();
+              e.preventDefault();
+              const handleEl = e.currentTarget as HTMLElement;
+              const wrapper = handleEl.ownerDocument.querySelector(`[data-clip-id="${clip.id}"]`);
+              if (!wrapper) return;
+              const rect = wrapper.getBoundingClientRect();
+              try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+              setFadeDragClipId(clip.id);
+              // The clip is static during a fade drag, so the rect and the
+              // opposite fade captured here stay valid for the session.
+              // The handle is EXTENT ONLY (2026-09-21: "keep them
+              // separate") — the midpoint dot owns the shape.
+              const otherFade = side === 'in' ? fadeOutSec : fadeInSec;
+              const onMove = (ev: PointerEvent) => {
+                const rel = (ev.clientX - rect.left) / pixelsPerSecond;
+                let seconds = side === 'in' ? rel : clip.duration - rel;
+                seconds = Math.max(0, Math.min(clip.duration - otherFade, seconds));
+                if (seconds < 0.02) seconds = 0; // snap tiny fades away
+                onClipFadeChange?.(clip.id, side, seconds);
+              };
+              const onUp = () => {
+                handleEl.removeEventListener('pointermove', onMove);
+                handleEl.removeEventListener('pointerup', onUp);
+                setFadeDragClipId(null);
+              };
+              handleEl.addEventListener('pointermove', onMove);
+              handleEl.addEventListener('pointerup', onUp);
+            }}
+            style={{
+              position: 'absolute',
+              top: HEADER_H + 2,
+              left: `${left}px`,
+              width: 16,
+              height: 16,
+              cursor: 'ew-resize',
+              // Above the fade veils (450), beside the shape dots (460)
+              zIndex: 455,
+            }}
+          >
+            <FadeHandleGlyph mirrored={side === 'out'} />
+          </div>
+        );
+      };
+      // A crossfaded edge's quick-fade handle hides — the crossfade's
+      // intersection node does the work there
+      if (!crossfadedEdges.has(`${clip.id}:in`)) nodes.push(handle('in'));
+      if (!crossfadedEdges.has(`${clip.id}:out`)) nodes.push(handle('out'));
+    }
+    return nodes.length > 0 ? nodes : null;
   };
 
   // Render envelope interaction layers for all clips at track level
@@ -1744,6 +1749,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         {renderFadeCurveOverlays()}
         {renderCrossfadeNodes()}
         {renderQuickFadeNodes()}
+        {renderFadeHandles()}
         {renderEnvelopeInteractionLayers()}
 
         {/* Split view divider - draggable horizontal line */}

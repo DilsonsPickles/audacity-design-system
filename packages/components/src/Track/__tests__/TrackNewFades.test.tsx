@@ -52,10 +52,8 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
-    const clip1 = container.querySelector('[data-clip-id="1"]') as HTMLElement;
-    const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
-    expect(clip1.querySelectorAll('[data-fade-handle]')).toHaveLength(2);
-    expect(clip2.querySelector('[data-fade-handle]')).toBeNull();
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
+    expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
   });
 
   it('handles are absent entirely when fades are not editable (no onClipFadeChange)', () => {
@@ -156,13 +154,11 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
-    const clip1 = container.querySelector('[data-clip-id="1"]') as HTMLElement;
-    const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
     // A's tail and B's head belong to the crossfade — node owns them
-    expect(clip1.querySelector('[data-fade-handle="in"]')).toBeTruthy();
-    expect(clip1.querySelector('[data-fade-handle="out"]')).toBeNull();
-    expect(clip2.querySelector('[data-fade-handle="in"]')).toBeNull();
-    expect(clip2.querySelector('[data-fade-handle="out"]')).toBeTruthy();
+    expect(container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]')).toBeTruthy();
+    expect(container.querySelector('[data-fade-handle="out"][data-fade-clip="1"]')).toBeNull();
+    expect(container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]')).toBeNull();
+    expect(container.querySelector('[data-fade-handle="out"][data-fade-clip="2"]')).toBeTruthy();
   });
 
   it('dragging the intersection node bends both curves — extents never move', () => {
