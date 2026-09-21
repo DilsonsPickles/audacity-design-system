@@ -1306,7 +1306,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const handle = (side: 'in' | 'out') => {
       const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
       const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
-      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, inward ? boundaryX : boundaryX - 16)));
+      // The glyph is asymmetric inside its 16px box (the square spans
+      // [6.5, 15.5] unmirrored; [0.5, 9.5] mirrored), so the box is
+      // positioned by the VISIBLE SQUARE: its near edge keeps a
+      // constant 2px gap to the boundary whichever side it sits on.
+      const PAD = 2;
+      const mirrored = side === 'out';
+      const squareLeft = mirrored ? 0.5 : 6.5;   // square's left edge within the box
+      const squareRight = mirrored ? 9.5 : 15.5; // square's right edge within the box
+      // Box extending right of the boundary: square's LEFT edge sits
+      // PAD past it; extending left: square's RIGHT edge sits PAD short
+      const raw = inward ? boundaryX + PAD - squareLeft : boundaryX - PAD - squareRight;
+      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, raw)));
       return (
         <div
           data-fade-handle={side}
