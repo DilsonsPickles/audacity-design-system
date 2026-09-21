@@ -102,16 +102,24 @@ export function computeClipGainSegments(
   }
 
   // User-set per-clip fades on FREE edges — same audible primitive, no
-  // neighbour required. Timeline-relative [0, fadeIn] and
-  // [duration - fadeOut, duration] map through `push` into source time.
+  // neighbour required. Fades may not overlap EACH OTHER on a clip
+  // (MUST MATCH effectiveFades in clipCrossfades.ts): a clip that
+  // shrank under its fades plays them proportionally scaled to fit,
+  // stored values untouched.
   for (const clip of clips) {
-    const fadeIn = Math.max(0, clip.fadeIn ?? 0);
-    const fadeOut = Math.max(0, clip.fadeOut ?? 0);
+    let fadeIn = Math.min(Math.max(0, clip.fadeIn ?? 0), clip.duration);
+    let fadeOut = Math.min(Math.max(0, clip.fadeOut ?? 0), clip.duration);
+    const sum = fadeIn + fadeOut;
+    if (sum > clip.duration && sum > 0) {
+      const scale = clip.duration / sum;
+      fadeIn *= scale;
+      fadeOut *= scale;
+    }
     if (fadeIn > EPSILON && !crossfadedIn.has(String(clip.id))) {
-      push(clip, clip.start, clip.start + Math.min(fadeIn, clip.duration), 'fadeIn');
+      push(clip, clip.start, clip.start + fadeIn, 'fadeIn');
     }
     if (fadeOut > EPSILON && !crossfadedOut.has(String(clip.id))) {
-      push(clip, clip.start + Math.max(0, clip.duration - fadeOut), clip.start + clip.duration, 'fadeOut');
+      push(clip, clip.start + clip.duration - fadeOut, clip.start + clip.duration, 'fadeOut');
     }
   }
   return out;

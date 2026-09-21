@@ -71,6 +71,23 @@ export function computeCrossfades(clips: readonly CrossfadeClipLike[]): Crossfad
   return regions.sort((x, y) => x.start - y.start);
 }
 
+/** Effective quick-fade extents: fades may not overlap EACH OTHER on
+ *  a clip (curves never cross on the same clip). Stored values stay
+ *  untouched — a clip that shrank under its fades renders/plays them
+ *  proportionally scaled to fit, and regrowing restores them. */
+export function effectiveFades(
+  fadeIn: number | undefined,
+  fadeOut: number | undefined,
+  duration: number,
+): { fadeIn: number; fadeOut: number } {
+  const fi = Math.min(Math.max(0, fadeIn ?? 0), duration);
+  const fo = Math.min(Math.max(0, fadeOut ?? 0), duration);
+  const sum = fi + fo;
+  if (sum <= duration || sum <= 0) return { fadeIn: fi, fadeOut: fo };
+  const scale = duration / sum;
+  return { fadeIn: fi * scale, fadeOut: fo * scale };
+}
+
 export interface FadeCurveRegion {
   clipId: number | string;
   side: 'in' | 'out';
@@ -110,13 +127,12 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
     }
   }
   for (const c of clips) {
-    const fadeIn = Math.max(0, c.fadeIn ?? 0);
-    const fadeOut = Math.max(0, c.fadeOut ?? 0);
+    const { fadeIn, fadeOut } = effectiveFades(c.fadeIn, c.fadeOut, c.duration);
     if (fadeIn > EPSILON && !crossfadedIn.has(String(c.id))) {
-      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + Math.min(fadeIn, c.duration), authored: true, shape: c.fadeInShape ?? 1 });
+      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + fadeIn, authored: true, shape: c.fadeInShape ?? 1 });
     }
     if (fadeOut > EPSILON && !crossfadedOut.has(String(c.id))) {
-      regions.push({ clipId: c.id, side: 'out', start: c.start + Math.max(0, c.duration - fadeOut), end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? 1 });
+      regions.push({ clipId: c.id, side: 'out', start: c.start + c.duration - fadeOut, end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? 1 });
     }
   }
   return regions.sort((a, b) => a.start - b.start || String(a.clipId).localeCompare(String(b.clipId)));

@@ -4,7 +4,7 @@ import { Clip } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, fadeCurvePath } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -708,17 +708,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const MID_BASE = Math.cos(Math.PI / 4); // both sin/cos at t=0.5
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
+      const eff = effectiveFades(clip.fadeIn, clip.fadeOut, clip.duration);
       for (const side of ['in', 'out'] as const) {
-        const fade = Math.max(0, (side === 'in' ? clip.fadeIn : clip.fadeOut) ?? 0);
+        const fade = side === 'in' ? eff.fadeIn : eff.fadeOut;
         if (fade <= 0) continue;
         if (crossfadedEdges.has(`${clip.id}:${side}`)) continue;
         const dragKey = `${clip.id}:${side}`;
         if (!clip.selected && shapeDrag !== dragKey) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? 1;
-        const clampedFade = Math.min(fade, clip.duration);
         const midTime = side === 'in'
-          ? clip.start + clampedFade / 2
-          : clip.start + clip.duration - clampedFade / 2;
+          ? clip.start + fade / 2
+          : clip.start + clip.duration - fade / 2;
         const gain = MID_BASE ** shape;
         const x = CLIP_CONTENT_OFFSET + midTime * pixelsPerSecond;
         const y = bodyTop + (1 - gain) * bodyHeight;
@@ -1288,8 +1288,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const renderClipFades = (clip: TrackClip, clipWidth: number, clipSelected: boolean) => {
     if (isMidiTrack) return null;
     const HEADER_H = 20;
-    const fadeInSec = Math.max(0, clip.fadeIn ?? 0);
-    const fadeOutSec = Math.max(0, clip.fadeOut ?? 0);
+    // Positions use EFFECTIVE fades (may be scaled down when the clip
+    // shrank under them) so the controls sit on the drawn curves
+    const { fadeIn: fadeInSec, fadeOut: fadeOutSec } = effectiveFades(clip.fadeIn, clip.fadeOut, clip.duration);
     // Handles show on the SELECTED clip only (2026-09-21 decision);
     // the drag guard keeps them up while the pointer is captured.
     const showHandles = !!onClipFadeChange && (clipSelected || fadeDragClipId === clip.id);

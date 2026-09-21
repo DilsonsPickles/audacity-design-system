@@ -71,6 +71,17 @@ describe('computeClipGainSegments — the audible mirror of the drawn X', () => 
   });
 });
 
+describe('quick fades never cross on one clip (audio mirror)', () => {
+  it('a shrunk clip plays proportionally scaled fades', () => {
+    const segs = computeClipGainSegments([{ ...clip(1, 0, 4, 1), fadeIn: 4, fadeOut: 4 }]).get('1')!;
+    // scaled to 2 + 2, in SOURCE time (trimStart 1)
+    expect(segs).toEqual([
+      { startSec: 1, endSec: 3, shape: 'fadeIn' },
+      { startSec: 3, endSec: 5, shape: 'fadeOut' },
+    ]);
+  });
+});
+
 describe('applyGainSegmentsToChannel', () => {
   const ones = (n: number) => new Float32Array(n).fill(1);
 

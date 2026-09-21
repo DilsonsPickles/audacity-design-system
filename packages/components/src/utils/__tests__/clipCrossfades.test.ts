@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   computeCrossfades,
   computeFadeCurves,
+  effectiveFades,
   fadeInGain,
   fadeOutGain,
   fadeCurvePath,
@@ -74,6 +75,27 @@ describe('computeFadeCurves — one fade per edge, the crossfade wins', () => {
     expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 1, authored: true, shape: 1 });
     expect(curves).toContainEqual({ clipId: 1, side: 'out', start: 3, end: 5, authored: false, shape: 1 });
     expect(curves).toContainEqual({ clipId: 2, side: 'in', start: 3, end: 5, authored: false, shape: 1 });
+  });
+});
+
+describe('effectiveFades — quick fades never cross on one clip', () => {
+  it('fades that fit are untouched', () => {
+    expect(effectiveFades(1, 2, 5)).toEqual({ fadeIn: 1, fadeOut: 2 });
+  });
+
+  it('a clip that shrank under its fades scales them proportionally', () => {
+    // stored 4 + 4 on a 4s clip → 2 + 2
+    expect(effectiveFades(4, 4, 4)).toEqual({ fadeIn: 2, fadeOut: 2 });
+    // asymmetric: 3 + 1 on a 2s clip → 1.5 + 0.5
+    expect(effectiveFades(3, 1, 2)).toEqual({ fadeIn: 1.5, fadeOut: 0.5 });
+  });
+
+  it('computeFadeCurves emits the scaled regions — no overlap', () => {
+    const curves = computeFadeCurves([{ ...clip(1, 0, 4), fadeIn: 4, fadeOut: 4 }]);
+    expect(curves).toEqual([
+      { clipId: 1, side: 'in', start: 0, end: 2, authored: true, shape: 1 },
+      { clipId: 1, side: 'out', start: 2, end: 4, authored: true, shape: 1 },
+    ]);
   });
 });
 
