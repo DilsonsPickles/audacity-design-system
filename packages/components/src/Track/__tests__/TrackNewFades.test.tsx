@@ -228,6 +228,53 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 4 });
   });
 
+  it('a selected clip with a quick fade shows a shape node; vertical drag bows the curve', () => {
+    const onClipFadeShapeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeShapeChange={onClipFadeShapeChange}
+        />
+      </Providers>,
+    );
+    const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
+    expect(node).toBeTruthy();
+    // midpoint gain = cos(π/4) ≈ 0.7071; track height 114 → bodyHeight 92.
+    // Drag DOWN 19px → gain ≈ 0.5006 → shape = ln(g)/ln(0.7071) ≈ 2
+    fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 48, pointerId: 6 });
+    fireEvent.pointerMove(node, { clientX: 62, clientY: 67, pointerId: 6 });
+    expect(onClipFadeShapeChange).toHaveBeenCalledTimes(1);
+    const [clipId, side, shape] = onClipFadeShapeChange.mock.calls[0];
+    expect(clipId).toBe(1);
+    expect(side).toBe('in');
+    expect(shape).toBeCloseTo(2, 1);
+    fireEvent.pointerUp(node, { pointerId: 6 });
+  });
+
+  it('no quick-fade shape node on unselected clips or crossfaded edges', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            // selected but its OUT edge is crossfaded → no node there
+            { id: 1, name: 'A', start: 0, duration: 5, fadeOut: 1, selected: true },
+            // unselected → no node despite the fade
+            { id: 2, name: 'B', start: 3, duration: 4, fadeIn: 1 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    expect(container.querySelector('[data-quickfade-node]')).toBeNull();
+  });
+
   it('fade handle pointerdown does not leak into the clip mousedown path', () => {
     const parentSpy = vi.fn();
     const { container } = render(

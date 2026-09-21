@@ -191,6 +191,10 @@ export interface TrackProps {
     inShape: number,
   ) => void;
 
+  /** Vertical drag on a quick fade's midpoint node — bows that fade's
+   *  curve (shape exponent; the extent stays the handle's job). */
+  onClipFadeShapeChange?: (clipId: string | number, side: 'in' | 'out', shape: number) => void;
+
   /**
    * Tab index for keyboard navigation
    */
@@ -408,6 +412,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipFadeChange,
   onCrossfadeRoll,
   onCrossfadeShapeChange,
+  onClipFadeShapeChange,
   tabIndex,
   onFocusChange,
   onClipMove,
@@ -546,6 +551,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // Which clip's fade handle is being dragged (keeps the handles
   // visible while the pointer is captured, even off-hover)
   const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
+  // Quick-fade shape node being dragged (kept visible off-selection)
+  const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
 
   // Fade curves are DERIVED per clip edge (utils/clipCrossfades.ts):
   // an authored fadeIn/fadeOut owns its edge; an edge overlap supplies
@@ -695,6 +702,94 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     });
   };
 
+
+  // Shape node on a SELECTED clip's quick fade (free edges only — a
+  // crossfaded edge's shape belongs to the intersection node). Sits at
+  // the curve's midpoint; vertical drag bows the curve, extents pinned.
+  const renderQuickFadeNodes = () => {
+    if (!onClipFadeShapeChange) return null;
+    const CLIP_HEADER_H = 20;
+    const bodyTop = CLIP_HEADER_H + 1;
+    const bodyHeight = Math.max(0, height - bodyTop - 1);
+    const NODE_R = 5;
+    const MID_BASE = Math.cos(Math.PI / 4); // both sin/cos at t=0.5
+    const nodes: React.ReactNode[] = [];
+    for (const clip of clips) {
+      for (const side of ['in', 'out'] as const) {
+        const fade = Math.max(0, (side === 'in' ? clip.fadeIn : clip.fadeOut) ?? 0);
+        if (fade <= 0) continue;
+        if (crossfadedEdges.has(`${clip.id}:${side}`)) continue;
+        const dragKey = `${clip.id}:${side}`;
+        if (!clip.selected && shapeDrag !== dragKey) continue;
+        const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? 1;
+        const clampedFade = Math.min(fade, clip.duration);
+        const midTime = side === 'in'
+          ? clip.start + clampedFade / 2
+          : clip.start + clip.duration - clampedFade / 2;
+        const gain = MID_BASE ** shape;
+        const x = CLIP_CONTENT_OFFSET + midTime * pixelsPerSecond;
+        const y = bodyTop + (1 - gain) * bodyHeight;
+        nodes.push(
+          <div
+            key={`quickfade-node-${dragKey}`}
+            data-quickfade-node={side}
+            data-clip-ref={clip.id}
+            role="slider"
+            aria-label={side === 'in' ? 'Quick fade in shape' : 'Quick fade out shape'}
+            aria-valuenow={shape}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.stopPropagation();
+              e.preventDefault();
+              const nodeEl = e.currentTarget as HTMLElement;
+              try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+              setShapeDrag(dragKey);
+              const startClientY = e.clientY;
+              const startGain = gain;
+              const onMove = (ev: PointerEvent) => {
+                const g = Math.max(0.05, Math.min(0.95, startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight)));
+                const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(MID_BASE)));
+                if (Number.isFinite(next)) onClipFadeShapeChange(clip.id, side, next);
+              };
+              const onUp = () => {
+                nodeEl.removeEventListener('pointermove', onMove);
+                nodeEl.removeEventListener('pointerup', onUp);
+                setShapeDrag(null);
+              };
+              nodeEl.addEventListener('pointermove', onMove);
+              nodeEl.addEventListener('pointerup', onUp);
+            }}
+            style={{
+              position: 'absolute',
+              left: `${Math.round(x - NODE_R - 3)}px`,
+              top: `${Math.round(y - NODE_R - 3)}px`,
+              width: (NODE_R + 3) * 2,
+              height: (NODE_R + 3) * 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'ns-resize',
+              zIndex: 460,
+            }}
+          >
+            <div
+              style={{
+                width: NODE_R * 2,
+                height: NODE_R * 2,
+                borderRadius: '50%',
+                background: '#FFFFFF',
+                border: '1.5px solid rgba(0, 0, 0, 0.6)',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>,
+        );
+      }
+    }
+    return nodes.length > 0 ? nodes : null;
+  };
 
   const renderFadeCurveOverlays = () => {
     if (fadeCurves.length === 0) return null;
@@ -1629,6 +1724,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         {renderClips()}
         {renderFadeCurveOverlays()}
         {renderCrossfadeNodes()}
+        {renderQuickFadeNodes()}
         {renderEnvelopeInteractionLayers()}
 
         {/* Split view divider - draggable horizontal line */}

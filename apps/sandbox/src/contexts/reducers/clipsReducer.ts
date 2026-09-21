@@ -241,6 +241,25 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       return { ...state, tracks: newTracks };
     }
 
+    case 'SET_CLIP_FADE_SHAPE': {
+      // Quick-fade shape node: bow one edge's curve. ~1 clears the
+      // field (equal-power default) so stored projects stay clean.
+      const { trackIndex, clipId, side, shape } = action.payload;
+      const track = state.tracks[trackIndex];
+      if (!track) return state;
+      const value = Math.abs(shape - 1) < 0.01 ? undefined : shape;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...track,
+        clips: track.clips.map(clip =>
+          clip.id === clipId
+            ? { ...clip, ...(side === 'in' ? { fadeInShape: value } : { fadeOutShape: value }) }
+            : clip
+        ),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
     case 'APPLY_CLIP_PLACEMENT': {
       const { placements, mutations } = action.payload;
 

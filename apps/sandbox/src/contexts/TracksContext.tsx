@@ -285,6 +285,7 @@ export type TracksAction =
   | { type: 'SET_CLIP_FADE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; seconds: number } }
   | { type: 'ROLL_CROSSFADE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; deltaSeconds: number } }
   | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: number; inShape: number } }
+  | { type: 'SET_CLIP_FADE_SHAPE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; shape: number } }
   | {
       type: 'APPLY_CLIP_PLACEMENT';
       payload: {
@@ -418,6 +419,7 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'SET_CLIP_FADE',
   'ROLL_CROSSFADE',
   'SET_CROSSFADE_SHAPE',
+  'SET_CLIP_FADE_SHAPE',
   'MOVE_SELECTED_CLIPS',
   'MOVE_SELECTED_CLIPS_TO_TRACK',
   'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
@@ -459,6 +461,7 @@ const UNDO_COALESCE_GROUP: Partial<Record<TracksAction['type'], string>> = {
   SET_CLIP_FADE: 'clip-fade-drag',
   ROLL_CROSSFADE: 'crossfade-roll',
   SET_CROSSFADE_SHAPE: 'crossfade-shape',
+  SET_CLIP_FADE_SHAPE: 'clip-fade-shape',
   UPDATE_CLIP_ENVELOPE_POINTS: 'envelope-drag',
   UPDATE_TRACK_HEIGHT: 'track-resize',
   UPDATE_CHANNEL_SPLIT_RATIO: 'track-resize',
