@@ -1022,7 +1022,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 : undefined
             }
           />
-          {renderClipFades(clip, clipWidth, isClipHovered)}
+          {renderClipFades(clip, clipWidth, clipSelected)}
         </div>
       );
     });
@@ -1032,17 +1032,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // wrapper so they stack with the clip (a buried clip's fades hide
   // under the top clip, like the rest of its body). Same visual
   // language as the crossfade X: light veil + equal-power curve.
-  const renderClipFades = (clip: TrackClip, clipWidth: number, isClipHovered: boolean) => {
+  const renderClipFades = (clip: TrackClip, clipWidth: number, clipSelected: boolean) => {
     if (isMidiTrack) return null;
     const HEADER_H = 20;
     const bodyH = Math.max(0, height - HEADER_H);
     const fadeInSec = Math.max(0, clip.fadeIn ?? 0);
     const fadeOutSec = Math.max(0, clip.fadeOut ?? 0);
-    // Handles are always in the DOM when fades are editable; Track.css
-    // reveals them on clip :hover (no hover re-renders), and the inline
-    // opacity keeps them up while the pointer is captured mid-drag.
-    const showHandles = !!onClipFadeChange;
-    const handlesForcedVisible = isClipHovered || fadeDragClipId === clip.id;
+    // Handles show on the SELECTED clip only (2026-09-21 decision);
+    // the drag guard keeps them up while the pointer is captured.
+    const showHandles = !!onClipFadeChange && (clipSelected || fadeDragClipId === clip.id);
 
     const curve = (side: 'in' | 'out', seconds: number) => {
       const w = Math.max(1, Math.round(seconds * pixelsPerSecond));
@@ -1081,7 +1079,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       return (
         <div
           data-fade-handle={side}
-          className="clip-fade-handle"
           role="slider"
           aria-label={side === 'in' ? 'Fade in' : 'Fade out'}
           aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
@@ -1125,7 +1122,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             height: 16,
             cursor: 'ew-resize',
             zIndex: 20,
-            opacity: handlesForcedVisible ? 1 : undefined,
           }}
         >
           <FadeHandleGlyph mirrored={side === 'out'} />

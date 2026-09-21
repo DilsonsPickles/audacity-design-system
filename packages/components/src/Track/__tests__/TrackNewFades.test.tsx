@@ -37,31 +37,32 @@ describe('clip fades', () => {
     expect(fadeOutOverlay!.style.width).toBe('50px');
   });
 
-  it('an unfaded clip has no curve overlays; handles exist but are CSS-hidden until hover', () => {
+  it('handles show for the SELECTED clip only', () => {
     const { container } = render(
       <Providers>
         <TrackNew
-          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4 }]}
-          width={800}
+          clips={[
+            { id: 1, name: 'Clip 1', start: 0, duration: 4, selected: true },
+            { id: 2, name: 'Clip 2', start: 5, duration: 4 },
+          ]}
+          width={1200}
           trackIndex={0}
           pixelsPerSecond={100}
           onClipFadeChange={vi.fn()}
         />
       </Providers>,
     );
-    expect(container.querySelector('[data-fade-overlay]')).toBeNull();
-    // Track.css hides .clip-fade-handle at rest and reveals it on clip
-    // :hover — presence + the class is the testable contract in jsdom
-    const handles = container.querySelectorAll('[data-fade-handle]');
-    expect(handles).toHaveLength(2);
-    handles.forEach((h) => expect(h.classList.contains('clip-fade-handle')).toBe(true));
+    const clip1 = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
+    expect(clip1.querySelectorAll('[data-fade-handle]')).toHaveLength(2);
+    expect(clip2.querySelector('[data-fade-handle]')).toBeNull();
   });
 
   it('handles are absent entirely when fades are not editable (no onClipFadeChange)', () => {
     const { container } = render(
       <Providers>
         <TrackNew
-          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4 }]}
+          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, selected: true }]}
           width={800}
           trackIndex={0}
           pixelsPerSecond={100}
@@ -76,11 +77,10 @@ describe('clip fades', () => {
     const { container } = render(
       <Providers>
         <TrackNew
-          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4 }]}
+          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, selected: true }]}
           width={800}
           trackIndex={0}
           pixelsPerSecond={100}
-          hoveredClipId={1}
           onClipFadeChange={onClipFadeChange}
         />
       </Providers>,
@@ -115,11 +115,10 @@ describe('clip fades', () => {
     const { container } = render(
       <Providers>
         <TrackNew
-          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, fadeIn: 3 }]}
+          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, fadeIn: 3, selected: true }]}
           width={800}
           trackIndex={0}
           pixelsPerSecond={100}
-          hoveredClipId={1}
           onClipFadeChange={onClipFadeChange}
         />
       </Providers>,
@@ -149,11 +148,10 @@ describe('clip fades', () => {
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
         <div onMouseDown={parentSpy}>
           <TrackNew
-            clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4 }]}
+            clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, selected: true }]}
             width={800}
             trackIndex={0}
             pixelsPerSecond={100}
-            hoveredClipId={1}
             onClipFadeChange={vi.fn()}
           />
         </div>

@@ -38,13 +38,3 @@
   display: block;
   cursor: text;
 }
-
-/* Clip fade handles: present whenever fades are editable, revealed on
- * clip hover. A mid-drag handle stays visible via inline opacity. */
-.clip-fade-handle {
-  opacity: 0;
-  transition: opacity 0.1s ease;
-}
-[data-clip-id]:hover .clip-fade-handle {
-  opacity: 1;
-}
