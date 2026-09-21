@@ -35,6 +35,7 @@ export function useElectronMenuBridge(options: UseElectronMenuBridgeOptions): vo
     'view:toggle-effects': () => menuByLabel.get('Show effects')?.(),
     'view:toggle-rms': () => menuByLabel.get('Show RMS in waveform')?.(),
     'view:toggle-rulers': () => menuByLabel.get('Show vertical rulers')?.(),
+    'view:toggle-quick-fade-handles': () => menuByLabel.get('Show quick fade handles')?.(),
     'view:toggle-piano-roll': () => menuByLabel.get('Show piano roll')?.(),
     'record:toggle-lead-in': () => menuByLabel.get('Enable lead in time')?.(),
     'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),

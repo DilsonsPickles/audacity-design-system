@@ -280,6 +280,7 @@ function setApplicationMenu() {
         { label: 'Show Effects', click: send('view:toggle-effects') },
         { label: 'Show RMS in Waveform', click: send('view:toggle-rms') },
         { label: 'Show Vertical Rulers', click: send('view:toggle-rulers') },
+        { label: 'Show Quick Fade Handles', click: send('view:toggle-quick-fade-handles') },
         { label: 'Show Piano Roll', click: send('view:toggle-piano-roll') },
         { type: 'separator' },
         { role: 'reload' },
