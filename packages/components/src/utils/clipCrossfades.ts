@@ -84,32 +84,39 @@ export interface FadeCurveRegion {
   shape: number;
 }
 
-/** ONE fade per clip edge — authored wins, the overlap supplies the
- *  default (2026-09-21 "inherit" decision): every authored fadeIn/
- *  fadeOut yields a region at its own extent, and each edge overlap
- *  contributes a default equal-power ramp only for a side whose clip
- *  has NO authored fade on that edge. This is the drawn mirror of
- *  crossfadeGain.ts in @audacity-ui/audio — keep them in agreement. */
+/** ONE fade per clip edge — the CROSSFADE wins (2026-09-21 "consume"
+ *  decision, reversing the earlier inherit rule): every edge overlap
+ *  draws its equal-power ramps over the shared region on BOTH sides;
+ *  an authored quick fade on a crossfaded edge is SUPPRESSED (stored
+ *  value untouched — separating the clips brings it back). Shape
+ *  exponents still apply to the crossfade ramps (they are the
+ *  intersection node's control). Free edges keep their authored
+ *  fades. This is the drawn mirror of crossfadeGain.ts in
+ *  @audacity-ui/audio — keep them in agreement. */
 export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurveRegion[] {
   const regions: FadeCurveRegion[] = [];
-  for (const c of clips) {
-    const fadeIn = Math.max(0, c.fadeIn ?? 0);
-    const fadeOut = Math.max(0, c.fadeOut ?? 0);
-    if (fadeIn > EPSILON) {
-      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + Math.min(fadeIn, c.duration), authored: true, shape: c.fadeInShape ?? 1 });
-    }
-    if (fadeOut > EPSILON) {
-      regions.push({ clipId: c.id, side: 'out', start: c.start + Math.max(0, c.duration - fadeOut), end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? 1 });
-    }
-  }
+  const crossfadedIn = new Set<string>();
+  const crossfadedOut = new Set<string>();
   for (const r of computeCrossfades(clips)) {
     const outClip = clips.find((c) => c.id === r.outgoingClipId);
     const inClip = clips.find((c) => c.id === r.incomingClipId);
-    if (outClip && Math.max(0, outClip.fadeOut ?? 0) <= EPSILON) {
+    if (outClip) {
+      crossfadedOut.add(String(outClip.id));
       regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false, shape: outClip.fadeOutShape ?? 1 });
     }
-    if (inClip && Math.max(0, inClip.fadeIn ?? 0) <= EPSILON) {
+    if (inClip) {
+      crossfadedIn.add(String(inClip.id));
       regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false, shape: inClip.fadeInShape ?? 1 });
+    }
+  }
+  for (const c of clips) {
+    const fadeIn = Math.max(0, c.fadeIn ?? 0);
+    const fadeOut = Math.max(0, c.fadeOut ?? 0);
+    if (fadeIn > EPSILON && !crossfadedIn.has(String(c.id))) {
+      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + Math.min(fadeIn, c.duration), authored: true, shape: c.fadeInShape ?? 1 });
+    }
+    if (fadeOut > EPSILON && !crossfadedOut.has(String(c.id))) {
+      regions.push({ clipId: c.id, side: 'out', start: c.start + Math.max(0, c.duration - fadeOut), end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? 1 });
     }
   }
   return regions.sort((a, b) => a.start - b.start || String(a.clipId).localeCompare(String(b.clipId)));

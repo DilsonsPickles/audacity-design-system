@@ -44,7 +44,7 @@ describe('computeCrossfades', () => {
   });
 });
 
-describe('computeFadeCurves — one fade per edge, authored wins', () => {
+describe('computeFadeCurves — one fade per edge, the crossfade wins', () => {
   it('a plain edge overlap yields the two default ramps over the shared region', () => {
     expect(computeFadeCurves([clip(1, 0, 5), clip(2, 3, 4)])).toEqual([
       { clipId: 1, side: 'out', start: 3, end: 5, authored: false, shape: 1 },
@@ -52,11 +52,11 @@ describe('computeFadeCurves — one fade per edge, authored wins', () => {
     ]);
   });
 
-  it('an authored fade owns its edge: no default ramp for that side, own extent kept', () => {
-    const faded = { ...clip(1, 0, 5), fadeOut: 3 }; // longer than the 2s overlap
+  it('an authored fade on a crossfaded edge is CONSUMED: the overlap ramp draws instead', () => {
+    const faded = { ...clip(1, 0, 5), fadeOut: 3 }; // authored, but the edge is crossfaded
     const curves = computeFadeCurves([faded, clip(2, 3, 4)]);
     expect(curves).toEqual([
-      { clipId: 1, side: 'out', start: 2, end: 5, authored: true, shape: 1 },
+      { clipId: 1, side: 'out', start: 3, end: 5, authored: false, shape: 1 },
       { clipId: 2, side: 'in', start: 3, end: 5, authored: false, shape: 1 },
     ]);
   });
@@ -69,7 +69,7 @@ describe('computeFadeCurves — one fade per edge, authored wins', () => {
     ]);
   });
 
-  it('a fade on the NON-overlapped edge coexists with the default ramp', () => {
+  it('a fade on the NON-overlapped (free) edge coexists with the crossfade ramps', () => {
     const curves = computeFadeCurves([{ ...clip(1, 0, 5), fadeIn: 1 }, clip(2, 3, 4)]);
     expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 1, authored: true, shape: 1 });
     expect(curves).toContainEqual({ clipId: 1, side: 'out', start: 3, end: 5, authored: false, shape: 1 });

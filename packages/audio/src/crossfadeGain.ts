@@ -51,6 +51,8 @@ export function computeClipGainSegments(
   clips: readonly OverlapClipLike[],
 ): Map<string, ClipGainSegment[]> {
   const out = new Map<string, ClipGainSegment[]>();
+  const crossfadedIn = new Set<string>();
+  const crossfadedOut = new Set<string>();
   const push = (clip: OverlapClipLike, startAbs: number, endAbs: number, shape: ClipGainSegment['shape']) => {
     const key = String(clip.id);
     const trimStart = clip.trimStart ?? 0;
@@ -86,25 +88,29 @@ export function computeClipGainSegments(
       }
 
       const [earlier, later] = lower.start <= upper.start ? [lower, upper] : [upper, lower];
-      // ONE fade per clip edge — authored wins ("inherit", 2026-09-21):
-      // the overlap-default ramp applies only to a side whose clip has
-      // no authored fade on that edge; an authored fade is honoured at
-      // its own extent by the per-clip pass below (and never doubles up)
-      if (Math.max(0, earlier.fadeOut ?? 0) <= EPSILON) push(earlier, s, e, 'fadeOut');
-      if (Math.max(0, later.fadeIn ?? 0) <= EPSILON) push(later, s, e, 'fadeIn');
+      // ONE fade per clip edge — the CROSSFADE wins ("consume",
+      // 2026-09-21, reversing the earlier inherit rule): both sides
+      // always ramp over the shared region; an authored quick fade on
+      // a crossfaded edge is SUPPRESSED below (stored value untouched
+      // — separating the clips brings it back). Shape exponents still
+      // apply via `push`.
+      crossfadedOut.add(String(earlier.id));
+      crossfadedIn.add(String(later.id));
+      push(earlier, s, e, 'fadeOut');
+      push(later, s, e, 'fadeIn');
     }
   }
 
-  // User-set per-clip fades — same audible primitive, no neighbour
-  // required. Timeline-relative [0, fadeIn] and [duration - fadeOut,
-  // duration] map through `push` into source time like everything else.
+  // User-set per-clip fades on FREE edges — same audible primitive, no
+  // neighbour required. Timeline-relative [0, fadeIn] and
+  // [duration - fadeOut, duration] map through `push` into source time.
   for (const clip of clips) {
     const fadeIn = Math.max(0, clip.fadeIn ?? 0);
     const fadeOut = Math.max(0, clip.fadeOut ?? 0);
-    if (fadeIn > EPSILON) {
+    if (fadeIn > EPSILON && !crossfadedIn.has(String(clip.id))) {
       push(clip, clip.start, clip.start + Math.min(fadeIn, clip.duration), 'fadeIn');
     }
-    if (fadeOut > EPSILON) {
+    if (fadeOut > EPSILON && !crossfadedOut.has(String(clip.id))) {
       push(clip, clip.start + Math.max(0, clip.duration - fadeOut), clip.start + clip.duration, 'fadeOut');
     }
   }

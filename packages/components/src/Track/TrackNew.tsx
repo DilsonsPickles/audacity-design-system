@@ -569,17 +569,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const outClip = clips.find((c) => c.id === r.outgoingClipId);
       const inClip = clips.find((c) => c.id === r.incomingClipId);
       if (!outClip || !inClip) return null;
-      const outFade = Math.max(0, outClip.fadeOut ?? 0);
-      const inFade = Math.max(0, inClip.fadeIn ?? 0);
-      const outEnd = outClip.start + outClip.duration;
-      const outRegion = outFade > 0
-        ? { start: outEnd - Math.min(outFade, outClip.duration), end: outEnd }
-        : { start: r.start, end: r.end };
-      const inRegion = inFade > 0
-        ? { start: inClip.start, end: inClip.start + Math.min(inFade, inClip.duration) }
-        : { start: r.start, end: r.end };
-      const shapedOut = { ...outRegion, shape: outClip.fadeOutShape ?? 1 };
-      const shapedIn = { ...inRegion, shape: inClip.fadeInShape ?? 1 };
+      // The crossfade CONSUMES authored extents (2026-09-21): both
+      // ramps always span the overlap; only the shapes carry over
+      const shapedOut = { start: r.start, end: r.end, shape: outClip.fadeOutShape ?? 1 };
+      const shapedIn = { start: r.start, end: r.end, shape: inClip.fadeInShape ?? 1 };
       const point = crossfadeIntersection(shapedOut, shapedIn, r.start, r.end);
       return {
         outgoingClipId: r.outgoingClipId,

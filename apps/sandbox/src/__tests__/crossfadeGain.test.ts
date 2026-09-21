@@ -59,14 +59,14 @@ describe('computeClipGainSegments — the audible mirror of the drawn X', () => 
     expect(segs.get('1')).toContainEqual({ startSec: 3, endSec: 5, shape: 'fadeOut' });
   });
 
-  it('an authored fade on the overlapped edge is honoured — no default ramp, no double attenuation', () => {
-    // clip 1 has a 3s authored fade-out; overlap with clip 2 covers 3..5
+  it('an authored fade on the crossfaded edge is CONSUMED — the overlap ramp plays instead', () => {
+    // clip 1 has a 3s authored fade-out, but its tail is crossfaded
     const a = { ...clip(1, 0, 5), fadeOut: 3 };
     const b = clip(2, 3, 4);
     const segs = computeClipGainSegments([a, b]);
-    // ONLY the authored segment for clip 1's tail (source 2..5), no 3..5 default
-    expect(segs.get('1')).toEqual([{ startSec: 2, endSec: 5, shape: 'fadeOut' }]);
-    // clip 2's head is unauthored → default ramp over the overlap
+    // ONLY the overlap ramp (source 3..5); the authored extent is
+    // suppressed (stored value untouched — it returns on separation)
+    expect(segs.get('1')).toEqual([{ startSec: 3, endSec: 5, shape: 'fadeOut' }]);
     expect(segs.get('2')).toEqual([{ startSec: 0, endSec: 2, shape: 'fadeIn' }]);
   });
 });
