@@ -51,6 +51,11 @@ export interface Clip {
   deletedRegions?: DeletedRegion[]; // Sorted, non-overlapping deleted regions
   color?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
   groupId?: string;
+  /** Clip fade lengths in seconds (equal-power; same curves as the
+   *  overlap crossfade). Absent/0 = no fade. Baked into playback and
+   *  mixdown by @audacity-ui/audio's crossfadeGain. */
+  fadeIn?: number;
+  fadeOut?: number;
   /**
    * Original clip id that owns the audio buffer. When a clip is split,
    * the right segment gets a new id but should still play from the
@@ -273,6 +278,7 @@ export type TracksAction =
    *  redo restores it fully completed. */
   | { type: 'UPDATE_RECORDING_CLIP'; payload: { trackIndex: number; clipId: number; updates: Partial<Clip> } }
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
+  | { type: 'SET_CLIP_FADE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; seconds: number } }
   | {
       type: 'APPLY_CLIP_PLACEMENT';
       payload: {
@@ -403,6 +409,7 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'MOVE_CLIP',
   'TRIM_CLIP',
   'STRETCH_CLIP',
+  'SET_CLIP_FADE',
   'MOVE_SELECTED_CLIPS',
   'MOVE_SELECTED_CLIPS_TO_TRACK',
   'MOVE_SELECTED_CLIPS_TO_NEW_TRACK',
@@ -441,6 +448,7 @@ const UNDO_COALESCE_GROUP: Partial<Record<TracksAction['type'], string>> = {
   DELETE_PROVISIONAL_TRACK: 'clip-drag',
   TRIM_CLIP: 'clip-drag',
   STRETCH_CLIP: 'clip-drag',
+  SET_CLIP_FADE: 'clip-fade-drag',
   UPDATE_CLIP_ENVELOPE_POINTS: 'envelope-drag',
   UPDATE_TRACK_HEIGHT: 'track-resize',
   UPDATE_CHANNEL_SPLIT_RATIO: 'track-resize',

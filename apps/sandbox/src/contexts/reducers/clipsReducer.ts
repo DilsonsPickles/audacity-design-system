@@ -174,6 +174,29 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       return { ...state, tracks: newTracks, timeSelection: newTimeSelection, clipDurationIndicator: newClipDurationIndicator };
     }
 
+    case 'SET_CLIP_FADE': {
+      const { trackIndex, clipId, side, seconds } = action.payload;
+      const track = state.tracks[trackIndex];
+      if (!track) return state;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...track,
+        clips: track.clips.map(clip =>
+          clip.id === clipId
+            ? {
+                ...clip,
+                // 0 clears the field (undefined is dropped by JSON
+                // persistence, keeping stored projects clean)
+                ...(side === 'in'
+                  ? { fadeIn: seconds > 0 ? seconds : undefined }
+                  : { fadeOut: seconds > 0 ? seconds : undefined }),
+              }
+            : clip
+        ),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
     case 'APPLY_CLIP_PLACEMENT': {
       const { placements, mutations } = action.payload;
 

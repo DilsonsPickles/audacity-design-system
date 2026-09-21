@@ -714,6 +714,12 @@ const CanvasTrack = React.memo(function CanvasTrack({
 
           // The actual trimming happens in the mousemove handler
         }}
+        onClipFadeChange={(clipId, side, seconds) => {
+          dispatch({
+            type: 'SET_CLIP_FADE',
+            payload: { trackIndex, clipId: clipId as number, side, seconds },
+          });
+        }}
         onClipStretchEdge={(clipId, edge) => {
           // Only initialize once per drag — Clip.tsx calls back on every
           // mousemove. Subsequent mousemoves are handled inside the

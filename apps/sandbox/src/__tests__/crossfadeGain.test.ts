@@ -41,6 +41,23 @@ describe('computeClipGainSegments — the audible mirror of the drawn X', () => 
   it('butt joints and gaps produce nothing', () => {
     expect(computeClipGainSegments([clip(1, 0, 5), clip(2, 5, 3)]).size).toBe(0);
   });
+
+  it('user-set clip fades become segments in source time', () => {
+    const faded = { ...clip(1, 2, 6, 1), fadeIn: 1.5, fadeOut: 2 };
+    const segs = computeClipGainSegments([faded]).get('1')!;
+    // fadeIn: clip-relative 0..1.5 → source 1..2.5
+    expect(segs).toContainEqual({ startSec: 1, endSec: 2.5, shape: 'fadeIn' });
+    // fadeOut: clip-relative 4..6 → source 5..7
+    expect(segs).toContainEqual({ startSec: 5, endSec: 7, shape: 'fadeOut' });
+  });
+
+  it('clip fades compose with an overlap crossfade on the same clip', () => {
+    const a = { ...clip(1, 0, 5), fadeIn: 1 };
+    const b = clip(2, 3, 4);
+    const segs = computeClipGainSegments([a, b]);
+    expect(segs.get('1')).toContainEqual({ startSec: 0, endSec: 1, shape: 'fadeIn' });
+    expect(segs.get('1')).toContainEqual({ startSec: 3, endSec: 5, shape: 'fadeOut' });
+  });
 });
 
 describe('applyGainSegmentsToChannel', () => {

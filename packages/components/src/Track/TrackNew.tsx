@@ -16,6 +16,21 @@ import './Track.css';
 
 const EMPTY_NUMBER_ARRAY: number[] = [];
 
+/** Fade handle glyph (design-provided). The 'out' side renders mirrored. */
+const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
+  >
+    <path d="M15.5 6.5V15.5H6.5V6.5H15.5Z" fill="#FFFFFF" stroke="#14151A" />
+    <path d="M16 6.5C12.8421 6.5 6.5 12.8421 6.5 16V6.5H16Z" fill="#9295A6" fillOpacity="0.75" stroke="#14151A" />
+  </svg>
+);
+
 export interface TrackClip {
   id: string | number;
   name: string;
@@ -30,6 +45,10 @@ export interface TrackClip {
   waveformRightRms?: number[];
   envelopePoints?: Array<{ time: number; db: number }>;
   midiNotes?: MidiNote[];
+  /** Clip fade lengths in seconds (equal-power, same curves as the
+   *  crossfade X). Absent/0 = no fade. */
+  fadeIn?: number;
+  fadeOut?: number;
 }
 
 export interface TrackProps {
@@ -149,6 +168,10 @@ export interface TrackProps {
   /** Visual time-stretch handles. Mirrors onClipTrimEdge — Canvas hooks this
    *  up to a stretch handler that updates duration + stretchFactor. */
   onClipStretchEdge?: (clipId: string | number, edge: 'left' | 'right', clientX: number) => void;
+
+  /** Called while a fade handle is dragged — `seconds` is the new fade
+   *  length for that side (0 removes the fade). */
+  onClipFadeChange?: (clipId: string | number, side: 'in' | 'out', seconds: number) => void;
 
   /**
    * Tab index for keyboard navigation
@@ -364,6 +387,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipMenuClick,
   onClipTrimEdge,
   onClipStretchEdge,
+  onClipFadeChange,
   tabIndex,
   onFocusChange,
   onClipMove,
@@ -498,6 +522,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     clips.forEach((c, i) => z.set(c.id, 2 + i));
     return z;
   }, [clips]);
+
+  // Which clip's fade handle is being dragged (keeps the handles
+  // visible while the pointer is captured, even off-hover)
+  const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
 
   // Crossfade regions are DERIVED from clip geometry (see
   // utils/clipCrossfades.ts): a partial edge overlap between two clips
@@ -994,9 +1022,125 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 : undefined
             }
           />
+          {renderClipFades(clip, clipWidth, isClipHovered)}
         </div>
       );
     });
+  };
+
+  // Per-clip fade curves + drag handles. Rendered INSIDE the clip's
+  // wrapper so they stack with the clip (a buried clip's fades hide
+  // under the top clip, like the rest of its body). Same visual
+  // language as the crossfade X: light veil + equal-power curve.
+  const renderClipFades = (clip: TrackClip, clipWidth: number, isClipHovered: boolean) => {
+    if (isMidiTrack) return null;
+    const HEADER_H = 20;
+    const bodyH = Math.max(0, height - HEADER_H);
+    const fadeInSec = Math.max(0, clip.fadeIn ?? 0);
+    const fadeOutSec = Math.max(0, clip.fadeOut ?? 0);
+    // Handles are always in the DOM when fades are editable; Track.css
+    // reveals them on clip :hover (no hover re-renders), and the inline
+    // opacity keeps them up while the pointer is captured mid-drag.
+    const showHandles = !!onClipFadeChange;
+    const handlesForcedVisible = isClipHovered || fadeDragClipId === clip.id;
+
+    const curve = (side: 'in' | 'out', seconds: number) => {
+      const w = Math.max(1, Math.round(seconds * pixelsPerSecond));
+      return (
+        <div
+          data-fade-overlay={side}
+          style={{
+            position: 'absolute',
+            top: HEADER_H,
+            left: side === 'in' ? 0 : undefined,
+            right: side === 'out' ? 0 : undefined,
+            width: `${Math.min(w, Math.round(clipWidth))}px`,
+            height: `${bodyH}px`,
+            pointerEvents: 'none',
+            background: 'rgba(255, 255, 255, 0.28)',
+          }}
+        >
+          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ display: 'block' }}>
+            <path
+              d={fadeCurvePath(side)}
+              fill="none"
+              stroke="rgba(0, 0, 0, 0.45)"
+              strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        </div>
+      );
+    };
+
+    const handle = (side: 'in' | 'out') => {
+      const boundaryX = side === 'in'
+        ? fadeInSec * pixelsPerSecond
+        : clipWidth - fadeOutSec * pixelsPerSecond;
+      const left = Math.round(Math.max(0, Math.min(clipWidth - 16, side === 'in' ? boundaryX : boundaryX - 16)));
+      return (
+        <div
+          data-fade-handle={side}
+          className="clip-fade-handle"
+          role="slider"
+          aria-label={side === 'in' ? 'Fade in' : 'Fade out'}
+          aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
+          // The clip body is the time-selection surface — a fade drag
+          // must not bubble into it (mirrors the trim handles)
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            e.preventDefault();
+            const handleEl = e.currentTarget as HTMLElement;
+            const wrapper = handleEl.closest('[data-clip-id]') as HTMLElement | null;
+            if (!wrapper) return;
+            const rect = wrapper.getBoundingClientRect();
+            try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+            setFadeDragClipId(clip.id);
+            // The clip is static during a fade drag, so the rect and the
+            // opposite fade captured here stay valid for the session
+            const otherFade = side === 'in' ? fadeOutSec : fadeInSec;
+            const onMove = (ev: PointerEvent) => {
+              const rel = (ev.clientX - rect.left) / pixelsPerSecond;
+              let seconds = side === 'in' ? rel : clip.duration - rel;
+              seconds = Math.max(0, Math.min(clip.duration - otherFade, seconds));
+              if (seconds < 0.02) seconds = 0; // snap tiny fades away
+              onClipFadeChange?.(clip.id, side, seconds);
+            };
+            const onUp = () => {
+              handleEl.removeEventListener('pointermove', onMove);
+              handleEl.removeEventListener('pointerup', onUp);
+              setFadeDragClipId(null);
+            };
+            handleEl.addEventListener('pointermove', onMove);
+            handleEl.addEventListener('pointerup', onUp);
+          }}
+          style={{
+            position: 'absolute',
+            top: HEADER_H + 2,
+            left: `${left}px`,
+            width: 16,
+            height: 16,
+            cursor: 'ew-resize',
+            zIndex: 20,
+            opacity: handlesForcedVisible ? 1 : undefined,
+          }}
+        >
+          <FadeHandleGlyph mirrored={side === 'out'} />
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {fadeInSec > 0 && curve('in', fadeInSec)}
+        {fadeOutSec > 0 && curve('out', fadeOutSec)}
+        {showHandles && handle('in')}
+        {showHandles && handle('out')}
+      </>
+    );
   };
 
   // Render envelope interaction layers for all clips at track level

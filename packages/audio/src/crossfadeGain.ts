@@ -25,6 +25,10 @@ export interface OverlapClipLike {
   start: number;
   duration: number;
   trimStart?: number;
+  /** User-set clip fades in seconds (equal-power, same curves as
+   *  overlap crossfades). Absent/0 = none. */
+  fadeIn?: number;
+  fadeOut?: number;
 }
 
 export interface ClipGainSegment {
@@ -74,6 +78,20 @@ export function computeClipGainSegments(
       const [earlier, later] = lower.start <= upper.start ? [lower, upper] : [upper, lower];
       push(earlier, s, e, 'fadeOut');
       push(later, s, e, 'fadeIn');
+    }
+  }
+
+  // User-set per-clip fades — same audible primitive, no neighbour
+  // required. Timeline-relative [0, fadeIn] and [duration - fadeOut,
+  // duration] map through `push` into source time like everything else.
+  for (const clip of clips) {
+    const fadeIn = Math.max(0, clip.fadeIn ?? 0);
+    const fadeOut = Math.max(0, clip.fadeOut ?? 0);
+    if (fadeIn > EPSILON) {
+      push(clip, clip.start, clip.start + Math.min(fadeIn, clip.duration), 'fadeIn');
+    }
+    if (fadeOut > EPSILON) {
+      push(clip, clip.start + Math.max(0, clip.duration - fadeOut), clip.start + clip.duration, 'fadeOut');
     }
   }
   return out;
