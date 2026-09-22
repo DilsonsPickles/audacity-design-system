@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { effectiveTrackHeight, folderChildIndices, isHiddenByCollapse, moveTrackWithFolders } from '../utils/trackFolders';
+import { folderChildIndices, isHiddenByCollapse, moveTrackWithFolders, normalizeFolders } from '../utils/trackFolders';
 import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -53,8 +53,7 @@ export interface UseTrackPanelHandlersReturn {
   /** Live preview while a reorder drag is in flight (folders v1) */
   onDragReorderMove: (clientY: number, index: number) => void;
   onDragReorderEnd: () => void;
-  dropIndicator: { aboveTrackIndex: number | null; indented: boolean; gapHeight: number } | null;
-  dragGhost: { trackIndex: number; clientY: number; indented: boolean; liftedIndices: number[] } | null;
+  dragPreview: { order: number[]; ghostIndices: number[]; indented: boolean; fromIndex: number; toIndex: number } | null;
   onReorderVertical: (direction: 'up' | 'down', index: number) => void;
   onNavigateVertical: (direction: 'up' | 'down', shiftKey: boolean | undefined, index: number) => void;
   onAddLabelClick: (index: number) => void;
@@ -81,13 +80,16 @@ export function useTrackPanelHandlers(
 ): UseTrackPanelHandlersReturn {
   // Live drag-reorder preview (track folders): where the dragged row
   // would land, and whether that lands it inside a folder.
-  const [dropIndicator, setDropIndicator] = useState<
-    { aboveTrackIndex: number | null; indented: boolean; gapHeight: number } | null
+  // Live reorder-drag preview: BOTH columns render the tracks in this
+  // order with the dragged rows ghosted in their landing spot, so the
+  // drag shows the actual result rather than a marker.
+  const [dragPreview, setDragPreview] = useState<
+    { order: number[]; ghostIndices: number[]; indented: boolean; fromIndex: number; toIndex: number } | null
   >(null);
-  // The dragged row itself, drawn as a ghost under the pointer
-  const [dragGhost, setDragGhost] = useState<
-    { trackIndex: number; clientY: number; indented: boolean; liftedIndices: number[] } | null
-  >(null);
+  // Ref-mirror (CLAUDE.md): the drag's document listeners read this
+  // without re-binding on every preview update
+  const dragPreviewRef = React.useRef(dragPreview);
+  dragPreviewRef.current = dragPreview;
 
   const {
     tracks,
@@ -220,46 +222,48 @@ export function useTrackPanelHandlers(
    *  is drawn ABOVE the row that would sit below it (null = after the
    *  last row), indented when the landing is inside a folder. */
   const onDragReorderMove = (clientY: number, index: number) => {
-    // Hovering its own slot resolves to null — preview it as a move to
-    // itself so the gap stays open where the row came from instead of
-    // the list snapping shut under the pointer.
-    const toIndex = resolveDragTarget(clientY, index) ?? index;
-    const { tracks: after, landedIndex } = moveTrackWithFolders(tracks, index, toIndex);
+    const resolved = resolveDragTarget(clientY, index);
+    // The pointer is over the dragged row's own ghost: hold the
+    // current preview rather than recomputing, or the row snaps back
+    // to where it started and the layout oscillates as you hover it.
+    if (resolved === null && dragPreviewRef.current) return;
+    const toIndex = resolved ?? index;
 
-    // A folder drags its whole family: every row in the block lifts out
-    // of the list, and the gap they leave is their combined height.
-    const blockIndices = tracks[index]?.type === 'folder'
+    // normalizeFolders too, so the preview shows EVERYTHING the
+    // commit does — including a folder dissolving as its last child
+    // is dragged out
+    const moved = moveTrackWithFolders(tracks, index, toIndex);
+    const after = normalizeFolders(moved.tracks);
+    const movedId = tracks[index]?.id;
+    // A folder drags its whole family; every row in the block ghosts.
+    const ghostIndices = tracks[index]?.type === 'folder'
       ? [index, ...folderChildIndices(tracks, index)]
       : [index];
-    const gapHeight = blockIndices.reduce(
-      (sum, i) => sum + effectiveTrackHeight(tracks, i, 114),
-      0,
-    );
-
-    // The row that would sit BELOW the landed block, mapped back to its
-    // index in the CURRENT array — that's where the gap opens.
-    const below = after[landedIndex + blockIndices.length];
-    const belowIndex = below ? tracks.findIndex((t) => t.id === below.id) : -1;
-    const indented = after[landedIndex]?.folderId !== undefined;
-
-    setDropIndicator({
-      aboveTrackIndex: belowIndex === -1 ? null : belowIndex,
-      indented,
-      gapHeight,
+    setDragPreview({
+      order: after.map((t) => tracks.findIndex((x) => x.id === t.id)),
+      ghostIndices,
+      indented: after.find((t) => t.id === movedId)?.folderId !== undefined,
+      // The preview IS the pending move — the drop commits exactly
+      // this, never a fresh hit-test (the ghost now sits under the
+      // pointer, so re-resolving at mouseup would find the dragged
+      // row itself and silently no-op).
+      fromIndex: index,
+      toIndex,
     });
-    setDragGhost({ trackIndex: index, clientY, indented, liftedIndices: blockIndices });
   };
 
-  const onDragReorderEnd = () => {
-    setDropIndicator(null);
-    setDragGhost(null);
-  };
+  const onDragReorderEnd = () => setDragPreview(null);
 
   const onDragReorderDrop = (clientY: number, index: number) => {
-    setDropIndicator(null);
-    setDragGhost(null);
-    const toIndex = resolveDragTarget(clientY, index);
-    if (toIndex === null) return;
+    // Commit the previewed move — what you saw is what lands. Falls
+    // back to a fresh resolve only when no preview ran (a drag with
+    // no intervening mousemove).
+    const pending = dragPreviewRef.current;
+    setDragPreview(null);
+    const toIndex = pending && pending.fromIndex === index
+      ? pending.toIndex
+      : resolveDragTarget(clientY, index);
+    if (toIndex === null || toIndex === index) return;
     dispatch({
       type: 'MOVE_TRACK',
       payload: { fromIndex: index, toIndex },
@@ -470,8 +474,7 @@ export function useTrackPanelHandlers(
     onDragReorderDrop,
     onDragReorderMove,
     onDragReorderEnd,
-    dropIndicator,
-    dragGhost,
+    dragPreview,
     onReorderVertical,
     onNavigateVertical,
     onAddLabelClick,

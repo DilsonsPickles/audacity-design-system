@@ -12,16 +12,12 @@ import { useTheme } from '../ThemeProvider';
 import './TrackControlSidePanel.css';
 
 export interface TrackControlSidePanelProps {
-  /** Live drag-reorder preview (track folders): an insertion line
-   *  above the row at `aboveTrackIndex` (after the last row when
-   *  null), INDENTED when the drop would put the track inside a
-   *  folder. The host computes it with the same move helper the
-   *  commit uses, so the line can't promise a landing the drop
-   *  won't deliver. */
-  dropIndicator?: { aboveTrackIndex: number | null; indented: boolean; gapHeight: number } | null;
-  /** Live drag ghost: a translucent copy of the dragged row following
-   *  the pointer, indented when the drop would put it in a folder. */
-  dragGhost?: { trackIndex: number; clientY: number; indented: boolean; liftedIndices: number[] } | null;
+  /** Live drag-reorder preview (track folders). The list renders in
+   *  `order` (track indices in their PREVIEWED positions) with the
+   *  dragged rows ghosted in place, so the column simply shows the
+   *  result. The host computes it with the same move helper the
+   *  commit uses, so the preview can't differ from the drop. */
+  dragPreview?: { order: number[]; ghostIndices: number[]; indented: boolean } | null;
 
   /**
    * TrackControlPanel components
@@ -159,8 +155,7 @@ export interface TrackControlSidePanelProps {
 
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   children,
-  dropIndicator,
-  dragGhost,
+  dragPreview,
   resizable = false,
   minWidth = 280,
   maxWidth = 280,
@@ -327,79 +322,6 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     restoreMenuTriggerFocus();
   };
 
-  // Translucent copy of the dragged row, following the pointer. The
-  // clone is inert (pointerEvents none, drag callbacks stripped) so it
-  // can't start a second gesture or steal the menu.
-  const renderDragGhost = () => {
-    if (!dragGhost) return null;
-    const child = childArray[dragGhost.trackIndex];
-    const listRect = listRef.current?.getBoundingClientRect();
-    if (!child || !listRect) return null;
-    const height = trackHeights[dragGhost.trackIndex] || 114;
-    // Keep the card inside the track list so it never covers the
-    // panel header ("Tracks" / Add new) or spills past the last row
-    const top = Math.max(
-      listRect.top,
-      Math.min(listRect.bottom - height, dragGhost.clientY - height / 2),
-    );
-    return (
-      <div
-        data-drag-ghost
-        data-drag-ghost-indented={dragGhost.indented ? 'true' : 'false'}
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          left: listRect.left + (dragGhost.indented ? 14 : 0),
-          width: listRect.width - (dragGhost.indented ? 14 : 0),
-          top,
-          height,
-          // Opaque card: without its own background the rows beneath
-          // read through the translucent clone and the ghost muddies
-          background: theme.background.surface.default,
-          opacity: 0.92,
-          pointerEvents: 'none',
-          zIndex: 9000,
-          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.28)',
-          borderRadius: 4,
-          overflow: 'hidden',
-          cursor: 'grabbing',
-        }}
-      >
-        {cloneElement(child, {
-          ...child.props,
-          isFocused: false,
-          isMenuOpen: false,
-          trackHeight: height,
-          // The ghost must not look like a real row to the drop
-          // resolver (it sits under the cursor and would hit-test
-          // first): no track index, no drag callbacks.
-          trackIndex: undefined,
-          onDragReorderDrop: undefined,
-          onDragReorderMove: undefined,
-          onDragReorderEnd: undefined,
-        })}
-      </div>
-    );
-  };
-
-  // The landing SLOT: the rows below part by exactly the height the
-  // dragged block lifted out, so the list shows the result in place.
-  // Indented when the drop would put the track inside a folder.
-  const dropLine = (key: string, indented: boolean, gapHeight: number) => (
-    <div
-      key={key}
-      data-drop-indicator
-      data-drop-indented={indented ? 'true' : 'false'}
-      aria-hidden="true"
-      style={{
-        height: gapHeight,
-        flexShrink: 0,
-        marginLeft: indented ? 14 : 0,
-        boxSizing: 'border-box',
-        pointerEvents: 'none',
-      }}
-    />
-  );
 
   return (
     <SidePanel
@@ -467,14 +389,21 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         style={{ paddingBottom: `${bufferSpace}px` }}
         tabIndex={-1}
       >
-        {childArray.flatMap((child, index) => {
-          // Rows being dragged lift OUT of the list (the ghost carries
-          // them) — but only out of LAYOUT: they stay mounted behind
-          // `display: none`, because the dragged row's own component
-          // owns the gesture's document listeners. Unmounting it
-          // mid-drag swallows the mouseup and the drop never commits.
-          const lifted = dragGhost?.liftedIndices.includes(index) ?? false;
-          const rowNode = ((): React.ReactNode => {
+        {(dragPreview?.order ?? childArray.map((_c, i) => i)).map((index, displayPos) => {
+          // During a drag the list renders in PREVIEWED order: the
+          // dragged rows sit in their landing spot, ghosted. React
+          // keys are stable, so moving a row reorders its DOM node
+          // WITHOUT unmounting the panel — which matters because the
+          // dragged panel owns the gesture's document listeners.
+          const child = childArray[index];
+          if (!child) return null;
+          const ghosted = dragPreview?.ghostIndices.includes(index) ?? false;
+          const ghostStyle = ghosted
+            ? {
+                opacity: 0.55,
+                ...(dragPreview?.indented ? { marginLeft: 14 } : { marginLeft: 0 }),
+              }
+            : null;
           // Folders v1: a height of 0 = child of a collapsed folder —
           // keep the node in the DOM (panel ordinals must stay aligned
           // with track indices for focus/drag routing) but render
@@ -489,7 +418,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               <div
                 key={child.key || index}
                 className={`track-control-side-panel__track ${isFocusedFolder ? 'track-control-side-panel__track--focused' : ''}`}
-                style={{ height: rawHeight || 28, flexShrink: 0, ...(lifted ? { display: 'none' } : null) }}
+                style={{ height: rawHeight || 28, flexShrink: 0, ...ghostStyle }}
               >
                 {cloneElement(child, {
                   ...child.props,
@@ -512,8 +441,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               initialHeight={height}
               minHeight={44}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
-              style={lifted ? { display: 'none' } : undefined}
-              isFirstPanel={index === 0}
+              style={ghostStyle ?? undefined}
+              isFirstPanel={displayPos === 0}
               wheelResize
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
               onResizeEnd={(finalHeight) => onTrackResize?.(index, finalHeight)}
@@ -528,19 +457,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               })}
             </ResizablePanel>
           );
-          })();
-          // Insertion line for the drag preview, in FLOW so it sits
-          // exactly on the row boundary at any zoom/track height
-          return dropIndicator?.aboveTrackIndex === index
-            ? [dropLine(`drop-${index}`, dropIndicator.indented, dropIndicator.gapHeight), rowNode]
-            : [rowNode];
         })}
-        {dropIndicator?.aboveTrackIndex === null
-          ? dropLine('drop-end', dropIndicator.indented, dropIndicator.gapHeight)
-          : null}
       </div>
-
-      {renderDragGhost()}
 
       {/* Context Menu */}
       <ContextMenu

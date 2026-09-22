@@ -141,12 +141,9 @@ ungroup). Deliberately deferred:
   child and the next plain track can't be expressed; drop above a row
   or onto the folder header instead. (A drop INDICATOR now previews the
   landing, indented when it would join a group.)
-- **The canvas parts but carries no ghost** — the dragged row's
-  waveform isn't shown floating over the canvas, only over the panel
-  column.
-- **The reflow doesn't animate** — rows jump to their parted positions
-  rather than easing (a transform-based transition would need the rows
-  to be positioned rather than in flow).
+- **The reorder preview doesn't animate** — rows jump to their
+  previewed positions rather than easing (the panel column is a flow
+  layout; easing would need transform-based positioning).
 - **A lifted row must stay MOUNTED** (`display: none`, not removed):
   the dragged panel owns the gesture's document listeners, so
   unmounting it mid-drag swallows the mouseup and the drop never

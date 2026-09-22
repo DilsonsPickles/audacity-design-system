@@ -16,7 +16,7 @@ import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrac
 import { calculateTrackYOffset } from '../../utils/trackLayout';
 import {
   FOLDER_ROW_HEIGHT,
-  effectiveTrackStride,
+  effectiveTrackHeight,
   effectiveTrackMuted,
   effectiveTrackSoloed,
   folderChildIndices,
@@ -26,14 +26,14 @@ import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../../constants/canvas
 import { LabelRenderer } from '../LabelRenderer';
 
 /** Live reorder-drag preview, mirrored from the track control panel
- *  so both columns part in step (folders v1). */
+ *  so both columns show the same result (folders v1). */
 export interface TrackDragPreview {
-  /** Rows lifted out by the drag (a folder carries its family) */
-  liftedIndices: number[];
-  /** The row the landing slot opens ABOVE (null = after the last row) */
-  aboveTrackIndex: number | null;
-  /** Combined height of the lifted block */
-  gapHeight: number;
+  /** Track indices in their PREVIEWED order */
+  order: number[];
+  /** The dragged rows — drawn ghosted in their landing spot */
+  ghostIndices: number[];
+  /** Whether the landing puts the block inside a folder */
+  indented: boolean;
 }
 
 export interface CanvasTrackListProps {
@@ -144,29 +144,36 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
   // its children (cascade), never through the folder row itself.
   const anySoloed = tracks.some((t, i) => t.type !== 'folder' && effectiveTrackSoloed(tracks, i));
 
+  // While a reorder drag is live, stack the rows in previewed order so
+  // the canvas shows the landing exactly as the panel column does.
+  const previewOrder = props.dragPreview?.order;
+  const previewYOffsets = React.useMemo(() => {
+    if (!previewOrder) return null;
+    const map = new Map<number, number>();
+    let y = TOP_GAP;
+    for (const ti of previewOrder) {
+      const h = effectiveTrackHeight(tracks, ti, DEFAULT_TRACK_HEIGHT);
+      if (h === 0) continue;
+      map.set(ti, y);
+      y += h + TRACK_GAP;
+    }
+    return map;
+  }, [previewOrder, tracks]);
+
   return (
     <>
       {tracks.map((track, trackIndex) => {
         // Folders v1: children of a collapsed folder render nowhere
         // (still fully functional); the folder itself is a slim row.
         if (isHiddenByCollapse(tracks, trackIndex)) return null;
-        // A reorder drag parts the canvas exactly like the panel
-        // column: lifted rows vanish and everything below the landing
-        // slot shifts down by the block's height (net zero, so the
-        // canvas never grows or scroll-jumps mid-drag).
+        // A reorder drag lays the canvas out in the PREVIEWED order,
+        // with the dragged rows ghosted in their landing spot — the
+        // same thing the track control panel shows.
         const preview = props.dragPreview;
-        if (preview?.liftedIndices.includes(trackIndex)) return null;
-        let yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
-        if (preview) {
-          for (const lifted of preview.liftedIndices) {
-            if (lifted < trackIndex) {
-              yOffset -= effectiveTrackStride(tracks, lifted, DEFAULT_TRACK_HEIGHT, TRACK_GAP);
-            }
-          }
-          if (preview.aboveTrackIndex !== null && trackIndex >= preview.aboveTrackIndex) {
-            yOffset += preview.gapHeight;
-          }
-        }
+        const yOffset = previewYOffsets
+          ? previewYOffsets.get(trackIndex) ?? 0
+          : calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
+        const ghosted = preview?.ghostIndices.includes(trackIndex) ?? false;
         if (track.type === 'folder') {
           const childIndices = folderChildIndices(tracks, trackIndex);
           const childCount = childIndices.length;
@@ -206,6 +213,7 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 fontSize: 12,
                 fontFamily: 'Inter, sans-serif',
                 pointerEvents: 'none',
+                opacity: ghosted ? 0.55 : undefined,
               }}
             >
               {track.collapsed ? (
@@ -246,6 +254,7 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
             anySoloed={anySoloed}
             tracksRef={tracksRef}
             yOffset={yOffset}
+            ghosted={ghosted}
             trackCount={tracks.length}
           />
         );
@@ -263,10 +272,14 @@ interface CanvasTrackProps extends Omit<CanvasTrackListProps, 'tracks'> {
    *  from the value props above so rows repaint when they change). */
   tracksRef: React.MutableRefObject<Track[]>;
   yOffset: number;
+  /** Drawn translucent while this row is the one being dragged (it
+   *  already sits in its previewed landing spot) */
+  ghosted?: boolean;
   trackCount: number;
 }
 
 const CanvasTrack = React.memo(function CanvasTrack({
+  ghosted,
   selectedTrackIndices,
   focusedTrackIndex,
   selectedLabelIds,
@@ -359,6 +372,9 @@ const CanvasTrack = React.memo(function CanvasTrack({
         width: `${width}px`,
         height: `${trackHeight}px`,
         overflow: 'visible', // Allow focus outline to show
+        // Ghosted while this row is the one being dragged — it already
+        // sits in its previewed landing spot
+        opacity: ghosted ? 0.55 : undefined,
       }}
       onClick={(e) => {
         // Only handle clicks on empty space (not on clips or labels)

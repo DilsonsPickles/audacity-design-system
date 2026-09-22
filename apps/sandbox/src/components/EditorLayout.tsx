@@ -467,8 +467,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     onDragReorderDrop: onTrackDragReorderDrop,
     onDragReorderMove: onTrackDragReorderMove,
     onDragReorderEnd: onTrackDragReorderEnd,
-    dropIndicator: trackDropIndicator,
-    dragGhost: trackDragGhost,
+    dragPreview: trackDragPreview,
     onReorderVertical: onTrackReorderVertical,
     onNavigateVertical: onTrackPanelNavigateVertical,
     onAddLabelClick: onTrackAddLabelClick,
@@ -700,8 +699,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       {activeMenuItem !== 'export' && (
         <TrackControlSidePanel
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
-          dropIndicator={trackDropIndicator}
-          dragGhost={trackDragGhost}
+          dragPreview={trackDragPreview}
           trackViewModes={state.tracks.map((t) => t.viewMode)}
           focusedTrackIndex={state.focusedTrackIndex}
           scrollRef={trackHeaderScrollRef}
@@ -1079,15 +1077,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     snapEnabled={snapEnabled}
                     showRmsInWaveform={showRmsInWaveform}
                     showQuickFadeHandles={showQuickFadeHandles}
-                    trackDragPreview={
-                      trackDragGhost && trackDropIndicator
-                        ? {
-                            liftedIndices: trackDragGhost.liftedIndices,
-                            aboveTrackIndex: trackDropIndicator.aboveTrackIndex,
-                            gapHeight: trackDropIndicator.gapHeight,
-                          }
-                        : null
-                    }
+                    trackDragPreview={trackDragPreview}
                     controlPointStyle={controlPointStyle}
                     viewportHeight={scrollContainerRef.current?.clientHeight || 0}
                     bottomBuffer={scrollBuffer}
