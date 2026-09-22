@@ -860,6 +860,16 @@ export function EditorLayout(props: EditorLayoutProps) {
                 isCollapsed={track.collapsed ?? false}
                 onToggleCollapse={() => dispatch({ type: 'TOGGLE_FOLDER_COLLAPSED', payload: { trackIndex: index } })}
                 indentLevel={trackDepth(state.tracks, index)}
+                groupPosition={(() => {
+                  // Where this row sits in its family, so the group can
+                  // wear ONE recessed background rounded at its ends
+                  if (track.type === 'folder') return 'header' as const;
+                  if (track.folderId === undefined) return undefined;
+                  const next = state.tracks[index + 1];
+                  return next?.folderId === track.folderId
+                    ? ('member' as const)
+                    : ('last-member' as const);
+                })()}
                 isFocused={state.focusedTrackIndex === index}
                 containerFocused={containerFocusedTrack === index}
                 meterLevel={

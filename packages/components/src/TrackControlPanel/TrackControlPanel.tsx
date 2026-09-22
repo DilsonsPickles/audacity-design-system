@@ -57,6 +57,10 @@ export interface TrackControlPanelProps {
   onToggleCollapse?: () => void;
   /** Indent level for folder children (0 or 1 in v1) */
   indentLevel?: number;
+  /** Where this row sits in its track group, if any. Drives the
+   *  group's shared background: the family reads as ONE recessed
+   *  block (rounded at its ends) rather than rows wearing a rail. */
+  groupPosition?: 'header' | 'member' | 'last-member';
   /** The panel's TRACK-ARRAY index, stamped as
    *  `data-track-panel-index`. Focus routing and drag-reorder resolve
    *  panels through this attribute, never through DOM ordinals —
@@ -133,6 +137,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   isCollapsed,
   onToggleCollapse,
   indentLevel = 0,
+  groupPosition,
   trackIndex,
   onClick,
   onToggleSelection,
@@ -631,6 +636,25 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   const { theme } = useTheme();
 
+  // Track-group container: every row of a family shares one recessed
+  // background, rounded at the family's top and bottom, inset from the
+  // column edges — so the group reads as a single block.
+  const GROUP_INSET = 6;
+  const GROUP_RADIUS = 6;
+  const groupContainerStyle: React.CSSProperties | null = groupPosition
+    ? {
+        background: theme.background.surface.inset,
+        marginLeft: GROUP_INSET,
+        marginRight: GROUP_INSET,
+        boxSizing: 'border-box',
+        borderTopLeftRadius: groupPosition === 'header' ? GROUP_RADIUS : 0,
+        borderTopRightRadius: groupPosition === 'header' ? GROUP_RADIUS : 0,
+        borderBottomLeftRadius: groupPosition === 'last-member' ? GROUP_RADIUS : 0,
+        borderBottomRightRadius: groupPosition === 'last-member' ? GROUP_RADIUS : 0,
+        paddingBottom: groupPosition === 'last-member' ? GROUP_INSET : 0,
+      }
+    : null;
+
   const style = {
     '--tcp-bg-idle': theme.background.trackHeader.idle,
     '--tcp-bg-hover': theme.background.trackHeader.hover,
@@ -684,7 +708,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           padding: '0 6px 0 8px',
           boxSizing: 'border-box',
           background: theme.background.surface.default,
-          borderBottom: `1px solid ${theme.border.default}`,
+          ...groupContainerStyle,
           fontFamily: 'Inter, sans-serif',
           fontSize: 12,
           color: theme.foreground.text.primary,
@@ -816,15 +840,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         handleDragReorderMouseDown(e);
       }}
       style={{
-        // Folder children indent, with a rail marking the group's
-        // extent down the column (folders v1)
-        ...(indentLevel > 0
-          ? {
-              paddingLeft: indentLevel * 12,
-              borderLeft: `2px solid ${theme.border.default}`,
-              boxSizing: 'border-box' as const,
-            }
-          : null),
+        // Folder children indent inside the group's shared background
+        ...(indentLevel > 0 ? { paddingLeft: indentLevel * 10 } : null),
+        ...groupContainerStyle,
         ...style,
         ...(isDragReordering ? { opacity: 0.7, cursor: 'grabbing' } : null),
       }}
