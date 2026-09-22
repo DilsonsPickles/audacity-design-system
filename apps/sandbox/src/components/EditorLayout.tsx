@@ -700,6 +700,18 @@ export function EditorLayout(props: EditorLayoutProps) {
         <TrackControlSidePanel
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
           dragPreview={trackDragPreview}
+          groupMenu={{
+            groups: state.tracks
+              .filter((t) => t.type === 'folder')
+              .map((t) => ({ folderId: t.id, name: t.name })),
+            groupOf: (i) => state.tracks[i]?.folderId,
+            isFolderRow: (i) => state.tracks[i]?.type === 'folder',
+            onAddToGroup: (i, folderId) =>
+              dispatch({ type: 'ADD_TRACK_TO_FOLDER', payload: { trackIndex: i, folderId } }),
+            onRemoveFromGroup: (i) =>
+              dispatch({ type: 'REMOVE_TRACK_FROM_FOLDER', payload: { trackIndex: i } }),
+            onUngroup: (i) => dispatch({ type: 'UNGROUP_FOLDER', payload: { trackIndex: i } }),
+          }}
           trackViewModes={state.tracks.map((t) => t.viewMode)}
           focusedTrackIndex={state.focusedTrackIndex}
           scrollRef={trackHeaderScrollRef}

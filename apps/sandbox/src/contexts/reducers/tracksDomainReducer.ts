@@ -347,6 +347,52 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       };
     }
 
+    case 'ADD_TRACK_TO_FOLDER': {
+      // Menu mirror of dragging a track into a group: the track moves
+      // to the END of that folder's children, keeping the family
+      // contiguous (the invariant every folder operation relies on).
+      const { trackIndex, folderId } = action.payload;
+      const track = state.tracks[trackIndex];
+      if (!track || track.type === 'folder' || track.folderId === folderId) return state;
+      const next = [...state.tracks];
+      const [moved] = next.splice(trackIndex, 1);
+      const folderIdx = next.findIndex((t) => t.type === 'folder' && t.id === folderId);
+      if (folderIdx === -1) return state;
+      let insert = folderIdx + 1;
+      while (insert < next.length && next[insert].folderId === folderId) insert += 1;
+      next.splice(insert, 0, { ...moved, folderId });
+      return {
+        ...state,
+        tracks: normalizeFolders(next),
+        focusedTrackIndex: insert,
+        selectedTrackIndices: [],
+        timeSelection: null,
+      };
+    }
+
+    case 'REMOVE_TRACK_FROM_FOLDER': {
+      // Leaves the group and parks just BELOW the family, so the
+      // remaining children stay contiguous.
+      const { trackIndex } = action.payload;
+      const track = state.tracks[trackIndex];
+      const folderId = track?.folderId;
+      if (!track || folderId === undefined) return state;
+      const next = [...state.tracks];
+      const [moved] = next.splice(trackIndex, 1);
+      const folderIdx = next.findIndex((t) => t.type === 'folder' && t.id === folderId);
+      let insert = folderIdx === -1 ? next.length : folderIdx + 1;
+      while (insert < next.length && next[insert].folderId === folderId) insert += 1;
+      const { folderId: _left, ...rest } = moved;
+      next.splice(insert, 0, rest as Track);
+      return {
+        ...state,
+        tracks: normalizeFolders(next),
+        focusedTrackIndex: insert,
+        selectedTrackIndices: [],
+        timeSelection: null,
+      };
+    }
+
     case 'TOGGLE_FOLDER_COLLAPSED': {
       const folder = state.tracks[action.payload.trackIndex];
       if (!folder || folder.type !== 'folder') return state;

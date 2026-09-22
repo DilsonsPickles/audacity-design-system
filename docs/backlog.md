@@ -134,8 +134,10 @@ ungroup). Deliberately deferred:
   doesn't deep-copy children; refuse or implement properly.
 - **AddTrackFlyout** has no Folder entry (creation is select→Group only);
   no `folder` icon in the icon font.
-- **Track kebab menu** has no Ungroup/Collapse items (chevron + delete-as-
-  ungroup cover it).
+- **Track kebab menu** has no Collapse item (the chevron covers it);
+  group membership and Ungroup ARE there. With many folders the flat
+  "Add to <group>" list will get long — a submenu would help, but
+  ContextMenu has no submenu support.
 - **Drop semantics are "insert at the row you hit"** — there is no
   lower-half "insert after" zone, so dropping between a group's last
   child and the next plain track can't be expressed; drop above a row

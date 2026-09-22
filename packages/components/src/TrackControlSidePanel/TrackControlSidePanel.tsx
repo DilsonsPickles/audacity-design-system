@@ -12,6 +12,20 @@ import { useTheme } from '../ThemeProvider';
 import './TrackControlSidePanel.css';
 
 export interface TrackControlSidePanelProps {
+  /** Track-folder items for the row's kebab menu (folders v1). The
+   *  host supplies the model; this component only renders it. */
+  groupMenu?: {
+    /** Folders a track can be added to */
+    groups: Array<{ folderId: number; name: string }>;
+    /** The folder a track currently belongs to, if any */
+    groupOf: (trackIndex: number) => number | undefined;
+    /** True when the row is a folder header */
+    isFolderRow: (trackIndex: number) => boolean;
+    onAddToGroup: (trackIndex: number, folderId: number) => void;
+    onRemoveFromGroup: (trackIndex: number) => void;
+    onUngroup: (trackIndex: number) => void;
+  };
+
   /** Live drag-reorder preview (track folders). The list renders in
    *  `order` (track indices in their PREVIEWED positions) with the
    *  dragged rows ghosted in place, so the column simply shows the
@@ -156,6 +170,7 @@ export interface TrackControlSidePanelProps {
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   children,
   dragPreview,
+  groupMenu,
   resizable = false,
   minWidth = 280,
   maxWidth = 280,
@@ -481,6 +496,45 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             handleMenuClose();
           }}
         />
+        {groupMenu && (() => {
+          const idx = menuState.trackIndex;
+          if (groupMenu.isFolderRow(idx)) {
+            return (
+              <ContextMenuItem
+                label="Ungroup"
+                onClick={() => {
+                  groupMenu.onUngroup(idx);
+                  handleMenuClose();
+                }}
+              />
+            );
+          }
+          const current = groupMenu.groupOf(idx);
+          const joinable = groupMenu.groups.filter((g) => g.folderId !== current);
+          return (
+            <>
+              {joinable.map((g) => (
+                <ContextMenuItem
+                  key={`add-to-${g.folderId}`}
+                  label={`Add to ${g.name}`}
+                  onClick={() => {
+                    groupMenu.onAddToGroup(idx, g.folderId);
+                    handleMenuClose();
+                  }}
+                />
+              ))}
+              {current !== undefined && (
+                <ContextMenuItem
+                  label="Remove from group"
+                  onClick={() => {
+                    groupMenu.onRemoveFromGroup(idx);
+                    handleMenuClose();
+                  }}
+                />
+              )}
+            </>
+          );
+        })()}
         <ContextMenuItem
           label="Move track up"
           onClick={() => {

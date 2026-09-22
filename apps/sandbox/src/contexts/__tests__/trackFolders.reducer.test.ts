@@ -165,6 +165,74 @@ describe('MOVE_TRACK membership — a track joins the folder it lands in', () =>
   });
 });
 
+describe('ADD_TRACK_TO_FOLDER / REMOVE_TRACK_FROM_FOLDER (kebab menu)', () => {
+  const base = () => [
+    makeTrack(10, { type: 'folder' }),
+    makeTrack(2, { folderId: 10 }),
+    makeTrack(3),
+    makeTrack(4),
+  ];
+
+  it('adds a track as the LAST child, keeping the family contiguous', () => {
+    const state = makeState(base());
+    const next = tracksDomainReducer(state, {
+      type: 'ADD_TRACK_TO_FOLDER',
+      payload: { trackIndex: 3, folderId: 10 },
+    });
+    expect(next.tracks.map((t) => t.id)).toEqual([10, 2, 4, 3]);
+    expect(next.tracks[2].folderId).toBe(10);
+    expect(next.focusedTrackIndex).toBe(2);
+  });
+
+  it('adding a track from ABOVE the folder still lands inside it', () => {
+    const state = makeState([makeTrack(4), makeTrack(10, { type: 'folder' }), makeTrack(2, { folderId: 10 })]);
+    const next = tracksDomainReducer(state, {
+      type: 'ADD_TRACK_TO_FOLDER',
+      payload: { trackIndex: 0, folderId: 10 },
+    });
+    expect(next.tracks.map((t) => t.id)).toEqual([10, 2, 4]);
+    expect(next.tracks[2].folderId).toBe(10);
+  });
+
+  it('is a no-op for a folder row, an unknown folder, or a track already in it', () => {
+    const state = makeState(base());
+    expect(tracksDomainReducer(state, { type: 'ADD_TRACK_TO_FOLDER', payload: { trackIndex: 0, folderId: 10 } })).toBe(state);
+    expect(tracksDomainReducer(state, { type: 'ADD_TRACK_TO_FOLDER', payload: { trackIndex: 1, folderId: 10 } })).toBe(state);
+    expect(tracksDomainReducer(state, { type: 'ADD_TRACK_TO_FOLDER', payload: { trackIndex: 2, folderId: 99 } })).toBe(state);
+  });
+
+  it('removing parks the track just BELOW the family, membership cleared', () => {
+    const state = makeState([
+      makeTrack(10, { type: 'folder' }),
+      makeTrack(2, { folderId: 10 }),
+      makeTrack(3, { folderId: 10 }),
+      makeTrack(4),
+    ]);
+    const next = tracksDomainReducer(state, {
+      type: 'REMOVE_TRACK_FROM_FOLDER',
+      payload: { trackIndex: 1 },
+    });
+    expect(next.tracks.map((t) => t.id)).toEqual([10, 3, 2, 4]);
+    expect(next.tracks[2].folderId).toBeUndefined();
+    expect(next.tracks[1].folderId).toBe(10);
+  });
+
+  it('removing the last child dissolves the folder', () => {
+    const state = makeState(base());
+    const next = tracksDomainReducer(state, {
+      type: 'REMOVE_TRACK_FROM_FOLDER',
+      payload: { trackIndex: 1 },
+    });
+    expect(next.tracks.some((t) => t.type === 'folder')).toBe(false);
+    expect(next.tracks.map((t) => t.id)).toEqual([2, 3, 4]);
+  });
+
+  it('removing is a no-op for a track with no folder', () => {
+    const state = makeState(base());
+    expect(tracksDomainReducer(state, { type: 'REMOVE_TRACK_FROM_FOLDER', payload: { trackIndex: 2 } })).toBe(state);
+  });
+});
+
 describe('folder mute/solo cascade', () => {
   it('a folder mute/solo reaches its children; siblings unaffected', () => {
     const tracks = [

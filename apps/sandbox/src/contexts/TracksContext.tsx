@@ -334,6 +334,8 @@ export type TracksAction =
   | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'GROUP_SELECTED_TRACKS' }
   | { type: 'UNGROUP_FOLDER'; payload: { trackIndex: number } }
+  | { type: 'ADD_TRACK_TO_FOLDER'; payload: { trackIndex: number; folderId: number } }
+  | { type: 'REMOVE_TRACK_FROM_FOLDER'; payload: { trackIndex: number } }
   | { type: 'TOGGLE_FOLDER_COLLAPSED'; payload: { trackIndex: number } }
   | { type: 'MOVE_SELECTED_CLIPS'; payload: { deltaSeconds: number } }
   | { type: 'MOVE_SELECTED_CLIPS_TO_TRACK'; payload: { direction: 1 | -1 } }
@@ -416,6 +418,8 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'MOVE_TRACK',
   'GROUP_SELECTED_TRACKS',
   'UNGROUP_FOLDER',
+  'ADD_TRACK_TO_FOLDER',
+  'REMOVE_TRACK_FROM_FOLDER',
   'UPDATE_TRACK_HEIGHT',
   'UPDATE_CHANNEL_SPLIT_RATIO',
   // Clip lifecycle / edits
