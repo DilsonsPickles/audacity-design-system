@@ -1,6 +1,6 @@
 import type { TracksState, TracksAction, Track } from '../TracksContext';
 import { TRACK_COLOR_PALETTE, dissolveDegenerateGroups } from './shared';
-import { isFolderTrack, moveTrackWithFolders, normalizeFolders } from '../../utils/trackFolders';
+import { folderChildIndices, isFolderTrack, moveTrackWithFolders, normalizeFolders } from '../../utils/trackFolders';
 
 /** Remap a time-selection's scope after tracks are removed or
  *  reordered. `remap` returns the new index for an old index, or null
@@ -396,6 +396,55 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
         ...state,
         tracks: normalizeFolders(next),
         focusedTrackIndex: insert,
+        selectedTrackIndices: [],
+        timeSelection: null,
+      };
+    }
+
+    case 'DUPLICATE_FOLDER': {
+      // Copy the whole family below the original. Clips get fresh ids
+      // but carry `sourceClipId` so the audio engine still finds the
+      // original's buffer (duplicate ids would collide in its player
+      // map and one copy would go silent).
+      const { trackIndex } = action.payload;
+      const folder = state.tracks[trackIndex];
+      if (!folder || folder.type !== 'folder') return state;
+      const childIndices = folderChildIndices(state.tracks, trackIndex);
+
+      let nextTrackId = state.tracks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+      let nextClipId = state.tracks.reduce(
+        (max, t) => t.clips.reduce((m, c) => Math.max(m, c.id), max),
+        0,
+      ) + 1;
+      const folderCount = state.tracks.filter((t) => t.type === 'folder').length;
+      const newFolderId = nextTrackId++;
+      const folderCopy: Track = {
+        ...folder,
+        id: newFolderId,
+        name: `Group ${folderCount + 1}`,
+        clips: [],
+      };
+      const childCopies = childIndices.map((i) => {
+        const src = state.tracks[i];
+        return {
+          ...src,
+          id: nextTrackId++,
+          folderId: newFolderId,
+          clips: src.clips.map((c) => ({
+            ...c,
+            id: nextClipId++,
+            sourceClipId: c.sourceClipId ?? c.id,
+          })),
+        };
+      });
+
+      const insertAt = Math.max(trackIndex, ...childIndices, trackIndex) + 1;
+      const next = [...state.tracks];
+      next.splice(insertAt, 0, folderCopy, ...childCopies);
+      return {
+        ...state,
+        tracks: next,
+        focusedTrackIndex: insertAt,
         selectedTrackIndices: [],
         timeSelection: null,
       };

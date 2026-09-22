@@ -708,6 +708,20 @@ export function EditorLayout(props: EditorLayoutProps) {
             isFolderRow: (i) => state.tracks[i]?.type === 'folder',
             onCreateGroup: (i) =>
               dispatch({ type: 'GROUP_TRACKS', payload: { trackIndices: [i] } }),
+            onDuplicateGroup: (i) =>
+              dispatch({ type: 'DUPLICATE_FOLDER', payload: { trackIndex: i } }),
+            onDeleteGroupAndTracks: (i) => {
+              // Reuses the battle-tested multi-delete (index remapping
+              // for selection + time-selection scope) rather than a
+              // bespoke folder delete
+              const folder = state.tracks[i];
+              if (!folder) return;
+              const family = state.tracks.reduce<number[]>((acc, t, idx) => {
+                if (idx === i || t.folderId === folder.id) acc.push(idx);
+                return acc;
+              }, []);
+              dispatch({ type: 'DELETE_TRACKS', payload: family });
+            },
             onAddToGroup: (i, folderId) =>
               dispatch({ type: 'ADD_TRACK_TO_FOLDER', payload: { trackIndex: i, folderId } }),
             onRemoveFromGroup: (i) =>

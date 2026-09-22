@@ -256,6 +256,46 @@ describe('ADD_TRACK_TO_FOLDER / REMOVE_TRACK_FROM_FOLDER (kebab menu)', () => {
   });
 });
 
+describe('DUPLICATE_FOLDER', () => {
+  const withClips = (id: number, folderId?: number) => ({
+    ...makeTrack(id, folderId === undefined ? {} : { folderId }),
+    clips: [
+      { id: id * 10, name: 'c', start: 0, duration: 1, envelopePoints: [] },
+    ],
+  }) as Track;
+
+  it('copies the whole family below the original with fresh ids', () => {
+    const state = makeState([
+      makeTrack(10, { type: 'folder', name: 'Group 1' }),
+      withClips(2, 10),
+      withClips(3, 10),
+      makeTrack(4),
+    ]);
+    const next = tracksDomainReducer(state, { type: 'DUPLICATE_FOLDER', payload: { trackIndex: 0 } });
+    // original family, then the copy, then the untouched track
+    expect(next.tracks).toHaveLength(7);
+    const copyFolder = next.tracks[3];
+    expect(copyFolder.type).toBe('folder');
+    expect(copyFolder.name).toBe('Group 2');
+    expect(copyFolder.id).not.toBe(10);
+    const copies = next.tracks.filter((t) => t.folderId === copyFolder.id);
+    expect(copies).toHaveLength(2);
+    // fresh track ids AND fresh clip ids, with the source recorded so
+    // the audio engine can still find the original buffer
+    const originalIds = new Set([10, 2, 3, 4]);
+    copies.forEach((c) => expect(originalIds.has(c.id)).toBe(false));
+    expect(copies[0].clips[0].id).not.toBe(20);
+    expect(copies[0].clips[0].sourceClipId).toBe(20);
+    // originals untouched
+    expect(next.tracks[1].clips[0].id).toBe(20);
+  });
+
+  it('is a no-op on a non-folder row', () => {
+    const state = makeState([makeTrack(1)]);
+    expect(tracksDomainReducer(state, { type: 'DUPLICATE_FOLDER', payload: { trackIndex: 0 } })).toBe(state);
+  });
+});
+
 describe('folder mute/solo cascade', () => {
   it('a folder mute/solo reaches its children; siblings unaffected', () => {
     const tracks = [

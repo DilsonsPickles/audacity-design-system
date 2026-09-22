@@ -23,6 +23,11 @@ export interface TrackControlSidePanelProps {
     isFolderRow: (trackIndex: number) => boolean;
     /** Wrap this one track in a brand-new group */
     onCreateGroup: (trackIndex: number) => void;
+    /** Folder rows: copy the whole family below the original */
+    onDuplicateGroup: (trackIndex: number) => void;
+    /** Folder rows: delete the folder AND its tracks (destructive —
+     *  Ungroup is the non-destructive alternative) */
+    onDeleteGroupAndTracks: (trackIndex: number) => void;
     onAddToGroup: (trackIndex: number, folderId: number) => void;
     onRemoveFromGroup: (trackIndex: number) => void;
     onUngroup: (trackIndex: number) => void;
@@ -484,31 +489,54 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         y={menuState.y}
         onClose={handleMenuClose}
       >
-        <ContextMenuItem
-          label="Delete"
-          onClick={() => {
-            onDeleteTrack?.(menuState.trackIndex);
-            handleMenuClose();
-          }}
-        />
-        <ContextMenuItem
-          label="Duplicate"
-          onClick={() => {
-            onDuplicateTrack?.(menuState.trackIndex);
-            handleMenuClose();
-          }}
-        />
+        {!(groupMenu?.isFolderRow(menuState.trackIndex)) && (
+          <>
+            <ContextMenuItem
+              label="Delete"
+              onClick={() => {
+                onDeleteTrack?.(menuState.trackIndex);
+                handleMenuClose();
+              }}
+            />
+            <ContextMenuItem
+              label="Duplicate"
+              onClick={() => {
+                onDuplicateTrack?.(menuState.trackIndex);
+                handleMenuClose();
+              }}
+            />
+          </>
+        )}
         {groupMenu && (() => {
           const idx = menuState.trackIndex;
           if (groupMenu.isFolderRow(idx)) {
+            // A group's own CRUD: rename lives on the row (click the
+            // name, same as a track); the rest are here. Ungroup keeps
+            // the tracks, Delete takes them with it.
             return (
-              <ContextMenuItem
-                label="Ungroup"
-                onClick={() => {
-                  groupMenu.onUngroup(idx);
-                  handleMenuClose();
-                }}
-              />
+              <>
+                <ContextMenuItem
+                  label="Duplicate group"
+                  onClick={() => {
+                    groupMenu.onDuplicateGroup(idx);
+                    handleMenuClose();
+                  }}
+                />
+                <ContextMenuItem
+                  label="Ungroup"
+                  onClick={() => {
+                    groupMenu.onUngroup(idx);
+                    handleMenuClose();
+                  }}
+                />
+                <ContextMenuItem
+                  label="Delete group and tracks"
+                  onClick={() => {
+                    groupMenu.onDeleteGroupAndTracks(idx);
+                    handleMenuClose();
+                  }}
+                />
+              </>
             );
           }
           const current = groupMenu.groupOf(idx);

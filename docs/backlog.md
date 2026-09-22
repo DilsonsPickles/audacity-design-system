@@ -130,8 +130,13 @@ ungroup). Deliberately deferred:
   band-select across a collapsed folder may pick hidden tracks' clips.
 - **Fit/expand/collapse-all track heights** (`trackManagement.computeFitTrackHeight`,
   EditorLayout 401-416) divide by ALL tracks — should use visible non-folder rows.
-- **Folder duplication** (`buildDuplicatedTracks`) — duplicating a folder row
-  doesn't deep-copy children; refuse or implement properly.
+- ~~Folder duplication~~ — DUPLICATE_FOLDER deep-copies the family
+  (fresh track + clip ids, `sourceClipId` preserved). The generic
+  `buildDuplicatedTracks` still has no folder awareness, but folder
+  rows no longer offer the generic Duplicate item.
+- **Deleting a group and its tracks doesn't confirm** — consistent with
+  the rest of the app (no confirmations anywhere), but it is the most
+  destructive single click in the track column.
 - **AddTrackFlyout** has no Folder entry (creation is select→Group only);
   no `folder` icon in the icon font.
 - **Track kebab menu** has no Collapse item (the chevron covers it);

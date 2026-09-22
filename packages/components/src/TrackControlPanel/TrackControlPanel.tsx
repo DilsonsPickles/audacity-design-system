@@ -712,9 +712,50 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
             <path d="M1 3 L5 7 L9 3" fill="none" stroke="currentColor" strokeWidth="1.5" />
           </svg>
         </button>
-        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-          {trackName}
-        </span>
+        {isRenaming ? (
+          <input
+            ref={renameInputRef}
+            className="track-control-panel__track-name-input"
+            value={renameDraft}
+            onChange={(e) => setRenameDraft(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitRename();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelRename();
+              }
+            }}
+            onBlur={commitRename}
+            aria-label="Group name"
+            style={{ flex: 1, minWidth: 0, font: 'inherit' }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={startRename}
+            aria-label={`Rename group: ${trackName}`}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: 'left',
+              border: 0,
+              background: 'transparent',
+              padding: 0,
+              font: 'inherit',
+              fontWeight: 600,
+              color: 'inherit',
+              cursor: onRename ? 'text' : 'default',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {trackName}
+          </button>
+        )}
         <button
           type="button"
           aria-label="Mute folder"
