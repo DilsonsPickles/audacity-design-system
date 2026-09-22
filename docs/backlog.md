@@ -139,7 +139,11 @@ ungroup). Deliberately deferred:
 - **Drop semantics are "insert at the row you hit"** — there is no
   lower-half "insert after" zone, so dropping between a group's last
   child and the next plain track can't be expressed; drop above a row
-  or onto the folder header instead. No drop indicator line yet either.
+  or onto the folder header instead. (A drop INDICATOR now previews the
+  landing, indented when it would join a group.)
+- **The preview is panel-column only** — the canvas column shows no
+  drop line, and the dragged row itself only dims (no ghost following
+  the pointer).
 - **Membership on multi-track drags**: only the dragged row re-parents
   (multi-select drag-reorder isn't wired in the panel column).
 - **Solo is still visual-only in playback** (pre-existing:

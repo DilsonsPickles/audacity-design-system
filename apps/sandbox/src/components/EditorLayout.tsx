@@ -465,6 +465,9 @@ export function EditorLayout(props: EditorLayoutProps) {
     onEffectsClick: onTrackEffectsClick,
     onFocusChange: onTrackPanelFocusChange,
     onDragReorderDrop: onTrackDragReorderDrop,
+    onDragReorderMove: onTrackDragReorderMove,
+    onDragReorderEnd: onTrackDragReorderEnd,
+    dropIndicator: trackDropIndicator,
     onReorderVertical: onTrackReorderVertical,
     onNavigateVertical: onTrackPanelNavigateVertical,
     onAddLabelClick: onTrackAddLabelClick,
@@ -696,6 +699,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       {activeMenuItem !== 'export' && (
         <TrackControlSidePanel
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
+          dropIndicator={trackDropIndicator}
           trackViewModes={state.tracks.map((t) => t.viewMode)}
           focusedTrackIndex={state.focusedTrackIndex}
           scrollRef={trackHeaderScrollRef}
@@ -870,6 +874,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                 tabIndex={-1}
                 onFocusChange={(hasFocus) => onTrackPanelFocusChange(hasFocus, index)}
                 onDragReorderDrop={(clientY) => onTrackDragReorderDrop(clientY, index)}
+                onDragReorderMove={(clientY) => onTrackDragReorderMove(clientY, index)}
+                onDragReorderEnd={onTrackDragReorderEnd}
                 onReorderVertical={(direction) => onTrackReorderVertical(direction, index)}
                 onNavigateVertical={(direction, shiftKey) => onTrackPanelNavigateVertical(direction, shiftKey, index)}
                 onAddLabelClick={() => onTrackAddLabelClick(index)}

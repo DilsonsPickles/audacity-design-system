@@ -81,6 +81,12 @@ export interface TrackControlPanelProps {
    *  dispatch MOVE_TRACK. Only fires when the drag crosses the
    *  threshold — plain clicks stay clicks. */
   onDragReorderDrop?: (clientY: number) => void;
+  /** Fired continuously while a reorder drag is active, so the host
+   *  can preview where the row would land (and whether it would join
+   *  or leave a folder). Cleared via onDragReorderEnd. */
+  onDragReorderMove?: (clientY: number) => void;
+  /** Fired when the drag ends (drop or abort) — clear the preview. */
+  onDragReorderEnd?: () => void;
   onTabOut?: () => void;
   /** Callback when Shift+Tab is pressed to return focus to the track container */
   onShiftTabOut?: () => void;
@@ -140,6 +146,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onNavigateVertical,
   onReorderVertical,
   onDragReorderDrop,
+  onDragReorderMove,
+  onDragReorderEnd,
   onTabOut,
   onShiftTabOut,
   containerFocused = false,
@@ -246,6 +254,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         start.active = true;
         setIsDragReordering(true);
       }
+      if (start.active) onDragReorderMove?.(e.clientY);
     };
     const onUp = (e: MouseEvent) => {
       const start = dragReorderStartRef.current;
@@ -256,6 +265,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         justDragReorderedRef.current = true;
         setTimeout(() => { justDragReorderedRef.current = false; }, 0);
         onDragReorderDrop?.(e.clientY);
+        onDragReorderEnd?.();
       }
     };
     document.addEventListener('mousemove', onMove);
@@ -264,7 +274,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };
-  }, [onDragReorderDrop]);
+  }, [onDragReorderDrop, onDragReorderMove, onDragReorderEnd]);
 
   const cancelRename = () => {
     setRenameDraft(trackName);

@@ -105,6 +105,59 @@ export function trackDepth(tracks: readonly FolderTrackLike[], index: number): n
   return tracks[index]?.folderId !== undefined ? 1 : 0;
 }
 
+/** THE move. Folder rows carry their whole family; a plain track's
+ *  MEMBERSHIP follows its landing spot (it joins the folder of the row
+ *  above — a folder row itself meaning "first child" — and leaves when
+ *  it lands under a plain track or at the top). Pure, so the drag
+ *  PREVIEW and the committed move are computed by the same code and
+ *  can never disagree. Callers apply normalizeFolders afterwards. */
+export function moveTrackWithFolders<T extends FolderTrackLike>(
+  tracks: readonly T[],
+  fromIndex: number,
+  toIndex: number,
+): { tracks: T[]; landedIndex: number } {
+  const source = tracks[fromIndex];
+  const next = [...tracks];
+
+  if (source?.type === 'folder') {
+    const blockSize = 1 + folderChildIndices(tracks, fromIndex).length;
+    const block = next.splice(fromIndex, blockSize);
+    // Clamp the landing index so the family stays inside the array and
+    // never lands INSIDE another folder's family (no nesting in v1)
+    let insert = Math.max(
+      0,
+      Math.min(next.length, toIndex > fromIndex ? toIndex - blockSize + 1 : toIndex),
+    );
+    const landingOn = next[insert];
+    if (landingOn?.folderId !== undefined) {
+      while (
+        insert > 0
+        && next[insert - 1]
+        && (next[insert - 1].folderId === landingOn.folderId
+          || (next[insert - 1].type === 'folder' && next[insert - 1].id === landingOn.folderId))
+      ) {
+        insert -= 1;
+      }
+    }
+    next.splice(insert, 0, ...block);
+    return { tracks: next, landedIndex: insert };
+  }
+
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  const above = next[toIndex - 1];
+  const nextFolderId = above
+    ? (above.type === 'folder' ? above.id : above.folderId)
+    : undefined;
+  if (nextFolderId === undefined) {
+    const { folderId: _left, ...rest } = moved;
+    next[toIndex] = rest as T;
+  } else if (moved.folderId !== nextFolderId) {
+    next[toIndex] = { ...moved, folderId: nextFolderId };
+  }
+  return { tracks: next, landedIndex: toIndex };
+}
+
 /** Drop dangling folderIds (folder deleted) and dissolve folders with
  *  no children left. Identity-preserving. */
 export function normalizeFolders<T extends FolderTrackLike>(tracks: T[]): T[] {

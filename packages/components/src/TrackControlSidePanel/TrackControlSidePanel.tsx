@@ -12,6 +12,14 @@ import { useTheme } from '../ThemeProvider';
 import './TrackControlSidePanel.css';
 
 export interface TrackControlSidePanelProps {
+  /** Live drag-reorder preview (track folders): an insertion line
+   *  above the row at `aboveTrackIndex` (after the last row when
+   *  null), INDENTED when the drop would put the track inside a
+   *  folder. The host computes it with the same move helper the
+   *  commit uses, so the line can't promise a landing the drop
+   *  won't deliver. */
+  dropIndicator?: { aboveTrackIndex: number | null; indented: boolean } | null;
+
   /**
    * TrackControlPanel components
    */
@@ -148,6 +156,7 @@ export interface TrackControlSidePanelProps {
 
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   children,
+  dropIndicator,
   resizable = false,
   minWidth = 280,
   maxWidth = 280,
@@ -314,6 +323,23 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     restoreMenuTriggerFocus();
   };
 
+  const dropLine = (key: string, indented: boolean) => (
+    <div
+      key={key}
+      data-drop-indicator
+      data-drop-indented={indented ? 'true' : 'false'}
+      aria-hidden="true"
+      style={{
+        height: 0,
+        marginLeft: indented ? 14 : 0,
+        borderTop: '2px solid #677CE4',
+        position: 'relative',
+        zIndex: 5,
+        pointerEvents: 'none',
+      }}
+    />
+  );
+
   return (
     <SidePanel
       position="left"
@@ -380,7 +406,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         style={{ paddingBottom: `${bufferSpace}px` }}
         tabIndex={-1}
       >
-        {childArray.map((child, index) => {
+        {childArray.flatMap((child, index) => {
+          const rowNode = ((): React.ReactNode => {
           // Folders v1: a height of 0 = child of a collapsed folder —
           // keep the node in the DOM (panel ordinals must stay aligned
           // with track indices for focus/drag routing) but render
@@ -434,7 +461,16 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               })}
             </ResizablePanel>
           );
+          })();
+          // Insertion line for the drag preview, in FLOW so it sits
+          // exactly on the row boundary at any zoom/track height
+          return dropIndicator?.aboveTrackIndex === index
+            ? [dropLine(`drop-${index}`, dropIndicator.indented), rowNode]
+            : [rowNode];
         })}
+        {dropIndicator?.aboveTrackIndex === null
+          ? dropLine('drop-end', dropIndicator.indented)
+          : null}
       </div>
 
       {/* Context Menu */}

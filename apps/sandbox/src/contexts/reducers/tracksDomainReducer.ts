@@ -1,6 +1,6 @@
 import type { TracksState, TracksAction, Track } from '../TracksContext';
 import { TRACK_COLOR_PALETTE, dissolveDegenerateGroups } from './shared';
-import { folderChildIndices, isFolderTrack, normalizeFolders } from '../../utils/trackFolders';
+import { isFolderTrack, moveTrackWithFolders, normalizeFolders } from '../../utils/trackFolders';
 
 /** Remap a time-selection's scope after tracks are removed or
  *  reordered. `remap` returns the new index for an old index, or null
@@ -236,26 +236,13 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       // cleared to the folder row (index remapping across a block move
       // is not worth its edge cases for v1).
       if (isFolderTrack(state.tracks[fromIndex])) {
-        const children = folderChildIndices(state.tracks, fromIndex);
-        const blockSize = 1 + children.length;
-        const blockStart = fromIndex;
-        const tracksCopy = [...state.tracks];
-        const block = tracksCopy.splice(blockStart, blockSize);
-        // Clamp the landing index so the block stays inside the array
-        // and never lands INSIDE another folder's family
-        let insert = Math.max(0, Math.min(tracksCopy.length, toIndex > fromIndex ? toIndex - blockSize + 1 : toIndex));
-        const landingOn = tracksCopy[insert];
-        if (landingOn?.folderId !== undefined) {
-          // walk up out of the family we'd be splitting
-          while (insert > 0 && tracksCopy[insert - 1] && (tracksCopy[insert - 1].folderId === landingOn.folderId || (isFolderTrack(tracksCopy[insert - 1]) && tracksCopy[insert - 1].id === landingOn.folderId))) {
-            insert -= 1;
-          }
-        }
-        tracksCopy.splice(insert, 0, ...block);
+        // Shared with the drag preview (utils/trackFolders.ts) so the
+        // indicator can't promise a landing the move won't deliver
+        const { tracks: moved, landedIndex } = moveTrackWithFolders(state.tracks, fromIndex, toIndex);
         return {
           ...state,
-          tracks: tracksCopy,
-          focusedTrackIndex: insert,
+          tracks: moved,
+          focusedTrackIndex: landedIndex,
           selectedTrackIndices: [],
           timeSelection: null,
         };
@@ -271,26 +258,11 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
           clips: track.clips.map(c => ({ ...c, color: c.color || color })),
         };
       });
-      const [moved] = newTracks.splice(fromIndex, 1);
-      newTracks.splice(toIndex, 0, moved);
-      // Folders v1 — MEMBERSHIP FOLLOWS THE LANDING SPOT: a moved track
-      // joins the folder of the row ABOVE it (a folder row itself means
-      // "you landed inside me, as my first child"), and leaves its
-      // folder when it lands under a plain track or at the very top.
-      // That makes drag, Cmd+Arrow and drop-on-a-collapsed-folder all
-      // re-parent by the same rule, with no separate gesture.
-      if (moved.type !== 'folder') {
-        const above = newTracks[toIndex - 1];
-        const nextFolderId = above
-          ? (above.type === 'folder' ? above.id : above.folderId)
-          : undefined;
-        if (nextFolderId === undefined) {
-          const { folderId: _left, ...rest } = moved;
-          newTracks[toIndex] = rest as Track;
-        } else if (moved.folderId !== nextFolderId) {
-          newTracks[toIndex] = { ...moved, folderId: nextFolderId };
-        }
-      }
+      // Membership follows the landing spot — same shared helper the
+      // drag preview runs (utils/trackFolders.ts)
+      const movedTracks = moveTrackWithFolders(newTracks, fromIndex, toIndex).tracks;
+      newTracks.length = 0;
+      newTracks.push(...movedTracks);
       // Remap selected track indices to follow the reorder
       const newSelected = state.selectedTrackIndices.map(i => {
         if (i === fromIndex) return toIndex;

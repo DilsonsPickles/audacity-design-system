@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { isHiddenByCollapse } from '../utils/trackFolders';
+import { useCallback, useState } from 'react';
+import { isHiddenByCollapse, moveTrackWithFolders } from '../utils/trackFolders';
 import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -50,6 +50,10 @@ export interface UseTrackPanelHandlersReturn {
   onEffectsClick: (index: number) => void;
   onFocusChange: (hasFocus: boolean, index: number) => void;
   onDragReorderDrop: (clientY: number, index: number) => void;
+  /** Live preview while a reorder drag is in flight (folders v1) */
+  onDragReorderMove: (clientY: number, index: number) => void;
+  onDragReorderEnd: () => void;
+  dropIndicator: { aboveTrackIndex: number | null; indented: boolean } | null;
   onReorderVertical: (direction: 'up' | 'down', index: number) => void;
   onNavigateVertical: (direction: 'up' | 'down', shiftKey: boolean | undefined, index: number) => void;
   onAddLabelClick: (index: number) => void;
@@ -74,6 +78,12 @@ export interface UseTrackPanelHandlersReturn {
 export function useTrackPanelHandlers(
   options: UseTrackPanelHandlersOptions,
 ): UseTrackPanelHandlersReturn {
+  // Live drag-reorder preview (track folders): where the dragged row
+  // would land, and whether that lands it inside a folder.
+  const [dropIndicator, setDropIndicator] = useState<
+    { aboveTrackIndex: number | null; indented: boolean } | null
+  >(null);
+
   const {
     tracks,
     selectedTrackIndices,
@@ -179,12 +189,12 @@ export function useTrackPanelHandlers(
     }
   };
 
-  const onDragReorderDrop = (clientY: number, index: number) => {
-    // Resolve the drop Y to a track index by hit-testing
-    // every visible panel. If the pointer landed above
-    // the first row or below the last, clamp.
+  /** Resolve a drag's pointer Y to the move it would commit. The
+   *  preview and the drop BOTH go through this, so the indicator can
+   *  never show a landing the drop wouldn't produce. */
+  const resolveDragTarget = (clientY: number, index: number): number | null => {
     const target = resolveTrackDropIndex(document, clientY);
-    if (target < 0 || target === index) return;
+    if (target < 0 || target === index) return null;
     // Dropping a plain track ON a folder row means "join this group"
     // (its first child) rather than "sit above the folder" — aim one
     // row past the header, which lands right after it whichever
@@ -198,7 +208,33 @@ export function useTrackPanelHandlers(
     const droppedOnFolder = !droppedAboveRow
       && tracks[target]?.type === 'folder'
       && tracks[index]?.type !== 'folder';
-    const toIndex = droppedOnFolder && index > target ? target + 1 : target;
+    return droppedOnFolder && index > target ? target + 1 : target;
+  };
+
+  /** Where the row would land, expressed for the indicator: the line
+   *  is drawn ABOVE the row that would sit below it (null = after the
+   *  last row), indented when the landing is inside a folder. */
+  const onDragReorderMove = (clientY: number, index: number) => {
+    const toIndex = resolveDragTarget(clientY, index);
+    if (toIndex === null) {
+      setDropIndicator(null);
+      return;
+    }
+    const { tracks: after, landedIndex } = moveTrackWithFolders(tracks, index, toIndex);
+    const below = after[landedIndex + 1];
+    const aboveTrackIndex = below ? tracks.findIndex((t) => t.id === below.id) : null;
+    setDropIndicator({
+      aboveTrackIndex: aboveTrackIndex === -1 ? null : aboveTrackIndex,
+      indented: after[landedIndex]?.folderId !== undefined,
+    });
+  };
+
+  const onDragReorderEnd = () => setDropIndicator(null);
+
+  const onDragReorderDrop = (clientY: number, index: number) => {
+    setDropIndicator(null);
+    const toIndex = resolveDragTarget(clientY, index);
+    if (toIndex === null) return;
     dispatch({
       type: 'MOVE_TRACK',
       payload: { fromIndex: index, toIndex },
@@ -407,6 +443,9 @@ export function useTrackPanelHandlers(
     onEffectsClick,
     onFocusChange,
     onDragReorderDrop,
+    onDragReorderMove,
+    onDragReorderEnd,
+    dropIndicator,
     onReorderVertical,
     onNavigateVertical,
     onAddLabelClick,
