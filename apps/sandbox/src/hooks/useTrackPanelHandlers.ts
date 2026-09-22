@@ -54,6 +54,7 @@ export interface UseTrackPanelHandlersReturn {
   onDragReorderMove: (clientY: number, index: number) => void;
   onDragReorderEnd: () => void;
   dropIndicator: { aboveTrackIndex: number | null; indented: boolean } | null;
+  dragGhost: { trackIndex: number; clientY: number; indented: boolean } | null;
   onReorderVertical: (direction: 'up' | 'down', index: number) => void;
   onNavigateVertical: (direction: 'up' | 'down', shiftKey: boolean | undefined, index: number) => void;
   onAddLabelClick: (index: number) => void;
@@ -82,6 +83,10 @@ export function useTrackPanelHandlers(
   // would land, and whether that lands it inside a folder.
   const [dropIndicator, setDropIndicator] = useState<
     { aboveTrackIndex: number | null; indented: boolean } | null
+  >(null);
+  // The dragged row itself, drawn as a ghost under the pointer
+  const [dragGhost, setDragGhost] = useState<
+    { trackIndex: number; clientY: number; indented: boolean } | null
   >(null);
 
   const {
@@ -217,22 +222,31 @@ export function useTrackPanelHandlers(
   const onDragReorderMove = (clientY: number, index: number) => {
     const toIndex = resolveDragTarget(clientY, index);
     if (toIndex === null) {
+      // Hovering its own slot: the row stays where it is, so show the
+      // ghost with its CURRENT membership and no insertion line
       setDropIndicator(null);
+      setDragGhost({ trackIndex: index, clientY, indented: tracks[index]?.folderId !== undefined });
       return;
     }
     const { tracks: after, landedIndex } = moveTrackWithFolders(tracks, index, toIndex);
     const below = after[landedIndex + 1];
     const aboveTrackIndex = below ? tracks.findIndex((t) => t.id === below.id) : null;
+    const indented = after[landedIndex]?.folderId !== undefined;
     setDropIndicator({
       aboveTrackIndex: aboveTrackIndex === -1 ? null : aboveTrackIndex,
-      indented: after[landedIndex]?.folderId !== undefined,
+      indented,
     });
+    setDragGhost({ trackIndex: index, clientY, indented });
   };
 
-  const onDragReorderEnd = () => setDropIndicator(null);
+  const onDragReorderEnd = () => {
+    setDropIndicator(null);
+    setDragGhost(null);
+  };
 
   const onDragReorderDrop = (clientY: number, index: number) => {
     setDropIndicator(null);
+    setDragGhost(null);
     const toIndex = resolveDragTarget(clientY, index);
     if (toIndex === null) return;
     dispatch({
@@ -446,6 +460,7 @@ export function useTrackPanelHandlers(
     onDragReorderMove,
     onDragReorderEnd,
     dropIndicator,
+    dragGhost,
     onReorderVertical,
     onNavigateVertical,
     onAddLabelClick,

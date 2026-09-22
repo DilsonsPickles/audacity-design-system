@@ -19,6 +19,9 @@ export interface TrackControlSidePanelProps {
    *  commit uses, so the line can't promise a landing the drop
    *  won't deliver. */
   dropIndicator?: { aboveTrackIndex: number | null; indented: boolean } | null;
+  /** Live drag ghost: a translucent copy of the dragged row following
+   *  the pointer, indented when the drop would put it in a folder. */
+  dragGhost?: { trackIndex: number; clientY: number; indented: boolean } | null;
 
   /**
    * TrackControlPanel components
@@ -157,6 +160,7 @@ export interface TrackControlSidePanelProps {
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   children,
   dropIndicator,
+  dragGhost,
   resizable = false,
   minWidth = 280,
   maxWidth = 280,
@@ -323,6 +327,57 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     restoreMenuTriggerFocus();
   };
 
+  // Translucent copy of the dragged row, following the pointer. The
+  // clone is inert (pointerEvents none, drag callbacks stripped) so it
+  // can't start a second gesture or steal the menu.
+  const renderDragGhost = () => {
+    if (!dragGhost) return null;
+    const child = childArray[dragGhost.trackIndex];
+    const listRect = listRef.current?.getBoundingClientRect();
+    if (!child || !listRect) return null;
+    const height = trackHeights[dragGhost.trackIndex] || 114;
+    // Keep the card inside the track list so it never covers the
+    // panel header ("Tracks" / Add new) or spills past the last row
+    const top = Math.max(
+      listRect.top,
+      Math.min(listRect.bottom - height, dragGhost.clientY - height / 2),
+    );
+    return (
+      <div
+        data-drag-ghost
+        data-drag-ghost-indented={dragGhost.indented ? 'true' : 'false'}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: listRect.left + (dragGhost.indented ? 14 : 0),
+          width: listRect.width - (dragGhost.indented ? 14 : 0),
+          top,
+          height,
+          // Opaque card: without its own background the rows beneath
+          // read through the translucent clone and the ghost muddies
+          background: theme.background.surface.default,
+          opacity: 0.92,
+          pointerEvents: 'none',
+          zIndex: 9000,
+          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.28)',
+          borderRadius: 4,
+          overflow: 'hidden',
+          cursor: 'grabbing',
+        }}
+      >
+        {cloneElement(child, {
+          ...child.props,
+          isFocused: false,
+          isMenuOpen: false,
+          trackHeight: height,
+          onDragReorderDrop: undefined,
+          onDragReorderMove: undefined,
+          onDragReorderEnd: undefined,
+        })}
+      </div>
+    );
+  };
+
   const dropLine = (key: string, indented: boolean) => (
     <div
       key={key}
@@ -472,6 +527,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           ? dropLine('drop-end', dropIndicator.indented)
           : null}
       </div>
+
+      {renderDragGhost()}
 
       {/* Context Menu */}
       <ContextMenu

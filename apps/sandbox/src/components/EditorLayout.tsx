@@ -468,6 +468,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     onDragReorderMove: onTrackDragReorderMove,
     onDragReorderEnd: onTrackDragReorderEnd,
     dropIndicator: trackDropIndicator,
+    dragGhost: trackDragGhost,
     onReorderVertical: onTrackReorderVertical,
     onNavigateVertical: onTrackPanelNavigateVertical,
     onAddLabelClick: onTrackAddLabelClick,
@@ -700,6 +701,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         <TrackControlSidePanel
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
           dropIndicator={trackDropIndicator}
+          dragGhost={trackDragGhost}
           trackViewModes={state.tracks.map((t) => t.viewMode)}
           focusedTrackIndex={state.focusedTrackIndex}
           scrollRef={trackHeaderScrollRef}
