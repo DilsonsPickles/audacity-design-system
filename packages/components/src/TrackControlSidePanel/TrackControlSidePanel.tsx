@@ -396,9 +396,6 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         flexShrink: 0,
         marginLeft: indented ? 14 : 0,
         boxSizing: 'border-box',
-        border: '1px dashed rgba(103, 124, 228, 0.55)',
-        background: 'rgba(103, 124, 228, 0.08)',
-        borderRadius: 4,
         pointerEvents: 'none',
       }}
     />

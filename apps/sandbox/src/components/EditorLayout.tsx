@@ -1079,6 +1079,15 @@ export function EditorLayout(props: EditorLayoutProps) {
                     snapEnabled={snapEnabled}
                     showRmsInWaveform={showRmsInWaveform}
                     showQuickFadeHandles={showQuickFadeHandles}
+                    trackDragPreview={
+                      trackDragGhost && trackDropIndicator
+                        ? {
+                            liftedIndices: trackDragGhost.liftedIndices,
+                            aboveTrackIndex: trackDropIndicator.aboveTrackIndex,
+                            gapHeight: trackDropIndicator.gapHeight,
+                          }
+                        : null
+                    }
                     controlPointStyle={controlPointStyle}
                     viewportHeight={scrollContainerRef.current?.clientHeight || 0}
                     bottomBuffer={scrollBuffer}

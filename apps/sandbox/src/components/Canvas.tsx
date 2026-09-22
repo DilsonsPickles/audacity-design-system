@@ -83,6 +83,9 @@ export interface CanvasProps {
   showRmsInWaveform?: boolean;
   /** View > Show quick fade handles (curves stay visible) */
   showQuickFadeHandles?: boolean;
+  /** Live track reorder-drag preview, so the canvas parts in step
+   *  with the track control panel */
+  trackDragPreview?: import('./canvas/CanvasTrackList').TrackDragPreview | null;
   /**
    * Control point style for envelope points
    * @default 'default'
@@ -191,6 +194,7 @@ export function Canvas({
   onTrackContainerFocusChange,
   showRmsInWaveform = true,
   showQuickFadeHandles = true,
+  trackDragPreview = null,
   controlPointStyle = 'default',
   viewportHeight = 0,
   bottomBuffer = 0,
@@ -734,6 +738,7 @@ export function Canvas({
         style={{ ...containerProps.style, height: `${Math.max(containerHeight, viewportHeight)}px`, userSelect: 'none', cursor: 'text' } as React.CSSProperties}
       >
         <CanvasTrackList
+          dragPreview={trackDragPreview}
           tracks={tracks}
           selectedTrackIndices={selectedTrackIndices}
           focusedTrackIndex={focusedTrackIndex}

@@ -16,6 +16,7 @@ import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrac
 import { calculateTrackYOffset } from '../../utils/trackLayout';
 import {
   FOLDER_ROW_HEIGHT,
+  effectiveTrackStride,
   effectiveTrackMuted,
   effectiveTrackSoloed,
   folderChildIndices,
@@ -24,7 +25,20 @@ import {
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../../constants/canvas';
 import { LabelRenderer } from '../LabelRenderer';
 
+/** Live reorder-drag preview, mirrored from the track control panel
+ *  so both columns part in step (folders v1). */
+export interface TrackDragPreview {
+  /** Rows lifted out by the drag (a folder carries its family) */
+  liftedIndices: number[];
+  /** The row the landing slot opens ABOVE (null = after the last row) */
+  aboveTrackIndex: number | null;
+  /** Combined height of the lifted block */
+  gapHeight: number;
+}
+
 export interface CanvasTrackListProps {
+  /** Live reorder-drag preview (see TrackDragPreview) */
+  dragPreview?: TrackDragPreview | null;
   tracks: Track[];
   selectedTrackIndices: number[];
   focusedTrackIndex: number | null;
@@ -136,7 +150,23 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
         // Folders v1: children of a collapsed folder render nowhere
         // (still fully functional); the folder itself is a slim row.
         if (isHiddenByCollapse(tracks, trackIndex)) return null;
-        const yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
+        // A reorder drag parts the canvas exactly like the panel
+        // column: lifted rows vanish and everything below the landing
+        // slot shifts down by the block's height (net zero, so the
+        // canvas never grows or scroll-jumps mid-drag).
+        const preview = props.dragPreview;
+        if (preview?.liftedIndices.includes(trackIndex)) return null;
+        let yOffset = calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
+        if (preview) {
+          for (const lifted of preview.liftedIndices) {
+            if (lifted < trackIndex) {
+              yOffset -= effectiveTrackStride(tracks, lifted, DEFAULT_TRACK_HEIGHT, TRACK_GAP);
+            }
+          }
+          if (preview.aboveTrackIndex !== null && trackIndex >= preview.aboveTrackIndex) {
+            yOffset += preview.gapHeight;
+          }
+        }
         if (track.type === 'folder') {
           const childIndices = folderChildIndices(tracks, trackIndex);
           const childCount = childIndices.length;

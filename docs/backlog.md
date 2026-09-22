@@ -141,8 +141,9 @@ ungroup). Deliberately deferred:
   child and the next plain track can't be expressed; drop above a row
   or onto the folder header instead. (A drop INDICATOR now previews the
   landing, indented when it would join a group.)
-- **The preview is panel-column only** — the canvas column doesn't
-  reflow or show the ghost, so the two columns disagree mid-drag.
+- **The canvas parts but carries no ghost** — the dragged row's
+  waveform isn't shown floating over the canvas, only over the panel
+  column.
 - **The reflow doesn't animate** — rows jump to their parted positions
   rather than easing (a transform-based transition would need the rows
   to be positioned rather than in flow).
