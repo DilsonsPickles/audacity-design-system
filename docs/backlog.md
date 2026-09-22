@@ -141,9 +141,15 @@ ungroup). Deliberately deferred:
   child and the next plain track can't be expressed; drop above a row
   or onto the folder header instead. (A drop INDICATOR now previews the
   landing, indented when it would join a group.)
-- **The preview is panel-column only** — the canvas column shows no
-  drop line or ghost. The source row also just dims rather than
-  collapsing into a gap the ghost would fill.
+- **The preview is panel-column only** — the canvas column doesn't
+  reflow or show the ghost, so the two columns disagree mid-drag.
+- **The reflow doesn't animate** — rows jump to their parted positions
+  rather than easing (a transform-based transition would need the rows
+  to be positioned rather than in flow).
+- **A lifted row must stay MOUNTED** (`display: none`, not removed):
+  the dragged panel owns the gesture's document listeners, so
+  unmounting it mid-drag swallows the mouseup and the drop never
+  commits. Any future refactor of that list must preserve this.
 - **Membership on multi-track drags**: only the dragged row re-parents
   (multi-select drag-reorder isn't wired in the panel column).
 - **Solo is still visual-only in playback** (pre-existing:

@@ -116,6 +116,9 @@ export function resolveTrackDropIndex(root: ParentNode, clientY: number): number
   const indexOf = (panel: HTMLElement, ordinal: number) => panelTrackIndex(panel) ?? ordinal;
   for (let i = 0; i < panels.length; i++) {
     const rect = panels[i].getBoundingClientRect();
+    // Rows with no box (a collapsed folder's children, or the row
+    // currently lifted out by a drag) are not drop targets
+    if (rect.height === 0) continue;
     if (clientY >= rect.top && clientY <= rect.bottom) return indexOf(panels[i], i);
     if (clientY < rect.top) return indexOf(panels[i], i);
   }

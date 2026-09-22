@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { isHiddenByCollapse, moveTrackWithFolders } from '../utils/trackFolders';
+import { effectiveTrackHeight, folderChildIndices, isHiddenByCollapse, moveTrackWithFolders } from '../utils/trackFolders';
 import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -53,8 +53,8 @@ export interface UseTrackPanelHandlersReturn {
   /** Live preview while a reorder drag is in flight (folders v1) */
   onDragReorderMove: (clientY: number, index: number) => void;
   onDragReorderEnd: () => void;
-  dropIndicator: { aboveTrackIndex: number | null; indented: boolean } | null;
-  dragGhost: { trackIndex: number; clientY: number; indented: boolean } | null;
+  dropIndicator: { aboveTrackIndex: number | null; indented: boolean; gapHeight: number } | null;
+  dragGhost: { trackIndex: number; clientY: number; indented: boolean; liftedIndices: number[] } | null;
   onReorderVertical: (direction: 'up' | 'down', index: number) => void;
   onNavigateVertical: (direction: 'up' | 'down', shiftKey: boolean | undefined, index: number) => void;
   onAddLabelClick: (index: number) => void;
@@ -82,11 +82,11 @@ export function useTrackPanelHandlers(
   // Live drag-reorder preview (track folders): where the dragged row
   // would land, and whether that lands it inside a folder.
   const [dropIndicator, setDropIndicator] = useState<
-    { aboveTrackIndex: number | null; indented: boolean } | null
+    { aboveTrackIndex: number | null; indented: boolean; gapHeight: number } | null
   >(null);
   // The dragged row itself, drawn as a ghost under the pointer
   const [dragGhost, setDragGhost] = useState<
-    { trackIndex: number; clientY: number; indented: boolean } | null
+    { trackIndex: number; clientY: number; indented: boolean; liftedIndices: number[] } | null
   >(null);
 
   const {
@@ -220,23 +220,34 @@ export function useTrackPanelHandlers(
    *  is drawn ABOVE the row that would sit below it (null = after the
    *  last row), indented when the landing is inside a folder. */
   const onDragReorderMove = (clientY: number, index: number) => {
-    const toIndex = resolveDragTarget(clientY, index);
-    if (toIndex === null) {
-      // Hovering its own slot: the row stays where it is, so show the
-      // ghost with its CURRENT membership and no insertion line
-      setDropIndicator(null);
-      setDragGhost({ trackIndex: index, clientY, indented: tracks[index]?.folderId !== undefined });
-      return;
-    }
+    // Hovering its own slot resolves to null — preview it as a move to
+    // itself so the gap stays open where the row came from instead of
+    // the list snapping shut under the pointer.
+    const toIndex = resolveDragTarget(clientY, index) ?? index;
     const { tracks: after, landedIndex } = moveTrackWithFolders(tracks, index, toIndex);
-    const below = after[landedIndex + 1];
-    const aboveTrackIndex = below ? tracks.findIndex((t) => t.id === below.id) : null;
+
+    // A folder drags its whole family: every row in the block lifts out
+    // of the list, and the gap they leave is their combined height.
+    const blockIndices = tracks[index]?.type === 'folder'
+      ? [index, ...folderChildIndices(tracks, index)]
+      : [index];
+    const gapHeight = blockIndices.reduce(
+      (sum, i) => sum + effectiveTrackHeight(tracks, i, 114),
+      0,
+    );
+
+    // The row that would sit BELOW the landed block, mapped back to its
+    // index in the CURRENT array — that's where the gap opens.
+    const below = after[landedIndex + blockIndices.length];
+    const belowIndex = below ? tracks.findIndex((t) => t.id === below.id) : -1;
     const indented = after[landedIndex]?.folderId !== undefined;
+
     setDropIndicator({
-      aboveTrackIndex: aboveTrackIndex === -1 ? null : aboveTrackIndex,
+      aboveTrackIndex: belowIndex === -1 ? null : belowIndex,
       indented,
+      gapHeight,
     });
-    setDragGhost({ trackIndex: index, clientY, indented });
+    setDragGhost({ trackIndex: index, clientY, indented, liftedIndices: blockIndices });
   };
 
   const onDragReorderEnd = () => {

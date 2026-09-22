@@ -18,10 +18,10 @@ export interface TrackControlSidePanelProps {
    *  folder. The host computes it with the same move helper the
    *  commit uses, so the line can't promise a landing the drop
    *  won't deliver. */
-  dropIndicator?: { aboveTrackIndex: number | null; indented: boolean } | null;
+  dropIndicator?: { aboveTrackIndex: number | null; indented: boolean; gapHeight: number } | null;
   /** Live drag ghost: a translucent copy of the dragged row following
    *  the pointer, indented when the drop would put it in a folder. */
-  dragGhost?: { trackIndex: number; clientY: number; indented: boolean } | null;
+  dragGhost?: { trackIndex: number; clientY: number; indented: boolean; liftedIndices: number[] } | null;
 
   /**
    * TrackControlPanel components
@@ -370,6 +370,10 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           isFocused: false,
           isMenuOpen: false,
           trackHeight: height,
+          // The ghost must not look like a real row to the drop
+          // resolver (it sits under the cursor and would hit-test
+          // first): no track index, no drag callbacks.
+          trackIndex: undefined,
           onDragReorderDrop: undefined,
           onDragReorderMove: undefined,
           onDragReorderEnd: undefined,
@@ -378,18 +382,23 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     );
   };
 
-  const dropLine = (key: string, indented: boolean) => (
+  // The landing SLOT: the rows below part by exactly the height the
+  // dragged block lifted out, so the list shows the result in place.
+  // Indented when the drop would put the track inside a folder.
+  const dropLine = (key: string, indented: boolean, gapHeight: number) => (
     <div
       key={key}
       data-drop-indicator
       data-drop-indented={indented ? 'true' : 'false'}
       aria-hidden="true"
       style={{
-        height: 0,
+        height: gapHeight,
+        flexShrink: 0,
         marginLeft: indented ? 14 : 0,
-        borderTop: '2px solid #677CE4',
-        position: 'relative',
-        zIndex: 5,
+        boxSizing: 'border-box',
+        border: '1px dashed rgba(103, 124, 228, 0.55)',
+        background: 'rgba(103, 124, 228, 0.08)',
+        borderRadius: 4,
         pointerEvents: 'none',
       }}
     />
@@ -462,6 +471,12 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         tabIndex={-1}
       >
         {childArray.flatMap((child, index) => {
+          // Rows being dragged lift OUT of the list (the ghost carries
+          // them) — but only out of LAYOUT: they stay mounted behind
+          // `display: none`, because the dragged row's own component
+          // owns the gesture's document listeners. Unmounting it
+          // mid-drag swallows the mouseup and the drop never commits.
+          const lifted = dragGhost?.liftedIndices.includes(index) ?? false;
           const rowNode = ((): React.ReactNode => {
           // Folders v1: a height of 0 = child of a collapsed folder —
           // keep the node in the DOM (panel ordinals must stay aligned
@@ -477,7 +492,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               <div
                 key={child.key || index}
                 className={`track-control-side-panel__track ${isFocusedFolder ? 'track-control-side-panel__track--focused' : ''}`}
-                style={{ height: rawHeight || 28, flexShrink: 0 }}
+                style={{ height: rawHeight || 28, flexShrink: 0, ...(lifted ? { display: 'none' } : null) }}
               >
                 {cloneElement(child, {
                   ...child.props,
@@ -500,7 +515,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               initialHeight={height}
               minHeight={44}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
-              style={undefined}
+              style={lifted ? { display: 'none' } : undefined}
               isFirstPanel={index === 0}
               wheelResize
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
@@ -520,11 +535,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           // Insertion line for the drag preview, in FLOW so it sits
           // exactly on the row boundary at any zoom/track height
           return dropIndicator?.aboveTrackIndex === index
-            ? [dropLine(`drop-${index}`, dropIndicator.indented), rowNode]
+            ? [dropLine(`drop-${index}`, dropIndicator.indented, dropIndicator.gapHeight), rowNode]
             : [rowNode];
         })}
         {dropIndicator?.aboveTrackIndex === null
-          ? dropLine('drop-end', dropIndicator.indented)
+          ? dropLine('drop-end', dropIndicator.indented, dropIndicator.gapHeight)
           : null}
       </div>
 
