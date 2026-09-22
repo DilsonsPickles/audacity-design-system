@@ -636,23 +636,18 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   const { theme } = useTheme();
 
-  // Track-group container: every row of a family shares one recessed
-  // background, rounded at the family's top and bottom, inset from the
-  // column edges — so the group reads as a single block.
-  const GROUP_INSET = 6;
-  const GROUP_RADIUS = 6;
-  const groupContainerStyle: React.CSSProperties | null = groupPosition
-    ? {
-        background: theme.background.surface.inset,
-        marginLeft: GROUP_INSET,
-        marginRight: GROUP_INSET,
-        boxSizing: 'border-box',
-        borderTopLeftRadius: groupPosition === 'header' ? GROUP_RADIUS : 0,
-        borderTopRightRadius: groupPosition === 'header' ? GROUP_RADIUS : 0,
-        borderBottomLeftRadius: groupPosition === 'last-member' ? GROUP_RADIUS : 0,
-        borderBottomRightRadius: groupPosition === 'last-member' ? GROUP_RADIUS : 0,
-        paddingBottom: groupPosition === 'last-member' ? GROUP_INSET : 0,
-      }
+  // Track groups render like an accordion panel: the ROW WRAPPER
+  // (TrackControlSidePanel) draws the recessed well and its edges;
+  // this component just dresses the content — a title bar for the
+  // header, and card-like rows for the members nested inside.
+  const groupContentStyle: React.CSSProperties | null = groupPosition
+    ? groupPosition === 'header'
+      ? { background: theme.background.surface.subtle }
+      : {
+          background: theme.background.surface.default,
+          borderRadius: 4,
+          overflow: 'hidden',
+        }
     : null;
 
   const style = {
@@ -708,7 +703,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           padding: '0 6px 0 8px',
           boxSizing: 'border-box',
           background: theme.background.surface.default,
-          ...groupContainerStyle,
+          ...groupContentStyle,
           fontFamily: 'Inter, sans-serif',
           fontSize: 12,
           color: theme.foreground.text.primary,
@@ -840,9 +835,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         handleDragReorderMouseDown(e);
       }}
       style={{
-        // Folder children indent inside the group's shared background
-        ...(indentLevel > 0 ? { paddingLeft: indentLevel * 10 } : null),
-        ...groupContainerStyle,
+        // Members are cards nested in the group's well (the wrapper
+        // supplies the well and the horizontal inset)
+        ...groupContentStyle,
         ...style,
         ...(isDragReordering ? { opacity: 0.7, cursor: 'grabbing' } : null),
       }}

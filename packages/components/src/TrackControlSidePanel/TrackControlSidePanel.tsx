@@ -345,6 +345,48 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   };
 
 
+  // Track groups read as an accordion panel: the family's row
+  // WRAPPERS draw one recessed well — left/right edges all the way
+  // down, rounded and closed at the top (header) and bottom (last
+  // member) — and the member rows sit inside it as inset cards.
+  const GROUP_WELL_INSET = 6;
+  const GROUP_WELL_PAD = 5;
+  const groupWellStyle = (index: number): React.CSSProperties | null => {
+    if (!groupMenu) return null;
+    const isHeader = groupMenu.isFolderRow(index);
+    const folderId = isHeader ? undefined : groupMenu.groupOf(index);
+    if (!isHeader && folderId === undefined) return null;
+    const nextInSameGroup = !isHeader
+      && groupMenu.groupOf(index + 1) === folderId
+      && !groupMenu.isFolderRow(index + 1);
+    const isLast = !isHeader && !nextInSameGroup;
+    // A COLLAPSED group has no visible members (their heights are 0),
+    // so its header closes the well itself — otherwise the panel
+    // hangs open on a void.
+    const collapsedHeader = isHeader && trackHeights[index + 1] === 0;
+    const closesWell = isLast || collapsedHeader;
+    const edge = `1px solid ${theme.border.default}`;
+    return {
+      boxSizing: 'border-box',
+      background: theme.background.surface.inset,
+      marginLeft: GROUP_WELL_INSET,
+      marginRight: GROUP_WELL_INSET,
+      borderLeft: edge,
+      borderRight: edge,
+      ...(isHeader
+        ? { borderTop: edge, borderTopLeftRadius: 8, borderTopRightRadius: 8 }
+        : { paddingLeft: GROUP_WELL_PAD, paddingRight: GROUP_WELL_PAD }),
+      ...(closesWell
+        ? {
+            borderBottom: edge,
+            borderBottomLeftRadius: 8,
+            borderBottomRightRadius: 8,
+            paddingBottom: GROUP_WELL_PAD,
+          }
+        : null),
+    };
+  };
+
   return (
     <SidePanel
       position="left"
@@ -440,7 +482,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               <div
                 key={child.key || index}
                 className={`track-control-side-panel__track ${isFocusedFolder ? 'track-control-side-panel__track--focused' : ''}`}
-                style={{ height: rawHeight || 28, flexShrink: 0, ...ghostStyle }}
+                style={{ height: rawHeight || 28, flexShrink: 0, ...groupWellStyle(index), ...ghostStyle }}
               >
                 {cloneElement(child, {
                   ...child.props,
@@ -463,7 +505,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               initialHeight={height}
               minHeight={44}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
-              style={ghostStyle ?? undefined}
+              style={{ ...groupWellStyle(index), ...ghostStyle }}
               isFirstPanel={displayPos === 0}
               wheelResize
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
