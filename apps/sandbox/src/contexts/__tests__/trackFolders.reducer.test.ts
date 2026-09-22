@@ -100,6 +100,71 @@ describe('MOVE_TRACK with a folder', () => {
   });
 });
 
+describe('MOVE_TRACK membership — a track joins the folder it lands in', () => {
+  const base = () => [
+    makeTrack(10, { type: 'folder' }),
+    makeTrack(2, { folderId: 10 }),
+    makeTrack(3, { folderId: 10 }),
+    makeTrack(4),
+    makeTrack(5),
+  ];
+
+  it('a plain track dragged between two children JOINS the folder', () => {
+    const state = makeState(base());
+    // track 4 (index 3) → index 2, landing under child 2
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 3, toIndex: 2 } });
+    expect(next.tracks.map((t) => t.id)).toEqual([10, 2, 4, 3, 5]);
+    expect(next.tracks[2].folderId).toBe(10);
+  });
+
+  it('landing directly under the folder ROW joins as the first child', () => {
+    const state = makeState(base());
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 4, toIndex: 1 } });
+    expect(next.tracks[1].id).toBe(5);
+    expect(next.tracks[1].folderId).toBe(10);
+  });
+
+  it('a child dragged out below a plain track LEAVES the folder', () => {
+    const state = makeState(base());
+    // child 3 (index 2) → index 4, landing under plain track 4
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 2, toIndex: 4 } });
+    const moved = next.tracks.find((t) => t.id === 3)!;
+    expect(moved.folderId).toBeUndefined();
+  });
+
+  it('a child dragged to the very top leaves the folder', () => {
+    const state = makeState(base());
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 1, toIndex: 0 } });
+    expect(next.tracks[0].id).toBe(2);
+    expect(next.tracks[0].folderId).toBeUndefined();
+  });
+
+  it('removing the LAST child dissolves the folder', () => {
+    const state = makeState([
+      makeTrack(10, { type: 'folder' }),
+      makeTrack(2, { folderId: 10 }),
+      makeTrack(4),
+    ]);
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 1, toIndex: 2 } });
+    expect(next.tracks.some((t) => t.type === 'folder')).toBe(false);
+    expect(next.tracks.map((t) => t.id)).toEqual([4, 2]);
+  });
+
+  it('folders reorder as families, past each other', () => {
+    const state = makeState([
+      makeTrack(10, { type: 'folder' }),
+      makeTrack(2, { folderId: 10 }),
+      makeTrack(20, { type: 'folder' }),
+      makeTrack(3, { folderId: 20 }),
+    ]);
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 3 } });
+    expect(next.tracks.map((t) => t.id)).toEqual([20, 3, 10, 2]);
+    // membership survives the family move
+    expect(next.tracks[1].folderId).toBe(20);
+    expect(next.tracks[3].folderId).toBe(10);
+  });
+});
+
 describe('folder mute/solo cascade', () => {
   it('a folder mute/solo reaches its children; siblings unaffected', () => {
     const tracks = [

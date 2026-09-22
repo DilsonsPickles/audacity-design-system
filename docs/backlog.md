@@ -135,9 +135,13 @@ ungroup). Deliberately deferred:
 - **AddTrackFlyout** has no Folder entry (creation is select→Group only);
   no `folder` icon in the icon font.
 - **Track kebab menu** has no Ungroup/Collapse items (chevron + delete-as-
-  ungroup cover it); membership editing (drag a track in/out of a folder
-  span) not implemented — MOVE_TRACK of a child is a plain move that can
-  break contiguity (normalizeFolders only cleans dangling/empty).
+  ungroup cover it).
+- **Drop semantics are "insert at the row you hit"** — there is no
+  lower-half "insert after" zone, so dropping between a group's last
+  child and the next plain track can't be expressed; drop above a row
+  or onto the folder header instead. No drop indicator line yet either.
+- **Membership on multi-track drags**: only the dragged row re-parents
+  (multi-select drag-reorder isn't wired in the panel column).
 - **Solo is still visual-only in playback** (pre-existing:
   `applyTrackGains` ignores `soloed`); folder-solo cascades visually but
   not audibly until that gap is fixed. Mixdown applies no mute/solo at all.

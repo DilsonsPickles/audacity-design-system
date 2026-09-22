@@ -185,11 +185,25 @@ export function useTrackPanelHandlers(
     // the first row or below the last, clamp.
     const target = resolveTrackDropIndex(document, clientY);
     if (target < 0 || target === index) return;
+    // Dropping a plain track ON a folder row means "join this group"
+    // (its first child) rather than "sit above the folder" — aim one
+    // row past the header, which lands right after it whichever
+    // direction the drag came from. Dropping ABOVE the row (the
+    // resolver returns the same index for "over it" and "above
+    // everything") must stay a plain move, or a child could never be
+    // dragged out to the top of a list that starts with a folder.
+    const targetPanel = findTrackControlPanelByIndex(document, target);
+    const targetRect = targetPanel?.getBoundingClientRect();
+    const droppedAboveRow = targetRect ? clientY < targetRect.top : false;
+    const droppedOnFolder = !droppedAboveRow
+      && tracks[target]?.type === 'folder'
+      && tracks[index]?.type !== 'folder';
+    const toIndex = droppedOnFolder && index > target ? target + 1 : target;
     dispatch({
       type: 'MOVE_TRACK',
-      payload: { fromIndex: index, toIndex: target },
+      payload: { fromIndex: index, toIndex },
     });
-    dispatch({ type: 'SET_FOCUSED_TRACK', payload: target });
+    dispatch({ type: 'SET_FOCUSED_TRACK', payload: toIndex });
   };
 
   const onReorderVertical = (direction: 'up' | 'down', index: number) => {
@@ -198,7 +212,12 @@ export function useTrackPanelHandlers(
     // the same MOVE_TRACK path the canvas .track
     // container uses. Aborts silently at the edges.
     const dir = direction === 'up' ? -1 : 1;
-    const target = index + dir;
+    // Folders v1: step over rows that render nowhere (children of a
+    // collapsed folder) so the move lands somewhere the user can see
+    let target = index + dir;
+    while (target >= 0 && target < tracks.length && isHiddenByCollapse(tracks, target)) {
+      target += dir;
+    }
     if (target < 0 || target >= tracks.length) return;
     dispatch({
       type: 'MOVE_TRACK',

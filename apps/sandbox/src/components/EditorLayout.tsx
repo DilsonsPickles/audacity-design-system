@@ -824,6 +824,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 }}
                 isMuted={track.muted ?? false}
                 isSolo={track.soloed ?? false}
+                trackIndex={index}
                 isCollapsed={track.collapsed ?? false}
                 onToggleCollapse={() => dispatch({ type: 'TOGGLE_FOLDER_COLLAPSED', payload: { trackIndex: index } })}
                 indentLevel={trackDepth(state.tracks, index)}

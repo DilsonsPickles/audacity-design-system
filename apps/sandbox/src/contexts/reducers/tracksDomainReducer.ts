@@ -273,6 +273,24 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       });
       const [moved] = newTracks.splice(fromIndex, 1);
       newTracks.splice(toIndex, 0, moved);
+      // Folders v1 — MEMBERSHIP FOLLOWS THE LANDING SPOT: a moved track
+      // joins the folder of the row ABOVE it (a folder row itself means
+      // "you landed inside me, as my first child"), and leaves its
+      // folder when it lands under a plain track or at the very top.
+      // That makes drag, Cmd+Arrow and drop-on-a-collapsed-folder all
+      // re-parent by the same rule, with no separate gesture.
+      if (moved.type !== 'folder') {
+        const above = newTracks[toIndex - 1];
+        const nextFolderId = above
+          ? (above.type === 'folder' ? above.id : above.folderId)
+          : undefined;
+        if (nextFolderId === undefined) {
+          const { folderId: _left, ...rest } = moved;
+          newTracks[toIndex] = rest as Track;
+        } else if (moved.folderId !== nextFolderId) {
+          newTracks[toIndex] = { ...moved, folderId: nextFolderId };
+        }
+      }
       // Remap selected track indices to follow the reorder
       const newSelected = state.selectedTrackIndices.map(i => {
         if (i === fromIndex) return toIndex;
@@ -282,7 +300,7 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       });
       return {
         ...state,
-        tracks: newTracks,
+        tracks: normalizeFolders(newTracks),
         focusedTrackIndex: toIndex,
         selectedTrackIndices: newSelected,
         timeSelection: remapTimeSelectionTracks(state.timeSelection, (i) => {

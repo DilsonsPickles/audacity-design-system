@@ -39,9 +39,21 @@ export function isKeyboardReadyFocusAnchor(el: Element | null, parkIndex: number
   return el.closest('.track-control-panel, [data-track-ruler-index]') !== null;
 }
 
-/** All track control panels, in track order (one per `TrackControlPanel`). */
+/** All track control panels, in render order (one per rendered
+ *  `TrackControlPanel`). NOTE: with track folders the rendered panels
+ *  are NOT one-per-track — a collapsed folder's children render none —
+ *  so callers must resolve indices through `data-track-panel-index`
+ *  (see panelTrackIndex) and never by ordinal position. */
 function queryTrackControlPanels(root: ParentNode): NodeListOf<HTMLElement> {
   return root.querySelectorAll<HTMLElement>('[aria-label*="track controls"]');
+}
+
+/** The TRACK-ARRAY index a rendered panel stands for. */
+function panelTrackIndex(panel: HTMLElement): number | null {
+  const raw = panel.getAttribute('data-track-panel-index');
+  if (raw === null) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /**
@@ -53,7 +65,11 @@ function queryTrackControlPanels(root: ParentNode): NodeListOf<HTMLElement> {
  * panel at the next/previous track on Arrow nav).
  */
 export function findTrackControlPanelByIndex(root: ParentNode, index: number): HTMLElement | null {
-  return queryTrackControlPanels(root)[index] ?? null;
+  const panels = queryTrackControlPanels(root);
+  for (const panel of panels) {
+    if (panelTrackIndex(panel) === index) return panel;
+  }
+  return null;
 }
 
 /**
@@ -97,20 +113,14 @@ export function findLastButtonInTrackControlPanel(root: ParentNode, index: numbe
  */
 export function resolveTrackDropIndex(root: ParentNode, clientY: number): number {
   const panels = queryTrackControlPanels(root);
-  let target = -1;
+  const indexOf = (panel: HTMLElement, ordinal: number) => panelTrackIndex(panel) ?? ordinal;
   for (let i = 0; i < panels.length; i++) {
     const rect = panels[i].getBoundingClientRect();
-    if (clientY >= rect.top && clientY <= rect.bottom) {
-      target = i;
-      break;
-    }
-    if (clientY < rect.top && target === -1) {
-      target = i;
-      break;
-    }
+    if (clientY >= rect.top && clientY <= rect.bottom) return indexOf(panels[i], i);
+    if (clientY < rect.top) return indexOf(panels[i], i);
   }
-  if (target === -1) target = panels.length - 1;
-  return target;
+  const last = panels[panels.length - 1];
+  return last ? indexOf(last, panels.length - 1) : -1;
 }
 
 /**

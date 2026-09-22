@@ -57,6 +57,11 @@ export interface TrackControlPanelProps {
   onToggleCollapse?: () => void;
   /** Indent level for folder children (0 or 1 in v1) */
   indentLevel?: number;
+  /** The panel's TRACK-ARRAY index, stamped as
+   *  `data-track-panel-index`. Focus routing and drag-reorder resolve
+   *  panels through this attribute, never through DOM ordinals —
+   *  folder rows and collapsed children make the two diverge. */
+  trackIndex?: number;
   onClick?: () => void;
   onToggleSelection?: () => void; // Cmd/Ctrl+Click to toggle
   onRangeSelection?: () => void; // Shift+Click for range selection
@@ -122,6 +127,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   isCollapsed,
   onToggleCollapse,
   indentLevel = 0,
+  trackIndex,
   onClick,
   onToggleSelection,
   onRangeSelection,
@@ -657,6 +663,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     return (
       <div
         className="track-control-panel track-control-panel--folder"
+        data-track-panel-index={trackIndex}
+        aria-label={`${trackName} track controls`}
         data-focused={isFocused ? 'true' : 'false'}
         style={{
           display: 'flex',
@@ -756,17 +764,26 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         focusFromMouseRef.current = true;
         handleDragReorderMouseDown(e);
       }}
-      style={
-        isDragReordering
-          ? { ...style, opacity: 0.7, cursor: 'grabbing' }
-          : style
-      }
+      style={{
+        // Folder children indent, with a rail marking the group's
+        // extent down the column (folders v1)
+        ...(indentLevel > 0
+          ? {
+              paddingLeft: indentLevel * 12,
+              borderLeft: `2px solid ${theme.border.default}`,
+              boxSizing: 'border-box' as const,
+            }
+          : null),
+        ...style,
+        ...(isDragReordering ? { opacity: 0.7, cursor: 'grabbing' } : null),
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
       tabIndex={tabIndex}
       role={tabIndex !== undefined ? "group" : undefined}
       aria-label={tabIndex !== undefined ? `${trackName} track controls` : undefined}
+      data-track-panel-index={trackIndex}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}

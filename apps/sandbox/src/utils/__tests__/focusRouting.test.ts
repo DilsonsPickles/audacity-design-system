@@ -25,12 +25,20 @@ function mount(): HTMLDivElement {
 
 afterEach(() => {
   root?.remove();
+  nextPanelIndex = 0;
 });
 
 // Real aria-label format (TrackControlPanel.tsx): `${trackName} track controls`.
-function panel(ariaLabel: string, buttonCount = 0): HTMLElement {
+// Panels also carry `data-track-panel-index` (the TRACK-ARRAY index);
+// with track folders that diverges from the DOM ordinal, so resolution
+// reads the attribute. The helper stamps it from append order by
+// default — pass `trackIndex` to model the divergence.
+let nextPanelIndex = 0;
+function panel(ariaLabel: string, buttonCount = 0, trackIndex?: number): HTMLElement {
   const el = document.createElement('div');
   el.setAttribute('aria-label', ariaLabel);
+  el.setAttribute('data-track-panel-index', String(trackIndex ?? nextPanelIndex));
+  nextPanelIndex += 1;
   for (let i = 0; i < buttonCount; i++) {
     const btn = document.createElement('button');
     btn.textContent = `btn-${i}`;
@@ -274,5 +282,35 @@ describe('findSelectionToolbarFirstGroup', () => {
   it('returns null when .selection-toolbar is not rendered', () => {
     const r = mount();
     expect(findSelectionToolbarFirstGroup(r)).toBeNull();
+  });
+});
+
+// --- Track folders: rendered panels are no longer one-per-track ------
+// A collapsed folder's children render NO panel, so the DOM ordinal and
+// the track-array index diverge. Both helpers must follow the attribute.
+
+describe('panel resolution with track folders', () => {
+  it('findTrackControlPanelByIndex follows data-track-panel-index, not the ordinal', () => {
+    const r = mount();
+    // tracks: [0]=folder, [1],[2]=hidden children (no panels), [3]=plain
+    const folder = panel('Group 1 track controls', 0, 0);
+    const after = panel('Track 4 track controls', 0, 3);
+    r.append(folder, after);
+    expect(findTrackControlPanelByIndex(r, 3)).toBe(after);
+    // ordinal 1 is NOT track 1 — track 1 is hidden and renders nothing
+    expect(findTrackControlPanelByIndex(r, 1)).toBeNull();
+  });
+
+  it('resolveTrackDropIndex returns the TRACK index of the row under the pointer', () => {
+    const r = mount();
+    const folder = panel('Group 1 track controls', 0, 0);
+    const after = panel('Track 4 track controls', 0, 3);
+    mockRect(folder, 0, 28);
+    mockRect(after, 28, 142);
+    r.append(folder, after);
+    expect(resolveTrackDropIndex(r, 10)).toBe(0);
+    expect(resolveTrackDropIndex(r, 100)).toBe(3);
+    // below everything clamps to the last rendered row's TRACK index
+    expect(resolveTrackDropIndex(r, 999)).toBe(3);
   });
 });
