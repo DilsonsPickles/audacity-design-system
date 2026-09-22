@@ -21,6 +21,8 @@ export interface TrackControlSidePanelProps {
     groupOf: (trackIndex: number) => number | undefined;
     /** True when the row is a folder header */
     isFolderRow: (trackIndex: number) => boolean;
+    /** Wrap this one track in a brand-new group */
+    onCreateGroup: (trackIndex: number) => void;
     onAddToGroup: (trackIndex: number, folderId: number) => void;
     onRemoveFromGroup: (trackIndex: number) => void;
     onUngroup: (trackIndex: number) => void;
@@ -513,6 +515,13 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           const joinable = groupMenu.groups.filter((g) => g.folderId !== current);
           return (
             <>
+              <ContextMenuItem
+                label="Create group"
+                onClick={() => {
+                  groupMenu.onCreateGroup(idx);
+                  handleMenuClose();
+                }}
+              />
               {joinable.map((g) => (
                 <ContextMenuItem
                   key={`add-to-${g.folderId}`}

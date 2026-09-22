@@ -34,6 +34,29 @@ describe('GROUP_SELECTED_TRACKS', () => {
     expect(next.selectedTrackIndices).toEqual([2, 3]);
   });
 
+  it('GROUP_TRACKS wraps a SINGLE track — a group of one is legal', () => {
+    const state = makeState([makeTrack(1), makeTrack(2), makeTrack(3)]);
+    const next = tracksDomainReducer(state, { type: 'GROUP_TRACKS', payload: { trackIndices: [1] } });
+    expect(next.tracks.map((t) => t.id)).toEqual([1, 4, 2, 3]);
+    expect(next.tracks[1].type).toBe('folder');
+    expect(next.tracks[2].folderId).toBe(4);
+    // ...and it survives normalizeFolders (one child is not "empty")
+    expect(next.tracks.filter((t) => t.type === 'folder')).toHaveLength(1);
+  });
+
+  it('GROUP_TRACKS on a track already in a folder moves it to a new one', () => {
+    const state = makeState([
+      makeTrack(10, { type: 'folder' }),
+      makeTrack(2, { folderId: 10 }),
+      makeTrack(3, { folderId: 10 }),
+    ]);
+    const next = tracksDomainReducer(state, { type: 'GROUP_TRACKS', payload: { trackIndices: [2] } });
+    const folders = next.tracks.filter((t) => t.type === 'folder');
+    expect(folders).toHaveLength(2);
+    const moved = next.tracks.find((t) => t.id === 3)!;
+    expect(moved.folderId).not.toBe(10);
+  });
+
   it('is a no-op with nothing eligible selected', () => {
     const state = makeState([makeTrack(1)], []);
     expect(tracksDomainReducer(state, { type: 'GROUP_SELECTED_TRACKS' })).toBe(state);

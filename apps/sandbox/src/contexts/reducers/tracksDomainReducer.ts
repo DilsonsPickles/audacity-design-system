@@ -19,6 +19,48 @@ function remapTimeSelectionTracks(
   return { ...timeSelection, tracks: remapped };
 }
 
+/** Wrap `indices` (non-folder tracks) in a NEW folder row — the one
+ *  implementation behind both "Group selected tracks" and the row
+ *  menu's "Create group", so a group of one and a group of many are
+ *  built identically. The folder inserts where the first member was;
+ *  members move to sit CONTIGUOUSLY below it, preserving their
+ *  relative order (the folder-family invariant every other folder
+ *  operation relies on). Members already in a folder are re-parented,
+ *  and a folder emptied by that dissolves (normalize). */
+function groupTracks(state: TracksState, indices: readonly number[]): TracksState {
+  const eligible = [...indices]
+    .filter((i) => state.tracks[i] && state.tracks[i].type !== 'folder')
+    .sort((a, b) => a - b);
+  if (eligible.length === 0) return state;
+
+  const folderId = state.tracks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+  const folderCount = state.tracks.filter((t) => t.type === 'folder').length;
+  const folder: Track = {
+    id: folderId,
+    name: `Group ${folderCount + 1}`,
+    type: 'folder',
+    clips: [],
+    collapsed: false,
+  };
+
+  const eligibleSet = new Set(eligible);
+  const children = eligible.map((i) => ({ ...state.tracks[i], folderId }));
+  const rest = state.tracks.filter((_, i) => !eligibleSet.has(i));
+  // Insert position: count remaining tracks before the first child
+  const insertAt = state.tracks.slice(0, eligible[0]).filter((_, i) => !eligibleSet.has(i)).length;
+  const newTracks = [...rest];
+  newTracks.splice(insertAt, 0, folder, ...children);
+
+  return {
+    ...state,
+    tracks: normalizeFolders(newTracks),
+    focusedTrackIndex: insertAt,
+    // The members stay selected at their new, contiguous indices
+    selectedTrackIndices: children.map((_, k) => insertAt + 1 + k),
+    timeSelection: null,
+  };
+}
+
 export function tracksDomainReducer(state: TracksState, action: TracksAction): TracksState {
   switch (action.type) {
     case 'SET_TRACKS': {
@@ -284,45 +326,11 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       };
     }
 
-    case 'GROUP_SELECTED_TRACKS': {
-      // Folders v1: wrap the selected (non-folder) tracks in a new
-      // folder row. The folder inserts where the first selected track
-      // was; the children move to sit CONTIGUOUSLY below it, preserving
-      // their relative order (the folder-family invariant every other
-      // folder operation relies on). Tracks already in a folder are
-      // re-parented; a folder emptied by that dissolves (normalize).
-      const eligible = state.selectedTrackIndices
-        .filter((i) => state.tracks[i] && state.tracks[i].type !== 'folder')
-        .sort((a, b) => a - b);
-      if (eligible.length === 0) return state;
+    case 'GROUP_SELECTED_TRACKS':
+      return groupTracks(state, state.selectedTrackIndices);
 
-      const folderId = state.tracks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
-      const folderCount = state.tracks.filter((t) => t.type === 'folder').length;
-      const folder: Track = {
-        id: folderId,
-        name: `Group ${folderCount + 1}`,
-        type: 'folder',
-        clips: [],
-        collapsed: false,
-      };
-
-      const eligibleSet = new Set(eligible);
-      const children = eligible.map((i) => ({ ...state.tracks[i], folderId }));
-      const rest = state.tracks.filter((_, i) => !eligibleSet.has(i));
-      // Insert position: count remaining tracks before the first child
-      const insertAt = state.tracks.slice(0, eligible[0]).filter((_, i) => !eligibleSet.has(i)).length;
-      const newTracks = [...rest];
-      newTracks.splice(insertAt, 0, folder, ...children);
-
-      return {
-        ...state,
-        tracks: normalizeFolders(newTracks),
-        focusedTrackIndex: insertAt,
-        // The children stay selected at their new, contiguous indices
-        selectedTrackIndices: children.map((_, k) => insertAt + 1 + k),
-        timeSelection: null,
-      };
-    }
+    case 'GROUP_TRACKS':
+      return groupTracks(state, action.payload.trackIndices);
 
     case 'UNGROUP_FOLDER': {
       const folder = state.tracks[action.payload.trackIndex];

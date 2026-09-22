@@ -333,6 +333,7 @@ export type TracksAction =
   | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean }
   | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'GROUP_SELECTED_TRACKS' }
+  | { type: 'GROUP_TRACKS'; payload: { trackIndices: number[] } }
   | { type: 'UNGROUP_FOLDER'; payload: { trackIndex: number } }
   | { type: 'ADD_TRACK_TO_FOLDER'; payload: { trackIndex: number; folderId: number } }
   | { type: 'REMOVE_TRACK_FROM_FOLDER'; payload: { trackIndex: number } }
@@ -417,6 +418,7 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'DELETE_TRACKS',
   'MOVE_TRACK',
   'GROUP_SELECTED_TRACKS',
+  'GROUP_TRACKS',
   'UNGROUP_FOLDER',
   'ADD_TRACK_TO_FOLDER',
   'REMOVE_TRACK_FROM_FOLDER',

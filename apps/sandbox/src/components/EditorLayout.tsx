@@ -706,6 +706,8 @@ export function EditorLayout(props: EditorLayoutProps) {
               .map((t) => ({ folderId: t.id, name: t.name })),
             groupOf: (i) => state.tracks[i]?.folderId,
             isFolderRow: (i) => state.tracks[i]?.type === 'folder',
+            onCreateGroup: (i) =>
+              dispatch({ type: 'GROUP_TRACKS', payload: { trackIndices: [i] } }),
             onAddToGroup: (i, folderId) =>
               dispatch({ type: 'ADD_TRACK_TO_FOLDER', payload: { trackIndex: i, folderId } }),
             onRemoveFromGroup: (i) =>
