@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
@@ -457,6 +457,31 @@ export function Canvas({
     },
   });
 
+  // The selection the marquee WOULD commit right now, shaped for
+  // rendering. Clips inside the rectangle draw as selected; with no
+  // Shift held, selected clips outside it drop back to idle — the
+  // canvas previews the replacement, not just the additions. Mirrors
+  // onSelectionCommit above; both read the same picks.
+  const marqueePreview = useMemo(() => {
+    const picks = marquee.marqueePicks;
+    if (!picks) return null;
+    const byTrack = new Map<number, Set<number>>();
+    picks.forEach((clipIds, trackIndex) => byTrack.set(trackIndex, new Set(clipIds)));
+    if (marquee.marqueeModifiers?.shiftKey) {
+      tracks.forEach((t, tIndex) => {
+        const keep = (c: { id: number; selected?: boolean }) => {
+          if (!c.selected) return;
+          const set = byTrack.get(tIndex);
+          if (set) set.add(c.id);
+          else byTrack.set(tIndex, new Set([c.id]));
+        };
+        t.clips.forEach(keep);
+        (t.midiClips || []).forEach(keep);
+      });
+    }
+    return byTrack as ReadonlyMap<number, ReadonlySet<number>>;
+  }, [marquee.marqueePicks, marquee.marqueeModifiers, tracks]);
+
   // Label dragging - extracted to custom hook (handles mouseup internally)
   useLabelDragging({
     containerRef,
@@ -756,6 +781,7 @@ export function Canvas({
           showQuickFadeHandles={showQuickFadeHandles}
           draggingClipIds={draggingClipIds}
           raisedClipIds={raisedClipIds}
+          marqueePreview={marqueePreview}
           hoveredMidiClipId={hoveredMidiClipId}
           onHoverMidiClip={onHoverMidiClip}
           onTrackFocusChange={onTrackFocusChange}

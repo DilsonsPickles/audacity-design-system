@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Track } from '../contexts/TracksContext';
 import { calculateTrackYOffset } from '../utils/trackLayout';
+import { effectiveTrackHeight } from '../utils/trackFolders';
 
 /** Right-drag "marquee" selection: hold right mouse button and drag
  *  across the canvas to lasso every clip the rectangle covers. Only
@@ -35,11 +36,93 @@ export interface MarqueeRect {
   height: number;
 }
 
+/** Everything the hit test needs to turn a rectangle into clip picks.
+ *  Passed explicitly so the test is pure and callable from both the
+ *  live preview and the commit. */
+export interface MarqueeHitContext {
+  tracks: Track[];
+  pixelsPerSecond: number;
+  clipContentOffset: number;
+  topGap: number;
+  trackGap: number;
+  defaultTrackHeight: number;
+}
+
+export type MarqueePick = { trackIndex: number; clipId: number };
+
+/** THE hit test. Every clip (audio + MIDI) whose time span overlaps
+ *  the rectangle's horizontal span, on every track whose drawn band
+ *  overlaps its vertical span. Pure, so the highlight the user sees
+ *  mid-drag and the selection committed on release are the same
+ *  computation — they can never disagree.
+ *
+ *  Vertical bands use the FOLDER-AWARE height: a collapsed folder's
+ *  children draw nothing and so can't be lassoed (they used to claim
+ *  a full-height band each and got swept invisibly). */
+export function clipsInMarquee(rect: MarqueeRect, ctx: MarqueeHitContext): MarqueePick[] {
+  const { tracks, pixelsPerSecond, clipContentOffset, topGap, trackGap, defaultTrackHeight } = ctx;
+  const timeStart = Math.max(0, (rect.left - clipContentOffset) / pixelsPerSecond);
+  const timeEnd = Math.max(0, (rect.left + rect.width - clipContentOffset) / pixelsPerSecond);
+  const yTop = rect.top;
+  const yBottom = rect.top + rect.height;
+
+  const picks: MarqueePick[] = [];
+  for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
+    const track = tracks[trackIndex];
+    const trackH = effectiveTrackHeight(tracks, trackIndex, defaultTrackHeight);
+    if (trackH === 0) continue; // hidden inside a collapsed folder
+    const trackTop = calculateTrackYOffset(trackIndex, tracks, topGap, trackGap, defaultTrackHeight);
+    const trackBottom = trackTop + trackH;
+    // Track vertical overlap test (any pixel of the track band
+    // covered by the marquee rectangle counts).
+    if (trackBottom <= yTop || trackTop >= yBottom) continue;
+
+    const allClips = [...(track.clips || []), ...(track.midiClips || [])];
+    for (const clip of allClips) {
+      const cStart = clip.start;
+      const cEnd = clip.start + clip.duration;
+      // Time overlap: any portion of the clip covered by the
+      // marquee's horizontal span.
+      if (cEnd <= timeStart || cStart >= timeEnd) continue;
+      picks.push({ trackIndex, clipId: clip.id });
+    }
+  }
+  return picks;
+}
+
+/** Picks grouped for rendering: trackIndex -> clip ids under the
+ *  rectangle right now. */
+export type MarqueePickMap = ReadonlyMap<number, ReadonlySet<number>>;
+
+function groupPicks(picks: readonly MarqueePick[]): Map<number, Set<number>> {
+  const byTrack = new Map<number, Set<number>>();
+  for (const p of picks) {
+    const set = byTrack.get(p.trackIndex);
+    if (set) set.add(p.clipId);
+    else byTrack.set(p.trackIndex, new Set([p.clipId]));
+  }
+  return byTrack;
+}
+
+/** Stable identity key for a pick set, so the preview only re-renders
+ *  when MEMBERSHIP changes — not on every pixel of pointer travel. */
+function picksSignature(picks: readonly MarqueePick[]): string {
+  return picks.map((p) => `${p.trackIndex}:${p.clipId}`).join(',');
+}
+
 export interface UseMarqueeSelectionReturn {
   /** Current marquee rectangle (in container-local pixels). Null
    *  when no drag is in progress. Consumers render an overlay from
    *  this. */
   marqueeRect: MarqueeRect | null;
+  /** Live preview of what release would select: the clips the
+   *  rectangle currently covers, grouped by track. Null when no
+   *  marquee is in progress. Identity is stable while the covered
+   *  set is unchanged. */
+  marqueePicks: MarqueePickMap | null;
+  /** The modifiers the gesture started with — the consumer needs
+   *  them to preview additive (Shift) vs replacing drags. */
+  marqueeModifiers: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean } | null;
   /** True from the moment the right-button drag has moved far enough
    *  to distinguish it from a plain right-click (which should still
    *  open the existing context menu). */
@@ -95,6 +178,16 @@ export function useMarqueeSelection({
   const justMarqueedRef = useRef(false);
   const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null);
   const [isMarqueeing, setIsMarqueeing] = useState(false);
+  // The live picks feed BOTH the highlight and the commit: computed
+  // once per move tick, read again on mouseup. `picksRef` is the
+  // authority; the state copy exists only to re-render the preview,
+  // and is skipped when membership is unchanged.
+  const picksRef = useRef<MarqueePick[]>([]);
+  const picksSignatureRef = useRef('');
+  const [marqueePicks, setMarqueePicks] = useState<MarqueePickMap | null>(null);
+  const [marqueeModifiers, setMarqueeModifiers] = useState<
+    { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean } | null
+  >(null);
 
   const onMouseDownCapture = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -139,13 +232,33 @@ export function useMarqueeSelection({
         // block the context menu that would otherwise fire on the
         // upcoming mouseup.
         setIsMarqueeing(true);
+        setMarqueeModifiers(start.modifiers);
       }
 
       const left = Math.min(start.startX, currentX);
       const top = Math.min(start.startY, currentY);
       const width = Math.abs(dx);
       const height = Math.abs(dy);
-      setMarqueeRect({ left, top, width, height });
+      const nextRect = { left, top, width, height };
+      setMarqueeRect(nextRect);
+
+      // Hit-test every tick so the covered clips light up as the
+      // rectangle sweeps them. Re-rendering is gated on membership,
+      // not on pointer travel.
+      const picks = clipsInMarquee(nextRect, {
+        tracks: tracksRef.current,
+        pixelsPerSecond: pixelsPerSecondRef.current,
+        clipContentOffset: clipContentOffsetRef.current,
+        topGap: topGapRef.current,
+        trackGap: trackGapRef.current,
+        defaultTrackHeight: defaultTrackHeightRef.current,
+      });
+      picksRef.current = picks;
+      const signature = picksSignature(picks);
+      if (signature !== picksSignatureRef.current) {
+        picksSignatureRef.current = signature;
+        setMarqueePicks(groupPicks(picks));
+      }
     };
 
     const handleMouseUp = (e: MouseEvent) => {
@@ -159,53 +272,26 @@ export function useMarqueeSelection({
       const marqueed = isMarqueeing;
       dragStartRef.current = null;
 
+      const clearPreview = () => {
+        picksRef.current = [];
+        picksSignatureRef.current = '';
+        setMarqueePicks(null);
+        setMarqueeModifiers(null);
+      };
+
       if (!marqueed) {
         // Below threshold — treat as a plain right-click. Leave the
         // context-menu path to Canvas.
         setMarqueeRect(null);
+        clearPreview();
         return;
       }
 
-      // Compute the selection from the rectangle. Uses live values
-      // from the refs above so we're always operating on the
-      // current tracks / zoom / layout.
-      const tracks = tracksRef.current;
-      const pixelsPerSecond = pixelsPerSecondRef.current;
-      const clipContentOffset = clipContentOffsetRef.current;
-      const topGap = topGapRef.current;
-      const trackGap = trackGapRef.current;
-      const defaultTrackHeight = defaultTrackHeightRef.current;
-
-      const rectEl = marqueeRect;
-      if (rectEl) {
-        const timeStart = Math.max(0, (rectEl.left - clipContentOffset) / pixelsPerSecond);
-        const timeEnd = Math.max(0, (rectEl.left + rectEl.width - clipContentOffset) / pixelsPerSecond);
-        const yTop = rectEl.top;
-        const yBottom = rectEl.top + rectEl.height;
-
-        const picks: Array<{ trackIndex: number; clipId: number }> = [];
-        for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
-          const track = tracks[trackIndex];
-          const yOff = calculateTrackYOffset(trackIndex, tracks, topGap, trackGap, defaultTrackHeight);
-          const trackH = track.height || defaultTrackHeight;
-          const trackTop = yOff;
-          const trackBottom = yOff + trackH;
-          // Track vertical overlap test (any pixel of the track band
-          // covered by the marquee rectangle counts).
-          if (trackBottom <= yTop || trackTop >= yBottom) continue;
-
-          const allClips = [...(track.clips || []), ...(track.midiClips || [])];
-          for (const clip of allClips) {
-            const cStart = clip.start;
-            const cEnd = clip.start + clip.duration;
-            // Time overlap: any portion of the clip covered by the
-            // marquee's horizontal span.
-            if (cEnd <= timeStart || cStart >= timeEnd) continue;
-            picks.push({ trackIndex, clipId: clip.id });
-          }
-        }
-
-        onSelectionCommitRef.current(picks, start.modifiers);
+      // Commit exactly what the highlight promised: the picks the
+      // last move tick computed, not a fresh hit test. The user
+      // released on what they could see.
+      if (marqueeRect) {
+        onSelectionCommitRef.current(picksRef.current, start.modifiers);
       }
 
       // Prevent the follow-up contextmenu event so a right-drag
@@ -218,6 +304,9 @@ export function useMarqueeSelection({
 
       setIsMarqueeing(false);
       setMarqueeRect(null);
+      // The real selection has landed — drop the preview so clips go
+      // back to reading their own `selected` flag.
+      clearPreview();
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -233,6 +322,8 @@ export function useMarqueeSelection({
 
   return {
     marqueeRect,
+    marqueePicks,
+    marqueeModifiers,
     isMarqueeing,
     onMouseDownCapture,
     wasMarqueeing: () => justMarqueedRef.current,

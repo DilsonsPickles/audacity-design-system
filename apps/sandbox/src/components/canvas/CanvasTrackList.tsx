@@ -60,6 +60,12 @@ export interface CanvasTrackListProps {
   showQuickFadeHandles: boolean;
   draggingClipIds: Set<number>;
   raisedClipIds: Set<number>;
+  /** Live right-drag marquee preview, trackIndex -> covered clip ids.
+   *  Null when no marquee is in flight; when set, it drives the clips'
+   *  SELECTED LOOK so the user sees the pending selection before
+   *  releasing. A track absent from the map previews as "nothing
+   *  selected here". */
+  marqueePreview: ReadonlyMap<number, ReadonlySet<number>> | null;
   hoveredMidiClipId?: number | null;
   onHoverMidiClip?: (clipId: number | null) => void;
   onTrackFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
@@ -128,8 +134,15 @@ export interface CanvasTrackListProps {
  * row RENDERS from must be a value prop (never tracksRef) or the row won't
  * repaint when it changes.
  */
+/** Shared empty set so tracks the marquee isn't touching keep a
+ *  stable prop identity and stay memo-skipped for the whole drag. */
+const NO_MARQUEE_CLIPS: ReadonlySet<number> = new Set<number>();
+
 export function CanvasTrackList(props: CanvasTrackListProps) {
-  const { tracks, ...rest } = props;
+  // marqueePreview is pulled OUT of the spread: each row gets only its
+  // own slice, so sweeping the rectangle re-renders the rows whose
+  // membership changed rather than the whole canvas.
+  const { tracks, marqueePreview, ...rest } = props;
 
   // Ref-mirror (see CLAUDE.md): CanvasTrack's HANDLERS need the full tracks
   // array (cross-track keyboard move/trim/stretch scans), but taking it as
@@ -305,6 +318,9 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
             ghosted={ghosted}
             trackCount={tracks.length}
             collapseStyle={collapseStyle(trackIndex)}
+            marqueePreviewClipIds={
+              marqueePreview ? marqueePreview.get(trackIndex) ?? NO_MARQUEE_CLIPS : null
+            }
           />
         );
       })}
@@ -312,9 +328,12 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
   );
 }
 
-interface CanvasTrackProps extends Omit<CanvasTrackListProps, 'tracks'> {
+interface CanvasTrackProps extends Omit<CanvasTrackListProps, 'tracks' | 'marqueePreview'> {
   track: Track;
   trackIndex: number;
+  /** This row's slice of the marquee preview (see marqueePreview on
+   *  the list props). Null when no marquee is in flight. */
+  marqueePreviewClipIds: ReadonlySet<number> | null;
   anySoloed: boolean;
   /** Live tracks array for event-time reads only — never render from it
    *  (a memo-skipped row would hold no stale data, but renders must come
@@ -349,6 +368,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   showQuickFadeHandles,
   draggingClipIds,
   raisedClipIds,
+  marqueePreviewClipIds,
   hoveredMidiClipId,
   onHoverMidiClip,
   onTrackFocusChange,
@@ -527,6 +547,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         onHoverClip={track.type === 'midi' ? onHoverMidiClip : undefined}
         draggingClipIds={draggingClipIds}
         raisedClipIds={raisedClipIds}
+        marqueePreviewClipIds={marqueePreviewClipIds}
         onClipMove={(clipId, deltaSeconds) => {
           const clip = track.clips.find(c => c.id === clipId) || (track.midiClips || []).find(c => c.id === clipId);
           if (!clip) return;

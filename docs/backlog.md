@@ -126,8 +126,11 @@ hard cuts). Deliberately deferred, waiting on live feel / product calls:
 Organisational folders landed (flat array, `type: 'folder'` + `folderId`,
 collapse = derived zero height, mute/solo cascade, family drag, delete =
 ungroup). Deliberately deferred:
-- **Marquee selection** (`useMarqueeSelection`) still uses raw heights —
-  band-select across a collapsed folder may pick hidden tracks' clips.
+- ~~Marquee selection uses raw heights~~ — fixed 2026-09-23 alongside the
+  live marquee preview: `clipsInMarquee` measures bands with
+  `effectiveTrackHeight`, so a collapsed folder's children (which draw
+  nothing) can no longer be band-selected. Covered by
+  `hooks/__tests__/marqueeHitTest.test.ts`.
 - **Fit/expand/collapse-all track heights** (`trackManagement.computeFitTrackHeight`,
   EditorLayout 401-416) divide by ALL tracks — should use visible non-folder rows.
 - ~~Folder duplication~~ — DUPLICATE_FOLDER deep-copies the family
