@@ -417,6 +417,12 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     // Mirrors core's endsGroup, which the canvas column reads.
     const hasFloor = isLast;
     const continues = !isLast && !collapsedHeader;
+    // The family's outer corners. 8 = the card radius (4) + the strip/
+    // floor (4), so the container's corner is concentric with the card
+    // tucked inside it. A collapsed header is the whole shape, so it
+    // rounds top AND bottom; a floor row rounds the bottom — and its
+    // painted floor is a box-shadow, which follows the radius for free.
+    const R = 8;
     return {
       boxSizing: 'border-box',
       // ONE colour for the whole family, so the parent reads as
@@ -461,6 +467,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       // to its own left padding so the chevron stays in line with
       // the track content below.
       ...(isHeader ? null : { paddingLeft: GROUP_OUTDENT }),
+      ...(isHeader ? { borderTopLeftRadius: R, borderTopRightRadius: R } : null),
+      ...(hasFloor || collapsedHeader ? { borderBottomLeftRadius: R, borderBottomRightRadius: R } : null),
       // A floor under the family. MARGIN, never padding: padding on a
       // border-box row would eat the last track's content height, and
       // grouping must not resize a track. The canvas column adds the
