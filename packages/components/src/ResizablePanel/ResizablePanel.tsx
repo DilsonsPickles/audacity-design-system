@@ -431,7 +431,14 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           position: 'relative',
         }}
         onMouseMove={handleMouseMove}
-        onMouseDown={handleMouseDown}
+        // CAPTURE phase: this element wraps the track panel, so in the
+        // bubble phase the panel's own mousedown — which starts a
+        // drag-REORDER — ran first, and a press on the resize edge both
+        // resized the track and dragged it up and down. handleMouseDown
+        // already stopped propagation, but as an ancestor it was
+        // stopping it too late. Capturing lets the resize claim the
+        // press before any descendant sees it.
+        onMouseDownCapture={handleMouseDown}
         onMouseLeave={handleMouseLeave}
       >
         {children}

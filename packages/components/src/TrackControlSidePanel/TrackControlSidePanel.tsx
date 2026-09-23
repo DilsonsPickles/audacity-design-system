@@ -6,6 +6,7 @@ import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { AddTrackFlyout, TrackType } from '../AddTrackFlyout';
+import { GROUP_END_PAD } from '@audacity-ui/core';
 import type { TrackControlPanelProps } from '../TrackControlPanel';
 import { useTabOrder } from '../hooks/useTabOrder';
 import { useTheme } from '../ThemeProvider';
@@ -408,15 +409,18 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       // are the same size — and the last member keeps the full
       // height of every other track.
       //
-      // The OUTSET shadow fills the list's row gap below this row in
-      // the group's own colour, so the family reads as one unbroken
-      // field instead of cards separated by strips of the rail. Only
-      // while the band continues — the row that closes it leaves the
-      // gap to the rail, which is where the group actually ends.
+      // The OUTSET shadow paints BELOW this row in the group's own
+      // colour. Mid-family that fills the list's row gap, so the
+      // family is one unbroken field instead of cards separated by
+      // strips of the rail. On the row that CLOSES the family it fills
+      // the GROUP_END_PAD margin instead — the group's floor, which is
+      // what makes it look like it contains its children rather than
+      // merely sitting above them. Margin is outside the background,
+      // so without this the pad would just show rail: a wider gap, not
+      // a floor.
       boxShadow: [
         isHeader ? `inset 0 1px 0 ${theme.border.default}` : null,
-        closesBand ? `inset 0 -1px 0 ${theme.border.default}` : null,
-        closesBand ? null : `0 ${LIST_GAP} 0 ${theme.background.trackHeader.group}`,
+        `0 ${closesBand ? `${GROUP_END_PAD}px` : LIST_GAP} 0 ${theme.background.trackHeader.group}`,
       ]
         .filter(Boolean)
         .join(', ') || undefined,
@@ -425,6 +429,12 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       // to its own left padding so the chevron stays in line with
       // the track content below.
       ...(isHeader ? null : { paddingLeft: GROUP_OUTDENT }),
+      // A floor under the family. MARGIN, never padding: padding on a
+      // border-box row would eat the last track's content height, and
+      // grouping must not resize a track. The canvas column adds the
+      // identical space through core's rowGapAfter — if these two ever
+      // disagree the columns drift by this much per group.
+      ...(closesBand ? { marginBottom: GROUP_END_PAD } : null),
     };
   };
 
@@ -527,6 +537,12 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               >
                 {cloneElement(child, {
                   ...child.props,
+                  // Folder rows take focus like any other row. This
+                  // used to stop at the WRAPPER class above, so the
+                  // panel inside never learned it was focused and a
+                  // group was the one row that stayed unmarked as you
+                  // arrowed through the list. Mirrors the branch below.
+                  ...(child.props.isFocused === undefined && { isFocused: isFocusedFolder }),
                   isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
                   onMenuClick: (event: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(index, event),
                   trackHeight: rawHeight || 28,

@@ -7,6 +7,17 @@ import { TrackLike } from '../types';
 /** Rendered height of a track folder's own slim row. */
 export const FOLDER_ROW_HEIGHT = 28;
 
+/** Extra space below the LAST visible row of a track group, on top of
+ *  the normal row gap — it gives the family a floor so the group reads
+ *  as containing its children rather than just preceding them.
+ *
+ *  This is layout, not decoration: it must be added by every y-walk in
+ *  the app (both columns and every hit test) or the panel and the
+ *  canvas drift apart by this many pixels for every group above the
+ *  row you click. Hence `rowGapAfter` below — one rule, like
+ *  `effectiveRowHeight`. */
+export const GROUP_END_PAD = 6;
+
 /** Only the fields the row-height rule reads — so every layer
  *  (core, components, sandbox) can call it with its own track shape. */
 export interface RowHeightTrackLike {
@@ -44,6 +55,44 @@ export function effectiveRowHeight(
   // characterization test pins that. Zero height is expressed by the
   // collapse rule above, never by `height: 0`.
   return track.height || defaultHeight;
+}
+
+/**
+ * True when this row is the last VISIBLE row of a track group — the
+ * last member of a folder, or a collapsed folder's own header (its
+ * members render nothing, so the header closes the family itself).
+ */
+export function endsGroup(
+  tracks: readonly RowHeightTrackLike[],
+  index: number,
+  defaultHeight: number
+): boolean {
+  const track = tracks[index];
+  if (!track) return false;
+  if (track.type === 'folder') return track.collapsed === true;
+  if (track.folderId === undefined) return false;
+  if (effectiveRowHeight(tracks, index, defaultHeight) === 0) return false;
+  // Last member = no later row still belongs to the same folder.
+  for (let i = index + 1; i < tracks.length; i++) {
+    if (tracks[i]?.folderId === track.folderId) return false;
+    break;
+  }
+  return true;
+}
+
+/**
+ * CANONICAL gap rule: the space a row contributes BELOW itself.
+ * Hidden rows contribute nothing at all (no height, no gap); the row
+ * that closes a group contributes the normal gap plus GROUP_END_PAD.
+ */
+export function rowGapAfter(
+  tracks: readonly RowHeightTrackLike[],
+  index: number,
+  trackGap: number,
+  defaultHeight: number
+): number {
+  if (effectiveRowHeight(tracks, index, defaultHeight) === 0) return 0;
+  return trackGap + (endsGroup(tracks, index, defaultHeight) ? GROUP_END_PAD : 0);
 }
 
 /**
@@ -96,8 +145,9 @@ export function yToTrackIndex(
       return i;
     }
 
-    // Move to next track position
-    currentY += trackHeight + trackGap;
+    // Move to next track position (a group's last row pays the
+    // group-end pad as well — see rowGapAfter)
+    currentY += trackHeight + rowGapAfter(tracks, i, trackGap, defaultTrackHeight);
   }
 
   // Return index based on position (may be beyond last track)
@@ -125,7 +175,7 @@ export function trackIndexToY(
   for (let i = 0; i < trackIndex && i < tracks.length; i++) {
     const trackHeight = effectiveRowHeight(tracks, i, defaultTrackHeight);
     if (trackHeight === 0) continue; // hidden row: no height, no gap
-    y += trackHeight + trackGap;
+    y += trackHeight + rowGapAfter(tracks, i, trackGap, defaultTrackHeight);
   }
 
   return y;

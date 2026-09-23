@@ -16,7 +16,12 @@
  * has zero routing semantics — the folder-as-bus layer arrives in a
  * later release.
  */
-import { effectiveRowHeight, FOLDER_ROW_HEIGHT as CORE_FOLDER_ROW_HEIGHT } from '@audacity-ui/core';
+import {
+  effectiveRowHeight,
+  rowGapAfter,
+  FOLDER_ROW_HEIGHT as CORE_FOLDER_ROW_HEIGHT,
+  GROUP_END_PAD as CORE_GROUP_END_PAD,
+} from '@audacity-ui/core';
 
 /** Structural track shape so geometry layers can share these helpers
  *  without importing the full TracksContext Track. */
@@ -33,6 +38,10 @@ export interface FolderTrackLike {
 /** Slim rendered height of a folder's own row (canvas + panel).
  *  Re-exported from core, which owns the canonical rule. */
 export const FOLDER_ROW_HEIGHT = CORE_FOLDER_ROW_HEIGHT;
+
+/** Extra space below a group's last visible row. Re-exported from
+ *  core, which owns the canonical rule. */
+export const GROUP_END_PAD = CORE_GROUP_END_PAD;
 
 export const isFolderTrack = (track: FolderTrackLike | undefined): boolean =>
   track?.type === 'folder';
@@ -86,7 +95,11 @@ export function effectiveTrackStride(
   trackGap: number,
 ): number {
   const h = effectiveTrackHeight(tracks, index, defaultHeight);
-  return h === 0 ? 0 : h + trackGap;
+  // DELEGATES the gap too: the row that closes a group pays an extra
+  // GROUP_END_PAD, and core's yToTrackIndex/trackIndexToY add the same
+  // — a fourth private copy of this rule is exactly how folder rows
+  // once desynced the columns.
+  return h === 0 ? 0 : h + rowGapAfter(tracks, index, trackGap, defaultHeight);
 }
 
 /** Folder mute/solo CASCADE to children (behaviour ganging, not

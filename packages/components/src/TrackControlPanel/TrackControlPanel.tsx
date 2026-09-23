@@ -706,11 +706,23 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   if (trackType === 'folder') {
     return (
       <div
-        className="track-control-panel track-control-panel--folder"
+        className={`track-control-panel track-control-panel--folder${
+          isFocused ? ' track-control-panel--focused' : ''
+        }${containerFocused ? ' track-control-panel--container-focused' : ''}`}
         data-track-panel-index={trackIndex}
         aria-label={`${trackName} track controls`}
         data-focused={isFocused ? 'true' : 'false'}
+        // Clicking a group focuses/selects it exactly as clicking a
+        // track does. The row was inert before, so a group was the one
+        // row in the list that could never take focus — EditorLayout
+        // was already passing both onClick and isFocused; nothing here
+        // called them.
+        onClick={handleClick}
         style={{
+          // The CSS-variable block the stylesheet reads — a folder row
+          // is still a track-control-panel, so it needs the same vars
+          // its focus bars are painted with (--tcp-focus-color).
+          ...style,
           display: 'flex',
           alignItems: 'center',
           gap: 6,

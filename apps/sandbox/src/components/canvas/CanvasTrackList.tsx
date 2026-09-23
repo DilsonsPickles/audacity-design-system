@@ -177,20 +177,6 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
         if (track.type === 'folder') {
           const childIndices = folderChildIndices(tracks, trackIndex);
           const childCount = childIndices.length;
-          // COLLAPSED: the children's clip SHAPES squash into the strip
-          // so the folder still shows where its content sits in time
-          // (Cubase "folder parts"). Outlines only — the detail lives
-          // in the tracks themselves, one expand away.
-          const squashedClips = track.collapsed
-            ? childIndices.flatMap((ci) => {
-                const child = tracks[ci];
-                return [...(child.clips ?? []), ...(child.midiClips ?? [])].map((clip) => ({
-                  key: `${child.id}-${clip.id}`,
-                  left: CLIP_CONTENT_OFFSET + clip.start * props.pixelsPerSecond,
-                  width: Math.max(2, clip.duration * props.pixelsPerSecond),
-                }));
-              })
-            : [];
           return (
             <div
               key={track.id}
@@ -221,50 +207,33 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 opacity: ghosted ? 0.55 : undefined,
               }}
             >
-              {track.collapsed ? (
-                squashedClips.map((c) => (
-                  <div
-                    key={c.key}
-                    data-folder-squashed-clip
-                    style={{
-                      position: 'absolute',
-                      left: `${Math.round(c.left)}px`,
-                      width: `${Math.round(c.width)}px`,
-                      top: 4,
-                      bottom: 4,
-                      boxSizing: 'border-box',
-                      border: '1px solid rgba(255, 255, 255, 0.55)',
-                      borderRadius: 2,
-                      background: 'rgba(255, 255, 255, 0.10)',
-                    }}
-                  />
-                ))
-              ) : (
-                // Sticky so the group's name stays readable however far
-                // the canvas is scrolled — the band runs the whole
-                // timeline, and a label pinned to its far-left start
-                // scrolls out of sight exactly when a long project most
-                // needs to say which group a lane belongs to.
-                <span
-                  data-folder-label
-                  style={{
-                    position: 'sticky',
-                    // 12 = the band's own left padding, so the label
-                    // holds the SAME inset when pinned as it has at
-                    // scroll 0 and never visibly jumps.
-                    left: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>{track.name}</span>
-                  <span style={{ opacity: 0.6 }}>
-                    {childCount} track{childCount === 1 ? '' : 's'}
-                  </span>
+              {/* Sticky so the group's name stays readable however far
+                  the canvas is scrolled — the band runs the whole
+                  timeline, and a label pinned to its far-left start
+                  scrolls out of sight exactly when a long project most
+                  needs to say which group a lane belongs to. Shown
+                  collapsed as well as expanded: a collapsed group used
+                  to swap the name for squashed outlines of its
+                  children's clips, which said less than the name. */}
+              <span
+                data-folder-label
+                style={{
+                  position: 'sticky',
+                  // 12 = the band's own left padding, so the label
+                  // holds the SAME inset when pinned as it has at
+                  // scroll 0 and never visibly jumps.
+                  left: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>{track.name}</span>
+                <span style={{ opacity: 0.6 }}>
+                  {childCount} track{childCount === 1 ? '' : 's'}
                 </span>
-              )}
+              </span>
             </div>
           );
         }

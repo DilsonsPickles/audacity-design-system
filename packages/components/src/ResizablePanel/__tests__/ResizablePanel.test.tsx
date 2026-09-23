@@ -197,3 +197,47 @@ describe('ResizablePanel drag resize — listeners survive mid-drag re-renders',
     fireEvent.mouseUp(document, { clientY: -500 });
   });
 });
+
+describe('ResizablePanel — the resize edge claims the press', () => {
+  // A press on the bottom edge used to do TWO things: ResizablePanel
+  // started a resize, and the track panel nested inside it started a
+  // drag-reorder, so resizing a track also moved it up and down.
+  // handleMouseDown already called stopPropagation, but as an ANCESTOR
+  // in the bubble phase it ran after the descendant. It captures now.
+  const renderWithChild = (onChildMouseDown: () => void) =>
+    render(
+      <ResizablePanel initialHeight={114} resizeThreshold={8}>
+        <div data-testid="child" onMouseDown={onChildMouseDown} style={{ height: '100%' }}>
+          track content
+        </div>
+      </ResizablePanel>,
+    );
+
+  const stubRect = (container: HTMLElement, height: number) => {
+    const content = container.querySelector('.resizable-panel__content') as HTMLElement;
+    content.getBoundingClientRect = () => ({
+      top: 0, left: 0, bottom: height, right: 268,
+      width: 268, height, x: 0, y: 0, toJSON: () => ({}),
+    });
+    return content;
+  };
+
+  it('a press on the bottom resize edge never reaches the content below it', () => {
+    const childMouseDown = vi.fn();
+    const { container, getByTestId } = renderWithChild(childMouseDown);
+    stubRect(container, 114);
+    // 113 is inside the bottom 8px zone. Fired on the CHILD, as a real
+    // press is — the deepest element under the cursor is the target.
+    fireEvent.mouseDown(getByTestId('child'), { clientY: 113 });
+    expect(childMouseDown).not.toHaveBeenCalled();
+    fireEvent.mouseUp(document, { clientY: 113 });
+  });
+
+  it('a press on the row body still reaches it', () => {
+    const childMouseDown = vi.fn();
+    const { container, getByTestId } = renderWithChild(childMouseDown);
+    stubRect(container, 114);
+    fireEvent.mouseDown(getByTestId('child'), { clientY: 57 });
+    expect(childMouseDown).toHaveBeenCalledTimes(1);
+  });
+});
