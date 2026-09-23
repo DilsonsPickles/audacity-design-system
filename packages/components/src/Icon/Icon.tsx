@@ -62,7 +62,7 @@ export type IconName =
   | 'grid-view'
   | 'list-view'
   | 'lock'
-  | 'eye'
+  | 'folder'
   | 'refresh'
   | 'check'
   | 'search';
@@ -130,7 +130,11 @@ const ICON_MAP: Record<IconName, string> = {
   'grid-view': '\uF35B',
   'list-view': '\uF3AA',
   lock: '\uF375',
-  eye: '\uEF23',
+  // EF23 is a FOLDER glyph in MusescoreIcon.ttf. It was named `eye`,
+  // which nothing ever rendered \u2014 had anything asked for an eye it
+  // would have drawn a folder. Renamed rather than aliased so one
+  // codepoint keeps one honest name.
+  folder: '\uEF23',
   refresh: '\uF358',
   check: '\uEF31',
   /* Plain magnifier (the zoom-in/out glyphs carry +/- marks) \u2014 the

@@ -636,19 +636,13 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   const { theme } = useTheme();
 
-  // Track groups render like an accordion panel: the ROW WRAPPER
-  // (TrackControlSidePanel) draws the recessed well and its edges;
-  // this component just dresses the content — a title bar for the
-  // header, and card-like rows for the members nested inside.
-  const groupContentStyle: React.CSSProperties | null = groupPosition
-    ? groupPosition === 'header'
-      ? { background: theme.background.surface.subtle }
-      : {
-          background: theme.background.surface.default,
-          borderRadius: 4,
-          overflow: 'hidden',
-        }
-    : null;
+  // Only the group HEADER is dressed — it is the band that says
+  // "these belong together". Members are left completely alone so a
+  // grouped track is pixel-identical to an ungrouped one; the earlier
+  // card treatment (inset background + 4px radius) made membership
+  // look like a size change, which it is not.
+  const groupContentStyle: React.CSSProperties | null =
+    groupPosition === 'header' ? { background: theme.background.surface.subtle } : null;
 
   const style = {
     '--tcp-bg-idle': theme.background.trackHeader.idle,
@@ -731,6 +725,12 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
             <path d="M1 3 L5 7 L9 3" fill="none" stroke="currentColor" strokeWidth="1.5" />
           </svg>
         </button>
+        {/* Type marker, after the chevron: the chevron is the control
+            (it collapses), the folder is what the row IS. Decorative —
+            the row's accessible name already says "folder". */}
+        <span style={{ display: 'flex', flexShrink: 0, opacity: 0.7 }}>
+          <Icon name="folder" size={14} />
+        </span>
         {isRenaming ? (
           <input
             ref={renameInputRef}

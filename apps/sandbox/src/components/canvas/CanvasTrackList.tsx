@@ -206,7 +206,12 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 alignItems: 'center',
                 gap: 8,
                 padding: '0 12px',
-                background: 'rgba(255, 255, 255, 0.06)',
+                // The group header is ONE band running the full width
+                // of the editor: the panel draws the same strip at the
+                // same height, so the two columns read as a single row
+                // across the seam. Darker than the lanes it caps —
+                // it is chrome, not content.
+                background: 'rgba(0, 0, 0, 0.28)',
                 borderTop: '1px solid rgba(255, 255, 255, 0.10)',
                 borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
                 color: 'rgba(255, 255, 255, 0.75)',

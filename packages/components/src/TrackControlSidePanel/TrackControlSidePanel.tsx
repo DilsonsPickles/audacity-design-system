@@ -345,12 +345,17 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   };
 
 
-  // Track groups read as an accordion panel: the family's row
-  // WRAPPERS draw one recessed well — left/right edges all the way
-  // down, rounded and closed at the top (header) and bottom (last
-  // member) — and the member rows sit inside it as inset cards.
-  const GROUP_WELL_INSET = 6;
-  const GROUP_WELL_PAD = 5;
+  // Track groups read as a FULL-BLEED band, not a card: the header
+  // strip runs the panel's whole width and its members keep exactly
+  // the footprint they would have ungrouped.
+  //
+  // Grouping must never resize a track (user decision 2026-09-23).
+  // The earlier accordion inset the family by 6px and padded members
+  // by 5, so a grouped track rendered narrower than its ungrouped
+  // neighbour and the LAST member also lost 5px of content height to
+  // the well's padding (border-box). Membership is a relationship,
+  // not a size change — so the group is drawn with tone and a
+  // closing edge only.
   const groupWellStyle = (index: number): React.CSSProperties | null => {
     if (!groupMenu) return null;
     const isHeader = groupMenu.isFolderRow(index);
@@ -361,29 +366,17 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       && !groupMenu.isFolderRow(index + 1);
     const isLast = !isHeader && !nextInSameGroup;
     // A COLLAPSED group has no visible members (their heights are 0),
-    // so its header closes the well itself — otherwise the panel
+    // so its header closes the band itself — otherwise the panel
     // hangs open on a void.
     const collapsedHeader = isHeader && trackHeights[index + 1] === 0;
-    const closesWell = isLast || collapsedHeader;
-    const edge = `1px solid ${theme.border.default}`;
+    const closesBand = isLast || collapsedHeader;
     return {
       boxSizing: 'border-box',
       background: theme.background.surface.inset,
-      marginLeft: GROUP_WELL_INSET,
-      marginRight: GROUP_WELL_INSET,
-      borderLeft: edge,
-      borderRight: edge,
-      ...(isHeader
-        ? { borderTop: edge, borderTopLeftRadius: 8, borderTopRightRadius: 8 }
-        : { paddingLeft: GROUP_WELL_PAD, paddingRight: GROUP_WELL_PAD }),
-      ...(closesWell
-        ? {
-            borderBottom: edge,
-            borderBottomLeftRadius: 8,
-            borderBottomRightRadius: 8,
-            paddingBottom: GROUP_WELL_PAD,
-          }
-        : null),
+      // Edges only along the band's flow — never on the sides, where
+      // they would shift the row's content inward.
+      ...(isHeader ? { borderTop: `1px solid ${theme.border.default}` } : null),
+      ...(closesBand ? { borderBottom: `1px solid ${theme.border.default}` } : null),
     };
   };
 
