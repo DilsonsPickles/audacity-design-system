@@ -658,10 +658,11 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           paddingLeft:
             'calc(var(--tcsp-list-gutter, 12px) + 8px - var(--tcsp-group-inset, 8px))',
           // This element paints the band edge to edge, over its wrapper,
-          // so it carries the family's outer corners too (8 = card radius
-          // 4 + strip 4, concentric with the cards). Collapsed, the header
-          // is the whole shape and rounds all four.
-          borderRadius: isCollapsed ? 8 : '8px 8px 0 0',
+          // so it carries the family's corners too: LEFT side only, 4px —
+          // the right edge meets the canvas seam and stays square.
+          // Collapsed, the header is the whole shape and rounds both left
+          // corners.
+          borderRadius: isCollapsed ? '4px 0 0 4px' : '4px 0 0 0',
           // .track-control-panel is a fixed 268px — the width of a
           // track row inside the gutter. The header's wrapper is
           // wider (it outdents through the gutter), so fill it
