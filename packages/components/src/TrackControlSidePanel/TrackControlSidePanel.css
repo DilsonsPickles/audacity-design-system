@@ -83,6 +83,15 @@
 .track-control-side-panel__track {
   /* Height controlled by ResizablePanel */
   /* 2px gap between tracks handled by parent flex gap */
+  /* A row's height is authoritative — the flex column must never shrink
+     it. Until now only `min-height: auto` (the content-based minimum)
+     stopped that, and it is fragile: the list overflows its box, so any
+     row that turns `overflow: hidden` — which resolves that minimum to
+     0 — was instantly shrunk to nothing by the flex algorithm, however
+     its `height` was tweening. That is exactly what the collapse tween
+     does, and why its rows snapped while the folder wrapper (which had
+     this inline) animated. */
+  flex-shrink: 0;
 }
 
 /* Whole track focus state - outline sits at container edge */
@@ -137,4 +146,15 @@
 .track-context-menu__swatch:hover {
   transform: scale(1.2);
   border-color: rgba(0, 0, 0, 0.5);
+}
+
+/* A row revealed by expanding its group grows in from nothing. `to` is
+   left implicit so it lands on whatever height the row actually has;
+   the from-margin swallows the flex gap the same way the collapse does.
+   Duration/easing are set inline from the shared core constants. */
+@keyframes tcsp-row-expand {
+  from {
+    height: 0;
+    margin-bottom: calc(-1 * var(--tcsp-list-gap, 2px));
+  }
 }

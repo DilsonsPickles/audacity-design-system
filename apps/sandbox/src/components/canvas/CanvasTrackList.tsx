@@ -1,5 +1,6 @@
 import React from 'react';
-import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, type SpectrogramScale } from '@audacity-ui/components';
+import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCollapseTransition, type SpectrogramScale } from '@audacity-ui/components';
+import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING } from '@audacity-ui/core';
 import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';
@@ -144,6 +145,34 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
   // its children (cascade), never through the folder row itself.
   const anySoloed = tracks.some((t, i) => t.type !== 'folder' && effectiveTrackSoloed(tracks, i));
 
+  // Collapse/expand tween — the same hook the panel column runs, fed the
+  // same flags, so both columns start and end on the same commit.
+  const collapse = useCollapseTransition(
+    tracks.map((_t, i) => isHiddenByCollapse(tracks, i)),
+    tracks.map((t) => t.id),
+  );
+  const TWEEN = `${GROUP_COLLAPSE_MS}ms ${GROUP_COLLAPSE_EASING}`;
+  // Where a group's members sit when the group is closed: just under
+  // its header. Hiding rows tween to it; revealing rows grow from it.
+  const collapsedTopOf = (folderId: number | undefined): number => {
+    const fi = tracks.findIndex((t) => t.type === 'folder' && t.id === folderId);
+    return fi < 0 ? 0 : calculateTrackYOffset(fi, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT) + FOLDER_ROW_HEIGHT + TRACK_GAP;
+  };
+  const collapseStyle = (index: number): React.CSSProperties => {
+    if (collapse.hiding.has(index)) {
+      return { height: 0, overflow: 'hidden', transition: `top ${TWEEN}, height ${TWEEN}` };
+    }
+    if (collapse.revealing.has(index)) {
+      return {
+        overflow: 'hidden',
+        animation: `canvas-row-expand ${TWEEN}`,
+        ['--row-from-top' as string]: `${collapsedTopOf(tracks[index]?.folderId)}px`,
+      } as React.CSSProperties;
+    }
+    // Everything else slides to its new place while a group is moving.
+    return collapse.animating ? { transition: `top ${TWEEN}` } : {};
+  };
+
   // While a reorder drag is live, stack the rows in previewed order so
   // the canvas shows the landing exactly as the panel column does.
   const previewOrder = props.dragPreview?.order;
@@ -165,7 +194,9 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
       {tracks.map((track, trackIndex) => {
         // Folders v1: children of a collapsed folder render nowhere
         // (still fully functional); the folder itself is a slim row.
-        if (isHiddenByCollapse(tracks, trackIndex)) return null;
+        // Hidden rows render nowhere — except mid-tween, when a row
+        // that just hid stays mounted so it can shrink away.
+        if (isHiddenByCollapse(tracks, trackIndex) && !collapse.hiding.has(trackIndex)) return null;
         // A reorder drag lays the canvas out in the PREVIEWED order,
         // with the dragged rows ghosted in their landing spot — the
         // same thing the track control panel shows.
@@ -207,6 +238,7 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 fontFamily: 'Inter, sans-serif',
                 pointerEvents: 'none',
                 opacity: ghosted ? 0.55 : undefined,
+                ...collapseStyle(trackIndex),
               }}
             >
               {/* Sticky so the group's name stays readable however far
@@ -250,6 +282,7 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
             yOffset={yOffset}
             ghosted={ghosted}
             trackCount={tracks.length}
+            collapseStyle={collapseStyle(trackIndex)}
           />
         );
       })}
@@ -270,10 +303,14 @@ interface CanvasTrackProps extends Omit<CanvasTrackListProps, 'tracks'> {
    *  already sits in its previewed landing spot) */
   ghosted?: boolean;
   trackCount: number;
+  /** This row's part in a running collapse/expand tween — see the
+   *  parent's collapseStyle. Empty object when nothing is moving. */
+  collapseStyle: React.CSSProperties;
 }
 
 const CanvasTrack = React.memo(function CanvasTrack({
   ghosted,
+  collapseStyle,
   selectedTrackIndices,
   focusedTrackIndex,
   selectedLabelIds,
@@ -369,6 +406,8 @@ const CanvasTrack = React.memo(function CanvasTrack({
         // Ghosted while this row is the one being dragged — it already
         // sits in its previewed landing spot
         opacity: ghosted ? 0.55 : undefined,
+        // Last, so a tween can override height/overflow for its duration
+        ...collapseStyle,
       }}
       onClick={(e) => {
         // Only handle clicks on empty space (not on clips or labels)

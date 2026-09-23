@@ -1,3 +1,4 @@
+import { endsGroup, GROUP_END_PAD, FOLDER_ROW_HEIGHT } from '@audacity-ui/core';
 import React from 'react';
 import type { SpectralSelection } from '../contexts/SpectralSelectionContext';
 import { Canvas } from './Canvas';
@@ -1208,6 +1209,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                 tracks={state.tracks.map((track, index: number) => ({
                   id: track.id.toString(),
                   height: effectiveTrackHeight(state.tracks, index, 114),
+                  naturalHeight: track.type === 'folder' ? FOLDER_ROW_HEIGHT : (track.height || 114),
+                  endPad: endsGroup(state.tracks, index, 114) ? GROUP_END_PAD : 0,
                   selected: state.selectedTrackIndices.includes(index),
                   focused: state.focusedTrackIndex === index,
                   containerFocused: containerFocusedTrack === index,

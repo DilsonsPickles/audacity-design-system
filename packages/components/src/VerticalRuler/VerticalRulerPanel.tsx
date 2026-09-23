@@ -7,13 +7,23 @@ import type { WaveformRulerFormat } from '../RulerFlyout';
 import { getScaleMinFreq } from '../utils/spectrogramScales';
 import { useTheme } from '../ThemeProvider';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { useCollapseTransition } from '../hooks/useCollapseTransition';
+import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING } from '@audacity-ui/core';
 import './VerticalRulerPanel.css';
 
 export interface TrackRulerConfig {
   /** Track ID */
   id: string;
-  /** Track height in pixels */
+  /** Track height in pixels — the EFFECTIVE height (0 for a child of a
+   *  collapsed group), which is what the column stacks by. */
   height: number;
+  /** The row's own height, for a row that is mid-way through hiding or
+   *  appearing: what it shrinks from / grows to. Defaults to `height`. */
+  naturalHeight?: number;
+  /** Extra space below this row — the group floor when it is the last
+   *  visible member of a group (core's GROUP_END_PAD). The panel and
+   *  canvas columns add the same, so the three stay aligned. */
+  endPad?: number;
   /** Whether track is selected */
   selected?: boolean;
   /** Whether track has focus */
@@ -136,6 +146,14 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
 }) => {
   const { theme } = useTheme();
   const { activeProfile } = useAccessibilityProfile();
+  // Collapse/expand tween — the same hook the panel and canvas run, so
+  // the three columns move on the same commit. A row that just hid stays
+  // mounted and shrinks; one that just appeared grows from zero.
+  const collapse = useCollapseTransition(
+    tracks.map((t) => t.height === 0),
+    tracks.map((t) => t.id),
+  );
+  const TWEEN = `${GROUP_COLLAPSE_MS}ms ${GROUP_COLLAPSE_EASING}`;
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -179,7 +197,21 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
           />
         )}
 
-        {tracks.map((track, index) => {
+        {tracks.map((row, index) => {
+          const hidingRow = collapse.hiding.has(index);
+          const revealingRow = collapse.revealing.has(index);
+          // A hidden row is 0 tall and draws nothing — unless it is
+          // mid-tween, when it draws at its natural height inside a
+          // clipped box so the ruler shrinks away rather than vanishing.
+          const track = hidingRow && row.height === 0
+            ? { ...row, height: row.naturalHeight ?? row.height }
+            : row;
+          const outerHeight = hidingRow ? 0 : row.height;
+          const rowTween: React.CSSProperties = hidingRow
+            ? { overflow: 'hidden', transition: `height ${TWEEN}, margin-bottom ${TWEEN}` }
+            : revealingRow
+              ? { overflow: 'hidden', animation: `vrp-row-expand ${TWEEN}` }
+              : {};
           // Per-track values, falling back to panel-level props, then defaults
           const format = track.waveformRulerFormat ?? waveformRulerFormat;
           const specScale = track.spectrogramScale ?? spectrogramScale ?? 'mel';
@@ -205,7 +237,13 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               } ${
                 track.focused ? 'vertical-ruler-panel__track--focused' : ''
               } ${track.containerFocused ? 'vertical-ruler-panel__track--container-focused' : ''}`}
-              style={{ height: `${track.height}px` }}
+              style={{
+                height: `${outerHeight}px`,
+                // The group floor (core's GROUP_END_PAD) — the panel and
+                // canvas columns add the same below a group's last row.
+                marginBottom: row.endPad && !hidingRow ? `${row.endPad}px` : undefined,
+                ...rowTween,
+              }}
               tabIndex={isFocusable ? rulerTabIndex : undefined}
               role={isFocusable ? 'group' : undefined}
               aria-label={isFocusable ? `Track ${index + 1} ${rulerTypeLabel} ruler` : undefined}
@@ -380,9 +418,22 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
               )}
             </div>
 
-            {/* Track gap (except after last track) */}
-            {index < tracks.length - 1 && (
-              <div className="vertical-ruler-panel__track-gap" />
+            {/* Track gap — except after the last track, and never after a
+                hidden row (a collapsed group's children take no space,
+                gap included). Mid-tween the gap shrinks or grows with
+                its row so the column's total height follows the same
+                curve as the other two. */}
+            {index < tracks.length - 1 && (row.height !== 0 || hidingRow) && (
+              <div
+                className="vertical-ruler-panel__track-gap"
+                style={
+                  hidingRow
+                    ? { height: 0, transition: `height ${TWEEN}` }
+                    : revealingRow
+                      ? { animation: `vrp-row-expand ${TWEEN}` }
+                      : undefined
+                }
+              />
             )}
           </React.Fragment>
         );

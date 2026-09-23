@@ -12,3 +12,13 @@
 .canvas-container--split-mode * {
   cursor: inherit !important;
 }
+
+/* A canvas row revealed by expanding its group grows from just under
+   the group's header (--row-from-top, set inline) to its own place and
+   height. `to` is implicit. Duration/easing come from core, inline. */
+@keyframes canvas-row-expand {
+  from {
+    top: var(--row-from-top);
+    height: 0;
+  }
+}

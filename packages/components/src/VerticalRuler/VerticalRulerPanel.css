@@ -160,3 +160,12 @@
   z-index: 10;
   box-shadow: 0 0 0 1px #000000;
 }
+
+/* A ruler row (and the gap after it) revealed by expanding its group
+   grows from nothing; `to` is implicit. Duration/easing inline, from
+   the shared core constants, so it matches the panel and canvas. */
+@keyframes vrp-row-expand {
+  from {
+    height: 0;
+  }
+}

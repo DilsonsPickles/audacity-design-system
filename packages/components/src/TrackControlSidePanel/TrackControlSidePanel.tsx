@@ -6,7 +6,8 @@ import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { AddTrackFlyout, TrackType } from '../AddTrackFlyout';
-import { GROUP_END_PAD } from '@audacity-ui/core';
+import { GROUP_END_PAD, GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING } from '@audacity-ui/core';
+import { useCollapseTransition } from '../hooks/useCollapseTransition';
 import type { TrackControlPanelProps } from '../TrackControlPanel';
 import { useTabOrder } from '../hooks/useTabOrder';
 import { useTheme } from '../ThemeProvider';
@@ -207,6 +208,32 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
 }) => {
   const { theme } = useTheme();
   const childArray = React.Children.toArray(children) as ReactElement<TrackControlPanelProps>[];
+  // Collapse/expand tween (see useCollapseTransition). Rows that just hid
+  // stay mounted and shrink; rows that just appeared grow from zero.
+  const collapse = useCollapseTransition(
+    trackHeights.map((h) => h === 0),
+    childArray.map((c) => c.key),
+  );
+  const TWEEN = `${GROUP_COLLAPSE_MS}ms ${GROUP_COLLAPSE_EASING}`;
+  const collapseStyle = (index: number): React.CSSProperties | null => {
+    if (collapse.hiding.has(index)) {
+      // Shrink to nothing. The negative margin swallows the flex gap
+      // too, so the row's whole footprint reaches zero — otherwise the
+      // gap would linger until the placeholder takes over and the
+      // column would end the tween 2px taller than the canvas.
+      return {
+        height: 0,
+        marginBottom: 'calc(-1 * var(--tcsp-list-gap, 2px))',
+        overflow: 'hidden',
+        boxShadow: 'none',
+        transition: `height ${TWEEN}, margin-bottom ${TWEEN}`,
+      };
+    }
+    if (collapse.revealing.has(index)) {
+      return { overflow: 'hidden', animation: `tcsp-row-expand ${TWEEN}` };
+    }
+    return null;
+  };
   const [menuState, setMenuState] = useState<{ isOpen: boolean; trackIndex: number; x: number; y: number }>({
     isOpen: false,
     trackIndex: -1,
@@ -384,7 +411,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     // A COLLAPSED group has no visible members (their heights are 0).
     // Its header then sits in the list like any single row: nothing
     // below it to continue into, and nothing to hang a floor under.
-    const collapsedHeader = isHeader && trackHeights[index + 1] === 0;
+    const collapsedHeader = isHeader && trackHeights[index + 1] === 0 && !collapse.hiding.has(index + 1);
     // Only a last MEMBER carries the floor — never a header, so a
     // group that is collapsed takes no more space than its own row.
     // Mirrors core's endsGroup, which the canvas column reads.
@@ -529,7 +556,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           // with track indices for focus/drag routing) but render
           // nothing. Folder rows are slim and NOT resizable.
           const rawHeight = trackHeights[index];
-          if (rawHeight === 0) {
+          if (rawHeight === 0 && !collapse.hiding.has(index)) {
             return <div key={child.key || index} style={{ display: 'none' }} data-hidden-track-row />;
           }
           if ((child.props as { trackType?: string }).trackType === 'folder') {
@@ -538,7 +565,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               <div
                 key={child.key || index}
                 className={`track-control-side-panel__track ${isFocusedFolder ? 'track-control-side-panel__track--focused' : ''}`}
-                style={{ height: rawHeight || 28, flexShrink: 0, ...groupWellStyle(index), ...ghostStyle }}
+                style={{ height: rawHeight || 28, flexShrink: 0, ...groupWellStyle(index), ...ghostStyle, ...collapseStyle(index) }}
               >
                 {cloneElement(child, {
                   ...child.props,
@@ -549,7 +576,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               </div>
             );
           }
-          const height = rawHeight || 114; // Default to 114px
+          // A row mid-tween has an effective height of 0; its NATURAL
+          // height (what it grows to / shrinks from) is the panel's own.
+          const height = rawHeight || child.props.trackHeight || 114;
           // Use child's isFocused prop if provided, otherwise calculate from focusedTrackIndex
           const isFocused = child.props.isFocused !== undefined
             ? child.props.isFocused
@@ -561,7 +590,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               initialHeight={height}
               minHeight={44}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
-              style={{ ...groupWellStyle(index), ...ghostStyle }}
+              style={{ ...groupWellStyle(index), ...ghostStyle, ...collapseStyle(index) }}
               isFirstPanel={displayPos === 0}
               wheelResize
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}

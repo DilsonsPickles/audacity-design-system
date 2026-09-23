@@ -16,7 +16,14 @@ export const FOLDER_ROW_HEIGHT = 28;
  *  canvas drift apart by this many pixels for every group above the
  *  row you click. Hence `rowGapAfter` below — one rule, like
  *  `effectiveRowHeight`. */
-export const GROUP_END_PAD = 6;
+export const GROUP_END_PAD = 4;
+
+/** Collapse/expand tween. Here, beside the layout constants, for the
+ *  same reason they are: the panel, the canvas and the ruler column
+ *  each animate their own rows, and they only stay aligned frame to
+ *  frame if all three use one duration and one curve. */
+export const GROUP_COLLAPSE_MS = 180;
+export const GROUP_COLLAPSE_EASING = 'cubic-bezier(0.2, 0, 0, 1)'; // = the panel's side strip (12px gutter − 8px group inset), so the floor matches the sides
 
 /** Only the fields the row-height rule reads — so every layer
  *  (core, components, sandbox) can call it with its own track shape. */
