@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tracksDomainReducer } from '../reducers/tracksDomainReducer';
-import { initialState } from '../TracksContext';
+import { initialState, tracksReducer } from '../TracksContext';
 import type { TracksState, Track } from '../TracksContext';
 import {
   effectiveTrackHeight,
@@ -29,8 +29,9 @@ describe('GROUP_SELECTED_TRACKS', () => {
     expect(next.tracks[1].name).toBe('Group 1');
     expect(next.tracks[2].folderId).toBe(5);
     expect(next.tracks[3].folderId).toBe(5);
-    // folder focused, children selected at their new indices
-    expect(next.focusedTrackIndex).toBe(1);
+    // first MEMBER focused (a folder header is never focusable),
+    // children selected at their new indices
+    expect(next.focusedTrackIndex).toBe(2);
     expect(next.selectedTrackIndices).toEqual([2, 3]);
   });
 
@@ -317,5 +318,42 @@ describe('normalizeFolders', () => {
     expect(normalizeFolders(dangling)[0].folderId).toBeUndefined();
     const empty = [makeTrack(10, { type: 'folder' }), makeTrack(2)];
     expect(normalizeFolders(empty).map((t) => t.id)).toEqual([2]);
+  });
+});
+
+
+describe('focus invariant through tracksReducer — folder headers never hold focus', () => {
+  // The OUTER reducer is the funnel every action passes through, so the
+  // rule holds for arrow keys, canvas clicks, grouping and delete alike.
+  const folderState = () =>
+    makeState([
+      makeTrack(1),
+      makeTrack(10, { type: 'folder' }),
+      makeTrack(2, { folderId: 10 }),
+      makeTrack(3, { folderId: 10 }),
+      makeTrack(4),
+    ]);
+
+  it('SET_FOCUSED_TRACK on a folder header lands on its first child', () => {
+    const next = tracksReducer({ ...folderState(), focusedTrackIndex: 0 }, { type: 'SET_FOCUSED_TRACK', payload: 1 });
+    expect(next.focusedTrackIndex).toBe(2);
+  });
+
+  it('SET_FOCUSED_TRACK on a collapsed folder skips the whole family', () => {
+    const state = folderState();
+    state.tracks[1] = makeTrack(10, { type: 'folder', collapsed: true });
+    const next = tracksReducer({ ...state, focusedTrackIndex: 0 }, { type: 'SET_FOCUSED_TRACK', payload: 1 });
+    expect(next.focusedTrackIndex).toBe(4);
+  });
+
+  it('SELECT_TRACK on a folder header redirects focus the same way', () => {
+    const next = tracksReducer({ ...folderState(), focusedTrackIndex: 0 }, { type: 'SELECT_TRACK', payload: 1 });
+    expect(next.focusedTrackIndex).toBe(2);
+  });
+
+  it('a focusable target is untouched, and state identity is preserved when nothing changes', () => {
+    const state = { ...folderState(), focusedTrackIndex: 3 };
+    const next = tracksReducer(state, { type: 'SET_FOCUSED_TRACK', payload: 3 });
+    expect(next.focusedTrackIndex).toBe(3);
   });
 });

@@ -706,22 +706,17 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   if (trackType === 'folder') {
     return (
       <div
-        className={`track-control-panel track-control-panel--folder${
-          isFocused ? ' track-control-panel--focused' : ''
-        }${containerFocused ? ' track-control-panel--container-focused' : ''}`}
+        // A folder header is NOT focusable (user decision 2026-09-23):
+        // it names a family, it isn't a lane. No click-to-focus, no
+        // focus classes — utils/trackFocus.ts (sandbox) keeps focus off
+        // it from every other direction too. Its own controls (chevron,
+        // name, M/S, kebab) still work.
+        className="track-control-panel track-control-panel--folder"
         data-track-panel-index={trackIndex}
         aria-label={`${trackName} track controls`}
-        data-focused={isFocused ? 'true' : 'false'}
-        // Clicking a group focuses/selects it exactly as clicking a
-        // track does. The row was inert before, so a group was the one
-        // row in the list that could never take focus — EditorLayout
-        // was already passing both onClick and isFocused; nothing here
-        // called them.
-        onClick={handleClick}
         style={{
           // The CSS-variable block the stylesheet reads — a folder row
-          // is still a track-control-panel, so it needs the same vars
-          // its focus bars are painted with (--tcp-focus-color).
+          // is still a track-control-panel.
           ...style,
           display: 'flex',
           alignItems: 'center',

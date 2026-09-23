@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { isHiddenByCollapse } from '../utils/trackFolders';
+import { nearestFocusableTrack } from '../utils/trackFocus';
 import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
@@ -75,16 +75,11 @@ export function useTrackKeyboardHandlers(
     shiftKey?: boolean,
     decouple?: boolean,
   ) => {
-    // Folders v1: canvas vertical nav steps OVER folder rows (they
-    // have no canvas focus target) and over hidden collapsed children
-    let targetIndex = trackIndex + direction;
-    while (
-      targetIndex >= 0 && targetIndex < tracks.length
-      && (tracks[targetIndex].type === 'folder' || isHiddenByCollapse(tracks, targetIndex))
-    ) {
-      targetIndex += direction;
-    }
-    if (targetIndex < 0 || targetIndex >= tracks.length) return;
+    // Folders v1: vertical nav steps OVER folder headers (never
+    // focusable) and hidden collapsed children — utils/trackFocus.ts
+    // holds the rule; the global ArrowUp/Down handler uses it too.
+    const targetIndex = nearestFocusableTrack(tracks, trackIndex, direction);
+    if (targetIndex === null) return;
     dispatch({ type: 'SET_FOCUSED_TRACK', payload: targetIndex });
 
     if (shiftKey) {

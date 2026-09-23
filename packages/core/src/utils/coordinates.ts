@@ -58,9 +58,10 @@ export function effectiveRowHeight(
 }
 
 /**
- * True when this row is the last VISIBLE row of a track group — the
- * last member of a folder, or a collapsed folder's own header (its
- * members render nothing, so the header closes the family itself).
+ * True when this row is the last VISIBLE member of a track group — the
+ * row the group's floor hangs under. A folder's own header never
+ * qualifies: a COLLAPSED group has no visible children to wrap, so it
+ * gets no floor and sits in the list like any single row.
  */
 export function endsGroup(
   tracks: readonly RowHeightTrackLike[],
@@ -69,7 +70,7 @@ export function endsGroup(
 ): boolean {
   const track = tracks[index];
   if (!track) return false;
-  if (track.type === 'folder') return track.collapsed === true;
+  if (track.type === 'folder') return false;
   if (track.folderId === undefined) return false;
   if (effectiveRowHeight(tracks, index, defaultHeight) === 0) return false;
   // Last member = no later row still belongs to the same folder.

@@ -54,7 +54,10 @@ function groupTracks(state: TracksState, indices: readonly number[]): TracksStat
   return {
     ...state,
     tracks: normalizeFolders(newTracks),
-    focusedTrackIndex: insertAt,
+    // Focus the FIRST MEMBER, not the folder row: a folder header is
+    // never focusable (utils/trackFocus.ts — tracksReducer would
+    // redirect it anyway; saying it here keeps the intent readable).
+    focusedTrackIndex: insertAt + 1,
     // The members stay selected at their new, contiguous indices
     selectedTrackIndices: children.map((_, k) => insertAt + 1 + k),
     timeSelection: null,

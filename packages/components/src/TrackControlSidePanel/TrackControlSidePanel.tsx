@@ -381,11 +381,15 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       && groupMenu.groupOf(index + 1) === folderId
       && !groupMenu.isFolderRow(index + 1);
     const isLast = !isHeader && !nextInSameGroup;
-    // A COLLAPSED group has no visible members (their heights are 0),
-    // so its header closes the band itself — otherwise the panel
-    // hangs open on a void.
+    // A COLLAPSED group has no visible members (their heights are 0).
+    // Its header then sits in the list like any single row: nothing
+    // below it to continue into, and nothing to hang a floor under.
     const collapsedHeader = isHeader && trackHeights[index + 1] === 0;
-    const closesBand = isLast || collapsedHeader;
+    // Only a last MEMBER carries the floor — never a header, so a
+    // group that is collapsed takes no more space than its own row.
+    // Mirrors core's endsGroup, which the canvas column reads.
+    const hasFloor = isLast;
+    const continues = !isLast && !collapsedHeader;
     return {
       boxSizing: 'border-box',
       // ONE colour for the whole family, so the parent reads as
@@ -420,7 +424,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       // a floor.
       boxShadow: [
         isHeader ? `inset 0 1px 0 ${theme.border.default}` : null,
-        `0 ${closesBand ? `${GROUP_END_PAD}px` : LIST_GAP} 0 ${theme.background.trackHeader.group}`,
+        hasFloor ? `0 ${GROUP_END_PAD}px 0 ${theme.background.trackHeader.group}` : null,
+        continues ? `0 ${LIST_GAP} 0 ${theme.background.trackHeader.group}` : null,
       ]
         .filter(Boolean)
         .join(', ') || undefined,
@@ -434,7 +439,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       // grouping must not resize a track. The canvas column adds the
       // identical space through core's rowGapAfter — if these two ever
       // disagree the columns drift by this much per group.
-      ...(closesBand ? { marginBottom: GROUP_END_PAD } : null),
+      ...(hasFloor ? { marginBottom: GROUP_END_PAD } : null),
     };
   };
 
@@ -537,12 +542,6 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               >
                 {cloneElement(child, {
                   ...child.props,
-                  // Folder rows take focus like any other row. This
-                  // used to stop at the WRAPPER class above, so the
-                  // panel inside never learned it was focused and a
-                  // group was the one row that stayed unmarked as you
-                  // arrowed through the list. Mirrors the branch below.
-                  ...(child.props.isFocused === undefined && { isFocused: isFocusedFolder }),
                   isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
                   onMenuClick: (event: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(index, event),
                   trackHeight: rawHeight || 28,

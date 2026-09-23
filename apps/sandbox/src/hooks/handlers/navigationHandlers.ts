@@ -1,5 +1,6 @@
 import type { TracksState, TracksAction } from '../../contexts/TracksContext';
 import { selectTrackExclusive, toggleTrackSelection } from '../../utils/trackSelection';
+import { nearestFocusableTrack } from '../../utils/trackFocus';
 
 export interface NavigationHandlerDeps {
   state: TracksState;
@@ -128,9 +129,11 @@ export function handleTrackFocus(e: KeyboardEvent, deps: NavigationHandlerDeps):
 
   if (state.focusedTrackIndex !== null) {
     const delta = e.key === 'ArrowDown' ? 1 : -1;
-    const newIndex = state.focusedTrackIndex + delta;
+    // Steps OVER folder headers and hidden children — the same rule the
+    // per-track handler uses, so the two arrow paths can't disagree.
+    const newIndex = nearestFocusableTrack(state.tracks, state.focusedTrackIndex, delta);
 
-    if (newIndex >= 0 && newIndex < state.tracks.length) {
+    if (newIndex !== null) {
       dispatch({ type: 'SET_FOCUSED_TRACK', payload: newIndex });
 
       if (e.shiftKey) {
@@ -169,13 +172,16 @@ export function handleTrackFocus(e: KeyboardEvent, deps: NavigationHandlerDeps):
       }, 0);
     }
   } else if (state.tracks.length > 0) {
-    dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
+    // First FOCUSABLE row — the list may start with a folder header.
+    const first = nearestFocusableTrack(state.tracks, -1, 1);
+    if (first === null) return;
+    dispatch({ type: 'SET_FOCUSED_TRACK', payload: first });
     if (trackSelectionMode === 'follows-focus' && !decouple) {
-      dispatch({ type: 'SELECT_TRACK', payload: 0 });
+      dispatch({ type: 'SELECT_TRACK', payload: first });
     }
     setTimeout(() => {
       const target = document.querySelector(
-        `.track-wrapper[data-track-index="0"] .track`,
+        `.track-wrapper[data-track-index="${first}"] .track`,
       ) as HTMLElement | null;
       if (target) {
         target.setAttribute('data-focus-from-nav', '1');

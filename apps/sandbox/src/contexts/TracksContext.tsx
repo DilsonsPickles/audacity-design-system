@@ -4,6 +4,7 @@ import type { Label as CoreLabel } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { ACTION_DOMAIN } from './reducers/domains';
 import { normalizeTracksZOrder } from '../utils/clipZOrder';
+import { resolveFocusedTrack } from '../utils/trackFocus';
 import { selectionReducer } from './reducers/selectionReducer';
 import { viewReducer } from './reducers/viewReducer';
 import { recordingReducer } from './reducers/recordingReducer';
@@ -557,6 +558,12 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
     const normalized = normalizeTracksZOrder(next.tracks);
     if (normalized !== next.tracks) next = { ...next, tracks: normalized };
   }
+  // Focus invariant (see utils/trackFocus.ts): a folder header, or a
+  // child hidden in a collapsed folder, never holds focus. Enforced here
+  // — the one funnel — so arrow keys, canvas clicks, grouping and delete
+  // all agree without each knowing the rule. Identity-preserving.
+  const focusable = resolveFocusedTrack(next.tracks, next.focusedTrackIndex, state.focusedTrackIndex);
+  if (focusable !== next.focusedTrackIndex) next = { ...next, focusedTrackIndex: focusable };
   if (UNDOABLE_ACTIONS.has(action.type) && next.tracks !== before) {
     const group = UNDO_COALESCE_GROUP[action.type] ?? null;
     const now = Date.now();
