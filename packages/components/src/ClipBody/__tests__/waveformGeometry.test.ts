@@ -95,3 +95,17 @@ describe('makeSelectionColorFns', () => {
     expect(fns.getWaveColor(399)).toBe('var(--clip-blue-waveform)');
   });
 });
+
+describe('waveformColumnBounds', () => {
+  it.each([1, 1.25, 1.5, 2, 164 / 163.5])('shares physical-pixel edges at scale %s', async (scale) => {
+    const { waveformColumnBounds } = await import('../waveformGeometry');
+    let previousRight = 0;
+    for (let column = 0; column < 500; column++) {
+      const { left, width } = waveformColumnBounds(column, scale);
+      expect(left * scale).toBeCloseTo(Math.round(column * scale), 10);
+      expect((left + width) * scale).toBeCloseTo(Math.round((column + 1) * scale), 10);
+      expect(left).toBeCloseTo(previousRight, 10);
+      previousRight = left + width;
+    }
+  });
+});
