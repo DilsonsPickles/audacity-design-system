@@ -720,6 +720,11 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         className="track-control-panel track-control-panel--folder"
         data-track-panel-index={trackIndex}
         aria-label={`${trackName} track controls`}
+        // Drag-reorder, exactly as a track row: the host's handlers are
+        // folder-aware (a folder drags its whole family, and the preview
+        // ghosts every row in the block). isInteractiveTarget keeps the
+        // chevron, name, M/S and kebab from starting a drag.
+        onMouseDown={handleDragReorderMouseDown}
         style={{
           // The CSS-variable block the stylesheet reads — a folder row
           // is still a track-control-panel.
@@ -735,6 +740,8 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           fontFamily: 'Inter, sans-serif',
           fontSize: 12,
           color: theme.foreground.text.primary,
+          // Same in-flight feedback as a dragged track row
+          ...(isDragReordering ? { opacity: 0.7, cursor: 'grabbing' } : null),
         }}
       >
         <button

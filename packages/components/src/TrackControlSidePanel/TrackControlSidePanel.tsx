@@ -553,12 +553,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           const child = childArray[index];
           if (!child) return null;
           const ghosted = dragPreview?.ghostIndices.includes(index) ?? false;
-          const ghostStyle = ghosted
-            ? {
-                opacity: 0.55,
-                ...(dragPreview?.indented ? { marginLeft: 14 } : { marginLeft: 0 }),
-              }
-            : null;
+          // Ghosted rows fade, and that is all: they keep their exact
+          // footprint. The old 14px indent for a landing inside a
+          // group made the dragged row narrower mid-flight — and the
+          // group's strip and field already show where it would land.
+          const ghostStyle = ghosted ? { opacity: 0.55 } : null;
           // Folders v1: a height of 0 = child of a collapsed folder —
           // keep the node in the DOM (panel ordinals must stay aligned
           // with track indices for focus/drag routing) but render

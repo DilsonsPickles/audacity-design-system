@@ -202,6 +202,14 @@ export function useTrackPanelHandlers(
   const resolveDragTarget = (clientY: number, index: number): number | null => {
     const target = resolveTrackDropIndex(document, clientY);
     if (target < 0 || target === index) return null;
+    // A folder drags its whole family, and the family ghosts in the
+    // preview — so the pointer passing over any of ITS OWN rows means
+    // "over the ghost", the same as over the folder row itself. Left
+    // as a target, a child's index lands inside the dragged block,
+    // which moveTrackWithFolders resolves to "stay put": the preview
+    // snapped back to the original order as the pointer crossed the
+    // family, and the drop committed that no-op.
+    if (tracks[index]?.type === 'folder' && folderChildIndices(tracks, index).includes(target)) return null;
     // Dropping a plain track ON a folder row means "join this group"
     // (its first child) rather than "sit above the folder" — aim one
     // row past the header, which lands right after it whichever
