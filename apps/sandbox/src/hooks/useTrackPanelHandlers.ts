@@ -200,6 +200,20 @@ export function useTrackPanelHandlers(
    *  preview and the drop BOTH go through this, so the indicator can
    *  never show a landing the drop wouldn't produce. */
   const resolveDragTarget = (clientY: number, index: number): number | null => {
+    // Below the last visible row = "after the last row" (tracks.length).
+    // The resolver only ever names a row to land ON, and when a group
+    // ends the list every row down there is one of its members — which
+    // moveTrackWithFolders lands ABOVE, so nothing could ever reach the
+    // bottom slot. (While a preview runs, the last row may be the
+    // dragged block's own ghost: then this is "over the ghost", held.)
+    const panels = [...document.querySelectorAll<HTMLElement>('[data-track-panel-index]')]
+      .filter((el) => el.getBoundingClientRect().height > 0);
+    const lastPanel = panels[panels.length - 1];
+    if (lastPanel && clientY > lastPanel.getBoundingClientRect().bottom) {
+      const lastIndex = Number(lastPanel.dataset.trackPanelIndex);
+      const block = tracks[index]?.type === 'folder' ? [index, ...folderChildIndices(tracks, index)] : [index];
+      return block.includes(lastIndex) ? null : tracks.length;
+    }
     const target = resolveTrackDropIndex(document, clientY);
     if (target < 0 || target === index) return null;
     // A folder drags its whole family, and the family ghosts in the
@@ -276,7 +290,9 @@ export function useTrackPanelHandlers(
       type: 'MOVE_TRACK',
       payload: { fromIndex: index, toIndex },
     });
-    dispatch({ type: 'SET_FOCUSED_TRACK', payload: toIndex });
+    // toIndex may be the append sentinel (tracks.length); focus the row
+    // that actually exists there.
+    dispatch({ type: 'SET_FOCUSED_TRACK', payload: Math.min(toIndex, tracks.length - 1) });
   };
 
   const onReorderVertical = (direction: 'up' | 'down', index: number) => {

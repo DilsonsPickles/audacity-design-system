@@ -357,3 +357,46 @@ describe('focus invariant through tracksReducer — folder headers never hold fo
     expect(next.focusedTrackIndex).toBe(3);
   });
 });
+
+
+describe('MOVE_TRACK to the bottom slot (toIndex = tracks.length)', () => {
+  // Landing ON a row of a group that ends the list resolves to above
+  // that group; only "after the last row" can put a block below it.
+  it('a folder dragged past the end lands BELOW a trailing group, family intact', () => {
+    const state = makeState([
+      makeTrack(10, { type: 'folder' }), makeTrack(1, { folderId: 10 }),
+      makeTrack(20, { type: 'folder' }), makeTrack(2, { folderId: 20 }), makeTrack(3, { folderId: 20 }),
+    ]);
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 5 } });
+    expect(next.tracks.map((t) => t.id)).toEqual([20, 2, 3, 10, 1]);
+    expect(next.tracks[4].folderId).toBe(10);
+    expect(next.focusedTrackIndex).toBe(3);
+  });
+
+  it('...whereas landing ON the trailing group (its header or an earlier member) stays above it — the ceiling', () => {
+    // Landing on a member walks the block up to sit above that family
+    // (no nesting). Only the family's LAST row escapes that, because the
+    // block's insert point falls past the end — and a collapsed trailing
+    // group has no reachable last row at all. Hence the sentinel.
+    const state = makeState([
+      makeTrack(10, { type: 'folder' }), makeTrack(1, { folderId: 10 }),
+      makeTrack(20, { type: 'folder' }), makeTrack(2, { folderId: 20 }), makeTrack(3, { folderId: 20 }),
+    ]);
+    const onHeader = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 2 } });
+    expect(onHeader.tracks.map((t) => t.id)).toEqual([10, 1, 20, 2, 3]);
+    const onFirstMember = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 3 } });
+    expect(onFirstMember.tracks.map((t) => t.id)).toEqual([10, 1, 20, 2, 3]);
+  });
+
+  it('a plain track dragged past the end appends and joins the group it lands under', () => {
+    const state = makeState([makeTrack(1), makeTrack(20, { type: 'folder' }), makeTrack(2, { folderId: 20 })]);
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 3 } });
+    expect(next.tracks.map((t) => t.id)).toEqual([20, 2, 1]);
+    expect(next.tracks[2].folderId).toBe(20); // membership follows the row above
+  });
+
+  it('beyond tracks.length is still rejected', () => {
+    const state = makeState([makeTrack(1), makeTrack(2)]);
+    expect(tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 3 } })).toBe(state);
+  });
+});

@@ -274,7 +274,10 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
 
     case 'MOVE_TRACK': {
       const { fromIndex, toIndex } = action.payload;
-      if (toIndex < 0 || toIndex >= state.tracks.length) return state;
+      // toIndex === tracks.length is legal: "after the last row" — the
+      // only way a block can land BELOW a group that ends the list, since
+      // landing ON any of that group's rows resolves to above it.
+      if (toIndex < 0 || toIndex > state.tracks.length) return state;
       // Folders v1: a folder row drags its FAMILY (folder + contiguous
       // children) as one block; membership editing is a separate
       // gesture. Implemented as a block splice with selection/scope

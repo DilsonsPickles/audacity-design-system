@@ -121,9 +121,12 @@ export function trackDepth(tracks: readonly FolderTrackLike[], index: number): n
 /** THE move. Folder rows carry their whole family; a plain track's
  *  MEMBERSHIP follows its landing spot (it joins the folder of the row
  *  above — a folder row itself meaning "first child" — and leaves when
- *  it lands under a plain track or at the top). Pure, so the drag
- *  PREVIEW and the committed move are computed by the same code and
- *  can never disagree. Callers apply normalizeFolders afterwards. */
+ *  it lands under a plain track or at the top). `toIndex` may be
+ *  tracks.length: "after the last row", the one landing that puts a
+ *  block BELOW a group that ends the list (landing on any of that
+ *  group's rows resolves to above it). Pure, so the drag PREVIEW and
+ *  the committed move are computed by the same code and can never
+ *  disagree. Callers apply normalizeFolders afterwards. */
 export function moveTrackWithFolders<T extends FolderTrackLike>(
   tracks: readonly T[],
   fromIndex: number,
@@ -157,18 +160,22 @@ export function moveTrackWithFolders<T extends FolderTrackLike>(
   }
 
   const [moved] = next.splice(fromIndex, 1);
-  next.splice(toIndex, 0, moved);
-  const above = next[toIndex - 1];
+  // toIndex may be tracks.length ("after the last row"); clamp to the
+  // shortened array so the row APPENDS rather than reading itself as
+  // the row above it.
+  const at = Math.min(toIndex, next.length);
+  next.splice(at, 0, moved);
+  const above = next[at - 1];
   const nextFolderId = above
     ? (above.type === 'folder' ? above.id : above.folderId)
     : undefined;
   if (nextFolderId === undefined) {
     const { folderId: _left, ...rest } = moved;
-    next[toIndex] = rest as T;
+    next[at] = rest as T;
   } else if (moved.folderId !== nextFolderId) {
-    next[toIndex] = { ...moved, folderId: nextFolderId };
+    next[at] = { ...moved, folderId: nextFolderId };
   }
-  return { tracks: next, landedIndex: toIndex };
+  return { tracks: next, landedIndex: at };
 }
 
 /** Drop dangling folderIds (folder deleted) and dissolve folders with
