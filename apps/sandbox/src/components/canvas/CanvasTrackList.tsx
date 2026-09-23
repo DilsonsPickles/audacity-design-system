@@ -17,6 +17,7 @@ import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrac
 import { calculateTrackYOffset } from '../../utils/trackLayout';
 import {
   FOLDER_ROW_HEIGHT,
+  GROUP_END_PAD,
   effectiveTrackHeight,
   effectiveTrackMuted,
   effectiveTrackSoloed,
@@ -208,6 +209,21 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
         if (track.type === 'folder') {
           const childIndices = folderChildIndices(tracks, trackIndex);
           const childCount = childIndices.length;
+          // The band is the whole family's FIELD, as the panel's is: from
+          // the header down to the floor under the last member. The lanes
+          // are opaque and sit on top, so the group colour shows through
+          // the gaps between them and in the floor — the canvas twin of
+          // the cards sitting on the strip. Collapsed (or while a reorder
+          // drag previews positions the model doesn't hold), it is the
+          // header strip alone. Always mounted, so a collapse/expand
+          // tweens its height along with the rows.
+          const lastChild = childIndices.length > 0 ? childIndices[childIndices.length - 1] : -1;
+          const familyHeight = !track.collapsed && lastChild >= 0 && !previewYOffsets
+            ? calculateTrackYOffset(lastChild, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT)
+              + effectiveTrackHeight(tracks, lastChild, DEFAULT_TRACK_HEIGHT)
+              + GROUP_END_PAD
+              - yOffset
+            : FOLDER_ROW_HEIGHT;
           return (
             <div
               key={track.id}
@@ -218,9 +234,9 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 top: yOffset,
                 left: 0,
                 right: 0,
-                height: FOLDER_ROW_HEIGHT,
+                height: familyHeight,
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 gap: 8,
                 padding: '0 12px',
                 // The group header is ONE band running the full width
@@ -239,6 +255,9 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 pointerEvents: 'none',
                 opacity: ghosted ? 0.55 : undefined,
                 ...collapseStyle(trackIndex),
+                // The field's height moves with the family, on the same
+                // clock as the rows.
+                ...(collapse.animating ? { transition: `top ${TWEEN}, height ${TWEEN}` } : null),
               }}
             >
               {/* Sticky so the group's name stays readable however far
@@ -257,6 +276,9 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                   // holds the SAME inset when pinned as it has at
                   // scroll 0 and never visibly jumps.
                   left: 12,
+                  // The header strip's height: the label lives in the
+                  // top of the field, not centred in the whole family.
+                  height: FOLDER_ROW_HEIGHT,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
