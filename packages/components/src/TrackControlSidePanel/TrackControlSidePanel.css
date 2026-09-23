@@ -60,6 +60,11 @@
      group's colour so the family reads as one field, and the two
      values must stay in step (TrackControlSidePanel.tsx). */
   --tcsp-list-gap: 2px;
+  /* How much of the gutter a track group LEAVES on its left, so the
+     group band stops short of the panel edge rather than bleeding
+     into it. Read by both TrackControlSidePanel (the outdent) and
+     TrackControlPanel (the header's matching content padding). */
+  --tcsp-group-inset: 8px;
   padding: 2px 0 0 var(--tcsp-list-gutter);
   display: flex;
   flex-direction: column;

@@ -364,6 +364,13 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   // Mirrors --tcsp-list-gap — the flex row gap a group's rows paint
   // over so the family has no rail showing through it.
   const LIST_GAP = 'var(--tcsp-list-gap, 2px)';
+  // How much of the gutter the family LEAVES on its left. The group
+  // outdents through the rest of it, so the band stops short of the
+  // panel edge instead of bleeding into it — a group is a container
+  // in the list, not a full-width divider across the chrome.
+  const GROUP_LEFT_INSET = 'var(--tcsp-group-inset, 8px)';
+  // What the family actually cancels: the gutter minus that inset.
+  const GROUP_OUTDENT = `calc(${LIST_GUTTER} - ${GROUP_LEFT_INSET})`;
   const groupWellStyle = (index: number): React.CSSProperties | null => {
     if (!groupMenu) return null;
     const isHeader = groupMenu.isFolderRow(index);
@@ -387,11 +394,12 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       // it wraps and the plain gutter an ungrouped track sits in —
       // no shared surface token does both.
       background: theme.background.trackHeader.group,
-      // The family outdents through the list's left gutter, to the
-      // panel's own edge. Members then pad that gutter back on THIS
-      // wrapper, so their content returns to where an ungrouped
-      // track sits and only the parent's colour occupies the strip.
-      marginLeft: `calc(-1 * ${LIST_GUTTER})`,
+      // The family outdents through most of the list's left gutter,
+      // stopping GROUP_LEFT_INSET short of the panel edge. Members
+      // then pad the remainder back on THIS wrapper, so their content
+      // returns to where an ungrouped track sits and only the
+      // parent's colour occupies the strip beside them.
+      marginLeft: `calc(-1 * ${GROUP_OUTDENT})`,
       // Edges are INSET SHADOWS, never borders: a border is part of
       // the box, so the closing edge that appears when a group
       // collapses would shrink the header's content by 1px and the
@@ -416,7 +424,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       // band edge to edge, and TrackControlPanel re-adds the gutter
       // to its own left padding so the chevron stays in line with
       // the track content below.
-      ...(isHeader ? null : { paddingLeft: LIST_GUTTER }),
+      ...(isHeader ? null : { paddingLeft: GROUP_OUTDENT }),
     };
   };
 
