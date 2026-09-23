@@ -197,16 +197,11 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 // same height, so the two columns read as a single row
                 // across the seam. Darker than the lanes it caps —
                 // it is chrome, not content.
+                // No edges, expanded or collapsed: the tone change is
+                // the divider. Outlined, the band read as a boxed
+                // control sitting in the canvas rather than a strip of
+                // it (user decision 2026-09-23).
                 background: 'rgba(0, 0, 0, 0.28)',
-                // The edges only when the band CAPS lanes below it.
-                // Collapsed, it is a lone strip, and an outline made
-                // it read as a boxed control rather than a divider.
-                ...(track.collapsed
-                  ? null
-                  : {
-                      borderTop: '1px solid rgba(255, 255, 255, 0.10)',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
-                    }),
                 color: 'rgba(255, 255, 255, 0.75)',
                 fontSize: 12,
                 fontFamily: 'Inter, sans-serif',
