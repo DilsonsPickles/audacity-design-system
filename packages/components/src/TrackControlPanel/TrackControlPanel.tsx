@@ -641,8 +641,25 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   // grouped track is pixel-identical to an ungrouped one; the earlier
   // card treatment (inset background + 4px radius) made membership
   // look like a size change, which it is not.
+  // The header row is outdented through the panel list's left gutter
+  // (TrackControlSidePanel) so its band reaches the panel edge. That
+  // gutter comes back as left padding HERE, so the band grows while
+  // the chevron stays in line with the track content below it.
   const groupContentStyle: React.CSSProperties | null =
-    groupPosition === 'header' ? { background: theme.background.surface.subtle } : null;
+    groupPosition === 'header'
+      ? {
+          // Matches the family band painted by the row wrapper in
+          // TrackControlSidePanel — header and side strip are one
+          // continuous parent colour.
+          background: theme.background.surface.elevated,
+          paddingLeft: 'calc(var(--tcsp-list-gutter, 12px) + 8px)',
+          // .track-control-panel is a fixed 268px — the width of a
+          // track row inside the gutter. The header's wrapper is
+          // wider (it outdents through the gutter), so fill it
+          // rather than keeping a track's width.
+          width: '100%',
+        }
+      : null;
 
   const style = {
     '--tcp-bg-idle': theme.background.trackHeader.idle,

@@ -52,7 +52,11 @@
   overflow-x: hidden;
   overscroll-behavior: none;
   background: var(--tcsp-list-bg);
-  padding: 2px 0 0 12px;
+  /* The left gutter is a named variable because the group header row
+     cancels it with a negative margin to run edge to edge — the two
+     values must stay in step (TrackControlSidePanel.tsx). */
+  --tcsp-list-gutter: 12px;
+  padding: 2px 0 0 var(--tcsp-list-gutter);
   display: flex;
   flex-direction: column;
   gap: 2px !important;

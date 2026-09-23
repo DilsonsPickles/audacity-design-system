@@ -346,8 +346,10 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
 
 
   // Track groups read as a FULL-BLEED band, not a card: the header
-  // strip runs the panel's whole width and its members keep exactly
-  // the footprint they would have ungrouped.
+  // strip runs the panel's whole width, the parent's colour carries
+  // on down the left gutter beside the members (so the parent visibly
+  // WRAPS its children), and the members keep exactly the footprint
+  // they would have ungrouped.
   //
   // Grouping must never resize a track (user decision 2026-09-23).
   // The earlier accordion inset the family by 6px and padded members
@@ -356,6 +358,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   // the well's padding (border-box). Membership is a relationship,
   // not a size change — so the group is drawn with tone and a
   // closing edge only.
+  // Mirrors --tcsp-list-gutter in TrackControlSidePanel.css — the
+  // left padding the rows sit inside, which the group header cancels.
+  const LIST_GUTTER = 'var(--tcsp-list-gutter, 12px)';
   const groupWellStyle = (index: number): React.CSSProperties | null => {
     if (!groupMenu) return null;
     const isHeader = groupMenu.isFolderRow(index);
@@ -372,10 +377,33 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     const closesBand = isLast || collapsedHeader;
     return {
       boxSizing: 'border-box',
-      background: theme.background.surface.inset,
+      // ONE colour for the whole family, so the parent reads as
+      // wrapping its children: a band across the header and a strip
+      // continuing down the gutter beside every member.
+      //
+      // `elevated` because it lands BETWEEN the list's rail
+      // (trackHeader.parent) and the track cards in BOTH themes —
+      // light #E3E3E8 against rail #D5D5DB and cards #ECECEF, dark
+      // #2c2e33 against rail #252B31 and cards #32383E. So the strip
+      // separates from the plain gutter an ungrouped track sits in,
+      // and still reads as sitting behind the children.
+      background: theme.background.surface.elevated,
+      // The family outdents through the list's left gutter, to the
+      // panel's own edge. Members then pad that gutter back on THIS
+      // wrapper, so their content returns to where an ungrouped
+      // track sits and only the parent's colour occupies the strip.
+      marginLeft: `calc(-1 * ${LIST_GUTTER})`,
       // Edges only along the band's flow — never on the sides, where
       // they would shift the row's content inward.
-      ...(isHeader ? { borderTop: `1px solid ${theme.border.default}` } : null),
+      ...(isHeader
+        ? {
+            borderTop: `1px solid ${theme.border.default}`,
+            // No padding on the header's wrapper: its CONTENT paints
+            // the band edge to edge, and TrackControlPanel re-adds
+            // the gutter to its own left padding so the chevron
+            // stays in line with the track content below.
+          }
+        : { paddingLeft: LIST_GUTTER }),
       ...(closesBand ? { borderBottom: `1px solid ${theme.border.default}` } : null),
     };
   };
