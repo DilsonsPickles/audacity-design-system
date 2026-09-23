@@ -198,8 +198,15 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 // across the seam. Darker than the lanes it caps —
                 // it is chrome, not content.
                 background: 'rgba(0, 0, 0, 0.28)',
-                borderTop: '1px solid rgba(255, 255, 255, 0.10)',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
+                // The edges only when the band CAPS lanes below it.
+                // Collapsed, it is a lone strip, and an outline made
+                // it read as a boxed control rather than a divider.
+                ...(track.collapsed
+                  ? null
+                  : {
+                      borderTop: '1px solid rgba(255, 255, 255, 0.10)',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
+                    }),
                 color: 'rgba(255, 255, 255, 0.75)',
                 fontSize: 12,
                 fontFamily: 'Inter, sans-serif',
