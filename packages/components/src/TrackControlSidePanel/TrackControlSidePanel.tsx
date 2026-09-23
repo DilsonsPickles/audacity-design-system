@@ -361,6 +361,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   // Mirrors --tcsp-list-gutter in TrackControlSidePanel.css — the
   // left padding the rows sit inside, which the group header cancels.
   const LIST_GUTTER = 'var(--tcsp-list-gutter, 12px)';
+  // Mirrors --tcsp-list-gap — the flex row gap a group's rows paint
+  // over so the family has no rail showing through it.
+  const LIST_GAP = 'var(--tcsp-list-gap, 2px)';
   const groupWellStyle = (index: number): React.CSSProperties | null => {
     if (!groupMenu) return null;
     const isHeader = groupMenu.isFolderRow(index);
@@ -379,32 +382,41 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       boxSizing: 'border-box',
       // ONE colour for the whole family, so the parent reads as
       // wrapping its children: a band across the header and a strip
-      // continuing down the gutter beside every member.
-      //
-      // `elevated` because it lands BETWEEN the list's rail
-      // (trackHeader.parent) and the track cards in BOTH themes —
-      // light #E3E3E8 against rail #D5D5DB and cards #ECECEF, dark
-      // #2c2e33 against rail #252B31 and cards #32383E. So the strip
-      // separates from the plain gutter an ungrouped track sits in,
-      // and still reads as sitting behind the children.
-      background: theme.background.surface.elevated,
+      // continuing down the gutter beside every member. Its own
+      // token, because it has to separate from BOTH the track cards
+      // it wraps and the plain gutter an ungrouped track sits in —
+      // no shared surface token does both.
+      background: theme.background.trackHeader.group,
       // The family outdents through the list's left gutter, to the
       // panel's own edge. Members then pad that gutter back on THIS
       // wrapper, so their content returns to where an ungrouped
       // track sits and only the parent's colour occupies the strip.
       marginLeft: `calc(-1 * ${LIST_GUTTER})`,
-      // Edges only along the band's flow — never on the sides, where
-      // they would shift the row's content inward.
-      ...(isHeader
-        ? {
-            borderTop: `1px solid ${theme.border.default}`,
-            // No padding on the header's wrapper: its CONTENT paints
-            // the band edge to edge, and TrackControlPanel re-adds
-            // the gutter to its own left padding so the chevron
-            // stays in line with the track content below.
-          }
-        : { paddingLeft: LIST_GUTTER }),
-      ...(closesBand ? { borderBottom: `1px solid ${theme.border.default}` } : null),
+      // Edges are INSET SHADOWS, never borders: a border is part of
+      // the box, so the closing edge that appears when a group
+      // collapses would shrink the header's content by 1px and the
+      // row would visibly resize on every toggle. Shadows paint
+      // without touching layout, so collapsed and expanded headers
+      // are the same size — and the last member keeps the full
+      // height of every other track.
+      //
+      // The OUTSET shadow fills the list's row gap below this row in
+      // the group's own colour, so the family reads as one unbroken
+      // field instead of cards separated by strips of the rail. Only
+      // while the band continues — the row that closes it leaves the
+      // gap to the rail, which is where the group actually ends.
+      boxShadow: [
+        isHeader ? `inset 0 1px 0 ${theme.border.default}` : null,
+        closesBand ? `inset 0 -1px 0 ${theme.border.default}` : null,
+        closesBand ? null : `0 ${LIST_GAP} 0 ${theme.background.trackHeader.group}`,
+      ]
+        .filter(Boolean)
+        .join(', ') || undefined,
+      // No padding on the header's wrapper: its CONTENT paints the
+      // band edge to edge, and TrackControlPanel re-adds the gutter
+      // to its own left padding so the chevron stays in line with
+      // the track content below.
+      ...(isHeader ? null : { paddingLeft: LIST_GUTTER }),
     };
   };
 

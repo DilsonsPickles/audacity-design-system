@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { ResizablePanel } from '../ResizablePanel';
@@ -107,5 +108,92 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
       </ResizablePanel>,
     );
     expect(getRoot(container).style.height).toBe('200px');
+  });
+});
+
+describe('ResizablePanel drag resize — listeners survive mid-drag re-renders', () => {
+  const startDrag = (container: HTMLElement, height: number) => {
+    const content = container.querySelector('.resizable-panel__content') as HTMLElement;
+    // The resize zone is the bottom `resizeThreshold` px. jsdom reports a
+    // zero rect, so clientY is measured from a top of 0 — a press at
+    // `height - 1` lands inside the bottom zone.
+    content.getBoundingClientRect = () => ({
+      top: 0, left: 0, bottom: height, right: 268,
+      width: 268, height, x: 0, y: 0, toJSON: () => ({}),
+    });
+    fireEvent.mouseDown(content, { clientY: height - 1 });
+  };
+
+  it('does NOT re-bind its document listeners when the parent re-renders mid-drag', () => {
+    // THE regression. TrackControlSidePanel passes inline arrows, so
+    // every reported height re-renders the parent and mints fresh
+    // callbacks. While those were effect deps, each mousemove tore the
+    // document listeners down and bound new ones; a real mouseup landing
+    // in that window was dropped, isResizing stayed true, and the track
+    // kept following the cursor after release.
+    //
+    // The race itself needs a real event loop — jsdom's fireEvent is
+    // synchronous, so the listener is always back before the next event.
+    // What IS testable, and what actually changed, is the binding
+    // discipline: the listeners must bind once per GESTURE, not per
+    // render. See CLAUDE.md, "Ref-mirror for document listeners".
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+    function Host() {
+      const [h, setH] = React.useState(114);
+      return (
+        <ResizablePanel
+          initialHeight={114}
+          onHeightChange={(next) => setH(next)} // NEW identity every render, deliberately
+          onResizeEnd={() => {}}
+        >
+          <div>{h}</div>
+        </ResizablePanel>
+      );
+    }
+
+    const { container } = render(<Host />);
+    startDrag(container, 114);
+
+    const countMouseUp = (spy: typeof addSpy) =>
+      spy.mock.calls.filter(([type]) => type === 'mouseup').length;
+    const boundAfterStart = countMouseUp(addSpy);
+    expect(boundAfterStart).toBe(1); // the gesture bound its listener
+
+    // Three moves, each re-rendering the host with fresh callbacks.
+    fireEvent.mouseMove(document, { clientY: 130 });
+    fireEvent.mouseMove(document, { clientY: 150 });
+    fireEvent.mouseMove(document, { clientY: 170 });
+
+    // The listener that is waiting for mouseup must be the SAME one.
+    expect(countMouseUp(addSpy)).toBe(boundAfterStart);
+    expect(countMouseUp(removeSpy)).toBe(0);
+
+    fireEvent.mouseUp(document, { clientY: 170 });
+    expect(countMouseUp(removeSpy)).toBe(1); // and it unbinds once, at the end
+
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+  });
+
+  it('keeps clamping to the LATEST minHeight when it changes mid-drag', () => {
+    // The clamp is read through the ref-mirror, so a prop that changes
+    // during the gesture still applies without re-binding listeners.
+    const heights: number[] = [];
+    const { container, rerender } = render(
+      <ResizablePanel initialHeight={114} minHeight={44} onHeightChange={(h) => heights.push(h)}>
+        <div>content</div>
+      </ResizablePanel>,
+    );
+    startDrag(container, 114);
+    rerender(
+      <ResizablePanel initialHeight={114} minHeight={100} onHeightChange={(h) => heights.push(h)}>
+        <div>content</div>
+      </ResizablePanel>,
+    );
+    fireEvent.mouseMove(document, { clientY: -500 });
+    expect(heights[heights.length - 1]).toBe(100);
+    fireEvent.mouseUp(document, { clientY: -500 });
   });
 });

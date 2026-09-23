@@ -270,6 +270,12 @@ export interface ThemeTokens {
       selected: string;
       /** Background of the parent container that holds the track header rows. */
       parent: string;
+      /** The band a track GROUP (folder) draws: across its header row and
+       *  on down the list gutter beside every member, so the parent reads
+       *  as wrapping its children. Must contrast with `idle` (the track
+       *  cards it wraps) AND with `parent` (the plain gutter an ungrouped
+       *  track sits in) — no other surface token separates from both. */
+      group: string;
       /** The header's Add-new button sits on the recessed rail (`parent`),
        *  where the shared secondary button token has no contrast — these
        *  are its dedicated background states. */

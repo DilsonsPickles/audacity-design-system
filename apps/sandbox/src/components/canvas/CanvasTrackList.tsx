@@ -240,12 +240,30 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                   />
                 ))
               ) : (
-                <>
+                // Sticky so the group's name stays readable however far
+                // the canvas is scrolled — the band runs the whole
+                // timeline, and a label pinned to its far-left start
+                // scrolls out of sight exactly when a long project most
+                // needs to say which group a lane belongs to.
+                <span
+                  data-folder-label
+                  style={{
+                    position: 'sticky',
+                    // 12 = the band's own left padding, so the label
+                    // holds the SAME inset when pinned as it has at
+                    // scroll 0 and never visibly jumps.
+                    left: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   <span style={{ fontWeight: 600 }}>{track.name}</span>
                   <span style={{ opacity: 0.6 }}>
                     {childCount} track{childCount === 1 ? '' : 's'}
                   </span>
-                </>
+                </span>
               )}
             </div>
           );

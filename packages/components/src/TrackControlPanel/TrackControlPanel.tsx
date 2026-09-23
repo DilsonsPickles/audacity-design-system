@@ -651,7 +651,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           // Matches the family band painted by the row wrapper in
           // TrackControlSidePanel — header and side strip are one
           // continuous parent colour.
-          background: theme.background.surface.elevated,
+          background: theme.background.trackHeader.group,
           paddingLeft: 'calc(var(--tcsp-list-gutter, 12px) + 8px)',
           // .track-control-panel is a fixed 268px — the width of a
           // track row inside the gutter. The header's wrapper is

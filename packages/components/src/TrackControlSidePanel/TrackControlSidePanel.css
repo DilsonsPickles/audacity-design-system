@@ -56,6 +56,10 @@
      cancels it with a negative margin to run edge to edge — the two
      values must stay in step (TrackControlSidePanel.tsx). */
   --tcsp-list-gutter: 12px;
+  /* Also a variable: rows inside a track group paint this gap in the
+     group's colour so the family reads as one field, and the two
+     values must stay in step (TrackControlSidePanel.tsx). */
+  --tcsp-list-gap: 2px;
   padding: 2px 0 0 var(--tcsp-list-gutter);
   display: flex;
   flex-direction: column;

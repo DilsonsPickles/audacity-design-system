@@ -102,14 +102,21 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   const snapAnimationRef = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Cmd/Ctrl+wheel resize — attached natively with { passive: false }
-  // because React's root-delegated onWheel is passive, so preventDefault()
-  // there is ignored and the surrounding list would scroll while resizing.
-  // Bound once; live prop values are read through a ref-mirror.
-  const wheelDepsRef = useRef({ minHeight, maxHeight, onHeightChange });
+  // ONE ref-mirror of the live props for every long-lived handler here
+  // — the wheel listener, the drag listeners and the release spring.
+  // See CLAUDE.md: document-level listeners bind once and read changing
+  // props through a ref, never through effect deps.
+  //
+  // The drag effect used to list onHeightChange/onResizeEnd directly.
+  // TrackControlSidePanel passes those as inline arrows, so every
+  // mousemove (-> onHeightChange -> parent re-render -> new identities)
+  // tore down and re-bound the document listeners. A mouseup landing in
+  // that window was dropped, `isResizing` stayed true, and the track
+  // kept following the cursor after the button was released.
+  const liveDepsRef = useRef({ minHeight, maxHeight, onHeightChange, onResizeEnd });
   useEffect(() => {
-    wheelDepsRef.current = { minHeight, maxHeight, onHeightChange };
-  }, [minHeight, maxHeight, onHeightChange]);
+    liveDepsRef.current = { minHeight, maxHeight, onHeightChange, onResizeEnd };
+  }, [minHeight, maxHeight, onHeightChange, onResizeEnd]);
 
   // Sub-pixel remainder between wheel events, so gentle trackpad deltas
   // (well under 1px after the resistance factor) accumulate instead of
@@ -136,7 +143,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         cancelAnimationFrame(snapAnimationRef.current);
         snapAnimationRef.current = null;
       }
-      const { minHeight: min, maxHeight: max, onHeightChange: emit } = wheelDepsRef.current;
+      const { minHeight: min, maxHeight: max, onHeightChange: emit } = liveDepsRef.current;
       const current = latestHeightRef.current;
       // deltaMode 1/2 are line/page deltas (non-pixel mice) — normalize.
       const raw = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
@@ -233,14 +240,14 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           lastEmitted = rounded;
           latestHeightRef.current = rounded;
           setHeight(rounded);
-          onHeightChange?.(rounded);
+          liveDepsRef.current.onHeightChange?.(rounded);
         }
         snapAnimationRef.current = requestAnimationFrame(tick);
       } else {
         latestHeightRef.current = target;
         setHeight(target);
-        onHeightChange?.(target);
-        onResizeEnd?.(target);
+        liveDepsRef.current.onHeightChange?.(target);
+        liveDepsRef.current.onResizeEnd?.(target);
         snapAnimationRef.current = null;
       }
     };
@@ -259,10 +266,11 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           ? resizeStartRef.current.height - deltaY
           : resizeStartRef.current.height + deltaY;
 
-        // Apply constraints
-        newHeight = Math.max(minHeight, newHeight);
-        if (maxHeight !== undefined) {
-          newHeight = Math.min(maxHeight, newHeight);
+        // Apply constraints (live values, read through the mirror)
+        const { minHeight: min, maxHeight: max } = liveDepsRef.current;
+        newHeight = Math.max(min, newHeight);
+        if (max !== undefined) {
+          newHeight = Math.min(max, newHeight);
         }
 
         // No snap-pull during the drag — the track follows the cursor
@@ -270,7 +278,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         // (see handleDocumentMouseUp) for a "bounce home" feel.
         latestHeightRef.current = newHeight;
         setHeight(newHeight);
-        onHeightChange?.(newHeight);
+        liveDepsRef.current.onHeightChange?.(newHeight);
       }
     };
 
@@ -328,7 +336,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if (nearest !== null && nearest !== released) {
         springToTarget(released, nearest);
       } else {
-        onResizeEnd?.(released);
+        liveDepsRef.current.onResizeEnd?.(released);
       }
     };
 
@@ -339,7 +347,11 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       document.removeEventListener('mousemove', handleDocumentMouseMove);
       document.removeEventListener('mouseup', handleDocumentMouseUp);
     };
-  }, [isResizing, minHeight, maxHeight, onHeightChange, onResizeEnd]);
+    // ONLY isResizing: the listeners bind when a gesture starts and
+    // unbind when it ends. Everything they need that changes mid-drag
+    // is read from liveDepsRef, so a re-render can never swap the
+    // listener that is waiting for mouseup.
+  }, [isResizing]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isResizing) {
