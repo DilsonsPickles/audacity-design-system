@@ -371,6 +371,19 @@ export interface TrackProps {
    * passes over during the hold, then settles once Cmd is released.
    */
   raisedClipIds?: ReadonlySet<number>;
+  /**
+   * Live marquee preview. When non-null this REPLACES `clip.selected`
+   * for the purpose of clip styling only: the clips inside the
+   * rectangle show the selected treatment, and any currently-selected
+   * clip outside it drops back to idle — so the track shows what the
+   * release is about to commit. Pass null (the default) whenever no
+   * marquee is in flight.
+   *
+   * Deliberately visual-only: selection-gated AFFORDANCES (quick-fade
+   * handles, crossfade nodes) keep reading the real `clip.selected`,
+   * so sweeping a marquee doesn't spray handles across the timeline.
+   */
+  marqueePreviewClipIds?: ReadonlySet<number> | null;
 
 }
 
@@ -442,6 +455,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onHoverClip,
   draggingClipIds,
   raisedClipIds,
+  marqueePreviewClipIds = null,
 }) => {
   const { theme } = useTheme();
   const trackColor = color && clipStyle !== 'classic' ? color as typeof TRACK_COLORS[number] : getTrackColor(trackIndex, clipStyle);
@@ -915,6 +929,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       }
 
       const clipSelected = (clip as any).selected || false; // justified: selected not on Clip type — pending components sweep
+      // What the clip LOOKS like. Mid-marquee the rectangle speaks for
+      // the whole track; otherwise the clip's own flag does.
+      const clipSelectedVisual = marqueePreviewClipIds
+        ? marqueePreviewClipIds.has(clip.id as number)
+        : clipSelected;
       const isClipHovered = hoveredClipId != null && clip.id === hoveredClipId;
       const isDragging = draggingClipIds?.has(clip.id as number) ?? false;
       const isRaised = raisedClipIds?.has(clip.id as number) ?? false;
@@ -1259,7 +1278,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             name={clip.name}
             width={clipWidth}
             height={height}
-            selected={clipSelected}
+            selected={clipSelectedVisual}
             inTimeSelection={timeSelection && inTimeSelectionScope && timeSelection.renderOnCanvas !== false ? (
               clip.start < timeSelection.endTime && (clip.start + clip.duration) > timeSelection.startTime
             ) : false}
