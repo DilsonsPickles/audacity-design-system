@@ -24,6 +24,12 @@ export interface UseMarqueeSelectionOptions {
     picks: Array<{ trackIndex: number; clipId: number }>,
     modifiers: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean },
   ) => void;
+  /** Called once, the moment the right-drag crosses the threshold into
+   *  marquee mode — NOT on the raw mousedown, which may still turn out
+   *  to be a right-click on a selected clip wanting its context menu.
+   *  The consumer clears the existing selection here (unless Shift is
+   *  held, which makes the marquee additive). */
+  onMarqueeStart?: (modifiers: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => void;
 }
 
 export interface MarqueeRect {
@@ -147,6 +153,7 @@ export function useMarqueeSelection({
   trackGap,
   defaultTrackHeight,
   onSelectionCommit,
+  onMarqueeStart,
 }: UseMarqueeSelectionOptions): UseMarqueeSelectionReturn {
   // `tracks` (and everything derived from it) changes on every clip
   // edit. Keep it in refs so the document-level move / up listeners
@@ -159,6 +166,7 @@ export function useMarqueeSelection({
   const trackGapRef = useRef(trackGap);
   const defaultTrackHeightRef = useRef(defaultTrackHeight);
   const onSelectionCommitRef = useRef(onSelectionCommit);
+  const onMarqueeStartRef = useRef(onMarqueeStart);
   useEffect(() => { tracksRef.current = tracks; }, [tracks]);
   useEffect(() => { pixelsPerSecondRef.current = pixelsPerSecond; }, [pixelsPerSecond]);
   useEffect(() => { clipContentOffsetRef.current = clipContentOffset; }, [clipContentOffset]);
@@ -166,6 +174,7 @@ export function useMarqueeSelection({
   useEffect(() => { trackGapRef.current = trackGap; }, [trackGap]);
   useEffect(() => { defaultTrackHeightRef.current = defaultTrackHeight; }, [defaultTrackHeight]);
   useEffect(() => { onSelectionCommitRef.current = onSelectionCommit; }, [onSelectionCommit]);
+  useEffect(() => { onMarqueeStartRef.current = onMarqueeStart; }, [onMarqueeStart]);
 
   const dragStartRef = useRef<
     | {
@@ -233,6 +242,7 @@ export function useMarqueeSelection({
         // upcoming mouseup.
         setIsMarqueeing(true);
         setMarqueeModifiers(start.modifiers);
+        onMarqueeStartRef.current?.(start.modifiers);
       }
 
       const left = Math.min(start.startX, currentX);

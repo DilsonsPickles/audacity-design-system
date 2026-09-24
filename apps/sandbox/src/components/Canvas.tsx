@@ -427,6 +427,14 @@ export function Canvas({
     topGap: TOP_GAP,
     trackGap: TRACK_GAP,
     defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
+    // Starting a marquee drops the existing clip selection (user
+    // decision 2026-09-24): the rectangle is a new selection from the
+    // first pixel, so nothing outside it stays selected — or keeps its
+    // selection-gated handles — while you draw. Shift keeps it, since
+    // Shift-drag adds to what's there.
+    onMarqueeStart: (modifiers) => {
+      if (!modifiers.shiftKey) dispatch({ type: 'DESELECT_ALL_CLIPS' });
+    },
     onSelectionCommit: (picks, modifiers) => {
       // Shift-right-drag adds to the current selection; plain
       // right-drag replaces it. Empty marquee (dragged over blank
