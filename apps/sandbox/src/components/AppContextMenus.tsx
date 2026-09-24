@@ -10,6 +10,7 @@ import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { useTracks } from '../contexts/TracksContext';
 import type { Track, Clip } from '../contexts/TracksContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
+import { FadeDurationDialog } from './FadeDurationDialog';
 
 export interface AppContextMenusProps {
   // Spectrogram
@@ -58,6 +59,28 @@ export function AppContextMenus({
 }: AppContextMenusProps) {
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
+
+  // "Fade in…" / "Fade out…" from the clip menu: the clicked clip, or —
+  // when it is part of the clip selection — every selected audio clip
+  // (the same rule a row's Create group follows).
+  const [fadeDialog, setFadeDialog] = React.useState<{
+    side: 'in' | 'out';
+    targets: Array<{ trackIndex: number; clipId: number; duration: number }>;
+    initialSeconds: number | undefined;
+  } | null>(null);
+  const openFadeDialog = (side: 'in' | 'out') => {
+    if (!clipContextMenu) return;
+    const track = tracks[clipContextMenu.trackIndex];
+    const clicked = track?.clips.find((c: Clip) => c.id === clipContextMenu.clipId);
+    if (!clicked) return;
+    const selected: Array<{ trackIndex: number; clipId: number; duration: number }> = [];
+    tracks.forEach((t: Track, ti: number) => t.clips.forEach((c: Clip) => { if (c.selected) selected.push({ trackIndex: ti, clipId: c.id, duration: c.duration }); }));
+    const targets = clicked.selected && selected.length > 0
+      ? selected
+      : [{ trackIndex: clipContextMenu.trackIndex, clipId: clicked.id, duration: clicked.duration }];
+    setFadeDialog({ side, targets, initialSeconds: side === 'in' ? clicked.fadeIn : clicked.fadeOut });
+    setClipContextMenu(null);
+  };
   const { isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen } = useDialogs();
   const {
     clipContextMenu, setClipContextMenu,
@@ -198,6 +221,8 @@ export function AppContextMenus({
             onSplit={() => {
               setClipContextMenu(null);
             }}
+            onFadeIn={() => openFadeDialog('in')}
+            onFadeOut={() => openFadeDialog('out')}
             onExport={() => {
               setClipContextMenu(null);
             }}
@@ -501,6 +526,23 @@ export function AppContextMenus({
           </ContextMenu>
         );
       })()}
+      {/* Fade in… / Fade out… duration entry — lives OUTSIDE the clip menu's
+          conditional: opening it closes the menu. */}
+      <FadeDurationDialog
+        isOpen={fadeDialog !== null}
+        side={fadeDialog?.side ?? 'in'}
+        targetCount={fadeDialog?.targets.length ?? 0}
+        initialSeconds={fadeDialog?.initialSeconds}
+        maxSeconds={fadeDialog ? Math.min(...fadeDialog.targets.map((t) => t.duration)) : 0}
+        os={os}
+        onClose={() => setFadeDialog(null)}
+        onApply={(seconds) => {
+        if (!fadeDialog) return;
+        for (const t of fadeDialog.targets) {
+        dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: fadeDialog.side, seconds: Math.min(seconds, t.duration) } });
+        }
+        }}
+      />
     </>
   );
 }

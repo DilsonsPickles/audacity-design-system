@@ -60,6 +60,13 @@ export interface ClipContextMenuProps {
    */
   onSplit?: () => void;
 
+  /** "Fade in…" — the host opens a duration dialog and applies it to the
+   *  clicked clip, or to every selected clip when the clicked one is
+   *  part of the selection. */
+  onFadeIn?: () => void;
+  /** "Fade out…" — as onFadeIn, for the clip's end. */
+  onFadeOut?: () => void;
+
   /**
    * Callback for export clip action
    */
@@ -127,6 +134,8 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   onDuplicate,
   onDelete,
   onSplit,
+  onFadeIn,
+  onFadeOut,
   onExport,
   stretchWithTempo = false,
   onToggleStretchWithTempo,
@@ -204,6 +213,21 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
         onClick={onDelete}
         onClose={onClose}
       />
+
+      {/* Divider */}
+      <div className="clip-context-menu-divider" />
+
+      {/* Fades — a submenu like Clip color: typed durations, for when the
+          handle is too coarse or several clips want the same fade.
+          Ellipsis: each opens a dialog. */}
+      <ContextMenuItem
+        label="Fade"
+        hasSubmenu
+        onClose={onClose}
+      >
+        <ContextMenuItem label="Fade in…" onClick={() => { onFadeIn?.(); onClose(); }} />
+        <ContextMenuItem label="Fade out…" onClick={() => { onFadeOut?.(); onClose(); }} />
+      </ContextMenuItem>
 
       {/* Divider */}
       <div className="clip-context-menu-divider" />
