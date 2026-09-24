@@ -1,4 +1,4 @@
-import { render, fireEvent, cleanup } from '@testing-library/react';
+import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { TrackNew } from '../TrackNew';
@@ -300,29 +300,53 @@ describe('clip fades', () => {
     fireEvent.pointerUp(inHandle, { pointerId: 7 });
   });
 
-  it('the midpoint node is Y-axis only: shape changes, extent untouched', () => {
-    const onClipFadeChange = vi.fn();
-    const onClipFadeShapeChange = vi.fn();
-    const { container } = render(
-      <Providers>
-        <TrackNew
-          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, selected: true }]}
-          width={800}
-          trackIndex={0}
-          pixelsPerSecond={100}
-          onClipFadeChange={onClipFadeChange}
-          onClipFadeShapeChange={onClipFadeShapeChange}
-        />
-      </Providers>,
-    );
-    const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
-    fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 48, pointerId: 8 });
-    // diagonal input: only the vertical component registers (shape ≈ 2)
-    fireEvent.pointerMove(node, { clientX: 112, clientY: 67, pointerId: 8 });
-    expect(onClipFadeChange).not.toHaveBeenCalled();
-    const [, , shape] = onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1];
-    expect(shape).toBeCloseTo(2, 1);
-    fireEvent.pointerUp(node, { pointerId: 8 });
+  it('the midpoint node bends the curve in BOTH axes; the extent never moves', () => {
+    // Fade-in 1s @100px/s → region 0..100px; the dot rests at t = 0.5.
+    // Vertical drag: gain 0.707 → 0.5 at t = 0.5 solves shape = 2.
+    // Horizontal drag: t 0.5 → 0.75 at gain 0.707 solves
+    // ln(0.707)/ln(sin(0.75·π/2)) ≈ 4.38. Neither touches the extent.
+    const renderIt = () => {
+      const onClipFadeChange = vi.fn();
+      const onClipFadeShapeChange = vi.fn();
+      const { container } = render(
+        <Providers>
+          <TrackNew
+            clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, selected: true }]}
+            width={800}
+            trackIndex={0}
+            pixelsPerSecond={100}
+            onClipFadeChange={onClipFadeChange}
+            onClipFadeShapeChange={onClipFadeShapeChange}
+          />
+        </Providers>,
+      );
+      const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
+      const lastShape = () => onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1][2];
+      return { node, onClipFadeChange, lastShape };
+    };
+
+    {
+      const { node, onClipFadeChange, lastShape } = renderIt();
+      fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 48, pointerId: 8 });
+      fireEvent.pointerMove(node, { clientX: 62, clientY: 67, pointerId: 8 }); // straight down
+      expect(onClipFadeChange).not.toHaveBeenCalled();
+      expect(lastShape()).toBeCloseTo(2, 1);
+      fireEvent.pointerUp(node, { pointerId: 8 });
+    }
+    cleanup();
+    {
+      const { node, onClipFadeChange, lastShape } = renderIt();
+      const restLeft = node.style.left;
+      fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 48, pointerId: 9 });
+      // The dot's mid-drag position is state set from a native listener,
+      // flushed after the event — act() lets the DOM catch up.
+      act(() => { fireEvent.pointerMove(node, { clientX: 87, clientY: 48, pointerId: 9 }); }); // 25px right = t 0.5 → 0.75
+      expect(onClipFadeChange).not.toHaveBeenCalled(); // extent pinned
+      expect(lastShape()).toBeCloseTo(4.38, 1);
+      expect(node.style.left).not.toBe(restLeft); // the dot follows the pointer mid-drag…
+      act(() => { fireEvent.pointerUp(node, { pointerId: 9 }); });
+      expect(node.style.left).toBe(restLeft); // …and re-centres (t = 0.5) on release
+    }
   });
 
   it('a selected buried clip re-renders its covered edge handles at track level', () => {

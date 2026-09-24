@@ -567,6 +567,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
+  // Where the dot is mid-drag, as (t, gain) inside its fade — the curve
+  // bends to pass through it. Null at rest, when the dot sits at the
+  // curve's midpoint.
+  const [shapeDragPoint, setShapeDragPoint] = React.useState<{ t: number; g: number } | null>(null);
 
   // Fade curves are DERIVED per clip edge (utils/clipCrossfades.ts):
   // an authored fadeIn/fadeOut owns its edge; an edge overlap supplies
@@ -728,7 +732,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
   // Shape node on a SELECTED clip's quick fade (free edges only — a
   // crossfaded edge's shape belongs to the intersection node). Sits at
-  // the curve's midpoint; vertical drag bows the curve, extents pinned.
+  // the curve's midpoint at rest; a drag in EITHER axis bends the curve
+  // so it passes under the pointer (user decision 2026-09-24, replacing
+  // Y-only). Extents are pinned — length is the corner handle's job.
   const renderQuickFadeNodes = () => {
     if (!onClipFadeShapeChange) return null;
     const CLIP_HEADER_H = 20;
@@ -746,12 +752,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const dragKey = `${clip.id}:${side}`;
         if (!clip.selected && shapeDrag !== dragKey) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? 1;
-        const midTime = side === 'in'
-          ? clip.start + fade / 2
-          : clip.start + clip.duration - fade / 2;
-        // A straight line passes through half gain at its midpoint
-        const gain = shape === 'linear' ? 0.5 : MID_BASE ** shape;
-        const x = CLIP_CONTENT_OFFSET + midTime * pixelsPerSecond;
+        const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
+        // The base curve at normalised position t — the closed-form
+        // solve inverts this: shape = ln(g) / ln(base(t)).
+        const baseAt = (t: number) => (side === 'in' ? Math.sin((t * Math.PI) / 2) : Math.cos((t * Math.PI) / 2));
+        const live = shapeDrag === dragKey ? shapeDragPoint : null;
+        const tDot = live ? live.t : 0.5;
+        // At rest: the midpoint's gain under the current shape (a straight
+        // line passes through half gain there). Mid-drag: the pointer.
+        const gain = live ? live.g : shape === 'linear' ? 0.5 : MID_BASE ** shape;
+        const x = CLIP_CONTENT_OFFSET + (regionStart + tDot * fade) * pixelsPerSecond;
         const y = bodyTop + (1 - gain) * bodyHeight;
         nodes.push(
           <div
@@ -777,19 +787,27 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const nodeEl = e.currentTarget as HTMLElement;
               try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
               setShapeDrag(dragKey);
+              const startClientX = e.clientX;
               const startClientY = e.clientY;
+              const startT = tDot;
               const startGain = gain;
-              // The dot is Y-AXIS ONLY (2026-09-21): it bows the curve;
-              // extent belongs to the corner handle (which edits both).
+              // Both axes: the pointer's (t, g) inside the fade picks the
+              // shape whose curve passes through it. t stays strictly
+              // inside (0, 1) and g inside (0, 1) so the solve exists;
+              // the fade's start and end never move.
               const onMove = (ev: PointerEvent) => {
+                const t = Math.max(0.02, Math.min(0.98, startT + (ev.clientX - startClientX) / Math.max(1, fade * pixelsPerSecond)));
                 const g = Math.max(0.05, Math.min(0.95, startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight)));
-                const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(MID_BASE)));
-                if (Number.isFinite(next)) onClipFadeShapeChange(clip.id, side, next);
+                const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(baseAt(t))));
+                if (!Number.isFinite(next)) return;
+                setShapeDragPoint({ t, g });
+                onClipFadeShapeChange(clip.id, side, next);
               };
               const onUp = () => {
                 nodeEl.removeEventListener('pointermove', onMove);
                 nodeEl.removeEventListener('pointerup', onUp);
                 setShapeDrag(null);
+                setShapeDragPoint(null); // back to the midpoint, on the new curve
               };
               nodeEl.addEventListener('pointermove', onMove);
               nodeEl.addEventListener('pointerup', onUp);
@@ -803,7 +821,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'ns-resize',
+              cursor: 'move',
               zIndex: 460,
             }}
           >
