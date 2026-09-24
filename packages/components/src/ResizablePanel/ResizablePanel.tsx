@@ -65,6 +65,8 @@ export interface ResizablePanelProps {
    * track". Uses the same height plumbing as drag resize.
    */
   wheelResize?: boolean;
+  /** Right-click on the panel (the row's context menu) */
+  onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 export const ResizablePanel: React.FC<ResizablePanelProps> = ({
@@ -81,6 +83,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   isFirstPanel = false,
   style: externalStyle,
   wheelResize = false,
+  onContextMenu,
 }) => {
   const [height, setHeight] = useState(initialHeight);
   const [isResizing, setIsResizing] = useState(false);
@@ -417,6 +420,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     <div
       ref={rootRef}
       className={`resizable-panel ${className}`}
+      onContextMenu={onContextMenu}
       style={{
         position: 'relative',
         height: `${height}px`,

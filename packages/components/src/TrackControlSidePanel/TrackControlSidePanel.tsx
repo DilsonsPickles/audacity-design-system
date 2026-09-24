@@ -341,6 +341,22 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   // and fallback are both gone prevents the second call from
   // overriding the first restore with the "Add new" last-resort
   // fallback.
+  /** Right-click anywhere on a row opens the same menu the kebab does,
+   *  at the pointer. Editable fields keep the browser's own menu (a
+   *  rename in progress wants cut/copy/paste), and a menu already open
+   *  is left alone. Focus returns to the row's kebab on close, as it
+   *  does for a kebab-opened menu. */
+  const handleRowContextMenu = (trackIndex: number, event: React.MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const row = event.currentTarget as HTMLElement;
+    menuTriggerRef.current = row.querySelector<HTMLElement>('[aria-label="Track menu"]') ?? row;
+    menuTrackIndexRef.current = trackIndex;
+    setMenuState({ isOpen: true, trackIndex, x: event.clientX, y: event.clientY });
+  };
+
   const restoreMenuTriggerFocus = () => {
     const trigger = menuTriggerRef.current;
     const fallbackIndex = menuTrackIndexRef.current;
@@ -572,6 +588,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               <div
                 key={child.key || index}
                 className={`track-control-side-panel__track ${isFocusedFolder ? 'track-control-side-panel__track--focused' : ''}`}
+                onContextMenu={(e) => handleRowContextMenu(index, e)}
                 style={{ height: rawHeight || 28, flexShrink: 0, ...groupWellStyle(index), ...ghostStyle, ...collapseStyle(index) }}
               >
                 {cloneElement(child, {
@@ -597,6 +614,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               initialHeight={height}
               minHeight={44}
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
+              onContextMenu={(e) => handleRowContextMenu(index, e)}
               style={{ ...groupWellStyle(index), ...ghostStyle, ...collapseStyle(index) }}
               isFirstPanel={displayPos === 0}
               wheelResize

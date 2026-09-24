@@ -707,8 +707,16 @@ export function EditorLayout(props: EditorLayoutProps) {
               .map((t) => ({ folderId: t.id, name: t.name })),
             groupOf: (i) => state.tracks[i]?.folderId,
             isFolderRow: (i) => state.tracks[i]?.type === 'folder',
-            onCreateGroup: (i) =>
-              dispatch({ type: 'GROUP_TRACKS', payload: { trackIndices: [i] } }),
+            // "Create group" on a row that is part of the current track
+            // selection groups the WHOLE selection (the DAW convention:
+            // a row action on a selected row acts on the selection).
+            // On an unselected row it groups just that row. Folder rows
+            // can't be members, so they drop out of the set.
+            onCreateGroup: (i) => {
+              const selected = state.selectedTrackIndices.filter((t) => state.tracks[t]?.type !== 'folder');
+              const trackIndices = selected.includes(i) ? selected : [i];
+              dispatch({ type: 'GROUP_TRACKS', payload: { trackIndices } });
+            },
             onDuplicateGroup: (i) =>
               dispatch({ type: 'DUPLICATE_FOLDER', payload: { trackIndex: i } }),
             onDeleteGroupAndTracks: (i) => {
