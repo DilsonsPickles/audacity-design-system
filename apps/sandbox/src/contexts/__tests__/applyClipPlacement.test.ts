@@ -139,3 +139,33 @@ describe('APPLY_CLIP_PLACEMENT — group dissolution', () => {
     expect(next.tracks[0].clips.find(c => c.id === 2)?.groupId).toBe('g1');
   });
 });
+
+describe('split — a cut edge carries no fade', () => {
+  // The whole clip used to be spread into both halves, so a fade-out
+  // landed on the LEFT half's cut and a fade-in on the RIGHT half's.
+  const state = (): TracksState => ({
+    ...initialState,
+    tracks: [{
+      id: 1, name: 't',
+      clips: [{ id: 10, name: 'c', start: 0, duration: 10, envelopePoints: [], fadeIn: 1, fadeOut: 2, fadeInShape: 2, fadeOutShape: 'linear' } as unknown as Clip],
+    } as unknown as TracksState['tracks'][number]],
+  });
+
+  it('left half keeps only the fade-in, right half only the fade-out', () => {
+    const next = tracksReducer(state(), {
+      type: 'APPLY_CLIP_PLACEMENT',
+      payload: { placements: [], mutations: [{ type: 'split', clipId: 10, trackIndex: 0, leftEnd: 4, rightStart: 4 }] },
+    } as never);
+    const [left, right] = next.tracks[0].clips;
+    expect(left.duration).toBe(4);
+    expect(left.fadeIn).toBe(1);
+    expect(left.fadeInShape).toBe(2);
+    expect(left.fadeOut).toBeUndefined();
+    expect(left.fadeOutShape).toBeUndefined();
+    expect(right.start).toBe(4);
+    expect(right.fadeOut).toBe(2);
+    expect(right.fadeOutShape).toBe('linear');
+    expect(right.fadeIn).toBeUndefined();
+    expect(right.fadeInShape).toBeUndefined();
+  });
+});

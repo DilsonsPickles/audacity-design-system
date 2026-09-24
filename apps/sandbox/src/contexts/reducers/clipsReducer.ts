@@ -308,9 +308,17 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
           const originalEnd = clip.start + clip.duration;
           const fullDuration = clip.fullDuration ?? (originalTrimStart + clip.duration);
 
+          // A cut edge has NO fade: the left half keeps only the original's
+          // fade-in, the right half only its fade-out (shapes go with them).
+          // Spreading the whole clip into both put the fade-out on the left
+          // half's cut edge and the fade-in on the right's — every split
+          // grew two fades that nobody asked for.
+          const { fadeOut: _lo, fadeOutShape: _los, ...leftBase } = clip;
+          const { fadeIn: _ri, fadeInShape: _ris, ...rightBase } = clip;
+
           // Left segment keeps the original id and waveform reference.
           const leftSegment: Clip = {
-            ...clip,
+            ...leftBase,
             duration: mutation.leftEnd - clip.start,
             fullDuration,
           };
@@ -319,7 +327,7 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
           // `sourceClipId` is carried forward (or set to the original id on
           // first split) so the audio engine can find the shared buffer.
           const rightSegment: Clip = {
-            ...clip,
+            ...rightBase,
             id: nextId++,
             start: mutation.rightStart,
             duration: originalEnd - mutation.rightStart,
