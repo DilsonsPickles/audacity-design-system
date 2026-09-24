@@ -6,6 +6,8 @@ import {
   fadeInGain,
   fadeOutGain,
   fadeCurvePath,
+  fadeGainAt,
+  localFadeRegionsByClip,
 } from '../clipCrossfades';
 
 const clip = (id: number, start: number, duration: number) => ({ id, start, duration });
@@ -161,5 +163,41 @@ describe("'linear' fade shape", () => {
   it('draws as a straight line through the midpoint', () => {
     expect(fadeCurvePath('out', 4, 'linear')).toBe('M 0.00,0.00 L 25.00,25.00 L 50.00,50.00 L 75.00,75.00 L 100.00,100.00');
     expect(fadeCurvePath('in', 2, 'linear')).toBe('M 0.00,100.00 L 50.00,50.00 L 100.00,0.00');
+  });
+});
+
+describe('fadeGainAt — the gain the waveform is drawn with', () => {
+  it('is 1 with no regions, and full outside a fade on its own side', () => {
+    expect(fadeGainAt(3, undefined)).toBe(1);
+    expect(fadeGainAt(3, [])).toBe(1);
+    expect(fadeGainAt(3, [{ side: 'in', start: 0, end: 1, shape: 1 }])).toBe(1);
+    expect(fadeGainAt(3, [{ side: 'out', start: 8, end: 10, shape: 1 }])).toBe(1);
+  });
+
+  it('follows the same curve the audio bake applies', () => {
+    const out = [{ side: 'out' as const, start: 8, end: 10, shape: 1 }];
+    expect(fadeGainAt(8, out)).toBeCloseTo(1, 10);
+    expect(fadeGainAt(9, out)).toBeCloseTo(fadeOutGain(0.5, 1), 10);
+    expect(fadeGainAt(10, out)).toBeCloseTo(0, 10);
+    const lin = [{ side: 'in' as const, start: 0, end: 2, shape: 'linear' as const }];
+    expect(fadeGainAt(0.5, lin)).toBeCloseTo(0.25, 10);
+  });
+
+  it('multiplies an in and an out that overlap', () => {
+    const both = [
+      { side: 'in' as const, start: 0, end: 4, shape: 'linear' as const },
+      { side: 'out' as const, start: 2, end: 4, shape: 'linear' as const },
+    ];
+    expect(fadeGainAt(3, both)).toBeCloseTo(0.75 * 0.5, 10);
+  });
+
+  it('localFadeRegionsByClip moves timeline regions into each clip\'s own time', () => {
+    const clips = [clip(1, 10, 5), clip(2, 13, 5)];
+    const map = localFadeRegionsByClip(clips, [
+      { clipId: 1, side: 'out', start: 13, end: 15, authored: false, shape: 1 },
+      { clipId: 2, side: 'in', start: 13, end: 15, authored: false, shape: 2 },
+    ]);
+    expect(map.get(1)).toEqual([{ side: 'out', start: 3, end: 5, shape: 1 }]);
+    expect(map.get(2)).toEqual([{ side: 'in', start: 0, end: 2, shape: 2 }]);
   });
 });

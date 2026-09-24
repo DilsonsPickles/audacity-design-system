@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows, type FadeShape } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows, type FadeShape, localFadeRegionsByClip } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -575,6 +575,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // inherited fade stays visible even where its clip is buried under
   // the incoming one.
   const fadeCurves = React.useMemo(() => computeFadeCurves(clips), [clips]);
+  // The same regions, per clip and in clip-local time, for shading the
+  // waveform under the curve — so the drawn audio follows the fade.
+  const fadeRegionsByClip = React.useMemo(() => localFadeRegionsByClip(clips, fadeCurves), [clips, fadeCurves]);
   // Free windows (crossfades consume the edges) — quick-fade controls
   // clamp to them so a quick fade can never overlap a crossfade
   const fadeWindows = React.useMemo(() => quickFadeWindows(clips), [clips]);
@@ -1297,6 +1300,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             width={clipWidth}
             height={height}
             selected={clipSelectedVisual}
+            fadeRegions={fadeRegionsByClip.get(clip.id)}
             inTimeSelection={timeSelection && inTimeSelectionScope && timeSelection.renderOnCanvas !== false ? (
               clip.start < timeSelection.endTime && (clip.start + clip.duration) > timeSelection.startTime
             ) : false}

@@ -1,4 +1,5 @@
 import React, { useDeferredValue, useEffect, useRef } from 'react';
+import { fadeGainAt, type LocalFadeRegion } from '../utils/clipCrossfades';
 import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
 import { renderMonoSpectrogram, renderStereoSpectrogram, type SpectrogramScale } from '../utils/spectrogram';
@@ -31,6 +32,7 @@ function drawChannel(
   clipDuration: number,
   isRms: boolean,
   getColor?: (px: number) => string,
+  fadeRegions?: readonly LocalFadeRegion[],
 ) {
   for (let px = 0; px < canvasWidth; px++) {
     const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
@@ -46,8 +48,13 @@ function drawChannel(
 
     const pixelTime = clipTrimStart + (px / pixelsPerSecond);
     const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
-    min *= envelopeGain;
-    max *= envelopeGain;
+    // Fades shape the waveform, not just the overlay drawn above it:
+    // the same gain the audio bake applies, at this column's
+    // clip-local time (px / pps — fades are in clip time, not source
+    // time, so no trim offset).
+    const fadeGain = fadeRegions ? fadeGainAt(px / pixelsPerSecond, fadeRegions) : 1.0;
+    min *= envelopeGain * fadeGain;
+    max *= envelopeGain * fadeGain;
 
     if (getColor) {
       ctx.fillStyle = getColor(px);
@@ -111,6 +118,10 @@ export interface ClipBodyProps {
   clipFullDuration?: number;
   /** Pixels per second (timeline zoom level) - for maintaining constant waveform scale */
   pixelsPerSecond?: number;
+  /** Fade regions in clip-local seconds; the waveform is scaled by their
+   *  gain so a fade is visible in the audio itself, not only as the
+   *  curve overlay. See clipCrossfades.fadeGainAt. */
+  fadeRegions?: readonly LocalFadeRegion[];
   /** Visual time-stretch factor (default 1). Values > 1 stretch the waveform
    *  horizontally (each second of source audio occupies more pixels); values
    *  < 1 compress it. Independent of trim — the same audio range plays, just
@@ -174,6 +185,7 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   clipTrimStart = 0,
   clipFullDuration,
   pixelsPerSecond = 100,
+  fadeRegions,
   clipStretchFactor = 1,
   timeSelectionColor = 'rgba(255, 255, 255, 0.3)',
   hiddenPointIndices = EMPTY_NUMBER_ARRAY,
@@ -342,13 +354,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         });
 
         const splitEnvelope = showEnvelope ? envelope : undefined;
-        drawChannel(ctx, waveformLeft, canvasWidth, trimStartSample, samplesPerPixelL, lChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelope, clipDuration, false);
+        drawChannel(ctx, waveformLeft, canvasWidth, trimStartSample, samplesPerPixelL, lChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelope, clipDuration, false, undefined, fadeRegions);
 
         // Draw L channel RMS (if RMS data provided)
         if (waveformLeftRms && waveformLeftRms.length > 0) {
           const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
           ctx.fillStyle = defaultRmsColor;
-          drawChannel(ctx, waveformLeftRms, canvasWidth, trimStartSample, samplesPerPixelL, lChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true);
+          drawChannel(ctx, waveformLeftRms, canvasWidth, trimStartSample, samplesPerPixelL, lChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, undefined, fadeRegions);
         }
 
         // Separator between L and R waveforms (using color-specific divider)
@@ -362,13 +374,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 
         // Draw R channel waveform
         ctx.fillStyle = waveformColor;
-        drawChannel(ctx, waveformRight, canvasWidth, trimStartSample, samplesPerPixelL, rChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelope, clipDuration, false);
+        drawChannel(ctx, waveformRight, canvasWidth, trimStartSample, samplesPerPixelL, rChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelope, clipDuration, false, undefined, fadeRegions);
 
         // Draw R channel RMS (if RMS data provided)
         if (waveformRightRms && waveformRightRms.length > 0) {
           const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
           ctx.fillStyle = defaultRmsColor;
-          drawChannel(ctx, waveformRightRms, canvasWidth, trimStartSample, samplesPerPixelL, rChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true);
+          drawChannel(ctx, waveformRightRms, canvasWidth, trimStartSample, samplesPerPixelL, rChannelY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, undefined, fadeRegions);
         }
       } else if (hasMono) {
         // Mono: single waveform centered in bottom section
@@ -385,13 +397,13 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         });
 
         const splitEnvelopeMono = showEnvelope ? envelope : undefined;
-        drawChannel(ctx, waveformData!, canvasWidth, trimStartSample, samplesPerPixel, waveformCenterY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelopeMono, clipDuration, false);
+        drawChannel(ctx, waveformData!, canvasWidth, trimStartSample, samplesPerPixel, waveformCenterY, maxAmplitude, clipTrimStart, pixelsPerSecond, splitEnvelopeMono, clipDuration, false, undefined, fadeRegions);
 
         // Draw mono RMS (if RMS data provided)
         if (waveformDataRms && waveformDataRms.length > 0) {
           const defaultRmsColor = computedStyle.getPropertyValue(`--clip-${color}-waveform-rms`).trim();
           ctx.fillStyle = defaultRmsColor;
-          drawChannel(ctx, waveformDataRms, canvasWidth, trimStartSample, samplesPerPixel, waveformCenterY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true);
+          drawChannel(ctx, waveformDataRms, canvasWidth, trimStartSample, samplesPerPixel, waveformCenterY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, undefined, fadeRegions);
         }
       }
     } else if (variant === 'spectrogram') {
@@ -471,11 +483,11 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       });
 
       // Draw L channel
-      drawChannel(ctx, waveformLeft, canvasWidth, trimStartSample, samplesPerPixel, lChannelCenterY, lMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor);
+      drawChannel(ctx, waveformLeft, canvasWidth, trimStartSample, samplesPerPixel, lChannelCenterY, lMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor, fadeRegions);
 
       // Draw L channel RMS (if RMS data provided)
       if (waveformLeftRms && waveformLeftRms.length > 0) {
-        drawChannel(ctx, waveformLeftRms, canvasWidth, trimStartSample, samplesPerPixel, lChannelCenterY, lMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, getRmsColor);
+        drawChannel(ctx, waveformLeftRms, canvasWidth, trimStartSample, samplesPerPixel, lChannelCenterY, lMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, getRmsColor, fadeRegions);
       }
 
       // Draw channel divider line using color-specific divider
@@ -488,11 +500,11 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       ctx.stroke();
 
       // Draw R channel
-      drawChannel(ctx, waveformRight, canvasWidth, trimStartSample, samplesPerPixel, rChannelCenterY, rMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor);
+      drawChannel(ctx, waveformRight, canvasWidth, trimStartSample, samplesPerPixel, rChannelCenterY, rMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor, fadeRegions);
 
       // Draw R channel RMS (if RMS data provided)
       if (waveformRightRms && waveformRightRms.length > 0) {
-        drawChannel(ctx, waveformRightRms, canvasWidth, trimStartSample, samplesPerPixel, rChannelCenterY, rMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, getRmsColor);
+        drawChannel(ctx, waveformRightRms, canvasWidth, trimStartSample, samplesPerPixel, rChannelCenterY, rMaxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, getRmsColor, fadeRegions);
       }
     } else if (hasMono) {
       // Mono: single waveform centered
@@ -518,17 +530,17 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
         pixelsPerSecond,
       });
 
-      drawChannel(ctx, waveformData!, canvasWidth, trimStartSample, samplesPerPixel, centerY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor);
+      drawChannel(ctx, waveformData!, canvasWidth, trimStartSample, samplesPerPixel, centerY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, false, getWaveColor, fadeRegions);
 
       // Draw RMS waveform on top (if RMS data provided)
       if (waveformDataRms && waveformDataRms.length > 0) {
-        drawChannel(ctx, waveformDataRms, canvasWidth, trimStartSample, samplesPerPixel, centerY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, getRmsColor);
+        drawChannel(ctx, waveformDataRms, canvasWidth, trimStartSample, samplesPerPixel, centerY, maxAmplitude, clipTrimStart, pixelsPerSecond, envelope, clipDuration, true, getRmsColor, fadeRegions);
       }
       }
     }
 
     // Envelope rendering moved to SVG overlay (see return JSX below)
-  }, [waveformData, waveformLeft, waveformRight, width, drawHeight, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, theme, spectrogramScale]);
+  }, [waveformData, waveformLeft, waveformRight, width, drawHeight, variant, channelSplitRatio, color, envelope, showEnvelope, channelMode, clipDuration, clipTrimStart, clipFullDuration, pixelsPerSecond, inTimeSelection, timeSelectionRange, clipStartTime, theme, spectrogramScale, fadeRegions]);
 
   const className = [
     'clip-body',

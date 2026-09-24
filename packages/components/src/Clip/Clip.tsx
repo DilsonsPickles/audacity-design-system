@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { LocalFadeRegion } from '../utils/clipCrossfades';
 import type { MidiNote } from '@audacity-ui/core';
 import type { ClipColor } from '../types/clip';
 import { ClipHeader } from '../ClipHeader/ClipHeader';
@@ -84,6 +85,8 @@ export interface ClipProps {
   pixelsPerSecond?: number;
   /** Points to hide during drag (eating behavior) */
   hiddenPointIndices?: number[];
+  /** Fade regions in clip-local seconds — shades the waveform (ClipBody) */
+  fadeRegions?: readonly LocalFadeRegion[];
   /** Indices of points being hovered (for hover visual feedback, can be multiple during segment drag) */
   hoveredPointIndices?: number[];
   /** Cursor position on envelope (for cursor follower dot) */
@@ -168,6 +171,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   clipStretchFactor = 1,
   pixelsPerSecond = 100,
   hiddenPointIndices = EMPTY_NUMBER_ARRAY,
+  fadeRegions,
   hoveredPointIndices = EMPTY_NUMBER_ARRAY,
   cursorPosition = null,
   onHeaderClick,
@@ -422,6 +426,7 @@ const ClipComponent: React.FC<ClipProps> = ({
           clipStretchFactor={clipStretchFactor}
           pixelsPerSecond={pixelsPerSecond}
           hiddenPointIndices={hiddenPointIndices}
+          fadeRegions={fadeRegions}
           hoveredPointIndices={hoveredPointIndices}
           cursorPosition={cursorPosition}
           inTimeSelection={inTimeSelection}

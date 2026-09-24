@@ -231,6 +231,53 @@ export function fadeInGain(t: number, shape: FadeShape = 1): number {
   return Math.sin((u * Math.PI) / 2) ** shape;
 }
 
+/** A fade region in CLIP-LOCAL seconds (0 = the clip's left edge), the
+ *  form ClipBody shades the waveform with. */
+export interface LocalFadeRegion {
+  side: 'in' | 'out';
+  start: number;
+  end: number;
+  shape: FadeShape;
+}
+
+/** The fade gain at clip-local time `t` — the product of every region
+ *  covering t (at most one in, one out). This is what the drawn
+ *  waveform is scaled by, using the same curves the audio bake
+ *  applies, so the picture is the sound. */
+export function fadeGainAt(t: number, regions: readonly LocalFadeRegion[] | undefined): number {
+  if (!regions || regions.length === 0) return 1;
+  let g = 1;
+  for (let k = 0; k < regions.length; k++) {
+    const r = regions[k];
+    const len = r.end - r.start;
+    if (len <= 0) continue;
+    if (t < r.start) { if (r.side === 'in') g = 0; continue; }
+    if (t > r.end) { if (r.side === 'out') g = 0; continue; }
+    const u = (t - r.start) / len;
+    g *= r.side === 'in' ? fadeInGain(u, r.shape) : fadeOutGain(u, r.shape);
+  }
+  return g;
+}
+
+/** `computeFadeCurves` regions regrouped per clip and moved into that
+ *  clip's local time, for shading its waveform. */
+export function localFadeRegionsByClip(
+  clips: readonly CrossfadeClipLike[],
+  regions: readonly FadeCurveRegion[],
+): Map<number | string, LocalFadeRegion[]> {
+  const starts = new Map<number | string, number>();
+  for (const c of clips) starts.set(c.id, c.start);
+  const out = new Map<number | string, LocalFadeRegion[]>();
+  for (const r of regions) {
+    const s0 = starts.get(r.clipId);
+    if (s0 === undefined) continue;
+    const list = out.get(r.clipId) ?? [];
+    list.push({ side: r.side, start: r.start - s0, end: r.end - s0, shape: r.shape });
+    out.set(r.clipId, list);
+  }
+  return out;
+}
+
 /** SVG path (0..100 × 0..100 viewBox, y=0 is full gain) for one side
  *  of the X. Sampled polyline stretched to the region via
  *  `preserveAspectRatio="none"`. A bent shape exponent concentrates
