@@ -53,6 +53,36 @@
   display: flex;
   flex-direction: column;
   background: var(--macros-list-bg, #ebedf0);
+  /* No `scrollbar-width` here: Chromium ignores the ::-webkit-scrollbar
+     rules below on any element that sets the standard property, and the
+     classic gutter comes from those rules. (Electron is Chromium.) */
+}
+
+/* A scrollable list must LOOK scrollable. macOS overlay bars hide until
+   the user scrolls, so a long list read as a short one. Styling the
+   WebKit scrollbar switches Chromium to a classic bar that is drawn
+   whenever the list overflows (overflow-y stays `auto`, so an
+   un-scrollable list shows no gutter). Same language as the macro
+   builder's lists — thumb rules mirrored from there. */
+.macros-panel__list::-webkit-scrollbar {
+  width: 16px;
+}
+
+.macros-panel__list::-webkit-scrollbar-track {
+  background: var(--macros-list-bg, #ebedf0);
+  border-left: 1px solid var(--stroke-primary, #d4d5d9);
+}
+
+.macros-panel__list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 999px;
+  border: 5px solid transparent;
+  background-clip: padding-box;
+}
+
+.macros-panel__list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.55);
+  background-clip: padding-box;
 }
 
 .macros-panel__empty {

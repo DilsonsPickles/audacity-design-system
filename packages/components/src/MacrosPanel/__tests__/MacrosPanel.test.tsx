@@ -153,3 +153,23 @@ describe('MacrosPanel', () => {
     expect(onRenameMacro).toHaveBeenCalledWith('m1', 'Fade both ends');
   });
 });
+
+describe('MacrosPanel — duplicate and empty-state copy', () => {
+  it('offers "Duplicate macro" in the row menu and reports the macro id', () => {
+    const onDuplicateMacro = vi.fn();
+    const { container } = renderPanel({ onDuplicateMacro });
+    fireEvent.click(container.querySelector('button[aria-label="Fade ends options"]')!);
+    const item = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+      .find((el) => el.textContent?.includes('Duplicate macro'));
+    expect(item).toBeDefined();
+    fireEvent.click(item!);
+    expect(onDuplicateMacro).toHaveBeenCalledWith('m1');
+  });
+
+  it('the empty state says what a macro is for', () => {
+    const { container } = renderPanel({ macros: [] });
+    expect(container.querySelector('.macros-panel__empty')?.textContent).toBe(
+      'No macros yet. A macro runs a set of commands on a project or a batch of files.',
+    );
+  });
+});

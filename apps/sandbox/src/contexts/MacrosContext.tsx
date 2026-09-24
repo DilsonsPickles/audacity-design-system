@@ -15,6 +15,10 @@ export interface MacrosContextValue {
   addMacro: (name: string) => string;
   renameMacro: (macroId: string, newName: string) => void;
   deleteMacro: (macroId: string) => void;
+  /** Copy a macro — steps and all — as "<name> copy", placed directly
+   *  after the original so it appears next to it. Returns the new id,
+   *  or null if the macro doesn't exist. */
+  duplicateMacro: (macroId: string) => string | null;
   /** Add an imported macro verbatim (fresh id, name de-duplicated by caller if desired) */
   importMacro: (macro: Pick<Macro, 'name' | 'steps'>) => void;
   /** Append a command from the picker as a new step. `parameters` seeds the
@@ -45,6 +49,10 @@ const MacrosContext = createContext<MacrosContextValue | null>(null);
 
 export function MacrosProvider({ children }: { children: React.ReactNode }) {
   const [macros, setMacros] = React.useState<Macro[]>([]);
+  // Live mirror so callbacks can read the current list without listing
+  // `macros` as a dep (which would mint new callbacks on every edit).
+  const macrosRef = React.useRef(macros);
+  macrosRef.current = macros;
   const [isMacrosPanelOpen, setIsMacrosPanelOpen] = React.useState(false);
   // First open lands in the RIGHT dock (2026-09-10 decision — was
   // 'floating'); the tab kebab moves it between placements.
@@ -68,6 +76,23 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
   const deleteMacro = React.useCallback((macroId: string) => {
     setMacros((prev) => prev.filter((m) => m.id !== macroId));
     setEditingMacroId((prev) => (prev === macroId ? null : prev));
+  }, []);
+
+  const duplicateMacro = React.useCallback((macroId: string): string | null => {
+    const source = macrosRef.current.find((m) => m.id === macroId);
+    if (!source) return null;
+    const copy: Macro = {
+      id: `macro-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      // Same convention as duplicated tracks
+      name: `${source.name} copy`,
+      steps: source.steps.map((step) => ({ ...step })),
+    };
+    setMacros((prev) => {
+      const at = prev.findIndex((m) => m.id === macroId);
+      if (at < 0) return prev;
+      return [...prev.slice(0, at + 1), copy, ...prev.slice(at + 1)];
+    });
+    return copy.id;
   }, []);
 
   const importMacro = React.useCallback((macro: Pick<Macro, 'name' | 'steps'>) => {
@@ -140,6 +165,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     addMacro,
     renameMacro,
     deleteMacro,
+    duplicateMacro,
     importMacro,
     addCommandToMacro,
     deleteStep,
@@ -154,7 +180,7 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     editingMacroId,
     setEditingMacroId,
   }), [
-    macros, addMacro, renameMacro, deleteMacro, importMacro,
+    macros, addMacro, renameMacro, deleteMacro, duplicateMacro, importMacro,
     addCommandToMacro, deleteStep, clearSteps, moveStep, reorderStep, updateStepParameters,
     isMacrosPanelOpen, macrosPanelSide, editingMacroId,
   ]);

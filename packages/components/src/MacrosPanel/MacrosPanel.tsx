@@ -19,6 +19,8 @@ export interface MacrosPanelProps {
   onEditMacro?: (macroId: string) => void;
   /** Called when a macro is renamed via the rename dialog */
   onRenameMacro?: (macroId: string, newName: string) => void;
+  /** Called when "Duplicate macro" is picked from the row menu */
+  onDuplicateMacro?: (macroId: string) => void;
   /** Called when a macro is deleted via the row menu */
   onDeleteMacro?: (macroId: string) => void;
   /** Called when "Export macro" is picked from the row menu */
@@ -35,6 +37,7 @@ interface MacroRowProps {
   macro: Macro;
   onEdit?: () => void;
   onRename?: () => void;
+  onDuplicate?: () => void;
   onDelete?: () => void;
   onExport?: () => void;
   onRunOnProject?: () => void;
@@ -51,7 +54,7 @@ function menuAnchor(e: React.MouseEvent<HTMLButtonElement>) {
   return { x: rect.right, y: rect.bottom };
 }
 
-function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject, onRunOnFiles }: MacroRowProps) {
+function MacroRow({ macro, onEdit, onRename, onDuplicate, onDelete, onExport, onRunOnProject, onRunOnFiles }: MacroRowProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 });
 
@@ -142,6 +145,7 @@ function MacroRow({ macro, onEdit, onRename, onDelete, onExport, onRunOnProject,
         <ContextMenuItem isDivider label="" />
         {menuItem('Edit macro', onEdit)}
         {menuItem('Rename macro', onRename)}
+        {menuItem('Duplicate macro', onDuplicate)}
         {menuItem('Export macro', onExport)}
         {menuItem('Delete macro', onDelete)}
       </ContextMenu>
@@ -164,6 +168,7 @@ export function MacrosPanel({
   onImportMacro,
   onEditMacro,
   onRenameMacro,
+  onDuplicateMacro,
   onDeleteMacro,
   onExportMacro,
   onRunOnProject,
@@ -211,7 +216,7 @@ export function MacrosPanel({
       <div className="macros-panel__list">
         {macros.length === 0 && (
           <div className="macros-panel__empty">
-            No macros yet. Create one to batch-apply a sequence of commands.
+            No macros yet. A macro runs a set of commands on a project or a batch of files.
           </div>
         )}
         {macros.map((macro) => (
@@ -220,6 +225,7 @@ export function MacrosPanel({
             macro={macro}
             onEdit={() => onEditMacro?.(macro.id)}
             onRename={() => setMacroToRename(macro.id)}
+            onDuplicate={() => onDuplicateMacro?.(macro.id)}
             onDelete={() => onDeleteMacro?.(macro.id)}
             onExport={() => onExportMacro?.(macro.id)}
             onRunOnProject={() => onRunOnProject?.(macro.id)}

@@ -33,7 +33,7 @@ function isImportedMacro(value: unknown): value is Pick<Macro, 'name' | 'steps'>
  */
 export function MacrosDockPanel() {
   const {
-    macros, addMacro, renameMacro, deleteMacro, importMacro, setEditingMacroId,
+    macros, addMacro, renameMacro, deleteMacro, duplicateMacro, importMacro, setEditingMacroId,
   } = useMacros();
   const { operatingSystem } = useGeneralPrefs();
   const { runOnProject } = useMacroRunner();
@@ -80,6 +80,7 @@ export function MacrosDockPanel() {
         onImportMacro={handleImportMacro}
         onEditMacro={setEditingMacroId}
         onRenameMacro={renameMacro}
+        onDuplicateMacro={duplicateMacro}
         onDeleteMacro={deleteMacro}
         onExportMacro={handleExportMacro}
         onRunOnProject={runOnProject}
