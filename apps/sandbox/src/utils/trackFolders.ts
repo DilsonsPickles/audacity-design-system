@@ -127,10 +127,18 @@ export function trackDepth(tracks: readonly FolderTrackLike[], index: number): n
  *  group's rows resolves to above it). Pure, so the drag PREVIEW and
  *  the committed move are computed by the same code and can never
  *  disagree. Callers apply normalizeFolders afterwards. */
+export type MoveMembership = 'follow' | 'leave';
+
 export function moveTrackWithFolders<T extends FolderTrackLike>(
   tracks: readonly T[],
   fromIndex: number,
   toIndex: number,
+  /** `follow` (default): a plain track's membership follows the row it
+   *  lands under. `leave`: it lands OUTSIDE any group whatever is above
+   *  it — the group-boundary drop zones (a last member's lower half,
+   *  a header's upper half, the bottom slot) use this so a track can
+   *  actually get out. */
+  membership: MoveMembership = 'follow',
 ): { tracks: T[]; landedIndex: number } {
   const source = tracks[fromIndex];
   const next = [...tracks];
@@ -166,9 +174,9 @@ export function moveTrackWithFolders<T extends FolderTrackLike>(
   const at = Math.min(toIndex, next.length);
   next.splice(at, 0, moved);
   const above = next[at - 1];
-  const nextFolderId = above
-    ? (above.type === 'folder' ? above.id : above.folderId)
-    : undefined;
+  const nextFolderId = membership === 'leave' || !above
+    ? undefined
+    : (above.type === 'folder' ? above.id : above.folderId);
   if (nextFolderId === undefined) {
     const { folderId: _left, ...rest } = moved;
     next[at] = rest as T;

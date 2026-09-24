@@ -273,7 +273,7 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
     }
 
     case 'MOVE_TRACK': {
-      const { fromIndex, toIndex } = action.payload;
+      const { fromIndex, toIndex, membership = 'follow' } = action.payload;
       // toIndex === tracks.length is legal: "after the last row" — the
       // only way a block can land BELOW a group that ends the list, since
       // landing ON any of that group's rows resolves to above it.
@@ -306,11 +306,12 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
           clips: track.clips.map(c => ({ ...c, color: c.color || color })),
         };
       });
-      // Membership follows the landing spot — same shared helper the
+      // Membership follows the landing spot — or is explicitly LEFT, for
+      // the group-boundary drop zones — via the same shared helper the
       // drag preview runs (utils/trackFolders.ts)
-      const movedTracks = moveTrackWithFolders(newTracks, fromIndex, toIndex).tracks;
+      const moved = moveTrackWithFolders(newTracks, fromIndex, toIndex, membership);
       newTracks.length = 0;
-      newTracks.push(...movedTracks);
+      newTracks.push(...moved.tracks);
       // Remap selected track indices to follow the reorder
       const newSelected = state.selectedTrackIndices.map(i => {
         if (i === fromIndex) return toIndex;
@@ -321,7 +322,8 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       return {
         ...state,
         tracks: normalizeFolders(newTracks),
-        focusedTrackIndex: toIndex,
+        // landedIndex, not toIndex: the bottom-slot sentinel is past the end
+        focusedTrackIndex: moved.landedIndex,
         selectedTrackIndices: newSelected,
         timeSelection: remapTimeSelectionTracks(state.timeSelection, (i) => {
           if (i === fromIndex) return toIndex;

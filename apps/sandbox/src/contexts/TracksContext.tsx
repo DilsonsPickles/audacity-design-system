@@ -332,7 +332,7 @@ export type TracksAction =
   | { type: 'REMOVE_MASTER_EFFECT'; payload: number }
   | { type: 'REORDER_MASTER_EFFECTS'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean }
-  | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number } }
+  | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number; membership?: 'follow' | 'leave' } }
   | { type: 'GROUP_SELECTED_TRACKS' }
   | { type: 'GROUP_TRACKS'; payload: { trackIndices: number[] } }
   | { type: 'UNGROUP_FOLDER'; payload: { trackIndex: number } }

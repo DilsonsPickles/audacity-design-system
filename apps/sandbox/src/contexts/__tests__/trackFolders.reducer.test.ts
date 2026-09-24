@@ -400,3 +400,48 @@ describe('MOVE_TRACK to the bottom slot (toIndex = tracks.length)', () => {
     expect(tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 3 } })).toBe(state);
   });
 });
+
+
+describe("MOVE_TRACK membership: 'leave' — the group-boundary drop zones", () => {
+  // Membership follows the row above by default, so no landing near a
+  // group can get a track OUT. The boundary zones pass 'leave'.
+  it('a member landing after its group with leave steps out of it', () => {
+    const state = makeState([makeTrack(10, { type: 'folder' }), makeTrack(1, { folderId: 10 }), makeTrack(2, { folderId: 10 }), makeTrack(3)]);
+    // drag track 1 (index 1) to after the last member (index 2): moving down → toIndex 2
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 1, toIndex: 2, membership: 'leave' } });
+    expect(next.tracks.map((t) => t.id)).toEqual([10, 2, 1, 3]);
+    expect(next.tracks[2].folderId).toBeUndefined();
+    expect(next.tracks[1].folderId).toBe(10);
+    expect(next.focusedTrackIndex).toBe(2);
+  });
+
+  it("...whereas the same landing with the default 'follow' stays a member", () => {
+    const state = makeState([makeTrack(10, { type: 'folder' }), makeTrack(1, { folderId: 10 }), makeTrack(2, { folderId: 10 }), makeTrack(3)]);
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 1, toIndex: 2 } });
+    expect(next.tracks.map((t) => t.id)).toEqual([10, 2, 1, 3]);
+    expect(next.tracks[2].folderId).toBe(10);
+  });
+
+  it('the last member stepping out where it stands dissolves nothing but frees it', () => {
+    const state = makeState([makeTrack(10, { type: 'folder' }), makeTrack(1, { folderId: 10 }), makeTrack(2, { folderId: 10 })]);
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 2, toIndex: 2, membership: 'leave' } });
+    expect(next.tracks.map((t) => t.id)).toEqual([10, 1, 2]);
+    expect(next.tracks[2].folderId).toBeUndefined();
+  });
+
+  it('the bottom slot with leave lands outside a trailing group', () => {
+    const state = makeState([makeTrack(1), makeTrack(20, { type: 'folder' }), makeTrack(2, { folderId: 20 })]);
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 0, toIndex: 3, membership: 'leave' } });
+    expect(next.tracks.map((t) => t.id)).toEqual([20, 2, 1]);
+    expect(next.tracks[2].folderId).toBeUndefined();
+    expect(next.focusedTrackIndex).toBe(2);
+  });
+
+  it('a member landing just above its own header with leave sits outside, above the group', () => {
+    const state = makeState([makeTrack(0), makeTrack(10, { type: 'folder' }), makeTrack(1, { folderId: 10 }), makeTrack(2, { folderId: 10 })]);
+    // drag track 2 (index 3) to before the header (index 1): moving up → toIndex 1
+    const next = tracksDomainReducer(state, { type: 'MOVE_TRACK', payload: { fromIndex: 3, toIndex: 1, membership: 'leave' } });
+    expect(next.tracks.map((t) => t.id)).toEqual([0, 2, 10, 1]);
+    expect(next.tracks[1].folderId).toBeUndefined();
+  });
+});

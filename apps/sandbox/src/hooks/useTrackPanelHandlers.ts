@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { folderChildIndices, isHiddenByCollapse, moveTrackWithFolders, normalizeFolders } from '../utils/trackFolders';
+import { folderChildIndices, isHiddenByCollapse, moveTrackWithFolders, normalizeFolders, type MoveMembership } from '../utils/trackFolders';
 import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -53,7 +53,7 @@ export interface UseTrackPanelHandlersReturn {
   /** Live preview while a reorder drag is in flight (folders v1) */
   onDragReorderMove: (clientY: number, index: number) => void;
   onDragReorderEnd: () => void;
-  dragPreview: { order: number[]; ghostIndices: number[]; indented: boolean; fromIndex: number; toIndex: number } | null;
+  dragPreview: { order: number[]; ghostIndices: number[]; indented: boolean; fromIndex: number; toIndex: number; membership: MoveMembership } | null;
   onReorderVertical: (direction: 'up' | 'down', index: number) => void;
   onNavigateVertical: (direction: 'up' | 'down', shiftKey: boolean | undefined, index: number) => void;
   onAddLabelClick: (index: number) => void;
@@ -84,7 +84,7 @@ export function useTrackPanelHandlers(
   // order with the dragged rows ghosted in their landing spot, so the
   // drag shows the actual result rather than a marker.
   const [dragPreview, setDragPreview] = useState<
-    { order: number[]; ghostIndices: number[]; indented: boolean; fromIndex: number; toIndex: number } | null
+    { order: number[]; ghostIndices: number[]; indented: boolean; fromIndex: number; toIndex: number; membership: MoveMembership } | null
   >(null);
   // Ref-mirror (CLAUDE.md): the drag's document listeners read this
   // without re-binding on every preview update
@@ -198,46 +198,58 @@ export function useTrackPanelHandlers(
 
   /** Resolve a drag's pointer Y to the move it would commit. The
    *  preview and the drop BOTH go through this, so the indicator can
-   *  never show a landing the drop wouldn't produce. */
-  const resolveDragTarget = (clientY: number, index: number): number | null => {
-    // Below the last visible row = "after the last row" (tracks.length).
-    // The resolver only ever names a row to land ON, and when a group
-    // ends the list every row down there is one of its members — which
-    // moveTrackWithFolders lands ABOVE, so nothing could ever reach the
-    // bottom slot. (While a preview runs, the last row may be the
-    // dragged block's own ghost: then this is "over the ghost", held.)
+   *  never show a landing the drop wouldn't produce.
+   *
+   *  A group's BOUNDARY is a drop zone, matching what its strip and
+   *  floor draw. Leaving a group is otherwise impossible — membership
+   *  follows the row above, so every landing near a group joins it:
+   *    - upper half of a group header  → above the group, OUTSIDE
+   *    - lower half of a group header  → first child (join)
+   *    - lower half of the group's last visible member → after the
+   *      group, OUTSIDE
+   *    - anywhere else on a member     → inside, as before
+   *    - below the last visible row    → the bottom slot, OUTSIDE
+   *  A dragged folder never joins anything; the same zones decide
+   *  whether it lands above or below the other group. */
+  const resolveDragTarget = (
+    clientY: number,
+    index: number,
+  ): { toIndex: number; membership: MoveMembership } | null => {
+    const isFolderSource = tracks[index]?.type === 'folder';
+    const block = isFolderSource ? [index, ...folderChildIndices(tracks, index)] : [index];
+    // The splice's asymmetry, named: landing AFTER row k means k when
+    // moving down (the block ends at k) and k+1 when moving up; BEFORE
+    // k is the mirror.
+    const after = (k: number) => (index < k ? k : k + 1);
+    const before = (k: number) => (index < k ? k - 1 : k);
+
     const panels = [...document.querySelectorAll<HTMLElement>('[data-track-panel-index]')]
       .filter((el) => el.getBoundingClientRect().height > 0);
     const lastPanel = panels[panels.length - 1];
     if (lastPanel && clientY > lastPanel.getBoundingClientRect().bottom) {
+      // Below everything: the bottom slot, outside any group.
       const lastIndex = Number(lastPanel.dataset.trackPanelIndex);
-      const block = tracks[index]?.type === 'folder' ? [index, ...folderChildIndices(tracks, index)] : [index];
-      return block.includes(lastIndex) ? null : tracks.length;
+      return block.includes(lastIndex) ? null : { toIndex: tracks.length, membership: 'leave' };
     }
+
     const target = resolveTrackDropIndex(document, clientY);
-    if (target < 0 || target === index) return null;
-    // A folder drags its whole family, and the family ghosts in the
-    // preview — so the pointer passing over any of ITS OWN rows means
-    // "over the ghost", the same as over the folder row itself. Left
-    // as a target, a child's index lands inside the dragged block,
-    // which moveTrackWithFolders resolves to "stay put": the preview
-    // snapped back to the original order as the pointer crossed the
-    // family, and the drop committed that no-op.
-    if (tracks[index]?.type === 'folder' && folderChildIndices(tracks, index).includes(target)) return null;
-    // Dropping a plain track ON a folder row means "join this group"
-    // (its first child) rather than "sit above the folder" — aim one
-    // row past the header, which lands right after it whichever
-    // direction the drag came from. Dropping ABOVE the row (the
-    // resolver returns the same index for "over it" and "above
-    // everything") must stay a plain move, or a child could never be
-    // dragged out to the top of a list that starts with a folder.
-    const targetPanel = findTrackControlPanelByIndex(document, target);
-    const targetRect = targetPanel?.getBoundingClientRect();
-    const droppedAboveRow = targetRect ? clientY < targetRect.top : false;
-    const droppedOnFolder = !droppedAboveRow
-      && tracks[target]?.type === 'folder'
-      && tracks[index]?.type !== 'folder';
-    return droppedOnFolder && index > target ? target + 1 : target;
+    if (target < 0 || block.includes(target)) return null; // over own ghost: hold
+    const rect = findTrackControlPanelByIndex(document, target)?.getBoundingClientRect();
+    const lowerHalf = rect ? clientY >= rect.top + rect.height / 2 : false;
+    const t = tracks[target];
+
+    if (t?.type === 'folder') {
+      if (isFolderSource) return { toIndex: target, membership: 'follow' }; // the helper lands it above
+      return lowerHalf
+        ? { toIndex: after(target), membership: 'follow' } // first child
+        : { toIndex: before(target), membership: 'leave' }; // above the group
+    }
+    const inGroup = t?.folderId !== undefined;
+    const lastOfGroup = inGroup && tracks[target + 1]?.folderId !== t?.folderId;
+    if (inGroup && lastOfGroup && lowerHalf) {
+      return { toIndex: after(target), membership: 'leave' }; // after the group
+    }
+    return { toIndex: target, membership: 'follow' };
   };
 
   /** Where the row would land, expressed for the indicator: the line
@@ -249,12 +261,13 @@ export function useTrackPanelHandlers(
     // current preview rather than recomputing, or the row snaps back
     // to where it started and the layout oscillates as you hover it.
     if (resolved === null && dragPreviewRef.current) return;
-    const toIndex = resolved ?? index;
+    const toIndex = resolved?.toIndex ?? index;
+    const membership: MoveMembership = resolved?.membership ?? 'follow';
 
     // normalizeFolders too, so the preview shows EVERYTHING the
     // commit does — including a folder dissolving as its last child
     // is dragged out
-    const moved = moveTrackWithFolders(tracks, index, toIndex);
+    const moved = moveTrackWithFolders(tracks, index, toIndex, membership);
     const after = normalizeFolders(moved.tracks);
     const movedId = tracks[index]?.id;
     // A folder drags its whole family; every row in the block ghosts.
@@ -271,6 +284,7 @@ export function useTrackPanelHandlers(
       // row itself and silently no-op).
       fromIndex: index,
       toIndex,
+      membership,
     });
   };
 
@@ -282,13 +296,17 @@ export function useTrackPanelHandlers(
     // no intervening mousemove).
     const pending = dragPreviewRef.current;
     setDragPreview(null);
-    const toIndex = pending && pending.fromIndex === index
-      ? pending.toIndex
+    const landing = pending && pending.fromIndex === index
+      ? { toIndex: pending.toIndex, membership: pending.membership }
       : resolveDragTarget(clientY, index);
-    if (toIndex === null || toIndex === index) return;
+    if (landing === null) return;
+    const { toIndex, membership } = landing;
+    // Same index with 'leave' is still a move: the track steps out of
+    // its group where it stands.
+    if (toIndex === index && membership !== 'leave') return;
     dispatch({
       type: 'MOVE_TRACK',
-      payload: { fromIndex: index, toIndex },
+      payload: { fromIndex: index, toIndex, membership },
     });
     // toIndex may be the append sentinel (tracks.length); focus the row
     // that actually exists there.
