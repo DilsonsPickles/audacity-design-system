@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows, type FadeShape } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -51,8 +51,8 @@ export interface TrackClip {
   fadeOut?: number;
   /** Curve shape exponents (default 1 = equal-power), set by dragging
    *  the crossfade intersection node. */
-  fadeInShape?: number;
-  fadeOutShape?: number;
+  fadeInShape?: FadeShape;
+  fadeOutShape?: FadeShape;
 }
 
 export interface TrackProps {
@@ -187,13 +187,13 @@ export interface TrackProps {
   onCrossfadeShapeChange?: (
     outgoingClipId: string | number,
     incomingClipId: string | number,
-    outShape: number,
-    inShape: number,
+    outShape: FadeShape,
+    inShape: FadeShape,
   ) => void;
 
   /** Vertical drag on a quick fade's midpoint node — bows that fade's
    *  curve (shape exponent; the extent stays the handle's job). */
-  onClipFadeShapeChange?: (clipId: string | number, side: 'in' | 'out', shape: number) => void;
+  onClipFadeShapeChange?: (clipId: string | number, side: 'in' | 'out', shape: FadeShape) => void;
 
   /**
    * Tab index for keyboard navigation
@@ -682,6 +682,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             nodeEl.addEventListener('pointermove', onMove);
             nodeEl.addEventListener('pointerup', onUp);
           }}
+          // Double-click: a LINEAR crossfade — straight lines on both
+          // sides, the equal-gain law (user decision 2026-09-24). A
+          // second double-click restores equal-power. Only pointermove
+          // rewrites the shape, so the two clicks themselves are inert.
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (!onCrossfadeShapeChange) return;
+            const isLinear = n.outRegion.shape === 'linear' && n.inRegion.shape === 'linear';
+            onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, isLinear ? 1 : 'linear', isLinear ? 1 : 'linear');
+          }}
           style={{
             position: 'absolute',
             left: `${Math.round(x - NODE_R - 3)}px`,
@@ -736,7 +746,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const midTime = side === 'in'
           ? clip.start + fade / 2
           : clip.start + clip.duration - fade / 2;
-        const gain = MID_BASE ** shape;
+        // A straight line passes through half gain at its midpoint
+        const gain = shape === 'linear' ? 0.5 : MID_BASE ** shape;
         const x = CLIP_CONTENT_OFFSET + midTime * pixelsPerSecond;
         const y = bodyTop + (1 - gain) * bodyHeight;
         nodes.push(
@@ -746,9 +757,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-clip-ref={clip.id}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in shape' : 'Quick fade out shape'}
-            aria-valuenow={shape}
+            aria-valuenow={typeof shape === 'number' ? shape : 1}
+            aria-valuetext={shape === 'linear' ? 'linear' : undefined}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
+            // Double-click: a straight-line fade; again restores
+            // equal-power. Same gesture as the crossfade node.
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onClipFadeShapeChange(clip.id, side, shape === 'linear' ? 1 : 'linear');
+            }}
             onPointerDown={(e) => {
               if (e.button !== 0) return;
               e.stopPropagation();

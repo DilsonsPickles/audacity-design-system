@@ -228,7 +228,8 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       const { trackIndex, outgoingClipId, incomingClipId, outShape, inShape } = action.payload;
       const track = state.tracks[trackIndex];
       if (!track) return state;
-      const norm = (v: number) => (Math.abs(v - 1) < 0.01 ? undefined : v);
+      // 'linear' is stored as-is; an exponent of ~1 clears the field
+      const norm = (v: number | 'linear') => (v !== 'linear' && Math.abs(v - 1) < 0.01 ? undefined : v);
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...track,
@@ -247,7 +248,7 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       const { trackIndex, clipId, side, shape } = action.payload;
       const track = state.tracks[trackIndex];
       if (!track) return state;
-      const value = Math.abs(shape - 1) < 0.01 ? undefined : shape;
+      const value = shape !== 'linear' && Math.abs(shape - 1) < 0.01 ? undefined : shape;
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...track,

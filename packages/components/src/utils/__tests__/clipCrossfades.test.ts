@@ -142,3 +142,24 @@ describe('fadeCurvePath', () => {
     expect(fadeCurvePath('in').endsWith('100.00,0.00')).toBe(true);
   });
 });
+
+describe("'linear' fade shape", () => {
+  // No exponent can make a straight line (cos^k always starts flat),
+  // so linear is its own value. Both sides linear = equal-GAIN.
+  it('fade-out is 1 - t and fade-in is t', () => {
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      expect(fadeOutGain(t, 'linear')).toBeCloseTo(1 - t, 10);
+      expect(fadeInGain(t, 'linear')).toBeCloseTo(t, 10);
+    }
+  });
+
+  it('two linear sides sum to constant amplitude (equal gain), unlike equal-power', () => {
+    expect(fadeOutGain(0.5, 'linear') + fadeInGain(0.5, 'linear')).toBeCloseTo(1, 10);
+    expect(fadeOutGain(0.5, 1) + fadeInGain(0.5, 1)).toBeCloseTo(Math.SQRT2, 10);
+  });
+
+  it('draws as a straight line through the midpoint', () => {
+    expect(fadeCurvePath('out', 4, 'linear')).toBe('M 0.00,0.00 L 25.00,25.00 L 50.00,50.00 L 75.00,75.00 L 100.00,100.00');
+    expect(fadeCurvePath('in', 2, 'linear')).toBe('M 0.00,100.00 L 50.00,50.00 L 100.00,0.00');
+  });
+});

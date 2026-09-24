@@ -59,8 +59,9 @@ export interface Clip {
   fadeOut?: number;
   /** Curve shape exponents (default 1 = equal-power) — the crossfade
    *  intersection node's state; extents never move, curves bend. */
-  fadeInShape?: number;
-  fadeOutShape?: number;
+  /** Fade curve: exponent on equal-power (1 = default), or 'linear' */
+  fadeInShape?: number | 'linear';
+  fadeOutShape?: number | 'linear';
   /**
    * Original clip id that owns the audio buffer. When a clip is split,
    * the right segment gets a new id but should still play from the
@@ -291,8 +292,8 @@ export type TracksAction =
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'SET_CLIP_FADE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; seconds: number } }
   | { type: 'ROLL_CROSSFADE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; deltaSeconds: number } }
-  | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: number; inShape: number } }
-  | { type: 'SET_CLIP_FADE_SHAPE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; shape: number } }
+  | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: number | 'linear'; inShape: number | 'linear' } }
+  | { type: 'SET_CLIP_FADE_SHAPE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; shape: number | 'linear' } }
   | {
       type: 'APPLY_CLIP_PLACEMENT';
       payload: {

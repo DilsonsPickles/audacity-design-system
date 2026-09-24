@@ -28,8 +28,8 @@ export interface CrossfadeClipLike {
   /** Curve shape exponents (default 1 = equal-power). Set by dragging
    *  the crossfade's intersection node: the base curve is raised to
    *  this power, bending the fade without moving its extent. */
-  fadeInShape?: number;
-  fadeOutShape?: number;
+  fadeInShape?: FadeShape;
+  fadeOutShape?: FadeShape;
 }
 
 export interface CrossfadeRegion {
@@ -118,7 +118,7 @@ export interface FadeCurveRegion {
    *  it is the overlap-default crossfade ramp. */
   authored: boolean;
   /** Curve shape exponent (1 = equal-power) */
-  shape: number;
+  shape: FadeShape;
 }
 
 /** ONE fade per clip edge — the CROSSFADE wins (2026-09-21 "consume"
@@ -181,8 +181,8 @@ export interface CrossfadeIntersection {
  *  zero exactly once. Bisection; both curves may be authored fades
  *  with extents different from the overlap. */
 export function crossfadeIntersection(
-  outRegion: { start: number; end: number; shape?: number },
-  inRegion: { start: number; end: number; shape?: number },
+  outRegion: { start: number; end: number; shape?: FadeShape },
+  inRegion: { start: number; end: number; shape?: FadeShape },
   overlapStart: number,
   overlapEnd: number,
 ): CrossfadeIntersection {
@@ -209,13 +209,26 @@ export function crossfadeIntersection(
 
 /** Gain for the OUTGOING side at normalized position t (0..1).
  *  `shape` bends the equal-power base curve (1 = equal-power). */
-export function fadeOutGain(t: number, shape = 1): number {
-  return Math.cos((Math.max(0, Math.min(1, t)) * Math.PI) / 2) ** shape;
+/** A fade's shape: an exponent on the equal-power base curve (1 =
+ *  equal-power, 2 = S-curve, <1 = sharper end), or `'linear'` — a
+ *  straight line, which no exponent can produce (cos^k always starts
+ *  flat). Two linear sides make an equal-GAIN crossfade. The audio
+ *  bake (packages/audio/crossfadeGain.ts) reads the same value. */
+export type FadeShape = number | 'linear';
+
+export const LINEAR: FadeShape = 'linear';
+
+export function fadeOutGain(t: number, shape: FadeShape = 1): number {
+  const u = Math.max(0, Math.min(1, t));
+  if (shape === 'linear') return 1 - u;
+  return Math.cos((u * Math.PI) / 2) ** shape;
 }
 
 /** Gain for the INCOMING side at normalized position t (0..1). */
-export function fadeInGain(t: number, shape = 1): number {
-  return Math.sin((Math.max(0, Math.min(1, t)) * Math.PI) / 2) ** shape;
+export function fadeInGain(t: number, shape: FadeShape = 1): number {
+  const u = Math.max(0, Math.min(1, t));
+  if (shape === 'linear') return u;
+  return Math.sin((u * Math.PI) / 2) ** shape;
 }
 
 /** SVG path (0..100 × 0..100 viewBox, y=0 is full gain) for one side
@@ -223,7 +236,7 @@ export function fadeInGain(t: number, shape = 1): number {
  *  `preserveAspectRatio="none"`. A bent shape exponent concentrates
  *  all the curvature near one end, so the sample count must be high
  *  enough that no segment reads as an angle. */
-export function fadeCurvePath(side: 'out' | 'in', samples = 64, shape = 1): string {
+export function fadeCurvePath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1): string {
   const pts: string[] = [];
   for (let k = 0; k <= samples; k++) {
     const t = k / samples;
