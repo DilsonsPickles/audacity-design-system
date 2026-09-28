@@ -128,7 +128,13 @@
   background: var(--stroke-primary, #d4d5d9);
 }
 
+/* Focus shows the way hover does: the splitter IS its line */
+.macro-builder__splitter:focus {
+  outline: none;
+}
+
 .macro-builder__splitter:hover::before,
+.macro-builder__splitter:focus-visible::before,
 .macro-builder__columns--resizing .macro-builder__splitter::before {
   left: 2px;
   width: 3px;

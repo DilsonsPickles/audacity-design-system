@@ -97,6 +97,14 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       'macros-panel-actions': { tabindex: 'roving', arrows: true, wrap: true },
       'macros-panel-actions-end': { tabindex: 'roving', arrows: true, wrap: true },
 
+      // Edit macro window. It floats outside the app's numbered Tab
+      // order (its stops are tabindex 0, like every dialog's), so these
+      // have no tabOrder entry — only how the arrows behave.
+      'macro-builder-commands': { tabindex: 'roving', arrows: true, wrap: true },
+      'macro-builder-selection': { tabindex: 'roving', arrows: true, wrap: true },
+      'macro-builder-steps': { tabindex: 'roving', arrows: true, wrap: true },
+      'macro-builder-footer': { tabindex: 'roving', arrows: true, wrap: true },
+
       // Macro manager — the macro list: ONE tab stop, arrows move
       // through it as a grid (rows x name / Run / menu) and CYCLE, as
       // every other group does: Down from the last macro is the first.

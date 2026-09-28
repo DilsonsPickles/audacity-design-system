@@ -237,6 +237,83 @@ strip first, so you arrive at the name of the panel before its contents.
 **Flat profile.** Every control is its own Tab stop and the arrows do
 nothing. Enter, Cmd/Ctrl+Enter, F2 and Shift+F10 still work.
 
+### Edit macro window (MacroBuilderDialog.tsx)
+
+Seven Tab stops, however many commands and steps there are (it was 322
+with 280 commands and 12 steps — every command and every step control
+was its own stop):
+
+| # | Stop | Inside it |
+|---|------|-----------|
+| 1 | Search field | Down drops into the command list; Enter adds the first match |
+| 2 | Command list | A listbox — arrows, below |
+| 3 | Add bar | Clear / Add (`useContainerTabGroup`). A stop only once something is selected |
+| 4 | Splitter | Arrows resize, below |
+| 5 | Macro menu button | Enter opens the menu |
+| 6 | Step list | Arrows, below |
+| 7 | Footer | Run / Run on files… / Done (`useContainerTabGroup`) |
+
+The window floats outside the app's numbered Tab order: its stops are
+`tabindex=0`, as every dialog's are. It is NON-MODAL, which has two
+consequences. Tab is not trapped — past the footer it leaves the window
+for the app. And the app's document-level shortcuts are still listening,
+so every key a list uses is stopped from reaching them; before this the
+arrows and Home/End moved the project's playhead, Down on a step threw
+focus out to a track, and Delete on a step opened "Delete track?".
+
+**Command list** — `role="listbox"`, multi-select. One column.
+
+| Key | Action |
+|-----|--------|
+| ArrowDown / ArrowUp | Next / previous command; selection follows focus. Cycles |
+| Shift+ArrowDown / Up | Grow the selection from where it began. Stops at the ends — a range has two |
+| Home / End | First / last command |
+| PageUp / PageDown | A screenful. Stops at the ends |
+| Enter | Add what is selected (or the focused command). Focus stays put; the add is announced |
+| ArrowLeft / ArrowRight | Nothing — but kept from the playhead |
+
+It stays ONE stop driven by the arrows under the flat profile too: a
+listbox is a single control, and 280 Tab stops serve nobody.
+
+**Step list** — the same two moves as the Macro manager's list.
+
+| Key | Action |
+|-----|--------|
+| ArrowDown / ArrowUp | Next / previous step, same control. Cycles |
+| ArrowLeft / ArrowRight | Along the row: the step → its edit button → its menu. Cycles |
+| Home / End, PageUp / PageDown | By steps, same control. Stop at the ends |
+| Enter | On the step: open its editor. On a button: that button |
+| Cmd/Ctrl+ArrowDown / Up | Carry the step down / up (as Cmd+Arrow reorders a track). Focus goes with it |
+| Delete / Backspace | Delete the step, from any control of its row |
+| Shift+F10 / Menu key | Open the step's menu, from any control of its row |
+
+Flat profile: every control of every step is a Tab stop and the arrows
+do nothing; Enter, Cmd/Ctrl+arrow, Delete and Shift+F10 still work.
+
+**Splitter** — a focusable `role="separator"` with `aria-valuenow` /
+`min` / `max` in pixels.
+
+| Key | Action |
+|-----|--------|
+| ArrowLeft / ArrowRight | Narrow / widen the command list by 16px (Shift: 64px) |
+| Home / End | Its narrowest / widest |
+| Enter | Reset to the default — the mouse's double-click |
+
+**Focus after an action:**
+
+| After | Focus goes to |
+|-------|---------------|
+| Moving a step (key or menu) | The step, in its new place, on the control it was moved from |
+| Deleting a step | The step that takes its place, else the one before, else the search field |
+| Closing a step's editor | The step |
+| Removing all steps | The search field |
+| Closing Rename | The macro menu button |
+| Deleting the macro (the window closes) | The macro that takes its place in the Macro manager (`AppDialogs`) |
+| Closing the window | The macro it was opened from, if focus was in the window (`AppDialogs`) |
+
+Adding, moving and deleting steps are announced (`announce`): focus is
+often in the OTHER pane from the change, where it would be silent.
+
 ### Dock panel tabs (PanelHeader.tsx)
 
 A strip is ONE Tab stop — the active tab — placed BEFORE the content it

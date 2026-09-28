@@ -125,9 +125,22 @@ hard cuts). Deliberately deferred, waiting on live feel / product calls:
 ### Macro manager keyboard access — deferred tail (2026-09-28)
 The panel is keyboard-operable end to end (see
 `docs/accessibility-architecture.md` → Macro manager). Not done:
-- **The Edit macro window has not been audited.** It has its own
-  keyboard handling (arrows in the command list, Enter to add, a
-  splitter, a step table); none of it was checked in this pass.
+- **The Edit macro window's own dialogs are unaudited**: the step
+  parameter editors (`CommandParametersDialog`, `EditStepDialog`) and
+  the Run-on-files progress window. The window itself is done.
+- **Tab is not trapped in the Edit macro window** — it is non-modal by
+  design, so Tab past the footer goes on into the app. A window-local
+  Tab cycle (with a key to leave) would be a decision, not a fix.
+- **Escape closes the Edit macro window even with a search typed.**
+  Clearing the search first would be the usual behaviour; `Dialog`
+  takes Escape in the capture phase, ahead of the field.
+- **No way to build a NON-contiguous selection of commands from the
+  keyboard.** Shift+arrow grows a range; toggling one command in or
+  out is conventionally Ctrl+Space, and Space is play/pause here.
+- **Typing in the command list does not search.** Single letters are
+  app shortcuts, so they are left alone; Shift+Tab reaches the field.
+- **The empty-steps hint still says "Double-click a command"** — Enter
+  does the same and is not mentioned.
 - **No screen reader run.** Roles and names were chosen to the ARIA
   patterns and asserted in tests; nobody has listened to it.
 - **Delete does not delete a macro.** With focus in the panel it still

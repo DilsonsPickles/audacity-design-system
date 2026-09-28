@@ -230,10 +230,14 @@ describe('MacroBuilderDialog', () => {
     expect(commandRows(container)[1].getAttribute('aria-selected')).toBe('false');
     fireEvent.keyDown(commandRows(container)[2], { key: 'ArrowUp' });
     expect(commandRows(container)[1].getAttribute('aria-selected')).toBe('true');
-    // Pinned at the top — ArrowUp on the first row stays put
     fireEvent.keyDown(commandRows(container)[1], { key: 'ArrowUp' });
-    fireEvent.keyDown(commandRows(container)[0], { key: 'ArrowUp' });
     expect(commandRows(container)[0].getAttribute('aria-selected')).toBe('true');
+    // The list cycles, like the app's other groups: ArrowUp on the
+    // first row goes round to the last (it used to stay put)
+    fireEvent.keyDown(commandRows(container)[0], { key: 'ArrowUp' });
+    const rows = commandRows(container);
+    expect(rows[rows.length - 1].getAttribute('aria-selected')).toBe('true');
+    expect(rows[0].getAttribute('aria-selected')).toBe('false');
   });
 
   it('Enter in the search field adds the first visible match', () => {

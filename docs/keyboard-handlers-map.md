@@ -63,6 +63,25 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 
 ---
 
+### Edit Macro Window Keyboard Shortcuts
+**Location:** `packages/components/src/MacroBuilderDialog/MacroBuilderDialog.tsx` — one handler per region, each on the region's CONTAINER:
+
+| Region | Handler | Keys |
+|--------|---------|------|
+| Search field | `handleSearchKeyDown` | ArrowDown (into the list), Enter (add) |
+| Command list | `handleCommandListKeyDown` | Arrows, Shift+arrows, Home/End, PageUp/PageDown, Enter |
+| Splitter | `handleSplitterKeyDown` | ArrowLeft/Right (±16px, Shift ±64px), Home/End, Enter (reset) |
+| Step list | `handleStepListKeyDown` | Arrows, Home/End, PageUp/PageDown, Enter, Cmd/Ctrl+ArrowUp/Down (move), Delete/Backspace, Shift+F10 / ContextMenu |
+| Add bar, footer | `useContainerTabGroup` | Arrows between their buttons |
+
+**Do not put key handlers on the rows or buttons.** A step row used to handle Enter itself; Enter on a button INSIDE the row bubbled to it, so pressing Enter on a step's menu button opened the menu and the editor together.
+
+**Note:** the window is non-modal, so `useKeyboardShortcuts` (a native listener on `document`) still runs while focus is in it. Every consumed key calls `stopPropagation()` as well as `preventDefault()`.
+
+**Focus after the window closes or its macro is deleted:** `apps/sandbox/src/components/AppDialogs.tsx` (the `MacroBuilderDialog`'s `onClose` / `onDeleteMacro`).
+
+---
+
 ### Label Keyboard & Mouse Shortcuts
 **Location:** Mouse drag/resize (move, extend/reduce region edges, expand-to-all-tracks click) is `apps/sandbox/src/components/LabelRenderer.tsx`, rendered from `apps/sandbox/src/components/canvas/CanvasTrackList.tsx` (itself extracted from Canvas.tsx). Delete/Backspace is `apps/sandbox/src/hooks/handlers/deleteHandlers.ts` (`handleDeleteLabels`).
 

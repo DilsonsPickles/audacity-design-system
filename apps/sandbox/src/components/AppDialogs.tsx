@@ -728,7 +728,16 @@ export function AppDialogs(props: AppDialogsProps) {
         onRun={runMacroOnProject}
         onRunFiles={runMacroOnFiles}
         onRenameMacro={macrosCtx.renameMacro}
-        onDeleteMacro={macrosCtx.deleteMacro}
+        onDeleteMacro={(macroId) => {
+          // The window closes with its macro. Focus goes to the macro
+          // that takes its place in the Macro manager, not to the page.
+          const at = macrosCtx.macros.findIndex((m) => m.id === macroId);
+          const neighbour = macrosCtx.macros[at + 1] ?? macrosCtx.macros[at - 1];
+          macrosCtx.deleteMacro(macroId);
+          window.setTimeout(() => {
+            (neighbour ? findMacroRowButton(document, neighbour.id) : null)?.focus();
+          }, 0);
+        }}
         onExportMacro={(macroId) => {
           const macro = macrosCtx.macros.find((m) => m.id === macroId);
           if (macro) exportMacroFile(macro);

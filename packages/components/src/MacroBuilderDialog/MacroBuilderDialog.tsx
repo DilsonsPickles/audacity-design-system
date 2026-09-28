@@ -10,6 +10,9 @@ import { RenameMacroDialog } from '../MacroManager/MacroDialogs';
 import { EditStepDialog } from '../MacroEditorDialog/MacroEditorDialog';
 import type { Command } from '../SelectCommandDialog';
 import type { Macro } from '../MacroManager/macroTypes';
+import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
+import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
+import { announce } from '../utils/announce';
 import './MacroBuilderDialog.css';
 
 export interface MacroBuilderDialogProps {
@@ -61,6 +64,33 @@ export interface MacroBuilderDialogProps {
 /** The commands pane's width until the user drags the splitter, and
  *  what a double-click on it returns to. */
 const DEFAULT_COMMANDS_PANE_WIDTH = 280;
+const MIN_PANE_WIDTH = 180;
+/** What the steps pane keeps beyond its own minimum when the commands
+ *  pane is widened as far as it goes. */
+const STEPS_PANE_RESERVE = 60;
+/** One arrow press on the splitter; Shift takes a bigger bite. */
+const SPLITTER_STEP = 16;
+const SPLITTER_BIG_STEP = 64;
+
+/** The three things in a step's row that take focus, left to right. */
+type StepCell = 'step' | 'edit' | 'menu';
+const STEP_CELLS: readonly StepCell[] = ['step', 'edit', 'menu'];
+const STEP_EDIT_CLASS = 'macro-builder__step-edit';
+const STEP_MENU_CLASS = 'macro-builder__step-menu';
+
+function stepCellOf(el: Element): StepCell {
+  if (el.closest(`.${STEP_EDIT_CLASS}`)) return 'edit';
+  if (el.closest(`.${STEP_MENU_CLASS}`)) return 'menu';
+  return 'step';
+}
+
+/** Rows that fit in a scrolling list, less one so a page keeps a row
+ *  of what was showing. */
+function screenful(list: HTMLElement | null, row: HTMLElement | null): number {
+  const rowHeight = row?.getBoundingClientRect().height ?? 0;
+  if (!list || rowHeight <= 0) return 10; // no layout (tests): a plain ten
+  return Math.max(1, Math.floor(list.clientHeight / rowHeight) - 1);
+}
 
 /** Display-only prettifying of a step's serialized parameters:
  *  `Start="0", End="1"` reads as `Start: 0, End: 1`. The raw string
@@ -80,6 +110,15 @@ function prettyParameters(parameters: string): string {
  * macro. Steps are added with default parameters and edited in place
  * via the row pencil; drag a row (or ↑/↓) to reorder and the trash
  * removes it. Non-modal and auto-saving, like MacroEditorDialog.
+ *
+ * KEYBOARD (docs/accessibility-architecture.md → Edit macro window).
+ * Seven Tab stops, however many commands and steps there are: search,
+ * the command list, its Add bar, the splitter, the macro's menu, the
+ * step list, the footer. Both lists are driven by the arrows. The
+ * window is non-modal, so the app's document-level shortcuts are still
+ * listening: every key a list uses is stopped from reaching them, or
+ * the arrows would move the playhead and Delete would ask to delete a
+ * track.
  */
 export function MacroBuilderDialog({
   isOpen,
@@ -131,6 +170,35 @@ export function MacroBuilderDialog({
   const [splitterActive, setSplitterActive] = React.useState(false);
   const columnsRef = React.useRef<HTMLDivElement>(null);
   const commandsPaneRef = React.useRef<HTMLDivElement>(null);
+  const [columnsWidth, setColumnsWidth] = React.useState(0);
+
+  const { activeProfile } = useAccessibilityProfile();
+  const isFlat = activeProfile.config.tabNavigation === 'sequential';
+  const wrapOf = (groupId: string) => activeProfile.config.tabGroups[groupId]?.wrap ?? true;
+
+  // Roving focus: which command, and which cell of which step, is its
+  // list's ONE tab stop. Remembered while focus is elsewhere.
+  const [activeCommandId, setActiveCommandId] = React.useState<string | null>(null);
+  const [activeStep, setActiveStep] = React.useState<{ index: number; cell: StepCell }>({ index: 0, cell: 'step' });
+  // Focus to place once the steps have re-rendered (a move, a delete)
+  const pendingStepFocusRef = React.useRef<{ index: number; cell: StepCell } | 'search' | null>(null);
+
+  const selectionBarRef = React.useRef<HTMLSpanElement>(null);
+  const footerRef = React.useRef<HTMLDivElement>(null);
+  const selectionGroup = useContainerTabGroup({
+    containerRef: selectionBarRef,
+    groupId: 'macro-builder-selection',
+    selector: 'button',
+    startTabIndex: 0,
+    ariaLabel: 'Selected commands',
+  });
+  const footerGroup = useContainerTabGroup({
+    containerRef: footerRef,
+    groupId: 'macro-builder-footer',
+    selector: 'button',
+    startTabIndex: 0,
+    ariaLabel: 'Macro actions',
+  });
 
   // Reset transient state whenever a different macro opens
   React.useEffect(() => {
@@ -140,6 +208,41 @@ export function MacroBuilderDialog({
     setDraggedIndex(null);
     setStepMenuIndex(null);
   }, [macro?.id, isOpen]);
+
+  // The two button groups: re-count their stops when what they hold
+  // changes (Clear comes and goes, Add enables, Run is optional)
+  const initSelectionStops = selectionGroup.initTabIndices;
+  const initFooterStops = footerGroup.initTabIndices;
+  const hasSelection = selectedCommandIds.length > 0;
+  React.useEffect(() => {
+    initSelectionStops();
+    initFooterStops();
+  }, [initSelectionStops, initFooterStops, hasSelection, isOpen, macro?.id, onRun, onRunFiles]);
+
+  // The splitter's range, for its arrows and for assistive tech
+  React.useEffect(() => {
+    const columns = columnsRef.current;
+    if (!columns) return;
+    const update = () => setColumnsWidth(columns.getBoundingClientRect().width);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(columns);
+    return () => observer.disconnect();
+  }, [isOpen, macro?.id]);
+
+  // Place focus after the steps changed under it
+  React.useEffect(() => {
+    const pending = pendingStepFocusRef.current;
+    if (!pending) return;
+    pendingStepFocusRef.current = null;
+    // After a menu has finished handing focus back to its trigger
+    const timer = window.setTimeout(() => {
+      if (pending === 'search') searchInputRef.current?.focus();
+      else focusStepCell(pending.index, pending.cell);
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [macro?.steps]);
 
   // Track step-table overflow (steps added/removed, window resized)
   React.useEffect(() => {
@@ -158,9 +261,48 @@ export function MacroBuilderDialog({
     [availableCommands, query],
   );
 
+  const stepCellElement = (index: number, cell: StepCell): HTMLElement | null => {
+    const row = stepListRef.current?.querySelector<HTMLElement>(`[data-step-index="${index}"]`) ?? null;
+    if (!row || cell === 'step') return row;
+    return row.querySelector<HTMLElement>(`.${cell === 'edit' ? STEP_EDIT_CLASS : STEP_MENU_CLASS}`);
+  };
+  function focusStepCell(index: number, cell: StepCell) {
+    const el = stepCellElement(index, cell);
+    if (!el) return;
+    setActiveStep({ index, cell });
+    el.focus();
+    el.scrollIntoView?.({ block: 'nearest' }); // jsdom has none
+  }
+  const stepsHeaderRef = React.useRef<HTMLDivElement>(null);
+  const focusMacroMenuButton = () => {
+    stepsHeaderRef.current?.querySelector<HTMLElement>('button')?.focus();
+  };
+  /** Put focus back once a dialog that covered the window has gone. */
+  const returnFocus = (to: () => void) => {
+    window.setTimeout(to, 0);
+  };
+
   if (!macro) return null;
 
   const stepCount = macro.steps.length;
+  const maxPaneWidth = columnsWidth > 0
+    ? Math.max(MIN_PANE_WIDTH, columnsWidth - MIN_PANE_WIDTH - STEPS_PANE_RESERVE)
+    : undefined;
+  const paneWidth = commandsPaneWidth ?? DEFAULT_COMMANDS_PANE_WIDTH;
+
+  // The command list's one tab stop: where focus last was, else the
+  // first selected command showing, else the top of the list
+  const commandStopId = visible.some((cmd) => cmd.id === activeCommandId)
+    ? activeCommandId
+    : (visible.find((cmd) => selectedCommandIds.includes(cmd.id)) ?? visible[0])?.id ?? null;
+  const stepStop = {
+    index: Math.max(0, Math.min(stepCount - 1, activeStep.index)),
+    cell: activeStep.cell,
+  };
+  const stepTabIndex = (index: number, cell: StepCell): number => {
+    if (isFlat) return 0;
+    return index === stepStop.index && cell === stepStop.cell ? 0 : -1;
+  };
 
   // Click = replace selection; Cmd/Ctrl+click = toggle; Shift+click =
   // extend from the anchor through the visible list.
@@ -210,6 +352,12 @@ export function MacroBuilderDialog({
     for (const command of commands) onAddCommand?.(macro.id, command);
     setSelectedCommandIds([]);
     preClickSelectionRef.current = [];
+    // Focus stays in the command list, so say what happened in the
+    // other pane — otherwise adding is silent to a screen reader
+    const first = stepCount + 1;
+    announce(commands.length === 1
+      ? `${commands[0].name} added as step ${first}`
+      : `${commands.length} commands added as steps ${first} to ${stepCount + commands.length}`);
   };
 
   const selectedCommands = selectedCommandIds
@@ -224,15 +372,63 @@ export function MacroBuilderDialog({
       ?.focus();
   };
 
-  // Arrow keys walk the visible list as a single selection, with DOM
-  // focus following so Enter adds whatever the arrows landed on
-  const moveCommandSelection = (fromId: string, delta: -1 | 1) => {
-    const idx = visible.findIndex((cmd) => cmd.id === fromId);
-    if (idx === -1) return;
-    const target = visible[Math.min(visible.length - 1, Math.max(0, idx + delta))];
-    if (!target || target.id === fromId) return;
-    anchorCommandIdRef.current = target.id;
-    setSelectedCommandIds([target.id]);
+  // The command list is a listbox: ONE tab stop, driven by the arrows,
+  // with selection following focus so Enter adds whatever they landed
+  // on. Shift+arrow grows the selection from where it started.
+  const handleCommandListKeyDown = (e: React.KeyboardEvent) => {
+    if (e.defaultPrevented) return;
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-command-id]');
+    const id = el?.dataset.commandId;
+    if (!el || !id) return;
+    const at = visible.findIndex((cmd) => cmd.id === id);
+    if (at < 0) return;
+    // Consumed keys stop here. The window is non-modal, so the app's
+    // document shortcuts still run: left to them, the arrows and
+    // Home/End move the project's playhead.
+    const consume = () => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const command = e.metaKey || e.ctrlKey;
+    if (e.key === 'Enter' && !command && !e.altKey) {
+      // Enter is the add gesture — not the button's click, which selects
+      consume();
+      if (selectedCommandIds.includes(id) && selectedCommands.length > 0) addCommands(selectedCommands);
+      else addCommands([visible[at]]);
+      return;
+    }
+    if (command || e.altKey) return; // chords stay the app's
+    const last = visible.length - 1;
+    const clamp = (n: number) => Math.max(0, Math.min(last, n));
+    // Growing a selection never wraps: a range has two ends
+    const cycle = wrapOf('macro-builder-commands') && !e.shiftKey;
+    let to: number;
+    switch (e.key) {
+      case 'ArrowDown': to = cycle ? (at + 1) % visible.length : clamp(at + 1); break;
+      case 'ArrowUp': to = cycle ? (at - 1 + visible.length) % visible.length : clamp(at - 1); break;
+      case 'Home': to = 0; break;
+      case 'End': to = last; break;
+      case 'PageDown': to = clamp(at + screenful(commandListRef.current, el)); break;
+      case 'PageUp': to = clamp(at - screenful(commandListRef.current, el)); break;
+      // One column: nothing to the side. Still kept from the playhead.
+      case 'ArrowLeft':
+      case 'ArrowRight': consume(); return;
+      default: return;
+    }
+    consume();
+    const target = visible[to];
+    if (e.shiftKey) {
+      const anchorId = anchorCommandIdRef.current ?? id;
+      const anchorAt = Math.max(0, visible.findIndex((cmd) => cmd.id === anchorId));
+      anchorCommandIdRef.current = visible[anchorAt].id;
+      const range = visible.slice(Math.min(anchorAt, to), Math.max(anchorAt, to) + 1).map((cmd) => cmd.id);
+      // From the anchor outward — the order they will be added in
+      setSelectedCommandIds(to < anchorAt ? range.reverse() : range);
+    } else {
+      anchorCommandIdRef.current = target.id;
+      setSelectedCommandIds([target.id]);
+    }
+    setActiveCommandId(target.id);
     focusCommandRow(target.id);
   };
 
@@ -244,6 +440,7 @@ export function MacroBuilderDialog({
       if (first) {
         anchorCommandIdRef.current = first.id;
         setSelectedCommandIds([first.id]);
+        setActiveCommandId(first.id);
         focusCommandRow(first.id);
       }
       return;
@@ -264,13 +461,13 @@ export function MacroBuilderDialog({
     const startX = e.clientX;
     const startWidth = commandsPaneRef.current?.getBoundingClientRect().width ?? 0;
     const columnsWidth = columnsRef.current?.getBoundingClientRect().width ?? 0;
-    const MIN_PANE = 180;
+    const MIN_PANE = MIN_PANE_WIDTH;
     setSplitterActive(true);
 
     const onMouseMove = (ev: MouseEvent) => {
       let width = startWidth + (ev.clientX - startX);
       width = Math.max(MIN_PANE, width);
-      if (columnsWidth > 0) width = Math.min(width, columnsWidth - MIN_PANE - 60);
+      if (columnsWidth > 0) width = Math.min(width, columnsWidth - MIN_PANE - STEPS_PANE_RESERVE);
       setCommandsPaneWidth(width);
     };
     const onMouseUp = () => {
@@ -282,14 +479,125 @@ export function MacroBuilderDialog({
     document.addEventListener('mouseup', onMouseUp);
   };
 
-  const moveStepAt = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= stepCount) return;
-    onMoveStep?.(macro.id, index, direction);
+  // The splitter from the keyboard: arrows resize, Home/End go to the
+  // limits, Enter resets — the mouse's drag and double-click.
+  const handleSplitterKeyDown = (e: React.KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const max = maxPaneWidth ?? Number.POSITIVE_INFINITY;
+    const by = e.shiftKey ? SPLITTER_BIG_STEP : SPLITTER_STEP;
+    let width: number | null;
+    switch (e.key) {
+      case 'ArrowLeft': width = paneWidth - by; break;
+      case 'ArrowRight': width = paneWidth + by; break;
+      case 'Home': width = MIN_PANE_WIDTH; break;
+      case 'End': if (maxPaneWidth === undefined) return; width = maxPaneWidth; break;
+      case 'Enter': width = null; break;
+      // Kept from the app even though they do nothing here
+      case 'ArrowUp':
+      case 'ArrowDown': e.preventDefault(); e.stopPropagation(); return;
+      default: return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    setCommandsPaneWidth(width === null ? null : Math.max(MIN_PANE_WIDTH, Math.min(max, width)));
   };
 
-  const deleteStepAt = (index: number) => {
+  // Where focus goes is said BEFORE the change, and placed once the
+  // steps have re-rendered: the row that had focus is about to be a
+  // different step, or gone.
+  const moveStepAt = (index: number, direction: -1 | 1, cell: StepCell = 'menu') => {
+    const target = index + direction;
+    if (target < 0 || target >= stepCount) return;
+    pendingStepFocusRef.current = { index: target, cell };
+    onMoveStep?.(macro.id, index, direction);
+    announce(`${macro.steps[index].command} moved to step ${target + 1} of ${stepCount}`);
+  };
+
+  const deleteStepAt = (index: number, cell: StepCell = 'menu') => {
+    // The step that takes its place, else the one before, else search
+    pendingStepFocusRef.current = stepCount > 1
+      ? { index: Math.min(index, stepCount - 2), cell }
+      : 'search';
     onDeleteStep?.(macro.id, index);
+    announce(`Step ${index + 1}, ${macro.steps[index].command}, deleted`);
+  };
+
+  // The step list: ONE tab stop. Down/Up go down and up the steps,
+  // Left/Right along a step's row (the step, its edit button, its
+  // menu) — the same two moves as the Macro manager's list.
+  const handleStepListKeyDown = (e: React.KeyboardEvent) => {
+    if (e.defaultPrevented) return;
+    const target = e.target as HTMLElement;
+    const row = target.closest<HTMLElement>('[data-step-index]');
+    if (!row || !stepListRef.current?.contains(row)) return;
+    const index = Number(row.dataset.stepIndex);
+    const cell = stepCellOf(target);
+    const consume = () => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const command = e.metaKey || e.ctrlKey;
+
+    // Actions — every profile, from any cell of the row
+    if (e.key === 'Enter' && cell === 'step' && !command && !e.altKey && !e.shiftKey) {
+      // On the row only: Enter on a button is that button's own
+      consume();
+      setEditingStepIndex(index);
+      return;
+    }
+    if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+      consume();
+      stepCellElement(index, 'menu')?.click();
+      return;
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !command && !e.altKey) {
+      consume();
+      deleteStepAt(index, cell);
+      return;
+    }
+    if (command && !e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      // Cmd/Ctrl+arrow carries the step with it, as it does a track.
+      // Consumed at the ends too.
+      consume();
+      moveStepAt(index, e.key === 'ArrowUp' ? -1 : 1, cell);
+      return;
+    }
+
+    if (isFlat) return; // arrows are the tab-groups profile's
+    if (command || e.altKey || e.shiftKey) return;
+    const cycle = wrapOf('macro-builder-steps');
+    const goToStep = (next: number) => {
+      consume();
+      const to = Math.max(0, Math.min(stepCount - 1, next));
+      if (to !== index) focusStepCell(to, cell);
+    };
+    const along = (by: number) => {
+      consume();
+      const at = STEP_CELLS.indexOf(cell);
+      const to = cycle
+        ? (at + by + STEP_CELLS.length) % STEP_CELLS.length
+        : Math.max(0, Math.min(STEP_CELLS.length - 1, at + by));
+      if (to !== at) focusStepCell(index, STEP_CELLS[to]);
+    };
+    switch (e.key) {
+      case 'ArrowDown': goToStep(cycle ? (index + 1) % stepCount : index + 1); break;
+      case 'ArrowUp': goToStep(cycle ? (index - 1 + stepCount) % stepCount : index - 1); break;
+      case 'Home': goToStep(0); break;
+      case 'End': goToStep(stepCount - 1); break;
+      case 'PageDown': goToStep(index + screenful(stepListRef.current, row)); break;
+      case 'PageUp': goToStep(index - screenful(stepListRef.current, row)); break;
+      case 'ArrowRight': along(1); break;
+      case 'ArrowLeft': along(-1); break;
+      default: break;
+    }
+  };
+
+  const handleStepListFocus = (e: React.FocusEvent) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>('[data-step-index]');
+    if (!row) return;
+    const index = Number(row.dataset.stepIndex);
+    const cell = stepCellOf(e.target as HTMLElement);
+    if (index !== activeStep.index || cell !== activeStep.cell) setActiveStep({ index, cell });
   };
 
   // Whole-row drag-to-reorder (the row IS the handle, with a 3px
@@ -426,7 +734,14 @@ export function MacroBuilderDialog({
                 )}
               </div>
             </div>
-            <div ref={commandListRef} className="macro-builder__command-list" role="listbox" aria-label="Available commands">
+            <div
+              ref={commandListRef}
+              className="macro-builder__command-list"
+              role="listbox"
+              aria-label="Available commands"
+              aria-multiselectable="true"
+              onKeyDown={handleCommandListKeyDown}
+            >
               {visible.length === 0 && (
                 <div className="macro-builder__empty">
                   {query ? `No commands match “${searchQuery.trim()}”` : 'No commands'}
@@ -444,25 +759,10 @@ export function MacroBuilderDialog({
                     className={`macro-builder__command-item${isSelected ? ' macro-builder__command-item--selected' : ''}`}
                     onClick={(e) => handleCommandClick(command, e)}
                     onDoubleClick={() => handleCommandDoubleClick(command)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        // Fully consumed: keep it from the app's document-
-                        // level track navigation, which would otherwise
-                        // steal focus into the main window (the builder is
-                        // non-modal, so document listeners still run)
-                        e.stopPropagation();
-                        moveCommandSelection(command.id, e.key === 'ArrowDown' ? 1 : -1);
-                        return;
-                      }
-                      if (e.key !== 'Enter') return;
-                      // Suppress the button's synthetic click — Enter is
-                      // the add gesture, not another select
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (isSelected && selectedCommands.length > 0) addCommands(selectedCommands);
-                      else addCommands([command]);
-                    }}
+                    // One tab stop for the whole list — 280 commands
+                    // were 280 presses of Tab between search and steps
+                    tabIndex={command.id === commandStopId ? 0 : -1}
+                    onFocus={() => setActiveCommandId(command.id)}
                   >
                     {command.name}
                   </button>
@@ -474,7 +774,15 @@ export function MacroBuilderDialog({
                 selected); double-click and Enter stay the fast paths. */}
             <div className="macro-builder__selection-summary">
               <span>{selectedCommands.length} selected</span>
-              <span className="macro-builder__selection-actions">
+              <span
+                ref={selectionBarRef}
+                className="macro-builder__selection-actions"
+                {...selectionGroup.containerProps}
+                onKeyDown={selectionGroup.onKeyDown}
+                onFocus={selectionGroup.onFocus}
+                onBlur={selectionGroup.onBlur}
+                onClickCapture={selectionGroup.onClickCapture}
+              >
                 {selectedCommands.length > 0 && (
                   <button
                     type="button"
@@ -504,6 +812,13 @@ export function MacroBuilderDialog({
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize command list"
+            // A focusable separator is a control with a value
+            aria-valuenow={Math.round(paneWidth)}
+            aria-valuemin={MIN_PANE_WIDTH}
+            aria-valuemax={maxPaneWidth === undefined ? undefined : Math.round(maxPaneWidth)}
+            aria-valuetext={`${Math.round(paneWidth)} pixels`}
+            tabIndex={0}
+            onKeyDown={handleSplitterKeyDown}
             onMouseDown={handleSplitterMouseDown}
             onDoubleClick={() => setCommandsPaneWidth(null)}
           />
@@ -511,7 +826,7 @@ export function MacroBuilderDialog({
           {/* Steps pane — its header shares the band: macro name + menu.
               Below it, the macro as a TABLE: Step | Command | Actions. */}
           <div className="macro-builder__steps-pane">
-            <div className="macro-builder__steps-header">
+            <div ref={stepsHeaderRef} className="macro-builder__steps-header">
               <h2 className="macro-builder__macro-name">{macro.name}</h2>
               <GhostButton
                 icon="menu"
@@ -542,6 +857,8 @@ export function MacroBuilderDialog({
               className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
               role="list"
               aria-label="Macro steps"
+              onKeyDown={handleStepListKeyDown}
+              onFocus={handleStepListFocus}
             >
               {stepCount === 0 && (
                 <div className="macro-builder__steps-hint">
@@ -553,14 +870,12 @@ export function MacroBuilderDialog({
                   <div
                     key={index}
                     role="listitem"
-                    tabIndex={0}
+                    tabIndex={stepTabIndex(index, 'step')}
                     data-step-index={index}
+                    aria-label={`Step ${index + 1} of ${stepCount}: ${step.command}${step.parameters ? `, ${prettyParameters(step.parameters)}` : ''}`}
                     className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
                     onMouseDown={handleStepMouseDown(index)}
                     onDoubleClick={() => setEditingStepIndex(index)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') setEditingStepIndex(index);
-                    }}
                   >
                     <span className="macro-builder__step-grip" aria-hidden="true">
                       <Icon name="gripper" size={16} />
@@ -581,6 +896,8 @@ export function MacroBuilderDialog({
                       <GhostButton
                         icon="edit"
                         size="medium"
+                        className={STEP_EDIT_CLASS}
+                        tabIndex={stepTabIndex(index, 'edit')}
                         ariaLabel={`Edit step ${index + 1}`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -590,6 +907,8 @@ export function MacroBuilderDialog({
                       <GhostButton
                         icon="menu"
                         size="medium"
+                        className={STEP_MENU_CLASS}
+                        tabIndex={stepTabIndex(index, 'menu')}
                         ariaLabel={`Step ${index + 1} options`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -607,7 +926,15 @@ export function MacroBuilderDialog({
 
         </div>
 
-        <div className="macro-builder__footer">
+        <div
+          ref={footerRef}
+          className="macro-builder__footer"
+          {...footerGroup.containerProps}
+          onKeyDown={footerGroup.onKeyDown}
+          onFocus={footerGroup.onFocus}
+          onBlur={footerGroup.onBlur}
+          onClickCapture={footerGroup.onClickCapture}
+        >
           <div className="macro-builder__run-group">
             {onRun && (
               <Button variant="secondary" size="default" onClick={() => onRun(macro.id)}>
@@ -687,7 +1014,10 @@ export function MacroBuilderDialog({
           disabled={stepCount === 0}
           onClick={() => {
             setMacroMenuOpen(false);
+            // Nothing left in the list to hold focus
+            pendingStepFocusRef.current = 'search';
             onClearSteps?.(macro.id);
+            announce('All steps removed');
           }}
         />
         <ContextMenuItem
@@ -701,10 +1031,14 @@ export function MacroBuilderDialog({
 
       <RenameMacroDialog
         isOpen={isRenameDialogOpen}
-        onClose={() => setIsRenameDialogOpen(false)}
+        onClose={() => {
+          setIsRenameDialogOpen(false);
+          returnFocus(focusMacroMenuButton);
+        }}
         onRename={(newName) => {
           onRenameMacro?.(macro.id, newName);
           setIsRenameDialogOpen(false);
+          returnFocus(focusMacroMenuButton);
         }}
         currentName={macro.name}
         os={os}
@@ -718,6 +1052,12 @@ export function MacroBuilderDialog({
             onEditStep?.(macro.id, editingStepIndex, parameters);
           }
         };
+        // Back to the step that was being edited, on the row itself
+        const closeEditor = () => {
+          const index = editingStepIndex;
+          setEditingStepIndex(null);
+          if (index !== null) returnFocus(() => focusStepCell(index, 'step'));
+        };
         if (editingStep && schema) {
           return (
             <CommandParametersDialog
@@ -725,7 +1065,7 @@ export function MacroBuilderDialog({
               commandName={editingStep.command}
               parameters={schema}
               initialParameters={editingStep.parameters}
-              onClose={() => setEditingStepIndex(null)}
+              onClose={closeEditor}
               onSubmit={save}
               os={os}
             />
@@ -735,7 +1075,7 @@ export function MacroBuilderDialog({
           <EditStepDialog
             isOpen={editingStepIndex !== null}
             step={editingStep}
-            onClose={() => setEditingStepIndex(null)}
+            onClose={closeEditor}
             onSave={save}
             os={os}
           />
