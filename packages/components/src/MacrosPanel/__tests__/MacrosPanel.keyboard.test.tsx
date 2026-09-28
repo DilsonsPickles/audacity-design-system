@@ -103,8 +103,7 @@ describe('MacrosPanel keyboard — Tab stops (tab-groups profile)', () => {
   it('the tab stop follows focus and is remembered when focus leaves', () => {
     const { focus, press, cell, tabStops } = renderPanel();
     focus(cell('m1', 'name'));
-    press('ArrowDown');
-    press('ArrowRight');
+    for (let i = 0; i < 4; i++) press('ArrowDown');
     expect(tabStops()).toEqual([cell('m2', 'run')]);
     act(() => { (document.activeElement as HTMLElement).blur(); });
     expect(tabStops()).toEqual([cell('m2', 'run')]);
@@ -127,86 +126,100 @@ describe('MacrosPanel keyboard — Tab stops (tab-groups profile)', () => {
 });
 
 describe('MacrosPanel keyboard — moving around the list', () => {
-  it('Up and Down cycle through the macros', () => {
+  const where = (el: HTMLElement) => {
+    const id = el.closest<HTMLElement>('[data-macro-id]')!.dataset.macroId;
+    const cell = el.classList.contains('macros-panel__row-name') ? 'name'
+      : el.classList.contains('macros-panel__run') ? 'run' : 'menu';
+    return `${id}.${cell}`;
+  };
+  const ALL = MACROS.flatMap((m) => [`${m.id}.name`, `${m.id}.run`, `${m.id}.menu`]);
+
+  it('the list is ONE sequence: every control of every macro, in reading order', () => {
     const { focus, press, focused, cell } = renderPanel();
     focus(cell('m1', 'name'));
-    press('ArrowDown');
-    expect(focused()).toBe(cell('m2', 'name'));
-    press('ArrowDown');
-    expect(focused()).toBe(cell('m3', 'name'));
-    press('ArrowDown'); // past the last: round to the first
-    expect(focused()).toBe(cell('m1', 'name'));
-    press('ArrowUp'); // and back: before the first is the last
-    expect(focused()).toBe(cell('m3', 'name'));
-    press('ArrowUp');
-    expect(focused()).toBe(cell('m2', 'name'));
+    const walked = [where(focused())];
+    for (let i = 1; i < ALL.length; i++) {
+      press('ArrowRight');
+      walked.push(where(focused()));
+    }
+    expect(walked).toEqual(ALL);
   });
 
-  it('holding Down goes round the whole list and comes back to where it began', () => {
+  it('Down does exactly what Right does, and Up what Left does — as in a toolbar', () => {
+    const walk = (key: string, from: [string, 'name' | 'run' | 'menu'], presses: number) => {
+      const { focus, press, focused, cell } = renderPanel();
+      focus(cell(from[0], from[1]));
+      const seen: string[] = [];
+      for (let i = 0; i < presses; i++) {
+        press(key);
+        seen.push(where(focused()));
+      }
+      cleanup();
+      return seen;
+    };
+    expect(walk('ArrowDown', ['m1', 'name'], ALL.length)).toEqual(walk('ArrowRight', ['m1', 'name'], ALL.length));
+    expect(walk('ArrowUp', ['m2', 'run'], ALL.length)).toEqual(walk('ArrowLeft', ['m2', 'run'], ALL.length));
+    // ...and Down really does step to the next CONTROL, not the next macro
+    expect(walk('ArrowDown', ['m1', 'name'], 3)).toEqual(['m1.run', 'm1.menu', 'm2.name']);
+    expect(walk('ArrowUp', ['m2', 'name'], 3)).toEqual(['m1.menu', 'm1.run', 'm1.name']);
+  });
+
+  it('cycles: past the last control is the first, and back', () => {
     const { focus, press, focused, cell } = renderPanel();
-    focus(cell('m2', 'name'));
-    const visited: string[] = [];
-    for (let i = 0; i < MACROS.length; i++) {
-      press('ArrowDown');
-      visited.push(focused().closest<HTMLElement>('[data-macro-id]')!.dataset.macroId!);
-    }
-    expect(visited).toEqual(['m3', 'm1', 'm2']);
+    focus(cell('m3', 'menu'));
+    press('ArrowDown');
+    expect(focused()).toBe(cell('m1', 'name'));
+    press('ArrowUp');
+    expect(focused()).toBe(cell('m3', 'menu'));
+    press('ArrowRight');
+    expect(focused()).toBe(cell('m1', 'name'));
+    press('ArrowLeft');
+    expect(focused()).toBe(cell('m3', 'menu'));
+  });
+
+  it('a full lap comes back to where it began', () => {
+    const { focus, press, focused, cell } = renderPanel();
+    focus(cell('m2', 'run'));
+    for (let i = 0; i < ALL.length; i++) press('ArrowDown');
+    expect(focused()).toBe(cell('m2', 'run'));
   });
 
   it('the tab stop follows focus round the end', () => {
     const { focus, press, cell, tabStops } = renderPanel();
-    focus(cell('m3', 'run'));
+    focus(cell('m3', 'menu'));
     press('ArrowDown');
-    expect(tabStops()).toEqual([cell('m1', 'run')]);
+    expect(tabStops()).toEqual([cell('m1', 'name')]);
   });
 
-  it('Left and Right cycle along the row', () => {
+  it('Home and End go to the first and last control of the list', () => {
     const { focus, press, focused, cell } = renderPanel();
-    focus(cell('m1', 'name'));
-    press('ArrowRight');
-    expect(focused()).toBe(cell('m1', 'run'));
-    press('ArrowRight');
-    expect(focused()).toBe(cell('m1', 'menu'));
-    press('ArrowRight');
-    expect(focused()).toBe(cell('m1', 'name'));
-    press('ArrowLeft');
-    expect(focused()).toBe(cell('m1', 'menu'));
-  });
-
-  it('a list of one macro holds still, and still keeps the arrows', () => {
-    const { focus, focused, cell } = renderPanel({ macros: MACROS.slice(0, 1) });
-    focus(cell('m1', 'name'));
-    expect(fireEvent.keyDown(focused(), { key: 'ArrowDown' })).toBe(false);
-    expect(fireEvent.keyDown(focused(), { key: 'ArrowUp' })).toBe(false);
-    expect(focused()).toBe(cell('m1', 'name'));
-  });
-
-  it('Up and Down keep the column', () => {
-    const { focus, press, focused, cell } = renderPanel();
-    focus(cell('m1', 'run'));
-    press('ArrowDown');
-    expect(focused()).toBe(cell('m2', 'run'));
-  });
-
-  it('Home and End go to the first and last macro', () => {
-    const { focus, press, focused, cell } = renderPanel();
-    focus(cell('m2', 'menu'));
+    focus(cell('m2', 'run'));
     press('End');
     expect(focused()).toBe(cell('m3', 'menu'));
     press('Home');
-    expect(focused()).toBe(cell('m1', 'menu'));
+    expect(focused()).toBe(cell('m1', 'name'));
   });
 
-  it('PageDown and PageUp move by more than one and STOP at the ends — they do not cycle', () => {
+  it('PageDown and PageUp move by MACROS, keep the control, and stop at the ends', () => {
     const { focus, press, focused, cell } = renderPanel();
+    focus(cell('m1', 'run'));
+    press('PageDown');
+    expect(focused()).toBe(cell('m3', 'run'));
+    press('PageDown'); // already on the last macro: does not cycle
+    expect(focused()).toBe(cell('m3', 'run'));
+    press('PageUp');
+    expect(focused()).toBe(cell('m1', 'run'));
+    press('PageUp');
+    expect(focused()).toBe(cell('m1', 'run'));
+  });
+
+  it('a single macro is still a sequence of three', () => {
+    const { focus, press, focused, cell } = renderPanel({ macros: MACROS.slice(0, 1) });
     focus(cell('m1', 'name'));
-    press('PageDown');
-    expect(focused()).toBe(cell('m3', 'name'));
-    press('PageDown');
-    expect(focused()).toBe(cell('m3', 'name'));
-    press('PageUp');
-    expect(focused()).toBe(cell('m1', 'name'));
-    press('PageUp');
+    press('ArrowDown');
+    expect(focused()).toBe(cell('m1', 'run'));
+    press('ArrowDown');
+    press('ArrowDown');
     expect(focused()).toBe(cell('m1', 'name'));
   });
 

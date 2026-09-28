@@ -40,9 +40,9 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 **Location:** `packages/components/src/MacrosPanel/MacrosPanel.tsx` — ONE handler, `handleListKeyDown`, on the list container (not per row, not per button).
 
 **Handlers:**
-- **ArrowUp/Down** - Cycle through the macros (tab-groups profile only)
-- **Home/End, PageUp/PageDown** - Jump within the list; these stop at the ends
-- **ArrowLeft/Right** - Cycle along the row: name → Run → menu (tab-groups profile only)
+- **ArrowRight/Down, ArrowLeft/Up** - Step through ONE sequence of every control in the list (name → Run → menu → next macro's name), cycling. Down ≡ Right, Up ≡ Left, as in a toolbar (tab-groups profile only)
+- **Home/End** - First / last control of the list
+- **PageUp/PageDown** - Move by a screenful of macros; these stop at the ends
 - **Enter** on the name - Open the macro in the editor, immediately
 - **Cmd/Ctrl+Enter** - Run on the project
 - **F2** - Rename
