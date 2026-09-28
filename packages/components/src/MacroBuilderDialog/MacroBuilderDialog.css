@@ -1,6 +1,6 @@
 /* MacroBuilderDialog — MuseScore "New score" layout for building a
-   macro. One window, three columns: searchable command list (with a
-   category dropdown on top) | transfer → | step list with ↑/↓ + trash
+   macro. One window, three columns: searchable command list |
+   transfer → | step list with ↑/↓ + trash
    on the flanks. Shares the SelectCommandDialog's search language and
    the MacroEditorDialog's header/footer language. */
 
@@ -34,8 +34,8 @@
   overflow: hidden;
 }
 
-/* One header band across both panes: this half holds the category
-   dropdown + search, the other half the macro name */
+/* One header band across both panes: this half holds the search, the
+   other half the macro name */
 .macro-builder__commands-header {
   height: 44px;
   padding: 8px;
@@ -141,52 +141,7 @@
   cursor: col-resize;
 }
 
-/* Category dropdown — a standalone filled control beside the search.
-   Fixed width so it never jumps as the label changes (sized to "All
-   commands"; longer names ellipsize and read in full in the menu). */
-.macro-builder__scope {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 8px;
-  width: 124px;
-  height: 28px;
-  flex-shrink: 0;
-  background: var(--button-ghost-hover, rgba(194, 196, 207, 0.5));
-  border: none;
-  border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 16px;
-  color: var(--text-primary, #14151a);
-  cursor: pointer;
-}
-
-.macro-builder__scope:hover {
-  background: rgba(194, 196, 207, 0.7);
-}
-
-.macro-builder__scope:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
-}
-
-.macro-builder__scope-label {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.macro-builder__scope .icon {
-  flex-shrink: 0;
-  color: var(--text-secondary, #575861);
-}
-
-/* Search — its own bordered field, filling the rest of the band */
+/* Search — its own bordered field, filling this half of the band */
 .macro-builder__search-container {
   flex: 1;
   min-width: 0;

@@ -58,7 +58,9 @@ export interface MacroBuilderDialogProps {
   os?: 'macos' | 'windows';
 }
 
-const ALL_CATEGORIES = 'all';
+/** The commands pane's width until the user drags the splitter, and
+ *  what a double-click on it returns to. */
+const DEFAULT_COMMANDS_PANE_WIDTH = 280;
 
 /** Display-only prettifying of a step's serialized parameters:
  *  `Start="0", End="1"` reads as `Start: 0, End: 1`. The raw string
@@ -70,8 +72,9 @@ function prettyParameters(parameters: string): string {
 /**
  * MacroBuilderDialog — the MuseScore-"New score" layout for building a
  * macro. Everything lives in ONE window: a searchable command list
- * (Instruments) with a category dropdown on top, and the macro's step
- * list (Your score), joined by a transfer button. The search field is
+ * (Instruments) and the macro's step list (Your score), joined by a
+ * transfer button. Search is the only filter — there is no category
+ * picker (removed 2026-09-28). The search field is
  * always visible, so adding a step never opens a picker window — type,
  * Enter (or select and →, or double-click) and the step lands in the
  * macro. Steps are added with default parameters and edited in place
@@ -98,10 +101,9 @@ export function MacroBuilderDialog({
   os = 'macos',
 }: MacroBuilderDialogProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedCategory, setSelectedCategory] = React.useState<string>(ALL_CATEGORIES);
-  // Multi-select, in click order. DELIBERATELY not keyed to the current
-  // scope — a selection built in one category survives switching to
-  // another, so one → can add commands spanning categories.
+  // Multi-select, in click order. DELIBERATELY not keyed to what the
+  // search currently shows — a selection survives a new search, so one
+  // → can add commands found by several searches.
   const [selectedCommandIds, setSelectedCommandIds] = React.useState<string[]>([]);
   const anchorCommandIdRef = React.useRef<string | null>(null);
   // What the selection was before the last plain click collapsed it —
@@ -114,9 +116,6 @@ export function MacroBuilderDialog({
   const [macroMenuPosition, setMacroMenuPosition] = React.useState({ x: 0, y: 0 });
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
   const stepListRef = React.useRef<HTMLDivElement>(null);
-  // Category scope menu (the segment inside the search field)
-  const [categoryMenuOpen, setCategoryMenuOpen] = React.useState(false);
-  const [categoryMenuPosition, setCategoryMenuPosition] = React.useState({ x: 0, y: 0 });
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   // Per-row ⋯ menu: which step's menu is open, and where
   const [stepMenuIndex, setStepMenuIndex] = React.useState<number | null>(null);
@@ -127,7 +126,7 @@ export function MacroBuilderDialog({
   // something to scroll
   const [stepsOverflowing, setStepsOverflowing] = React.useState(false);
   // Splitter: explicit commands-pane width once the user drags (null =
-  // the spec's 322px default). Session-scoped, survives macro switches.
+  // DEFAULT_COMMANDS_PANE_WIDTH). Session-scoped, survives macro switches.
   const [commandsPaneWidth, setCommandsPaneWidth] = React.useState<number | null>(null);
   const [splitterActive, setSplitterActive] = React.useState(false);
   const columnsRef = React.useRef<HTMLDivElement>(null);
@@ -136,7 +135,6 @@ export function MacroBuilderDialog({
   // Reset transient state whenever a different macro opens
   React.useEffect(() => {
     setSearchQuery('');
-    setSelectedCategory(ALL_CATEGORIES);
     setSelectedCommandIds([]);
     setEditingStepIndex(null);
     setDraggedIndex(null);
@@ -154,35 +152,15 @@ export function MacroBuilderDialog({
     return () => observer.disconnect();
   }, [macro?.steps.length, isOpen]);
 
-  // Rail order = first appearance in the data (same rule as the picker)
-  const categories = React.useMemo(() => {
-    const seen: string[] = [];
-    for (const cmd of availableCommands) {
-      if (!seen.includes(cmd.category)) seen.push(cmd.category);
-    }
-    return seen;
-  }, [availableCommands]);
-
   const query = searchQuery.trim().toLowerCase();
-  const matching = React.useMemo(
+  const visible = React.useMemo(
     () => (query ? availableCommands.filter((cmd) => cmd.name.toLowerCase().includes(query)) : availableCommands),
     [availableCommands, query],
   );
 
-  const visible = selectedCategory === ALL_CATEGORIES
-    ? matching
-    : matching.filter((cmd) => cmd.category === selectedCategory);
-
   if (!macro) return null;
 
   const stepCount = macro.steps.length;
-
-  const pickCategory = (category: string) => {
-    setSelectedCategory(category);
-    setCategoryMenuOpen(false);
-    // The scope is part of the search control — hand focus straight back
-    searchInputRef.current?.focus();
-  };
 
   // Click = replace selection; Cmd/Ctrl+click = toggle; Shift+click =
   // extend from the anchor through the visible list.
@@ -279,7 +257,7 @@ export function MacroBuilderDialog({
 
   // Splitter between the commands pane and the rest: drag sets an
   // explicit width (clamped so neither pane collapses); double-click
-  // resets to the even split. Self-cleaning document listeners.
+  // resets to the default. Self-cleaning document listeners.
   const handleSplitterMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -416,32 +394,14 @@ export function MacroBuilderDialog({
         className="macro-builder"
       >
         <div ref={columnsRef} className={`macro-builder__columns${splitterActive ? ' macro-builder__columns--resizing' : ''}`}>
-          {/* Command pane — the mockup's "Instruments" pane with the
-              category scope folded into the search field */}
+          {/* Command pane — the mockup's "Instruments" pane */}
           <div
             ref={commandsPaneRef}
             className="macro-builder__commands-pane"
-            style={{ flex: `0 0 ${commandsPaneWidth ?? 322}px` }}
+            style={{ flex: `0 0 ${commandsPaneWidth ?? DEFAULT_COMMANDS_PANE_WIDTH}px` }}
           >
             {/* One header band, two jobs: this half filters the list */}
             <div className="macro-builder__commands-header">
-              <button
-                type="button"
-                className="macro-builder__scope"
-                aria-haspopup="menu"
-                aria-expanded={categoryMenuOpen}
-                aria-label="Filter by category"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setCategoryMenuPosition({ x: rect.left, y: rect.bottom + 2 });
-                  setCategoryMenuOpen(true);
-                }}
-              >
-                <span className="macro-builder__scope-label">
-                  {selectedCategory === ALL_CATEGORIES ? 'All commands' : selectedCategory}
-                </span>
-                <Icon name="caret-down" size={12} />
-              </button>
               <div className="macro-builder__search-container">
                 <Icon name="search" size={16} />
                 <input
@@ -538,7 +498,7 @@ export function MacroBuilderDialog({
           </div>
 
           {/* Splitter — drag to resize the commands pane; double-click
-              resets the even split */}
+              resets it to the default width */}
           <div
             className="macro-builder__splitter"
             role="separator"
@@ -700,28 +660,6 @@ export function MacroBuilderDialog({
           />
         </ContextMenu>
       )}
-
-      <ContextMenu
-        isOpen={categoryMenuOpen}
-        onClose={() => setCategoryMenuOpen(false)}
-        x={categoryMenuPosition.x}
-        y={categoryMenuPosition.y}
-      >
-        <ContextMenuItem
-          label="All commands"
-          checked={selectedCategory === ALL_CATEGORIES}
-          onClick={() => pickCategory(ALL_CATEGORIES)}
-        />
-        <ContextMenuItem isDivider label="" />
-        {categories.map((category) => (
-          <ContextMenuItem
-            key={category}
-            label={category}
-            checked={selectedCategory === category}
-            onClick={() => pickCategory(category)}
-          />
-        ))}
-      </ContextMenu>
 
       <ContextMenu
         isOpen={macroMenuOpen}

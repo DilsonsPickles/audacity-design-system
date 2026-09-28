@@ -52,10 +52,12 @@ const openStepMenu = (container: HTMLElement, stepNumber: number) => {
 describe('MacroBuilderDialog', () => {
   it('renders the command list, header band and step cards in one window', () => {
     const { container } = renderBuilder();
-    // The commands header holds the category dropdown + search side by side
+    // The commands header holds the search, and nothing else: there is
+    // no category picker (removed 2026-09-28)
     const header = container.querySelector('.macro-builder__commands-header');
-    expect(header?.querySelector('.macro-builder__scope')?.textContent).toContain('All commands');
     expect(header?.querySelector('input[aria-label="Search commands"]')).toBeTruthy();
+    expect(header?.querySelector('[aria-haspopup="menu"]')).toBeNull();
+    expect(header?.textContent).not.toContain('All commands');
     // The steps pane's header carries the macro's name; below it, the
     // table head labels the columns
     expect(container.querySelector('.macro-builder__steps-header')?.textContent).toContain('Podcast prep');
@@ -74,16 +76,6 @@ describe('MacroBuilderDialog', () => {
       (el) => el.querySelector('.macro-builder__step-number')?.textContent,
     );
     expect(ordinals).toEqual(['1', '2', '3']);
-  });
-
-  it('narrows the command list from the scope menu, showing the scope on the field', () => {
-    const { container } = renderBuilder();
-    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__scope')!);
-    const clipsItem = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
-      .find((el) => el.textContent?.trim() === 'Clips')!;
-    fireEvent.click(clipsItem);
-    expect(commandRows(container).map((el) => el.textContent)).toEqual(['Split', 'Join selected clips']);
-    expect(container.querySelector('.macro-builder__scope')?.textContent).toContain('Clips');
   });
 
   it('search filters across all categories', () => {
@@ -111,17 +103,16 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Fade In', 'Select all']);
   });
 
-  it('Cmd+click builds a multi-selection spanning categories, added in click order', () => {
+  it('Cmd+click builds a multi-selection across searches, added in click order', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
-    // Pick one command, then narrow to another category and pick two more
-    fireEvent.click(commandRows(container)[4]); // Fade In (Effects)
-    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__scope')!);
-    const clipsItem = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
-      .find((el) => el.textContent?.trim() === 'Clips')!;
-    fireEvent.click(clipsItem);
+    // Pick one command, then search for others and pick two more
+    fireEvent.click(commandRows(container)[4]); // Fade In
+    fireEvent.change(searchInput(container), { target: { value: 'spl' } });
+    expect(commandRows(container).map((el) => el.textContent)).toEqual(['Split']);
     fireEvent.click(commandRows(container)[0], { metaKey: true }); // Split
-    fireEvent.click(commandRows(container)[1], { metaKey: true }); // Join selected clips
+    fireEvent.change(searchInput(container), { target: { value: 'join' } });
+    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Join selected clips
     // The selection bar shows how many its Add will append
     expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('3 selected');
     fireEvent.click(selectionAdd(container)!);
@@ -159,13 +150,11 @@ describe('MacroBuilderDialog', () => {
     expect(selectionAdd(container)!.disabled).toBe(true);
   });
 
-  it('the selection bar survives scoping away from a hidden selection, and Clear empties it', () => {
+  it('the selection bar survives searching away from a hidden selection, and Clear empties it', () => {
     const { container } = renderBuilder();
-    fireEvent.click(commandRows(container)[4]); // Fade In (Effects)
-    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__scope')!);
-    const clipsItem = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
-      .find((el) => el.textContent?.trim() === 'Clips')!;
-    fireEvent.click(clipsItem);
+    fireEvent.click(commandRows(container)[4]); // Fade In
+    fireEvent.change(searchInput(container), { target: { value: 'split' } });
+    expect(commandRows(container).map((el) => el.textContent)).toEqual(['Split']);
     expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
     fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__selection-clear')!);
     expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('0 selected');
@@ -180,6 +169,12 @@ describe('MacroBuilderDialog', () => {
     const selected = Array.from(container.querySelectorAll('.macro-builder__command-item--selected'))
       .map((el) => el.textContent);
     expect(selected).toEqual(['Next clip']);
+  });
+
+  it('the commands pane opens 280px wide', () => {
+    const { container } = renderBuilder();
+    const pane = container.querySelector<HTMLElement>('.macro-builder__commands-pane')!;
+    expect(pane.style.flex).toBe('0 0 280px');
   });
 
   it('the splitter drag resizes the commands pane; double-click resets it', () => {
@@ -204,8 +199,8 @@ describe('MacroBuilderDialog', () => {
     fireEvent.mouseUp(document);
     expect(pane.style.flex).toBe('0 0 180px');
     fireEvent.doubleClick(splitter);
-    // Reset returns to the spec's 322px default
-    expect(pane.style.flex).toBe('0 0 322px');
+    // Reset returns to the default
+    expect(pane.style.flex).toBe('0 0 280px');
   });
 
   it('Enter on a selected command row adds it — or the whole selection it belongs to', () => {
