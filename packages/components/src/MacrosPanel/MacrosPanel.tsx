@@ -205,9 +205,9 @@ function MacroRow({
  *
  * KEYBOARD (docs/accessibility-architecture.md → Macro manager). Two Tab
  * stops under the tab-groups profile: the header actions, then the list.
- * The list is one sequence, as a toolbar is — Right and Down step on
- * through every macro's name, Run and menu in turn, Left and Up back,
- * cycling — and remembers where you were. Enter
+ * The list is a grid — Up/Down move between macros, Left/Right between
+ * a macro's name, Run and menu, all cycling — and remembers where you
+ * were. Enter
  * presses what has focus; F2 renames, Shift+F10 opens the row's menu,
  * Cmd/Ctrl+Enter runs on the project, from anywhere in the row. Under
  * the flat profile every control is its own Tab stop and the arrows do
@@ -375,46 +375,43 @@ export function MacrosPanel({
     // Arrow navigation belongs to the tab-groups profile only
     if (isFlat) return;
     if (command || e.altKey || e.shiftKey) return; // chords stay the app's
-    // The list is ONE sequence, as a toolbar is: every control of every
-    // macro in reading order — name, Run, menu, then the next macro's
-    // name. Right and Down both step forward through it, Left and Up
-    // back (user decision 2026-09-28: Down must do what Right does, as
-    // in every other tab group; an earlier grid had Down change macro
-    // and Right move along the row).
-    //
-    // Every key below is consumed even when it goes nowhere (a single
-    // control, an end with wrapping off): the app must not take over.
-    const count = macros.length * CELLS.length;
-    const at = index * CELLS.length + CELLS.indexOf(cell);
-    const goTo = (position: number) => {
+    // Every one of these is consumed even when it goes nowhere (a list
+    // of one, an edge with wrapping off): the app must not take over.
+    const goToRow = (next: number) => {
       consume();
-      const to = Math.max(0, Math.min(count - 1, position));
-      if (to === at) return;
-      focusCell(macros[Math.floor(to / CELLS.length)].id, CELLS[to % CELLS.length]);
+      const clamped = Math.max(0, Math.min(macros.length - 1, next));
+      if (clamped !== index) focusCell(macros[clamped].id, cell);
     };
-    const step = (by: number) => goTo(wrap ? (at + by + count) % count : at + by);
-    /** A screenful of MACROS, landing on the same control of the row. */
-    const page = (direction: number) => {
+    /** One step, cycling: past the last macro is the first. */
+    const stepRow = (step: number) => {
+      const count = macros.length;
+      goToRow(wrap ? (index + step + count) % count : index + step);
+    };
+    const stepCell = (step: number) => {
+      consume();
+      const at = CELLS.indexOf(cell);
+      const to = wrap
+        ? (at + step + CELLS.length) % CELLS.length
+        : Math.max(0, Math.min(CELLS.length - 1, at + step));
+      if (to !== at) focusCell(id, CELLS[to]);
+    };
+    const pageSize = () => {
       const list = listRef.current;
       const rowHeight = row.getBoundingClientRect().height;
-      const rows = !list || rowHeight <= 0
-        ? 10
-        : Math.max(1, Math.floor(list.clientHeight / rowHeight) - 1);
-      const toRow = Math.max(0, Math.min(macros.length - 1, index + direction * rows));
-      goTo(toRow * CELLS.length + CELLS.indexOf(cell));
+      if (!list || rowHeight <= 0) return 10;
+      return Math.max(1, Math.floor(list.clientHeight / rowHeight) - 1);
     };
     switch (e.key) {
-      case 'ArrowRight':
-      case 'ArrowDown': step(1); break;
-      case 'ArrowLeft':
-      case 'ArrowUp': step(-1); break;
-      case 'Home': goTo(0); break;
-      case 'End': goTo(count - 1); break;
-      // Sixty controls is a long walk. Paging moves by macros and stops
-      // at the ends: a jump that wrapped would land somewhere you could
-      // not predict.
-      case 'PageDown': page(1); break;
-      case 'PageUp': page(-1); break;
+      case 'ArrowDown': stepRow(1); break;
+      case 'ArrowUp': stepRow(-1); break;
+      case 'Home': goToRow(0); break;
+      case 'End': goToRow(macros.length - 1); break;
+      // Paging stops at the ends: a jump that wrapped would land
+      // somewhere you could not predict
+      case 'PageDown': goToRow(index + pageSize()); break;
+      case 'PageUp': goToRow(index - pageSize()); break;
+      case 'ArrowRight': stepCell(1); break;
+      case 'ArrowLeft': stepCell(-1); break;
       default: break;
     }
   };

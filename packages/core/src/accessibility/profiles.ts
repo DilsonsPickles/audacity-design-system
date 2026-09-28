@@ -97,9 +97,9 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       'macros-panel-actions': { tabindex: 'roving', arrows: true, wrap: true },
       'macros-panel-actions-end': { tabindex: 'roving', arrows: true, wrap: true },
 
-      // Macro manager — the macro list: ONE tab stop, and one sequence
-      // like a toolbar's. Every arrow walks it (Down does what Right
-      // does) through each macro's name, Run and menu, and CYCLES.
+      // Macro manager — the macro list: ONE tab stop, arrows move
+      // through it as a grid (rows x name / Run / menu) and CYCLE, as
+      // every other group does: Down from the last macro is the first.
       'macros-panel': { tabindex: 'roving', arrows: true, wrap: true },
       'macros-panel-end': { tabindex: 'roving', arrows: true, wrap: true },
 

@@ -174,33 +174,22 @@ dock's **tab** ("Macro manager" — see Dock panel tabs below), the
 `role="toolbar"`), then the **macro list**. The list is ONE stop however
 many macros it holds.
 
-The list is ONE sequence, as a toolbar is: every control of every macro
-in reading order — name, Run, menu, then the next macro's name. All four
-arrows walk it, and Down does what Right does (user decision 2026-09-28,
-for consistency with every other tab group; an earlier version was a
-grid in which Down changed macro and Right moved along the row).
-
-Each row is a `role="group"` named after its macro, holding three real
-buttons — the name (which opens the macro), Run, and the menu. The row
-is never itself a button: a button that contains buttons is invalid, and
-hides Run and the menu from a screen reader.
+The list is a grid. Each row is a `role="group"` named after its macro,
+holding three real buttons — the name (which opens the macro), Run, and
+the menu. The row is never itself a button: a button that contains
+buttons is invalid, and hides Run and the menu from a screen reader.
 
 | Key | Action |
 |-----|--------|
-| ArrowRight / ArrowDown | Next control. Cycles: past the last macro's menu is the first macro's name |
-| ArrowLeft / ArrowUp | Previous control. Cycles |
-| Home / End | First / last control of the list |
-| PageUp / PageDown | A screenful of MACROS, keeping the same control. Stops at the ends — a jump that wrapped would land somewhere unpredictable |
+| ArrowUp / ArrowDown | Previous / next macro, same column. Cycles: Down from the last macro is the first |
+| ArrowLeft / ArrowRight | Along the row: name → Run → menu. Cycles |
+| Home / End | First / last macro |
+| PageUp / PageDown | A screenful of macros. Stops at the ends — a jump that wrapped would land somewhere unpredictable |
 | Enter | Presses what has focus. On the name it opens the macro **at once** — the mouse's double-click wait does not apply |
-| Cmd/Ctrl+Enter | Run the macro on the project, from any control of the row |
-| F2 | Rename, from any control of the row |
-| Shift+F10 / Menu key | Open the row's menu, from any control of the row |
+| Cmd/Ctrl+Enter | Run the macro on the project, from any cell |
+| F2 | Rename, from any cell |
+| Shift+F10 / Menu key | Open the row's menu, from any cell |
 | Tab / Shift+Tab | Leave the list |
-
-Three controls a macro makes the walk long: the next macro is three
-presses away. PageUp/PageDown move by macros, and the row shortcuts act
-on a macro from wherever in its row focus is, so reaching Run or the
-menu is never required.
 
 **The list remembers where you were.** Its tab stop is kept by macro ID
 and is NOT reset when focus leaves, unlike the toolbar hook: returning
