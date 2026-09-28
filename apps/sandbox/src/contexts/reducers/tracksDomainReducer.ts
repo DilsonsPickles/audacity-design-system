@@ -1,6 +1,7 @@
 import type { TracksState, TracksAction, Track } from '../TracksContext';
 import { TRACK_COLOR_PALETTE, dissolveDegenerateGroups } from './shared';
-import { folderChildIndices, isFolderTrack, moveTrackWithFolders, normalizeFolders } from '../../utils/trackFolders';
+import { ancestorFolderIndices } from '@audacity-ui/core';
+import { folderDescendantIndices, isFolderTrack, moveTrackWithFolders, normalizeFolders } from '../../utils/trackFolders';
 
 /** Remap a time-selection's scope after tracks are removed or
  *  reordered. `remap` returns the new index for an old index, or null
@@ -22,16 +23,35 @@ function remapTimeSelectionTracks(
 /** Wrap `indices` (non-folder tracks) in a NEW folder row — the one
  *  implementation behind both "Group selected tracks" and the row
  *  menu's "Create group", so a group of one and a group of many are
- *  built identically. The folder inserts where the first member was;
- *  members move to sit CONTIGUOUSLY below it, preserving their
- *  relative order (the folder-family invariant every other folder
- *  operation relies on). Members already in a folder are re-parented,
- *  and a folder emptied by that dissolves (normalize). */
+ *  built identically. Members move to sit CONTIGUOUSLY below the new
+ *  row, preserving their relative order.
+ *
+ *  The new group is created WHERE ITS MEMBERS LIVE: inside the deepest
+ *  group that contains all of them. Tracks that share a group become a
+ *  SUB-group of it — that is how nesting is made from the menu — and
+ *  tracks from different groups meet in whatever contains them both,
+ *  which is the root when nothing does. A folder emptied by the move
+ *  dissolves (normalize). */
 function groupTracks(state: TracksState, indices: readonly number[]): TracksState {
-  const eligible = [...indices]
+  const eligible = [...new Set(indices)]
     .filter((i) => state.tracks[i] && state.tracks[i].type !== 'folder')
     .sort((a, b) => a - b);
   if (eligible.length === 0) return state;
+
+  // Each member's chain of folders, outermost first; what they all
+  // share is the new group's home.
+  const chains = eligible.map((i) => ancestorFolderIndices(state.tracks, i).reverse());
+  let shared = chains[0];
+  for (const chain of chains) {
+    let k = 0;
+    while (k < shared.length && k < chain.length && shared[k] === chain[k]) k += 1;
+    shared = shared.slice(0, k);
+  }
+  const parent = shared.length > 0 ? state.tracks[shared[shared.length - 1]] : undefined;
+  // It goes where the first member was — unless that member sits deeper,
+  // inside a sub-group: then BEFORE that sub-group, never in the middle
+  // of it.
+  const anchor = chains[0].length > shared.length ? chains[0][shared.length] : eligible[0];
 
   const folderId = state.tracks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
   const folderCount = state.tracks.filter((t) => t.type === 'folder').length;
@@ -41,25 +61,71 @@ function groupTracks(state: TracksState, indices: readonly number[]): TracksStat
     type: 'folder',
     clips: [],
     collapsed: false,
+    ...(parent ? { folderId: parent.id } : null),
   };
 
   const eligibleSet = new Set(eligible);
   const children = eligible.map((i) => ({ ...state.tracks[i], folderId }));
   const rest = state.tracks.filter((_, i) => !eligibleSet.has(i));
-  // Insert position: count remaining tracks before the first child
-  const insertAt = state.tracks.slice(0, eligible[0]).filter((_, i) => !eligibleSet.has(i)).length;
+  // Insert position: count remaining tracks before the anchor
+  const insertAt = state.tracks.slice(0, anchor).filter((_, i) => !eligibleSet.has(i)).length;
   const newTracks = [...rest];
   newTracks.splice(insertAt, 0, folder, ...children);
+  const tracks = normalizeFolders(newTracks);
+  // By id: a folder dissolving above shifts every index below it.
+  const indexOf = (id: number) => tracks.findIndex((t) => t.id === id);
 
   return {
     ...state,
-    tracks: normalizeFolders(newTracks),
+    tracks,
     // Focus the FIRST MEMBER, not the folder row: a folder header is
     // never focusable (utils/trackFocus.ts — tracksReducer would
     // redirect it anyway; saying it here keeps the intent readable).
-    focusedTrackIndex: insertAt + 1,
+    focusedTrackIndex: indexOf(children[0].id),
     // The members stay selected at their new, contiguous indices
-    selectedTrackIndices: children.map((_, k) => insertAt + 1 + k),
+    selectedTrackIndices: children.map((c) => indexOf(c.id)),
+    timeSelection: null,
+  };
+}
+
+/** Remove a folder ROW and hand its direct children to the group
+ *  AROUND it (or free them, at the top level) — ungrouping one level
+ *  of a nest must not throw its tracks out of every other level. */
+function withoutFolderRow(tracks: readonly Track[], index: number): Track[] {
+  const folder = tracks[index];
+  return tracks
+    .filter((_, i) => i !== index)
+    .map((t) => {
+      if (t.folderId !== folder.id) return t;
+      if (folder.folderId !== undefined) return { ...t, folderId: folder.folderId };
+      const { folderId: _dropped, ...rest } = t;
+      return rest as Track;
+    });
+}
+
+/** Move the row at `fromIndex` (a folder takes its subtree) to the END
+ *  of `parent`'s subtree — or, with `parent` null, nowhere: callers
+ *  pass the slot. Shared by the menu's Add to / Remove from group. */
+function moveToSlot(
+  state: TracksState,
+  fromIndex: number,
+  /** Insert before this row of the list WITHOUT the moved block */
+  slotIn: (rest: readonly Track[], inRest: (i: number) => number) => number,
+  parentId: number | null,
+): TracksState {
+  const source = state.tracks[fromIndex];
+  const size = source.type === 'folder' ? 1 + folderDescendantIndices(state.tracks, fromIndex).length : 1;
+  const inBlock = (i: number) => i >= fromIndex && i < fromIndex + size;
+  const rest = state.tracks.filter((_, i) => !inBlock(i));
+  const slot = slotIn(rest, (i) => (i < fromIndex ? i : i - size));
+  const toIndex = slot <= fromIndex ? slot : slot + size - 1;
+  const moved = moveTrackWithFolders(state.tracks, fromIndex, toIndex, { parentId });
+  const tracks = normalizeFolders(moved.tracks);
+  return {
+    ...state,
+    tracks,
+    focusedTrackIndex: tracks.findIndex((t) => t.id === source.id),
+    selectedTrackIndices: [],
     timeSelection: null,
   };
 }
@@ -204,8 +270,12 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
 
     case 'DELETE_TRACK': {
       // Deleting a FOLDER row is an ungroup: the children survive in
-      // place (normalizeFolders drops their dangling folderId).
-      const newTracks = normalizeFolders(state.tracks.filter((_, index) => index !== action.payload));
+      // place, handed to the group around it if there is one.
+      const newTracks = normalizeFolders(
+        isFolderTrack(state.tracks[action.payload])
+          ? withoutFolderRow(state.tracks, action.payload)
+          : state.tracks.filter((_, index) => index !== action.payload),
+      );
       const newFocused = newTracks.length === 0
         ? null
         : Math.min(action.payload, newTracks.length - 1);
@@ -285,12 +355,17 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
       // is not worth its edge cases for v1).
       if (isFolderTrack(state.tracks[fromIndex])) {
         // Shared with the drag preview (utils/trackFolders.ts) so the
-        // indicator can't promise a landing the move won't deliver
-        const { tracks: moved, landedIndex } = moveTrackWithFolders(state.tracks, fromIndex, toIndex);
+        // indicator can't promise a landing the move won't deliver.
+        // Normalized too: lifting a nested group out can empty the
+        // group it left.
+        const movedId = state.tracks[fromIndex].id;
+        const moved = normalizeFolders(
+          moveTrackWithFolders(state.tracks, fromIndex, toIndex, membership).tracks,
+        );
         return {
           ...state,
           tracks: moved,
-          focusedTrackIndex: landedIndex,
+          focusedTrackIndex: moved.findIndex((t) => t.id === movedId),
           selectedTrackIndices: [],
           timeSelection: null,
         };
@@ -319,11 +394,14 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
         if (fromIndex > toIndex && i >= toIndex && i < fromIndex) return i + 1;
         return i;
       });
+      const movedTrackId = state.tracks[fromIndex]?.id;
+      const normalized = normalizeFolders(newTracks);
       return {
         ...state,
-        tracks: normalizeFolders(newTracks),
-        // landedIndex, not toIndex: the bottom-slot sentinel is past the end
-        focusedTrackIndex: moved.landedIndex,
+        tracks: normalized,
+        // By id, not toIndex: the bottom-slot sentinel is past the end,
+        // and a folder dissolving above shifts everything below it
+        focusedTrackIndex: Math.max(0, normalized.findIndex((t) => t.id === movedTrackId)),
         selectedTrackIndices: newSelected,
         timeSelection: remapTimeSelectionTracks(state.timeSelection, (i) => {
           if (i === fromIndex) return toIndex;
@@ -343,13 +421,7 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
     case 'UNGROUP_FOLDER': {
       const folder = state.tracks[action.payload.trackIndex];
       if (!folder || folder.type !== 'folder') return state;
-      const newTracks = state.tracks
-        .filter((_, i) => i !== action.payload.trackIndex)
-        .map((t) => {
-          if (t.folderId !== folder.id) return t;
-          const { folderId: _dropped, ...rest } = t;
-          return rest as Track;
-        });
+      const newTracks = withoutFolderRow(state.tracks, action.payload.trackIndex);
       return {
         ...state,
         tracks: newTracks,
@@ -364,60 +436,58 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
     }
 
     case 'ADD_TRACK_TO_FOLDER': {
-      // Menu mirror of dragging a track into a group: the track moves
-      // to the END of that folder's children, keeping the family
-      // contiguous (the invariant every folder operation relies on).
+      // Menu mirror of dragging a row into a group: it moves to the
+      // END of that group's subtree, keeping every family contiguous.
+      // A row may be a group itself — that nests it — but never into
+      // itself or anything inside it.
       const { trackIndex, folderId } = action.payload;
       const track = state.tracks[trackIndex];
-      if (!track || track.type === 'folder' || track.folderId === folderId) return state;
-      const next = [...state.tracks];
-      const [moved] = next.splice(trackIndex, 1);
-      const folderIdx = next.findIndex((t) => t.type === 'folder' && t.id === folderId);
-      if (folderIdx === -1) return state;
-      let insert = folderIdx + 1;
-      while (insert < next.length && next[insert].folderId === folderId) insert += 1;
-      next.splice(insert, 0, { ...moved, folderId });
-      return {
-        ...state,
-        tracks: normalizeFolders(next),
-        focusedTrackIndex: insert,
-        selectedTrackIndices: [],
-        timeSelection: null,
-      };
+      const folderIdx = state.tracks.findIndex((t) => t.type === 'folder' && t.id === folderId);
+      if (!track || folderIdx === -1 || folderIdx === trackIndex || track.folderId === folderId) return state;
+      if (ancestorFolderIndices(state.tracks, folderIdx).includes(trackIndex)) return state;
+      return moveToSlot(
+        state,
+        trackIndex,
+        (rest, inRest) => {
+          const home = inRest(folderIdx);
+          return home + 1 + folderDescendantIndices(rest, home).length;
+        },
+        folderId,
+      );
     }
 
     case 'REMOVE_TRACK_FROM_FOLDER': {
-      // Leaves the group and parks just BELOW the family, so the
-      // remaining children stay contiguous.
+      // Steps ONE level out: it leaves its group for the group around
+      // that (or the root), parking just BELOW the family it left so
+      // what remains stays contiguous.
       const { trackIndex } = action.payload;
       const track = state.tracks[trackIndex];
       const folderId = track?.folderId;
       if (!track || folderId === undefined) return state;
-      const next = [...state.tracks];
-      const [moved] = next.splice(trackIndex, 1);
-      const folderIdx = next.findIndex((t) => t.type === 'folder' && t.id === folderId);
-      let insert = folderIdx === -1 ? next.length : folderIdx + 1;
-      while (insert < next.length && next[insert].folderId === folderId) insert += 1;
-      const { folderId: _left, ...rest } = moved;
-      next.splice(insert, 0, rest as Track);
-      return {
-        ...state,
-        tracks: normalizeFolders(next),
-        focusedTrackIndex: insert,
-        selectedTrackIndices: [],
-        timeSelection: null,
-      };
+      const folderIdx = state.tracks.findIndex((t) => t.type === 'folder' && t.id === folderId);
+      if (folderIdx === -1) return state;
+      return moveToSlot(
+        state,
+        trackIndex,
+        (rest, inRest) => {
+          const home = inRest(folderIdx);
+          return home + 1 + folderDescendantIndices(rest, home).length;
+        },
+        state.tracks[folderIdx].folderId ?? null,
+      );
     }
 
     case 'DUPLICATE_FOLDER': {
-      // Copy the whole family below the original. Clips get fresh ids
-      // but carry `sourceClipId` so the audio engine still finds the
-      // original's buffer (duplicate ids would collide in its player
-      // map and one copy would go silent).
+      // Copy the whole SUBTREE below the original, nested groups and
+      // all. Every row gets a fresh id and the copies point at each
+      // other, not at the originals. Clips get fresh ids but carry
+      // `sourceClipId` so the audio engine still finds the original's
+      // buffer (duplicate ids would collide in its player map and one
+      // copy would go silent).
       const { trackIndex } = action.payload;
       const folder = state.tracks[trackIndex];
       if (!folder || folder.type !== 'folder') return state;
-      const childIndices = folderChildIndices(state.tracks, trackIndex);
+      const family = [trackIndex, ...folderDescendantIndices(state.tracks, trackIndex)];
 
       let nextTrackId = state.tracks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
       let nextClipId = state.tracks.reduce(
@@ -425,19 +495,18 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
         0,
       ) + 1;
       const folderCount = state.tracks.filter((t) => t.type === 'folder').length;
-      const newFolderId = nextTrackId++;
-      const folderCopy: Track = {
-        ...folder,
-        id: newFolderId,
-        name: `Group ${folderCount + 1}`,
-        clips: [],
-      };
-      const childCopies = childIndices.map((i) => {
+      const newIds = new Map<number, number>();
+      family.forEach((i) => newIds.set(state.tracks[i].id, nextTrackId++));
+      const copies: Track[] = family.map((i) => {
         const src = state.tracks[i];
+        const isRoot = i === trackIndex;
         return {
           ...src,
-          id: nextTrackId++,
-          folderId: newFolderId,
+          id: newIds.get(src.id) as number,
+          // The copy stays beside the original, in the same group;
+          // everything inside it follows the copy.
+          ...(isRoot ? null : { folderId: newIds.get(src.folderId as number) }),
+          ...(isRoot ? { name: `Group ${folderCount + 1}` } : null),
           clips: src.clips.map((c) => ({
             ...c,
             id: nextClipId++,
@@ -446,9 +515,9 @@ export function tracksDomainReducer(state: TracksState, action: TracksAction): T
         };
       });
 
-      const insertAt = Math.max(trackIndex, ...childIndices, trackIndex) + 1;
+      const insertAt = Math.max(...family) + 1;
       const next = [...state.tracks];
-      next.splice(insertAt, 0, folderCopy, ...childCopies);
+      next.splice(insertAt, 0, ...copies);
       return {
         ...state,
         tracks: next,

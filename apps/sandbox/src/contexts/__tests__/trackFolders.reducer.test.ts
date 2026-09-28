@@ -45,7 +45,7 @@ describe('GROUP_SELECTED_TRACKS', () => {
     expect(next.tracks.filter((t) => t.type === 'folder')).toHaveLength(1);
   });
 
-  it('GROUP_TRACKS on a track already in a folder moves it to a new one', () => {
+  it('GROUP_TRACKS on a track already in a folder makes a SUB-group inside it', () => {
     const state = makeState([
       makeTrack(10, { type: 'folder' }),
       makeTrack(2, { folderId: 10 }),
@@ -56,6 +56,10 @@ describe('GROUP_SELECTED_TRACKS', () => {
     expect(folders).toHaveLength(2);
     const moved = next.tracks.find((t) => t.id === 3)!;
     expect(moved.folderId).not.toBe(10);
+    // ...and the new group lives where its member did (nesting, 2026-09-28)
+    const sub = next.tracks.find((t) => t.id === moved.folderId)!;
+    expect(sub.type).toBe('folder');
+    expect(sub.folderId).toBe(10);
   });
 
   it('is a no-op with nothing eligible selected', () => {

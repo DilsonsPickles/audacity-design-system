@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCollapseTransition, type SpectrogramScale } from '@audacity-ui/components';
-import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING } from '@audacity-ui/core';
+import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, type GroupRowLayout } from '@audacity-ui/core';
 import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';
@@ -14,14 +14,12 @@ import {
 } from '../../utils/clipKeyboardEdit';
 import { pendingClipMoveResolution } from '../../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrackIds';
-import { calculateTrackYOffset } from '../../utils/trackLayout';
 import {
   FOLDER_ROW_HEIGHT,
   GROUP_END_PAD,
-  effectiveTrackHeight,
   effectiveTrackMuted,
   effectiveTrackSoloed,
-  folderChildIndices,
+  folderDescendantIndices,
   isHiddenByCollapse,
 } from '../../utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../../constants/canvas';
@@ -36,6 +34,9 @@ export interface TrackDragPreview {
   ghostIndices: number[];
   /** Whether the landing puts the block inside a folder */
   indented: boolean;
+  /** The PREVIEWED list's group layout, by original track index — the
+   *  same one the panel column draws from (see useTrackPanelHandlers) */
+  layout?: Array<GroupRowLayout | undefined>;
 }
 
 export interface CanvasTrackListProps {
@@ -166,11 +167,52 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
     tracks.map((t) => t.id),
   );
   const TWEEN = `${GROUP_COLLAPSE_MS}ms ${GROUP_COLLAPSE_EASING}`;
-  // Where a group's members sit when the group is closed: just under
-  // its header. Hiding rows tween to it; revealing rows grow from it.
-  const collapsedTopOf = (folderId: number | undefined): number => {
-    const fi = tracks.findIndex((t) => t.type === 'folder' && t.id === folderId);
-    return fi < 0 ? 0 : calculateTrackYOffset(fi, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT) + FOLDER_ROW_HEIGHT + TRACK_GAP;
+  // ONE walk lays out every row and every group's field, from the same
+  // group layout the panel column draws from (core's computeGroupLayout;
+  // while a reorder drag is live, the PREVIEWED list's, in previewed
+  // order). Memoized on the tracks' identity, which playhead ticks keep.
+  const ownLayout = React.useMemo(() => computeGroupLayout(tracks, DEFAULT_TRACK_HEIGHT), [tracks]);
+  const previewLayout = props.dragPreview?.layout;
+  const previewOrder = props.dragPreview?.order;
+  const layout: ReadonlyArray<GroupRowLayout | undefined> = previewLayout ?? ownLayout;
+  const { tops, fieldBottoms } = React.useMemo(() => {
+    const order = previewOrder ?? layout.map((_row, i) => i);
+    const tops = new Map<number, number>();
+    const fieldBottoms = new Map<number, number>();
+    // Open groups the walk is currently inside, outermost first
+    const open: Array<{ index: number; depth: number }> = [];
+    let y = TOP_GAP;
+    for (const ti of order) {
+      const row = layout[ti];
+      if (!row) continue;
+      tops.set(ti, y); // a hidden row's top is where it would appear
+      if (row.height === 0) continue;
+      while (open.length > 0 && open[open.length - 1].depth >= row.depth) open.pop();
+      const bottom = y + row.height;
+      // Every group this row is in reaches at least to here — and, if
+      // it ENDS here, on past the floors of the groups inside it
+      // (floors stack innermost first) to its own.
+      for (const group of open) {
+        fieldBottoms.set(group.index, bottom + GROUP_END_PAD * (row.depth - group.depth));
+      }
+      if (row.isHeader && !row.collapsed) open.push({ index: ti, depth: row.depth });
+      y = bottom + TRACK_GAP + row.closing * GROUP_END_PAD;
+    }
+    return { tops, fieldBottoms };
+  }, [layout, previewOrder]);
+
+  // Where a revealed row grows from: just under the header of the group
+  // that OPENED — the nearest group around it whose own header was
+  // already on screen (an inner header that is itself being revealed
+  // is part of what is unfolding, not where it unfolds from).
+  const revealTopOf = (index: number): number => {
+    const ancestors = ownLayout[index]?.ancestors ?? [];
+    for (let k = ancestors.length - 1; k >= 0; k--) {
+      if (!collapse.revealing.has(ancestors[k])) {
+        return (tops.get(ancestors[k]) ?? 0) + FOLDER_ROW_HEIGHT + TRACK_GAP;
+      }
+    }
+    return 0;
   };
   const collapseStyle = (index: number): React.CSSProperties => {
     if (collapse.hiding.has(index)) {
@@ -180,63 +222,43 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
       return {
         overflow: 'hidden',
         animation: `canvas-row-expand ${TWEEN}`,
-        ['--row-from-top' as string]: `${collapsedTopOf(tracks[index]?.folderId)}px`,
+        ['--row-from-top' as string]: `${revealTopOf(index)}px`,
       } as React.CSSProperties;
     }
     // Everything else slides to its new place while a group is moving.
     return collapse.animating ? { transition: `top ${TWEEN}` } : {};
   };
 
-  // While a reorder drag is live, stack the rows in previewed order so
-  // the canvas shows the landing exactly as the panel column does.
-  const previewOrder = props.dragPreview?.order;
-  const previewYOffsets = React.useMemo(() => {
-    if (!previewOrder) return null;
-    const map = new Map<number, number>();
-    let y = TOP_GAP;
-    for (const ti of previewOrder) {
-      const h = effectiveTrackHeight(tracks, ti, DEFAULT_TRACK_HEIGHT);
-      if (h === 0) continue;
-      map.set(ti, y);
-      y += h + TRACK_GAP;
-    }
-    return map;
-  }, [previewOrder, tracks]);
-
   return (
     <>
       {tracks.map((track, trackIndex) => {
-        // Folders v1: children of a collapsed folder render nowhere
-        // (still fully functional); the folder itself is a slim row.
-        // Hidden rows render nowhere — except mid-tween, when a row
-        // that just hid stays mounted so it can shrink away.
-        if (isHiddenByCollapse(tracks, trackIndex) && !collapse.hiding.has(trackIndex)) return null;
+        // Rows inside a collapsed group render nowhere (still fully
+        // functional) — except mid-tween, when a row that just hid
+        // stays mounted so it can shrink away. A row with no layout is
+        // one the previewed move dissolves.
+        const row = layout[trackIndex];
+        if (!row) return null;
+        if (row.hidden && isHiddenByCollapse(tracks, trackIndex) && !collapse.hiding.has(trackIndex)) return null;
         // A reorder drag lays the canvas out in the PREVIEWED order,
         // with the dragged rows ghosted in their landing spot — the
         // same thing the track control panel shows.
         const preview = props.dragPreview;
-        const yOffset = previewYOffsets
-          ? previewYOffsets.get(trackIndex) ?? 0
-          : calculateTrackYOffset(trackIndex, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
+        const yOffset = tops.get(trackIndex) ?? 0;
         const ghosted = preview?.ghostIndices.includes(trackIndex) ?? false;
         if (track.type === 'folder') {
-          const childIndices = folderChildIndices(tracks, trackIndex);
-          const childCount = childIndices.length;
+          // Tracks, not rows: a group holding a group of three holds
+          // three tracks.
+          const childCount = folderDescendantIndices(tracks, trackIndex)
+            .filter((i) => tracks[i].type !== 'folder').length;
           // The band is the whole family's FIELD, as the panel's is: from
-          // the header down to the floor under the last member. The lanes
-          // are opaque and sit on top, so the group colour shows through
-          // the gaps between them and in the floor — the canvas twin of
-          // the cards sitting on the strip. Collapsed (or while a reorder
-          // drag previews positions the model doesn't hold), it is the
-          // header strip alone. Always mounted, so a collapse/expand
-          // tweens its height along with the rows.
-          const lastChild = childIndices.length > 0 ? childIndices[childIndices.length - 1] : -1;
-          const familyHeight = !track.collapsed && lastChild >= 0 && !previewYOffsets
-            ? calculateTrackYOffset(lastChild, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT)
-              + effectiveTrackHeight(tracks, lastChild, DEFAULT_TRACK_HEIGHT)
-              + GROUP_END_PAD
-              - yOffset
-            : FOLDER_ROW_HEIGHT;
+          // the header down to the floor under its last visible row. The
+          // lanes are opaque and sit on top, so the group colour shows
+          // through the gaps between them and in the floor — the canvas
+          // twin of the cards sitting on the strip. A nested group's
+          // field lies on its parent's, which carries on past it to its
+          // own floor. Collapsed, it is the header strip alone. Always
+          // mounted, so a collapse/expand tweens its height with the rows.
+          const familyHeight = (fieldBottoms.get(trackIndex) ?? yOffset + FOLDER_ROW_HEIGHT) - yOffset;
           return (
             <div
               key={track.id}
@@ -261,7 +283,10 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                 // the divider. Outlined, the band read as a boxed
                 // control sitting in the canvas rather than a strip of
                 // it (user decision 2026-09-23).
-                background: 'rgba(0, 0, 0, 0.28)',
+                // A nested group's field LIGHTENS its parent's, as its
+                // strip does in the panel: each level has to separate
+                // from the one around it.
+                background: row.depth === 0 ? 'rgba(0, 0, 0, 0.28)' : 'rgba(255, 255, 255, 0.07)',
                 color: 'rgba(255, 255, 255, 0.75)',
                 fontSize: 12,
                 fontFamily: 'Inter, sans-serif',

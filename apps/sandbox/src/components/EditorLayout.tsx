@@ -1,4 +1,4 @@
-import { endsGroup, GROUP_END_PAD, FOLDER_ROW_HEIGHT } from '@audacity-ui/core';
+import { computeGroupLayout, GROUP_END_PAD, FOLDER_ROW_HEIGHT } from '@audacity-ui/core';
 import React from 'react';
 import type { SpectralSelection } from '../contexts/SpectralSelectionContext';
 import { Canvas } from './Canvas';
@@ -32,7 +32,7 @@ import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
 import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
-import { effectiveTrackHeight, effectiveTrackStride, trackDepth } from '../utils/trackFolders';
+import { ancestorFolders, effectiveTrackHeight, effectiveTrackStride, folderDescendantIndices, trackDepth } from '../utils/trackFolders';
 import { PopoutPanel } from './editor/PopoutPanel';
 import { useMacros } from '../contexts/MacrosContext';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
@@ -494,6 +494,24 @@ export function EditorLayout(props: EditorLayoutProps) {
     setTrackContextMenu,
   });
 
+  // Each row's place in its groups — ONE layout, read by the panel
+  // column and the ruler column here and recomputed identically by the
+  // canvas (CanvasTrackList), so no two columns can disagree about
+  // where a group ends.
+  const groupLayout = React.useMemo(() => computeGroupLayout(state.tracks, 114), [state.tracks]);
+  // Groups as the row menu names them. Nested groups carry their path
+  // ("Drums ▸ Kick"): two groups may share a name at different levels.
+  const groupChoices = React.useMemo(
+    () => state.tracks.flatMap((t, index) => (t.type !== 'folder'
+      ? []
+      : [{
+          index,
+          folderId: t.id,
+          name: [...ancestorFolders(state.tracks, index)].reverse().map((a) => a.name).concat(t.name).join(' ▸ '),
+        }])),
+    [state.tracks],
+  );
+
   // ---------------------------------------------------------------------
   // Canvas track-callback stabilization: these used to be inline JSX arrows
   // on <Canvas>, recreated on every EditorLayout render — which is every
@@ -701,10 +719,24 @@ export function EditorLayout(props: EditorLayoutProps) {
         <TrackControlSidePanel
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
           dragPreview={trackDragPreview}
+          // While a reorder drag is live the panel draws the PREVIEWED
+          // list's groups, as the canvas does — the landing's levels
+          // and floors, not the ones the rows started with.
+          groupLayout={trackDragPreview?.layout ?? groupLayout}
           groupMenu={{
-            groups: state.tracks
-              .filter((t) => t.type === 'folder')
-              .map((t) => ({ folderId: t.id, name: t.name })),
+            groups: groupChoices.map(({ folderId, name }) => ({ folderId, name })),
+            // A group can't join itself or anything inside it, and
+            // nothing is offered the group it is already in.
+            joinableFor: (i) => {
+              const row = state.tracks[i];
+              if (!row) return [];
+              const own = row.type === 'folder'
+                ? new Set([i, ...folderDescendantIndices(state.tracks, i)])
+                : null;
+              return groupChoices
+                .filter((g) => g.folderId !== row.folderId && !own?.has(g.index))
+                .map(({ folderId, name }) => ({ folderId, name }));
+            },
             groupOf: (i) => state.tracks[i]?.folderId,
             isFolderRow: (i) => state.tracks[i]?.type === 'folder',
             // "Create group" on a row that is part of the current track
@@ -725,10 +757,8 @@ export function EditorLayout(props: EditorLayoutProps) {
               // bespoke folder delete
               const folder = state.tracks[i];
               if (!folder) return;
-              const family = state.tracks.reduce<number[]>((acc, t, idx) => {
-                if (idx === i || t.folderId === folder.id) acc.push(idx);
-                return acc;
-              }, []);
+              // The whole subtree: groups inside it go with it
+              const family = [i, ...folderDescendantIndices(state.tracks, i)];
               dispatch({ type: 'DELETE_TRACKS', payload: family });
             },
             onAddToGroup: (i, folderId) =>
@@ -920,8 +950,8 @@ export function EditorLayout(props: EditorLayoutProps) {
                 } : undefined}
                 tabIndex={-1}
                 onFocusChange={(hasFocus) => onTrackPanelFocusChange(hasFocus, index)}
-                onDragReorderDrop={(clientY) => onTrackDragReorderDrop(clientY, index)}
-                onDragReorderMove={(clientY) => onTrackDragReorderMove(clientY, index)}
+                onDragReorderDrop={(clientY, clientX, startX) => onTrackDragReorderDrop(clientY, index, clientX, startX)}
+                onDragReorderMove={(clientY, clientX, startX) => onTrackDragReorderMove(clientY, index, clientX, startX)}
                 onDragReorderEnd={onTrackDragReorderEnd}
                 onReorderVertical={(direction) => onTrackReorderVertical(direction, index)}
                 onNavigateVertical={(direction, shiftKey) => onTrackPanelNavigateVertical(direction, shiftKey, index)}
@@ -1218,7 +1248,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                   id: track.id.toString(),
                   height: effectiveTrackHeight(state.tracks, index, 114),
                   naturalHeight: track.type === 'folder' ? FOLDER_ROW_HEIGHT : (track.height || 114),
-                  endPad: endsGroup(state.tracks, index, 114) ? GROUP_END_PAD : 0,
+                  endPad: (groupLayout[index]?.closing ?? 0) * GROUP_END_PAD,
                   selected: state.selectedTrackIndices.includes(index),
                   focused: state.focusedTrackIndex === index,
                   containerFocused: containerFocusedTrack === index,

@@ -7,6 +7,14 @@ import {
   getTrackRange,
   yToTrackIndex,
   trackIndexToY,
+  effectiveRowHeight,
+  groupsClosingAt,
+  rowGapAfter,
+  ancestorFolderIndices,
+  computeGroupLayout,
+  rowOffsets,
+  FOLDER_ROW_HEIGHT,
+  GROUP_END_PAD,
 } from '../coordinates';
 import type { TrackLike } from '../../types';
 
@@ -166,5 +174,103 @@ describe('yToTrackIndex with track folders', () => {
   it('trackIndexToY agrees with the same rule', () => {
     expect(trackIndexToY(1, folded, 2, 2, 114)).toBe(32);
     expect(trackIndexToY(2, folded, 2, 2, 114)).toBe(148);
+  });
+});
+
+describe('nested track groups', () => {
+  // [0] plain
+  // [1] Drums (folder 10)
+  // [2]   Kick (folder 20, in 10)
+  // [3]     kick in   (in 20)
+  // [4]     kick out  (in 20)
+  // [5]   snare       (in 10)
+  // [6] Bass (folder 30)
+  // [7]   bass di     (in 30)
+  // [8] plain
+  const tree = (over: Record<number, object> = {}) =>
+    [
+      { id: 1 },
+      { id: 10, type: 'folder' },
+      { id: 20, type: 'folder', folderId: 10 },
+      { id: 3, folderId: 20 },
+      { id: 4, folderId: 20 },
+      { id: 5, folderId: 10 },
+      { id: 30, type: 'folder' },
+      { id: 7, folderId: 30 },
+      { id: 8 },
+    ].map((t, i) => ({ ...t, ...(over[i] ?? {}) }));
+
+  it('ancestors are nearest first, to any depth', () => {
+    expect(ancestorFolderIndices(tree(), 3)).toEqual([2, 1]);
+    expect(ancestorFolderIndices(tree(), 2)).toEqual([1]);
+    expect(ancestorFolderIndices(tree(), 0)).toEqual([]);
+  });
+
+  it('a loop in the data ends the walk instead of hanging', () => {
+    const loop = [{ id: 10, type: 'folder', folderId: 20 }, { id: 20, type: 'folder', folderId: 10 }, { id: 1, folderId: 20 }];
+    expect(ancestorFolderIndices(loop, 2)).toEqual([1, 0]);
+  });
+
+  it('collapsing an OUTER group hides everything inside it, nested headers included', () => {
+    const t = tree({ 1: { collapsed: true } });
+    expect(effectiveRowHeight(t, 1, 100)).toBe(FOLDER_ROW_HEIGHT);
+    for (const i of [2, 3, 4, 5]) expect(effectiveRowHeight(t, i, 100)).toBe(0);
+    expect(effectiveRowHeight(t, 6, 100)).toBe(FOLDER_ROW_HEIGHT);
+  });
+
+  it('collapsing an INNER group hides only its own rows', () => {
+    const t = tree({ 2: { collapsed: true } });
+    expect(effectiveRowHeight(t, 2, 100)).toBe(FOLDER_ROW_HEIGHT);
+    expect(effectiveRowHeight(t, 3, 100)).toBe(0);
+    expect(effectiveRowHeight(t, 5, 100)).toBe(100);
+  });
+
+  it('floors: one per group ending under a row, stacking when nested groups end together', () => {
+    const t = tree();
+    expect(groupsClosingAt(t, 4, 100)).toBe(1); // kick out closes Kick; Drums goes on to snare
+    expect(groupsClosingAt(t, 5, 100)).toBe(1); // snare closes Drums
+    expect(groupsClosingAt(t, 3, 100)).toBe(0);
+    expect(groupsClosingAt(t, 7, 100)).toBe(1);
+    // Without snare, kick out is the last row of BOTH groups
+    const both = tree().filter((_r, i) => i !== 5);
+    expect(groupsClosingAt(both, 4, 100)).toBe(2);
+    expect(rowGapAfter(both, 4, 2, 100)).toBe(2 + 2 * GROUP_END_PAD);
+  });
+
+  it('a collapsed nested header closes its ANCESTORS, never itself', () => {
+    const t = tree({ 2: { collapsed: true } }).filter((_r, i) => i !== 5); // Kick collapsed, no snare
+    expect(groupsClosingAt(t, 2, 100)).toBe(1); // Drums ends under Kick's header
+    const top = tree({ 1: { collapsed: true } });
+    expect(groupsClosingAt(top, 1, 100)).toBe(0); // a collapsed top-level group has no floor
+  });
+
+  it('the one-pass layout agrees with the per-row rules on every row', () => {
+    for (const t of [tree(), tree({ 1: { collapsed: true } }), tree({ 2: { collapsed: true } }), tree().filter((_r, i) => i !== 5)]) {
+      const layout = computeGroupLayout(t, 100);
+      const ys = rowOffsets(layout, 2, 2);
+      t.forEach((_row, i) => {
+        expect(layout[i].height).toBe(effectiveRowHeight(t, i, 100));
+        expect(layout[i].closing).toBe(groupsClosingAt(t, i, 100));
+        expect(layout[i].depth).toBe(ancestorFolderIndices(t, i).length);
+        expect(ys[i]).toBe(trackIndexToY(i, t as never, 2, 2, 100));
+      });
+    }
+  });
+
+  it('layout names ancestors outermost first, and knows which headers open below', () => {
+    const layout = computeGroupLayout(tree({ 6: { collapsed: true } }), 100);
+    expect(layout[3].ancestors).toEqual([1, 2]);
+    expect(layout[1].opensBelow).toBe(true);
+    expect(layout[2].opensBelow).toBe(true);
+    expect(layout[6].opensBelow).toBe(false);
+    expect(layout[6].collapsed).toBe(true);
+    expect(layout[7].hidden).toBe(true);
+  });
+
+  it('a click resolves to the right row below stacked floors', () => {
+    const t = tree().filter((_r, i) => i !== 5); // kick out closes two groups
+    const y = trackIndexToY(5, t as never, 2, 2, 100); // Bass header
+    expect(yToTrackIndex(y + 1, t as never, 2, 2, 100)).toBe(5);
+    expect(yToTrackIndex(y - 1, t as never, 2, 2, 100)).not.toBe(5);
   });
 });

@@ -52,9 +52,9 @@
   overflow-x: hidden;
   overscroll-behavior: none;
   background: var(--tcsp-list-bg);
-  /* The left gutter is a named variable because the group header row
-     cancels it with a negative margin to run edge to edge — the two
-     values must stay in step (TrackControlSidePanel.tsx). */
+  /* The left gutter every row sits inside. TrackControlSidePanel.tsx
+     sets it inline: 8px inset + one 4px strip per level of group
+     nesting in use, so this is only the no-groups default. */
   --tcsp-list-gutter: 12px;
   /* Also a variable: rows inside a track group paint this gap in the
      group's colour so the family reads as one field, and the two

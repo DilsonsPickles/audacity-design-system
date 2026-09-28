@@ -122,6 +122,25 @@ hard cuts). Deliberately deferred, waiting on live feel / product calls:
 - **stretchFactor** — fade bake maps source time without stretch compensation,
   same as the envelope bake (parity kept deliberately).
 
+### Nested track groups — deferred tail (2026-09-28)
+Groups nest to any depth (model, reducer, drag, all three columns).
+Deliberately deferred:
+- **Landing inside a COLLAPSED group** marks that group's header and
+  lays the ghost out just under it, as if beside it. The row can't be
+  shown where it is going; a closed group has nowhere to show it.
+- **Cmd+Arrow steps row by row**, so a track leaving the last slot of an
+  inner group lands below the NEXT row of the outer one — it never rests
+  in "after the inner group, before the next row". The drag can (sideways
+  travel); the keyboard has no equivalent yet.
+- **The ruler column does not follow the reorder preview** (it never
+  did); it realigns on drop.
+- **Level colours hold after three levels** — deeper groups are told
+  apart by their strips only.
+- **The gutter jumps** when the deepest level in use changes (4px per
+  level, every row). Not tweened.
+- **Nested mute/solo is a plain cascade.** When folders become buses
+  this needs a decision: does an inner solo override an outer mute?
+
 ### Track folders v1 — deferred tail (2026-09-21)
 Organisational folders landed (flat array, `type: 'folder'` + `folderId`,
 collapse = derived zero height, mute/solo cascade, family drag, delete =

@@ -67,6 +67,10 @@ export interface ResizablePanelProps {
   wheelResize?: boolean;
   /** Right-click on the panel (the row's context menu) */
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** Painted BEHIND the content, as a sibling of it: decoration that
+   *  belongs to the row but must not be part of the resizable content
+   *  (a track group's level boxes — TrackControlSidePanel). */
+  underlay?: React.ReactNode;
 }
 
 export const ResizablePanel: React.FC<ResizablePanelProps> = ({
@@ -84,6 +88,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   style: externalStyle,
   wheelResize = false,
   onContextMenu,
+  underlay,
 }) => {
   const [height, setHeight] = useState(initialHeight);
   const [isResizing, setIsResizing] = useState(false);
@@ -427,6 +432,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         ...externalStyle,
       }}
     >
+      {underlay}
       <div
         className={`resizable-panel__content ${resizeCursor ? 'resizable-panel__content--resize-cursor' : ''}`}
         style={{

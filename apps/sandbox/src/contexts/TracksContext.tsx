@@ -1,4 +1,5 @@
 import { createContext, useContext, useReducer, ReactNode } from 'react';
+import type { MoveMembership } from '../utils/trackFolders';
 import type { CutMode } from '../utils/cutOperations';
 import type { Label as CoreLabel } from '@audacity-ui/core';
 import type { SpectrogramScale } from '@audacity-ui/components';
@@ -83,9 +84,9 @@ export interface Track {
   name: string;
   type?: 'audio' | 'label' | 'midi' | 'folder'; // Track type: audio (default), label, midi, or folder (organisational container row)
   color?: typeof TRACK_COLOR_PALETTE[number]; // Assigned at creation, persists across reorder
-  /** Track-ID of the folder this track belongs to (folders v1: one
-   *  nesting level — folders never carry a folderId). Children sit
-   *  contiguously below their folder row. */
+  /** Track-ID of the folder this row belongs to. Folder rows may
+   *  carry one too — groups nest, to any depth. A folder's whole
+   *  subtree sits contiguously below its row (utils/trackFolders.ts). */
   folderId?: number;
   /** Folder rows only: children hidden (zero effective height). */
   collapsed?: boolean;
@@ -333,7 +334,7 @@ export type TracksAction =
   | { type: 'REMOVE_MASTER_EFFECT'; payload: number }
   | { type: 'REORDER_MASTER_EFFECTS'; payload: { fromIndex: number; toIndex: number } }
   | { type: 'TOGGLE_ALL_MASTER_EFFECTS'; payload: boolean }
-  | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number; membership?: 'follow' | 'leave' } }
+  | { type: 'MOVE_TRACK'; payload: { fromIndex: number; toIndex: number; membership?: MoveMembership } }
   | { type: 'GROUP_SELECTED_TRACKS' }
   | { type: 'GROUP_TRACKS'; payload: { trackIndices: number[] } }
   | { type: 'UNGROUP_FOLDER'; payload: { trackIndex: number } }

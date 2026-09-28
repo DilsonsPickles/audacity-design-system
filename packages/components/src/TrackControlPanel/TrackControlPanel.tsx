@@ -55,7 +55,8 @@ export interface TrackControlPanelProps {
   /** Folder rows: collapsed state + chevron toggle (folders v1) */
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  /** Indent level for folder children (0 or 1 in v1) */
+  /** How many groups contain this row. Not drawn here: the row
+   *  wrapper paints one strip per level (TrackControlSidePanel). */
   indentLevel?: number;
   /** Where this row sits in its track group, if any. Drives the
    *  group's shared background: the family reads as ONE recessed
@@ -84,11 +85,13 @@ export interface TrackControlPanelProps {
    *  Y at drop; the host uses that to locate the target row and
    *  dispatch MOVE_TRACK. Only fires when the drag crosses the
    *  threshold — plain clicks stay clicks. */
-  onDragReorderDrop?: (clientY: number) => void;
+  /** `startX` is where the press began: sideways travel from there
+   *  picks the level when a slot could belong to several groups. */
+  onDragReorderDrop?: (clientY: number, clientX: number, startX: number) => void;
   /** Fired continuously while a reorder drag is active, so the host
    *  can preview where the row would land (and whether it would join
    *  or leave a folder). Cleared via onDragReorderEnd. */
-  onDragReorderMove?: (clientY: number) => void;
+  onDragReorderMove?: (clientY: number, clientX: number, startX: number) => void;
   /** Fired when the drag ends (drop or abort) — clear the preview. */
   onDragReorderEnd?: () => void;
   onTabOut?: () => void;
@@ -233,7 +236,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   // fires `onDragReorderDrop(clientY)` — the host resolves that Y
   // to a track index and dispatches MOVE_TRACK.
   const DRAG_REORDER_THRESHOLD = 6;
-  const dragReorderStartRef = React.useRef<{ y: number; active: boolean } | null>(null);
+  const dragReorderStartRef = React.useRef<{ x: number; y: number; active: boolean } | null>(null);
   const justDragReorderedRef = React.useRef(false);
   const [isDragReordering, setIsDragReordering] = React.useState(false);
 
@@ -248,18 +251,21 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     if (e.button !== 0) return;
     if (!onDragReorderDrop) return;
     if (isInteractiveTarget(e.target)) return;
-    dragReorderStartRef.current = { y: e.clientY, active: false };
+    dragReorderStartRef.current = { x: e.clientX, y: e.clientY, active: false };
   };
 
   React.useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const start = dragReorderStartRef.current;
       if (!start) return;
-      if (!start.active && Math.abs(e.clientY - start.y) > DRAG_REORDER_THRESHOLD) {
+      // Either axis starts it: sideways travel is how a row changes
+      // LEVEL where it stands (nested groups), so a drag that never
+      // moves vertically is still a drag.
+      if (!start.active && Math.hypot(e.clientX - start.x, e.clientY - start.y) > DRAG_REORDER_THRESHOLD) {
         start.active = true;
         setIsDragReordering(true);
       }
-      if (start.active) onDragReorderMove?.(e.clientY);
+      if (start.active) onDragReorderMove?.(e.clientY, e.clientX, start.x);
     };
     const onUp = (e: MouseEvent) => {
       const start = dragReorderStartRef.current;
@@ -269,7 +275,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
         setIsDragReordering(false);
         justDragReorderedRef.current = true;
         setTimeout(() => { justDragReorderedRef.current = false; }, 0);
-        onDragReorderDrop?.(e.clientY);
+        onDragReorderDrop?.(e.clientY, e.clientX, start.x);
         onDragReorderEnd?.();
       }
     };
@@ -636,37 +642,20 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
   const { theme } = useTheme();
 
-  // Only the group HEADER is dressed — it is the band that says
-  // "these belong together". Members are left completely alone so a
-  // grouped track is pixel-identical to an ungrouped one; the earlier
-  // card treatment (inset background + 4px radius) made membership
-  // look like a size change, which it is not.
-  // The header row is outdented through most of the panel list's left
-  // gutter (TrackControlSidePanel), stopping --tcsp-group-inset short
-  // of the panel edge. Whatever it gained comes back as left padding
-  // HERE, so the band widens while the chevron stays in line with the
-  // track content below it: a track's content sits at gutter + 8, the
-  // header's box starts at the inset, so the padding is the
-  // difference.
+  // A group is drawn by the ROW WRAPPER in TrackControlSidePanel, as
+  // one box per level behind the rows — nested groups need real boxes
+  // (each level has its own left edge, corners and floor), which a
+  // background on this element can't give. So the header only gets out
+  // of the way: clear, and as wide as its row. Members are left
+  // completely alone — a grouped track is pixel-identical to an
+  // ungrouped one.
   const groupContentStyle: React.CSSProperties | null =
     groupPosition === 'header'
       ? {
-          // Matches the family band painted by the row wrapper in
-          // TrackControlSidePanel — header and side strip are one
-          // continuous parent colour.
-          background: theme.background.trackHeader.group,
-          paddingLeft:
-            'calc(var(--tcsp-list-gutter, 12px) + 8px - var(--tcsp-group-inset, 8px))',
-          // This element paints the band edge to edge, over its wrapper,
-          // so it carries the family's corners too: LEFT side only, 4px —
-          // the right edge meets the canvas seam and stays square.
-          // Collapsed, the header is the whole shape and rounds both left
-          // corners.
-          borderRadius: isCollapsed ? '4px 0 0 4px' : '4px 0 0 0',
-          // .track-control-panel is a fixed 268px — the width of a
-          // track row inside the gutter. The header's wrapper is
-          // wider (it outdents through the gutter), so fill it
-          // rather than keeping a track's width.
+          background: 'transparent',
+          // .track-control-panel is a fixed 268px; the row narrows as
+          // the gutter widens for deeper nesting, so fill the row
+          // rather than keeping a fixed width.
           width: '100%',
         }
       : null;

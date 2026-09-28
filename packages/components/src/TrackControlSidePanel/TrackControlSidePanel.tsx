@@ -13,12 +13,26 @@ import { useTabOrder } from '../hooks/useTabOrder';
 import { useTheme } from '../ThemeProvider';
 import './TrackControlSidePanel.css';
 
+/** The fields of core's GroupRowLayout the panel draws from. */
+export interface TrackGroupRowLayout {
+  depth: number;
+  isHeader: boolean;
+  collapsed: boolean;
+  hidden: boolean;
+  closing: number;
+  opensBelow: boolean;
+}
+
 export interface TrackControlSidePanelProps {
   /** Track-folder items for the row's kebab menu (folders v1). The
    *  host supplies the model; this component only renders it. */
   groupMenu?: {
     /** Folders a track can be added to */
     groups: Array<{ folderId: number; name: string }>;
+    /** Groups nest: which groups THIS row may be added to. A group row
+     *  can't join itself or anything inside it, so the list depends on
+     *  the row. Falls back to `groups` when absent. */
+    joinableFor?: (trackIndex: number) => Array<{ folderId: number; name: string }>;
     /** The folder a track currently belongs to, if any */
     groupOf: (trackIndex: number) => number | undefined;
     /** True when the row is a folder header */
@@ -40,7 +54,19 @@ export interface TrackControlSidePanelProps {
    *  dragged rows ghosted in place, so the column simply shows the
    *  result. The host computes it with the same move helper the
    *  commit uses, so the preview can't differ from the drop. */
-  dragPreview?: { order: number[]; ghostIndices: number[]; indented: boolean } | null;
+  dragPreview?: {
+    order: number[];
+    ghostIndices: number[];
+    indented: boolean;
+    /** The landing is inside this COLLAPSED group: its header is marked */
+    intoCollapsed?: number | null;
+  } | null;
+
+  /** Each row's place in its groups, by track index (core's
+   *  `computeGroupLayout`; during a reorder drag, the PREVIEWED
+   *  list's). The panel draws groups from this and nothing else, so
+   *  it cannot disagree with the canvas about where a group ends. */
+  groupLayout?: Array<TrackGroupRowLayout | undefined>;
 
   /**
    * TrackControlPanel components
@@ -179,6 +205,7 @@ export interface TrackControlSidePanelProps {
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   children,
   dragPreview,
+  groupLayout,
   groupMenu,
   resizable = false,
   minWidth = 280,
@@ -389,109 +416,143 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   };
 
 
-  // Track groups read as a FULL-BLEED band, not a card: the header
-  // strip runs the panel's whole width, the parent's colour carries
-  // on down the left gutter beside the members (so the parent visibly
-  // WRAPS its children), and the members keep exactly the footprint
-  // they would have ungrouped.
+  // A track group is drawn as a BOX BEHIND its rows: a band across the
+  // header, a strip down the gutter beside every member, a floor under
+  // the last one. The rows sit on it untouched — grouping must never
+  // resize a track (user decision 2026-09-23); membership is a
+  // relationship, not a size change.
   //
-  // Grouping must never resize a track (user decision 2026-09-23).
-  // The earlier accordion inset the family by 6px and padded members
-  // by 5, so a grouped track rendered narrower than its ungrouped
-  // neighbour and the LAST member also lost 5px of content height to
-  // the well's padding (border-box). Membership is a relationship,
-  // not a size change — so the group is drawn with tone and a
-  // closing edge only.
-  // Mirrors --tcsp-list-gutter in TrackControlSidePanel.css — the
-  // left padding the rows sit inside, which the group header cancels.
-  const LIST_GUTTER = 'var(--tcsp-list-gutter, 12px)';
-  // Mirrors --tcsp-list-gap — the flex row gap a group's rows paint
-  // over so the family has no rail showing through it.
-  const LIST_GAP = 'var(--tcsp-list-gap, 2px)';
-  // How much of the gutter the family LEAVES on its left. The group
-  // outdents through the rest of it, so the band stops short of the
-  // panel edge instead of bleeding into it — a group is a container
-  // in the list, not a full-width divider across the chrome.
-  const GROUP_LEFT_INSET = 'var(--tcsp-group-inset, 8px)';
-  // What the family actually cancels: the gutter minus that inset.
-  const GROUP_OUTDENT = `calc(${LIST_GUTTER} - ${GROUP_LEFT_INSET})`;
+  // Groups NEST (2026-09-28), so there is one box per LEVEL, each
+  // starting one strip further right than the level around it:
+  //
+  //   x = inset                      level 1 (outermost)
+  //   x = inset + STRIP              level 2
+  //   x = inset + STRIP × (k − 1)    level k
+  //   x = gutter                     the rows — every row, grouped or not
+  //
+  // The gutter is as wide as the DEEPEST nesting in the project needs,
+  // for every row alike: rows all start on one line, whatever they are
+  // in. Each row paints its own slice of every box it is inside, and
+  // the slices meet because each reaches down to the next row.
+  const STRIP = GROUP_END_PAD; // side strip = floor: a group is wrapped evenly
+  const GROUP_LEFT_INSET = 8; // the band stops short of the panel edge
+  const LIST_GAP = 2; // mirrors --tcsp-list-gap
+  const levelsInUse = (groupLayout ?? []).reduce(
+    (max, row) => (row ? Math.max(max, row.depth + (row.isHeader ? 1 : 0)) : max),
+    0,
+  );
+  const listGutter = GROUP_LEFT_INSET + STRIP * Math.max(1, levelsInUse);
+  const GROUP_OUTDENT = listGutter - GROUP_LEFT_INSET;
+  // Level colours step from the group tone toward the card tone: each
+  // level must separate from the one around it AND from the cards on
+  // it. Deeper than three they hold — the strips still count the depth.
+  const levelColor = (level: number): string => {
+    const towardCard = level <= 1 ? 0 : level === 2 ? 35 : 60;
+    return towardCard === 0
+      ? theme.background.trackHeader.group
+      : `color-mix(in srgb, ${theme.background.trackHeader.group}, ${theme.background.trackHeader.idle} ${towardCard}%)`;
+  };
+  const isGrouped = (index: number): boolean => {
+    const row = groupLayout?.[index];
+    return !!row && (row.depth > 0 || row.isHeader);
+  };
+  /** Layout for a grouped row's wrapper. It outdents to where the
+   *  outermost box starts and pads the same back, so its CONTENT is
+   *  exactly where an ungrouped row's is — and its own box covers the
+   *  strips, which keeps them painted while a collapse tween clips it. */
   const groupWellStyle = (index: number): React.CSSProperties | null => {
-    if (!groupMenu) return null;
-    const isHeader = groupMenu.isFolderRow(index);
-    const folderId = isHeader ? undefined : groupMenu.groupOf(index);
-    if (!isHeader && folderId === undefined) return null;
-    const nextInSameGroup = !isHeader
-      && groupMenu.groupOf(index + 1) === folderId
-      && !groupMenu.isFolderRow(index + 1);
-    const isLast = !isHeader && !nextInSameGroup;
-    // A COLLAPSED group has no visible members (their heights are 0).
-    // Its header then sits in the list like any single row: nothing
-    // below it to continue into, and nothing to hang a floor under.
-    const collapsedHeader = isHeader && trackHeights[index + 1] === 0 && !collapse.hiding.has(index + 1);
-    // Only a last MEMBER carries the floor — never a header, so a
-    // group that is collapsed takes no more space than its own row.
-    // Mirrors core's endsGroup, which the canvas column reads.
-    const hasFloor = isLast;
-    const continues = !isLast && !collapsedHeader;
-    // The family's LEFT corners only, at 4px (user decision 2026-09-24):
-    // the right edge meets the canvas seam and stays square. A collapsed
-    // header is the whole shape, so it rounds top and bottom; a floor
-    // row rounds the bottom — its painted floor is a box-shadow, which
-    // follows the radius for free.
-    const R = 4;
+    const row = groupLayout?.[index];
+    if (!row || !isGrouped(index)) return null;
     return {
       boxSizing: 'border-box',
-      // ONE colour for the whole family, so the parent reads as
-      // wrapping its children: a band across the header and a strip
-      // continuing down the gutter beside every member. Its own
-      // token, because it has to separate from BOTH the track cards
-      // it wraps and the plain gutter an ungrouped track sits in —
-      // no shared surface token does both.
-      background: theme.background.trackHeader.group,
-      // The family outdents through most of the list's left gutter,
-      // stopping GROUP_LEFT_INSET short of the panel edge. Members
-      // then pad the remainder back on THIS wrapper, so their content
-      // returns to where an ungrouped track sits and only the
-      // parent's colour occupies the strip beside them.
-      marginLeft: `calc(-1 * ${GROUP_OUTDENT})`,
-      // Edges are INSET SHADOWS, never borders: a border is part of
-      // the box, so the closing edge that appears when a group
-      // collapses would shrink the header's content by 1px and the
-      // row would visibly resize on every toggle. Shadows paint
-      // without touching layout, so collapsed and expanded headers
-      // are the same size — and the last member keeps the full
-      // height of every other track.
-      //
-      // The OUTSET shadow paints BELOW this row in the group's own
-      // colour. Mid-family that fills the list's row gap, so the
-      // family is one unbroken field instead of cards separated by
-      // strips of the rail. On the row that CLOSES the family it fills
-      // the GROUP_END_PAD margin instead — the group's floor, which is
-      // what makes it look like it contains its children rather than
-      // merely sitting above them. Margin is outside the background,
-      // so without this the pad would just show rail: a wider gap, not
-      // a floor.
-      boxShadow: [
-        isHeader ? `inset 0 1px 0 ${theme.border.default}` : null,
-        hasFloor ? `0 ${GROUP_END_PAD}px 0 ${theme.background.trackHeader.group}` : null,
-        continues ? `0 ${LIST_GAP} 0 ${theme.background.trackHeader.group}` : null,
-      ]
-        .filter(Boolean)
-        .join(', ') || undefined,
-      // No padding on the header's wrapper: its CONTENT paints the
-      // band edge to edge, and TrackControlPanel re-adds the gutter
-      // to its own left padding so the chevron stays in line with
-      // the track content below.
-      ...(isHeader ? null : { paddingLeft: GROUP_OUTDENT }),
-      ...(isHeader ? { borderTopLeftRadius: R } : null),
-      ...(hasFloor || collapsedHeader ? { borderBottomLeftRadius: R } : null),
-      // A floor under the family. MARGIN, never padding: padding on a
-      // border-box row would eat the last track's content height, and
-      // grouping must not resize a track. The canvas column adds the
-      // identical space through core's rowGapAfter — if these two ever
-      // disagree the columns drift by this much per group.
-      ...(hasFloor ? { marginBottom: GROUP_END_PAD } : null),
+      position: 'relative',
+      // Its own stacking context, so the boxes (z-index −1) sit above
+      // the rail and below this row's content, and nowhere else.
+      isolation: 'isolate',
+      marginLeft: -GROUP_OUTDENT,
+      paddingLeft: GROUP_OUTDENT,
+      // Floors under the row: MARGIN, never padding — padding on a
+      // border-box row would eat the last track's content height. The
+      // canvas adds the identical space through core's rowGapAfter; if
+      // the two ever disagree the columns drift by this much per group.
+      ...(row.closing > 0 && !row.hidden ? { marginBottom: row.closing * GROUP_END_PAD } : null),
     };
+  };
+  /** The row's slice of every box it is inside, outermost first (so
+   *  inner levels paint over outer ones). */
+  const groupUnderlay = (index: number): React.ReactNode => {
+    const row = groupLayout?.[index];
+    if (!row || !isGrouped(index)) return null;
+    const R = 4; // LEFT corners only: the right edge meets the canvas seam
+    // A group that just collapsed keeps its open shape until its rows
+    // have finished shrinking away beneath it.
+    const stillClosing = row.isHeader && collapse.hiding.has(index + 1);
+    const boxes: React.ReactNode[] = [];
+    for (let level = 1; level <= row.depth; level++) {
+      // The innermost `closing` of the groups around this row end here.
+      const closes = !row.hidden && level > row.depth - row.closing;
+      // Floors stack innermost first, so an outer level reaches past
+      // every floor inside it. A level that carries on reaches the
+      // next row: past the floors that end here, and the row gap.
+      const reach = row.hidden
+        ? 0
+        : closes
+          ? GROUP_END_PAD * (row.depth - level + 1)
+          : GROUP_END_PAD * row.closing + LIST_GAP;
+      boxes.push(
+        <div
+          key={level}
+          data-group-level={level}
+          style={{
+            position: 'absolute',
+            left: STRIP * (level - 1),
+            right: 0,
+            top: 0,
+            bottom: -reach,
+            background: levelColor(level),
+            ...(closes ? { borderBottomLeftRadius: R } : null),
+          }}
+        />,
+      );
+    }
+    if (row.isHeader) {
+      const level = row.depth + 1;
+      const open = !row.hidden && (row.opensBelow || stillClosing);
+      boxes.push(
+        <div
+          key={level}
+          data-group-level={level}
+          data-group-header-box
+          style={{
+            position: 'absolute',
+            left: STRIP * (level - 1),
+            right: 0,
+            top: 0,
+            // Open, the band runs on into its first row. Closed, the
+            // header is the whole shape: no floor — a collapsed group
+            // takes no more room than its own row.
+            bottom: open ? -LIST_GAP : 0,
+            background: levelColor(level),
+            borderTopLeftRadius: R,
+            ...(open ? null : { borderBottomLeftRadius: R }),
+            // Edges are INSET SHADOWS, never borders: a border is part
+            // of the box, and would resize the row when it appears.
+            boxShadow: dragPreview?.intoCollapsed === index
+              ? `inset 0 0 0 2px ${theme.border.focus}`
+              : `inset 0 1px 0 ${theme.border.default}`,
+          }}
+        />,
+      );
+    }
+    return (
+      <div
+        aria-hidden
+        data-group-underlay
+        style={{ position: 'absolute', inset: 0, zIndex: -1, pointerEvents: 'none' }}
+      >
+        {boxes}
+      </div>
+    );
   };
 
   return (
@@ -557,7 +618,11 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         className="track-control-side-panel__list"
         ref={setListRef}
         onScroll={onScroll}
-        style={{ paddingBottom: `${bufferSpace}px` }}
+        style={{
+          paddingBottom: `${bufferSpace}px`,
+          // Read by the list's own padding rule (TrackControlSidePanel.css)
+          ['--tcsp-list-gutter' as string]: `${listGutter}px`,
+        } as React.CSSProperties}
         tabIndex={-1}
       >
         {(dragPreview?.order ?? childArray.map((_c, i) => i)).map((index, displayPos) => {
@@ -591,6 +656,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                 onContextMenu={(e) => handleRowContextMenu(index, e)}
                 style={{ height: rawHeight || 28, flexShrink: 0, ...groupWellStyle(index), ...ghostStyle, ...collapseStyle(index) }}
               >
+                {groupUnderlay(index)}
                 {cloneElement(child, {
                   ...child.props,
                   isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
@@ -616,6 +682,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               className={`track-control-side-panel__track ${isFocused ? 'track-control-side-panel__track--focused' : ''}`}
               onContextMenu={(e) => handleRowContextMenu(index, e)}
               style={{ ...groupWellStyle(index), ...ghostStyle, ...collapseStyle(index) }}
+              underlay={groupUnderlay(index)}
               isFirstPanel={displayPos === 0}
               wheelResize
               onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
@@ -674,6 +741,25 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                     handleMenuClose();
                   }}
                 />
+                {(groupMenu.joinableFor?.(idx) ?? []).map((g) => (
+                  <ContextMenuItem
+                    key={`add-to-${g.folderId}`}
+                    label={`Add to ${g.name}`}
+                    onClick={() => {
+                      groupMenu.onAddToGroup(idx, g.folderId);
+                      handleMenuClose();
+                    }}
+                  />
+                ))}
+                {groupMenu.groupOf(idx) !== undefined && (
+                  <ContextMenuItem
+                    label="Remove from group"
+                    onClick={() => {
+                      groupMenu.onRemoveFromGroup(idx);
+                      handleMenuClose();
+                    }}
+                  />
+                )}
                 <ContextMenuItem
                   label="Ungroup"
                   onClick={() => {
@@ -692,7 +778,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             );
           }
           const current = groupMenu.groupOf(idx);
-          const joinable = groupMenu.groups.filter((g) => g.folderId !== current);
+          const joinable = (groupMenu.joinableFor?.(idx) ?? groupMenu.groups).filter((g) => g.folderId !== current);
           return (
             <>
               <ContextMenuItem
