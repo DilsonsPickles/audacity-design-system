@@ -181,10 +181,10 @@ buttons is invalid, and hides Run and the menu from a screen reader.
 
 | Key | Action |
 |-----|--------|
-| ArrowUp / ArrowDown | Previous / next macro, same column. Holds at the ends (no wrap) |
-| ArrowLeft / ArrowRight | Along the row: name → Run → menu. Holds at the ends |
+| ArrowUp / ArrowDown | Previous / next macro, same column. Cycles: Down from the last macro is the first |
+| ArrowLeft / ArrowRight | Along the row: name → Run → menu. Cycles |
 | Home / End | First / last macro |
-| PageUp / PageDown | A screenful of macros |
+| PageUp / PageDown | A screenful of macros. Stops at the ends — a jump that wrapped would land somewhere unpredictable |
 | Enter | Presses what has focus. On the name it opens the macro **at once** — the mouse's double-click wait does not apply |
 | Cmd/Ctrl+Enter | Run the macro on the project, from any cell |
 | F2 | Rename, from any cell |
@@ -214,8 +214,10 @@ from every other control that is not a text field:
 - **Shift / Cmd / Alt + arrows** are the app's chords.
 
 Every key the panel DOES use is stopped from reaching the app's
-document-level shortcuts (`stopPropagation`), including at the list's
-edges — otherwise ArrowUp on the first macro would move the track focus.
+document-level shortcuts (`stopPropagation`), including when it goes
+nowhere (a list of one macro, PageUp at the top) — otherwise the key
+would move the track focus instead. Whether the arrows cycle is the
+profile's `wrap` for the group, as for every other group.
 
 **Placement.** `placement="start"` (docked left) uses the groups before
 the tracks; `placement="end"` (docked right or bottom) their `-end`

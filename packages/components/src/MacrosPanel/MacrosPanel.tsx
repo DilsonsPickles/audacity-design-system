@@ -206,7 +206,8 @@ function MacroRow({
  * KEYBOARD (docs/accessibility-architecture.md → Macro manager). Two Tab
  * stops under the tab-groups profile: the header actions, then the list.
  * The list is a grid — Up/Down move between macros, Left/Right between
- * a macro's name, Run and menu — and remembers where you were. Enter
+ * a macro's name, Run and menu, all cycling — and remembers where you
+ * were. Enter
  * presses what has focus; F2 renames, Shift+F10 opens the row's menu,
  * Cmd/Ctrl+Enter runs on the project, from anywhere in the row. Under
  * the flat profile every control is its own Tab stop and the arrows do
@@ -240,6 +241,8 @@ export function MacrosPanel({
   const groupSuffix = placement === 'end' ? '-end' : '';
   const listGroupId = `macros-panel${groupSuffix}`;
   const listTabIndex = isFlat ? 0 : activeProfile.config.tabOrder?.[listGroupId] ?? 0;
+  // Whether the arrows cycle is the profile's call, as for every group
+  const wrap = activeProfile.config.tabGroups[listGroupId]?.wrap ?? true;
 
   const listRef = React.useRef<HTMLDivElement>(null);
   const actionsRef = React.useRef<HTMLDivElement>(null);
@@ -372,15 +375,25 @@ export function MacrosPanel({
     // Arrow navigation belongs to the tab-groups profile only
     if (isFlat) return;
     if (command || e.altKey || e.shiftKey) return; // chords stay the app's
+    // Every one of these is consumed even when it goes nowhere (a list
+    // of one, an edge with wrapping off): the app must not take over.
     const goToRow = (next: number) => {
-      consume(); // at an edge too: the list holds, the app does not take over
+      consume();
       const clamped = Math.max(0, Math.min(macros.length - 1, next));
       if (clamped !== index) focusCell(macros[clamped].id, cell);
     };
-    const goToCell = (step: number) => {
+    /** One step, cycling: past the last macro is the first. */
+    const stepRow = (step: number) => {
+      const count = macros.length;
+      goToRow(wrap ? (index + step + count) % count : index + step);
+    };
+    const stepCell = (step: number) => {
       consume();
-      const next = CELLS[CELLS.indexOf(cell) + step];
-      if (next) focusCell(id, next);
+      const at = CELLS.indexOf(cell);
+      const to = wrap
+        ? (at + step + CELLS.length) % CELLS.length
+        : Math.max(0, Math.min(CELLS.length - 1, at + step));
+      if (to !== at) focusCell(id, CELLS[to]);
     };
     const pageSize = () => {
       const list = listRef.current;
@@ -389,14 +402,16 @@ export function MacrosPanel({
       return Math.max(1, Math.floor(list.clientHeight / rowHeight) - 1);
     };
     switch (e.key) {
-      case 'ArrowDown': goToRow(index + 1); break;
-      case 'ArrowUp': goToRow(index - 1); break;
+      case 'ArrowDown': stepRow(1); break;
+      case 'ArrowUp': stepRow(-1); break;
       case 'Home': goToRow(0); break;
       case 'End': goToRow(macros.length - 1); break;
+      // Paging stops at the ends: a jump that wrapped would land
+      // somewhere you could not predict
       case 'PageDown': goToRow(index + pageSize()); break;
       case 'PageUp': goToRow(index - pageSize()); break;
-      case 'ArrowRight': goToCell(1); break;
-      case 'ArrowLeft': goToCell(-1); break;
+      case 'ArrowRight': stepCell(1); break;
+      case 'ArrowLeft': stepCell(-1); break;
       default: break;
     }
   };

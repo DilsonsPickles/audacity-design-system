@@ -127,30 +127,58 @@ describe('MacrosPanel keyboard — Tab stops (tab-groups profile)', () => {
 });
 
 describe('MacrosPanel keyboard — moving around the list', () => {
-  it('Up and Down move between macros, holding at the ends', () => {
+  it('Up and Down cycle through the macros', () => {
     const { focus, press, focused, cell } = renderPanel();
     focus(cell('m1', 'name'));
     press('ArrowDown');
     expect(focused()).toBe(cell('m2', 'name'));
     press('ArrowDown');
-    press('ArrowDown'); // already last
+    expect(focused()).toBe(cell('m3', 'name'));
+    press('ArrowDown'); // past the last: round to the first
+    expect(focused()).toBe(cell('m1', 'name'));
+    press('ArrowUp'); // and back: before the first is the last
     expect(focused()).toBe(cell('m3', 'name'));
     press('ArrowUp');
-    press('ArrowUp');
-    press('ArrowUp'); // already first
-    expect(focused()).toBe(cell('m1', 'name'));
+    expect(focused()).toBe(cell('m2', 'name'));
   });
 
-  it('Left and Right move along the row, holding at the ends', () => {
+  it('holding Down goes round the whole list and comes back to where it began', () => {
+    const { focus, press, focused, cell } = renderPanel();
+    focus(cell('m2', 'name'));
+    const visited: string[] = [];
+    for (let i = 0; i < MACROS.length; i++) {
+      press('ArrowDown');
+      visited.push(focused().closest<HTMLElement>('[data-macro-id]')!.dataset.macroId!);
+    }
+    expect(visited).toEqual(['m3', 'm1', 'm2']);
+  });
+
+  it('the tab stop follows focus round the end', () => {
+    const { focus, press, cell, tabStops } = renderPanel();
+    focus(cell('m3', 'run'));
+    press('ArrowDown');
+    expect(tabStops()).toEqual([cell('m1', 'run')]);
+  });
+
+  it('Left and Right cycle along the row', () => {
     const { focus, press, focused, cell } = renderPanel();
     focus(cell('m1', 'name'));
-    press('ArrowLeft');
-    expect(focused()).toBe(cell('m1', 'name'));
     press('ArrowRight');
     expect(focused()).toBe(cell('m1', 'run'));
     press('ArrowRight');
-    press('ArrowRight');
     expect(focused()).toBe(cell('m1', 'menu'));
+    press('ArrowRight');
+    expect(focused()).toBe(cell('m1', 'name'));
+    press('ArrowLeft');
+    expect(focused()).toBe(cell('m1', 'menu'));
+  });
+
+  it('a list of one macro holds still, and still keeps the arrows', () => {
+    const { focus, focused, cell } = renderPanel({ macros: MACROS.slice(0, 1) });
+    focus(cell('m1', 'name'));
+    expect(fireEvent.keyDown(focused(), { key: 'ArrowDown' })).toBe(false);
+    expect(fireEvent.keyDown(focused(), { key: 'ArrowUp' })).toBe(false);
+    expect(focused()).toBe(cell('m1', 'name'));
   });
 
   it('Up and Down keep the column', () => {
@@ -169,16 +197,20 @@ describe('MacrosPanel keyboard — moving around the list', () => {
     expect(focused()).toBe(cell('m1', 'menu'));
   });
 
-  it('PageDown and PageUp move by more than one and stop at the ends', () => {
+  it('PageDown and PageUp move by more than one and STOP at the ends — they do not cycle', () => {
     const { focus, press, focused, cell } = renderPanel();
     focus(cell('m1', 'name'));
     press('PageDown');
     expect(focused()).toBe(cell('m3', 'name'));
+    press('PageDown');
+    expect(focused()).toBe(cell('m3', 'name'));
+    press('PageUp');
+    expect(focused()).toBe(cell('m1', 'name'));
     press('PageUp');
     expect(focused()).toBe(cell('m1', 'name'));
   });
 
-  it('keeps every key it uses from the app, even at an edge', () => {
+  it('keeps every key it uses from the app', () => {
     // The app's shortcuts listen on the document: arrows there move the
     // playhead and the track focus, Home/End jump the playhead.
     const { focus, focused, cell } = renderPanel();
