@@ -43,6 +43,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **ArrowUp/Down** - Cycle through the macros (tab-groups profile only)
 - **Home/End, PageUp/PageDown** - Jump within the list; these stop at the ends
 - **ArrowLeft/Right** - Cycle along the row: name → Run → menu (tab-groups profile only)
+- Down and Right are deliberately DIFFERENT here, unlike a toolbar (user decision 2026-09-28) — do not make one match the other
 - **Enter** on the name - Open the macro in the editor, immediately
 - **Cmd/Ctrl+Enter** - Run on the project
 - **F2** - Rename

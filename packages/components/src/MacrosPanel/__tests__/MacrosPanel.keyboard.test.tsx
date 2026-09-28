@@ -160,6 +160,27 @@ describe('MacrosPanel keyboard — moving around the list', () => {
     expect(tabStops()).toEqual([cell('m1', 'run')]);
   });
 
+  it('Down and Right are different moves: down the list, along the row', () => {
+    // Unlike a toolbar, where they are the same key (user decision
+    // 2026-09-28, after a single-sequence version was tried)
+    const { focus, press, focused, cell } = renderPanel();
+    focus(cell('m1', 'name'));
+    press('ArrowDown');
+    expect(focused()).toBe(cell('m2', 'name'));
+    focus(cell('m1', 'name'));
+    press('ArrowRight');
+    expect(focused()).toBe(cell('m1', 'run'));
+  });
+
+  it('Right never leaves the macro it is on', () => {
+    const { focus, press, focused, cell } = renderPanel();
+    focus(cell('m2', 'name'));
+    for (let i = 0; i < 7; i++) {
+      press('ArrowRight');
+      expect(focused().closest<HTMLElement>('[data-macro-id]')!.dataset.macroId).toBe('m2');
+    }
+  });
+
   it('Left and Right cycle along the row', () => {
     const { focus, press, focused, cell } = renderPanel();
     focus(cell('m1', 'name'));

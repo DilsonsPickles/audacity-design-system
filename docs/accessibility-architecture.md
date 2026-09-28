@@ -174,7 +174,15 @@ dock's **tab** ("Macro manager" — see Dock panel tabs below), the
 `role="toolbar"`), then the **macro list**. The list is ONE stop however
 many macros it holds.
 
-The list is a grid. Each row is a `role="group"` named after its macro,
+The list is a grid: **Down / Up go down and up it**, macro to macro;
+**Left / Right go along a macro's row** (name, Run, menu). This is the
+one tab group where Down and Right differ — in a toolbar they are the
+same key — because a list of rows has a "down" that a row of buttons
+does not. Settled 2026-09-28 after trying a single toolbar-style
+sequence in which Down did what Right does: it was consistent, and
+wrong for a list. Do not "fix" Down to match Right.
+
+Each row is a `role="group"` named after its macro,
 holding three real buttons — the name (which opens the macro), Run, and
 the menu. The row is never itself a button: a button that contains
 buttons is invalid, and hides Run and the menu from a screen reader.
