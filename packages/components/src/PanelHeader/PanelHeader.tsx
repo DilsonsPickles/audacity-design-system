@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { GhostButton } from '../GhostButton';
 import { useTheme } from '../ThemeProvider';
+import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import './PanelHeader.css';
 
 export interface PanelHeaderTab {
@@ -34,6 +35,14 @@ export interface PanelHeaderProps {
   onResizeStart?: (e: React.MouseEvent) => void;
   /** Additional CSS class names */
   className?: string;
+  /**
+   * Makes the tab strip ONE stop in the app's Tab order, at the place
+   * the active accessibility profile gives this group id, with arrow
+   * keys between tabs. Hosts pass it so a panel's tabs come BEFORE the
+   * panel's content. Without it every tab is `tabindex=0`, which under
+   * the tab-groups profile puts the strip after everything else.
+   */
+  tabGroupId?: string;
 }
 
 const RESIZE_ZONE = 4; // px from top edge that triggers resize cursor
@@ -58,8 +67,17 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
   onTabTearOff,
   onResizeStart,
   className = '',
+  tabGroupId,
 }) => {
   const { theme } = useTheme();
+  const { activeProfile } = useAccessibilityProfile();
+  const isFlat = activeProfile.config.tabNavigation === 'sequential';
+  const roving = tabGroupId !== undefined && !isFlat;
+  const groupTabIndex = roving ? activeProfile.config.tabOrder?.[tabGroupId] ?? 0 : 0;
+  // Which tab is the strip's one stop: the ACTIVE tab, until the
+  // arrows move focus along the strip. Leaving the strip hands it back.
+  const [rovingTabId, setRovingTabId] = useState<string | null>(null);
+  const stopId = tabs.some((t) => t.id === rovingTabId) ? rovingTabId : activeTabId;
   const [inResizeZone, setInResizeZone] = useState(false);
 
   // Drag-to-reorder state
@@ -218,7 +236,15 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}
     >
-      <div className="panel-header__tab-group" role="tablist" ref={tabGroupRef}>
+      <div
+        className="panel-header__tab-group"
+        role="tablist"
+        ref={tabGroupRef}
+        data-tab-group={tabGroupId}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setRovingTabId(null);
+        }}
+      >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId;
           const isDragging = tab.id === dragTabId;
@@ -227,7 +253,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
             <div
               key={tab.id}
               role="tab"
-              tabIndex={0}
+              tabIndex={roving ? (tab.id === stopId ? groupTabIndex : -1) : 0}
               data-tab-id={tab.id}
               aria-selected={isActive}
               aria-haspopup={isActive && tab.hasMenu !== false ? 'menu' : undefined}
@@ -255,7 +281,25 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
                   e.preventDefault();
                   e.stopPropagation();
                   e.currentTarget.querySelector<HTMLButtonElement>('button')?.click();
+                  return;
                 }
+                // Arrows move FOCUS along the strip; Enter switches tab.
+                // Kept from the app, where Left/Right nudge the playhead.
+                if (!roving || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+                const at = tabs.findIndex((t) => t.id === tab.id);
+                const to = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (at + 1) % tabs.length
+                  : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (at - 1 + tabs.length) % tabs.length
+                  : e.key === 'Home' ? 0
+                  : e.key === 'End' ? tabs.length - 1
+                  : -1;
+                if (to < 0) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (to === at) return;
+                setRovingTabId(tabs[to].id);
+                tabGroupRef.current
+                  ?.querySelectorAll<HTMLElement>('[role="tab"]')[to]
+                  ?.focus();
               }}
               onPointerDown={(e) => handleTabPointerDown(e, tab.id)}
             >

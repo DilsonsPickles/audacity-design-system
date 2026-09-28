@@ -86,6 +86,9 @@ export const DockPanel: React.FC<DockPanelProps> = ({
         onTabReorder={onTabReorder}
         onMenuClick={onMenuClick}
         onTabTearOff={onTabTearOff}
+        // The left dock comes before the tracks in reading order, the
+        // right dock after them
+        tabGroupId={position === 'left' ? 'dock-tabs-start' : 'dock-tabs-end'}
       />
       <div className="dock-panel__content">
         {children}

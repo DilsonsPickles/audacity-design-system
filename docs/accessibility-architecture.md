@@ -85,13 +85,15 @@ tabOrder: {
   'project-toolbar-actions':   3,
   'project-toolbar-workspace': 4,
   'tool-toolbar':              5,
-  'effects-panel':             6,
-  'macros-panel-actions':      8,  // Macro manager docked LEFT: header actions…
-  'macros-panel':              9,  // …then the macro list
+  'dock-tabs-start':           7,  // LEFT dock: its tabs, then what it holds
+  'effects-panel':             8,
+  'macros-panel-actions':      9,  // Macro manager: header actions…
+  'macros-panel':             10,  // …then the macro list
   'add-track':                99,
   'tracks':                  100,  // base — stride of 3 per track
-  'macros-panel-actions-end': 198, // Macro manager docked RIGHT or BOTTOM:
-  'macros-panel-end':         199, // after the tracks, before the toolbar
+  'dock-tabs-end':           197,  // RIGHT dock / bottom drawer: after the tracks
+  'macros-panel-actions-end': 198,
+  'macros-panel-end':         199,
   'selection-toolbar':        200,
 }
 ```
@@ -166,9 +168,11 @@ Individual clips handle their own shortcuts (Delete, Enter, Cmd+arrows, etc.) an
 
 ### Macro manager (MacrosPanel.tsx)
 
-Two Tab stops under the tab-groups profile: the **header actions**
-(New macro, panel menu — `useContainerTabGroup`, `role="toolbar"`), then
-the **macro list**. The list is ONE stop however many macros it holds.
+Three Tab stops under the tab-groups profile, in reading order: the
+dock's **tab** ("Macro manager" — see Dock panel tabs below), the
+**header actions** (New macro, panel menu — `useContainerTabGroup`,
+`role="toolbar"`), then the **macro list**. The list is ONE stop however
+many macros it holds.
 
 The list is a grid. Each row is a `role="group"` named after its macro,
 holding three real buttons — the name (which opens the macro), Run, and
@@ -213,24 +217,38 @@ Every key the panel DOES use is stopped from reaching the app's
 document-level shortcuts (`stopPropagation`), including at the list's
 edges — otherwise ArrowUp on the first macro would move the track focus.
 
-**Placement.** `placement="start"` (docked left) uses tab order 8/9;
-`placement="end"` (docked right or bottom) uses 198/199, after the
-tracks. The tracks route Tab themselves rather than leaving it to
-tabindex order, so `findAfterTracksFocusTarget` (sandbox
-`utils/focusRouting.ts`) names the panel as what follows the last track.
+**Placement.** `placement="start"` (docked left) uses the groups before
+the tracks; `placement="end"` (docked right or bottom) their `-end`
+twins, after the tracks. The tracks route Tab themselves rather than
+leaving it to tabindex order, so `findAfterTracksFocusTarget` (sandbox
+`utils/focusRouting.ts`) names what follows the last track: a dock's tab
+strip first, so you arrive at the name of the panel before its contents.
 
 **Flat profile.** Every control is its own Tab stop and the arrows do
 nothing. Enter, Cmd/Ctrl+Enter, F2 and Shift+F10 still work.
 
 ### Dock panel tabs (PanelHeader.tsx)
 
+A strip is ONE Tab stop — the active tab — placed BEFORE the content it
+names. It is opt-in: the host passes `tabGroupId` (`DockPanel` does from
+its side: left = `dock-tabs-start`, right = `dock-tabs-end`; the bottom
+drawer passes `dock-tabs-end`). Without it every tab is `tabindex=0`,
+which under the tab-groups profile puts the strip after everything else
+in the app — you would reach a panel's contents before its name.
+
 | Key | Action |
 |-----|--------|
-| Enter | Switch to the tab |
+| ArrowLeft / ArrowRight | Move focus along the strip (wraps). Does not switch tab |
+| Home / End | First / last tab |
+| Enter | Switch to the focused tab |
 | Shift+F10 / Menu key | Open the ACTIVE tab's menu (dock side, open in window, close) |
 
-The menu button inside a tab is out of the Tab order by design (one stop
-per tab), so the menu key is its only keyboard route.
+Leaving the strip hands its stop back to the active tab. The menu button
+inside a tab is out of the Tab order by design (one stop per tab), so
+the menu key is its only keyboard route.
+
+Not opted in: `MixerPanel`, `PianoRollPanel` and `FloatingPanel` render
+their own `PanelHeader` and keep `tabindex=0` tabs.
 
 ### Application Header / File Menu (ApplicationHeader.tsx)
 

@@ -158,6 +158,7 @@ export function EditorBottomDrawer({
           document.addEventListener('mousemove', onMove);
           document.addEventListener('mouseup', onUp);
         }}
+        tabGroupId="dock-tabs-end"
       />
 
       {/* Macros content — same sandbox wiring as the side docks */}

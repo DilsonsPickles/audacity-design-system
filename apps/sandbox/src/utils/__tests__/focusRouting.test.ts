@@ -364,6 +364,36 @@ describe('findAfterTracksFocusTarget — where Tab goes off the last track', () 
     expect(findAfterTracksFocusTarget(r)).toBe(kebab);
   });
 
+  function dockTabs(r: HTMLElement, group: string, tabIndices: number[]): HTMLElement[] {
+    const strip = document.createElement('div');
+    strip.setAttribute('role', 'tablist');
+    strip.dataset.tabGroup = group;
+    const tabs = tabIndices.map((t) => {
+      const tab = document.createElement('div');
+      tab.setAttribute('role', 'tab');
+      tab.tabIndex = t;
+      strip.append(tab);
+      return tab;
+    });
+    r.append(strip);
+    return tabs;
+  }
+
+  it('enters a dock that follows the tracks at its TAB, before its content', () => {
+    const r = mount();
+    selectionToolbar(r);
+    const [, active] = dockTabs(r, 'dock-tabs-end', [-1, 197]);
+    macrosPanel(r, 'end', [198, -1]);
+    expect(findAfterTracksFocusTarget(r)).toBe(active);
+  });
+
+  it('ignores the tabs of a dock that comes BEFORE the tracks', () => {
+    const r = mount();
+    const group = selectionToolbar(r);
+    dockTabs(r, 'dock-tabs-start', [7]);
+    expect(findAfterTracksFocusTarget(r)).toBe(group);
+  });
+
   it('ignores a Macro manager docked BEFORE the tracks', () => {
     const r = mount();
     const group = selectionToolbar(r);

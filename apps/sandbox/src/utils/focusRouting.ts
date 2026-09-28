@@ -195,9 +195,11 @@ export function findSelectionToolbarFirstGroup(root: ParentNode): HTMLElement | 
 
 /**
  * Where Tab goes when it leaves the LAST track: whatever follows the
- * tracks in reading order. That is the Macro manager when it is docked
- * after them (right or bottom — `data-placement="end"`), entered at its
- * header's tab stop; otherwise the selection toolbar.
+ * tracks in reading order. That is a dock docked after them — the
+ * right dock or the bottom drawer — entered at its TAB STRIP, which
+ * names what the dock holds; failing that the Macro manager's own
+ * header, when it sits after the tracks without a strip; failing that
+ * the selection toolbar.
  *
  * The tracks route Tab themselves instead of leaving it to tabindex
  * order, so anything that sits between them and the selection toolbar
@@ -207,13 +209,12 @@ export function findSelectionToolbarFirstGroup(root: ParentNode): HTMLElement | 
  * onTabFromRuler's "last track" fallback.
  */
 export function findAfterTracksFocusTarget(root: ParentNode): HTMLElement | null {
-  const panel = root.querySelector<HTMLElement>('.macros-panel[data-placement="end"]');
-  if (panel) {
-    const stops = [...panel.querySelectorAll<HTMLElement>('.macros-panel__header-actions button')]
-      .filter((el) => el.tabIndex >= 0 && !(el as HTMLButtonElement).disabled);
-    if (stops.length > 0) return stops[0];
-  }
-  return findSelectionToolbarFirstGroup(root);
+  const stopIn = (selector: string): HTMLElement | null =>
+    [...root.querySelectorAll<HTMLElement>(selector)]
+      .find((el) => el.tabIndex >= 0 && !(el as HTMLButtonElement).disabled) ?? null;
+  return stopIn('[data-tab-group="dock-tabs-end"] [role="tab"]')
+    ?? stopIn('.macros-panel[data-placement="end"] .macros-panel__header-actions button')
+    ?? findSelectionToolbarFirstGroup(root);
 }
 
 /**

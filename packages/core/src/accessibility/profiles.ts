@@ -84,6 +84,13 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
         wrap: true,
       },
 
+      // Dock panel tabs (the strip naming what a side dock or the bottom
+      // drawer shows). One tab stop per strip, arrows between tabs.
+      // `-start` = the left dock, before the tracks in reading order;
+      // `-end` = the right dock and the bottom drawer, after them.
+      'dock-tabs-start': { tabindex: 'roving', arrows: true, wrap: true },
+      'dock-tabs-end': { tabindex: 'roving', arrows: true, wrap: true },
+
       // Macro manager — header actions (New macro, panel menu). The
       // `-end` twins are the same groups when the panel is docked
       // right or bottom, where it FOLLOWS the tracks in reading order.
@@ -225,13 +232,15 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       'project-toolbar-workspace': 4,
       'project-toolbar-history':   5, // Undo / Redo cluster
       'tool-toolbar':              6,
-      'effects-panel':             7,
-      'macros-panel-actions':      8, // docked left: after the effects panel
-      'macros-panel':              9,
+      'dock-tabs-start':           7, // a dock's tabs come BEFORE what they name
+      'effects-panel':             8,
+      'macros-panel-actions':      9, // docked left
+      'macros-panel':             10,
       'add-track':                98,
       'timeline-ruler':           99,
       'tracks':                  100, // base — stride 4 per track: container +0, panel +1, clips +2, ruler +3
-      'macros-panel-actions-end': 198, // docked right/bottom: after the tracks
+      'dock-tabs-end':            197, // right dock / bottom drawer: after the tracks
+      'macros-panel-actions-end': 198,
       'macros-panel-end':         199,
       'selection-toolbar':        200,
     },

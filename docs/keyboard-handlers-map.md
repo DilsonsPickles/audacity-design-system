@@ -49,7 +49,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 
 **Header actions** (New macro, panel menu): `useContainerTabGroup`, group `macros-panel-actions`.
 
-**Dock tab menu** (Shift+F10 / ContextMenu on the "Macro manager" tab): `packages/components/src/PanelHeader/PanelHeader.tsx`, the tab's `onKeyDown`.
+**Dock tabs** (`packages/components/src/PanelHeader/PanelHeader.tsx`, the tab's `onKeyDown`): ArrowLeft/Right and Home/End move focus along the strip, Enter switches tab, Shift+F10 / ContextMenu opens the active tab's menu. The arrows apply only when the host passes `tabGroupId`.
 
 **Deliberately NOT handled here** — do not add them without a decision:
 - **Space** - the app's play/pause (`useKeyboardShortcuts`), from any non-text control

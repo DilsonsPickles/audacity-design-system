@@ -136,9 +136,13 @@ The panel is keyboard-operable end to end (see
   keypress to it needs a decision first (an Undo toast would cover it).
 - **Space does not press the focused button** — app-wide it is
   play/pause. Enter is the only activation key.
-- **Dock tabs are not a roving group**: each is `tabindex=0`, so they
-  sit at the END of the Tab order (after the selection toolbar), and
-  arrows do not move between them. Shared with Effects and the drawer.
+- **Panels that render their own header** — Mixer, Piano roll and any
+  panel in its own window — still have `tabindex=0` tabs, which sit at
+  the END of the Tab order. The side docks and the bottom drawer are
+  done (`tabGroupId`); these have not been opted in.
+- **The bottom drawer's tabs are in the order, its other panels' content
+  is not.** With Mixer or Piano roll showing, the tab is at 197 and
+  what it names is wherever those panels' own controls fall.
 - **"Apply to files…"** opens the OS file picker and then a progress
   window; where focus lands after that was not checked.
 - **Track count.** The `-end` groups sit at 198/199, which the 24th
