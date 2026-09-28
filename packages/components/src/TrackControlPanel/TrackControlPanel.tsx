@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { groupLabelIndent } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { Button } from '../Button';
@@ -55,8 +56,11 @@ export interface TrackControlPanelProps {
   /** Folder rows: collapsed state + chevron toggle (folders v1) */
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  /** How many groups contain this row. Not drawn here: the row
-   *  wrapper paints one strip per level (TrackControlSidePanel). */
+  /** How many groups contain this row. On a GROUP row it indents the
+   *  label (chevron, icon, name) so group names read as a tree; the
+   *  row's M/S and kebab stay in their column. Track rows ignore it —
+   *  grouping never resizes or moves a track. The strips that count
+   *  the levels are painted by the row wrapper (TrackControlSidePanel). */
   indentLevel?: number;
   /** Where this row sits in its track group, if any. Drives the
    *  group's shared background: the family reads as ONE recessed
@@ -722,7 +726,9 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           alignItems: 'center',
           gap: 6,
           height: '100%',
-          padding: '0 6px 0 8px',
+          // Left padding carries the label's indent. The controls are
+          // pushed right by the name's flex: 1, so they don't move.
+          padding: `0 6px 0 ${8 + groupLabelIndent(indentLevel)}px`,
           boxSizing: 'border-box',
           background: theme.background.surface.default,
           ...groupContentStyle,

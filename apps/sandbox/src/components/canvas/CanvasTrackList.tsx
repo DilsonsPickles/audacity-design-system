@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCollapseTransition, type SpectrogramScale } from '@audacity-ui/components';
-import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, type GroupRowLayout } from '@audacity-ui/core';
+import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, groupLabelIndent, type GroupRowLayout } from '@audacity-ui/core';
 import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';
@@ -312,8 +312,11 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
                   position: 'sticky',
                   // 12 = the band's own left padding, so the label
                   // holds the SAME inset when pinned as it has at
-                  // scroll 0 and never visibly jumps.
-                  left: 12,
+                  // scroll 0 and never visibly jumps. A nested group's
+                  // label steps in as its panel row's does, and keeps
+                  // that step when pinned.
+                  left: 12 + groupLabelIndent(row.depth),
+                  marginLeft: groupLabelIndent(row.depth),
                   // The header strip's height: the label lives in the
                   // top of the field, not centred in the whole family.
                   height: FOLDER_ROW_HEIGHT,

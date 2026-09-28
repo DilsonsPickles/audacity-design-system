@@ -15,6 +15,8 @@ import {
   rowOffsets,
   FOLDER_ROW_HEIGHT,
   GROUP_END_PAD,
+  GROUP_LABEL_INDENT,
+  groupLabelIndent,
 } from '../coordinates';
 import type { TrackLike } from '../../types';
 
@@ -272,5 +274,18 @@ describe('nested track groups', () => {
     const y = trackIndexToY(5, t as never, 2, 2, 100); // Bass header
     expect(yToTrackIndex(y + 1, t as never, 2, 2, 100)).toBe(5);
     expect(yToTrackIndex(y - 1, t as never, 2, 2, 100)).not.toBe(5);
+  });
+});
+
+describe('groupLabelIndent', () => {
+  it('a top-level group is not indented; each level in steps once', () => {
+    expect(groupLabelIndent(0)).toBe(0);
+    expect(groupLabelIndent(1)).toBe(GROUP_LABEL_INDENT);
+    expect(groupLabelIndent(3)).toBe(3 * GROUP_LABEL_INDENT);
+  });
+
+  it('stops stepping past the cap, so a deep name still has room', () => {
+    expect(groupLabelIndent(4)).toBe(groupLabelIndent(9));
+    expect(groupLabelIndent(-1)).toBe(0);
   });
 });

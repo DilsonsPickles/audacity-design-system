@@ -25,6 +25,18 @@ export const GROUP_END_PAD = 4;
 export const GROUP_COLLAPSE_MS = 180;
 export const GROUP_COLLAPSE_EASING = 'cubic-bezier(0.2, 0, 0, 1)'; // = the panel's side strip (12px gutter − 8px group inset), so the floor matches the sides
 
+/** How far a NESTED group's label (chevron, icon, name) steps right per
+ *  level, so group names read as a tree. The label only: the row, its
+ *  band and its controls stay put, and track rows are never indented —
+ *  grouping must not resize a track. Shared because the panel's group
+ *  row and the canvas's field label are one row across the seam. */
+export const GROUP_LABEL_INDENT = 12;
+/** Deeper than this the label stops stepping, so a name always has
+ *  room; the strips still count the depth. */
+export const GROUP_LABEL_INDENT_MAX_LEVELS = 4;
+export const groupLabelIndent = (depth: number): number =>
+  GROUP_LABEL_INDENT * Math.max(0, Math.min(GROUP_LABEL_INDENT_MAX_LEVELS, depth));
+
 /** Only the fields the row-height rule reads — so every layer
  *  (core, components, sandbox) can call it with its own track shape. */
 export interface RowHeightTrackLike {

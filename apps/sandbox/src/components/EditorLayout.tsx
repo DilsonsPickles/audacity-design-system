@@ -32,7 +32,7 @@ import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
 import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
-import { ancestorFolders, effectiveTrackHeight, effectiveTrackStride, folderDescendantIndices, trackDepth } from '../utils/trackFolders';
+import { ancestorFolders, effectiveTrackHeight, effectiveTrackStride, folderDescendantIndices } from '../utils/trackFolders';
 import { PopoutPanel } from './editor/PopoutPanel';
 import { useMacros } from '../contexts/MacrosContext';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
@@ -898,7 +898,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 trackIndex={index}
                 isCollapsed={track.collapsed ?? false}
                 onToggleCollapse={() => dispatch({ type: 'TOGGLE_FOLDER_COLLAPSED', payload: { trackIndex: index } })}
-                indentLevel={trackDepth(state.tracks, index)}
+                indentLevel={(trackDragPreview?.layout ?? groupLayout)[index]?.depth ?? 0}
                 groupPosition={(() => {
                   // Where this row sits in its family, so the group can
                   // wear ONE recessed background rounded at its ends

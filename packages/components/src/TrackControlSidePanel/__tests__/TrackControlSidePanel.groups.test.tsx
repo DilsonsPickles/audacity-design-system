@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { computeGroupLayout, GROUP_END_PAD } from '@audacity-ui/core';
+import { computeGroupLayout, GROUP_END_PAD, GROUP_LABEL_INDENT } from '@audacity-ui/core';
 import { lightTheme } from '@audacity-ui/tokens';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
@@ -66,6 +66,7 @@ function renderRows(rows: Row[], extra: Partial<TrackControlSidePanelProps> = {}
               trackName={r.name}
               trackIndex={i}
               trackType={r.type}
+              indentLevel={layout[i].depth}
               isCollapsed={r.collapsed}
               groupPosition={r.type === 'folder' ? 'header' : undefined}
             />
@@ -219,6 +220,41 @@ describe('TrackControlSidePanel — one box per level', () => {
     const underlay = wrapperOf(4)!.querySelector<HTMLElement>('[data-group-underlay]')!;
     expect(underlay.style.pointerEvents).toBe('none');
     expect(underlay.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('TrackControlSidePanel — nested group names read as a tree', () => {
+  const panelOf = (container: HTMLElement, index: number) =>
+    container.querySelector(`[data-track-panel-index="${index}"]`) as HTMLElement;
+
+  it('a group row\'s label steps in once per level; a top-level one does not', () => {
+    const { container } = renderRows(nest());
+    expect(panelOf(container, 1).style.paddingLeft).toBe('8px');
+    expect(panelOf(container, 3).style.paddingLeft).toBe(`${8 + GROUP_LABEL_INDENT}px`);
+  });
+
+  it('only the label moves: the row keeps its box, and its controls their side', () => {
+    const { container, wrapperOf } = renderRows(nest());
+    // Same wrapper geometry as the top-level group row
+    expect(wrapperOf(3)!.style.marginLeft).toBe(wrapperOf(1)!.style.marginLeft);
+    expect(wrapperOf(3)!.style.paddingLeft).toBe(wrapperOf(1)!.style.paddingLeft);
+    expect(wrapperOf(3)!.style.height).toBe(wrapperOf(1)!.style.height);
+    for (const i of [1, 3]) {
+      const panel = panelOf(container, i);
+      expect(panel.style.width).toBe('100%');
+      expect(panel.style.paddingRight).toBe('6px');
+      // The name takes the slack, which is what keeps M/S on the right
+      const name = panel.querySelector('[aria-label^="Rename group"]') as HTMLElement;
+      expect(name.style.flex).toContain('1');
+    }
+  });
+
+  it('track rows are never indented, at any depth', () => {
+    const { container } = renderRows(nest());
+    for (const i of [0, 2, 4, 5, 6, 7]) {
+      expect(panelOf(container, i).style.paddingLeft).toBe('');
+      expect(panelOf(container, i).style.marginLeft).toBe('');
+    }
   });
 });
 
