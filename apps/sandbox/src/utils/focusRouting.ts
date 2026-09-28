@@ -192,3 +192,43 @@ export function findSelectionToolbarFirstGroup(root: ParentNode): HTMLElement | 
   if (!selToolbar) return null;
   return selToolbar.querySelector<HTMLElement>('[role="group"]');
 }
+
+/**
+ * Where Tab goes when it leaves the LAST track: whatever follows the
+ * tracks in reading order. That is the Macro manager when it is docked
+ * after them (right or bottom — `data-placement="end"`), entered at its
+ * header's tab stop; otherwise the selection toolbar.
+ *
+ * The tracks route Tab themselves instead of leaving it to tabindex
+ * order, so anything that sits between them and the selection toolbar
+ * has to be named here or Tab walks straight past it.
+ *
+ * Call sites: TrackControlPanel.onTabOut, onTabFromLastClip, and
+ * onTabFromRuler's "last track" fallback.
+ */
+export function findAfterTracksFocusTarget(root: ParentNode): HTMLElement | null {
+  const panel = root.querySelector<HTMLElement>('.macros-panel[data-placement="end"]');
+  if (panel) {
+    const stops = [...panel.querySelectorAll<HTMLElement>('.macros-panel__header-actions button')]
+      .filter((el) => el.tabIndex >= 0 && !(el as HTMLButtonElement).disabled);
+    if (stops.length > 0) return stops[0];
+  }
+  return findSelectionToolbarFirstGroup(root);
+}
+
+/**
+ * The button that stands for a macro in the Macro manager panel — its
+ * name, which is what keyboard focus rests on. Null when the panel is
+ * closed or the macro is gone.
+ *
+ * Call site: the Edit macro window's onClose (AppDialogs), to hand
+ * focus back to the macro the window was opened from.
+ */
+export function findMacroRowButton(doc: Document, macroId: string): HTMLElement | null {
+  for (const row of doc.querySelectorAll<HTMLElement>('.macros-panel [data-macro-id]')) {
+    if (row.dataset.macroId === macroId) {
+      return row.querySelector<HTMLElement>('.macros-panel__row-name');
+    }
+  }
+  return null;
+}

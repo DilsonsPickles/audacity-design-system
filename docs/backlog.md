@@ -122,6 +122,32 @@ hard cuts). Deliberately deferred, waiting on live feel / product calls:
 - **stretchFactor** — fade bake maps source time without stretch compensation,
   same as the envelope bake (parity kept deliberately).
 
+### Macro manager keyboard access — deferred tail (2026-09-28)
+The panel is keyboard-operable end to end (see
+`docs/accessibility-architecture.md` → Macro manager). Not done:
+- **The Edit macro window has not been audited.** It has its own
+  keyboard handling (arrows in the command list, Enter to add, a
+  splitter, a step table); none of it was checked in this pass.
+- **No screen reader run.** Roles and names were chosen to the ARIA
+  patterns and asserted in tests; nobody has listened to it.
+- **Delete does not delete a macro.** With focus in the panel it still
+  acts on the PROJECT's selection, as from every other control. A
+  macro delete has no undo and no confirmation, so binding a single
+  keypress to it needs a decision first (an Undo toast would cover it).
+- **Space does not press the focused button** — app-wide it is
+  play/pause. Enter is the only activation key.
+- **Dock tabs are not a roving group**: each is `tabindex=0`, so they
+  sit at the END of the Tab order (after the selection toolbar), and
+  arrows do not move between them. Shared with Effects and the drawer.
+- **"Apply to files…"** opens the OS file picker and then a progress
+  window; where focus lands after that was not checked.
+- **Track count.** The `-end` groups sit at 198/199, which the 24th
+  track's own stops reach (100 + 4 per track). The selection toolbar at
+  200 had the same ceiling already.
+- **In its own OS window** the panel's hooks still read the MAIN
+  window's `document` (`useContainerTabGroup` does throughout).
+- **No type-ahead** in the list — single letters are app shortcuts.
+
 ### Nested track groups — deferred tail (2026-09-28)
 Groups nest to any depth (model, reducer, drag, all three columns).
 Deliberately deferred:

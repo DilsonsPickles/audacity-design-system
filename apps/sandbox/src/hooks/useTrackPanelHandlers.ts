@@ -20,7 +20,7 @@ import {
   findFirstClipInTrack,
   findTrackRulerByIndex,
   findTrackContainerByIndex,
-  findSelectionToolbarFirstGroup,
+  findAfterTracksFocusTarget,
   resolveTrackDropIndex,
 } from '../utils/focusRouting';
 
@@ -574,7 +574,7 @@ export function useTrackPanelHandlers(
       }
       findTrackContainerByIndex(document, nextIndex)?.focus();
     } else {
-      findSelectionToolbarFirstGroup(document)?.focus();
+      findAfterTracksFocusTarget(document)?.focus();
     }
   };
 

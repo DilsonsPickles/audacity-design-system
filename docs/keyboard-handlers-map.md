@@ -36,6 +36,31 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 
 ---
 
+### Macro Manager Keyboard Shortcuts
+**Location:** `packages/components/src/MacrosPanel/MacrosPanel.tsx` — ONE handler, `handleListKeyDown`, on the list container (not per row, not per button).
+
+**Handlers:**
+- **ArrowUp/Down, Home/End, PageUp/PageDown** - Move between macros (tab-groups profile only)
+- **ArrowLeft/Right** - Move along the row: name → Run → menu (tab-groups profile only)
+- **Enter** on the name - Open the macro in the editor, immediately
+- **Cmd/Ctrl+Enter** - Run on the project
+- **F2** - Rename
+- **Shift+F10** or **ContextMenu key** - Open the row's menu
+
+**Header actions** (New macro, panel menu): `useContainerTabGroup`, group `macros-panel-actions`.
+
+**Dock tab menu** (Shift+F10 / ContextMenu on the "Macro manager" tab): `packages/components/src/PanelHeader/PanelHeader.tsx`, the tab's `onKeyDown`.
+
+**Deliberately NOT handled here** — do not add them without a decision:
+- **Space** - the app's play/pause (`useKeyboardShortcuts`), from any non-text control
+- **Delete/Backspace** - the app's delete, which acts on the project's selection
+
+**Note:** every key the panel consumes calls `stopPropagation()` as well as `preventDefault()`. The app's shortcuts are a native listener on `document`; `preventDefault` alone does not keep arrows and Home/End from moving the playhead and the track focus.
+
+**Focus routing:** `apps/sandbox/src/utils/focusRouting.ts` — `findAfterTracksFocusTarget` (Tab off the last track), `findMacroRowButton` (focus returning from the Edit macro window).
+
+---
+
 ### Label Keyboard & Mouse Shortcuts
 **Location:** Mouse drag/resize (move, extend/reduce region edges, expand-to-all-tracks click) is `apps/sandbox/src/components/LabelRenderer.tsx`, rendered from `apps/sandbox/src/components/canvas/CanvasTrackList.tsx` (itself extracted from Canvas.tsx). Delete/Backspace is `apps/sandbox/src/hooks/handlers/deleteHandlers.ts` (`handleDeleteLabels`).
 

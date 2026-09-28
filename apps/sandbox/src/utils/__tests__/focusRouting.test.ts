@@ -9,6 +9,8 @@ import {
   findTrackRulerByIndex,
   findTrackContainerByIndex,
   findSelectionToolbarFirstGroup,
+  findAfterTracksFocusTarget,
+  findMacroRowButton,
 } from '../focusRouting';
 
 // Plain DOM fixtures (jsdom) — no React. Each test builds only the markup
@@ -312,5 +314,105 @@ describe('panel resolution with track folders', () => {
     expect(resolveTrackDropIndex(r, 100)).toBe(3);
     // below everything clamps to the last rendered row's TRACK index
     expect(resolveTrackDropIndex(r, 999)).toBe(3);
+  });
+});
+
+describe('findAfterTracksFocusTarget — where Tab goes off the last track', () => {
+  function selectionToolbar(r: HTMLElement): HTMLElement {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'selection-toolbar';
+    const group = document.createElement('div');
+    group.setAttribute('role', 'group');
+    toolbar.append(group);
+    r.append(toolbar);
+    return group;
+  }
+  function macrosPanel(r: HTMLElement, placement: 'start' | 'end', tabIndices: number[]): HTMLButtonElement[] {
+    const panel = document.createElement('div');
+    panel.className = 'macros-panel';
+    panel.dataset.placement = placement;
+    const actions = document.createElement('div');
+    actions.className = 'macros-panel__header-actions';
+    const buttons = tabIndices.map((t) => {
+      const b = document.createElement('button');
+      b.tabIndex = t;
+      actions.append(b);
+      return b;
+    });
+    panel.append(actions);
+    r.append(panel);
+    return buttons;
+  }
+
+  it('is the selection toolbar when no Macro manager follows the tracks', () => {
+    const r = mount();
+    const group = selectionToolbar(r);
+    expect(findAfterTracksFocusTarget(r)).toBe(group);
+  });
+
+  it('is the Macro manager when it is docked after the tracks', () => {
+    const r = mount();
+    selectionToolbar(r);
+    const [newMacro] = macrosPanel(r, 'end', [198, -1]);
+    expect(findAfterTracksFocusTarget(r)).toBe(newMacro);
+  });
+
+  it('enters the panel at its roving tab stop, not always its first button', () => {
+    const r = mount();
+    selectionToolbar(r);
+    const [, kebab] = macrosPanel(r, 'end', [-1, 198]);
+    expect(findAfterTracksFocusTarget(r)).toBe(kebab);
+  });
+
+  it('ignores a Macro manager docked BEFORE the tracks', () => {
+    const r = mount();
+    const group = selectionToolbar(r);
+    macrosPanel(r, 'start', [8, -1]);
+    expect(findAfterTracksFocusTarget(r)).toBe(group);
+  });
+
+  it('is null when there is nothing after the tracks at all', () => {
+    expect(findAfterTracksFocusTarget(mount())).toBeNull();
+  });
+});
+
+describe('findMacroRowButton', () => {
+  function row(r: HTMLElement, id: string): HTMLButtonElement {
+    let panel = r.querySelector<HTMLElement>('.macros-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.className = 'macros-panel';
+      r.append(panel);
+    }
+    const el = document.createElement('div');
+    el.dataset.macroId = id;
+    const name = document.createElement('button');
+    name.className = 'macros-panel__row-name';
+    const run = document.createElement('button');
+    el.append(name, run);
+    panel.append(el);
+    return name;
+  }
+
+  it('finds the name button of the macro asked for', () => {
+    const r = mount();
+    row(r, 'a');
+    const b = row(r, 'b');
+    expect(findMacroRowButton(document, 'b')).toBe(b);
+  });
+
+  it('matches ids exactly, whatever characters they hold', () => {
+    const r = mount();
+    const odd = row(r, 'macro "1"]');
+    row(r, 'macro');
+    expect(findMacroRowButton(document, 'macro "1"]')).toBe(odd);
+  });
+
+  it('is null for a macro that is gone, or when the panel is closed', () => {
+    const r = mount();
+    row(r, 'a');
+    expect(findMacroRowButton(document, 'z')).toBeNull();
+    r.innerHTML = '';
+    expect(findMacroRowButton(document, 'a')).toBeNull();
   });
 });

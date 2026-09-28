@@ -43,7 +43,7 @@ import {
   findLastClipInTrack,
   findTrackRulerByIndex,
   findTrackContainerByIndex,
-  findSelectionToolbarFirstGroup,
+  findAfterTracksFocusTarget,
 } from '../utils/focusRouting';
 
 export interface EditorLayoutProps {
@@ -651,7 +651,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       findTrackContainerByIndex(document, nextIndex)?.focus();
     } else {
       // Last track — focus first focusable child in selection toolbar
-      findSelectionToolbarFirstGroup(document)?.focus();
+      findAfterTracksFocusTarget(document)?.focus();
     }
   }, [showVerticalRulers, state.tracks, trackSelectionMode, dispatch, setSelectionAnchor]);
 
@@ -710,7 +710,7 @@ export function EditorLayout(props: EditorLayoutProps) {
               setMarketplaceModal={setMarketplaceModal}
             />
           )}
-          {activeLeftDockTab === 'macros' && macrosDockedLeft && <MacrosDockPanel />}
+          {activeLeftDockTab === 'macros' && macrosDockedLeft && <MacrosDockPanel placement="start" />}
         </DockPanel>
       )}
 
@@ -1289,7 +1289,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     findTrackContainerByIndex(document, nextIndex)?.focus();
                   } else {
                     // Focus first focusable child in selection toolbar
-                    findSelectionToolbarFirstGroup(document)?.focus();
+                    findAfterTracksFocusTarget(document)?.focus();
                   }
                 }}
                 onShiftTabFromRuler={(trackIndex) => {
@@ -1441,7 +1441,7 @@ export function EditorLayout(props: EditorLayoutProps) {
               setMarketplaceModal={setMarketplaceModal}
             />
           )}
-          {activeRightDockTab === 'macros' && macrosDockedRight && <MacrosDockPanel />}
+          {activeRightDockTab === 'macros' && macrosDockedRight && <MacrosDockPanel placement="end" />}
         </DockPanel>
       )}
     </div>

@@ -84,6 +84,18 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
         wrap: true,
       },
 
+      // Macro manager — header actions (New macro, panel menu). The
+      // `-end` twins are the same groups when the panel is docked
+      // right or bottom, where it FOLLOWS the tracks in reading order.
+      'macros-panel-actions': { tabindex: 'roving', arrows: true, wrap: true },
+      'macros-panel-actions-end': { tabindex: 'roving', arrows: true, wrap: true },
+
+      // Macro manager — the macro list: ONE tab stop, arrows move
+      // through it as a grid (rows x name / Run / menu). No wrap: a
+      // list has a top and a bottom.
+      'macros-panel': { tabindex: 'roving', arrows: true, wrap: false },
+      'macros-panel-end': { tabindex: 'roving', arrows: true, wrap: false },
+
       // Preferences sidebar navigation
       'preferences-sidebar': {
         tabindex: 'roving',
@@ -214,9 +226,13 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       'project-toolbar-history':   5, // Undo / Redo cluster
       'tool-toolbar':              6,
       'effects-panel':             7,
+      'macros-panel-actions':      8, // docked left: after the effects panel
+      'macros-panel':              9,
       'add-track':                98,
       'timeline-ruler':           99,
       'tracks':                  100, // base — stride 4 per track: container +0, panel +1, clips +2, ruler +3
+      'macros-panel-actions-end': 198, // docked right/bottom: after the tracks
+      'macros-panel-end':         199,
       'selection-toolbar':        200,
     },
 

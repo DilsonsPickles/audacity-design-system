@@ -161,7 +161,7 @@ export function EditorBottomDrawer({
       />
 
       {/* Macros content — same sandbox wiring as the side docks */}
-      {activeTab === 'macros' && macrosOpen && <MacrosDockPanel />}
+      {activeTab === 'macros' && macrosOpen && <MacrosDockPanel placement="end" />}
 
       {/* Mixer content */}
       {activeTab === 'mixer' && mixerOpen && (() => {

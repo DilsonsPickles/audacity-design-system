@@ -16,6 +16,7 @@ import { useMacros } from '../contexts/MacrosContext';
 import { useMacroRunner } from '../hooks/useMacroRunner';
 import { useRunMacroOnFiles } from '../hooks/useRunMacroOnFiles';
 import { exportMacroFile } from '../utils/macroFile';
+import { findMacroRowButton } from '../utils/focusRouting';
 import { MuseIdAccountsPage } from './museid/MuseIdAccountsPage';
 import { useContextMenus } from '../contexts/ContextMenuContext';
 import { useAdieu, SignInCancelledError } from '../contexts/AdieuContext';
@@ -710,7 +711,20 @@ export function AppDialogs(props: AppDialogsProps) {
       <MacroBuilderDialog
         isOpen={macrosCtx.editingMacroId !== null}
         macro={macrosCtx.macros.find((m) => m.id === macrosCtx.editingMacroId) ?? null}
-        onClose={() => macrosCtx.setEditingMacroId(null)}
+        onClose={() => {
+          // Hand focus back to the macro the window was opened from —
+          // but only if focus was IN the window. It is non-modal: a
+          // user who has moved on to the project must not be pulled
+          // back to the panel by the window closing.
+          const closing = macrosCtx.editingMacroId;
+          const focusWasInside = !!document.activeElement?.closest('.macro-builder');
+          macrosCtx.setEditingMacroId(null);
+          if (closing !== null && focusWasInside) {
+            // A timeout, not a frame: frames stop while the window is in
+            // the background, and focus would arrive whenever it woke
+            window.setTimeout(() => findMacroRowButton(document, closing)?.focus(), 0);
+          }
+        }}
         onRun={runMacroOnProject}
         onRunFiles={runMacroOnFiles}
         onRenameMacro={macrosCtx.renameMacro}

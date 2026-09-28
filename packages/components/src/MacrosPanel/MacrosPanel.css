@@ -115,12 +115,27 @@
   background: var(--macros-row-bg-hover, #f4f4f6);
 }
 
-.macros-panel__row:focus-visible {
+/* Keyboard focus on a macro's NAME rings the whole row: the name is
+   what opens the macro, and the row is what the mouse clicks to do the
+   same. Focus on Run or the menu rings that button instead, with the
+   ring Button and GhostButton already draw. */
+.macros-panel__row:has(.macros-panel__row-name:focus-visible) {
   outline: 2px solid var(--accent-primary, #677ce4);
   outline-offset: -2px;
 }
 
+/* The name is a real button (it is what the keyboard and a screen
+   reader press), dressed as the plain text it replaced. It fills the
+   row's height so the ring and the click target agree. */
 .macros-panel__row-name {
+  appearance: none;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  align-self: stretch;
+  text-align: left;
+  cursor: inherit;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -131,6 +146,11 @@
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+}
+
+.macros-panel__row-name:focus,
+.macros-panel__row-name:focus-visible {
+  outline: none;
 }
 
 .macros-panel__row-actions {

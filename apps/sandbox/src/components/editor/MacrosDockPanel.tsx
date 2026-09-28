@@ -31,7 +31,14 @@ function isImportedMacro(value: unknown): value is Pick<Macro, 'name' | 'steps'>
  * RunMacroOnFilesDialog progress window. Processing is simulated; the
  * single completion toast is batch-level (never one per file).
  */
-export function MacrosDockPanel() {
+export interface MacrosDockPanelProps {
+  /** Where the panel sits in the app's reading order, which decides
+   *  its place in the Tab order: docked left it comes BEFORE the
+   *  tracks (`start`), docked right or bottom AFTER them (`end`). */
+  placement?: 'start' | 'end';
+}
+
+export function MacrosDockPanel({ placement = 'start' }: MacrosDockPanelProps = {}) {
   const {
     macros, addMacro, renameMacro, deleteMacro, duplicateMacro, importMacro, setEditingMacroId,
   } = useMacros();
@@ -86,6 +93,7 @@ export function MacrosDockPanel() {
         onRunOnProject={runOnProject}
         onRunOnFiles={openRunOnFiles}
         os={operatingSystem}
+        placement={placement}
       />
       {runOnFilesDialog}
     </>

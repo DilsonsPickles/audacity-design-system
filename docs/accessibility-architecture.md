@@ -86,11 +86,17 @@ tabOrder: {
   'project-toolbar-workspace': 4,
   'tool-toolbar':              5,
   'effects-panel':             6,
+  'macros-panel-actions':      8,  // Macro manager docked LEFT: header actions…
+  'macros-panel':              9,  // …then the macro list
   'add-track':                99,
   'tracks':                  100,  // base — stride of 3 per track
+  'macros-panel-actions-end': 198, // Macro manager docked RIGHT or BOTTOM:
+  'macros-panel-end':         199, // after the tracks, before the toolbar
   'selection-toolbar':        200,
 }
 ```
+
+(The table above is illustrative — `profiles.ts` holds the real numbers.)
 
 ### Track Tab Order (stride = 3)
 
@@ -157,6 +163,74 @@ Individual clips handle their own shortcuts (Delete, Enter, Cmd+arrows, etc.) an
 | Delete | Delete clip |
 | Cmd+Arrow | Move clip |
 | Shift+Arrow | Extend/trim clip |
+
+### Macro manager (MacrosPanel.tsx)
+
+Two Tab stops under the tab-groups profile: the **header actions**
+(New macro, panel menu — `useContainerTabGroup`, `role="toolbar"`), then
+the **macro list**. The list is ONE stop however many macros it holds.
+
+The list is a grid. Each row is a `role="group"` named after its macro,
+holding three real buttons — the name (which opens the macro), Run, and
+the menu. The row is never itself a button: a button that contains
+buttons is invalid, and hides Run and the menu from a screen reader.
+
+| Key | Action |
+|-----|--------|
+| ArrowUp / ArrowDown | Previous / next macro, same column. Holds at the ends (no wrap) |
+| ArrowLeft / ArrowRight | Along the row: name → Run → menu. Holds at the ends |
+| Home / End | First / last macro |
+| PageUp / PageDown | A screenful of macros |
+| Enter | Presses what has focus. On the name it opens the macro **at once** — the mouse's double-click wait does not apply |
+| Cmd/Ctrl+Enter | Run the macro on the project, from any cell |
+| F2 | Rename, from any cell |
+| Shift+F10 / Menu key | Open the row's menu, from any cell |
+| Tab / Shift+Tab | Leave the list |
+
+**The list remembers where you were.** Its tab stop is kept by macro ID
+and is NOT reset when focus leaves, unlike the toolbar hook: returning
+to a list of fifty macros should put you back on the one you left.
+
+**Focus after an action** — it must never fall to the page:
+
+| After | Focus goes to |
+|-------|---------------|
+| Deleting a macro | The macro that takes its place (the next, else the previous, else New macro) |
+| Closing Rename (either way) | The macro's name |
+| Cancelling New macro | The New macro button |
+| Closing the Edit macro window | The macro it was opened from — only if focus was IN the window; it is non-modal, and someone who has moved on to the project must not be pulled back (`AppDialogs`) |
+| Closing a menu with Escape | The cell the menu was opened from (`ContextMenu`) |
+
+**Keys the panel does not take.** These stay with the app, as they do
+from every other control that is not a text field:
+
+- **Space** is play/pause. It does not press the focused button.
+- **Delete / Backspace** act on the PROJECT's selection. They do not
+  delete a macro — that is in the row's menu.
+- **Shift / Cmd / Alt + arrows** are the app's chords.
+
+Every key the panel DOES use is stopped from reaching the app's
+document-level shortcuts (`stopPropagation`), including at the list's
+edges — otherwise ArrowUp on the first macro would move the track focus.
+
+**Placement.** `placement="start"` (docked left) uses tab order 8/9;
+`placement="end"` (docked right or bottom) uses 198/199, after the
+tracks. The tracks route Tab themselves rather than leaving it to
+tabindex order, so `findAfterTracksFocusTarget` (sandbox
+`utils/focusRouting.ts`) names the panel as what follows the last track.
+
+**Flat profile.** Every control is its own Tab stop and the arrows do
+nothing. Enter, Cmd/Ctrl+Enter, F2 and Shift+F10 still work.
+
+### Dock panel tabs (PanelHeader.tsx)
+
+| Key | Action |
+|-----|--------|
+| Enter | Switch to the tab |
+| Shift+F10 / Menu key | Open the ACTIVE tab's menu (dock side, open in window, close) |
+
+The menu button inside a tab is out of the Tab order by design (one stop
+per tab), so the menu key is its only keyboard route.
 
 ### Application Header / File Menu (ApplicationHeader.tsx)
 

@@ -230,6 +230,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
               tabIndex={0}
               data-tab-id={tab.id}
               aria-selected={isActive}
+              aria-haspopup={isActive && tab.hasMenu !== false ? 'menu' : undefined}
               className={`panel-header__tab ${
                 isActive
                   ? 'panel-header__tab--active'
@@ -242,6 +243,18 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   onTabChange?.(tab.id);
+                  return;
+                }
+                // The tab's menu (dock side, float, …) from the
+                // keyboard. Its button is deliberately out of the Tab
+                // order — one stop per tab — so without this the menu
+                // could only be opened with a mouse. Through the
+                // button, so the menu anchors where the mouse's does.
+                const menuKey = e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey);
+                if (menuKey && isActive && tab.hasMenu !== false) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.currentTarget.querySelector<HTMLButtonElement>('button')?.click();
                 }
               }}
               onPointerDown={(e) => handleTabPointerDown(e, tab.id)}
