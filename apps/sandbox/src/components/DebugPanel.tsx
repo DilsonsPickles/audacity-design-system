@@ -8,7 +8,7 @@
  * - Track/clip generation
  */
 
-import { Dialog, DialogFooter, LabeledCheckbox, Button } from '@audacity-ui/components';
+import { Dialog, DialogFooter, LabeledCheckbox, Button, toast } from '@audacity-ui/components';
 import type { Command } from '@audacity-ui/components';
 import { useMacros } from '../contexts/MacrosContext';
 
@@ -552,6 +552,66 @@ export function DebugPanel({
             </Button>
             <Button variant="secondary" size="default" onClick={clearAllMacros}>
               Delete All Macros
+            </Button>
+          </div>
+        </div>
+
+        {/* Toasts Section — fires each kind of toast so the timed
+            dismiss (and its countdown bar) can be looked at on demand. */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Toasts
+          </h3>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              size="default"
+              onClick={() => toast.success('Import complete', 'Kick.wav (0:12) added to track')}
+            >
+              Success (5s)
+            </Button>
+            <Button
+              variant="secondary"
+              size="default"
+              onClick={() => toast.info('Project saved locally', 'Changes are kept on this computer')}
+            >
+              Info (5s)
+            </Button>
+            <Button
+              variant="secondary"
+              size="default"
+              onClick={() => toast.warning('Low disk space', 'Less than 1 GB left for recording')}
+            >
+              Warning (5s)
+            </Button>
+            <Button
+              variant="secondary"
+              size="default"
+              onClick={() => toast.error('Save failed', 'Could not reach audio.com')}
+            >
+              Error (stays)
+            </Button>
+            <Button
+              variant="secondary"
+              size="default"
+              onClick={() => toast.info(
+                'Track deleted',
+                'Drums and its 3 clips were removed',
+                [{ label: 'Undo', onClick: () => toast.success('Track restored') }],
+                8000,
+              )}
+            >
+              With action (8s)
+            </Button>
+            <Button variant="secondary" size="default" onClick={() => toast.dismissAll()}>
+              Dismiss all
             </Button>
           </div>
         </div>
