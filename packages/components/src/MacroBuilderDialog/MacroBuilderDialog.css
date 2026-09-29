@@ -205,6 +205,22 @@
   margin-right: -4px;
 }
 
+/* Under the pointer the + fills with the accent, and its icon turns
+   white. The ghost button's own hover is a quiet grey, which all but
+   disappears on the selected row's accent tint — the one place this
+   button is ever shown. Written out to the specificity the ghost
+   button's own :hover/:active rules have, or they would win. */
+.macro-builder__command-item .macro-builder__command-add .ghost-button:hover:not(.ghost-button--disabled) {
+  background-color: var(--accent-primary, #677ce4);
+  color: #ffffff;
+}
+
+/* Pressed: the same accent, a step darker */
+.macro-builder__command-item .macro-builder__command-add .ghost-button:active:not(.ghost-button--disabled) {
+  background-color: color-mix(in srgb, var(--accent-primary, #677ce4), #000000 15%);
+  color: #ffffff;
+}
+
 .macro-builder__command-name {
   flex: 1;
   min-width: 0;
