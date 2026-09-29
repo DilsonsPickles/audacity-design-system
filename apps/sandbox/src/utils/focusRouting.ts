@@ -233,3 +233,33 @@ export function findMacroRowButton(doc: Document, macroId: string): HTMLElement 
   }
   return null;
 }
+
+/**
+ * True when a dialog owns the keyboard, so the app's shortcuts must
+ * leave this key alone: nothing pressed in a dialog may move the
+ * playhead, start playback or edit the project behind it (user
+ * decision 2026-09-29).
+ *
+ * A dialog owns a key when
+ *  - the key was pressed INSIDE one (`data-owns-keyboard`, which
+ *    `Dialog` puts on its window), or
+ *  - focus is nowhere (the page body) and either a MODAL dialog is open
+ *    — the app behind it is out of reach — or a non-modal window is the
+ *    one in use (`data-window-in-use`: the pointer's last press was
+ *    inside it).
+ *
+ * Deliberately NOT every `role="dialog"`: floating panels (the mixer in
+ * a window of its own) and effect windows carry that role too, and
+ * there the transport keys are wanted.
+ *
+ * Call site: the top of `useKeyboardShortcuts`' handler.
+ */
+export function dialogOwnsKeyboard(target: EventTarget | null, doc: Document): boolean {
+  const el = target instanceof Element ? target : null;
+  if (el?.closest('[data-owns-keyboard]')) return true;
+  const focusIsNowhere = !el || el === doc.body || el === doc.documentElement;
+  if (!focusIsNowhere) return false;
+  return doc.querySelector(
+    '[data-owns-keyboard][aria-modal="true"], [data-owns-keyboard][data-window-in-use="true"]',
+  ) !== null;
+}

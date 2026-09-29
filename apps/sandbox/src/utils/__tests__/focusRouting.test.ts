@@ -11,6 +11,7 @@ import {
   findSelectionToolbarFirstGroup,
   findAfterTracksFocusTarget,
   findMacroRowButton,
+  dialogOwnsKeyboard,
 } from '../focusRouting';
 
 // Plain DOM fixtures (jsdom) — no React. Each test builds only the markup
@@ -444,5 +445,66 @@ describe('findMacroRowButton', () => {
     expect(findMacroRowButton(document, 'z')).toBeNull();
     r.innerHTML = '';
     expect(findMacroRowButton(document, 'a')).toBeNull();
+  });
+});
+
+describe('dialogOwnsKeyboard — when the app must leave a key alone', () => {
+  function dialog(r: HTMLElement, attrs: Record<string, string>): HTMLButtonElement {
+    const el = document.createElement('div');
+    el.setAttribute('role', 'dialog');
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    const button = document.createElement('button');
+    el.append(button);
+    r.append(el);
+    return button;
+  }
+  const MODAL = { 'data-owns-keyboard': '', 'aria-modal': 'true' };
+  const WINDOW = { 'data-owns-keyboard': '', 'aria-modal': 'false', 'data-window-in-use': 'false' };
+  const WINDOW_IN_USE = { ...WINDOW, 'data-window-in-use': 'true' };
+
+  it('a key pressed inside a dialog is the dialog\'s — modal or not', () => {
+    const r = mount();
+    expect(dialogOwnsKeyboard(dialog(r, MODAL), document)).toBe(true);
+    expect(dialogOwnsKeyboard(dialog(r, WINDOW), document)).toBe(true);
+  });
+
+  it('a key pressed in the app is the app\'s, even with a window open', () => {
+    const r = mount();
+    dialog(r, WINDOW_IN_USE);
+    const inApp = document.createElement('button');
+    r.append(inApp);
+    expect(dialogOwnsKeyboard(inApp, document)).toBe(false);
+  });
+
+  it('with no dialog at all, every key is the app\'s', () => {
+    const r = mount();
+    const inApp = document.createElement('button');
+    r.append(inApp);
+    expect(dialogOwnsKeyboard(inApp, document)).toBe(false);
+    expect(dialogOwnsKeyboard(document.body, document)).toBe(false);
+    expect(dialogOwnsKeyboard(null, document)).toBe(false);
+  });
+
+  it('focus nowhere + a MODAL dialog open: the dialog\'s — the app is out of reach', () => {
+    dialog(mount(), MODAL);
+    expect(dialogOwnsKeyboard(document.body, document)).toBe(true);
+    expect(dialogOwnsKeyboard(null, document)).toBe(true);
+  });
+
+  it('focus nowhere + a non-modal window: the window\'s only while it is the one in use', () => {
+    const r = mount();
+    const button = dialog(r, WINDOW);
+    expect(dialogOwnsKeyboard(document.body, document)).toBe(false);
+    button.parentElement!.setAttribute('data-window-in-use', 'true');
+    expect(dialogOwnsKeyboard(document.body, document)).toBe(true);
+  });
+
+  it('role="dialog" alone is not enough: floating panels and effect windows keep the app\'s keys', () => {
+    const r = mount();
+    const inPanel = dialog(r, { 'aria-modal': 'false' });
+    const inEffect = dialog(r, { 'aria-modal': 'true' });
+    expect(dialogOwnsKeyboard(inPanel, document)).toBe(false);
+    expect(dialogOwnsKeyboard(inEffect, document)).toBe(false);
+    expect(dialogOwnsKeyboard(document.body, document)).toBe(false);
   });
 });

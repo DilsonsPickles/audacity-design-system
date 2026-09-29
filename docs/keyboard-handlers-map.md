@@ -78,7 +78,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 
 **Do not put key handlers on the rows or buttons.** A step row used to handle Enter itself; Enter on a button INSIDE the row bubbled to it, so pressing Enter on a step's menu button opened the menu and the editor together.
 
-**Note:** the window is non-modal, so `useKeyboardShortcuts` (a native listener on `document`) still runs while focus is in it. Every consumed key calls `stopPropagation()` as well as `preventDefault()`.
+**Note:** `useKeyboardShortcuts` ignores every key while a dialog owns the keyboard (`dialogOwnsKeyboard`, first line of its handler), so nothing pressed in this window reaches the project. The lists' handlers also call `stopPropagation()` on what they consume; that predates the guard and is kept.
 
 **Focus after the window closes or its macro is deleted:** `apps/sandbox/src/components/AppDialogs.tsx` (the `MacroBuilderDialog`'s `onClose` / `onDeleteMacro`).
 

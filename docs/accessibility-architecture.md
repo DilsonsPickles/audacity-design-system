@@ -408,6 +408,39 @@ if (target.closest('[role="toolbar"], [role="group"], [role="menubar"]')) {
 
 This ensures that pressing ArrowUp/Down inside any toolbar, track header panel, or menubar does NOT move the track focus outline.
 
+## Dialogs Own the Keyboard
+
+**File:** `apps/sandbox/src/utils/focusRouting.ts` → `dialogOwnsKeyboard`,
+called first thing in `useKeyboardShortcuts`' handler.
+
+No key pressed in a dialog may reach the project: not the arrows (they
+move the playhead), not Space (it plays), not Delete (it deletes the
+selection), not Cmd+Z (user decision 2026-09-29 — the arrows were moving
+the playhead from the Edit macro window's Close button).
+
+A dialog owns a key when the key was pressed inside one, or when focus
+is nowhere and either a modal dialog is open or a non-modal window is
+the one in use. `Dialog` says so in the DOM, because the app's handler
+is a native listener that sees only the event:
+
+| Attribute on the dialog | Means |
+|-------------------------|-------|
+| `data-owns-keyboard` | This is a `Dialog` — keys pressed in it are its own |
+| `aria-modal="true"` | The app behind is out of reach, wherever focus is |
+| `data-window-in-use="true"` | Non-modal: the pointer's last press was inside it |
+
+Consequences inside a dialog:
+- **Space presses the focused button**, as in any dialog. Outside one it
+  is still play/pause from every control that is not a text field.
+- The lists in the Edit macro window still stop their own keys
+  (`stopPropagation`) — belt and braces, and they predate this.
+
+**Not every `role="dialog"` owns the keyboard.** `FloatingPanel` (a
+panel in a window of its own — the mixer) and `EffectDialog` carry the
+role without the marker, so the transport keys still work from them.
+Give a window `data-owns-keyboard` only if nothing in it should ever
+drive the project.
+
 ## Adding a New Tab Group
 
 1. **Add config** to both profiles in `packages/core/src/accessibility/profiles.ts`:

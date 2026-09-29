@@ -260,6 +260,32 @@ describe('Dialog — a non-modal window and the keyboard', () => {
     });
   });
 
+  it('says it owns the keyboard, and whether it is the one in use', () => {
+    // The host app's shortcut handler reads these (sandbox:
+    // utils/focusRouting.ts → dialogOwnsKeyboard)
+    const { dialog, getByTestId } = renderWindow();
+    expect(dialog.hasAttribute('data-owns-keyboard')).toBe(true);
+    expect(dialog.dataset.windowInUse).toBe('false');
+    press(getByTestId('blank'));
+    expect(dialog.dataset.windowInUse).toBe('true');
+    press(getByTestId('app-after'));
+    expect(dialog.dataset.windowInUse).toBe('false');
+    press(getByTestId('blank'));
+    getByTestId('app-before').focus();
+    expect(dialog.dataset.windowInUse).toBe('false');
+  });
+
+  it('a modal dialog says it owns the keyboard too', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <Dialog isOpen title="Modal" width={600}><button>ok</button></Dialog>
+      </ThemeProvider>,
+    );
+    const modal = container.querySelector<HTMLElement>('.dialog')!;
+    expect(modal.hasAttribute('data-owns-keyboard')).toBe(true);
+    expect(modal.getAttribute('aria-modal')).toBe('true');
+  });
+
   it('the window can hold focus itself, but is never a Tab stop', () => {
     const { dialog } = renderWindow();
     expect(dialog.tabIndex).toBe(-1);

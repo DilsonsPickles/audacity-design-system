@@ -195,14 +195,20 @@ export function Dialog({
   const lastPressWasInsideRef = useRef(false);
   useEffect(() => {
     if (!isOpen || !nonModal) return;
-    lastPressWasInsideRef.current = false;
+    // Kept in the DOM as well as in the ref (`data-window-in-use`):
+    // the host app's own shortcut handler has to be able to ask
+    const setLastPressInside = (inside: boolean) => {
+      lastPressWasInsideRef.current = inside;
+      if (dialogRef.current) dialogRef.current.dataset.windowInUse = inside ? 'true' : 'false';
+    };
+    setLastPressInside(false);
     const onPointerDown = (e: PointerEvent) => {
-      lastPressWasInsideRef.current = !!dialogRef.current?.contains(e.target as Node | null);
+      setLastPressInside(!!dialogRef.current?.contains(e.target as Node | null));
     };
     // Focus arriving anywhere else (Tab, a shortcut) ends it too
     const onFocusIn = (e: FocusEvent) => {
       const target = e.target as Node | null;
-      if (target && !dialogRef.current?.contains(target)) lastPressWasInsideRef.current = false;
+      if (target && !dialogRef.current?.contains(target)) setLastPressInside(false);
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('focusin', onFocusIn, true);
@@ -510,6 +516,12 @@ export function Dialog({
         role="dialog"
         aria-modal={nonModal ? 'false' : 'true'}
         aria-labelledby="dialog-title"
+        // A dialog OWNS the keyboard while it is in use: a host app with
+        // shortcuts of its own (arrows that move a playhead, Space that
+        // plays, Delete that deletes) must leave keys pressed in here
+        // alone. This is how it finds out — a DOM marker, because the
+        // host's handler is a native listener that sees only the event.
+        data-owns-keyboard=""
         // A non-modal window can take focus ITSELF (never by Tab), so a
         // click on a blank part of it focuses the window rather than
         // nothing at all

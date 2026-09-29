@@ -128,6 +128,12 @@ The panel is keyboard-operable end to end (see
 - **The Edit macro window's own dialogs are unaudited**: the step
   parameter editors (`CommandParametersDialog`, `EditStepDialog`) and
   the Run-on-files progress window. The window itself is done.
+- **Effect windows and floating panels still pass keys to the app**
+  (`EffectDialog`, `FloatingPanel`): they are `role="dialog"` without
+  `data-owns-keyboard`, left so that Space still auditions from them.
+  Arrows on their buttons therefore still move the playhead — the
+  same fault the Edit macro window had. Needs a decision per window:
+  which keys, if any, should drive the project from it.
 - **No key leaves the Edit macro window for the app** now that Tab goes
   round it (`loopTab`): Escape closes it, a click leaves it. F6-style
   "next pane" would be the keyboard's way out without closing.

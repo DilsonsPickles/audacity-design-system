@@ -17,6 +17,7 @@ import { handleDuplicate } from './handlers/duplicateHandlers';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { resolveTimeSelectionScope } from '../utils/timeSelectionScope';
+import { dialogOwnsKeyboard } from '../utils/focusRouting';
 
 export interface ClipboardState {
   clips: ((Clip | MidiClip) & { trackIndex: number })[];
@@ -112,6 +113,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     const clipboardDeps = { state, dispatch, clipboard, setClipboard, audioManagerRef };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // A dialog owns the keyboard while it is in use. FIRST, before
+      // anything below: no key pressed in a dialog may reach the
+      // project — the arrows were moving the playhead from the Edit
+      // macro window's Close button.
+      if (dialogOwnsKeyboard(e.target, document)) return;
+
       // Navigation keys indicate keyboard navigation mode
       const navKeys = ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Home', 'End'];
       if (navKeys.includes(e.key)) {
