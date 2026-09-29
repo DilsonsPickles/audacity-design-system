@@ -71,7 +71,7 @@ describe('clip fades', () => {
     }
   });
 
-  it('a quick fade being edited gains a white edge on the UNDERSIDE of its line only; the dark line never changes', () => {
+  it('the white edge shows only while a curve is being EDITED — its shape handle mid-drag — and only on its underside', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -87,56 +87,55 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
-    const lefts = Array.from(container.querySelectorAll<HTMLElement>('[data-fade-curve]')).map((el) => parseInt(el.style.left, 10));
-    const clip2Left = Math.max(...lefts); // clip 2's one fade is the right-most region
-    const curves = (clip: 1 | 2) => Array.from(container.querySelectorAll<HTMLElement>('[data-fade-curve]'))
-      .filter((el) => (parseInt(el.style.left, 10) === clip2Left) === (clip === 2));
-    const strokes = (clip: 1 | 2) => curves(clip).map((el) => el.querySelector('[data-fade-line]')!.getAttribute('stroke'));
-    const undersides = (clip: 1 | 2) => curves(clip)
-      .map((el) => el.querySelector('[data-fade-line-underside]')?.getAttribute('stroke'))
-      .filter((stroke) => stroke !== undefined);
+    const whites = () => Array.from(container.querySelectorAll('[data-fade-line-underside]'));
+    const lineStrokes = () => Array.from(container.querySelectorAll('[data-fade-line]')).map((el) => el.getAttribute('stroke'));
     const DARK = 'rgba(0, 0, 0, 0.55)';
+    const allDark = [DARK, DARK, DARK];
 
-    // At rest — selection alone is not editing
-    expect(strokes(1)).toEqual([DARK, DARK]);
-    expect(strokes(2)).toEqual([DARK]);
-    expect(container.querySelector('[data-fade-line-underside]')).toBeNull();
-
-    // Pointer over clip 1: both of ITS curves, and only its
+    // Selected: no white
+    expect(whites()).toHaveLength(0);
+    // Pointer over the clip: no white
     hoverClip(container, 1);
-    expect(undersides(1)).toEqual(['#FFFFFF', '#FFFFFF']);
-    expect(strokes(1)).toEqual([DARK, DARK]); // the line on top is untouched
-    expect(undersides(2)).toEqual([]);
-    expect(strokes(2)).toEqual([DARK]);
+    expect(whites()).toHaveLength(0);
+    // Pointer on the shape handle: it shows its hover look, still no white
+    const outNode = () => container.querySelector('[data-quickfade-node="out"]') as HTMLElement;
+    fireEvent.mouseOut(container.querySelector('[data-clip-id="1"]') as HTMLElement, { relatedTarget: outNode(), buttons: 0 });
+    expect(outNode().getAttribute('data-hovered')).toBe('true');
+    expect(whites()).toHaveLength(0);
+    // Dragging the LENGTH handle: no white
+    const lengthHandle = container.querySelector('[data-fade-handle="out"][data-fade-clip="1"]') as HTMLElement;
+    fireEvent.pointerDown(lengthHandle, { button: 0, clientX: 0, clientY: 0, pointerId: 50 });
+    expect(whites()).toHaveLength(0);
+    fireEvent.pointerUp(lengthHandle, { clientX: 0, clientY: 0, pointerId: 50 });
+    expect(lineStrokes()).toEqual(allDark);
 
-    const clipIds = curves(1).map((el) => {
-      const side = el.getAttribute('data-fade-curve') as 'in' | 'out';
-      const shape = side === 'in' ? 2 : { t: 0.3, g: 0.6 };
-      const white = el.querySelector('[data-fade-line-underside]')!;
-      const line = el.querySelector('[data-fade-line]')!;
-      // Same curve, wider, and drawn before (under) the line
-      expect(white.getAttribute('d')).toBe(line.getAttribute('d'));
-      expect(Number(white.getAttribute('stroke-width'))).toBeGreaterThan(Number(line.getAttribute('stroke-width')));
-      expect(white.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      // …and cut off along the curve: only the part BELOW it shows
-      const clip = el.querySelector('clipPath')!;
-      expect(white.getAttribute('clip-path')).toBe(`url(#${clip.id})`);
-      expect(clip.querySelector('path')!.getAttribute('d')).toBe(fadeAreaBelowPath(side, 64, shape));
-      return clip.id;
-    });
-    expect(new Set(clipIds).size).toBe(2); // one clip region per curve
+    // Dragging the fade OUT's shape handle: that curve, and only that one
+    fireEvent.pointerDown(outNode(), { button: 0, clientX: 0, clientY: 0, pointerId: 51 });
+    expect(whites()).toHaveLength(1);
+    const white = whites()[0];
+    expect(white.getAttribute('data-fade-line-underside')).toBe('out');
+    expect(white.getAttribute('stroke')).toBe('#FFFFFF');
+    expect(lineStrokes()).toEqual(allDark); // the line on top is untouched
 
-    // A drag keeps it after the pointer has left the clip's box…
-    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
-    fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 51 });
-    fireEvent.mouseLeave(handle);
-    expect(undersides(1)).toEqual(['#FFFFFF', '#FFFFFF']);
-    // …and letting go away from the clip returns it to rest
-    fireEvent.pointerUp(handle, { clientX: 900, clientY: 400, pointerId: 51 });
-    expect(strokes(1)).toEqual([DARK, DARK]);
-    expect(container.querySelector('[data-fade-line-underside]')).toBeNull();
-    // Nothing on top of the curve is ever white
-    expect(container.querySelector('[data-fade-line][stroke="#FFFFFF"]')).toBeNull();
+    const curve = white.closest('[data-fade-curve]')!;
+    const line = curve.querySelector('[data-fade-line]')!;
+    // Same curve, wider, and drawn before (under) the line
+    expect(white.getAttribute('d')).toBe(line.getAttribute('d'));
+    expect(Number(white.getAttribute('stroke-width'))).toBeGreaterThan(Number(line.getAttribute('stroke-width')));
+    expect(white.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // …and cut off along the curve: only the part BELOW it shows
+    const clip = curve.querySelector('clipPath')!;
+    expect(white.getAttribute('clip-path')).toBe(`url(#${clip.id})`);
+    expect(clip.querySelector('path')!.getAttribute('d')).toBe(fadeAreaBelowPath('out', 64, { t: 0.3, g: 0.6 }));
+
+    // It lasts as long as the drag, wherever the pointer goes…
+    fireEvent.mouseLeave(outNode());
+    expect(whites()).toHaveLength(1);
+    // …and ends with it, even when the pointer is still over the clip
+    fireEvent.pointerUp(outNode(), { clientX: 0, clientY: 0, pointerId: 51 });
+    expect(whites()).toHaveLength(0);
+    expect(lineStrokes()).toEqual(allDark);
+    expect(container.querySelector('[data-quickfade-node]')).toBeTruthy(); // the pointer IS still over the clip
   });
 
   it('the fade handle icon is a rounded outline: no white fill, and the wedge is clipped to it', () => {
@@ -188,7 +187,7 @@ describe('clip fades', () => {
     expect(container.querySelectorAll('[data-fade-overlay]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-fade-line]')).toHaveLength(2);
     expect(container.querySelector('[data-fade-dim]')).toBeNull();
-    // …nor given the white edge under the pointer: that is the quick fade's editing state
+    // …nor given the white edge: that belongs to a quick fade's curve being edited
     hoverClip(container, 1);
     expect(container.querySelector('[data-fade-line-underside]')).toBeNull();
     expect(container.querySelector('[data-fade-line][stroke="#FFFFFF"]')).toBeNull();

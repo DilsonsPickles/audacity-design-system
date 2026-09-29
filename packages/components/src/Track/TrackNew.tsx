@@ -985,20 +985,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     });
     const curves = fadeCurves.map((region) => {
       const g = geometry(region);
-      // A quick fade being EDITED — the pointer is over its clip, or one
-      // of its handles is mid-drag — gains a WHITE edge along the
-      // UNDERSIDE of its line, and only there (user decision
-      // 2026-09-29): the dark line does not change, and nothing white
-      // shows above it, where the clip is dimmed. It is a wide white
-      // stroke on the same curve, CLIPPED to the area below the curve —
-      // that keeps the edge the same thickness where the curve is steep,
-      // which shifting a copy of the line downward would not. At rest
-      // there is only the dark line.
-      const editing = region.authored && (
-        fadeHoverClipId === region.clipId
-        || fadeDragClipId === region.clipId
-        || shapeDrag === `${region.clipId}:${region.side}`
-      );
+      // A curve being EDITED — its shape handle is mid-drag, and nothing
+      // less (user decision 2026-09-29: not the pointer being over the
+      // clip, not the handle being hovered, not a length drag) — gains a
+      // WHITE edge along the UNDERSIDE of its line, and only there: the
+      // dark line does not change, and nothing white shows above it,
+      // where the clip is dimmed. It is a wide white stroke on the same
+      // curve, CLIPPED to the area below the curve — that keeps the edge
+      // the same thickness where the curve is steep, which shifting a
+      // copy of the line downward would not. One curve at a time: the
+      // clip's other fade stays plain.
+      const editing = region.authored && shapeDrag === `${region.clipId}:${region.side}`;
       const curvePath = fadeCurvePath(region.side, 64, region.shape);
       const belowClipId = `${fadeClipIdBase}-below-${region.clipId}-${region.side}`;
       return (
