@@ -134,9 +134,9 @@ The panel is keyboard-operable end to end (see
 - **Escape closes the Edit macro window even with a search typed.**
   Clearing the search first would be the usual behaviour; `Dialog`
   takes Escape in the capture phase, ahead of the field.
-- **No way to build a NON-contiguous selection of commands from the
-  keyboard.** Shift+arrow grows a range; toggling one command in or
-  out is conventionally Ctrl+Space, and Space is play/pause here.
+- **The + on a selected command is mouse-only** (out of the Tab order,
+  `aria-hidden`): an option cannot hold a control. Enter is the
+  keyboard's add.
 - **Typing in the command list does not search.** Single letters are
   app shortcuts, so they are left alone; Shift+Tab reaches the field.
 - **The empty-steps hint still says "Double-click a command"** — Enter

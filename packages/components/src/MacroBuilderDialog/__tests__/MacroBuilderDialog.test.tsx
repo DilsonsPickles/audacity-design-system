@@ -88,87 +88,99 @@ describe('MacroBuilderDialog', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
     fireEvent.doubleClick(commandRows(container)[4]); // Fade In
+    expect(onAddCommand).toHaveBeenCalledTimes(1);
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
   });
 
-  it('double-clicking a member of a multi-selection adds the whole selection', () => {
-    const onAddCommand = vi.fn();
-    const { container } = renderBuilder({ onAddCommand });
-    fireEvent.click(commandRows(container)[4]); // Fade In
-    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Select all
-    // The double-click's first half is a plain click that collapses the
-    // selection — the dblclick must still add what it landed on
-    fireEvent.click(commandRows(container)[0]);
-    fireEvent.doubleClick(commandRows(container)[0]);
-    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Fade In', 'Select all']);
-  });
-
-  it('Cmd+click builds a multi-selection across searches, added in click order', () => {
-    const onAddCommand = vi.fn();
-    const { container } = renderBuilder({ onAddCommand });
-    // Pick one command, then search for others and pick two more
-    fireEvent.click(commandRows(container)[4]); // Fade In
-    fireEvent.change(searchInput(container), { target: { value: 'spl' } });
-    expect(commandRows(container).map((el) => el.textContent)).toEqual(['Split']);
-    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Split
-    fireEvent.change(searchInput(container), { target: { value: 'join' } });
-    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Join selected clips
-    // The selection bar shows how many its Add will append
-    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('3 selected');
-    fireEvent.click(selectionAdd(container)!);
-    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
-      'Fade In', 'Split', 'Join selected clips',
-    ]);
-    // Selection clears after the add; the bar stays, disabled
-    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('0 selected');
-    expect(selectionAdd(container)!.disabled).toBe(true);
-  });
-
-  it('Shift+click extends the selection through the visible range', () => {
-    const onAddCommand = vi.fn();
-    const { container } = renderBuilder({ onAddCommand });
-    fireEvent.click(commandRows(container)[1]); // Next clip
-    fireEvent.click(commandRows(container)[3], { shiftKey: true }); // through Join
-    fireEvent.click(selectionAdd(container)!);
-    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual([
-      'Next clip', 'Split', 'Join selected clips',
-    ]);
-  });
-
-  it('the selection bar is always visible — Add disabled until something is selected', () => {
-    const onAddCommand = vi.fn();
-    const { container } = renderBuilder({ onAddCommand });
-    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('0 selected');
-    expect(selectionAdd(container)!.disabled).toBe(true);
-    // Clear only appears when there is something to clear
-    expect(container.querySelector('.macro-builder__selection-clear')).toBeNull();
-    fireEvent.click(commandRows(container)[4]); // Fade In
-    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
-    expect(selectionAdd(container)!.disabled).toBe(false);
-    fireEvent.click(selectionAdd(container)!);
-    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
-    expect(selectionAdd(container)!.disabled).toBe(true);
-  });
-
-  it('the selection bar survives searching away from a hidden selection, and Clear empties it', () => {
+  it('one command is selected at a time — a click replaces the selection', () => {
     const { container } = renderBuilder();
+    const selected = () => Array.from(container.querySelectorAll('.macro-builder__command-item--selected'))
+      .map((el) => el.querySelector('.macro-builder__command-name')?.textContent);
+    fireEvent.click(commandRows(container)[4]);
+    expect(selected()).toEqual(['Fade In']);
+    fireEvent.click(commandRows(container)[0]);
+    expect(selected()).toEqual(['Select all']);
+  });
+
+  it('Cmd+click and Shift+click select like a plain click — there is no multi-select', () => {
+    const { container } = renderBuilder();
+    const selected = () => Array.from(container.querySelectorAll('[data-command-id][aria-selected="true"]'))
+      .map((el) => (el as HTMLElement).dataset.commandId);
+    fireEvent.click(commandRows(container)[0]);
+    fireEvent.click(commandRows(container)[2], { metaKey: true });
+    expect(selected()).toEqual(['split']);
+    fireEvent.click(commandRows(container)[4], { shiftKey: true });
+    expect(selected()).toEqual(['effect:fade-in']);
+    // ...and Cmd+click on the selected command does not deselect it
+    fireEvent.click(commandRows(container)[4], { ctrlKey: true });
+    expect(selected()).toEqual(['effect:fade-in']);
+  });
+
+  it('the selected command — and only it — carries a + button', () => {
+    const { container } = renderBuilder();
+    expect(container.querySelectorAll('.macro-builder__command-add')).toHaveLength(0);
+    fireEvent.click(commandRows(container)[2]); // Split
+    const adds = container.querySelectorAll('.macro-builder__command-add');
+    expect(adds).toHaveLength(1);
+    expect(adds[0].closest<HTMLElement>('[data-command-id]')!.dataset.commandId).toBe('split');
+    fireEvent.click(commandRows(container)[0]);
+    expect(container.querySelector('.macro-builder__command-add')!
+      .closest<HTMLElement>('[data-command-id]')!.dataset.commandId).toBe('select-all');
+  });
+
+  it('the + adds the selected command, once per click', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[4]); // Fade In
+    const plus = () => container.querySelector<HTMLButtonElement>('.macro-builder__command-add button')!;
+    fireEvent.click(plus());
+    expect(onAddCommand).toHaveBeenCalledTimes(1);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
+    // The command stays selected, so its + is still there to press again
+    fireEvent.click(plus());
+    expect(onAddCommand).toHaveBeenCalledTimes(2);
+  });
+
+  it('clicking the + does not reach the row: it neither re-selects nor double-adds', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[4]);
+    const plus = container.querySelector<HTMLButtonElement>('.macro-builder__command-add button')!;
+    // A real double-click: two clicks, then the dblclick event
+    fireEvent.click(plus, { detail: 1 });
+    fireEvent.click(plus, { detail: 2 });
+    fireEvent.doubleClick(plus);
+    expect(onAddCommand).toHaveBeenCalledTimes(2);
+  });
+
+  it('there is no selection bar any more', () => {
+    const { container } = renderBuilder();
+    fireEvent.click(commandRows(container)[0]);
+    expect(container.querySelector('.macro-builder__selection-summary')).toBeNull();
+    // The count it used to show (a command is NAMED "Join selected clips")
+    expect(container.textContent).not.toMatch(/\d+ selected/);
+    expect(container.textContent).not.toContain('Clear');
+  });
+
+  it('a search that hides the selected command clears the selection', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
     fireEvent.click(commandRows(container)[4]); // Fade In
     fireEvent.change(searchInput(container), { target: { value: 'split' } });
-    expect(commandRows(container).map((el) => el.textContent)).toEqual(['Split']);
-    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('1 selected');
-    fireEvent.click(container.querySelector<HTMLButtonElement>('.macro-builder__selection-clear')!);
-    expect(container.querySelector('.macro-builder__selection-summary')?.textContent).toContain('0 selected');
-    expect(container.querySelector('.macro-builder__selection-clear')).toBeNull();
+    expect(container.querySelector('.macro-builder__command-item--selected')).toBeNull();
+    // ...so Enter adds what can be SEEN, not the command that was hidden
+    fireEvent.keyDown(searchInput(container), { key: 'Enter' });
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Split']);
   });
 
-  it('Cmd+click on a selected command removes it from the selection', () => {
-    const { container } = renderBuilder();
-    fireEvent.click(commandRows(container)[0]);
-    fireEvent.click(commandRows(container)[1], { metaKey: true });
-    fireEvent.click(commandRows(container)[0], { metaKey: true }); // deselect first
-    const selected = Array.from(container.querySelectorAll('.macro-builder__command-item--selected'))
-      .map((el) => el.textContent);
-    expect(selected).toEqual(['Next clip']);
+  it('a search that still shows the selected command keeps it selected', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[3]); // Join selected clips
+    fireEvent.change(searchInput(container), { target: { value: 'sel' } });
+    // Results: Select all, Join selected clips — Enter adds the selected one
+    fireEvent.keyDown(searchInput(container), { key: 'Enter' });
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Join selected clips']);
   });
 
   it('the commands pane opens 280px wide', () => {
@@ -203,19 +215,11 @@ describe('MacroBuilderDialog', () => {
     expect(pane.style.flex).toBe('0 0 280px');
   });
 
-  it('Enter on a selected command row adds it — or the whole selection it belongs to', () => {
+  it('Enter on a command adds it', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
-    // Single: Enter on a focused row adds that row's command
-    fireEvent.click(commandRows(container)[2]); // Split
     fireEvent.keyDown(commandRows(container)[2], { key: 'Enter' });
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Split']);
-    // Multi: Enter on any selected row adds the whole selection in click order
-    onAddCommand.mockClear();
-    fireEvent.click(commandRows(container)[4]); // Fade In
-    fireEvent.click(commandRows(container)[0], { metaKey: true }); // Select all
-    fireEvent.keyDown(commandRows(container)[0], { key: 'Enter' });
-    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Fade In', 'Select all']);
   });
 
   it('arrow keys walk the selection through the list; ArrowDown from search enters it', () => {

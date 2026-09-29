@@ -86,30 +86,20 @@ describe('Edit macro keyboard — Tab stops', () => {
     expect(stops('.macro-builder__step-list')).toEqual([step(1)]);
   });
 
-  it('the window has a fixed handful of stops, in reading order', () => {
-    const { all } = renderBuilder();
+  it('the window has six stops, in reading order — with or without a selection', () => {
+    const { all, command } = renderBuilder();
+    fireEvent.click(command('split'));
     const zones = all('.macro-builder button, .macro-builder input, .macro-builder [tabindex]')
       .filter((el) => el.tabIndex >= 0 && !(el as HTMLButtonElement).disabled)
       .filter((el) => el.closest('.macro-builder__columns, .macro-builder__footer'))
       .map((el) =>
         el.matches('input') ? 'search'
           : el.closest('.macro-builder__command-list') ? 'commands'
-            : el.closest('.macro-builder__selection-summary') ? 'add-bar'
-              : el.matches('.macro-builder__splitter') ? 'splitter'
+            : el.matches('.macro-builder__splitter') ? 'splitter'
                 : el.closest('.macro-builder__steps-header') ? 'macro-menu'
                   : el.closest('.macro-builder__step-list') ? 'steps'
                     : el.closest('.macro-builder__footer') ? 'footer' : '?');
-    // Nothing selected yet, so the Add bar has nothing to stop on
     expect(zones).toEqual(['search', 'commands', 'splitter', 'macro-menu', 'steps', 'footer']);
-  });
-
-  it('the Add bar becomes a stop once there is something to add', () => {
-    const { stops, command, focus, press } = renderBuilder();
-    focus(command('select-all'));
-    press('ArrowDown');
-    const bar = stops('.macro-builder__selection-summary');
-    expect(bar).toHaveLength(1);
-    expect(bar[0].textContent).toContain('Clear');
   });
 
   it('the footer is one stop with the arrows between its buttons', () => {
@@ -175,35 +165,22 @@ describe('Edit macro keyboard — the command list', () => {
     expect(focused()).toBe(command('select-all'));
   });
 
-  it('Shift+Down grows the selection from where it began; Shift+Up shrinks it back', () => {
+  it('Shift+arrows move like plain arrows — there is no range to grow', () => {
+    const { command, focus, press, selected, focused } = renderBuilder();
+    focus(command('select-all'));
+    press('ArrowDown', { shiftKey: true });
+    press('ArrowDown', { shiftKey: true });
+    expect(focused()).toBe(command('split'));
+    expect(selected()).toEqual(['split']);
+  });
+
+  it('only ever one command is selected, however the arrows are used', () => {
     const { command, focus, press, selected } = renderBuilder();
     focus(command('select-all'));
-    press('ArrowDown'); // Next clip: the anchor
-    press('ArrowDown', { shiftKey: true });
-    press('ArrowDown', { shiftKey: true });
-    expect(selected()).toEqual(['select-next-clip', 'split', 'join']);
-    press('ArrowUp', { shiftKey: true });
-    expect(selected()).toEqual(['select-next-clip', 'split']);
-  });
-
-  it('a selection grown upward is added from the anchor outward', () => {
-    const onAddCommand = vi.fn();
-    const { command, focus, press } = renderBuilder({ onAddCommand });
-    focus(command('join'));
-    press('ArrowUp'); // Split: the anchor
-    press('ArrowUp', { shiftKey: true });
-    press('ArrowUp', { shiftKey: true });
-    press('Enter');
-    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Split', 'Next clip', 'Select all']);
-  });
-
-  it('growing a selection stops at the ends — a range does not wrap', () => {
-    const { command, focus, press, selected, focused } = renderBuilder();
-    focus(command('join'));
-    press('ArrowDown');
-    press('ArrowDown', { shiftKey: true });
-    expect(focused()).toBe(command('effect:fade-in'));
-    expect(selected()).toEqual(['effect:fade-in']);
+    for (const key of ['ArrowDown', 'ArrowDown', 'End', 'ArrowUp', 'Home', 'PageDown']) {
+      press(key);
+      expect(selected(), key).toHaveLength(1);
+    }
   });
 
   it('Enter adds what has focus, and leaves focus where it was', () => {
@@ -230,11 +207,43 @@ describe('Edit macro keyboard — the command list', () => {
     expect(focused()).toBe(command('split'));
   });
 
-  it('is a multi-select listbox to assistive tech', () => {
-    const { q } = renderBuilder();
+  it('is a single-select listbox to assistive tech', () => {
+    const { q, all } = renderBuilder();
     const list = q('.macro-builder__command-list');
     expect(list.getAttribute('role')).toBe('listbox');
-    expect(list.getAttribute('aria-multiselectable')).toBe('true');
+    expect(list.hasAttribute('aria-multiselectable')).toBe(false);
+    expect(all('[role="option"]')).toHaveLength(COMMANDS.length);
+  });
+
+  it('the + is the mouse\'s: out of the Tab order and hidden from assistive tech', () => {
+    // An option cannot hold a control, and the keyboard has Enter
+    const { command, focus, press, q, stops } = renderBuilder();
+    focus(command('select-all'));
+    press('ArrowDown');
+    const wrapper = q('.macro-builder__command-add');
+    expect(wrapper.getAttribute('aria-hidden')).toBe('true');
+    expect(wrapper.querySelector('button')!.tabIndex).toBe(-1);
+    // ...so the list is still one stop with a + showing
+    expect(stops('.macro-builder__command-list')).toEqual([command('select-next-clip')]);
+  });
+
+  it('the + follows the selection as the arrows move it', () => {
+    const { command, focus, press, q } = renderBuilder();
+    focus(command('select-all'));
+    press('ArrowDown');
+    expect(q('.macro-builder__command-add').closest('[data-command-id]')).toBe(command('select-next-clip'));
+    press('ArrowDown');
+    expect(q('.macro-builder__command-add').closest('[data-command-id]')).toBe(command('split'));
+  });
+
+  it('Enter adds the focused command, and it stays selected to be added again', () => {
+    const onAddCommand = vi.fn();
+    const { command, focus, press, selected } = renderBuilder({ onAddCommand });
+    focus(command('split'));
+    press('Enter');
+    press('Enter');
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Split', 'Split']);
+    expect(selected()).toEqual(['split']);
   });
 
   it('stays one stop driven by the arrows under the flat profile too — a listbox is one control', () => {

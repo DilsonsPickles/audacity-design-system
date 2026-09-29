@@ -239,7 +239,7 @@ nothing. Enter, Cmd/Ctrl+Enter, F2 and Shift+F10 still work.
 
 ### Edit macro window (MacroBuilderDialog.tsx)
 
-Seven Tab stops, however many commands and steps there are (it was 322
+Six Tab stops, however many commands and steps there are (it was 322
 with 280 commands and 12 steps — every command and every step control
 was its own stop):
 
@@ -247,11 +247,10 @@ was its own stop):
 |---|------|-----------|
 | 1 | Search field | Down drops into the command list; Enter adds the first match |
 | 2 | Command list | A listbox — arrows, below |
-| 3 | Add bar | Clear / Add (`useContainerTabGroup`). A stop only once something is selected |
-| 4 | Splitter | Arrows resize, below |
-| 5 | Macro menu button | Enter opens the menu |
-| 6 | Step list | Arrows, below |
-| 7 | Footer | Run / Run on files… / Done (`useContainerTabGroup`) |
+| 3 | Splitter | Arrows resize, below |
+| 4 | Macro menu button | Enter opens the menu |
+| 5 | Step list | Arrows, below |
+| 6 | Footer | Run / Run on files… / Done (`useContainerTabGroup`) |
 
 The window floats outside the app's numbered Tab order: its stops are
 `tabindex=0`, as every dialog's are. It is NON-MODAL, which has two
@@ -261,19 +260,31 @@ so every key a list uses is stopped from reaching them; before this the
 arrows and Home/End moved the project's playhead, Down on a step threw
 focus out to a track, and Delete on a step opened "Delete track?".
 
-**Command list** — `role="listbox"`, multi-select. One column.
+**Command list** — `role="listbox"`, ONE command selected at a time
+(multi-select and its "N selected · Clear · Add" bar were removed
+2026-09-29). One column.
 
 | Key | Action |
 |-----|--------|
 | ArrowDown / ArrowUp | Next / previous command; selection follows focus. Cycles |
-| Shift+ArrowDown / Up | Grow the selection from where it began. Stops at the ends — a range has two |
 | Home / End | First / last command |
 | PageUp / PageDown | A screenful. Stops at the ends |
-| Enter | Add what is selected (or the focused command). Focus stays put; the add is announced |
+| Enter | Add the focused command. It stays selected, so Enter again adds it again; the add is announced |
 | ArrowLeft / ArrowRight | Nothing — but kept from the playhead |
+| Shift+arrows | The same as the plain arrows: there is no range to grow |
 
-It stays ONE stop driven by the arrows under the flat profile too: a
-listbox is a single control, and 280 Tab stops serve nobody.
+With the mouse: click selects, double-click adds, and the selected
+command carries a **+ button** that adds it. The + is the mouse's only:
+it is out of the Tab order and `aria-hidden`, because an option cannot
+hold a control and the keyboard already has Enter. A command row is a
+`div`, not a `button`, for the same reason — a button cannot hold one.
+
+A search that hides the selected command clears the selection, so Enter
+in the search field never adds something that cannot be seen: it adds
+the selected command if it is among the results, else the first result.
+
+The list stays ONE stop driven by the arrows under the flat profile too:
+a listbox is a single control, and 280 Tab stops serve nobody.
 
 **Step list** — the same two moves as the Macro manager's list.
 

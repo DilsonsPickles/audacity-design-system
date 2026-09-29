@@ -105,16 +105,17 @@ function prettyParameters(parameters: string): string {
  * (Instruments) and the macro's step list (Your score), joined by a
  * transfer button. Search is the only filter — there is no category
  * picker (removed 2026-09-28). The search field is
- * always visible, so adding a step never opens a picker window — type,
- * Enter (or select and →, or double-click) and the step lands in the
- * macro. Steps are added with default parameters and edited in place
+ * always visible, so adding a step never opens a picker window. ONE
+ * command is selected at a time (multi-select removed 2026-09-29):
+ * click selects it and shows its + button; double-click, the +, or
+ * Enter adds it. Steps are added with default parameters and edited in place
  * via the row pencil; drag a row (or ↑/↓) to reorder and the trash
  * removes it. Non-modal and auto-saving, like MacroEditorDialog.
  *
  * KEYBOARD (docs/accessibility-architecture.md → Edit macro window).
- * Seven Tab stops, however many commands and steps there are: search,
- * the command list, its Add bar, the splitter, the macro's menu, the
- * step list, the footer. Both lists are driven by the arrows. The
+ * Six Tab stops, however many commands and steps there are: search,
+ * the command list, the splitter, the macro's menu, the step list, the
+ * footer. Both lists are driven by the arrows. The
  * window is non-modal, so the app's document-level shortcuts are still
  * listening: every key a list uses is stopped from reaching them, or
  * the arrows would move the playhead and Delete would ask to delete a
@@ -140,15 +141,9 @@ export function MacroBuilderDialog({
   os = 'macos',
 }: MacroBuilderDialogProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
-  // Multi-select, in click order. DELIBERATELY not keyed to what the
-  // search currently shows — a selection survives a new search, so one
-  // → can add commands found by several searches.
-  const [selectedCommandIds, setSelectedCommandIds] = React.useState<string[]>([]);
-  const anchorCommandIdRef = React.useRef<string | null>(null);
-  // What the selection was before the last plain click collapsed it —
-  // a double-click's first half collapses a multi-selection, and the
-  // dblclick handler needs to know what it landed on to add all of it
-  const preClickSelectionRef = React.useRef<string[]>([]);
+  // ONE selected command. It stays selected after it is added, so its
+  // + is still there to add it again.
+  const [selectedCommandId, setSelectedCommandId] = React.useState<string | null>(null);
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [macroMenuOpen, setMacroMenuOpen] = React.useState(false);
@@ -183,15 +178,7 @@ export function MacroBuilderDialog({
   // Focus to place once the steps have re-rendered (a move, a delete)
   const pendingStepFocusRef = React.useRef<{ index: number; cell: StepCell } | 'search' | null>(null);
 
-  const selectionBarRef = React.useRef<HTMLSpanElement>(null);
   const footerRef = React.useRef<HTMLDivElement>(null);
-  const selectionGroup = useContainerTabGroup({
-    containerRef: selectionBarRef,
-    groupId: 'macro-builder-selection',
-    selector: 'button',
-    startTabIndex: 0,
-    ariaLabel: 'Selected commands',
-  });
   const footerGroup = useContainerTabGroup({
     containerRef: footerRef,
     groupId: 'macro-builder-footer',
@@ -203,21 +190,18 @@ export function MacroBuilderDialog({
   // Reset transient state whenever a different macro opens
   React.useEffect(() => {
     setSearchQuery('');
-    setSelectedCommandIds([]);
+    setSelectedCommandId(null);
     setEditingStepIndex(null);
     setDraggedIndex(null);
     setStepMenuIndex(null);
   }, [macro?.id, isOpen]);
 
-  // The two button groups: re-count their stops when what they hold
-  // changes (Clear comes and goes, Add enables, Run is optional)
-  const initSelectionStops = selectionGroup.initTabIndices;
+  // The footer's buttons: re-count its stops when what it holds changes
+  // (Run and Run on files are optional)
   const initFooterStops = footerGroup.initTabIndices;
-  const hasSelection = selectedCommandIds.length > 0;
   React.useEffect(() => {
-    initSelectionStops();
     initFooterStops();
-  }, [initSelectionStops, initFooterStops, hasSelection, isOpen, macro?.id, onRun, onRunFiles]);
+  }, [initFooterStops, isOpen, macro?.id, onRun, onRunFiles]);
 
   // The splitter's range, for its arrows and for assistive tech
   React.useEffect(() => {
@@ -291,10 +275,10 @@ export function MacroBuilderDialog({
   const paneWidth = commandsPaneWidth ?? DEFAULT_COMMANDS_PANE_WIDTH;
 
   // The command list's one tab stop: where focus last was, else the
-  // first selected command showing, else the top of the list
+  // selected command if it is showing, else the top of the list
   const commandStopId = visible.some((cmd) => cmd.id === activeCommandId)
     ? activeCommandId
-    : (visible.find((cmd) => selectedCommandIds.includes(cmd.id)) ?? visible[0])?.id ?? null;
+    : (visible.find((cmd) => cmd.id === selectedCommandId) ?? visible[0])?.id ?? null;
   const stepStop = {
     index: Math.max(0, Math.min(stepCount - 1, activeStep.index)),
     cell: activeStep.cell,
@@ -304,66 +288,22 @@ export function MacroBuilderDialog({
     return index === stepStop.index && cell === stepStop.cell ? 0 : -1;
   };
 
-  // Click = replace selection; Cmd/Ctrl+click = toggle; Shift+click =
-  // extend from the anchor through the visible list.
+  // Click selects — one command at a time, whatever modifier is held
   const handleCommandClick = (command: Command, e: React.MouseEvent) => {
     // The second click of a double-click changes nothing — the dblclick
-    // handler owns that gesture (and reads preClickSelectionRef)
+    // handler owns that gesture
     if (e.detail >= 2) return;
-    if (e.shiftKey && anchorCommandIdRef.current) {
-      const anchorIdx = visible.findIndex((cmd) => cmd.id === anchorCommandIdRef.current);
-      const clickIdx = visible.findIndex((cmd) => cmd.id === command.id);
-      if (anchorIdx !== -1 && clickIdx !== -1) {
-        const [from, to] = anchorIdx < clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
-        const range = visible.slice(from, to + 1).map((cmd) => cmd.id);
-        setSelectedCommandIds((prev) => [...prev, ...range.filter((id) => !prev.includes(id))]);
-        return;
-      }
-    }
-    anchorCommandIdRef.current = command.id;
-    if (e.metaKey || e.ctrlKey) {
-      setSelectedCommandIds((prev) =>
-        prev.includes(command.id) ? prev.filter((id) => id !== command.id) : [...prev, command.id],
-      );
-      return;
-    }
-    preClickSelectionRef.current = selectedCommandIds;
-    setSelectedCommandIds([command.id]);
+    setSelectedCommandId(command.id);
   };
 
-  // Double-click is the add shortcut. On a row that was part of a
-  // multi-selection (before the pair's first click collapsed it), it
-  // adds the WHOLE selection — the mouse twin of Enter.
-  const handleCommandDoubleClick = (command: Command) => {
-    const before = preClickSelectionRef.current;
-    if (before.length > 1 && before.includes(command.id)) {
-      const commands = before
-        .map((id) => availableCommands.find((cmd) => cmd.id === id))
-        .filter((cmd): cmd is Command => cmd !== undefined);
-      addCommands(commands);
-      return;
-    }
-    addCommands([command]);
-  };
-
-  // Add in selection (click) order
-  const addCommands = (commands: Command[]) => {
-    if (commands.length === 0) return;
-    for (const command of commands) onAddCommand?.(macro.id, command);
-    setSelectedCommandIds([]);
-    preClickSelectionRef.current = [];
+  const addCommand = (command: Command) => {
+    onAddCommand?.(macro.id, command);
+    // It stays selected, so its + can add it again
+    setSelectedCommandId(command.id);
     // Focus stays in the command list, so say what happened in the
     // other pane — otherwise adding is silent to a screen reader
-    const first = stepCount + 1;
-    announce(commands.length === 1
-      ? `${commands[0].name} added as step ${first}`
-      : `${commands.length} commands added as steps ${first} to ${stepCount + commands.length}`);
+    announce(`${command.name} added as step ${stepCount + 1}`);
   };
-
-  const selectedCommands = selectedCommandIds
-    .map((id) => availableCommands.find((cmd) => cmd.id === id))
-    .filter((cmd): cmd is Command => cmd !== undefined);
-
 
   const focusCommandRow = (id: string) => {
     // Ids carry ':' and '/' — quoting the attribute value is enough
@@ -374,7 +314,7 @@ export function MacroBuilderDialog({
 
   // The command list is a listbox: ONE tab stop, driven by the arrows,
   // with selection following focus so Enter adds whatever they landed
-  // on. Shift+arrow grows the selection from where it started.
+  // on.
   const handleCommandListKeyDown = (e: React.KeyboardEvent) => {
     if (e.defaultPrevented) return;
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-command-id]');
@@ -391,17 +331,15 @@ export function MacroBuilderDialog({
     };
     const command = e.metaKey || e.ctrlKey;
     if (e.key === 'Enter' && !command && !e.altKey) {
-      // Enter is the add gesture — not the button's click, which selects
+      // Enter is the add gesture
       consume();
-      if (selectedCommandIds.includes(id) && selectedCommands.length > 0) addCommands(selectedCommands);
-      else addCommands([visible[at]]);
+      addCommand(visible[at]);
       return;
     }
     if (command || e.altKey) return; // chords stay the app's
     const last = visible.length - 1;
     const clamp = (n: number) => Math.max(0, Math.min(last, n));
-    // Growing a selection never wraps: a range has two ends
-    const cycle = wrapOf('macro-builder-commands') && !e.shiftKey;
+    const cycle = wrapOf('macro-builder-commands');
     let to: number;
     switch (e.key) {
       case 'ArrowDown': to = cycle ? (at + 1) % visible.length : clamp(at + 1); break;
@@ -417,17 +355,8 @@ export function MacroBuilderDialog({
     }
     consume();
     const target = visible[to];
-    if (e.shiftKey) {
-      const anchorId = anchorCommandIdRef.current ?? id;
-      const anchorAt = Math.max(0, visible.findIndex((cmd) => cmd.id === anchorId));
-      anchorCommandIdRef.current = visible[anchorAt].id;
-      const range = visible.slice(Math.min(anchorAt, to), Math.max(anchorAt, to) + 1).map((cmd) => cmd.id);
-      // From the anchor outward — the order they will be added in
-      setSelectedCommandIds(to < anchorAt ? range.reverse() : range);
-    } else {
-      anchorCommandIdRef.current = target.id;
-      setSelectedCommandIds([target.id]);
-    }
+    // Shift changes nothing: there is no range to grow
+    setSelectedCommandId(target.id);
     setActiveCommandId(target.id);
     focusCommandRow(target.id);
   };
@@ -438,8 +367,7 @@ export function MacroBuilderDialog({
       e.preventDefault();
       const first = visible[0];
       if (first) {
-        anchorCommandIdRef.current = first.id;
-        setSelectedCommandIds([first.id]);
+        setSelectedCommandId(first.id);
         setActiveCommandId(first.id);
         focusCommandRow(first.id);
       }
@@ -447,9 +375,9 @@ export function MacroBuilderDialog({
     }
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    // A built-up selection wins; otherwise the first visible match
-    if (selectedCommands.length > 0) addCommands(selectedCommands);
-    else if (visible.length > 0) addCommands([visible[0]]);
+    // The selected command if it is among the results, else the first
+    const target = visible.find((cmd) => cmd.id === selectedCommandId) ?? visible[0];
+    if (target) addCommand(target);
   };
 
   // Splitter between the commands pane and the rest: drag sets an
@@ -717,7 +645,17 @@ export function MacroBuilderDialog({
                   type="text"
                   className="macro-builder__search-input"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setSearchQuery(next);
+                    // A selection the search has hidden is no selection:
+                    // nothing unseen should be what Enter adds
+                    const q = next.trim().toLowerCase();
+                    const stillShown = availableCommands.some(
+                      (cmd) => cmd.id === selectedCommandId && (!q || cmd.name.toLowerCase().includes(q)),
+                    );
+                    if (!stillShown) setSelectedCommandId(null);
+                  }}
                   placeholder="Search"
                   aria-label="Search commands"
                   autoFocus
@@ -739,7 +677,6 @@ export function MacroBuilderDialog({
               className="macro-builder__command-list"
               role="listbox"
               aria-label="Available commands"
-              aria-multiselectable="true"
               onKeyDown={handleCommandListKeyDown}
             >
               {visible.length === 0 && (
@@ -748,60 +685,49 @@ export function MacroBuilderDialog({
                 </div>
               )}
               {visible.map((command) => {
-                const isSelected = selectedCommandIds.includes(command.id);
+                const isSelected = command.id === selectedCommandId;
                 return (
-                  <button
+                  // A row, not a <button>: it holds the + button, and a
+                  // button cannot hold a button
+                  <div
                     key={command.id}
-                    type="button"
                     role="option"
                     aria-selected={isSelected}
                     data-command-id={command.id}
                     className={`macro-builder__command-item${isSelected ? ' macro-builder__command-item--selected' : ''}`}
                     onClick={(e) => handleCommandClick(command, e)}
-                    onDoubleClick={() => handleCommandDoubleClick(command)}
+                    onDoubleClick={() => addCommand(command)}
                     // One tab stop for the whole list — 280 commands
                     // were 280 presses of Tab between search and steps
                     tabIndex={command.id === commandStopId ? 0 : -1}
                     onFocus={() => setActiveCommandId(command.id)}
                   >
-                    {command.name}
-                  </button>
+                    <span className="macro-builder__command-name">{command.name}</span>
+                    {isSelected && (
+                      // The mouse's way to add what is selected. Out of
+                      // the Tab order and hidden from assistive tech:
+                      // an option cannot hold a control, and the
+                      // keyboard already has Enter. A double-click here
+                      // is two adds — it must not also reach the row,
+                      // which would make it three.
+                      <span
+                        className="macro-builder__command-add"
+                        aria-hidden="true"
+                        onDoubleClick={(e) => e.stopPropagation()}
+                      >
+                        <GhostButton
+                          icon="plus"
+                          size="small"
+                          variant="solid"
+                          tabIndex={-1}
+                          ariaLabel={`Add ${command.name}`}
+                          onClick={() => addCommand(command)}
+                        />
+                      </span>
+                    )}
+                  </div>
                 );
               })}
-            </div>
-            {/* Selection bar — permanently docked to the list. The Add
-                button is always visible (disabled until something is
-                selected); double-click and Enter stay the fast paths. */}
-            <div className="macro-builder__selection-summary">
-              <span>{selectedCommands.length} selected</span>
-              <span
-                ref={selectionBarRef}
-                className="macro-builder__selection-actions"
-                {...selectionGroup.containerProps}
-                onKeyDown={selectionGroup.onKeyDown}
-                onFocus={selectionGroup.onFocus}
-                onBlur={selectionGroup.onBlur}
-                onClickCapture={selectionGroup.onClickCapture}
-              >
-                {selectedCommands.length > 0 && (
-                  <button
-                    type="button"
-                    className="macro-builder__selection-clear"
-                    onClick={() => setSelectedCommandIds([])}
-                  >
-                    Clear
-                  </button>
-                )}
-                <Button
-                  variant="secondary"
-                  size="default"
-                  className="macro-builder__selection-add"
-                  disabled={selectedCommands.length === 0}
-                  onClick={() => addCommands(selectedCommands)}
-                >
-                  Add
-                </Button>
-              </span>
             </div>
           </div>
 

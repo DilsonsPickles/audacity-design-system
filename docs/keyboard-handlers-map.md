@@ -69,10 +69,10 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 | Region | Handler | Keys |
 |--------|---------|------|
 | Search field | `handleSearchKeyDown` | ArrowDown (into the list), Enter (add) |
-| Command list | `handleCommandListKeyDown` | Arrows, Shift+arrows, Home/End, PageUp/PageDown, Enter |
+| Command list | `handleCommandListKeyDown` | Arrows, Home/End, PageUp/PageDown, Enter (single selection — Shift changes nothing) |
 | Splitter | `handleSplitterKeyDown` | ArrowLeft/Right (±16px, Shift ±64px), Home/End, Enter (reset) |
 | Step list | `handleStepListKeyDown` | Arrows, Home/End, PageUp/PageDown, Enter, Cmd/Ctrl+ArrowUp/Down (move), Delete/Backspace, Shift+F10 / ContextMenu |
-| Add bar, footer | `useContainerTabGroup` | Arrows between their buttons |
+| Footer | `useContainerTabGroup` | Arrows between its buttons |
 
 **Do not put key handlers on the rows or buttons.** A step row used to handle Enter itself; Enter on a button INSIDE the row bubbled to it, so pressing Enter on a step's menu button opened the menu and the editor together.
 

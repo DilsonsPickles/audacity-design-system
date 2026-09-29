@@ -47,56 +47,6 @@
   border-bottom: 1px solid var(--stroke-primary, #d4d5d9);
 }
 
-/* Selection bar docked to the bottom of the command list — the file
-   picker's "N items selected" strip. Quiet text, no badge. */
-.macro-builder__selection-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 8px 8px 12px;
-  background: var(--dialog-header-bg, #f8f8f9);
-  border-top: 1px solid var(--stroke-primary, #d4d5d9);
-  flex-shrink: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-secondary, #575861);
-  font-variant-numeric: tabular-nums;
-}
-
-.macro-builder__selection-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.macro-builder__selection-clear {
-  border: none;
-  background: transparent;
-  padding: 0 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-primary, #14151a);
-  cursor: pointer;
-}
-
-.macro-builder__selection-clear:hover {
-  text-decoration: underline;
-}
-
-.macro-builder__selection-clear:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-border-color, #677ce4);
-  border-radius: 2px;
-}
-
-/* The permanent Add is a compact real button, not a text link */
-.macro-builder__selection-add.button {
-  min-width: 56px;
-}
-
 /* Command pane */
 .macro-builder__commands-pane {
   flex: 1;
@@ -235,10 +185,32 @@
   text-align: left;
   cursor: pointer;
   transition: background 0.1s ease;
+  flex-shrink: 0;
+  /* A div now, not a button (it holds the + button): buttons are
+     border-box by default, divs are not, and width: 100% plus padding
+     would push the row past the list's edge */
+  box-sizing: border-box;
+  /* Holds the name and, when selected, its + button */
+  gap: 8px;
+  user-select: none;
+}
+
+/* The name gives way to the + rather than pushing it out of the row */
+.macro-builder__command-name {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The selected command's + button. 20px in a 28px row, so selecting a
+   command never changes its height; pulled 4px into the row's padding
+   so it sits the same distance from the right edge as from the top. */
+.macro-builder__command-add {
+  display: flex;
   flex-shrink: 0;
+  margin-right: -4px;
 }
 
 .macro-builder__command-item:hover {

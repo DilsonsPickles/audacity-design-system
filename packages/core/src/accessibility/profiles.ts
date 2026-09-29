@@ -101,7 +101,6 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       // order (its stops are tabindex 0, like every dialog's), so these
       // have no tabOrder entry — only how the arrows behave.
       'macro-builder-commands': { tabindex: 'roving', arrows: true, wrap: true },
-      'macro-builder-selection': { tabindex: 'roving', arrows: true, wrap: true },
       'macro-builder-steps': { tabindex: 'roving', arrows: true, wrap: true },
       'macro-builder-footer': { tabindex: 'roving', arrows: true, wrap: true },
 
