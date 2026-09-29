@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, fadeInGain, fadeOutGain, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -567,10 +567,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
-  // Where the dot is mid-drag, as (t, gain) inside its fade — the curve
-  // bends to pass through it. Null at rest, when the dot sits at the
-  // curve's midpoint.
-  const [shapeDragPoint, setShapeDragPoint] = React.useState<{ t: number; g: number } | null>(null);
+  // Where ALONG its fade the dot is mid-drag (t, 0..1). Null at rest,
+  // when the dot sits at the curve's midpoint. Only the position along
+  // the fade is kept: the dot's height is always read off the curve, so
+  // the dot can never leave it (user decision 2026-09-29) — a pointer
+  // that asks for more bend than the shape limits allow slides the dot
+  // along the limiting curve instead of pulling it off.
+  const [shapeDragT, setShapeDragT] = React.useState<number | null>(null);
 
   // Fade curves are DERIVED per clip edge (utils/clipCrossfades.ts):
   // an authored fadeIn/fadeOut owns its edge; an edge overlap supplies
@@ -741,7 +744,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
     const NODE_R = 5;
-    const MID_BASE = Math.cos(Math.PI / 4); // both sin/cos at t=0.5
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
       const eff = clipQuickFadeGeometry(clip);
@@ -756,11 +758,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         // The base curve at normalised position t — the closed-form
         // solve inverts this: shape = ln(g) / ln(base(t)).
         const baseAt = (t: number) => (side === 'in' ? Math.sin((t * Math.PI) / 2) : Math.cos((t * Math.PI) / 2));
-        const live = shapeDrag === dragKey ? shapeDragPoint : null;
-        const tDot = live ? live.t : 0.5;
-        // At rest: the midpoint's gain under the current shape (a straight
-        // line passes through half gain there). Mid-drag: the pointer.
-        const gain = live ? live.g : shape === 'linear' ? 0.5 : MID_BASE ** shape;
+        const tDot = shapeDrag === dragKey && shapeDragT !== null ? shapeDragT : 0.5;
+        // The dot is ON the curve, at rest and mid-drag alike: its gain
+        // is the drawn curve's gain at tDot, never the pointer's.
+        const gain = side === 'in' ? fadeInGain(tDot, shape) : fadeOutGain(tDot, shape);
         const x = CLIP_CONTENT_OFFSET + (regionStart + tDot * fade) * pixelsPerSecond;
         const y = bodyTop + (1 - gain) * bodyHeight;
         nodes.push(
@@ -794,20 +795,22 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // Both axes: the pointer's (t, g) inside the fade picks the
               // shape whose curve passes through it. t stays strictly
               // inside (0, 1) and g inside (0, 1) so the solve exists;
-              // the fade's start and end never move.
+              // the fade's start and end never move. Where the shape
+              // hits its limit the curve stops short of the pointer, and
+              // the dot stays with the curve.
               const onMove = (ev: PointerEvent) => {
                 const t = Math.max(0.02, Math.min(0.98, startT + (ev.clientX - startClientX) / Math.max(1, fade * pixelsPerSecond)));
                 const g = Math.max(0.05, Math.min(0.95, startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight)));
                 const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(baseAt(t))));
                 if (!Number.isFinite(next)) return;
-                setShapeDragPoint({ t, g });
+                setShapeDragT(t);
                 onClipFadeShapeChange(clip.id, side, next);
               };
               const onUp = () => {
                 nodeEl.removeEventListener('pointermove', onMove);
                 nodeEl.removeEventListener('pointerup', onUp);
                 setShapeDrag(null);
-                setShapeDragPoint(null); // back to the midpoint, on the new curve
+                setShapeDragT(null); // back to the midpoint, on the new curve
               };
               nodeEl.addEventListener('pointermove', onMove);
               nodeEl.addEventListener('pointerup', onUp);

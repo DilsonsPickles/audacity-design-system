@@ -2,6 +2,7 @@ import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { TrackNew } from '../TrackNew';
+import { fadeCurvePath, fadeInGain } from '../../utils/clipCrossfades';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
@@ -342,6 +343,50 @@ describe('clip fades', () => {
       const { node } = renderIt({ fadeInShape: 1 });
       expect(node.style.top).toBe('40px');
     }
+  });
+
+  it('the shape node never leaves the curve, even when the drag asks for more bend than the limit', () => {
+    // A host that applies the change, as the app does — the curve the
+    // dot must sit on is the one drawn from the clip's stored shape.
+    const shapes: Array<number | 'linear'> = [];
+    function Host() {
+      const [shape, setShape] = React.useState<number | 'linear' | undefined>(undefined);
+      return (
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeInShape: shape, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeShapeChange={(_id, _side, next) => { shapes.push(next); setShape(next); }}
+        />
+      );
+    }
+    const { container } = render(<Providers><Host /></Providers>);
+    const node = () => container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
+    const path = () => container.querySelector('[data-fade-curve="in"] path')!.getAttribute('d')!;
+    // Body is 21..113 (92 tall); the node is 16px square
+    const topFor = (gain: number) => `${Math.round(21 + (1 - gain) * 92 - 8)}px`;
+    expect(node().style.top).toBe(topFor(0.5));
+
+    // 25px right at constant height: t 0.5 → 0.75 at gain 0.5 needs
+    // shape ≈ 8.76 — past the limit of 6. The curve stops at 6, where
+    // t = 0.75 has gain sin(0.75·π/2)^6 ≈ 0.622; the pointer is at 0.5.
+    fireEvent.pointerDown(node(), { button: 0, clientX: 62, clientY: 67, pointerId: 11 });
+    act(() => { fireEvent.pointerMove(node(), { clientX: 87, clientY: 67, pointerId: 11 }); });
+    expect(shapes[shapes.length - 1]).toBe(6);
+    const onCurve = fadeInGain(0.75, 6);
+    expect(onCurve).toBeCloseTo(0.622, 3);
+    expect(node().style.top).toBe(topFor(onCurve));
+    expect(node().style.top).not.toBe(topFor(0.5)); // not where the pointer is
+    expect(path()).toBe(fadeCurvePath('in', 64, 6)); // and that IS the drawn curve
+
+    // Straight down as far as it goes, back at the middle: gain 0.05
+    // needs shape ≈ 8.6 — the limit again. The dot stops on the curve.
+    act(() => { fireEvent.pointerMove(node(), { clientX: 62, clientY: 140, pointerId: 11 }); });
+    expect(shapes[shapes.length - 1]).toBe(6);
+    expect(node().style.top).toBe(topFor(fadeInGain(0.5, 6)));
+    act(() => { fireEvent.pointerUp(node(), { pointerId: 11 }); });
+    expect(node().style.top).toBe(topFor(fadeInGain(0.5, 6))); // at rest: the midpoint of that curve
   });
 
   it('the midpoint node bends the curve in BOTH axes; the extent never moves', () => {
