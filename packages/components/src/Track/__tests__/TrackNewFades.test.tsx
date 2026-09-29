@@ -18,6 +18,11 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Put the pointer over a clip — the shape handle shows on hover only */
+function hoverClip(container: HTMLElement, clipId: number) {
+  fireEvent.mouseEnter(container.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement, { buttons: 0 });
+}
+
 describe('clip fades', () => {
   it('renders fade curve overlays for clips with fadeIn/fadeOut set', () => {
     const { container } = render(
@@ -381,7 +386,30 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 4 });
   });
 
-  it('a selected clip with a quick fade shows a shape handle; dragging it reports the point the curve must pass through', () => {
+  it('the shape handle shows on HOVER only — selection alone does not show it', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeOut: 1, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    // Selected: the corner handles are there, the shape handles are not
+    expect(container.querySelectorAll('[data-fade-handle]')).toHaveLength(2);
+    expect(container.querySelector('[data-quickfade-node]')).toBeNull();
+    hoverClip(container, 1);
+    expect(container.querySelectorAll('[data-quickfade-node]')).toHaveLength(2);
+    fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement);
+    expect(container.querySelector('[data-quickfade-node]')).toBeNull();
+    expect(container.querySelectorAll('[data-fade-handle]')).toHaveLength(2);
+  });
+
+  it('a hovered clip with a quick fade shows a shape handle; dragging it reports the point the curve must pass through', () => {
     const onClipFadeShapeChange = vi.fn();
     const { container } = render(
       <Providers>
@@ -394,6 +422,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1);
     const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     expect(node).toBeTruthy();
     // The default is the S-curve: the handle rests at (0.5, 0.5). Track
@@ -409,14 +438,14 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 6 });
   });
 
-  it('no quick-fade shape node on crossfaded edges, or on an unselected clip the pointer is not over', () => {
+  it('no quick-fade shape node on crossfaded edges, or on a clip the pointer is not over', () => {
     const { container } = render(
       <Providers>
         <TrackNew
           clips={[
-            // selected but its OUT edge is crossfaded → no node there
+            // hovered, but its OUT edge is crossfaded → no node there
             { id: 1, name: 'A', start: 0, duration: 5, fadeOut: 1, selected: true },
-            // unselected and not under the pointer → no node despite the fade
+            // not under the pointer → no node despite the fade
             { id: 2, name: 'B', start: 3, duration: 4, fadeIn: 1 },
           ]}
           width={1200}
@@ -426,6 +455,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1);
     expect(container.querySelector('[data-quickfade-node]')).toBeNull();
   });
 
@@ -472,6 +502,7 @@ describe('clip fades', () => {
           />
         </Providers>,
       );
+      hoverClip(container, 1);
       const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
       return { node, onClipFadeShapeChange };
     };
@@ -519,6 +550,7 @@ describe('clip fades', () => {
       );
     }
     const { container } = render(<Providers><Host /></Providers>);
+    hoverClip(container, 1);
     const node = () => container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     const path = () => container.querySelector('[data-fade-line="in"]')!.getAttribute('d')!;
     const last = () => shapes[shapes.length - 1] as FadeHandle;
@@ -582,6 +614,7 @@ describe('clip fades', () => {
       </Providers>,
     );
     const lastCall = () => onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1];
+    hoverClip(container, 1);
     const inNode = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     fireEvent.pointerDown(inNode, { button: 0, clientX: 62, clientY: 67, pointerId: 8 });
     fireEvent.pointerMove(inNode, { clientX: 72, clientY: 58, pointerId: 8 }); // 10px right, 9px up

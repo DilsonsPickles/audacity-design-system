@@ -16,7 +16,9 @@ import './Track.css';
 
 const EMPTY_NUMBER_ARRAY: number[] = [];
 
-/** Fade handle glyph (design-provided). The 'out' side renders mirrored. */
+/** Fade handle glyph (design-provided). The 'out' side renders mirrored.
+ *  The square is an OUTLINE — no white fill (user decision 2026-09-29):
+ *  the clip shows through it, and only the wedge is tinted. */
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => (
   <svg
     width="16"
@@ -26,7 +28,7 @@ const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => (
     xmlns="http://www.w3.org/2000/svg"
     style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
   >
-    <path d="M15.5 6.5V15.5H6.5V6.5H15.5Z" fill="#FFFFFF" stroke="#14151A" />
+    <path d="M15.5 6.5V15.5H6.5V6.5H15.5Z" fill="none" stroke="#14151A" />
     <path d="M16 6.5C12.8421 6.5 6.5 12.8421 6.5 16V6.5H16Z" fill="#9295A6" fillOpacity="0.75" stroke="#14151A" />
   </svg>
 );
@@ -748,8 +750,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   };
 
 
-  // Shape handle on a quick fade of the SELECTED clip or the clip under
-  // the pointer (free edges only — a
+  // Shape handle on a quick fade of the clip UNDER THE POINTER (free
+  // edges only — a
   // crossfaded edge's shape belongs to the intersection node). The
   // handle is a point ON the curve and the curve's stored state
   // (user decisions 2026-09-29, replacing the re-centring node): drag
@@ -771,7 +773,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         if (fade <= 0) continue;
         if (crossfadedEdges.has(`${clip.id}:${side}`)) continue;
         const dragKey = `${clip.id}:${side}`;
-        if (!clip.selected && fadeHoverClipId !== clip.id && shapeDrag !== dragKey) continue;
+        // HOVER ONLY (user decision 2026-09-29): selection alone does
+        // not show the shape handle — it would sit on every selected
+        // clip's fades. The corner handles still show on selection.
+        if (fadeHoverClipId !== clip.id && shapeDrag !== dragKey) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
         const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
         // Position and gain are read off the drawn curve, never the
