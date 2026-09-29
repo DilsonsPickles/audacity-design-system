@@ -164,6 +164,10 @@ export function MacroBuilderDialog({
   // + is still there to add it again.
   const [selectedCommandId, setSelectedCommandId] = React.useState<string | null>(null);
   const [commandDrag, setCommandDrag] = React.useState<CommandDrag | null>(null);
+  // Set as a drag ends, cleared a moment later: a drag let go over the
+  // row it began on is followed by a click on that row, which would
+  // select it — and a drag must not touch the selection
+  const justDraggedCommandRef = React.useRef(false);
   const stepsPaneRef = React.useRef<HTMLDivElement>(null);
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
@@ -353,16 +357,26 @@ export function MacroBuilderDialog({
     // The second click of a double-click changes nothing — the dblclick
     // handler owns that gesture
     if (e.detail >= 2) return;
+    // Nor does the click that ends a drag
+    if (justDraggedCommandRef.current) return;
     setSelectedCommandId(command.id);
   };
 
-  /** Add a command as a step: on the end, or at `atIndex`. */
+  /** Add a command as a step: on the end, or at `atIndex` (a drag).
+   *
+   *  Adding from the LIST — the +, a double-click, Enter — leaves the
+   *  command selected, so it can be added again. A DRAG does not touch
+   *  the selection at all (user decision 2026-09-29, after selecting on
+   *  pick-up was tried): dragging is reaching past the list to the
+   *  steps, not choosing in the list. */
   const addCommand = (command: Command, atIndex?: number) => {
     const at = atIndex === undefined ? stepCount : Math.max(0, Math.min(stepCount, atIndex));
-    if (atIndex === undefined) onAddCommand?.(macro.id, command);
-    else onAddCommand?.(macro.id, command, undefined, at);
-    // It stays selected, so Enter adds it again
-    setSelectedCommandId(command.id);
+    if (atIndex === undefined) {
+      onAddCommand?.(macro.id, command);
+      setSelectedCommandId(command.id);
+    } else {
+      onAddCommand?.(macro.id, command, undefined, at);
+    }
     // Focus stays in the command list, so say what happened in the
     // other pane — otherwise adding is silent to a screen reader
     announce(`${command.name} added as step ${at + 1}`);
@@ -442,10 +456,6 @@ export function MacroBuilderDialog({
       if (!dragging) {
         if (Math.hypot(lastX - startX, lastY - startY) < COMMAND_DRAG_THRESHOLD) return;
         dragging = true;
-        // Picking a command up selects it (user decision 2026-09-29):
-        // the list shows what is in flight, and it stays selected if
-        // the drag is abandoned — you still meant that command
-        setSelectedCommandId(command.id);
         doc.body.style.cursor = 'grabbing';
         doc.body.style.userSelect = 'none';
         rafId = view.requestAnimationFrame(scrollLoop);
@@ -454,6 +464,10 @@ export function MacroBuilderDialog({
     };
     const onMouseUp = () => {
       const dropAt = dragging ? insertAt : null;
+      if (dragging) {
+        justDraggedCommandRef.current = true;
+        view.setTimeout(() => { justDraggedCommandRef.current = false; }, 0);
+      }
       finish();
       if (dropAt !== null) addCommand(command, dropAt);
     };

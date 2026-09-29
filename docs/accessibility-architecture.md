@@ -276,15 +276,16 @@ focus out to a track, and Delete on a step opened "Delete track?".
 With the mouse: click selects; double-click, or the **+ button** the
 selected command carries, adds it to the end; and a command can be
 **dragged into the step list** to put it where it is
-wanted. Picking it up selects it. Over the steps it is shown as a GHOST
+wanted. A drag does not touch the selection — it is reaching past the
+list to the steps, not choosing in the list (selecting on pick-up was
+tried, 2026-09-29). Over the steps it is shown as a GHOST
 STEP in the list, where it would land, with the steps below it
 renumbered — the list shows the result, as a reordered track does. The
 ghost looks exactly like a step being reordered (the same row at half
 opacity, grip and action icons drawn): to the eye both are a step in
 flight.
 Outside the steps it is a chip at the pointer. Nothing is added until
-the drop (let go anywhere else, or press Escape, to abandon it — the
-command stays selected).
+the drop (let go anywhere else, or press Escape, to abandon it).
 
 The ghost step is `aria-hidden` and carries no `data-step-index`: it is
 not a step, and neither the keyboard nor the drag's own hit test may

@@ -624,57 +624,93 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     Array.from(container.querySelectorAll<HTMLElement>('[data-command-id][aria-selected="true"]'))
       .map((el) => el.dataset.commandId);
 
-  it('picking a command up selects it — as soon as the drag begins, not at the drop', () => {
-    const { container } = renderBuilder();
-    startDrag(container, 4); // pressed
+  it('dragging a command does not select it — not on pick-up, not on the drop', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 140, clientY: 60 });
     expect(selectedIds(container)).toEqual([]);
-    fireEvent.mouseMove(document, { clientX: 140, clientY: 60 }); // still over the command list
-    expect(selectedIds(container)).toEqual(['effect:fade-in']);
-    expect(ghost()).not.toBeNull();
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    expect(selectedIds(container)).toEqual([]);
     fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledTimes(1);
+    expect(selectedIds(container)).toEqual([]);
+    expect(container.querySelector('.macro-builder__command-add')).toBeNull();
   });
 
-  it('it takes the selection from whatever was selected before', () => {
+  it('dragging one command leaves ANOTHER command\'s selection alone', () => {
     const { container } = renderBuilder();
     fireEvent.click(commandRows(container)[0]);
-    expect(selectedIds(container)).toEqual(['select-all']);
     startDrag(container, 2);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
-    expect(selectedIds(container)).toEqual(['split']);
+    expect(selectedIds(container)).toEqual(['select-all']);
     fireEvent.mouseUp(document);
+    expect(selectedIds(container)).toEqual(['select-all']);
   });
 
-  it('it stays selected when the drag is abandoned — dropped elsewhere, or Escape', () => {
+  it('dragging the SELECTED command leaves it selected', () => {
+    const { container } = renderBuilder();
+    fireEvent.click(commandRows(container)[2]);
+    startDrag(container, 2);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    fireEvent.mouseUp(document);
+    expect(selectedIds(container)).toEqual(['split']);
+  });
+
+  it('an abandoned drag leaves the selection as it was', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
     startDrag(container, 3);
     fireEvent.mouseMove(document, { clientX: 140, clientY: 300 });
     fireEvent.mouseUp(document); // over the command list: no drop
-    expect(selectedIds(container)).toEqual(['join']);
+    expect(selectedIds(container)).toEqual([]);
 
     startDrag(container, 1);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(selectedIds(container)).toEqual(['select-next-clip']);
+    expect(selectedIds(container)).toEqual([]);
     expect(onAddCommand).not.toHaveBeenCalled();
   });
 
-  it('a press that never becomes a drag selects nothing by itself', () => {
-    // Selecting on a plain click is the click's job, on release
+  it('a drag let go over the row it began on does not select it — that click is the drag\'s', () => {
+    vi.useFakeTimers();
+    const { container } = renderBuilder();
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 140, clientY: 90 });
+    fireEvent.mouseMove(document, { clientX: 100, clientY: 50 }); // back where it started
+    fireEvent.mouseUp(document);
+    fireEvent.click(commandRows(container)[4], { detail: 1 }); // the browser's click
+    expect(selectedIds(container)).toEqual([]);
+    // ...but the next click, a real one, selects as ever
+    act(() => { vi.runAllTimers(); });
+    fireEvent.click(commandRows(container)[4], { detail: 1 });
+    expect(selectedIds(container)).toEqual(['effect:fade-in']);
+    vi.useRealTimers();
+  });
+
+  it('a press that never becomes a drag is a click, and selects', () => {
     const { container } = renderBuilder();
     startDrag(container, 4);
     fireEvent.mouseMove(document, { clientX: 101, clientY: 51 });
     fireEvent.mouseUp(document);
-    expect(selectedIds(container)).toEqual([]);
+    fireEvent.click(commandRows(container)[4], { detail: 1 });
+    expect(selectedIds(container)).toEqual(['effect:fade-in']);
   });
 
-  it('the dropped command is left selected; the drag tidies up after itself', () => {
+  it('adding from the list still selects: the +, a double-click and Enter', () => {
+    const { container } = renderBuilder();
+    fireEvent.doubleClick(commandRows(container)[1]);
+    expect(selectedIds(container)).toEqual(['select-next-clip']);
+    fireEvent.keyDown(commandRows(container)[3], { key: 'Enter' });
+    expect(selectedIds(container)).toEqual(['join']);
+  });
+
+  it('the drag tidies up after itself', () => {
     const { container } = renderBuilder();
     startDrag(container, 4);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
     expect(document.body.style.cursor).toBe('grabbing');
     fireEvent.mouseUp(document);
-    expect(commandRows(container)[4].getAttribute('aria-selected')).toBe('true');
     expect(document.body.style.cursor).toBe('');
     expect(document.body.style.userSelect).toBe('');
     // ...and its listeners are gone: moving again raises no ghost
