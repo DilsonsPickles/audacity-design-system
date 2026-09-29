@@ -5,6 +5,7 @@ import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
 import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeAreaAbovePath, fadeAreaBelowPath, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
+import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZones';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -1561,6 +1562,75 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     });
   };
 
+  // EDGE TRIM ZONES — how an UNSELECTED clip is trimmed (user decisions
+  // 2026-09-29). The hit box is ON the edge, half outside the clip, so
+  // it is drawn here at track level: inside the clip's own box it could
+  // not reach past the edge, and the clip's stacking context would put
+  // it under every higher clip. Geometry and the rules for neighbours
+  // and overlaps: utils/clipEdgeHitZones.ts.
+  //
+  // Living with the fade handles: a zone reaches EDGE_HIT_INSIDE_PX
+  // into the clip and a fade handle's box starts that far in (see
+  // FADE_HANDLE_EDGE_INSET), so they meet and never overlap; the fade
+  // controls are also stacked above the zones, should they ever. A zone
+  // counts as "over the clip" for the fade controls' hover, so they do
+  // not blink off as the pointer crosses the edge on its way in.
+  //
+  // A selected clip has its trim handles and no zones. Dragging a zone
+  // streams to the same onClipTrimEdge the handles do; whether the trim
+  // selects anything is the host's call, not made here.
+  const edgeTrimZones = React.useMemo(() => {
+    if (!onClipTrimEdge) return [];
+    return computeEdgeHitZones(clips, {
+      pixelsPerSecond,
+      zOf: (clip) => clipZIndex.get(clip.id) ?? 2,
+      eligible: (clip) => !(clip as TrackClip).selected && clip.id !== recordingClipId,
+    });
+  }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId]);
+
+  const renderEdgeTrimZones = () => {
+    if (!onClipTrimEdge || edgeTrimZones.length === 0) return null;
+    return edgeTrimZones.map((zone) => (
+      <div
+        key={`edge-trim-${zone.clipId}-${zone.edge}`}
+        className={`track-edge-trim track-edge-trim--${zone.edge}`}
+        data-edge-trim={zone.edge}
+        data-clip-ref={zone.clipId}
+        aria-hidden="true"
+        {...fadeHoverProps(zone.clipId)}
+        onMouseDown={(e) => {
+          if (e.button !== 0) return;
+          // The edge is not the clip's body or header: no clip drag, no
+          // time selection and no playhead move starts from it
+          e.stopPropagation();
+          e.preventDefault();
+          // Self-cleaning attach-on-mousedown pair (as the buried
+          // handles below): the pointer streams until mouseup. A press
+          // that never moves trims nothing.
+          const onMove = (ev: MouseEvent) => onClipTrimEdge(zone.clipId, zone.edge, ev.clientX);
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'absolute',
+          top: 0,
+          height: `${height}px`,
+          left: `${CLIP_CONTENT_OFFSET + zone.left}px`,
+          width: `${zone.width}px`,
+          // Above every stacked clip, below the fade veils and controls
+          // (449+) and the envelope layers
+          zIndex: 440,
+        }}
+      />
+    ));
+  };
+
   // Per-clip fade HANDLES (the curves render in the track-level pass,
   // renderFadeCurveOverlays, so an inherited fade stays visible where
   // its clip is buried). Rendered inside the wrapper so they ride the
@@ -1667,7 +1737,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // body's middle is on the TRIM handle's middle (Clip.css: top 28,
     // 20 tall = 38 below the clip's top), so the clip's handles share a
     // line — that puts the body 12px under the header.
-    const FADE_HANDLE_EDGE_INSET = 10;
+    // (The handle's 16px hit box therefore starts 4px in — exactly where
+    // the edge trim zone ends. Keep it ≥ EDGE_HIT_INSIDE_PX + the body's
+    // offset in its box, or the two will fight over the same pixels.)
+    const FADE_HANDLE_EDGE_INSET = EDGE_HIT_INSIDE_PX + FADE_GLYPH_BODY.start;
     const FADE_HANDLE_TOP = 38 - HEADER_H - (FADE_GLYPH_BODY.start + FADE_GLYPH_BODY.size / 2);
     for (const clip of clips) {
       // Handles show on the SELECTED clip and on the clip UNDER THE
@@ -2153,6 +2226,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         )}
 
         {renderClips()}
+        {renderEdgeTrimZones()}
         {renderFadeCurveOverlays()}
         {renderCrossfadeNodes()}
         {renderQuickFadeNodes()}

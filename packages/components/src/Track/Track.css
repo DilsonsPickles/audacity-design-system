@@ -72,3 +72,14 @@
 .track-fade-shape-handle[data-hovered] {
   transform: scale(1.18);
 }
+
+/* Edge trim zones — the invisible strips ON an unselected clip's edges.
+   The cursor is the trim handles' own (Clip.css), so it previews the
+   same action; the hotspots are explained there and must match. */
+.track-edge-trim--left {
+  cursor: url('../assets/cursors/ClipTrimLeft.png') 15 16, ew-resize;
+}
+
+.track-edge-trim--right {
+  cursor: url('../assets/cursors/ClipTrimRight.png') 17 16, ew-resize;
+}

@@ -2,6 +2,7 @@ import React from 'react';
 import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCollapseTransition, type SpectrogramScale } from '@audacity-ui/components';
 import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, groupLabelIndent, type GroupRowLayout } from '@audacity-ui/core';
 import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
+import { buildTrimParticipants } from '../../utils/trimParticipants';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';
 import type { ClipStretchState } from '../../hooks/useClipStretching';
@@ -903,41 +904,12 @@ const CanvasTrack = React.memo(function CanvasTrack({
 
           // Initialize trim state on first call
           if (!clipTrimStateRef.current) {
-            // Select the clip if it's not already selected
-            if (!clip.selected) {
-              dispatch({
-                type: 'SELECT_CLIP',
-                payload: { trackIndex, clipId: clipId as number },
-              });
-            }
-
-            // Store initial state for all selected clips (including the one we just selected)
-            const allClipsInitialState = new Map<string, { trimStart: number; duration: number; start: number; fullDuration: number; isMidi?: boolean; stretchFactor?: number }>();
-            tracksRef.current.forEach((t, tIndex) => {
-              const isMidiTrack = t.type === 'midi';
-              const allTrackClips = [...t.clips, ...(t.midiClips || [])];
-              allTrackClips.forEach(c => {
-                // Include this clip even if it wasn't selected before (we just selected it)
-                if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
-                  const isMidi = isMidiTrack || (t.midiClips || []).some((mc) => mc.id === c.id);
-                  const trimStart = (c as Clip).trimStart || 0;
-                  const stretchFactor = (c as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip/MidiClip type
-                  // fullDuration is the source-audio length. If we don't
-                  // have it stored yet, recover it from the visible duration
-                  // by dividing by stretchFactor (canvas → source seconds).
-                  const fullDuration = (c as Clip).fullDuration || (trimStart + c.duration / stretchFactor);
-                  const key = `${tIndex}-${c.id}`;
-                  allClipsInitialState.set(key, {
-                    trimStart,
-                    duration: c.duration,
-                    start: c.start,
-                    fullDuration,
-                    isMidi,
-                    stretchFactor,
-                  });
-                }
-              });
-            });
+            // Trimming does NOT select (user decision 2026-09-29,
+            // reversing the select-on-trim this seed used to do). A
+            // selected clip — grabbed by its trim handle — trims with
+            // every selected clip; an unselected one — grabbed by its
+            // edge — trims alone. See utils/trimParticipants.ts.
+            const allClipsInitialState = buildTrimParticipants(tracksRef.current, trackIndex, clipId as number);
 
             clipTrimStateRef.current = {
               trackIndex,

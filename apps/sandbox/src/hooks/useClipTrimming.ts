@@ -164,7 +164,12 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
       setSnapGuidelineTime(guideline);
       setSnapGuidelineKind(guidelineKind);
 
-      // Get initial state for all selected clips from stored Map
+      // The clips this drag moves are the ones named when it started
+      // (allClipsInitialState — utils/trimParticipants.ts), NOT whatever
+      // is selected now: an unselected clip trims by its edge, alone,
+      // and stays unselected (user decision 2026-09-29). For a drag
+      // from a selected clip's handle the two lists are the same.
+      // (`selectedClips` keeps its name: it is the drag's participants.)
       const allClipsInitialState = trimState.allClipsInitialState;
       const selectedClips: Array<{
         trackIndex: number;
@@ -174,21 +179,15 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
 
       tracks.forEach((track, trackIndex) => {
         track.clips.forEach((clip) => {
-          if (clip.selected) {
-            const key = `${trackIndex}-${clip.id}`;
-            const initialState = allClipsInitialState.get(key);
-            if (initialState) {
-              selectedClips.push({ trackIndex, clip, initialState });
-            }
+          const initialState = allClipsInitialState.get(`${trackIndex}-${clip.id}`);
+          if (initialState) {
+            selectedClips.push({ trackIndex, clip, initialState });
           }
         });
         (track.midiClips || []).forEach((clip) => {
-          if (clip.selected) {
-            const key = `${trackIndex}-${clip.id}`;
-            const initialState = allClipsInitialState.get(key);
-            if (initialState) {
-              selectedClips.push({ trackIndex, clip, initialState });
-            }
+          const initialState = allClipsInitialState.get(`${trackIndex}-${clip.id}`);
+          if (initialState) {
+            selectedClips.push({ trackIndex, clip, initialState });
           }
         });
       });
@@ -228,7 +227,8 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
             const trackClips = tracks[trimState.trackIndex]?.clips ?? [];
             const targetEdges: number[] = [];
             for (const c of trackClips) {
-              if (c.selected) continue;
+              // Clips moving with this drag are not things to snap to
+              if (allClipsInitialState.has(`${trimState.trackIndex}-${c.id}`)) continue;
               targetEdges.push(c.start);
               targetEdges.push(c.start + c.duration);
             }
@@ -343,7 +343,8 @@ export function useClipTrimming(options: UseClipTrimmingOptions): UseClipTrimmin
             const trackClips = tracks[trimState.trackIndex]?.clips ?? [];
             const targetEdges: number[] = [];
             for (const c of trackClips) {
-              if (c.selected) continue;
+              // Clips moving with this drag are not things to snap to
+              if (allClipsInitialState.has(`${trimState.trackIndex}-${c.id}`)) continue;
               targetEdges.push(c.start);
               targetEdges.push(c.start + c.duration);
             }

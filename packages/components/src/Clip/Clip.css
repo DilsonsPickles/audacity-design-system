@@ -193,37 +193,24 @@
 }
 
 /* Per-button custom cursor — the PNG appears while hovering the button.
-   `ew-resize` is the fallback if the PNG fails to load. */
+   `ew-resize` is the fallback if the PNG fails to load.
+
+   HOTSPOTS: the images are 32×32 with the drawing centred on (16, 16).
+   The hotspot is the bracket's SPINE at mid-height — the line that
+   stands for the clip edge — so the drawing sits on the pointer and the
+   spine on the edge being moved. The spine is not at the same x in
+   every image (measured off the pixels: 15, 17, 15, 16). They were all
+   `8 10`, which drew the cursor 8px right of and 6px below the real
+   pointer. Track.css uses the trim pair too: keep the numbers the same. */
 .clip-display__handle--trim-left {
-  cursor: url('../assets/cursors/ClipTrimLeft.png') 8 10, ew-resize;
+  cursor: url('../assets/cursors/ClipTrimLeft.png') 15 16, ew-resize;
 }
 .clip-display__handle--trim-right {
-  cursor: url('../assets/cursors/ClipTrimRight.png') 8 10, ew-resize;
+  cursor: url('../assets/cursors/ClipTrimRight.png') 17 16, ew-resize;
 }
 .clip-display__handle--stretch-left {
-  cursor: url('../assets/cursors/ClipStretchLeft.png') 8 10, ew-resize;
+  cursor: url('../assets/cursors/ClipStretchLeft.png') 15 16, ew-resize;
 }
 .clip-display__handle--stretch-right {
-  cursor: url('../assets/cursors/ClipStretchRight.png') 8 10, ew-resize;
-}
-
-/* Edge strips — how an UNSELECTED clip is trimmed. Invisible, full
-   height, just inside each edge; the cursor is the trim handles' own, so
-   it previews the same action. Above the clip's content (the handles are
-   25), below the track-level fade controls, which sit further in. */
-.clip-display__edge {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 20;
-}
-
-.clip-display__edge--left {
-  left: 0;
-  cursor: url('../assets/cursors/ClipTrimLeft.png') 8 10, ew-resize;
-}
-
-.clip-display__edge--right {
-  right: 0;
-  cursor: url('../assets/cursors/ClipTrimRight.png') 8 10, ew-resize;
+  cursor: url('../assets/cursors/ClipStretchRight.png') 16 16, ew-resize;
 }

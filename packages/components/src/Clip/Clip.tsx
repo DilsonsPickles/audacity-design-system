@@ -228,47 +228,11 @@ const ClipComponent: React.FC<ClipProps> = ({
   // Header overlays on top when visible
   const bodyHeight = isTruncated ? height : height - HEADER_HEIGHT;
 
-  // Width of the grabbable strip along each edge
-  const TRIM_HANDLE_WIDTH = 6;
-  // An UNSELECTED clip trims by its EDGE (user decision 2026-09-29,
-  // bringing back the edge strips the trim handles replaced on
-  // 2026-06-17): there are no handles to reach for until a clip is
-  // selected, so the edge itself is the handle. A selected clip has its
-  // trim handles and no strips. Nothing to trim while recording.
-  const edgeTrimAvailable = !!onTrimEdge && !selected && !isRecording;
-
-  // Handle trim edge mouse down
-  const handleTrimMouseDown = (edge: 'left' | 'right') => (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    if (onTrimEdge) {
-      // The edge is not the clip's body or header: no clip drag, no
-      // time selection, no playhead move starts from it
-      e.stopPropagation();
-      setTrimEdge(edge);
-    }
-  };
-
-  // Handle mouse move for trim cursor. Only where the edge DOES trim —
-  // on a selected clip the cursor would promise a drag that is not there
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!edgeTrimAvailable) {
-      if (!trimEdge) (e.currentTarget as HTMLElement).style.cursor = '';
-      return;
-    }
-    if (trimEdge) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-
-    // Check if near left or right edge
-    if (x < TRIM_HANDLE_WIDTH) {
-      (e.currentTarget as HTMLElement).style.cursor = 'ew-resize';
-    } else if (x > width - TRIM_HANDLE_WIDTH) {
-      (e.currentTarget as HTMLElement).style.cursor = 'ew-resize';
-    } else {
-      (e.currentTarget as HTMLElement).style.cursor = '';
-    }
-  };
+  // Trimming by the EDGE is the track's business (TrackNew draws the
+  // hit zones, which straddle the edge and so cannot live inside the
+  // clip). The clip itself neither handles an edge press nor turns the
+  // cursor into a resize arrow near its edges — that cursor promised a
+  // drag that was not there.
 
   // Handle global mouse move and up for trim.
   //
@@ -360,7 +324,6 @@ const ClipComponent: React.FC<ClipProps> = ({
       data-shake-edge={shakeEdge || undefined}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
-      onMouseMove={handleMouseMove}
     >
       <div className="clip-display__inner">
       {showHeader && (
@@ -462,30 +425,6 @@ const ClipComponent: React.FC<ClipProps> = ({
           Trim buttons render only when onTrimEdge is wired (matches the
           original contract); stretch buttons always render but no-op if
           onStretchEdge is absent. */}
-      {edgeTrimAvailable && (
-        <>
-          {/* Mouse-only, like the handles below: trimming has its own
-              keyboard shortcuts. A click on a strip that never becomes a
-              drag does nothing — it must not fall through as a click on
-              the clip. */}
-          <div
-            className="clip-display__edge clip-display__edge--left"
-            data-clip-edge="left"
-            aria-hidden="true"
-            style={{ width: TRIM_HANDLE_WIDTH }}
-            onMouseDown={handleTrimMouseDown('left')}
-            onClick={(e) => e.stopPropagation()}
-          />
-          <div
-            className="clip-display__edge clip-display__edge--right"
-            data-clip-edge="right"
-            aria-hidden="true"
-            style={{ width: TRIM_HANDLE_WIDTH }}
-            onMouseDown={handleTrimMouseDown('right')}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </>
-      )}
       {selected && (
         <>
           {/* Mouse-only handles. tabIndex={-1} keeps them out of the

@@ -17,7 +17,7 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-const clips = [
+const twoClips = [
   { id: 1, name: 'Selected', start: 0, duration: 4, selected: true },
   { id: 2, name: 'Unselected', start: 5, duration: 4 },
 ];
@@ -25,51 +25,68 @@ const clips = [
 function renderTrack(props: Partial<React.ComponentProps<typeof TrackNew>> = {}) {
   const onClipTrimEdge = vi.fn();
   const onClipClick = vi.fn();
-  const onMouseDownBelow = vi.fn();
+  const onBelow = { mouseDown: vi.fn(), click: vi.fn() };
   const utils = render(
     <Providers>
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-      <div onMouseDown={onMouseDownBelow}>
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+      <div onMouseDown={onBelow.mouseDown} onClick={onBelow.click}>
         <TrackNew
-          clips={clips}
+          clips={twoClips}
           width={1200}
           trackIndex={0}
           pixelsPerSecond={100}
           onClipTrimEdge={onClipTrimEdge}
           onClipClick={onClipClick}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
           {...props}
         />
       </div>
     </Providers>,
   );
-  const edges = (clipId: number) =>
-    Array.from(utils.container.querySelectorAll<HTMLElement>(`[data-clip-id="${clipId}"] [data-clip-edge]`));
-  return { ...utils, onClipTrimEdge, onClipClick, onMouseDownBelow, edges };
+  const zone = (clipId: number, edge: 'left' | 'right') =>
+    utils.container.querySelector<HTMLElement>(`[data-edge-trim="${edge}"][data-clip-ref="${clipId}"]`);
+  const clipBox = (clipId: number) => {
+    const el = utils.container.querySelector<HTMLElement>(`[data-clip-id="${clipId}"]`)!;
+    const left = parseInt(el.style.left, 10);
+    return { left, right: left + parseInt(el.style.width, 10) };
+  };
+  const span = (el: HTMLElement) => {
+    const left = parseFloat(el.style.left);
+    return { left, right: left + parseFloat(el.style.width) };
+  };
+  return { ...utils, onClipTrimEdge, onClipClick, onBelow, zone, clipBox, span };
 }
 
 describe('trimming an unselected clip by its edge', () => {
-  it('an unselected clip has a strip along each edge; a selected clip has its handles instead', () => {
-    const { container, edges } = renderTrack();
-    expect(edges(2).map((el) => el.getAttribute('data-clip-edge'))).toEqual(['left', 'right']);
-    expect(edges(1)).toHaveLength(0);
-    // …and the other way round for the trim handles
-    expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle--trim-left')).toHaveLength(1);
-    expect(container.querySelectorAll('[data-clip-id="2"] .clip-display__handle')).toHaveLength(0);
-    // The strips are narrow, invisible to assistive tech, and wear the trim cursor's class
-    for (const el of edges(2)) {
-      expect(el.style.width).toBe('6px');
+  it('the hit box is ON the edge: 4px outside the clip and 4px inside, the full height of the track', () => {
+    const { zone, clipBox, span } = renderTrack({ height: 120 });
+    const box = clipBox(2);
+    expect(span(zone(2, 'left')!)).toEqual({ left: box.left - 4, right: box.left + 4 });
+    expect(span(zone(2, 'right')!)).toEqual({ left: box.right - 4, right: box.right + 4 });
+    for (const edge of ['left', 'right'] as const) {
+      const el = zone(2, edge)!;
+      expect(el.style.top).toBe('0px');
+      expect(el.style.height).toBe('120px');
       expect(el.getAttribute('aria-hidden')).toBe('true');
-      expect(el.className).toContain(`clip-display__edge--${el.getAttribute('data-clip-edge')}`);
+      expect(el.className).toContain(`track-edge-trim--${edge}`); // the trim cursor
     }
   });
 
-  it('dragging a strip streams the pointer to onClipTrimEdge, for that clip and that edge, until release', () => {
-    const { onClipTrimEdge, edges } = renderTrack();
-    for (const [index, edge] of (['left', 'right'] as const).entries()) {
+  it('a selected clip has its handles and no edge zones; an unselected one the reverse', () => {
+    const { container, zone } = renderTrack();
+    expect(zone(1, 'left')).toBeNull();
+    expect(zone(1, 'right')).toBeNull();
+    expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle--trim-left')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-clip-id="2"] .clip-display__handle')).toHaveLength(0);
+  });
+
+  it('dragging a zone streams the pointer to onClipTrimEdge, for that clip and that edge, until release', () => {
+    const { onClipTrimEdge, zone } = renderTrack();
+    for (const edge of ['left', 'right'] as const) {
       onClipTrimEdge.mockClear();
-      fireEvent.mouseDown(edges(2)[index], { button: 0, clientX: 500 });
-      // A press alone trims nothing
-      expect(onClipTrimEdge).not.toHaveBeenCalled();
+      fireEvent.mouseDown(zone(2, edge)!, { button: 0, clientX: 500 });
+      expect(onClipTrimEdge).not.toHaveBeenCalled(); // a press alone trims nothing
       fireEvent.mouseMove(document, { clientX: 530 });
       fireEvent.mouseMove(document, { clientX: 560 });
       expect(onClipTrimEdge.mock.calls).toEqual([[2, edge, 530], [2, edge, 560]]);
@@ -79,50 +96,84 @@ describe('trimming an unselected clip by its edge', () => {
     }
   });
 
-  it('a strip is not the clip: pressing or clicking it starts nothing else', () => {
-    const { onClipClick, onMouseDownBelow, edges } = renderTrack();
-    fireEvent.mouseDown(edges(2)[0], { button: 0, clientX: 500 });
-    expect(onMouseDownBelow).not.toHaveBeenCalled(); // no clip drag / time selection underneath
+  it('a zone is not the clip: pressing, clicking or double-clicking it starts nothing else', () => {
+    const { onClipClick, onClipTrimEdge, onBelow, zone } = renderTrack();
+    const el = zone(2, 'left')!;
+    fireEvent.mouseDown(el, { button: 0, clientX: 500 });
     fireEvent.mouseUp(document);
-    fireEvent.click(edges(2)[0]);
-    expect(onClipClick).not.toHaveBeenCalled();
+    fireEvent.click(el);
+    fireEvent.doubleClick(el);
+    expect(onBelow.mouseDown).not.toHaveBeenCalled(); // no clip drag / time selection underneath
+    expect(onBelow.click).not.toHaveBeenCalled();     // no playhead move
+    expect(onClipClick).not.toHaveBeenCalled();       // no selection
     // Only the main button trims
-    const { onClipTrimEdge, edges: edges2 } = renderTrack();
-    fireEvent.mouseDown(edges2(2)[0], { button: 2, clientX: 500 });
+    fireEvent.mouseDown(el, { button: 2, clientX: 500 });
     fireEvent.mouseMove(document, { clientX: 530 });
     expect(onClipTrimEdge).not.toHaveBeenCalled();
   });
 
-  it('the drag carries on when the clip becomes selected under it — the host selects a clip it trims', () => {
-    function Host({ onTrim }: { onTrim: (edge: string, x: number) => void }) {
-      const [selected, setSelected] = React.useState(false);
-      return (
-        <TrackNew
-          clips={[{ id: 2, name: 'Unselected', start: 5, duration: 4, selected }]}
-          width={1200}
-          trackIndex={0}
-          pixelsPerSecond={100}
-          onClipTrimEdge={(_id, edge, x) => { setSelected(true); onTrim(edge, x); }}
-        />
-      );
-    }
-    const onTrim = vi.fn();
-    const { container } = render(<Providers><Host onTrim={onTrim} /></Providers>);
-    fireEvent.mouseDown(container.querySelector('[data-clip-edge="right"]') as HTMLElement, { button: 0, clientX: 900 });
-    fireEvent.mouseMove(document, { clientX: 880 });
-    // Selected now: the strips are gone, the handles are up…
-    expect(container.querySelector('[data-clip-edge]')).toBeNull();
-    expect(container.querySelector('.clip-display__handle--trim-right')).toBeTruthy();
-    // …and the same drag is still trimming
-    fireEvent.mouseMove(document, { clientX: 860 });
-    expect(onTrim.mock.calls).toEqual([['right', 880], ['right', 860]]);
-    fireEvent.mouseUp(document);
-    fireEvent.mouseMove(document, { clientX: 800 });
-    expect(onTrim).toHaveBeenCalledTimes(2);
+  it('the zones and the fade handles share the edge without overlapping', () => {
+    const { container, zone, span } = renderTrack();
+    // The fade controls show while the pointer is on a zone — it counts as over the clip
+    expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
+    fireEvent.mouseEnter(zone(2, 'left')!, { buttons: 0 });
+    const fade = (side: 'in' | 'out') => {
+      const el = container.querySelector<HTMLElement>(`[data-fade-handle="${side}"][data-fade-clip="2"]`)!;
+      const left = parseInt(el.style.left, 10);
+      return { left, right: left + parseInt(el.style.width, 10), z: Number(el.style.zIndex) };
+    };
+    // Left edge: the zone ends where the fade handle's box begins
+    expect(span(zone(2, 'left')!).right).toBeLessThanOrEqual(fade('in').left);
+    // Right edge: the fade handle's box ends where the zone begins
+    expect(fade('out').right).toBeLessThanOrEqual(span(zone(2, 'right')!).left);
+    // …and the fade controls are stacked above the zones regardless
+    expect(fade('in').z).toBeGreaterThan(Number(zone(2, 'left')!.style.zIndex));
+    // Leaving the zone for empty track takes the fade controls away again
+    fireEvent.mouseLeave(zone(2, 'left')!);
+    expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
   });
 
-  it('no strips where there is nothing to trim with', () => {
-    const { edges } = renderTrack({ onClipTrimEdge: undefined });
-    expect(edges(2)).toHaveLength(0);
+  it('clips that touch: each edge keeps its own side of the joint', () => {
+    const { zone, clipBox, span } = renderTrack({
+      clips: [
+        { id: 1, name: 'A', start: 0, duration: 4 },
+        { id: 2, name: 'B', start: 4, duration: 3 },
+      ],
+    });
+    const joint = clipBox(2).left;
+    expect(span(zone(1, 'right')!)).toEqual({ left: joint - 4, right: joint });
+    expect(span(zone(2, 'left')!)).toEqual({ left: joint, right: joint + 4 });
+  });
+
+  it('a selected neighbour keeps the unselected clip\'s zone out of itself', () => {
+    const { zone, clipBox, span } = renderTrack({
+      clips: [
+        { id: 1, name: 'A', start: 0, duration: 4, selected: true },
+        { id: 2, name: 'B', start: 4, duration: 3 },
+      ],
+    });
+    const joint = clipBox(2).left;
+    expect(span(zone(2, 'left')!)).toEqual({ left: joint, right: joint + 4 });
+  });
+
+  it('an edge buried under a higher clip has no zone', () => {
+    const { zone } = renderTrack({
+      clips: [
+        { id: 1, name: 'A', start: 0, duration: 5 },
+        { id: 2, name: 'B', start: 3, duration: 4 }, // later in the array = on top
+      ],
+    });
+    expect(zone(1, 'right')).toBeNull();
+    expect(zone(1, 'left')).toBeTruthy();
+    expect(zone(2, 'left')).toBeTruthy();
+    expect(zone(2, 'right')).toBeTruthy();
+  });
+
+  it('no zones where there is nothing to trim with, or on a clip being recorded', () => {
+    expect(renderTrack({ onClipTrimEdge: undefined }).container.querySelector('[data-edge-trim]')).toBeNull();
+    cleanup();
+    const { zone } = renderTrack({ recordingClipId: 2 });
+    expect(zone(2, 'left')).toBeNull();
+    expect(zone(2, 'right')).toBeNull();
   });
 });
