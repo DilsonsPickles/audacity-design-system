@@ -70,6 +70,92 @@ describe('clip fades', () => {
     }
   });
 
+  it('a quick fade being edited draws its curve white inside a dark casing; at rest it is the plain dark line', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeOut: 1, selected: true },
+            { id: 2, name: 'B', start: 5, duration: 4, fadeIn: 1 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const lefts = Array.from(container.querySelectorAll<HTMLElement>('[data-fade-curve]')).map((el) => parseInt(el.style.left, 10));
+    const clip2Left = Math.max(...lefts); // clip 2's one fade is the right-most region
+    const curves = (clip: 1 | 2) => Array.from(container.querySelectorAll<HTMLElement>('[data-fade-curve]'))
+      .filter((el) => (parseInt(el.style.left, 10) === clip2Left) === (clip === 2));
+    const strokes = (clip: 1 | 2) => curves(clip).map((el) => el.querySelector('[data-fade-line]')!.getAttribute('stroke'));
+    const casings = (clip: 1 | 2) => curves(clip).filter((el) => el.querySelector('[data-fade-line-casing]')).length;
+    const DARK = 'rgba(0, 0, 0, 0.55)';
+
+    // At rest — selection alone is not editing
+    expect(strokes(1)).toEqual([DARK, DARK]);
+    expect(strokes(2)).toEqual([DARK]);
+    expect(container.querySelector('[data-fade-line-casing]')).toBeNull();
+
+    // Pointer over clip 1: both of ITS curves, and only its
+    hoverClip(container, 1);
+    expect(strokes(1)).toEqual(['#FFFFFF', '#FFFFFF']);
+    expect(casings(1)).toBe(2);
+    expect(strokes(2)).toEqual([DARK]);
+    expect(casings(2)).toBe(0);
+    // The casing runs under the line, along the same curve, and is wider
+    const edited = curves(1)[0];
+    const casing = edited.querySelector('[data-fade-line-casing]')!;
+    const line = edited.querySelector('[data-fade-line]')!;
+    expect(casing.getAttribute('d')).toBe(line.getAttribute('d'));
+    expect(Number(casing.getAttribute('stroke-width'))).toBeGreaterThan(Number(line.getAttribute('stroke-width')));
+    expect(casing.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // A drag keeps it white after the pointer has left the clip's box…
+    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 51 });
+    fireEvent.mouseLeave(handle);
+    expect(strokes(1)).toEqual(['#FFFFFF', '#FFFFFF']);
+    // …and letting go away from the clip returns it to rest
+    fireEvent.pointerUp(handle, { clientX: 900, clientY: 400, pointerId: 51 });
+    expect(strokes(1)).toEqual([DARK, DARK]);
+    expect(container.querySelector('[data-fade-line-casing]')).toBeNull();
+  });
+
+  it('the fade handle icon is a rounded outline: no white fill, and the wedge is clipped to it', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const glyphs = Array.from(container.querySelectorAll('[data-fade-handle] svg'));
+    expect(glyphs).toHaveLength(2);
+    const clipIds = glyphs.map((svg) => {
+      const frame = svg.querySelector('[data-fade-glyph-frame]')!;
+      expect(Number(frame.getAttribute('rx'))).toBeGreaterThan(0);
+      expect(frame.getAttribute('fill')).toBe('none');
+      // Nothing in the icon is filled white
+      svg.querySelectorAll('[fill]').forEach((el) => {
+        expect((el.getAttribute('fill') ?? '').toUpperCase()).not.toMatch(/^#FFF(FFF)?$/);
+      });
+      // The wedge is clipped to a square with the same rounding
+      const clip = svg.querySelector('clipPath')!;
+      expect(clip.querySelector('rect')!.getAttribute('rx')).toBe(frame.getAttribute('rx'));
+      expect(svg.querySelector('g')!.getAttribute('clip-path')).toBe(`url(#${clip.id})`);
+      return clip.id;
+    });
+    // Each icon has its own clip id — a shared one would point both at the first
+    expect(new Set(clipIds).size).toBe(2);
+  });
+
   it('a crossfade keeps its veils and is not dimmed', () => {
     const { container } = render(
       <Providers>
@@ -87,6 +173,10 @@ describe('clip fades', () => {
     expect(container.querySelectorAll('[data-fade-overlay]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-fade-line]')).toHaveLength(2);
     expect(container.querySelector('[data-fade-dim]')).toBeNull();
+    // …nor drawn white under the pointer: that is the quick fade's editing state
+    hoverClip(container, 1);
+    expect(container.querySelector('[data-fade-line-casing]')).toBeNull();
+    expect(container.querySelector('[data-fade-line][stroke="#FFFFFF"]')).toBeNull();
   });
 
   it('handles show for the selected clip, and for an unselected clip only while the pointer is over it', () => {

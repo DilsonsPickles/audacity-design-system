@@ -17,21 +17,44 @@ import './Track.css';
 const EMPTY_NUMBER_ARRAY: number[] = [];
 
 /** Fade handle glyph (design-provided). The 'out' side renders mirrored.
- *  The square is an OUTLINE — no white fill (user decision 2026-09-29):
- *  the clip shows through it, and only the wedge is tinted. */
-const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
-  >
-    <path d="M15.5 6.5V15.5H6.5V6.5H15.5Z" fill="none" stroke="#14151A" />
-    <path d="M16 6.5C12.8421 6.5 6.5 12.8421 6.5 16V6.5H16Z" fill="#9295A6" fillOpacity="0.75" stroke="#14151A" />
-  </svg>
-);
+ *  The square is an OUTLINE with ROUNDED corners (user decisions
+ *  2026-09-29): no white fill — the clip shows through it, and only the
+ *  wedge is tinted. The wedge is clipped to the rounded square, so its
+ *  two tips follow the corners instead of poking out of them. */
+const FADE_GLYPH_RADIUS = 2;
+const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
+  const clipId = React.useId();
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
+    >
+      <defs>
+        <clipPath id={clipId}>
+          <rect x="6.5" y="6.5" width="9" height="9" rx={FADE_GLYPH_RADIUS} />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clipId})`}>
+        <path d="M16 6.5C12.8421 6.5 6.5 12.8421 6.5 16V6.5H16Z" fill="#9295A6" fillOpacity="0.75" />
+        <path d="M16 6.5C12.8421 6.5 6.5 12.8421 6.5 16" stroke="#14151A" />
+      </g>
+      <rect
+        data-fade-glyph-frame
+        x="6.5"
+        y="6.5"
+        width="9"
+        height="9"
+        rx={FADE_GLYPH_RADIUS}
+        fill="none"
+        stroke="#14151A"
+      />
+    </svg>
+  );
+};
 
 export interface TrackClip {
   id: string | number;
@@ -915,11 +938,23 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     });
     const curves = fadeCurves.map((region) => {
       const g = geometry(region);
+      // A quick fade being EDITED — the pointer is over its clip, or one
+      // of its handles is mid-drag — draws its curve WHITE, inside a dark
+      // casing (user decision 2026-09-29): the same white-with-a-dark-
+      // edge as the shape handle sitting on it, so the two read as one
+      // editable thing. At rest the curve is the plain dark line.
+      const editing = region.authored && (
+        fadeHoverClipId === region.clipId
+        || fadeDragClipId === region.clipId
+        || shapeDrag === `${region.clipId}:${region.side}`
+      );
+      const curvePath = fadeCurvePath(region.side, 64, region.shape);
       return (
         <div
           key={`fade-curve-${g.key}`}
           data-fade-curve={region.side}
           data-fade-authored={region.authored ? 'true' : 'false'}
+          data-fade-editing={editing ? 'true' : undefined}
           style={{
             position: 'absolute',
             left: `${g.left}px`,
@@ -945,12 +980,26 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 stroke="none"
               />
             )}
+            {editing && (
+              <path
+                data-fade-line-casing={region.side}
+                d={curvePath}
+                fill="none"
+                stroke="rgba(0, 0, 0, 0.6)"
+                strokeWidth={4}
+                // Butt caps: a round cap would poke out past the clip's
+                // edge at both ends of the fade
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             <path
               data-fade-line={region.side}
-              d={fadeCurvePath(region.side, 64, region.shape)}
+              d={curvePath}
               fill="none"
-              stroke="rgba(0, 0, 0, 0.55)"
+              stroke={editing ? '#FFFFFF' : 'rgba(0, 0, 0, 0.55)'}
               strokeWidth={1.5}
+              strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
             />
           </svg>
