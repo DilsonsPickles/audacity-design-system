@@ -62,6 +62,19 @@ describe('fade shapes — linear is stored, the default is cleared', () => {
     expect(next.tracks[0].clips[0].fadeInShape).toBe(1);
   });
 
+  it('SET_CLIP_FADE_SHAPE stores a handle, and clears one back at the centre', () => {
+    const bent = tracksReducer(state(), {
+      type: 'SET_CLIP_FADE_SHAPE',
+      payload: { trackIndex: 0, clipId: 10, side: 'in', shape: { t: 0.2, g: 0.7 } },
+    });
+    expect(bent.tracks[0].clips[0].fadeInShape).toEqual({ t: 0.2, g: 0.7 });
+    const back = tracksReducer(bent, {
+      type: 'SET_CLIP_FADE_SHAPE',
+      payload: { trackIndex: 0, clipId: 10, side: 'in', shape: { t: 0.501, g: 0.499 } },
+    });
+    expect(back.tracks[0].clips[0].fadeInShape).toBeUndefined();
+  });
+
   it('SET_CROSSFADE_SHAPE stores 2 — an S-curve is a choice for a crossfade', () => {
     const next = tracksReducer(state(), {
       type: 'SET_CROSSFADE_SHAPE',

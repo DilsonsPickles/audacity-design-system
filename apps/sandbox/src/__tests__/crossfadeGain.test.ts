@@ -4,6 +4,7 @@ import {
   applyGainSegmentsToChannel,
   DEFAULT_QUICK_FADE_SHAPE as AUDIO_QUICK,
   DEFAULT_CROSSFADE_SHAPE as AUDIO_CROSSFADE,
+  handleCurveGain as audioHandleCurveGain,
 } from '@audacity-ui/audio';
 import {
   computeFadeCurves,
@@ -11,6 +12,8 @@ import {
   fadeOutGain,
   DEFAULT_QUICK_FADE_SHAPE,
   DEFAULT_CROSSFADE_SHAPE,
+  FADE_HANDLE_LIMITS,
+  handleCurveGain,
 } from '@audacity-ui/components';
 
 const clip = (id: number, start: number, duration: number, trimStart = 0) => ({
@@ -173,6 +176,43 @@ describe('default fade shapes — what is drawn is what is baked', () => {
     // Project time 3..5 = clip 1 samples 300..500, clip 2 samples 0..200
     for (const i of [0, 50, 100, 150, 199]) {
       expect(a[300 + i] ** 2 + b[i] ** 2).toBeCloseTo(1, 5);
+    }
+  });
+});
+
+describe('handle-shaped fades — what is drawn is what is baked', () => {
+  const ones = (n: number) => new Float32Array(n).fill(1);
+  const { tMin, tMax, gMin, gMax } = FADE_HANDLE_LIMITS;
+  const handles = [
+    { t: tMin, g: gMax }, { t: tMax, g: gMax }, { t: tMax, g: gMin }, { t: tMin, g: gMin },
+    { t: 0.5, g: 0.5 }, { t: 0.3, g: 0.6 },
+  ];
+
+  it('the two copies of the curve are the same function', () => {
+    for (const h of handles) {
+      for (let k = 0; k <= 50; k++) {
+        expect(audioHandleCurveGain(k / 50, h)).toBe(handleCurveGain(k / 50, h));
+      }
+    }
+  });
+
+  it('a fade in and a fade out with handles bake to the curves they are drawn as', () => {
+    for (const h of handles) {
+      const faded = { ...clip(1, 0, 4), fadeIn: 1, fadeOut: 1, fadeInShape: h, fadeOutShape: h };
+      const segs = computeClipGainSegments([faded]).get('1')!;
+      expect(segs).toContainEqual({ startSec: 0, endSec: 1, shape: 'fadeIn', curve: h });
+      const drawn = computeFadeCurves([faded]);
+      const baked = applyGainSegmentsToChannel(ones(400), segs, 100);
+      const drawnIn = drawn.find((r) => r.side === 'in')!;
+      const drawnOut = drawn.find((r) => r.side === 'out')!;
+      for (const i of [0, 5, 15, 30, 50, 70, 85, 95]) {
+        expect(baked[i]).toBeCloseTo(fadeInGain(i / 100, drawnIn.shape), 5);
+        expect(baked[300 + i]).toBeCloseTo(fadeOutGain(i / 100, drawnOut.shape), 5);
+      }
+      // Through the handle, on both sides
+      expect(baked[Math.round(h.t * 100)]).toBeCloseTo(h.g, 5);
+      expect(baked[300 + Math.round(h.t * 100)]).toBeCloseTo(h.g, 5);
+      expect(baked[200]).toBe(1);
     }
   });
 });

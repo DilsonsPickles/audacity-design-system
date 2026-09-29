@@ -10,6 +10,11 @@ import {
   localFadeRegionsByClip,
   DEFAULT_QUICK_FADE_SHAPE,
   DEFAULT_CROSSFADE_SHAPE,
+  FADE_HANDLE_LIMITS,
+  clampFadeHandle,
+  fadeHandleOf,
+  handleCurveGain,
+  isDefaultQuickFadeShape,
 } from '../clipCrossfades';
 
 const clip = (id: number, start: number, duration: number) => ({ id, start, duration });
@@ -244,5 +249,116 @@ describe('the default shape — an S-curve for quick fades, equal-power for cros
     expect(computeFadeCurves([a])[0].shape).toBe(2);
     const crossed = computeFadeCurves([a, clip(2, 3, 4)]);
     expect(crossed.find((r) => r.clipId === 1 && r.side === 'out')!.shape).toBe(1);
+  });
+});
+
+describe('the handle-shaped S-curve', () => {
+  const { tMin, tMax, gMin, gMax } = FADE_HANDLE_LIMITS;
+  const corners = [
+    { t: tMin, g: gMax },
+    { t: tMax, g: gMax },
+    { t: tMax, g: gMin },
+    { t: tMin, g: gMin },
+  ];
+  const handles = [...corners, { t: 0.5, g: 0.5 }, { t: 0.3, g: 0.6 }, { t: 0.7, g: 0.35 }, { t: 0.5, g: gMax }, { t: tMin, g: 0.5 }];
+
+  it('the limits are the box from the reference: 15–85% along, 27.5–72.5% gain', () => {
+    expect(FADE_HANDLE_LIMITS).toEqual({ tMin: 0.15, tMax: 0.85, gMin: 0.275, gMax: 0.725 });
+    expect(clampFadeHandle({ t: -3, g: 9 })).toEqual({ t: 0.15, g: 0.725 });
+    expect(clampFadeHandle({ t: 3, g: -9 })).toEqual({ t: 0.85, g: 0.275 });
+    expect(clampFadeHandle({ t: 0.4, g: 0.6 })).toEqual({ t: 0.4, g: 0.6 });
+  });
+
+  it('at the centre it is exactly the default S-curve', () => {
+    for (let k = 0; k <= 20; k++) {
+      const t = k / 20;
+      expect(handleCurveGain(t, { t: 0.5, g: 0.5 })).toBeCloseTo(fadeInGain(t, DEFAULT_QUICK_FADE_SHAPE), 12);
+      expect(fadeOutGain(t, { t: 0.5, g: 0.5 })).toBeCloseTo(fadeOutGain(t, DEFAULT_QUICK_FADE_SHAPE), 12);
+    }
+  });
+
+  it('runs from silence to full, always rising, through the handle — everywhere in the box', () => {
+    for (const h of handles) {
+      expect(fadeInGain(0, h)).toBeCloseTo(0, 12);
+      expect(fadeInGain(1, h)).toBeCloseTo(1, 12);
+      expect(fadeInGain(h.t, h)).toBeCloseTo(h.g, 12);
+      let prev = -1;
+      for (let k = 0; k <= 200; k++) {
+        const g = fadeInGain(k / 200, h);
+        expect(Number.isFinite(g)).toBe(true);
+        expect(g).toBeGreaterThanOrEqual(prev);
+        expect(g).toBeLessThanOrEqual(1 + 1e-12);
+        prev = g;
+      }
+    }
+  });
+
+  it('stays an S at the corners — it eases at both ends, never a hard corner', () => {
+    for (const h of corners) {
+      // At each end the curve is flatter than a straight line would
+      // be: the first and last 0.5% of the fade move less than 0.5% of
+      // the gain
+      expect(fadeInGain(0.005, h)).toBeLessThan(0.005);
+      expect(1 - fadeInGain(0.995, h)).toBeLessThan(0.005);
+    }
+  });
+
+  it('matches the reference curves at the four corners', () => {
+    // Positions along the fade where the reference curve crosses a
+    // gain of 10%, 50% and 90%, measured off the reference images
+    const reference: Array<[{ t: number; g: number }, number[]]> = [
+      [{ t: 0.15, g: 0.725 }, [0.029, 0.102, 0.226]],
+      [{ t: 0.85, g: 0.725 }, [0.618, 0.787, 0.907]],
+      [{ t: 0.85, g: 0.275 }, [0.778, 0.902, 0.974]],
+      [{ t: 0.15, g: 0.275 }, [0.096, 0.216, 0.385]],
+    ];
+    const crossing = (h: { t: number; g: number }, gain: number) => {
+      let lo = 0;
+      let hi = 1;
+      for (let i = 0; i < 50; i++) {
+        const mid = (lo + hi) / 2;
+        if (fadeInGain(mid, h) < gain) lo = mid; else hi = mid;
+      }
+      return (lo + hi) / 2;
+    };
+    for (const [h, ts] of reference) {
+      [0.1, 0.5, 0.9].forEach((gain, i) => {
+        // within 3% of the fade's length
+        expect(Math.abs(crossing(h, gain) - ts[i])).toBeLessThan(0.03);
+      });
+    }
+  });
+
+  it('a fade out is the fade in played backwards', () => {
+    for (const h of handles) {
+      expect(fadeOutGain(0, h)).toBeCloseTo(1, 12);
+      expect(fadeOutGain(1, h)).toBeCloseTo(0, 12);
+      expect(fadeOutGain(h.t, h)).toBeCloseTo(h.g, 12);
+      for (const t of [0.1, 0.4, 0.8]) {
+        expect(fadeOutGain(t, h)).toBeCloseTo(fadeInGain(1 - t, { t: 1 - h.t, g: h.g }), 12);
+      }
+    }
+  });
+
+  it('fadeHandleOf: a handle shape is its own position; anything else sits at the middle of its curve', () => {
+    expect(fadeHandleOf('in', { t: 0.3, g: 0.6 })).toEqual({ t: 0.3, g: expect.closeTo(0.6, 12) });
+    expect(fadeHandleOf('in', 2)).toEqual({ t: 0.5, g: expect.closeTo(0.5, 12) });
+    expect(fadeHandleOf('out', 1)).toEqual({ t: 0.5, g: expect.closeTo(Math.SQRT1_2, 12) });
+    expect(fadeHandleOf('out', 'linear')).toEqual({ t: 0.5, g: 0.5 });
+  });
+
+  it('isDefaultQuickFadeShape: nothing stored, the exponent 2, or a handle at the centre', () => {
+    expect(isDefaultQuickFadeShape(undefined)).toBe(true);
+    expect(isDefaultQuickFadeShape(2.004)).toBe(true);
+    expect(isDefaultQuickFadeShape({ t: 0.502, g: 0.498 })).toBe(true);
+    expect(isDefaultQuickFadeShape(1)).toBe(false);
+    expect(isDefaultQuickFadeShape('linear')).toBe(false);
+    expect(isDefaultQuickFadeShape({ t: 0.5, g: 0.6 })).toBe(false);
+  });
+
+  it('computeFadeCurves carries a handle shape through to the drawn region', () => {
+    const h = { t: 0.2, g: 0.7 };
+    const [region] = computeFadeCurves([{ id: 1, start: 0, duration: 4, fadeIn: 1, fadeInShape: h }]);
+    expect(region.shape).toEqual(h);
   });
 });

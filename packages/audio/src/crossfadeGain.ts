@@ -30,12 +30,41 @@ export interface OverlapClipLike {
   fadeIn?: number;
   fadeOut?: number;
   /** Exponent on the equal-power base (1 = equal-power, 2 = S-curve),
-   *  or 'linear'. Absent = the default for the kind of fade the edge is
-   *  wearing: DEFAULT_QUICK_FADE_SHAPE or DEFAULT_CROSSFADE_SHAPE.
+   *  'linear', or a handle the S-curve is bent through. Absent = the
+   *  default for the kind of fade the edge is wearing:
+   *  DEFAULT_QUICK_FADE_SHAPE or DEFAULT_CROSSFADE_SHAPE.
    *  Mirrors components/utils/clipCrossfades.ts — same values, same
    *  curves; the two must agree. */
-  fadeInShape?: number | 'linear';
-  fadeOutShape?: number | 'linear';
+  fadeInShape?: FadeShape;
+  fadeOutShape?: FadeShape;
+}
+
+/** The point a quick fade's S-curve passes through: `t` along the fade
+ *  (0 = its start), `g` the gain there. MUST MATCH `FadeHandle` in
+ *  components/utils/clipCrossfades.ts. */
+export interface FadeHandle {
+  t: number;
+  g: number;
+}
+
+export type FadeShape = number | 'linear' | FadeHandle;
+
+const LN_HALF = Math.log(0.5);
+
+/** The S-curve through a handle, for a fade IN, at position t (0..1):
+ *  time bent so the handle lands on the S's midpoint, the raised
+ *  cosine, then gain bent so that midpoint has the handle's gain.
+ *  MUST MATCH `handleCurveGain` in components/utils/clipCrossfades.ts,
+ *  where the reasoning is; a sandbox test holds the two together. */
+export function handleCurveGain(t: number, handle: FadeHandle): number {
+  const u = Math.max(0, Math.min(1, t));
+  const ht = Math.max(0.01, Math.min(0.99, handle.t));
+  const hg = Math.max(0.01, Math.min(0.99, handle.g));
+  const w = ht < 0.5
+    ? 1 - (1 - u) ** (LN_HALF / Math.log(1 - ht))
+    : u ** (LN_HALF / Math.log(ht));
+  const s = (1 - Math.cos(Math.PI * w)) / 2;
+  return s / ((1 / hg - 2) * (1 - s) + 1);
 }
 
 /** What a fade's shape is when none is stored: a clip's own QUICK FADE
@@ -55,7 +84,7 @@ export interface ClipGainSegment {
   /** Curve shape for fade segments, resolved (stored, else the default
    *  for its kind). Left off when it is 1 — equal-power, which is what
    *  `applyGainSegmentsToChannel` applies to a segment without one. */
-  curve?: number | 'linear';
+  curve?: FadeShape;
 }
 
 const EPSILON = 1e-9;
@@ -183,6 +212,13 @@ export function applyGainSegmentsToChannel(
       const t = Math.max(0, Math.min(1, (i / sampleRate - seg.startSec) / span));
       if (seg.curve === 'linear') {
         out[i] *= seg.shape === 'fadeOut' ? 1 - t : t;
+        continue;
+      }
+      if (typeof seg.curve === 'object') {
+        // A fade out is the fade in played backwards, handle and all
+        out[i] *= seg.shape === 'fadeOut'
+          ? handleCurveGain(1 - t, { t: 1 - seg.curve.t, g: seg.curve.g })
+          : handleCurveGain(t, seg.curve);
         continue;
       }
       const base = seg.shape === 'fadeOut'

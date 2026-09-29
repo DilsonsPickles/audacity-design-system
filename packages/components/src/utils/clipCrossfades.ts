@@ -25,9 +25,9 @@ export interface CrossfadeClipLike {
    *  a crossfade honours it instead of the overlap-default ramp. */
   fadeIn?: number;
   fadeOut?: number;
-  /** Curve shapes: an exponent on the equal-power base curve, or
-   *  'linear'. Absent = the default for the kind of fade the edge is
-   *  wearing — DEFAULT_QUICK_FADE_SHAPE or DEFAULT_CROSSFADE_SHAPE. */
+  /** Curve shapes — see `FadeShape`. Absent = the default for the kind
+   *  of fade the edge is wearing — DEFAULT_QUICK_FADE_SHAPE or
+   *  DEFAULT_CROSSFADE_SHAPE. */
   fadeInShape?: FadeShape;
   fadeOutShape?: FadeShape;
 }
@@ -208,12 +208,72 @@ export function crossfadeIntersection(
   return { time: t, gain: (gainOut(t) + gainIn(t)) / 2 };
 }
 
-/** A fade's shape: an exponent on the equal-power base curve (1 =
- *  equal-power, 2 = S-curve, <1 = sharper end), or `'linear'` — a
- *  straight line, which no exponent can produce (cos^k always starts
- *  flat). Two linear sides make an equal-GAIN crossfade. The audio
- *  bake (packages/audio/crossfadeGain.ts) reads the same value. */
-export type FadeShape = number | 'linear';
+/**
+ * The point a quick fade's S-curve is bent to pass through — where its
+ * handle sits. `t` is the position along the fade (0 = where the fade
+ * starts, 1 = where it ends) and `g` the gain there (0..1). The centre,
+ * (0.5, 0.5), is the plain S-curve.
+ */
+export interface FadeHandle {
+  t: number;
+  g: number;
+}
+
+/** A fade's shape, one of three kinds:
+ *  - a NUMBER: an exponent on the equal-power base curve (1 =
+ *    equal-power, 2 = S-curve, <1 = sharper end) — what a crossfade's
+ *    node writes;
+ *  - `'linear'`: a straight line, which no exponent can produce (cos^k
+ *    always starts flat). Two linear sides make an equal-GAIN crossfade;
+ *  - a `FadeHandle`: the S-curve bent through a point — what a quick
+ *    fade's handle writes.
+ *  The audio bake (packages/audio/crossfadeGain.ts) reads the same
+ *  value. */
+export type FadeShape = number | 'linear' | FadeHandle;
+
+export function isFadeHandle(shape: FadeShape | undefined): shape is FadeHandle {
+  return typeof shape === 'object' && shape !== null;
+}
+
+/**
+ * How far a quick fade's handle can go (user decision 2026-09-29): a
+ * box, 15%..85% along the fade and 27.5%..72.5% in gain. Inside it the
+ * curve stays an S — at the corners it is a steep rise with a short
+ * ease at one end and a long one at the other, never a hard corner.
+ */
+export const FADE_HANDLE_LIMITS = { tMin: 0.15, tMax: 0.85, gMin: 0.275, gMax: 0.725 } as const;
+
+export function clampFadeHandle(h: FadeHandle): FadeHandle {
+  const { tMin, tMax, gMin, gMax } = FADE_HANDLE_LIMITS;
+  return {
+    t: Math.max(tMin, Math.min(tMax, h.t)),
+    g: Math.max(gMin, Math.min(gMax, h.g)),
+  };
+}
+
+const LN_HALF = Math.log(0.5);
+
+/**
+ * The S-curve through a handle, for a fade IN, at position t (0..1).
+ * Three steps, each the identity when the handle is at the centre:
+ *  1. bend TIME so the handle's position lands on the S's midpoint;
+ *  2. the S itself — the raised cosine, (1 − cos πw) / 2;
+ *  3. bend GAIN so the midpoint's half gain becomes the handle's gain
+ *     (Schlick's bias, s / ((1/g − 2)(1 − s) + 1)).
+ * So the curve always runs 0 → 1, always rises, and always passes
+ * through the handle. MUST MATCH `handleCurveGain` in
+ * packages/audio/src/crossfadeGain.ts.
+ */
+export function handleCurveGain(t: number, handle: FadeHandle): number {
+  const u = Math.max(0, Math.min(1, t));
+  const ht = Math.max(0.01, Math.min(0.99, handle.t));
+  const hg = Math.max(0.01, Math.min(0.99, handle.g));
+  const w = ht < 0.5
+    ? 1 - (1 - u) ** (LN_HALF / Math.log(1 - ht))
+    : u ** (LN_HALF / Math.log(ht));
+  const s = (1 - Math.cos(Math.PI * w)) / 2;
+  return s / ((1 / hg - 2) * (1 - s) + 1);
+}
 
 export const LINEAR: FadeShape = 'linear';
 
@@ -249,6 +309,8 @@ export const DEFAULT_CROSSFADE_SHAPE = 1;
 export function fadeOutGain(t: number, shape: FadeShape = 1): number {
   const u = Math.max(0, Math.min(1, t));
   if (shape === 'linear') return 1 - u;
+  // A fade out is the fade in played backwards, handle and all
+  if (isFadeHandle(shape)) return handleCurveGain(1 - u, { t: 1 - shape.t, g: shape.g });
   return Math.cos((u * Math.PI) / 2) ** shape;
 }
 
@@ -256,7 +318,26 @@ export function fadeOutGain(t: number, shape: FadeShape = 1): number {
 export function fadeInGain(t: number, shape: FadeShape = 1): number {
   const u = Math.max(0, Math.min(1, t));
   if (shape === 'linear') return u;
+  if (isFadeHandle(shape)) return handleCurveGain(u, shape);
   return Math.sin((u * Math.PI) / 2) ** shape;
+}
+
+/** Where a fade's handle sits, whatever kind of shape is stored: a
+ *  handle shape is its own position; an exponent or a straight line
+ *  puts it at the middle of the fade. The gain is always read off the
+ *  curve, so the handle is on it by construction. */
+export function fadeHandleOf(side: 'in' | 'out', shape: FadeShape): FadeHandle {
+  const t = isFadeHandle(shape) ? Math.max(0, Math.min(1, shape.t)) : 0.5;
+  return { t, g: side === 'in' ? fadeInGain(t, shape) : fadeOutGain(t, shape) };
+}
+
+/** Is this shape the quick fade's default curve? Both spellings count:
+ *  the exponent and a handle at the centre draw the same S. */
+export function isDefaultQuickFadeShape(shape: FadeShape | undefined): boolean {
+  if (shape === undefined) return true;
+  if (shape === 'linear') return false;
+  if (isFadeHandle(shape)) return Math.abs(shape.t - 0.5) < 0.005 && Math.abs(shape.g - 0.5) < 0.005;
+  return Math.abs(shape - DEFAULT_QUICK_FADE_SHAPE) < 0.01;
 }
 
 /** A fade region in CLIP-LOCAL seconds (0 = the clip's left edge), the

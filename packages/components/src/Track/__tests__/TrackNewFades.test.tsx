@@ -2,7 +2,7 @@ import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { TrackNew } from '../TrackNew';
-import { fadeCurvePath, fadeInGain } from '../../utils/clipCrossfades';
+import { fadeCurvePath, fadeInGain, type FadeHandle, type FadeShape } from '../../utils/clipCrossfades';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
@@ -38,7 +38,7 @@ describe('clip fades', () => {
     expect(fadeOutOverlay!.style.width).toBe('50px');
   });
 
-  it('handles show for the SELECTED clip only', () => {
+  it('handles show for the selected clip, and for an unselected clip only while the pointer is over it', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -55,6 +55,116 @@ describe('clip fades', () => {
     );
     expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
     expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
+  });
+
+  it('an UNSELECTED clip can be faded: its controls show under the pointer, and using them selects nothing', () => {
+    const onClipFadeChange = vi.fn();
+    const onClipFadeShapeChange = vi.fn();
+    const onClipClick = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'Clip 1', start: 0, duration: 4, selected: true },
+            { id: 2, name: 'Clip 2', start: 5, duration: 4, fadeIn: 1 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          onClipFadeShapeChange={onClipFadeShapeChange}
+          onClipClick={onClipClick}
+        />
+      </Providers>,
+    );
+    const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
+    const handles = () => container.querySelectorAll('[data-fade-handle][data-fade-clip="2"]');
+    const shapeNode = () => container.querySelector('[data-quickfade-node][data-clip-ref="2"]') as HTMLElement | null;
+    expect(handles()).toHaveLength(0);
+    expect(shapeNode()).toBeNull();
+
+    // A press already under way passing over the clip is not a hover
+    fireEvent.mouseEnter(clip2, { buttons: 1 });
+    expect(handles()).toHaveLength(0);
+    fireEvent.mouseLeave(clip2);
+
+    fireEvent.mouseEnter(clip2, { buttons: 0 });
+    expect(handles()).toHaveLength(2);
+    expect(shapeNode()).toBeTruthy();
+    // The selected clip keeps its own
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
+
+    // Moving from the clip onto one of its controls keeps them up: the
+    // controls sit above the clip, so the clip itself is "left"
+    // (one native mouseout, clip → handle, as the browser sends it).
+    const inHandle = handles()[0] as HTMLElement;
+    fireEvent.mouseOut(clip2, { relatedTarget: inHandle, buttons: 0 });
+    expect(handles()).toHaveLength(2);
+    expect(handles()[0]).toBe(inHandle); // the same element — never unmounted
+
+    // Length and shape both work, and neither touches the selection
+    Object.defineProperty(clip2, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 500, top: 0, right: 900, bottom: 100, width: 400, height: 100, x: 500, y: 0, toJSON: () => ({}) }),
+    });
+    const handleNow = handles()[0] as HTMLElement;
+    fireEvent.pointerDown(handleNow, { button: 0, clientX: 600, clientY: 30, pointerId: 31 });
+    fireEvent.pointerMove(handleNow, { clientX: 650, clientY: 30, pointerId: 31 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(2, 'in', 1.5);
+    fireEvent.pointerUp(handleNow, { clientX: 650, clientY: 30, pointerId: 31 });
+    fireEvent.click(handleNow);
+    expect(handles()).toHaveLength(2); // let go over the clip: still there
+
+    const node = shapeNode()!;
+    fireEvent.pointerDown(node, { button: 0, clientX: 600, clientY: 60, pointerId: 32 });
+    fireEvent.pointerMove(node, { clientX: 610, clientY: 60, pointerId: 32 });
+    expect(onClipFadeShapeChange.mock.calls[0][0]).toBe(2);
+    fireEvent.pointerUp(node, { clientX: 610, clientY: 60, pointerId: 32 });
+    fireEvent.click(node);
+    expect(onClipClick).not.toHaveBeenCalled();
+
+    // Pointer gone: the controls go with it
+    fireEvent.mouseLeave(shapeNode()!);
+    expect(handles()).toHaveLength(0);
+    expect(shapeNode()).toBeNull();
+  });
+
+  it('a fade drag settles the hover from where the pointer is let go', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 2, name: 'Clip 2', start: 5, duration: 4, fadeIn: 1 }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
+    Object.defineProperty(clip2, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 500, top: 0, right: 900, bottom: 100, width: 400, height: 100, x: 500, y: 0, toJSON: () => ({}) }),
+    });
+    const handles = () => container.querySelectorAll('[data-fade-handle]');
+    fireEvent.mouseEnter(clip2, { buttons: 0 });
+
+    // Pointer capture means no enter/leave arrives during the drag. Let
+    // go over the clip: the controls stay, without the pointer having
+    // to leave and come back
+    let handle = handles()[0] as HTMLElement;
+    fireEvent.mouseOut(clip2, { relatedTarget: handle, buttons: 0 });
+    fireEvent.pointerDown(handle, { button: 0, clientX: 600, clientY: 30, pointerId: 41 });
+    fireEvent.pointerMove(handle, { clientX: 650, clientY: 30, pointerId: 41 });
+    fireEvent.pointerUp(handle, { clientX: 650, clientY: 30, pointerId: 41 });
+    expect(handles()).toHaveLength(2);
+
+    // …and a drag let go far outside the clip takes them away
+    handle = handles()[0] as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 600, clientY: 30, pointerId: 42 });
+    fireEvent.pointerMove(handle, { clientX: 100, clientY: 400, pointerId: 42 });
+    fireEvent.pointerUp(handle, { clientX: 100, clientY: 400, pointerId: 42 });
+    expect(handles()).toHaveLength(0);
   });
 
   it('handles are absent entirely when fades are not editable (no onClipFadeChange)', () => {
@@ -225,7 +335,7 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 4 });
   });
 
-  it('a selected clip with a quick fade shows a shape node; vertical drag bows the curve', () => {
+  it('a selected clip with a quick fade shows a shape handle; dragging it reports the point the curve must pass through', () => {
     const onClipFadeShapeChange = vi.fn();
     const { container } = render(
       <Providers>
@@ -240,27 +350,27 @@ describe('clip fades', () => {
     );
     const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     expect(node).toBeTruthy();
-    // The default is the S-curve: midpoint gain 0.5. Track height 114 →
-    // bodyHeight 92. Drag UP 19px → gain ≈ 0.7065 → shape =
-    // ln(g)/ln(0.7071) ≈ 1, the equal-power curve.
+    // The default is the S-curve: the handle rests at (0.5, 0.5). Track
+    // height 114 → bodyHeight 92. Drag UP 19px → gain 0.5 + 19/92.
     fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 67, pointerId: 6 });
     fireEvent.pointerMove(node, { clientX: 62, clientY: 48, pointerId: 6 });
     expect(onClipFadeShapeChange).toHaveBeenCalledTimes(1);
     const [clipId, side, shape] = onClipFadeShapeChange.mock.calls[0];
     expect(clipId).toBe(1);
     expect(side).toBe('in');
-    expect(shape).toBeCloseTo(1, 1);
+    expect(shape.t).toBeCloseTo(0.5, 10);
+    expect(shape.g).toBeCloseTo(0.5 + 19 / 92, 10);
     fireEvent.pointerUp(node, { pointerId: 6 });
   });
 
-  it('no quick-fade shape node on unselected clips or crossfaded edges', () => {
+  it('no quick-fade shape node on crossfaded edges, or on an unselected clip the pointer is not over', () => {
     const { container } = render(
       <Providers>
         <TrackNew
           clips={[
             // selected but its OUT edge is crossfaded → no node there
             { id: 1, name: 'A', start: 0, duration: 5, fadeOut: 1, selected: true },
-            // unselected → no node despite the fade
+            // unselected and not under the pointer → no node despite the fade
             { id: 2, name: 'B', start: 3, duration: 4, fadeIn: 1 },
           ]}
           width={1200}
@@ -302,7 +412,7 @@ describe('clip fades', () => {
     fireEvent.pointerUp(inHandle, { pointerId: 7 });
   });
 
-  it('a fade with no stored shape is the S-curve: its node rests at half gain, and double-click toggles linear', () => {
+  it('a fade with no stored shape is the S-curve: its handle rests at the centre, and double-click toggles linear', () => {
     const renderIt = (extra: Record<string, unknown>) => {
       const onClipFadeShapeChange = vi.fn();
       const { container } = render(
@@ -320,11 +430,11 @@ describe('clip fades', () => {
       return { node, onClipFadeShapeChange };
     };
     // Track height 114 → body 21..113 (92 tall). Half gain = y 67; the
-    // node is 16px square, so its top is 59.
+    // handle is 16px square, so its top is 59.
     {
       const { node, onClipFadeShapeChange } = renderIt({});
       expect(node.style.top).toBe('59px');
-      expect(node.getAttribute('aria-valuenow')).toBe('2');
+      expect(node.getAttribute('aria-valuenow')).toBe('50');
       fireEvent.doubleClick(node);
       expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 'linear');
     }
@@ -334,23 +444,24 @@ describe('clip fades', () => {
       // double-click hands back the S-curve, not equal-power
       const { node, onClipFadeShapeChange } = renderIt({ fadeInShape: 'linear' });
       expect(node.style.top).toBe('59px');
+      expect(node.getAttribute('aria-valuetext')).toBe('linear');
       fireEvent.doubleClick(node);
       expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 2);
     }
     cleanup();
     {
-      // Equal-power, when chosen, sits higher: gain 0.707 → y 48 → top 40
+      // A stored exponent keeps its curve; its handle sits at the middle
+      // of it. Equal-power: gain 0.707 → y 48 → top 40
       const { node } = renderIt({ fadeInShape: 1 });
       expect(node.style.top).toBe('40px');
     }
   });
 
-  it('the shape node never leaves the curve, even when the drag asks for more bend than the limit', () => {
-    // A host that applies the change, as the app does — the curve the
-    // dot must sit on is the one drawn from the clip's stored shape.
-    const shapes: Array<number | 'linear'> = [];
+  it('the handle stays where it is put, inside its limits, and the curve runs through it', () => {
+    // A host that applies the change, as the app does.
+    const shapes: FadeShape[] = [];
     function Host() {
-      const [shape, setShape] = React.useState<number | 'linear' | undefined>(undefined);
+      const [shape, setShape] = React.useState<FadeShape | undefined>(undefined);
       return (
         <TrackNew
           clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeInShape: shape, selected: true }]}
@@ -364,79 +475,86 @@ describe('clip fades', () => {
     const { container } = render(<Providers><Host /></Providers>);
     const node = () => container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     const path = () => container.querySelector('[data-fade-curve="in"] path')!.getAttribute('d')!;
-    // Body is 21..113 (92 tall); the node is 16px square
+    const last = () => shapes[shapes.length - 1] as FadeHandle;
+    // Body is 21..113 (92 tall); the handle is 16px square. The fade is
+    // 1s at 100px/s, so 1% along it is 1px.
     const topFor = (gain: number) => `${Math.round(21 + (1 - gain) * 92 - 8)}px`;
+    const left = () => parseInt(node().style.left, 10);
+    const centreLeft = left();
     expect(node().style.top).toBe(topFor(0.5));
 
-    // 25px right at constant height: t 0.5 → 0.75 at gain 0.5 needs
-    // shape ≈ 8.76 — past the limit of 6. The curve stops at 6, where
-    // t = 0.75 has gain sin(0.75·π/2)^6 ≈ 0.622; the pointer is at 0.5.
-    fireEvent.pointerDown(node(), { button: 0, clientX: 62, clientY: 67, pointerId: 11 });
-    act(() => { fireEvent.pointerMove(node(), { clientX: 87, clientY: 67, pointerId: 11 }); });
-    expect(shapes[shapes.length - 1]).toBe(6);
-    const onCurve = fadeInGain(0.75, 6);
-    expect(onCurve).toBeCloseTo(0.622, 3);
-    expect(node().style.top).toBe(topFor(onCurve));
-    expect(node().style.top).not.toBe(topFor(0.5)); // not where the pointer is
-    expect(path()).toBe(fadeCurvePath('in', 64, 6)); // and that IS the drawn curve
+    const drag = (pointerId: number, dx: number, dy: number) => {
+      fireEvent.pointerDown(node(), { button: 0, clientX: 300, clientY: 300, pointerId });
+      act(() => { fireEvent.pointerMove(node(), { clientX: 300 + dx, clientY: 300 + dy, pointerId }); });
+    };
+    const release = (pointerId: number) => act(() => { fireEvent.pointerUp(node(), { pointerId }); });
 
-    // Straight down as far as it goes, back at the middle: gain 0.05
-    // needs shape ≈ 8.6 — the limit again. The dot stops on the curve.
-    act(() => { fireEvent.pointerMove(node(), { clientX: 62, clientY: 140, pointerId: 11 }); });
-    expect(shapes[shapes.length - 1]).toBe(6);
-    expect(node().style.top).toBe(topFor(fadeInGain(0.5, 6)));
-    act(() => { fireEvent.pointerUp(node(), { pointerId: 11 }); });
-    expect(node().style.top).toBe(topFor(fadeInGain(0.5, 6))); // at rest: the midpoint of that curve
+    // Inside the limits the handle is under the pointer
+    drag(11, 20, -10);
+    expect(last().t).toBeCloseTo(0.7, 10);
+    expect(last().g).toBeCloseTo(0.5 + 10 / 92, 10);
+    expect(left()).toBe(centreLeft + 20);
+    expect(node().style.top).toBe(topFor(0.5 + 10 / 92));
+    expect(path()).toBe(fadeCurvePath('in', 64, last()));
+    expect(fadeInGain(last().t, last())).toBeCloseTo(last().g, 10); // on the curve
+    release(11);
+    // …and it stays there: nothing re-centres on release
+    expect(left()).toBe(centreLeft + 20);
+    expect(node().style.top).toBe(topFor(0.5 + 10 / 92));
+
+    // Far past every limit, toward each corner in turn
+    const corners: Array<[number, number, FadeHandle]> = [
+      [-400, -400, { t: 0.15, g: 0.725 }],
+      [400, -400, { t: 0.85, g: 0.725 }],
+      [400, 400, { t: 0.85, g: 0.275 }],
+      [-400, 400, { t: 0.15, g: 0.275 }],
+    ];
+    corners.forEach(([dx, dy, corner], i) => {
+      drag(20 + i, dx, dy);
+      expect(last()).toEqual(corner);
+      expect(left()).toBe(centreLeft + Math.round((corner.t - 0.5) * 100));
+      expect(node().style.top).toBe(topFor(corner.g));
+      expect(path()).toBe(fadeCurvePath('in', 64, corner));
+      release(20 + i);
+      expect(node().style.top).toBe(topFor(corner.g));
+    });
   });
 
-  it('the midpoint node bends the curve in BOTH axes; the extent never moves', () => {
-    // Fade-in 1s @100px/s → region 0..100px; the dot rests at t = 0.5,
-    // at half gain (the default S-curve).
-    // Vertical drag: gain 0.5 → 0.707 at t = 0.5 solves shape = 1.
-    // Horizontal drag: t 0.5 → 0.6 at gain 0.5 solves
-    // ln(0.5)/ln(sin(0.6·π/2)) ≈ 3.27. Neither touches the extent.
-    const renderIt = () => {
-      const onClipFadeChange = vi.fn();
-      const onClipFadeShapeChange = vi.fn();
-      const { container } = render(
-        <Providers>
-          <TrackNew
-            clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, selected: true }]}
-            width={800}
-            trackIndex={0}
-            pixelsPerSecond={100}
-            onClipFadeChange={onClipFadeChange}
-            onClipFadeShapeChange={onClipFadeShapeChange}
-          />
-        </Providers>,
-      );
-      const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
-      const lastShape = () => onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1][2];
-      return { node, onClipFadeChange, lastShape };
-    };
+  it('the handle moves in BOTH axes; the fade extent never moves', () => {
+    const onClipFadeChange = vi.fn();
+    const onClipFadeShapeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeOut: 2, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          onClipFadeShapeChange={onClipFadeShapeChange}
+        />
+      </Providers>,
+    );
+    const lastCall = () => onClipFadeShapeChange.mock.calls[onClipFadeShapeChange.mock.calls.length - 1];
+    const inNode = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
+    fireEvent.pointerDown(inNode, { button: 0, clientX: 62, clientY: 67, pointerId: 8 });
+    fireEvent.pointerMove(inNode, { clientX: 72, clientY: 58, pointerId: 8 }); // 10px right, 9px up
+    expect(lastCall()[1]).toBe('in');
+    expect(lastCall()[2].t).toBeCloseTo(0.6, 10);
+    expect(lastCall()[2].g).toBeCloseTo(0.5 + 9 / 92, 10);
+    fireEvent.pointerUp(inNode, { pointerId: 8 });
 
-    {
-      const { node, onClipFadeChange, lastShape } = renderIt();
-      fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 67, pointerId: 8 });
-      fireEvent.pointerMove(node, { clientX: 62, clientY: 48, pointerId: 8 }); // straight up
-      expect(onClipFadeChange).not.toHaveBeenCalled();
-      expect(lastShape()).toBeCloseTo(1, 1);
-      fireEvent.pointerUp(node, { pointerId: 8 });
-    }
-    cleanup();
-    {
-      const { node, onClipFadeChange, lastShape } = renderIt();
-      const restLeft = node.style.left;
-      fireEvent.pointerDown(node, { button: 0, clientX: 62, clientY: 48, pointerId: 9 });
-      // The dot's mid-drag position is state set from a native listener,
-      // flushed after the event — act() lets the DOM catch up.
-      act(() => { fireEvent.pointerMove(node, { clientX: 72, clientY: 48, pointerId: 9 }); }); // 10px right = t 0.5 → 0.6
-      expect(onClipFadeChange).not.toHaveBeenCalled(); // extent pinned
-      expect(lastShape()).toBeCloseTo(3.27, 1);
-      expect(node.style.left).not.toBe(restLeft); // the dot follows the pointer mid-drag…
-      act(() => { fireEvent.pointerUp(node, { pointerId: 9 }); });
-      expect(node.style.left).toBe(restLeft); // …and re-centres (t = 0.5) on release
-    }
+    // The fade OUT is 2s = 200px: the same 10px is 5% along it, and
+    // "along" runs from the fade's start toward the clip's end
+    const outNode = container.querySelector('[data-quickfade-node="out"]') as HTMLElement;
+    fireEvent.pointerDown(outNode, { button: 0, clientX: 300, clientY: 67, pointerId: 9 });
+    fireEvent.pointerMove(outNode, { clientX: 310, clientY: 76, pointerId: 9 }); // 10px right, 9px down
+    expect(lastCall()[1]).toBe('out');
+    expect(lastCall()[2].t).toBeCloseTo(0.55, 10);
+    expect(lastCall()[2].g).toBeCloseTo(0.5 - 9 / 92, 10);
+    fireEvent.pointerUp(outNode, { pointerId: 9 });
+
+    expect(onClipFadeChange).not.toHaveBeenCalled(); // extents pinned
   });
 
   it('a selected buried clip re-renders its covered edge handles at track level', () => {

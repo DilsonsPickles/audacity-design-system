@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, ReactNode } from 'react';
 import type { MoveMembership } from '../utils/trackFolders';
 import type { CutMode } from '../utils/cutOperations';
 import type { Label as CoreLabel } from '@audacity-ui/core';
-import type { SpectrogramScale } from '@audacity-ui/components';
+import type { SpectrogramScale, FadeShape } from '@audacity-ui/components';
 import { ACTION_DOMAIN } from './reducers/domains';
 import { normalizeTracksZOrder } from '../utils/clipZOrder';
 import { resolveFocusedTrack } from '../utils/trackFocus';
@@ -61,11 +61,12 @@ export interface Clip {
   /** Curve shape exponents (default 1 = equal-power) — the crossfade
    *  intersection node's state; extents never move, curves bend. */
   /** Fade curve: exponent on the equal-power base (1 = equal-power,
-   *  2 = S-curve), or 'linear'. Absent = the default for the kind of
+   *  2 = S-curve), 'linear', or the handle a quick fade's S-curve is
+   *  bent through. Absent = the default for the kind of
    *  fade the edge is wearing — S-curve for a quick fade, equal-power
    *  for a crossfade (DEFAULT_*_SHAPE in components' clipCrossfades). */
-  fadeInShape?: number | 'linear';
-  fadeOutShape?: number | 'linear';
+  fadeInShape?: FadeShape;
+  fadeOutShape?: FadeShape;
   /**
    * Original clip id that owns the audio buffer. When a clip is split,
    * the right segment gets a new id but should still play from the
@@ -296,8 +297,8 @@ export type TracksAction =
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'SET_CLIP_FADE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; seconds: number } }
   | { type: 'ROLL_CROSSFADE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; deltaSeconds: number } }
-  | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: number | 'linear'; inShape: number | 'linear' } }
-  | { type: 'SET_CLIP_FADE_SHAPE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; shape: number | 'linear' } }
+  | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: FadeShape; inShape: FadeShape } }
+  | { type: 'SET_CLIP_FADE_SHAPE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; shape: FadeShape } }
   | {
       type: 'APPLY_CLIP_PLACEMENT';
       payload: {

@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, fadeInGain, fadeOutGain, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -567,13 +567,28 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
-  // Where ALONG its fade the dot is mid-drag (t, 0..1). Null at rest,
-  // when the dot sits at the curve's midpoint. Only the position along
-  // the fade is kept: the dot's height is always read off the curve, so
-  // the dot can never leave it (user decision 2026-09-29) — a pointer
-  // that asks for more bend than the shape limits allow slides the dot
-  // along the limiting curve instead of pulling it off.
-  const [shapeDragT, setShapeDragT] = React.useState<number | null>(null);
+  // The clip under the pointer. Its fade controls show WITHOUT the clip
+  // being selected (user decision 2026-09-29, widening the 2026-09-21
+  // selected-only rule): fading a clip is not a reason to change the
+  // selection. The controls sit at track level, above the clip, so they
+  // report the hover themselves — leaving the clip FOR one of its own
+  // controls must not hide it.
+  const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
+  const fadeHoverProps = (clipId: string | number) => ({
+    // A press already under way (a selection or clip drag passing over)
+    // is not a hover — controls popping up mid-gesture would only flicker
+    onMouseEnter: (e: React.MouseEvent) => { if (e.buttons === 0) setFadeHoverClipId(clipId); },
+    onMouseLeave: () => setFadeHoverClipId((prev) => (prev === clipId ? null : prev)),
+  });
+  // A fade drag holds the pointer (capture), so the browser sends no
+  // enter/leave while it runs and the hover can be stale when it ends:
+  // the control may have been entered mid-press, or the pointer let go
+  // far from the clip. Settle it from where the pointer actually is.
+  const settleFadeHover = (clipId: string | number, ev: PointerEvent, el: HTMLElement) => {
+    const r = el.ownerDocument.querySelector(`[data-clip-id="${clipId}"]`)?.getBoundingClientRect();
+    const inside = !!r && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+    setFadeHoverClipId((prev) => (inside ? clipId : prev === clipId ? null : prev));
+  };
 
   // Fade curves are DERIVED per clip edge (utils/clipCrossfades.ts):
   // an authored fadeIn/fadeOut owns its edge; an edge overlap supplies
@@ -733,11 +748,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   };
 
 
-  // Shape node on a SELECTED clip's quick fade (free edges only — a
-  // crossfaded edge's shape belongs to the intersection node). Sits at
-  // the curve's midpoint at rest; a drag in EITHER axis bends the curve
-  // so it passes under the pointer (user decision 2026-09-24, replacing
-  // Y-only). Extents are pinned — length is the corner handle's job.
+  // Shape handle on a quick fade of the SELECTED clip or the clip under
+  // the pointer (free edges only — a
+  // crossfaded edge's shape belongs to the intersection node). The
+  // handle is a point ON the curve and the curve's stored state
+  // (user decisions 2026-09-29, replacing the re-centring node): drag
+  // it and the S-curve bends to pass through it; let go and it stays.
+  // It moves inside FADE_HANDLE_LIMITS and nowhere else, so it can
+  // neither leave the curve nor bend it into a corner. Extents are
+  // pinned — length is the corner handle's job.
   const renderQuickFadeNodes = () => {
     if (!onClipFadeShapeChange) return null;
     const CLIP_HEADER_H = 20;
@@ -752,16 +771,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         if (fade <= 0) continue;
         if (crossfadedEdges.has(`${clip.id}:${side}`)) continue;
         const dragKey = `${clip.id}:${side}`;
-        if (!clip.selected && shapeDrag !== dragKey) continue;
+        if (!clip.selected && fadeHoverClipId !== clip.id && shapeDrag !== dragKey) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
         const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
-        // The base curve at normalised position t — the closed-form
-        // solve inverts this: shape = ln(g) / ln(base(t)).
-        const baseAt = (t: number) => (side === 'in' ? Math.sin((t * Math.PI) / 2) : Math.cos((t * Math.PI) / 2));
-        const tDot = shapeDrag === dragKey && shapeDragT !== null ? shapeDragT : 0.5;
-        // The dot is ON the curve, at rest and mid-drag alike: its gain
-        // is the drawn curve's gain at tDot, never the pointer's.
-        const gain = side === 'in' ? fadeInGain(tDot, shape) : fadeOutGain(tDot, shape);
+        // Position and gain are read off the drawn curve, never the
+        // pointer — the handle is on the curve by construction.
+        const { t: tDot, g: gain } = fadeHandleOf(side, shape);
         const x = CLIP_CONTENT_OFFSET + (regionStart + tDot * fade) * pixelsPerSecond;
         const y = bodyTop + (1 - gain) * bodyHeight;
         nodes.push(
@@ -771,8 +786,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-clip-ref={clip.id}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in shape' : 'Quick fade out shape'}
-            aria-valuenow={typeof shape === 'number' ? shape : DEFAULT_QUICK_FADE_SHAPE}
-            aria-valuetext={shape === 'linear' ? 'linear' : undefined}
+            {...fadeHoverProps(clip.id)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(gain * 100)}
+            aria-valuetext={shape === 'linear'
+              ? 'linear'
+              : `${Math.round(gain * 100)}% level, ${Math.round(tDot * 100)}% along the fade`}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             // Double-click: a straight-line fade; again restores the
@@ -792,25 +812,21 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const startClientY = e.clientY;
               const startT = tDot;
               const startGain = gain;
-              // Both axes: the pointer's (t, g) inside the fade picks the
-              // shape whose curve passes through it. t stays strictly
-              // inside (0, 1) and g inside (0, 1) so the solve exists;
-              // the fade's start and end never move. Where the shape
-              // hits its limit the curve stops short of the pointer, and
-              // the dot stays with the curve.
+              // Both axes: the pointer's (t, g) inside the fade, held to
+              // the handle's limits, IS the new shape — the S-curve
+              // through that point. The fade's start and end never move.
               const onMove = (ev: PointerEvent) => {
-                const t = Math.max(0.02, Math.min(0.98, startT + (ev.clientX - startClientX) / Math.max(1, fade * pixelsPerSecond)));
-                const g = Math.max(0.05, Math.min(0.95, startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight)));
-                const next = Math.max(0.15, Math.min(6, Math.log(g) / Math.log(baseAt(t))));
-                if (!Number.isFinite(next)) return;
-                setShapeDragT(t);
+                const next = clampFadeHandle({
+                  t: startT + (ev.clientX - startClientX) / Math.max(1, fade * pixelsPerSecond),
+                  g: startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight),
+                });
                 onClipFadeShapeChange(clip.id, side, next);
               };
-              const onUp = () => {
+              const onUp = (ev: PointerEvent) => {
                 nodeEl.removeEventListener('pointermove', onMove);
                 nodeEl.removeEventListener('pointerup', onUp);
                 setShapeDrag(null);
-                setShapeDragT(null); // back to the midpoint, on the new curve
+                settleFadeHover(clip.id, ev, nodeEl);
               };
               nodeEl.addEventListener('pointermove', onMove);
               nodeEl.addEventListener('pointerup', onUp);
@@ -1012,8 +1028,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           tabIndex={isFlatNavigation ? 0 : (isFirstClip && tabIndex !== undefined ? tabIndex : -1)}
           role="button"
           aria-label={`${clip.name} clip, starts at ${formatTimeForA11y(clip.start)}, ${formatTimeForA11y(clip.duration)} long`}
-          onMouseEnter={() => onHoverClip?.(clip.id as number)}
-          onMouseLeave={() => onHoverClip?.(null)}
+          onMouseEnter={(e) => {
+            onHoverClip?.(clip.id as number);
+            fadeHoverProps(clip.id).onMouseEnter(e);
+          }}
+          onMouseLeave={() => {
+            onHoverClip?.(null);
+            fadeHoverProps(clip.id).onMouseLeave();
+          }}
           onMouseDown={(e) => {
             // Clip receives DOM focus naturally via its tabIndex.
             // Mark as mouse-focused so CSS suppresses the outline (data-focus-mouse attr).
@@ -1471,9 +1493,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // two corner handles — zoom in to edit fades on a narrow clip
     const FADE_HANDLE_MIN_CLIP_PX = 64;
     for (const clip of clips) {
-      // Handles show on the SELECTED clip only (2026-09-21 decision);
-      // the drag guard keeps them up while the pointer is captured.
-      if (!(clip.selected || fadeDragClipId === clip.id)) continue;
+      // Handles show on the SELECTED clip and on the clip UNDER THE
+      // POINTER (2026-09-29, widening the 2026-09-21 selected-only
+      // rule); the drag guard keeps them up while the pointer is
+      // captured.
+      if (!(clip.selected || fadeHoverClipId === clip.id || fadeDragClipId === clip.id)) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
       if (clipWidth < FADE_HANDLE_MIN_CLIP_PX) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
@@ -1510,6 +1534,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-fade-clip={clip.id}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in' : 'Quick fade out'}
+            {...fadeHoverProps(clip.id)}
             aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
             // The clip body is the time-selection surface — a fade drag
             // must not bubble into it (mirrors the trim handles)
@@ -1539,10 +1564,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 if (seconds < 0.02) seconds = 0; // snap tiny fades away
                 onClipFadeChange?.(clip.id, side, seconds);
               };
-              const onUp = () => {
+              const onUp = (ev: PointerEvent) => {
                 handleEl.removeEventListener('pointermove', onMove);
                 handleEl.removeEventListener('pointerup', onUp);
                 setFadeDragClipId(null);
+                settleFadeHover(clip.id, ev, handleEl);
               };
               handleEl.addEventListener('pointermove', onMove);
               handleEl.addEventListener('pointerup', onUp);
