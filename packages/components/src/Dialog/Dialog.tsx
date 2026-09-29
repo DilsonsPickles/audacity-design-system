@@ -3,7 +3,7 @@
  * Based on Figma design: node-id=6326-22726
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { DialogHeader } from '../DialogHeader';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTheme } from '../ThemeProvider';
@@ -101,11 +101,20 @@ export interface DialogProps {
    * Non-modal window mode: the app behind stays fully interactive.
    * Same dialog chrome (header, drag, resize), but the overlay passes
    * pointer events through, there is no focus trap or body scroll
-   * lock, Escape only closes when focus is inside the window, and it
-   * stacks below true modals (which still open on top of it).
+   * lock, Escape only closes while the window is the one in use (see
+   * `isWindowInUse`), and it stacks below true modals (which still
+   * open on top of it).
    * @default false
    */
   nonModal?: boolean;
+  /**
+   * For a non-modal window: Tab goes ROUND the window instead of out
+   * of it — past the last control is the first, and back. Only while
+   * the window is in use; the app behind is still a click away. (A
+   * modal dialog traps Tab already.)
+   * @default false
+   */
+  loopTab?: boolean;
 }
 
 /**
@@ -132,6 +141,7 @@ export function Dialog({
   minHeight,
   customLayout = false,
   nonModal = false,
+  loopTab = false,
 }: DialogProps) {
   const { theme } = useTheme();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -176,6 +186,98 @@ export function Dialog({
     }
   };
 
+  // A non-modal window shares the keyboard with the app behind it, so
+  // it has to know when a key is meant for IT. That is when focus is
+  // inside it — or when focus is nowhere (the page body) and the last
+  // thing the pointer pressed was this window: a click on a blank part
+  // of the window focuses nothing, and the window used to stop
+  // answering Escape from then on.
+  const lastPressWasInsideRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen || !nonModal) return;
+    lastPressWasInsideRef.current = false;
+    const onPointerDown = (e: PointerEvent) => {
+      lastPressWasInsideRef.current = !!dialogRef.current?.contains(e.target as Node | null);
+    };
+    // Focus arriving anywhere else (Tab, a shortcut) ends it too
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as Node | null;
+      if (target && !dialogRef.current?.contains(target)) lastPressWasInsideRef.current = false;
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('focusin', onFocusIn, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('focusin', onFocusIn, true);
+    };
+  }, [isOpen, nonModal]);
+  const isWindowInUse = useCallback((): boolean => {
+    const dialog = dialogRef.current;
+    if (!dialog) return false;
+    const active = document.activeElement;
+    if (active && dialog.contains(active)) return true;
+    const focusIsNowhere = !active || active === document.body;
+    return focusIsNowhere && lastPressWasInsideRef.current;
+  }, []);
+
+  // Tab goes round a non-modal window that asks for it. On WINDOW, in
+  // the capture phase, and for EVERY Tab while the window is in use —
+  // not only at the two ends: the app has Tab handlers of its own on
+  // document-capture (the time-selection and flat-navigation routers)
+  // that would otherwise carry focus out to a clip or a track.
+  useEffect(() => {
+    if (!isOpen || !nonModal || !loopTab) return;
+    const isHidden = (el: HTMLElement): boolean => {
+      for (let node: HTMLElement | null = el; node && node !== document.body; node = node.parentElement) {
+        const style = window.getComputedStyle(node);
+        if (style.display === 'none' || style.visibility === 'hidden') return true;
+      }
+      return false;
+    };
+    const tabStops = (dialog: HTMLElement): HTMLElement[] =>
+      Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button, input, select, textarea, [tabindex]',
+      )).filter((el) =>
+        el.tabIndex >= 0
+        && !(el as HTMLButtonElement).disabled
+        && el.getAttribute('aria-hidden') !== 'true'
+        && !isHidden(el));
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const dialog = dialogRef.current;
+      if (!dialog || !isWindowInUse()) return;
+      const stops = tabStops(dialog);
+      if (stops.length === 0) return;
+      const active = document.activeElement as HTMLElement | null;
+      const at = active ? stops.indexOf(active) : -1;
+      let to: number;
+      if (at >= 0) {
+        to = (at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length;
+      } else if (!active || !dialog.contains(active)) {
+        // Focus is nowhere: come in at the start (or the end, backwards)
+        to = e.shiftKey ? stops.length - 1 : 0;
+      } else {
+        // On something in the window that is not a stop itself (a
+        // roving group's other members, the window's own frame): go
+        // to the stop after it, or before it, in reading order
+        const after = stops.findIndex(
+          (el) => (active.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        );
+        to = e.shiftKey
+          ? ((after === -1 ? stops.length : after) - 1 + stops.length) % stops.length
+          : (after === -1 ? 0 : after);
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      const target = stops[to];
+      target.focus();
+      // As the browser's own Tab does on reaching a text field
+      if (target instanceof HTMLInputElement && typeof target.select === 'function') target.select();
+    };
+    window.addEventListener('keydown', handleTab, true);
+    return () => window.removeEventListener('keydown', handleTab, true);
+  }, [isOpen, nonModal, loopTab, isWindowInUse]);
+
   // Handle escape key. Registered in CAPTURE phase + stopImmediate
   // so the app-level Escape handler (which otherwise shuffles track
   // focus) doesn't fire alongside the dialog close.
@@ -185,8 +287,8 @@ export function Dialog({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || !onClose) return;
       // Non-modal window: Escape belongs to the app (clear selection
-      // etc.) unless focus is inside this window.
-      if (nonModal && !dialogRef.current?.contains(document.activeElement)) return;
+      // etc.) unless this window is the one in use.
+      if (nonModal && !isWindowInUse()) return;
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -195,7 +297,7 @@ export function Dialog({
 
     document.addEventListener('keydown', handleEscape, true);
     return () => document.removeEventListener('keydown', handleEscape, true);
-  }, [isOpen, closeOnEscape, onClose, nonModal]);
+  }, [isOpen, closeOnEscape, onClose, nonModal, isWindowInUse]);
 
   // Prevent body scroll when dialog is open (modal only — a non-modal
   // window leaves the app scrollable)
@@ -408,6 +510,10 @@ export function Dialog({
         role="dialog"
         aria-modal={nonModal ? 'false' : 'true'}
         aria-labelledby="dialog-title"
+        // A non-modal window can take focus ITSELF (never by Tab), so a
+        // click on a blank part of it focuses the window rather than
+        // nothing at all
+        tabIndex={nonModal ? -1 : undefined}
       >
         {/* Resize handles */}
         {!isMaximized && (

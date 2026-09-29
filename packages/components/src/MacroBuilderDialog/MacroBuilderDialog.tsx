@@ -134,7 +134,7 @@ function prettyParameters(parameters: string): string {
  * KEYBOARD (docs/accessibility-architecture.md → Edit macro window).
  * Six Tab stops, however many commands and steps there are: search,
  * the command list, the splitter, the macro's menu, the step list, the
- * footer. Both lists are driven by the arrows. The
+ * footer — and Tab goes ROUND them: past the footer is the top again. Both lists are driven by the arrows. The
  * window is non-modal, so the app's document-level shortcuts are still
  * listening: every key a list uses is stopped from reaching them, or
  * the arrows would move the playhead and Delete would ask to delete a
@@ -804,6 +804,9 @@ export function MacroBuilderDialog({
         onClose={onClose}
         os={os}
         nonModal
+        // Tab goes round the window rather than out into the app
+        // behind it (user decision 2026-09-29)
+        loopTab
         closeOnClickOutside={false}
         width={816}
         minHeight="min(600px, calc(100vh - 32px))"

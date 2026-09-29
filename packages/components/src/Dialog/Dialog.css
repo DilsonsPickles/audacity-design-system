@@ -29,6 +29,12 @@
 }
 
 /* Dialog container */
+/* A non-modal window can hold focus itself (a click on a blank part of
+   it). That is not something to draw a ring round. */
+.dialog:focus {
+  outline: none;
+}
+
 .dialog {
   background-color: var(--dialog-bg);
   border: 1px solid var(--dialog-border);

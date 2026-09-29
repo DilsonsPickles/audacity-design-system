@@ -253,9 +253,25 @@ was its own stop):
 | 6 | Footer | Run / Run on files… / Done (`useContainerTabGroup`) |
 
 The window floats outside the app's numbered Tab order: its stops are
-`tabindex=0`, as every dialog's are. It is NON-MODAL, which has two
-consequences. Tab is not trapped — past the footer it leaves the window
-for the app. And the app's document-level shortcuts are still listening,
+`tabindex=0`, as every dialog's are.
+
+**Tab goes round the window** (`Dialog`'s `loopTab`, 2026-09-29): past
+the footer is the title bar's Close, then search again; Shift+Tab goes
+the other way. The window is still non-modal — the app behind is a
+click away — but Tab alone never leaves it. `Dialog` takes EVERY Tab
+while the window is in use, on `window` in the capture phase, because
+the app has Tab handlers of its own on document-capture
+(`useTimeSelectionTabHandler`, `useFlatNavTabRouter`) that would carry
+focus out to a clip or a track.
+
+**Escape closes the window** whenever the window is the one in use:
+focus inside it, or focus nowhere and the pointer's last press inside
+it. The second half matters — a click on a blank part of the window
+focuses nothing, and the window used to stop answering Escape from then
+on. While the APP is in use, Escape is still the app's.
+
+Being NON-MODAL also means the app's document-level shortcuts are still
+listening,
 so every key a list uses is stopped from reaching them; before this the
 arrows and Home/End moved the project's playhead, Down on a step threw
 focus out to a track, and Delete on a step opened "Delete track?".

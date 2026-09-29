@@ -128,9 +128,11 @@ The panel is keyboard-operable end to end (see
 - **The Edit macro window's own dialogs are unaudited**: the step
   parameter editors (`CommandParametersDialog`, `EditStepDialog`) and
   the Run-on-files progress window. The window itself is done.
-- **Tab is not trapped in the Edit macro window** — it is non-modal by
-  design, so Tab past the footer goes on into the app. A window-local
-  Tab cycle (with a key to leave) would be a decision, not a fix.
+- **No key leaves the Edit macro window for the app** now that Tab goes
+  round it (`loopTab`): Escape closes it, a click leaves it. F6-style
+  "next pane" would be the keyboard's way out without closing.
+- **Other non-modal windows do not loop Tab** — `loopTab` is opt-in and
+  only the Edit macro window asks for it. They do get the Escape fix.
 - **Escape closes the Edit macro window even with a search typed.**
   Clearing the search first would be the usual behaviour; `Dialog`
   takes Escape in the capture phase, ahead of the field.
