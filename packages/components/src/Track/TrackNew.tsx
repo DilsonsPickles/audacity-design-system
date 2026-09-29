@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MidiNote } from '@audacity-ui/core';
+import { ENVELOPE_POINT_STYLES, type MidiNote } from '@audacity-ui/core';
 import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
@@ -599,6 +599,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // report the hover themselves — leaving the clip FOR one of its own
   // controls must not hide it.
   const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
+  // The shape handle the pointer is ON (`clipId:side`) — it answers the
+  // way an envelope point does. Distinct from the clip hover above,
+  // which only decides whether the handle is there at all.
+  const [shapeHandleHover, setShapeHandleHover] = React.useState<string | null>(null);
   // Prefix for the per-curve SVG clip ids (unique across tracks)
   const fadeClipIdBase = React.useId();
   const fadeHoverProps = (clipId: string | number) => ({
@@ -797,6 +801,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
     const NODE_R = 5;
+    // Hover borrows the ENVELOPE POINT's effect (user decision
+    // 2026-09-29) — the point grows, and a black disc with a white
+    // centre appears inside it — read from the same style profile the
+    // envelope uses, so the two cannot drift apart.
+    const pointStyle = ENVELOPE_POINT_STYLES.solidGreenSimple.solidCircle;
+    const hoverGrow = pointStyle ? pointStyle.radiusHover - pointStyle.radius : 1;
+    const hoverCentre = pointStyle?.whiteCenterOnHover ?? { blackRadius: 3.5, outerRadius: 1.5, innerRadius: 0 };
+    const BOX = (NODE_R + 3) * 2;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
       const eff = clipQuickFadeGeometry(clip);
@@ -814,6 +826,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         // Position and gain are read off the drawn curve, never the
         // pointer — the handle is on the curve by construction.
         const { t: tDot, g: gain } = fadeHandleOf(side, shape);
+        // Under the pointer, or being dragged (the pointer may trail the
+        // handle at its limits — it is still the thing in hand)
+        const handleActive = shapeHandleHover === dragKey || shapeDrag === dragKey;
+        const radius = NODE_R + (handleActive ? hoverGrow : 0);
         const x = CLIP_CONTENT_OFFSET + (regionStart + tDot * fade) * pixelsPerSecond;
         const y = bodyTop + (1 - gain) * bodyHeight;
         nodes.push(
@@ -823,7 +839,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-clip-ref={clip.id}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in shape' : 'Quick fade out shape'}
-            {...fadeHoverProps(clip.id)}
+            data-hovered={handleActive ? 'true' : undefined}
+            onMouseEnter={(e) => {
+              fadeHoverProps(clip.id).onMouseEnter(e);
+              if (e.buttons === 0) setShapeHandleHover(dragKey);
+            }}
+            onMouseMove={fadeHoverProps(clip.id).onMouseMove}
+            onMouseLeave={() => {
+              fadeHoverProps(clip.id).onMouseLeave();
+              setShapeHandleHover((prev) => (prev === dragKey ? null : prev));
+            }}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(gain * 100)}
@@ -881,16 +906,29 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               zIndex: 460,
             }}
           >
-            <div
-              style={{
-                width: NODE_R * 2,
-                height: NODE_R * 2,
-                borderRadius: '50%',
-                background: '#FFFFFF',
-                border: '1.5px solid rgba(0, 0, 0, 0.6)',
-                boxSizing: 'border-box',
-              }}
-            />
+            <svg
+              width={BOX}
+              height={BOX}
+              viewBox={`0 0 ${BOX} ${BOX}`}
+              style={{ display: 'block', overflow: 'visible', pointerEvents: 'none' }}
+            >
+              {/* The dark edge is drawn INSIDE the radius, as the border was */}
+              <circle
+                data-quickfade-dot
+                cx={BOX / 2}
+                cy={BOX / 2}
+                r={radius - 0.75}
+                fill="#FFFFFF"
+                stroke="rgba(0, 0, 0, 0.6)"
+                strokeWidth={1.5}
+              />
+              {handleActive && (
+                <>
+                  <circle data-quickfade-dot-ring cx={BOX / 2} cy={BOX / 2} r={hoverCentre.blackRadius} fill="#000000" />
+                  <circle data-quickfade-dot-centre cx={BOX / 2} cy={BOX / 2} r={hoverCentre.outerRadius} fill="#FFFFFF" />
+                </>
+              )}
+            </svg>
           </div>,
         );
       }

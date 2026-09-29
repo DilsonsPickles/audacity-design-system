@@ -1,6 +1,7 @@
 import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
+import { ENVELOPE_POINT_STYLES } from '@audacity-ui/core';
 import { TrackNew } from '../TrackNew';
 import { fadeAreaBelowPath, fadeCurvePath, fadeInGain, type FadeHandle, type FadeShape } from '../../utils/clipCrossfades';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
@@ -282,6 +283,54 @@ describe('clip fades', () => {
     fireEvent.mouseLeave(shapeNode()!);
     expect(handles()).toHaveLength(0);
     expect(shapeNode()).toBeNull();
+  });
+
+  it('the shape handle answers the pointer the way an envelope point does: it grows, with a black disc and a white centre', () => {
+    const style = ENVELOPE_POINT_STYLES.solidGreenSimple.solidCircle!;
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeOut: 1 }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    hoverClip(container, 1);
+    const node = (side: 'in' | 'out') => container.querySelector(`[data-quickfade-node="${side}"]`) as HTMLElement;
+    const dotRadius = (side: 'in' | 'out') => Number(node(side).querySelector('[data-quickfade-dot]')!.getAttribute('r'));
+    const idle = dotRadius('in');
+
+    // Over the clip but not on the handle: the plain white dot
+    expect(node('in').getAttribute('data-hovered')).toBeNull();
+    expect(node('in').querySelector('[data-quickfade-dot-ring]')).toBeNull();
+    expect(node('in').querySelector('[data-quickfade-dot]')!.getAttribute('fill')).toBe('#FFFFFF');
+
+    // On the handle: the envelope point's own numbers
+    fireEvent.mouseOut(container.querySelector('[data-clip-id="1"]') as HTMLElement, { relatedTarget: node('in'), buttons: 0 });
+    expect(node('in').getAttribute('data-hovered')).toBe('true');
+    expect(dotRadius('in') - idle).toBeCloseTo(style.radiusHover - style.radius, 10);
+    const ring = node('in').querySelector('[data-quickfade-dot-ring]')!;
+    const centre = node('in').querySelector('[data-quickfade-dot-centre]')!;
+    expect(ring.getAttribute('fill')).toBe('#000000');
+    expect(Number(ring.getAttribute('r'))).toBe(style.whiteCenterOnHover!.blackRadius);
+    expect(centre.getAttribute('fill')).toBe('#FFFFFF');
+    expect(Number(centre.getAttribute('r'))).toBe(style.whiteCenterOnHover!.outerRadius);
+    expect(ring.compareDocumentPosition(centre) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Only the handle under the pointer — and it does not move or change its hit area
+    expect(node('out').getAttribute('data-hovered')).toBeNull();
+    expect(dotRadius('out')).toBe(idle);
+    expect(node('in').style.width).toBe(node('out').style.width);
+
+    // Held through a drag, even with the pointer off the handle…
+    fireEvent.pointerDown(node('in'), { button: 0, clientX: 50, clientY: 60, pointerId: 61 });
+    fireEvent.mouseLeave(node('in'));
+    expect(node('in').getAttribute('data-hovered')).toBe('true');
+    // …and gone when it is let go away from it
+    fireEvent.pointerUp(node('in'), { clientX: 900, clientY: 400, pointerId: 61 });
+    expect(container.querySelector('[data-quickfade-node][data-hovered]')).toBeNull();
   });
 
   it('a drag that ends over a clip: the first free move inside it brings the controls up', () => {
