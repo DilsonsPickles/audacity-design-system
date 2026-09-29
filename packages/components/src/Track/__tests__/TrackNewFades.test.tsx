@@ -737,9 +737,8 @@ describe('clip fades', () => {
     fireEvent.pointerUp(inHandle, { pointerId: 7 });
   });
 
-  it('a fade with no stored shape is the S-curve: its handle rests at the centre, and double-click toggles linear', () => {
+  it('a fade with no stored shape is the S-curve, its handle at the centre; a stored shape keeps its own curve', () => {
     const renderIt = (extra: Record<string, unknown>) => {
-      const onClipFadeShapeChange = vi.fn();
       const { container } = render(
         <Providers>
           <TrackNew
@@ -747,40 +746,134 @@ describe('clip fades', () => {
             width={800}
             trackIndex={0}
             pixelsPerSecond={100}
-            onClipFadeShapeChange={onClipFadeShapeChange}
+            onClipFadeShapeChange={vi.fn()}
           />
         </Providers>,
       );
       hoverClip(container, 1);
-      const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
-      return { node, onClipFadeShapeChange };
+      return container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     };
     // Track height 114 → body 21..113 (92 tall). Half gain = y 67; the
     // handle is 16px square, so its top is 59.
     {
-      const { node, onClipFadeShapeChange } = renderIt({});
+      const node = renderIt({});
       expect(node.style.top).toBe('59px');
       expect(node.getAttribute('aria-valuenow')).toBe('50');
-      fireEvent.doubleClick(node);
-      expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 'linear');
     }
     cleanup();
     {
-      // A straight line also crosses half gain at the middle; a second
-      // double-click hands back the S-curve, not equal-power
-      const { node, onClipFadeShapeChange } = renderIt({ fadeInShape: 'linear' });
+      // A straight line also crosses half gain at the middle
+      const node = renderIt({ fadeInShape: 'linear' });
       expect(node.style.top).toBe('59px');
       expect(node.getAttribute('aria-valuetext')).toBe('linear');
-      fireEvent.doubleClick(node);
-      expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 2);
     }
     cleanup();
     {
       // A stored exponent keeps its curve; its handle sits at the middle
       // of it. Equal-power: gain 0.707 → y 48 → top 40
-      const { node } = renderIt({ fadeInShape: 1 });
+      const node = renderIt({ fadeInShape: 1 });
       expect(node.style.top).toBe('40px');
     }
+  });
+
+  it('Cmd/Ctrl+click makes the fade linear; double-click resets it to the S-curve — neither toggles', () => {
+    const renderIt = (extra: Record<string, unknown>) => {
+      const onClipFadeShapeChange = vi.fn();
+      const onClipClick = vi.fn();
+      const { container } = render(
+        <Providers>
+          <TrackNew
+            clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, ...extra }]}
+            width={800}
+            trackIndex={0}
+            pixelsPerSecond={100}
+            onClipFadeShapeChange={onClipFadeShapeChange}
+            onClipClick={onClipClick}
+          />
+        </Providers>,
+      );
+      hoverClip(container, 1);
+      const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
+      return { node, onClipFadeShapeChange, onClipClick };
+    };
+    // Whatever the fade is now, each gesture names where it ends up
+    for (const extra of [{}, { fadeInShape: 'linear' }, { fadeInShape: { t: 0.2, g: 0.7 } }, { fadeInShape: 1 }]) {
+      for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+        const { node, onClipFadeShapeChange, onClipClick } = renderIt(extra);
+        fireEvent.pointerDown(node, { button: 0, clientX: 50, clientY: 60, pointerId: 91, ...modifier });
+        // The press is not a drag: moving with it held bends nothing
+        fireEvent.pointerMove(node, { clientX: 80, clientY: 30, pointerId: 91, ...modifier });
+        expect(onClipFadeShapeChange).not.toHaveBeenCalled();
+        fireEvent.pointerUp(node, { clientX: 50, clientY: 60, pointerId: 91, ...modifier });
+        fireEvent.click(node, modifier);
+        expect(onClipFadeShapeChange).toHaveBeenCalledTimes(1);
+        expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 'linear');
+        expect(onClipClick).not.toHaveBeenCalled(); // and the clip is not selected by it
+        cleanup();
+      }
+      {
+        const { node, onClipFadeShapeChange } = renderIt(extra);
+        fireEvent.click(node);
+        fireEvent.click(node);
+        expect(onClipFadeShapeChange).not.toHaveBeenCalled(); // a plain click does nothing
+        fireEvent.doubleClick(node);
+        expect(onClipFadeShapeChange).toHaveBeenCalledTimes(1);
+        expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 2); // the default S-curve
+        cleanup();
+      }
+    }
+    // A stale hover does not lose the click. The browser can deliver
+    // "pointer left the clip" and the press back to back, before the
+    // first has been rendered — so the press lands on a handle that is
+    // about to unmount. The press itself must keep it there.
+    {
+      const { node, onClipFadeShapeChange } = renderIt({});
+      const root = node.parentElement as HTMLElement;
+      const clipEl = root.querySelector('[data-clip-id="1"]') as HTMLElement;
+      act(() => {
+        fireEvent.mouseLeave(clipEl);
+        fireEvent.pointerDown(node, { button: 0, clientX: 50, clientY: 60, pointerId: 92, metaKey: true });
+      });
+      expect(root.querySelector('[data-quickfade-node="in"]')).toBe(node); // still mounted, the same element
+      fireEvent.click(node, { metaKey: true });
+      expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 'linear');
+      cleanup();
+    }
+    // Two quick Cmd+clicks stay linear — the double-click they add up to is not a reset
+    const { node, onClipFadeShapeChange } = renderIt({});
+    fireEvent.click(node, { metaKey: true });
+    fireEvent.click(node, { metaKey: true });
+    fireEvent.doubleClick(node, { metaKey: true });
+    expect(onClipFadeShapeChange.mock.calls.map((c) => c[2])).toEqual(['linear', 'linear']);
+  });
+
+  it('the fade handles sit inside the clip: 10px in from its edge, on the trim handle\'s line', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const clip = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    const clipLeft = parseInt(clip.style.left, 10);
+    const clipRight = clipLeft + 400;
+    const box = (side: 'in' | 'out') => {
+      const el = container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
+      return { left: parseInt(el.style.left, 10), top: parseInt(el.style.top, 10) };
+    };
+    // No fade yet: each handle is at its corner. The body is the 10px
+    // at the far side of the 16px box — [6, 16] for 'in', [0, 10] mirrored
+    expect(box('in').left + 6 - clipLeft).toBe(10);
+    expect(clipRight - (box('out').left + 10)).toBe(10);
+    // The body's middle (11px down the box) is 38px below the clip's
+    // top — the middle of the trim handle (top 28, 20 tall)
+    expect(box('in').top + 11).toBe(38);
+    expect(box('out').top).toBe(box('in').top);
   });
 
   it('the handle stays where it is put, inside its limits, and the curve runs through it', () => {

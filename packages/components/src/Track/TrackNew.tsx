@@ -887,17 +887,33 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               ? 'linear'
               : `${Math.round(gain * 100)}% level, ${Math.round(tDot * 100)}% along the fade`}
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-            // Double-click: a straight-line fade; again restores the
-            // default (the S-curve). Same gesture as the crossfade node.
+            // Two gestures beside the drag (user decision 2026-09-29,
+            // replacing the double-click that toggled linear):
+            //  - Cmd/Ctrl+CLICK makes the fade LINEAR — a straight line;
+            //  - DOUBLE-CLICK RESETS it to the default, the S-curve.
+            // Neither toggles: each says where the fade ends up.
+            onClick={(e) => {
+              e.stopPropagation();
+              if (e.metaKey || e.ctrlKey) onClipFadeShapeChange(clip.id, side, 'linear');
+            }}
             onDoubleClick={(e) => {
               e.stopPropagation();
-              onClipFadeShapeChange(clip.id, side, shape === 'linear' ? DEFAULT_QUICK_FADE_SHAPE : 'linear');
+              // Two quick Cmd+clicks are two requests for linear, not a reset
+              if (e.metaKey || e.ctrlKey) return;
+              onClipFadeShapeChange(clip.id, side, DEFAULT_QUICK_FADE_SHAPE);
             }}
             onPointerDown={(e) => {
               if (e.button !== 0) return;
               e.stopPropagation();
               e.preventDefault();
+              // A press ON the handle proves the pointer is on it, whatever
+              // the hover state last heard (it goes stale when the handle
+              // was reached mid-press). Without this the handle could
+              // unmount between press and release, and the click be lost.
+              setFadeHoverClipId(clip.id);
+              setShapeHandleHover(dragKey);
+              // A Cmd/Ctrl press is the click above, never a drag
+              if (e.metaKey || e.ctrlKey) return;
               const nodeEl = e.currentTarget as HTMLElement;
               try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
               setShapeDrag(dragKey);
@@ -1645,6 +1661,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // Below this rendered width there is no room to grab (or read) the
     // two corner handles — zoom in to edit fades on a narrow clip
     const FADE_HANDLE_MIN_CLIP_PX = 64;
+    // How far INTO the clip the handles sit (user decision 2026-09-29,
+    // "a little more" than the 6px / 7px they had). Sideways: the body
+    // stays 10px inside the clip's left or right edge. Downward: the
+    // body's middle is on the TRIM handle's middle (Clip.css: top 28,
+    // 20 tall = 38 below the clip's top), so the clip's handles share a
+    // line — that puts the body 12px under the header.
+    const FADE_HANDLE_EDGE_INSET = 10;
+    const FADE_HANDLE_TOP = 38 - HEADER_H - (FADE_GLYPH_BODY.start + FADE_GLYPH_BODY.size / 2);
     for (const clip of clips) {
       // Handles show on the SELECTED clip and on the clip UNDER THE
       // POINTER (2026-09-29, widening the 2026-09-21 selected-only
@@ -1682,7 +1706,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         // Box extending right of the boundary: square's LEFT edge sits
         // PAD past it; extending left: square's RIGHT edge sits PAD short
         const raw = inward ? boundaryX + PAD - squareLeft : boundaryX - PAD - squareRight;
-        const left = xBase + Math.round(Math.max(0, Math.min(clipWidth - 16, raw)));
+        // However short the fade, the body keeps FADE_HANDLE_EDGE_INSET
+        // clear of the clip's own edge — it sits IN the clip, not on
+        // its border, and clear of the trim handle just outside it
+        const minLeft = FADE_HANDLE_EDGE_INSET - squareLeft;
+        const maxLeft = clipWidth - FADE_HANDLE_EDGE_INSET - squareRight;
+        const left = xBase + Math.round(Math.max(minLeft, Math.min(maxLeft, raw)));
         return (
           <div
             key={`fade-handle-${clip.id}-${side}`}
@@ -1709,6 +1738,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               if (!wrapper) return;
               const rect = wrapper.getBoundingClientRect();
               try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+              setFadeHoverClipId(clip.id); // a press on it proves the pointer is here
               setFadeDragClipId(clip.id);
               setFadeDragSide(side);
               // The clip is static during a fade drag, so the rect and the
@@ -1737,7 +1767,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             }}
             style={{
               position: 'absolute',
-              top: HEADER_H + 2,
+              top: HEADER_H + FADE_HANDLE_TOP,
               left: `${left}px`,
               width: 16,
               height: 16,
