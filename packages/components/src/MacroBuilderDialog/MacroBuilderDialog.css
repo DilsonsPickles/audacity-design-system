@@ -205,20 +205,23 @@
   margin-right: -4px;
 }
 
-/* Under the pointer the + fills with the accent, and its icon turns
-   white. The ghost button's own hover is a quiet grey, which all but
-   disappears on the selected row's accent tint — the one place this
-   button is ever shown. Written out to the specificity the ghost
-   button's own :hover/:active rules have, or they would win. */
+/* Under the pointer the + takes a soft wash of the accent; its icon
+   stays dark. A wash, not a fill: the solid accent with a white icon
+   was tried and was too strong for a button this small (2026-09-29).
+   It is laid OVER the selected row's own accent tint, so it reads as a
+   step deeper than the row rather than a different colour.
+
+   The ghost button's own hover is a quiet grey, which all but
+   disappears on that tint — the one place this button is ever shown.
+   Written out to the specificity the ghost button's own :hover/:active
+   rules have, or they would win. */
 .macro-builder__command-item .macro-builder__command-add .ghost-button:hover:not(.ghost-button--disabled) {
-  background-color: var(--accent-primary, #677ce4);
-  color: #ffffff;
+  background-color: color-mix(in srgb, var(--accent-primary, #677ce4) 35%, transparent);
 }
 
-/* Pressed: the same accent, a step darker */
+/* Pressed: the same wash, a step deeper */
 .macro-builder__command-item .macro-builder__command-add .ghost-button:active:not(.ghost-button--disabled) {
-  background-color: color-mix(in srgb, var(--accent-primary, #677ce4), #000000 15%);
-  color: #ffffff;
+  background-color: color-mix(in srgb, var(--accent-primary, #677ce4) 55%, transparent);
 }
 
 .macro-builder__command-name {
