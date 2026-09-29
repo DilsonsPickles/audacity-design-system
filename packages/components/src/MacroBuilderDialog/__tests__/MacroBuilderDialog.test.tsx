@@ -549,6 +549,54 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     fireEvent.mouseUp(document);
   });
 
+  const selectedIds = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll<HTMLElement>('[data-command-id][aria-selected="true"]'))
+      .map((el) => el.dataset.commandId);
+
+  it('picking a command up selects it — as soon as the drag begins, not at the drop', () => {
+    const { container } = renderBuilder();
+    startDrag(container, 4); // pressed
+    expect(selectedIds(container)).toEqual([]);
+    fireEvent.mouseMove(document, { clientX: 140, clientY: 60 }); // still over the command list
+    expect(selectedIds(container)).toEqual(['effect:fade-in']);
+    expect(ghost()).not.toBeNull();
+    fireEvent.mouseUp(document);
+  });
+
+  it('it takes the selection from whatever was selected before', () => {
+    const { container } = renderBuilder();
+    fireEvent.click(commandRows(container)[0]);
+    expect(selectedIds(container)).toEqual(['select-all']);
+    startDrag(container, 2);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    expect(selectedIds(container)).toEqual(['split']);
+    fireEvent.mouseUp(document);
+  });
+
+  it('it stays selected when the drag is abandoned — dropped elsewhere, or Escape', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 3);
+    fireEvent.mouseMove(document, { clientX: 140, clientY: 300 });
+    fireEvent.mouseUp(document); // over the command list: no drop
+    expect(selectedIds(container)).toEqual(['join']);
+
+    startDrag(container, 1);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(selectedIds(container)).toEqual(['select-next-clip']);
+    expect(onAddCommand).not.toHaveBeenCalled();
+  });
+
+  it('a press that never becomes a drag selects nothing by itself', () => {
+    // Selecting on a plain click is the click's job, on release
+    const { container } = renderBuilder();
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 101, clientY: 51 });
+    fireEvent.mouseUp(document);
+    expect(selectedIds(container)).toEqual([]);
+  });
+
   it('the dropped command is left selected; the drag tidies up after itself', () => {
     const { container } = renderBuilder();
     startDrag(container, 4);

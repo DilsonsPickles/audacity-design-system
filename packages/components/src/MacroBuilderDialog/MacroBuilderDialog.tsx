@@ -412,6 +412,10 @@ export function MacroBuilderDialog({
       if (!dragging) {
         if (Math.hypot(lastX - startX, lastY - startY) < COMMAND_DRAG_THRESHOLD) return;
         dragging = true;
+        // Picking a command up selects it (user decision 2026-09-29):
+        // the list shows what is in flight, and it stays selected if
+        // the drag is abandoned — you still meant that command
+        setSelectedCommandId(command.id);
         doc.body.style.cursor = 'grabbing';
         doc.body.style.userSelect = 'none';
         rafId = view.requestAnimationFrame(scrollLoop);

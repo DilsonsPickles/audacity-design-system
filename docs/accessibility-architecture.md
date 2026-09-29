@@ -276,8 +276,9 @@ focus out to a track, and Delete on a step opened "Delete track?".
 With the mouse: click selects; double-click, or the **+ button** the
 selected command carries, adds it to the end; and a command can be
 **dragged into the step list** to put it where it is
-wanted — a line shows where it will land, and nothing is added until the
-drop (let go anywhere else, or press Escape, to abandon it).
+wanted. Picking it up selects it; a line shows where it will land, and
+nothing is added until the drop (let go anywhere else, or press Escape,
+to abandon it — the command stays selected).
 
 The drag's keyboard equivalent is two moves, not one: **Enter** adds the
 command to the end, then **Cmd/Ctrl+ArrowUp** on the new step carries it
