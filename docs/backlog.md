@@ -134,13 +134,16 @@ The panel is keyboard-operable end to end (see
 - **Escape closes the Edit macro window even with a search typed.**
   Clearing the search first would be the usual behaviour; `Dialog`
   takes Escape in the capture phase, ahead of the field.
-- **The + on a selected command is mouse-only** (out of the Tab order,
-  `aria-hidden`): an option cannot hold a control. Enter is the
-  keyboard's add.
+- **Dragging a command to a place has no one-move keyboard twin.**
+  Enter adds to the end and Cmd/Ctrl+arrows then place the step. An
+  "insert above the focused step" key would close the gap.
+- **A command cannot be dragged while the step list is being
+  reordered**, or the other way about — they are separate gestures.
+  And a drag does not work by touch (mouse events only), as the step
+  rows' own drag does not.
 - **Typing in the command list does not search.** Single letters are
   app shortcuts, so they are left alone; Shift+Tab reaches the field.
-- **The empty-steps hint still says "Double-click a command"** — Enter
-  does the same and is not mentioned.
+- **The empty-steps hint names drag and double-click, not Enter.**
 - **No screen reader run.** Roles and names were chosen to the ARIA
   patterns and asserted in tests; nobody has listened to it.
 - **Delete does not delete a macro.** With focus in the panel it still

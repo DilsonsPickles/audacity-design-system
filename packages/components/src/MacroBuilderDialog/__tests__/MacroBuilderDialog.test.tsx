@@ -36,6 +36,9 @@ function renderBuilder(props: Partial<React.ComponentProps<typeof MacroBuilderDi
 
 const commandRows = (container: HTMLElement) =>
   Array.from(container.querySelectorAll<HTMLButtonElement>('[data-command-id]'));
+/** The names, not the rows' whole text — a row holds its + button too */
+const commandNames = (container: HTMLElement) =>
+  commandRows(container).map((el) => el.querySelector('.macro-builder__command-name')?.textContent);
 const stepRows = (container: HTMLElement) =>
   Array.from(container.querySelectorAll<HTMLElement>('[data-step-index]'));
 const searchInput = (container: HTMLElement) =>
@@ -62,7 +65,7 @@ describe('MacroBuilderDialog', () => {
     // table head labels the columns
     expect(container.querySelector('.macro-builder__steps-header')?.textContent).toContain('Podcast prep');
     expect(container.querySelector('.macro-builder__step-table-head')?.textContent).toBe('StepCommandActions');
-    expect(commandRows(container).map((el) => el.textContent)).toEqual([
+    expect(commandNames(container)).toEqual([
       'Select all', 'Next clip', 'Split', 'Join selected clips', 'Fade In',
     ]);
     // Query the text block, not the card — the card also carries the
@@ -81,7 +84,7 @@ describe('MacroBuilderDialog', () => {
   it('search filters across all categories', () => {
     const { container } = renderBuilder();
     fireEvent.change(searchInput(container), { target: { value: 'sel' } });
-    expect(commandRows(container).map((el) => el.textContent)).toEqual(['Select all', 'Join selected clips']);
+    expect(commandNames(container)).toEqual(['Select all', 'Join selected clips']);
   });
 
   it('double-clicking a command adds it directly', () => {
@@ -116,41 +119,11 @@ describe('MacroBuilderDialog', () => {
     expect(selected()).toEqual(['effect:fade-in']);
   });
 
-  it('the selected command — and only it — carries a + button', () => {
+  it('a command row holds nothing but its name — no add button', () => {
     const { container } = renderBuilder();
-    expect(container.querySelectorAll('.macro-builder__command-add')).toHaveLength(0);
-    fireEvent.click(commandRows(container)[2]); // Split
-    const adds = container.querySelectorAll('.macro-builder__command-add');
-    expect(adds).toHaveLength(1);
-    expect(adds[0].closest<HTMLElement>('[data-command-id]')!.dataset.commandId).toBe('split');
-    fireEvent.click(commandRows(container)[0]);
-    expect(container.querySelector('.macro-builder__command-add')!
-      .closest<HTMLElement>('[data-command-id]')!.dataset.commandId).toBe('select-all');
-  });
-
-  it('the + adds the selected command, once per click', () => {
-    const onAddCommand = vi.fn();
-    const { container } = renderBuilder({ onAddCommand });
-    fireEvent.click(commandRows(container)[4]); // Fade In
-    const plus = () => container.querySelector<HTMLButtonElement>('.macro-builder__command-add button')!;
-    fireEvent.click(plus());
-    expect(onAddCommand).toHaveBeenCalledTimes(1);
-    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
-    // The command stays selected, so its + is still there to press again
-    fireEvent.click(plus());
-    expect(onAddCommand).toHaveBeenCalledTimes(2);
-  });
-
-  it('clicking the + does not reach the row: it neither re-selects nor double-adds', () => {
-    const onAddCommand = vi.fn();
-    const { container } = renderBuilder({ onAddCommand });
-    fireEvent.click(commandRows(container)[4]);
-    const plus = container.querySelector<HTMLButtonElement>('.macro-builder__command-add button')!;
-    // A real double-click: two clicks, then the dblclick event
-    fireEvent.click(plus, { detail: 1 });
-    fireEvent.click(plus, { detail: 2 });
-    fireEvent.doubleClick(plus);
-    expect(onAddCommand).toHaveBeenCalledTimes(2);
+    fireEvent.click(commandRows(container)[2]);
+    expect(container.querySelectorAll('.macro-builder__command-list button')).toHaveLength(0);
+    expect(commandRows(container)[2].textContent).toBe('Split');
   });
 
   it('there is no selection bar any more', () => {
@@ -328,10 +301,195 @@ describe('MacroBuilderDialog', () => {
     expect(onClearSteps).toHaveBeenCalledWith('m1');
   });
 
+  it('adding by double-click or Enter puts the step on the END — no index is passed', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.doubleClick(commandRows(container)[4]);
+    fireEvent.keyDown(commandRows(container)[2], { key: 'Enter' });
+    expect(onAddCommand.mock.calls).toEqual([['m1', COMMANDS[4]], ['m1', COMMANDS[2]]]);
+  });
+
   it('shows the empty-state hint when the macro has no steps', () => {
     const { container } = renderBuilder({ macro: { id: 'm2', name: 'Empty', steps: [] } });
     expect(container.querySelector('.macro-builder__steps-hint')?.textContent).toBe(
-      'Double-click a command to add it to your macro',
+      'Drag a command here, or double-click it, to add it to your macro',
     );
+  });
+});
+
+describe('MacroBuilderDialog — dragging a command into the steps', () => {
+  afterEach(() => {
+    // A drag that a test left in flight would leave these behind
+    document.body.style.removeProperty('cursor');
+    document.body.style.removeProperty('user-select');
+  });
+
+  const rect = (left: number, top: number, width: number, height: number) => () => ({
+    left, top, width, height, right: left + width, bottom: top + height, x: left, y: top,
+    toJSON: () => ({}),
+  });
+
+  /** jsdom has no layout: commands on the left (0–280), the steps pane
+   *  on the right (300–800, from y=0), its rows 44px apart from y=100. */
+  function layOut(container: HTMLElement) {
+    container.querySelector<HTMLElement>('.macro-builder__steps-pane')!.getBoundingClientRect = rect(300, 0, 500, 600);
+    container.querySelector<HTMLElement>('.macro-builder__step-list')!.getBoundingClientRect = rect(300, 100, 500, 500);
+    stepRows(container).forEach((row, i) => {
+      row.getBoundingClientRect = rect(300, 100 + i * 44, 500, 44);
+    });
+  }
+  const ghost = () => document.querySelector<HTMLElement>('.macro-builder__drag-ghost');
+  const dropLines = (container: HTMLElement) => stepRows(container).map((row) =>
+    row.classList.contains('macro-builder__step--drop-before') ? 'before'
+      : row.classList.contains('macro-builder__step--drop-after') ? 'after' : '-');
+
+  function startDrag(container: HTMLElement, commandIndex: number) {
+    layOut(container);
+    fireEvent.mouseDown(commandRows(container)[commandIndex], { button: 0, clientX: 100, clientY: 50 });
+  }
+
+  it('dropping on the top half of a step puts the command in FRONT of it', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 4); // Fade In
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 100 + 44 + 10 }); // top half of step 2
+    expect(dropLines(container)).toEqual(['-', 'before', '-']);
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledTimes(1);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4], undefined, 1);
+  });
+
+  it('dropping on the bottom half puts it AFTER that step', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 100 + 44 + 34 }); // bottom half of step 2
+    expect(dropLines(container)).toEqual(['-', '-', 'before']);
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4], undefined, 2);
+  });
+
+  it('dropping below the last step puts it on the end', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 2);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 500 });
+    expect(dropLines(container)).toEqual(['-', '-', 'after']);
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[2], undefined, 3);
+  });
+
+  it('dropping above the first step — even over the table head — puts it at the top', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 2);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 60 });
+    expect(dropLines(container)).toEqual(['before', '-', '-']);
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[2], undefined, 0);
+  });
+
+  it('into a macro with no steps: the whole well is the target', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand, macro: { ...MACRO, steps: [] } });
+    startDrag(container, 0);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 300 });
+    expect(container.querySelector('.macro-builder__step-list')!.className)
+      .toContain('macro-builder__step-list--drop-target');
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[0], undefined, 0);
+  });
+
+  it('nothing is added until the drop', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 120 });
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 400 });
+    expect(onAddCommand).not.toHaveBeenCalled();
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it('letting go anywhere but the steps adds nothing', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 }); // over the steps…
+    fireEvent.mouseMove(document, { clientX: 120, clientY: 200 }); // …and back over the commands
+    expect(dropLines(container)).toEqual(['-', '-', '-']);
+    expect(ghost()!.className).toContain('macro-builder__drag-ghost--no-drop');
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).not.toHaveBeenCalled();
+    expect(ghost()).toBeNull();
+  });
+
+  it('Escape abandons the drag — and is kept from the dialog, which would close on it', () => {
+    const onAddCommand = vi.fn();
+    const onClose = vi.fn();
+    const { container } = renderBuilder({ onAddCommand, onClose });
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    expect(ghost()).not.toBeNull();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(ghost()).toBeNull();
+    expect(dropLines(container)).toEqual(['-', '-', '-']);
+    expect(onClose).not.toHaveBeenCalled();
+    // The drag is over: letting go now does nothing
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).not.toHaveBeenCalled();
+  });
+
+  it('Escape with no drag in flight is left alone', () => {
+    const onClose = vi.fn();
+    const { container } = renderBuilder({ onClose });
+    startDrag(container, 4); // pressed, not yet moved
+    container.querySelector<HTMLInputElement>('input')!.focus();
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('a press that barely moves is a click, not a drag', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 102, clientY: 51 });
+    expect(ghost()).toBeNull();
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).not.toHaveBeenCalled();
+  });
+
+  it('the ghost names the command and follows the pointer', () => {
+    const { container } = renderBuilder();
+    startDrag(container, 3);
+    fireEvent.mouseMove(document, { clientX: 420, clientY: 210 });
+    expect(ghost()!.textContent).toBe('Join selected clips');
+    expect(ghost()!.style.left).toBe('420px');
+    expect(ghost()!.style.top).toBe('210px');
+    expect(ghost()!.getAttribute('aria-hidden')).toBe('true');
+    fireEvent.mouseUp(document);
+  });
+
+  it('the dropped command is left selected; the drag tidies up after itself', () => {
+    const { container } = renderBuilder();
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    expect(document.body.style.cursor).toBe('grabbing');
+    fireEvent.mouseUp(document);
+    expect(commandRows(container)[4].getAttribute('aria-selected')).toBe('true');
+    expect(document.body.style.cursor).toBe('');
+    expect(document.body.style.userSelect).toBe('');
+    // ...and its listeners are gone: moving again raises no ghost
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 300 });
+    expect(ghost()).toBeNull();
+  });
+
+  it('only the left button drags', () => {
+    const { container } = renderBuilder();
+    layOut(container);
+    fireEvent.mouseDown(commandRows(container)[4], { button: 2, clientX: 100, clientY: 50 });
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    expect(ghost()).toBeNull();
   });
 });

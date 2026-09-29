@@ -186,31 +186,20 @@
   cursor: pointer;
   transition: background 0.1s ease;
   flex-shrink: 0;
-  /* A div now, not a button (it holds the + button): buttons are
-     border-box by default, divs are not, and width: 100% plus padding
-     would push the row past the list's edge */
+  /* A div, not a button: buttons are border-box by default, divs are
+     not, and width: 100% plus padding would push the row past the
+     list's edge */
   box-sizing: border-box;
-  /* Holds the name and, when selected, its + button */
-  gap: 8px;
+  /* It can be dragged: a press must not start selecting its text */
   user-select: none;
 }
 
-/* The name gives way to the + rather than pushing it out of the row */
 .macro-builder__command-name {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* The selected command's + button. 20px in a 28px row, so selecting a
-   command never changes its height; pulled 4px into the row's padding
-   so it sits the same distance from the right edge as from the top. */
-.macro-builder__command-add {
-  display: flex;
-  flex-shrink: 0;
-  margin-right: -4px;
 }
 
 .macro-builder__command-item:hover {
@@ -357,6 +346,51 @@
 
 .macro-builder__step--dragging {
   opacity: 0.5;
+}
+
+/* A command dragged in from the list: a line where it would land.
+   Inset shadows, so the line takes no room and no row moves. */
+.macro-builder__step--drop-before {
+  box-shadow: inset 0 2px 0 var(--accent-primary, #677ce4);
+}
+
+.macro-builder__step--drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent-primary, #677ce4);
+}
+
+/* With no steps yet the whole well is where it lands */
+.macro-builder__step-list--drop-target .macro-builder__steps-hint {
+  box-shadow: inset 0 0 0 2px var(--accent-primary, #677ce4);
+  color: var(--text-primary, #14151a);
+}
+
+/* The command in flight, hung just off the pointer so it never covers
+   the line it is about to land on. Takes no pointer events: what is
+   UNDER the pointer decides where it lands. */
+.macro-builder__drag-ghost {
+  position: fixed;
+  z-index: 10050; /* above the window (10000) */
+  transform: translate(12px, 8px);
+  max-width: 240px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--bg-table-item-idle, #f8f8f9);
+  border: 1px solid var(--accent-primary, #677ce4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary, #14151a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Not over the step list: letting go here adds nothing */
+.macro-builder__drag-ghost--no-drop {
+  border-color: var(--stroke-primary, #d4d5d9);
+  opacity: 0.7;
 }
 
 /* Grip column */

@@ -21,9 +21,10 @@ export interface MacrosContextValue {
   duplicateMacro: (macroId: string) => string | null;
   /** Add an imported macro verbatim (fresh id, name de-duplicated by caller if desired) */
   importMacro: (macro: Pick<Macro, 'name' | 'steps'>) => void;
-  /** Append a command from the picker as a new step. `parameters` seeds the
-   *  step's serialized parameters string (defaults to empty). */
-  addCommandToMacro: (macroId: string, command: Command, parameters?: string) => void;
+  /** Add a command from the picker as a new step — appended, or placed
+   *  at `atIndex` (a command dragged into the step list). `parameters`
+   *  seeds the step's serialized parameters string (defaults to empty). */
+  addCommandToMacro: (macroId: string, command: Command, parameters?: string, atIndex?: number) => void;
   deleteStep: (macroId: string, stepIndex: number) => void;
   /** Remove every step from a macro (the builder's "Remove all steps") */
   clearSteps: (macroId: string) => void;
@@ -108,10 +109,19 @@ export function MacrosProvider({ children }: { children: React.ReactNode }) {
     setMacros((prev) => [...prev, newMacro]);
   }, []);
 
-  const addCommandToMacro = React.useCallback((macroId: string, command: Command, parameters = '') => {
+  const addCommandToMacro = React.useCallback((
+    macroId: string,
+    command: Command,
+    parameters = '',
+    atIndex?: number,
+  ) => {
     setMacros((prev) => prev.map((m) => {
       if (m.id !== macroId) return m;
-      return { ...m, steps: [...m.steps, { command: command.name, parameters }] };
+      const step = { command: command.name, parameters };
+      // No index (or one past the end): append
+      if (atIndex === undefined || atIndex >= m.steps.length) return { ...m, steps: [...m.steps, step] };
+      const at = Math.max(0, atIndex);
+      return { ...m, steps: [...m.steps.slice(0, at), step, ...m.steps.slice(at)] };
     }));
   }, []);
 

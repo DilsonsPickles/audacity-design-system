@@ -742,8 +742,8 @@ export function AppDialogs(props: AppDialogsProps) {
           const macro = macrosCtx.macros.find((m) => m.id === macroId);
           if (macro) exportMacroFile(macro);
         }}
-        onAddCommand={(macroId, command, parameters) => {
-          macrosCtx.addCommandToMacro(macroId, command, parameters ?? getDefaultParameters(command.name));
+        onAddCommand={(macroId, command, parameters, atIndex) => {
+          macrosCtx.addCommandToMacro(macroId, command, parameters ?? getDefaultParameters(command.name), atIndex);
         }}
         onEditStep={macrosCtx.updateStepParameters}
         onDeleteStep={macrosCtx.deleteStep}

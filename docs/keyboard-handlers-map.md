@@ -74,6 +74,8 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 | Step list | `handleStepListKeyDown` | Arrows, Home/End, PageUp/PageDown, Enter, Cmd/Ctrl+ArrowUp/Down (move), Delete/Backspace, Shift+F10 / ContextMenu |
 | Footer | `useContainerTabGroup` | Arrows between its buttons |
 
+**Dragging a command into the steps** is mouse-only (`handleCommandMouseDown`): document `mousemove`/`mouseup` for the drag, and a `keydown` on WINDOW in the capture phase so Escape abandons the drag before `Dialog` (document-capture) closes the window on it.
+
 **Do not put key handlers on the rows or buttons.** A step row used to handle Enter itself; Enter on a button INSIDE the row bubbled to it, so pressing Enter on a step's menu button opened the menu and the editor together.
 
 **Note:** the window is non-modal, so `useKeyboardShortcuts` (a native listener on `document`) still runs while focus is in it. Every consumed key calls `stopPropagation()` as well as `preventDefault()`.

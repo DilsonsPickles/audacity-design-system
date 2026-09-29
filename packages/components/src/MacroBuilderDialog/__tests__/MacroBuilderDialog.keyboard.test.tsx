@@ -215,25 +215,18 @@ describe('Edit macro keyboard — the command list', () => {
     expect(all('[role="option"]')).toHaveLength(COMMANDS.length);
   });
 
-  it('the + is the mouse\'s: out of the Tab order and hidden from assistive tech', () => {
-    // An option cannot hold a control, and the keyboard has Enter
-    const { command, focus, press, q, stops } = renderBuilder();
-    focus(command('select-all'));
-    press('ArrowDown');
-    const wrapper = q('.macro-builder__command-add');
-    expect(wrapper.getAttribute('aria-hidden')).toBe('true');
-    expect(wrapper.querySelector('button')!.tabIndex).toBe(-1);
-    // ...so the list is still one stop with a + showing
-    expect(stops('.macro-builder__command-list')).toEqual([command('select-next-clip')]);
-  });
-
-  it('the + follows the selection as the arrows move it', () => {
-    const { command, focus, press, q } = renderBuilder();
-    focus(command('select-all'));
-    press('ArrowDown');
-    expect(q('.macro-builder__command-add').closest('[data-command-id]')).toBe(command('select-next-clip'));
-    press('ArrowDown');
-    expect(q('.macro-builder__command-add').closest('[data-command-id]')).toBe(command('split'));
+  it('Enter is the keyboard\'s drag: it adds to the end, and Cmd/Ctrl+arrows place the step', () => {
+    // Dragging a command to a place has no keyboard twin in one move;
+    // these two together are its equivalent
+    const onAddCommand = vi.fn();
+    const onMoveStep = vi.fn();
+    const { command, step, focus, press } = renderBuilder({ onAddCommand, onMoveStep });
+    focus(command('effect:fade-in'));
+    press('Enter');
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4]);
+    focus(step(3));
+    press('ArrowUp', { metaKey: true });
+    expect(onMoveStep).toHaveBeenCalledWith('m1', 2, -1);
   });
 
   it('Enter adds the focused command, and it stays selected to be added again', () => {

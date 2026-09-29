@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
@@ -36,12 +37,13 @@ export interface MacroBuilderDialogProps {
   onRun?: (macroId: string) => void;
   /** Called when the footer's "Run on files…" button is clicked */
   onRunFiles?: (macroId: string) => void;
-  /** Called when a command is added as a new step (transfer button,
-   *  double-click, or Enter in the search field). The builder never
+  /** Called when a command should be added as a step (double-click,
+   *  Enter, or a drag into the step list). `atIndex` is where a DRAG
+   *  dropped it; without it the step goes on the end. The builder never
    *  passes `parameters` — steps are added with the consumer's defaults
    *  and edited afterwards in place, so nothing ever stacks on top of
    *  the add flow. */
-  onAddCommand?: (macroId: string, command: Command, parameters?: string) => void;
+  onAddCommand?: (macroId: string, command: Command, parameters?: string, atIndex?: number) => void;
   /** Called when a step's parameters are edited via the row pencil */
   onEditStep?: (macroId: string, stepIndex: number, parameters: string) => void;
   /** Called when a row's ⋯ menu removes its step */
@@ -71,6 +73,23 @@ const STEPS_PANE_RESERVE = 60;
 /** One arrow press on the splitter; Shift takes a bigger bite. */
 const SPLITTER_STEP = 16;
 const SPLITTER_BIG_STEP = 64;
+
+/** Pointer travel before a press on a command becomes a drag. */
+const COMMAND_DRAG_THRESHOLD = 4;
+/** How near the step list's edge a drag scrolls it, and how fast. */
+const DROP_EDGE_ZONE = 32;
+const DROP_MAX_SCROLL_SPEED = 14;
+
+/** A command being dragged into the step list. */
+interface CommandDrag {
+  command: Command;
+  /** Pointer position, for the ghost */
+  x: number;
+  y: number;
+  /** Where it would land: a step index, `stepCount` for the end, or
+   *  null while the pointer is not over the step list (no drop). */
+  insertAt: number | null;
+}
 
 /** The three things in a step's row that take focus, left to right. */
 type StepCell = 'step' | 'edit' | 'menu';
@@ -106,9 +125,9 @@ function prettyParameters(parameters: string): string {
  * transfer button. Search is the only filter — there is no category
  * picker (removed 2026-09-28). The search field is
  * always visible, so adding a step never opens a picker window. ONE
- * command is selected at a time (multi-select removed 2026-09-29):
- * click selects it and shows its + button; double-click, the +, or
- * Enter adds it. Steps are added with default parameters and edited in place
+ * command is selected at a time (multi-select removed 2026-09-29).
+ * Double-click or Enter adds it to the end; DRAG it into the step list
+ * to put it where you want it. Steps are added with default parameters and edited in place
  * via the row pencil; drag a row (or ↑/↓) to reorder and the trash
  * removes it. Non-modal and auto-saving, like MacroEditorDialog.
  *
@@ -144,6 +163,8 @@ export function MacroBuilderDialog({
   // ONE selected command. It stays selected after it is added, so its
   // + is still there to add it again.
   const [selectedCommandId, setSelectedCommandId] = React.useState<string | null>(null);
+  const [commandDrag, setCommandDrag] = React.useState<CommandDrag | null>(null);
+  const stepsPaneRef = React.useRef<HTMLDivElement>(null);
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [macroMenuOpen, setMacroMenuOpen] = React.useState(false);
@@ -283,6 +304,15 @@ export function MacroBuilderDialog({
     index: Math.max(0, Math.min(stepCount - 1, activeStep.index)),
     cell: activeStep.cell,
   };
+  // Where a dragged command would land, drawn as a line on the row it
+  // would go in front of — or under the last row, for the end
+  const dropClass = (index: number): string => {
+    const at = commandDrag?.insertAt;
+    if (at === null || at === undefined) return '';
+    if (at === index) return ' macro-builder__step--drop-before';
+    if (at >= stepCount && index === stepCount - 1) return ' macro-builder__step--drop-after';
+    return '';
+  };
   const stepTabIndex = (index: number, cell: StepCell): number => {
     if (isFlat) return 0;
     return index === stepStop.index && cell === stepStop.cell ? 0 : -1;
@@ -296,13 +326,112 @@ export function MacroBuilderDialog({
     setSelectedCommandId(command.id);
   };
 
-  const addCommand = (command: Command) => {
-    onAddCommand?.(macro.id, command);
-    // It stays selected, so its + can add it again
+  /** Add a command as a step: on the end, or at `atIndex`. */
+  const addCommand = (command: Command, atIndex?: number) => {
+    const at = atIndex === undefined ? stepCount : Math.max(0, Math.min(stepCount, atIndex));
+    if (atIndex === undefined) onAddCommand?.(macro.id, command);
+    else onAddCommand?.(macro.id, command, undefined, at);
+    // It stays selected, so Enter adds it again
     setSelectedCommandId(command.id);
     // Focus stays in the command list, so say what happened in the
     // other pane — otherwise adding is silent to a screen reader
-    announce(`${command.name} added as step ${stepCount + 1}`);
+    announce(`${command.name} added as step ${at + 1}`);
+  };
+
+  // Drag a command into the step list to put it where you want it. The
+  // same self-cleaning listeners as the step rows' own drag (attached on
+  // mousedown, removed on mouseup — exempt from the ref-mirror rule).
+  // Nothing is added until the drop, so a drag can always be abandoned:
+  // release anywhere but the step list, or press Escape.
+  const handleCommandMouseDown = (command: Command) => (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const doc = e.currentTarget.ownerDocument;
+    const view = doc.defaultView ?? window;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragging = false;
+    let insertAt: number | null = null;
+    let lastX = startX;
+    let lastY = startY;
+    let rafId: number | null = null;
+
+    /** Which step the pointer would drop in front of. Anywhere over the
+     *  steps pane counts: above the rows is the top, below them the end. */
+    const insertIndexAt = (x: number, y: number): number | null => {
+      const pane = stepsPaneRef.current?.getBoundingClientRect();
+      if (!pane || x < pane.left || x > pane.right || y < pane.top || y > pane.bottom) return null;
+      const rows = stepListRef.current?.querySelectorAll<HTMLElement>('[data-step-index]') ?? [];
+      for (const row of rows) {
+        const rect = row.getBoundingClientRect();
+        if (y < rect.top + rect.height / 2) return Number(row.dataset.stepIndex);
+      }
+      return rows.length;
+    };
+    const update = () => {
+      insertAt = insertIndexAt(lastX, lastY);
+      setCommandDrag({ command, x: lastX, y: lastY, insertAt });
+    };
+    const scrollVelocity = (): number => {
+      const list = stepListRef.current;
+      if (!list || insertAt === null) return 0;
+      const rect = list.getBoundingClientRect();
+      if (lastY < rect.top + DROP_EDGE_ZONE) {
+        return -Math.ceil(Math.min(1, (rect.top + DROP_EDGE_ZONE - lastY) / DROP_EDGE_ZONE) * DROP_MAX_SCROLL_SPEED);
+      }
+      if (lastY > rect.bottom - DROP_EDGE_ZONE) {
+        return Math.ceil(Math.min(1, (lastY - (rect.bottom - DROP_EDGE_ZONE)) / DROP_EDGE_ZONE) * DROP_MAX_SCROLL_SPEED);
+      }
+      return 0;
+    };
+    const scrollLoop = () => {
+      const list = stepListRef.current;
+      const velocity = scrollVelocity();
+      if (list && velocity !== 0) {
+        const before = list.scrollTop;
+        list.scrollTop += velocity;
+        if (list.scrollTop !== before) update();
+      }
+      rafId = view.requestAnimationFrame(scrollLoop);
+    };
+
+    const finish = () => {
+      doc.removeEventListener('mousemove', onMouseMove);
+      doc.removeEventListener('mouseup', onMouseUp);
+      view.removeEventListener('keydown', onKeyDown, true);
+      if (rafId !== null) view.cancelAnimationFrame(rafId);
+      doc.body.style.removeProperty('cursor');
+      doc.body.style.removeProperty('user-select');
+      setCommandDrag(null);
+    };
+    const onMouseMove = (ev: MouseEvent) => {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      if (!dragging) {
+        if (Math.hypot(lastX - startX, lastY - startY) < COMMAND_DRAG_THRESHOLD) return;
+        dragging = true;
+        doc.body.style.cursor = 'grabbing';
+        doc.body.style.userSelect = 'none';
+        rafId = view.requestAnimationFrame(scrollLoop);
+      }
+      update();
+    };
+    const onMouseUp = () => {
+      const dropAt = dragging ? insertAt : null;
+      finish();
+      if (dropAt !== null) addCommand(command, dropAt);
+    };
+    // Escape abandons the drag. On WINDOW, in the capture phase: the
+    // dialog takes Escape on document-capture to close itself, and a
+    // drag must be let go of without losing the window.
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape' || !dragging) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      finish();
+    };
+    doc.addEventListener('mousemove', onMouseMove);
+    doc.addEventListener('mouseup', onMouseUp);
+    view.addEventListener('keydown', onKeyDown, true);
   };
 
   const focusCommandRow = (id: string) => {
@@ -687,8 +816,6 @@ export function MacroBuilderDialog({
               {visible.map((command) => {
                 const isSelected = command.id === selectedCommandId;
                 return (
-                  // A row, not a <button>: it holds the + button, and a
-                  // button cannot hold a button
                   <div
                     key={command.id}
                     role="option"
@@ -697,34 +824,13 @@ export function MacroBuilderDialog({
                     className={`macro-builder__command-item${isSelected ? ' macro-builder__command-item--selected' : ''}`}
                     onClick={(e) => handleCommandClick(command, e)}
                     onDoubleClick={() => addCommand(command)}
+                    onMouseDown={handleCommandMouseDown(command)}
                     // One tab stop for the whole list — 280 commands
                     // were 280 presses of Tab between search and steps
                     tabIndex={command.id === commandStopId ? 0 : -1}
                     onFocus={() => setActiveCommandId(command.id)}
                   >
-                    <span className="macro-builder__command-name">{command.name}</span>
-                    {isSelected && (
-                      // The mouse's way to add what is selected. Out of
-                      // the Tab order and hidden from assistive tech:
-                      // an option cannot hold a control, and the
-                      // keyboard already has Enter. A double-click here
-                      // is two adds — it must not also reach the row,
-                      // which would make it three.
-                      <span
-                        className="macro-builder__command-add"
-                        aria-hidden="true"
-                        onDoubleClick={(e) => e.stopPropagation()}
-                      >
-                        <GhostButton
-                          icon="plus"
-                          size="small"
-                          variant="solid"
-                          tabIndex={-1}
-                          ariaLabel={`Add ${command.name}`}
-                          onClick={() => addCommand(command)}
-                        />
-                      </span>
-                    )}
+                    <span className="macro-builder__command-name" title={command.name}>{command.name}</span>
                   </div>
                 );
               })}
@@ -751,7 +857,7 @@ export function MacroBuilderDialog({
 
           {/* Steps pane — its header shares the band: macro name + menu.
               Below it, the macro as a TABLE: Step | Command | Actions. */}
-          <div className="macro-builder__steps-pane">
+          <div ref={stepsPaneRef} className="macro-builder__steps-pane">
             <div ref={stepsHeaderRef} className="macro-builder__steps-header">
               <h2 className="macro-builder__macro-name">{macro.name}</h2>
               <GhostButton
@@ -780,7 +886,7 @@ export function MacroBuilderDialog({
             </div>
             <div
               ref={stepListRef}
-              className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
+              className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}${commandDrag && commandDrag.insertAt !== null ? ' macro-builder__step-list--drop-target' : ''}`}
               role="list"
               aria-label="Macro steps"
               onKeyDown={handleStepListKeyDown}
@@ -788,7 +894,7 @@ export function MacroBuilderDialog({
             >
               {stepCount === 0 && (
                 <div className="macro-builder__steps-hint">
-                  Double-click a command to add it to your macro
+                  Drag a command here, or double-click it, to add it to your macro
                 </div>
               )}
               {macro.steps.map((step, index) => {
@@ -799,7 +905,7 @@ export function MacroBuilderDialog({
                     tabIndex={stepTabIndex(index, 'step')}
                     data-step-index={index}
                     aria-label={`Step ${index + 1} of ${stepCount}: ${step.command}${step.parameters ? `, ${prettyParameters(step.parameters)}` : ''}`}
-                    className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
+                    className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}${dropClass(index)}`}
                     onMouseDown={handleStepMouseDown(index)}
                     onDoubleClick={() => setEditingStepIndex(index)}
                   >
@@ -878,6 +984,20 @@ export function MacroBuilderDialog({
           </Button>
         </div>
       </Dialog>
+
+      {/* The command in flight. In the body, not the window: a fixed
+          box inside a moved or transformed ancestor is placed relative
+          to THAT, and would trail the pointer by the window's offset. */}
+      {commandDrag && createPortal(
+        <div
+          className={`macro-builder__drag-ghost${commandDrag.insertAt === null ? ' macro-builder__drag-ghost--no-drop' : ''}`}
+          aria-hidden="true"
+          style={{ left: commandDrag.x, top: commandDrag.y }}
+        >
+          {commandDrag.command.name}
+        </div>,
+        commandsPaneRef.current?.ownerDocument.body ?? document.body,
+      )}
 
       {/* Per-row ⋯ menu — every step action in one place */}
       {stepMenuIndex !== null && (
