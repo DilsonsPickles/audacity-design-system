@@ -287,9 +287,11 @@ out of the Tab order and `aria-hidden`, because an option cannot hold a
 control and the keyboard already has Enter. For the same reason a
 command row is a `div`, not a `button`.
 
-A search that hides the selected command clears the selection, so Enter
-in the search field never adds something that cannot be seen: it adds
-the selected command if it is among the results, else the first result.
+Going to the search field — a click or the keyboard — lets go of the
+selection, and so does a search that hides the selected command. So
+nothing is selected while the field has focus, and Enter there always
+adds the FIRST result: never something out of sight, never something
+picked before the search began.
 
 The list stays ONE stop driven by the arrows under the flat profile too:
 a listbox is a single control, and 280 Tab stops serve nobody.

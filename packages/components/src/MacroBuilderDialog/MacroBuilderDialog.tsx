@@ -507,9 +507,10 @@ export function MacroBuilderDialog({
     }
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    // The selected command if it is among the results, else the first
-    const target = visible.find((cmd) => cmd.id === selectedCommandId) ?? visible[0];
-    if (target) addCommand(target);
+    // The first result. Nothing is selected while the field has focus
+    // (focusing it lets go of the selection), so there is no other
+    // candidate — and what Enter adds is always the top of what shows.
+    if (visible[0]) addCommand(visible[0]);
   };
 
   // Splitter between the commands pane and the rest: drag sets an
@@ -791,6 +792,11 @@ export function MacroBuilderDialog({
                   placeholder="Search"
                   aria-label="Search commands"
                   autoFocus
+                  // Going to the search field lets go of the selection
+                  // (user decision 2026-09-29): you are looking for
+                  // something else now. On focus, so a click and the
+                  // keyboard agree.
+                  onFocus={() => setSelectedCommandId(null)}
                   onKeyDown={handleSearchKeyDown}
                 />
                 {searchQuery && (

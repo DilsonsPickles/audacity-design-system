@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, cleanup } from '@testing-library/react';
+import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { MacroBuilderDialog } from '../MacroBuilderDialog';
@@ -194,14 +194,44 @@ describe('MacroBuilderDialog', () => {
     expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Split']);
   });
 
-  it('a search that still shows the selected command keeps it selected', () => {
+  /** What a real click does: it moves focus to the row as well as
+   *  selecting it. (fireEvent.click alone leaves focus in the search
+   *  field, which has it from opening — and focusing a field that
+   *  already has focus fires nothing.) */
+  const clickCommand = (container: HTMLElement, index: number) => {
+    act(() => { commandRows(container)[index].focus(); });
+    fireEvent.click(commandRows(container)[index]);
+  };
+
+  it('going to the search field lets go of the selection', () => {
+    const { container } = renderBuilder();
+    clickCommand(container, 3);
+    expect(container.querySelectorAll('.macro-builder__command-item--selected')).toHaveLength(1);
+    act(() => { searchInput(container).focus(); });
+    expect(container.querySelectorAll('.macro-builder__command-item--selected')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-command-id][aria-selected="true"]')).toHaveLength(0);
+    // ...and its + goes with it
+    expect(container.querySelector('.macro-builder__command-add')).toBeNull();
+  });
+
+  it('Enter in the search field adds the FIRST result, whatever was selected before', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });
-    fireEvent.click(commandRows(container)[3]); // Join selected clips
+    clickCommand(container, 3); // Join selected clips
+    act(() => { searchInput(container).focus(); });
     fireEvent.change(searchInput(container), { target: { value: 'sel' } });
-    // Results: Select all, Join selected clips — Enter adds the selected one
+    // Results: Select all, Join selected clips
     fireEvent.keyDown(searchInput(container), { key: 'Enter' });
-    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Join selected clips']);
+    expect(onAddCommand.mock.calls.map((call) => call[1].name)).toEqual(['Select all']);
+  });
+
+  it('Down from the search field selects the first result again', () => {
+    const { container } = renderBuilder();
+    clickCommand(container, 3);
+    act(() => { searchInput(container).focus(); });
+    fireEvent.keyDown(searchInput(container), { key: 'ArrowDown' });
+    expect(commandRows(container)[0].getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(commandRows(container)[0]);
   });
 
   it('the commands pane opens 280px wide', () => {
