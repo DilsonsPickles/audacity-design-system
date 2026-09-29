@@ -378,25 +378,20 @@
   opacity: 0.5;
 }
 
-/* A command dragged in from the list: a line where it would land.
-   Inset shadows, so the line takes no room and no row moves. */
-.macro-builder__step--drop-before {
-  box-shadow: inset 0 2px 0 var(--accent-primary, #677ce4);
+/* A command dragged in from the list, shown as the step it would
+   become: a real row in the list, at full height, so the steps below
+   it sit exactly where they will after the drop. Washed with the
+   accent and faded — it is not there yet. Takes no pointer events:
+   what is UNDER it decides where it lands. */
+.macro-builder__step--ghost {
+  background: color-mix(in srgb, var(--accent-primary, #677ce4) 18%, var(--bg-table-item-idle, #f8f8f9));
+  opacity: 0.7;
+  pointer-events: none;
 }
 
-.macro-builder__step--drop-after {
-  box-shadow: inset 0 -2px 0 var(--accent-primary, #677ce4);
-}
-
-/* With no steps yet the whole well is where it lands */
-.macro-builder__step-list--drop-target .macro-builder__steps-hint {
-  box-shadow: inset 0 0 0 2px var(--accent-primary, #677ce4);
-  color: var(--text-primary, #14151a);
-}
-
-/* The command in flight, hung just off the pointer so it never covers
-   the line it is about to land on. Takes no pointer events: what is
-   UNDER the pointer decides where it lands. */
+/* The command in flight, as a chip hung just off the pointer. Shown
+   only while it is NOT over the steps (there it is a ghost step in the
+   list). Takes no pointer events. */
 .macro-builder__drag-ghost {
   position: fixed;
   z-index: 10050; /* above the window (10000) */

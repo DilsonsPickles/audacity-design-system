@@ -276,9 +276,16 @@ focus out to a track, and Delete on a step opened "Delete track?".
 With the mouse: click selects; double-click, or the **+ button** the
 selected command carries, adds it to the end; and a command can be
 **dragged into the step list** to put it where it is
-wanted. Picking it up selects it; a line shows where it will land, and
-nothing is added until the drop (let go anywhere else, or press Escape,
-to abandon it — the command stays selected).
+wanted. Picking it up selects it. Over the steps it is shown as a GHOST
+STEP in the list, where it would land, with the steps below it
+renumbered — the list shows the result, as a reordered track does.
+Outside the steps it is a chip at the pointer. Nothing is added until
+the drop (let go anywhere else, or press Escape, to abandon it — the
+command stays selected).
+
+The ghost step is `aria-hidden` and carries no `data-step-index`: it is
+not a step, and neither the keyboard nor the drag's own hit test may
+take it for one.
 
 The drag's keyboard equivalent is two moves, not one: **Enter** adds the
 command to the end, then **Cmd/Ctrl+ArrowUp** on the new step carries it

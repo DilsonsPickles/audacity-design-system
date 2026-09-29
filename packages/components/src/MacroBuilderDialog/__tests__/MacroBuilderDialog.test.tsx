@@ -416,10 +416,18 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
       row.getBoundingClientRect = rect(300, 100 + i * 44, 500, 44);
     });
   }
+  /** The chip at the pointer — shown while the drag is NOT over the steps */
   const ghost = () => document.querySelector<HTMLElement>('.macro-builder__drag-ghost');
-  const dropLines = (container: HTMLElement) => stepRows(container).map((row) =>
-    row.classList.contains('macro-builder__step--drop-before') ? 'before'
-      : row.classList.contains('macro-builder__step--drop-after') ? 'after' : '-');
+  /** The ghost step in the list — shown while it IS */
+  const ghostStep = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>('.macro-builder__step--ghost');
+  /** The step list as it reads: "number name", the ghost in brackets */
+  const listing = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll<HTMLElement>('.macro-builder__step-list > .macro-builder__step'))
+      .map((row) => {
+        const text = `${row.querySelector('.macro-builder__step-number')!.textContent} ${row.querySelector('.macro-builder__step-command')!.textContent}`;
+        return row.hasAttribute('data-step-ghost') ? `[${text}]` : text;
+      });
 
   function startDrag(container: HTMLElement, commandIndex: number) {
     layOut(container);
@@ -431,7 +439,7 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     const { container } = renderBuilder({ onAddCommand });
     startDrag(container, 4); // Fade In
     fireEvent.mouseMove(document, { clientX: 500, clientY: 100 + 44 + 10 }); // top half of step 2
-    expect(dropLines(container)).toEqual(['-', 'before', '-']);
+    expect(listing(container)).toEqual(['1 Select all', '[2 Fade In]', '3 Fade In', '4 Split']);
     fireEvent.mouseUp(document);
     expect(onAddCommand).toHaveBeenCalledTimes(1);
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4], undefined, 1);
@@ -442,7 +450,7 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     const { container } = renderBuilder({ onAddCommand });
     startDrag(container, 4);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 100 + 44 + 34 }); // bottom half of step 2
-    expect(dropLines(container)).toEqual(['-', '-', 'before']);
+    expect(listing(container)).toEqual(['1 Select all', '2 Fade In', '[3 Fade In]', '4 Split']);
     fireEvent.mouseUp(document);
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4], undefined, 2);
   });
@@ -452,7 +460,7 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     const { container } = renderBuilder({ onAddCommand });
     startDrag(container, 2);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 500 });
-    expect(dropLines(container)).toEqual(['-', '-', 'after']);
+    expect(listing(container)).toEqual(['1 Select all', '2 Fade In', '3 Split', '[4 Split]']);
     fireEvent.mouseUp(document);
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[2], undefined, 3);
   });
@@ -462,7 +470,7 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     const { container } = renderBuilder({ onAddCommand });
     startDrag(container, 2);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 60 });
-    expect(dropLines(container)).toEqual(['before', '-', '-']);
+    expect(listing(container)).toEqual(['[1 Split]', '2 Select all', '3 Fade In', '4 Split']);
     fireEvent.mouseUp(document);
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[2], undefined, 0);
   });
@@ -472,8 +480,9 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     const { container } = renderBuilder({ onAddCommand, macro: { ...MACRO, steps: [] } });
     startDrag(container, 0);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 300 });
-    expect(container.querySelector('.macro-builder__step-list')!.className)
-      .toContain('macro-builder__step-list--drop-target');
+    // The ghost step takes the hint's place
+    expect(listing(container)).toEqual(['[1 Select all]']);
+    expect(container.querySelector('.macro-builder__steps-hint')).toBeNull();
     fireEvent.mouseUp(document);
     expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[0], undefined, 0);
   });
@@ -496,7 +505,8 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     startDrag(container, 4);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 200 }); // over the steps…
     fireEvent.mouseMove(document, { clientX: 120, clientY: 200 }); // …and back over the commands
-    expect(dropLines(container)).toEqual(['-', '-', '-']);
+    expect(ghostStep(container)).toBeNull();
+    expect(listing(container)).toEqual(['1 Select all', '2 Fade In', '3 Split']);
     expect(ghost()!.className).toContain('macro-builder__drag-ghost--no-drop');
     fireEvent.mouseUp(document);
     expect(onAddCommand).not.toHaveBeenCalled();
@@ -509,10 +519,11 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     const { container } = renderBuilder({ onAddCommand, onClose });
     startDrag(container, 4);
     fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
-    expect(ghost()).not.toBeNull();
+    expect(ghostStep(container)).not.toBeNull();
     fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(ghostStep(container)).toBeNull();
     expect(ghost()).toBeNull();
-    expect(dropLines(container)).toEqual(['-', '-', '-']);
+    expect(listing(container)).toEqual(['1 Select all', '2 Fade In', '3 Split']);
     expect(onClose).not.toHaveBeenCalled();
     // The drag is over: letting go now does nothing
     fireEvent.mouseUp(document);
@@ -538,15 +549,56 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     expect(onAddCommand).not.toHaveBeenCalled();
   });
 
-  it('the ghost names the command and follows the pointer', () => {
+  it('outside the steps the command is a chip at the pointer', () => {
     const { container } = renderBuilder();
     startDrag(container, 3);
-    fireEvent.mouseMove(document, { clientX: 420, clientY: 210 });
+    fireEvent.mouseMove(document, { clientX: 140, clientY: 210 });
     expect(ghost()!.textContent).toBe('Join selected clips');
-    expect(ghost()!.style.left).toBe('420px');
+    expect(ghost()!.style.left).toBe('140px');
     expect(ghost()!.style.top).toBe('210px');
     expect(ghost()!.getAttribute('aria-hidden')).toBe('true');
+    expect(ghostStep(container)).toBeNull();
     fireEvent.mouseUp(document);
+  });
+
+  it('over the steps it is a ghost step INSTEAD — never both', () => {
+    const { container } = renderBuilder();
+    startDrag(container, 3);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 210 });
+    expect(ghostStep(container)).not.toBeNull();
+    expect(ghost()).toBeNull();
+    fireEvent.mouseMove(document, { clientX: 140, clientY: 210 });
+    expect(ghostStep(container)).toBeNull();
+    expect(ghost()).not.toBeNull();
+    fireEvent.mouseUp(document);
+  });
+
+  it('the ghost step is not a step: hidden from assistive tech, and not one of the rows', () => {
+    const { container } = renderBuilder();
+    startDrag(container, 3);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 210 });
+    const g = ghostStep(container)!;
+    expect(g.getAttribute('aria-hidden')).toBe('true');
+    expect(g.hasAttribute('data-step-index')).toBe(false);
+    expect(g.hasAttribute('role')).toBe(false);
+    expect(g.querySelectorAll('button')).toHaveLength(0);
+    // The real rows keep their own indices while it is among them
+    expect(stepRows(container).map((r) => r.dataset.stepIndex)).toEqual(['0', '1', '2']);
+    fireEvent.mouseUp(document);
+  });
+
+  it('the ghost step moves with the pointer, and the steps renumber round it', () => {
+    const { container } = renderBuilder();
+    startDrag(container, 2); // Split
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 110 });
+    expect(listing(container)).toEqual(['[1 Split]', '2 Select all', '3 Fade In', '4 Split']);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 100 + 44 + 30 });
+    expect(listing(container)).toEqual(['1 Select all', '2 Fade In', '[3 Split]', '4 Split']);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 550 });
+    expect(listing(container)).toEqual(['1 Select all', '2 Fade In', '3 Split', '[4 Split]']);
+    fireEvent.mouseUp(document);
+    // Dropped: the numbers go back to the steps' own until the macro updates
+    expect(listing(container)).toEqual(['1 Select all', '2 Fade In', '3 Split']);
   });
 
   const selectedIds = (container: HTMLElement) =>

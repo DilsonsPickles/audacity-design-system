@@ -137,6 +137,10 @@ The panel is keyboard-operable end to end (see
 - **The + on the selected command is mouse-only** (out of the Tab
   order, `aria-hidden`): an option cannot hold a control. Enter is the
   keyboard's add.
+- **The ghost step shows the command's name only**, so it is a line
+  shorter than the step it becomes when that step has parameters (the
+  host supplies the defaults at the drop): the rows below settle by a
+  pixel or so as it lands.
 - **Dragging a command to a place has no one-move keyboard twin.**
   Enter adds to the end and Cmd/Ctrl+arrows then place the step. An
   "insert above the focused step" key would close the gap.

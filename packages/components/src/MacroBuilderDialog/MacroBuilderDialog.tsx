@@ -304,15 +304,32 @@ export function MacroBuilderDialog({
     index: Math.max(0, Math.min(stepCount - 1, activeStep.index)),
     cell: activeStep.cell,
   };
-  // Where a dragged command would land, drawn as a line on the row it
-  // would go in front of — or under the last row, for the end
-  const dropClass = (index: number): string => {
-    const at = commandDrag?.insertAt;
-    if (at === null || at === undefined) return '';
-    if (at === index) return ' macro-builder__step--drop-before';
-    if (at >= stepCount && index === stepCount - 1) return ' macro-builder__step--drop-after';
-    return '';
-  };
+  // Where a dragged command would land. It is drawn IN the list, as a
+  // ghost of the step it would become, with the steps after it
+  // renumbered — the list shows the result, not a mark to be read
+  // (user decision 2026-09-29, as a reordered track is shown).
+  const ghostAt = commandDrag?.insertAt ?? null;
+  const ghostStep = commandDrag && ghostAt !== null ? (
+    <div
+      key="ghost"
+      className="macro-builder__step macro-builder__step--ghost"
+      data-step-ghost
+      // Not a step yet: out of the list for assistive tech, and with no
+      // data-step-index, so neither the keyboard nor the drag's own
+      // hit test mistakes it for one
+      aria-hidden="true"
+    >
+      <span className="macro-builder__step-grip" />
+      <span className="macro-builder__step-number">{Math.min(ghostAt, stepCount) + 1}</span>
+      <div className="macro-builder__step-text">
+        <span className="macro-builder__step-command">{commandDrag.command.name}</span>
+      </div>
+      <div className="macro-builder__step-actions" />
+    </div>
+  ) : null;
+  /** A step's number as the list would read after the drop. */
+  const shownNumber = (index: number): number =>
+    index + 1 + (ghostAt !== null && index >= ghostAt ? 1 : 0);
   const stepTabIndex = (index: number, cell: StepCell): number => {
     if (isFlat) return 0;
     return index === stepStop.index && cell === stepStop.cell ? 0 : -1;
@@ -921,33 +938,34 @@ export function MacroBuilderDialog({
             </div>
             <div
               ref={stepListRef}
-              className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}${commandDrag && commandDrag.insertAt !== null ? ' macro-builder__step-list--drop-target' : ''}`}
+              className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
               role="list"
               aria-label="Macro steps"
               onKeyDown={handleStepListKeyDown}
               onFocus={handleStepListFocus}
             >
-              {stepCount === 0 && (
+              {stepCount === 0 && ghostStep === null && (
                 <div className="macro-builder__steps-hint">
                   Drag a command here, or double-click it, to add it to your macro
                 </div>
               )}
               {macro.steps.map((step, index) => {
                 return (
+                  <React.Fragment key={index}>
+                  {ghostAt === index && ghostStep}
                   <div
-                    key={index}
                     role="listitem"
                     tabIndex={stepTabIndex(index, 'step')}
                     data-step-index={index}
                     aria-label={`Step ${index + 1} of ${stepCount}: ${step.command}${step.parameters ? `, ${prettyParameters(step.parameters)}` : ''}`}
-                    className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}${dropClass(index)}`}
+                    className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
                     onMouseDown={handleStepMouseDown(index)}
                     onDoubleClick={() => setEditingStepIndex(index)}
                   >
                     <span className="macro-builder__step-grip" aria-hidden="true">
                       <Icon name="gripper" size={16} />
                     </span>
-                    <span className="macro-builder__step-number">{index + 1}</span>
+                    <span className="macro-builder__step-number">{shownNumber(index)}</span>
                     <div className="macro-builder__step-text">
                       <span className="macro-builder__step-command">{step.command}</span>
                       {step.parameters && (
@@ -986,8 +1004,10 @@ export function MacroBuilderDialog({
                       />
                     </div>
                   </div>
+                  </React.Fragment>
                 );
               })}
+              {ghostAt !== null && ghostAt >= stepCount && ghostStep}
             </div>
           </div>
 
@@ -1020,12 +1040,15 @@ export function MacroBuilderDialog({
         </div>
       </Dialog>
 
-      {/* The command in flight. In the body, not the window: a fixed
-          box inside a moved or transformed ancestor is placed relative
-          to THAT, and would trail the pointer by the window's offset. */}
-      {commandDrag && createPortal(
+      {/* The command in flight, as a chip at the pointer — only while
+          it is NOT over the steps. Over them it is shown as a ghost
+          step in the list instead, and the two would say the same
+          thing. In the body, not the window: a fixed box inside a moved
+          or transformed ancestor is placed relative to THAT, and would
+          trail the pointer by the window's offset. */}
+      {commandDrag && commandDrag.insertAt === null && createPortal(
         <div
-          className={`macro-builder__drag-ghost${commandDrag.insertAt === null ? ' macro-builder__drag-ghost--no-drop' : ''}`}
+          className="macro-builder__drag-ghost macro-builder__drag-ghost--no-drop"
           aria-hidden="true"
           style={{ left: commandDrag.x, top: commandDrag.y }}
         >
