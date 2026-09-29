@@ -125,9 +125,9 @@ function prettyParameters(parameters: string): string {
  * transfer button. Search is the only filter — there is no category
  * picker (removed 2026-09-28). The search field is
  * always visible, so adding a step never opens a picker window. ONE
- * command is selected at a time (multi-select removed 2026-09-29).
- * Double-click or Enter adds it to the end; DRAG it into the step list
- * to put it where you want it. Steps are added with default parameters and edited in place
+ * command is selected at a time (multi-select removed 2026-09-29) and
+ * carries a + button. Double-click, the + or Enter adds it to the end;
+ * DRAG it into the step list to put it where you want it. Steps are added with default parameters and edited in place
  * via the row pencil; drag a row (or ↑/↓) to reorder and the trash
  * removes it. Non-modal and auto-saving, like MacroEditorDialog.
  *
@@ -345,6 +345,9 @@ export function MacroBuilderDialog({
   // release anywhere but the step list, or press Escape.
   const handleCommandMouseDown = (command: Command) => (e: React.MouseEvent) => {
     if (e.button !== 0) return;
+    // The row's + owns its own presses: a press on it that wanders a
+    // few pixels is still a click, not the start of a drag
+    if ((e.target as HTMLElement).closest('button')) return;
     const doc = e.currentTarget.ownerDocument;
     const view = doc.defaultView ?? window;
     const startX = e.clientX;
@@ -831,6 +834,28 @@ export function MacroBuilderDialog({
                     onFocus={() => setActiveCommandId(command.id)}
                   >
                     <span className="macro-builder__command-name" title={command.name}>{command.name}</span>
+                    {isSelected && (
+                      // The selected command's + adds it to the end —
+                      // the one-click twin of double-click. Out of the
+                      // Tab order and hidden from assistive tech: an
+                      // option cannot hold a control, and the keyboard
+                      // already has Enter. A double-click here is two
+                      // adds — it must not also reach the row, which
+                      // would make it three.
+                      <span
+                        className="macro-builder__command-add"
+                        aria-hidden="true"
+                        onDoubleClick={(e) => e.stopPropagation()}
+                      >
+                        <GhostButton
+                          icon="plus"
+                          size="small"
+                          tabIndex={-1}
+                          ariaLabel={`Add ${command.name}`}
+                          onClick={() => addCommand(command)}
+                        />
+                      </span>
+                    )}
                   </div>
                 );
               })}

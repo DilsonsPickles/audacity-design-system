@@ -215,6 +215,14 @@ describe('Edit macro keyboard — the command list', () => {
     expect(all('[role="option"]')).toHaveLength(COMMANDS.length);
   });
 
+  it('the list is still ONE stop with the selected command\'s + showing', () => {
+    const { command, focus, press, stops, q } = renderBuilder();
+    focus(command('select-all'));
+    press('ArrowDown');
+    expect(q('.macro-builder__command-add').closest('[data-command-id]')).toBe(command('select-next-clip'));
+    expect(stops('.macro-builder__command-list')).toEqual([command('select-next-clip')]);
+  });
+
   it('Enter is the keyboard\'s drag: it adds to the end, and Cmd/Ctrl+arrows place the step', () => {
     // Dragging a command to a place has no keyboard twin in one move;
     // these two together are its equivalent

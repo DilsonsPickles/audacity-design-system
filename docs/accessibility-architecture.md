@@ -273,15 +273,19 @@ focus out to a track, and Delete on a step opened "Delete track?".
 | ArrowLeft / ArrowRight | Nothing — but kept from the playhead |
 | Shift+arrows | The same as the plain arrows: there is no range to grow |
 
-With the mouse: click selects, double-click adds to the end, and a
-command can be **dragged into the step list** to put it where it is
+With the mouse: click selects; double-click, or the **+ button** the
+selected command carries, adds it to the end; and a command can be
+**dragged into the step list** to put it where it is
 wanted — a line shows where it will land, and nothing is added until the
 drop (let go anywhere else, or press Escape, to abandon it).
 
 The drag's keyboard equivalent is two moves, not one: **Enter** adds the
 command to the end, then **Cmd/Ctrl+ArrowUp** on the new step carries it
-up to its place. (A + button on the row was tried, selected-only and
-then on hover, and dropped for the drag — 2026-09-29.)
+up to its place. The + is a ghost icon button on the SELECTED row only (showing it on
+hover as well was tried and not kept — 2026-09-29). It is the mouse's:
+out of the Tab order and `aria-hidden`, because an option cannot hold a
+control and the keyboard already has Enter. For the same reason a
+command row is a `div`, not a `button`.
 
 A search that hides the selected command clears the selection, so Enter
 in the search field never adds something that cannot be seen: it adds

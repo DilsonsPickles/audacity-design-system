@@ -119,11 +119,59 @@ describe('MacroBuilderDialog', () => {
     expect(selected()).toEqual(['effect:fade-in']);
   });
 
-  it('a command row holds nothing but its name — no add button', () => {
+  const plusButtons = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll<HTMLButtonElement>('.macro-builder__command-add button'));
+
+  it('the selected command — and only it — carries a + button', () => {
+    const { container } = renderBuilder();
+    expect(plusButtons(container)).toHaveLength(0);
+    fireEvent.click(commandRows(container)[2]); // Split
+    expect(plusButtons(container)).toHaveLength(1);
+    expect(plusButtons(container)[0].closest<HTMLElement>('[data-command-id]')!.dataset.commandId).toBe('split');
+    fireEvent.click(commandRows(container)[0]);
+    expect(plusButtons(container)).toHaveLength(1);
+    expect(plusButtons(container)[0].closest<HTMLElement>('[data-command-id]')!.dataset.commandId).toBe('select-all');
+  });
+
+  it('the + is a GHOST icon button — no fill at rest', () => {
     const { container } = renderBuilder();
     fireEvent.click(commandRows(container)[2]);
-    expect(container.querySelectorAll('.macro-builder__command-list button')).toHaveLength(0);
-    expect(commandRows(container)[2].textContent).toBe('Split');
+    const plus = plusButtons(container)[0];
+    expect(plus.className).toContain('ghost-button--variant-ghost');
+    expect(plus.className).not.toContain('ghost-button--variant-solid');
+    expect(plus.className).toContain('ghost-button--small');
+  });
+
+  it('the + adds the selected command to the end, once per click', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[4]); // Fade In
+    fireEvent.click(plusButtons(container)[0]);
+    expect(onAddCommand.mock.calls).toEqual([['m1', COMMANDS[4]]]);
+    // The command stays selected, so its + is still there to press again
+    fireEvent.click(plusButtons(container)[0]);
+    expect(onAddCommand).toHaveBeenCalledTimes(2);
+    expect(commandRows(container)[4].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('a double-click on the + is two adds, not three — it does not reach the row', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[4]);
+    const plus = plusButtons(container)[0];
+    fireEvent.click(plus, { detail: 1 });
+    fireEvent.click(plus, { detail: 2 });
+    fireEvent.doubleClick(plus);
+    expect(onAddCommand).toHaveBeenCalledTimes(2);
+  });
+
+  it('the + is the mouse\'s: out of the Tab order and hidden from assistive tech', () => {
+    // An option cannot hold a control, and the keyboard has Enter
+    const { container } = renderBuilder();
+    fireEvent.click(commandRows(container)[1]);
+    const wrapper = container.querySelector<HTMLElement>('.macro-builder__command-add')!;
+    expect(wrapper.getAttribute('aria-hidden')).toBe('true');
+    expect(plusButtons(container)[0].tabIndex).toBe(-1);
   });
 
   it('there is no selection bar any more', () => {
@@ -483,6 +531,29 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     // ...and its listeners are gone: moving again raises no ghost
     fireEvent.mouseMove(document, { clientX: 500, clientY: 300 });
     expect(ghost()).toBeNull();
+  });
+
+  it('a press on the selected command\'s + never starts a drag', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[4]);
+    layOut(container);
+    const plus = container.querySelector<HTMLButtonElement>('.macro-builder__command-add button')!;
+    fireEvent.mouseDown(plus, { button: 0, clientX: 260, clientY: 50 });
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 200 });
+    expect(ghost()).toBeNull();
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).not.toHaveBeenCalled();
+  });
+
+  it('the selected command can still be dragged by the rest of its row', () => {
+    const onAddCommand = vi.fn();
+    const { container } = renderBuilder({ onAddCommand });
+    fireEvent.click(commandRows(container)[4]);
+    startDrag(container, 4);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 110 });
+    fireEvent.mouseUp(document);
+    expect(onAddCommand).toHaveBeenCalledWith('m1', COMMANDS[4], undefined, 0);
   });
 
   it('only the left button drags', () => {

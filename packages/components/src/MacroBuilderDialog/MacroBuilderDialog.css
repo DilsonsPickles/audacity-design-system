@@ -194,6 +194,17 @@
   user-select: none;
 }
 
+/* The selected command's + button: a ghost icon button, 20px in a 28px
+   row so selecting a command never changes its height, pulled 4px into
+   the row's padding so it sits as far from the right edge as from the
+   top. The name gives way to it. */
+.macro-builder__command-add {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-right: -4px;
+}
+
 .macro-builder__command-name {
   flex: 1;
   min-width: 0;

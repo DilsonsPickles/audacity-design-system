@@ -134,6 +134,9 @@ The panel is keyboard-operable end to end (see
 - **Escape closes the Edit macro window even with a search typed.**
   Clearing the search first would be the usual behaviour; `Dialog`
   takes Escape in the capture phase, ahead of the field.
+- **The + on the selected command is mouse-only** (out of the Tab
+  order, `aria-hidden`): an option cannot hold a control. Enter is the
+  keyboard's add.
 - **Dragging a command to a place has no one-move keyboard twin.**
   Enter adds to the end and Cmd/Ctrl+arrows then place the step. An
   "insert above the focused step" key would close the gap.
