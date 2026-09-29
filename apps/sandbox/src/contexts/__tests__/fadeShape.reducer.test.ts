@@ -10,7 +10,7 @@ const state = (): TracksState => ({
   tracks: [{ id: 1, name: 't', clips: [clip(10, 0, 5), clip(11, 3, 5)] } as unknown as Track],
 });
 
-describe('fade shapes — linear is stored, ~1 is cleared', () => {
+describe('fade shapes — linear is stored, the default is cleared', () => {
   it('SET_CROSSFADE_SHAPE stores linear on both sides', () => {
     const next = tracksReducer(state(), {
       type: 'SET_CROSSFADE_SHAPE',
@@ -40,5 +40,34 @@ describe('fade shapes — linear is stored, ~1 is cleared', () => {
     });
     expect(next.tracks[0].clips[0].fadeOutShape).toBe('linear');
     expect(next.tracks[0].clips[0].fadeInShape).toBeUndefined();
+  });
+
+  it('SET_CLIP_FADE_SHAPE clears ~2 — the S-curve is the quick fade default', () => {
+    const linear = tracksReducer(state(), {
+      type: 'SET_CLIP_FADE_SHAPE',
+      payload: { trackIndex: 0, clipId: 10, side: 'in', shape: 'linear' },
+    });
+    const back = tracksReducer(linear, {
+      type: 'SET_CLIP_FADE_SHAPE',
+      payload: { trackIndex: 0, clipId: 10, side: 'in', shape: 2.004 },
+    });
+    expect(back.tracks[0].clips[0].fadeInShape).toBeUndefined();
+  });
+
+  it('SET_CLIP_FADE_SHAPE STORES 1 — equal-power is a choice now, and clearing it would give back the S-curve', () => {
+    const next = tracksReducer(state(), {
+      type: 'SET_CLIP_FADE_SHAPE',
+      payload: { trackIndex: 0, clipId: 10, side: 'in', shape: 1 },
+    });
+    expect(next.tracks[0].clips[0].fadeInShape).toBe(1);
+  });
+
+  it('SET_CROSSFADE_SHAPE stores 2 — an S-curve is a choice for a crossfade', () => {
+    const next = tracksReducer(state(), {
+      type: 'SET_CROSSFADE_SHAPE',
+      payload: { trackIndex: 0, outgoingClipId: 10, incomingClipId: 11, outShape: 2, inShape: 2 },
+    });
+    expect(next.tracks[0].clips[0].fadeOutShape).toBe(2);
+    expect(next.tracks[0].clips[1].fadeInShape).toBe(2);
   });
 });

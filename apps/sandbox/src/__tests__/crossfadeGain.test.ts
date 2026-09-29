@@ -2,7 +2,16 @@ import { describe, it, expect } from 'vitest';
 import {
   computeClipGainSegments,
   applyGainSegmentsToChannel,
+  DEFAULT_QUICK_FADE_SHAPE as AUDIO_QUICK,
+  DEFAULT_CROSSFADE_SHAPE as AUDIO_CROSSFADE,
 } from '@audacity-ui/audio';
+import {
+  computeFadeCurves,
+  fadeInGain,
+  fadeOutGain,
+  DEFAULT_QUICK_FADE_SHAPE,
+  DEFAULT_CROSSFADE_SHAPE,
+} from '@audacity-ui/components';
 
 const clip = (id: number, start: number, duration: number, trimStart = 0) => ({
   id,
@@ -46,16 +55,19 @@ describe('computeClipGainSegments — the audible mirror of the drawn X', () => 
     const faded = { ...clip(1, 2, 6, 1), fadeIn: 1.5, fadeOut: 2 };
     const segs = computeClipGainSegments([faded]).get('1')!;
     // fadeIn: clip-relative 0..1.5 → source 1..2.5
-    expect(segs).toContainEqual({ startSec: 1, endSec: 2.5, shape: 'fadeIn' });
+    // No shape stored: a quick fade is the S-curve
+    expect(segs).toContainEqual({ startSec: 1, endSec: 2.5, shape: 'fadeIn', curve: 2 });
     // fadeOut: clip-relative 4..6 → source 5..7
-    expect(segs).toContainEqual({ startSec: 5, endSec: 7, shape: 'fadeOut' });
+    expect(segs).toContainEqual({ startSec: 5, endSec: 7, shape: 'fadeOut', curve: 2 });
   });
 
   it('a fade on the NON-overlapped edge coexists with the default crossfade ramp', () => {
     const a = { ...clip(1, 0, 5), fadeIn: 1 };
     const b = clip(2, 3, 4);
     const segs = computeClipGainSegments([a, b]);
-    expect(segs.get('1')).toContainEqual({ startSec: 0, endSec: 1, shape: 'fadeIn' });
+    // The free edge's quick fade is an S-curve; the crossfaded edge
+    // stays equal-power (no `curve`)
+    expect(segs.get('1')).toContainEqual({ startSec: 0, endSec: 1, shape: 'fadeIn', curve: 2 });
     expect(segs.get('1')).toContainEqual({ startSec: 3, endSec: 5, shape: 'fadeOut' });
   });
 
@@ -76,8 +88,8 @@ describe('quick fades never cross on one clip (audio mirror)', () => {
     const segs = computeClipGainSegments([{ ...clip(1, 0, 4, 1), fadeIn: 4, fadeOut: 4 }]).get('1')!;
     // scaled to 2 + 2, in SOURCE time (trimStart 1)
     expect(segs).toEqual([
-      { startSec: 1, endSec: 3, shape: 'fadeIn' },
-      { startSec: 3, endSec: 5, shape: 'fadeOut' },
+      { startSec: 1, endSec: 3, shape: 'fadeIn', curve: 2 },
+      { startSec: 3, endSec: 5, shape: 'fadeOut', curve: 2 },
     ]);
   });
 });
@@ -89,7 +101,7 @@ describe('quick fades never overlap a crossfade (audio mirror)', () => {
     const segs = computeClipGainSegments([clip(1, 0, 5), { ...clip(2, 3, 4), fadeOut: 3 }]);
     expect(segs.get('2')).toEqual([
       { startSec: 0, endSec: 2, shape: 'fadeIn' },  // crossfade ramp
-      { startSec: 2, endSec: 4, shape: 'fadeOut' }, // clamped quick fade
+      { startSec: 2, endSec: 4, shape: 'fadeOut', curve: 2 }, // clamped quick fade
     ]);
   });
 });
@@ -118,6 +130,49 @@ describe('applyGainSegmentsToChannel', () => {
     const b = applyGainSegmentsToChannel(ones(100), [{ startSec: 0, endSec: 1, shape: 'fadeIn' }], 100);
     for (const i of [0, 25, 50, 75, 99]) {
       expect(a[i] ** 2 + b[i] ** 2).toBeCloseTo(1, 5);
+    }
+  });
+});
+
+describe('default fade shapes — what is drawn is what is baked', () => {
+  const ones = (n: number) => new Float32Array(n).fill(1);
+
+  it('the audio package and the components package agree on both defaults', () => {
+    // The audio package cannot import components, so each carries its
+    // own copy of these. This is what keeps them the same number.
+    expect(AUDIO_QUICK).toBe(DEFAULT_QUICK_FADE_SHAPE);
+    expect(AUDIO_CROSSFADE).toBe(DEFAULT_CROSSFADE_SHAPE);
+  });
+
+  it('a default quick fade sounds like the S-curve it is drawn as', () => {
+    const faded = { ...clip(1, 0, 4), fadeIn: 1, fadeOut: 1 };
+    const drawn = computeFadeCurves([faded]);
+    const baked = applyGainSegmentsToChannel(ones(400), computeClipGainSegments([faded]).get('1')!, 100);
+    const drawnIn = drawn.find((r) => r.side === 'in')!;
+    const drawnOut = drawn.find((r) => r.side === 'out')!;
+    for (const i of [0, 10, 25, 50, 75, 90]) {
+      expect(baked[i]).toBeCloseTo(fadeInGain(i / 100, drawnIn.shape), 5);
+      expect(baked[300 + i]).toBeCloseTo(fadeOutGain(i / 100, drawnOut.shape), 5);
+    }
+    expect(baked[50]).toBeCloseTo(0.5, 5); // half gain at the middle
+    expect(baked[200]).toBe(1); // untouched between the fades
+  });
+
+  it('a quick fade stored as equal-power (1) bakes equal-power, not the default', () => {
+    const faded = { ...clip(1, 0, 4), fadeIn: 1, fadeInShape: 1 };
+    const segs = computeClipGainSegments([faded]).get('1')!;
+    expect(segs).toEqual([{ startSec: 0, endSec: 1, shape: 'fadeIn' }]);
+    const baked = applyGainSegmentsToChannel(ones(400), segs, 100);
+    expect(baked[50]).toBeCloseTo(Math.SQRT1_2, 5);
+  });
+
+  it('a default crossfade still holds constant power', () => {
+    const segs = computeClipGainSegments([clip(1, 0, 5), clip(2, 3, 4)]);
+    const a = applyGainSegmentsToChannel(ones(500), segs.get('1')!, 100);
+    const b = applyGainSegmentsToChannel(ones(400), segs.get('2')!, 100);
+    // Project time 3..5 = clip 1 samples 300..500, clip 2 samples 0..200
+    for (const i of [0, 50, 100, 150, 199]) {
+      expect(a[300 + i] ** 2 + b[i] ** 2).toBeCloseTo(1, 5);
     }
   });
 });

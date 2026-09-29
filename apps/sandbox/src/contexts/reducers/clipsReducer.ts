@@ -3,6 +3,7 @@ import { applyCut } from '../../utils/cutOperations';
 import { dissolveDegenerateGroups } from './shared';
 import { computeCrossfadeRoll } from '../../utils/crossfadeRoll';
 import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
+import { DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '@audacity-ui/components';
 
 /** Clips may overlap (2026-09-21): array position IS the z-order —
  *  later = painted on top = wins clicks, and the overlap region plays
@@ -224,12 +225,13 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
 
     case 'SET_CROSSFADE_SHAPE': {
       // The crossfade node bends both curves (extents untouched).
-      // A shape of ~1 clears the field so stored projects stay clean.
+      // A shape that is the crossfade's default (equal-power) clears
+      // the field so stored projects stay clean.
       const { trackIndex, outgoingClipId, incomingClipId, outShape, inShape } = action.payload;
       const track = state.tracks[trackIndex];
       if (!track) return state;
       // 'linear' is stored as-is; an exponent of ~1 clears the field
-      const norm = (v: number | 'linear') => (v !== 'linear' && Math.abs(v - 1) < 0.01 ? undefined : v);
+      const norm = (v: number | 'linear') => (v !== 'linear' && Math.abs(v - DEFAULT_CROSSFADE_SHAPE) < 0.01 ? undefined : v);
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...track,
@@ -243,12 +245,14 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
     }
 
     case 'SET_CLIP_FADE_SHAPE': {
-      // Quick-fade shape node: bow one edge's curve. ~1 clears the
-      // field (equal-power default) so stored projects stay clean.
+      // Quick-fade shape node: bow one edge's curve. A shape that IS
+      // the quick fade's default (the S-curve) clears the field, so
+      // stored projects stay clean. Equal-power (1) is now a CHOICE
+      // and is stored — clearing it would hand back the S-curve.
       const { trackIndex, clipId, side, shape } = action.payload;
       const track = state.tracks[trackIndex];
       if (!track) return state;
-      const value = shape !== 'linear' && Math.abs(shape - 1) < 0.01 ? undefined : shape;
+      const value = shape !== 'linear' && Math.abs(shape - DEFAULT_QUICK_FADE_SHAPE) < 0.01 ? undefined : shape;
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...track,

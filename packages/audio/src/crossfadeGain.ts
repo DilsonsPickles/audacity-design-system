@@ -29,21 +29,32 @@ export interface OverlapClipLike {
    *  overlap crossfades). Absent/0 = none. */
   fadeIn?: number;
   fadeOut?: number;
-  /** Curve shape exponents (default 1 = equal-power) — the crossfade
-   *  intersection node's state. MUST MATCH clipCrossfades.ts. */
-  /** Exponent on the equal-power base (1 = equal-power), or 'linear'.
+  /** Exponent on the equal-power base (1 = equal-power, 2 = S-curve),
+   *  or 'linear'. Absent = the default for the kind of fade the edge is
+   *  wearing: DEFAULT_QUICK_FADE_SHAPE or DEFAULT_CROSSFADE_SHAPE.
    *  Mirrors components/utils/clipCrossfades.ts — same values, same
    *  curves; the two must agree. */
   fadeInShape?: number | 'linear';
   fadeOutShape?: number | 'linear';
 }
 
+/** What a fade's shape is when none is stored: a clip's own QUICK FADE
+ *  is an S-curve (exponent 2 = raised cosine), a CROSSFADE is
+ *  equal-power (exponent 1). MUST MATCH the constants of the same name
+ *  in components/utils/clipCrossfades.ts, where the reasoning is — this
+ *  package cannot import that one, so a sandbox test holds them
+ *  together. */
+export const DEFAULT_QUICK_FADE_SHAPE = 2;
+export const DEFAULT_CROSSFADE_SHAPE = 1;
+
 export interface ClipGainSegment {
   /** Segment bounds in SOURCE seconds (trimStart-inclusive) */
   startSec: number;
   endSec: number;
   shape: 'fadeOut' | 'fadeIn' | 'mute';
-  /** Curve shape exponent for fade segments (1 = equal-power) */
+  /** Curve shape for fade segments, resolved (stored, else the default
+   *  for its kind). Left off when it is 1 — equal-power, which is what
+   *  `applyGainSegmentsToChannel` applies to a segment without one. */
   curve?: number | 'linear';
 }
 
@@ -61,11 +72,19 @@ export function computeClipGainSegments(
   // clipCrossfades.ts)
   const headConsumedTo = new Map<string, number>();
   const tailConsumedFrom = new Map<string, number>();
-  const push = (clip: OverlapClipLike, startAbs: number, endAbs: number, shape: ClipGainSegment['shape']) => {
+  const push = (
+    clip: OverlapClipLike,
+    startAbs: number,
+    endAbs: number,
+    shape: ClipGainSegment['shape'],
+    /** Which default an edge with no stored shape takes */
+    kind: 'crossfade' | 'quick' = 'crossfade',
+  ) => {
     const key = String(clip.id);
     const trimStart = clip.trimStart ?? 0;
-    const curve = shape === 'fadeOut' ? (clip.fadeOutShape ?? 1)
-      : shape === 'fadeIn' ? (clip.fadeInShape ?? 1)
+    const fallback = kind === 'quick' ? DEFAULT_QUICK_FADE_SHAPE : DEFAULT_CROSSFADE_SHAPE;
+    const curve = shape === 'fadeOut' ? (clip.fadeOutShape ?? fallback)
+      : shape === 'fadeIn' ? (clip.fadeInShape ?? fallback)
       : undefined;
     const list = out.get(key) ?? [];
     list.push({
@@ -132,10 +151,10 @@ export function computeClipGainSegments(
       fadeOut *= scale;
     }
     if (fadeIn > EPSILON) {
-      push(clip, clip.start, clip.start + fadeIn, 'fadeIn');
+      push(clip, clip.start, clip.start + fadeIn, 'fadeIn', 'quick');
     }
     if (fadeOut > EPSILON) {
-      push(clip, clip.start + clip.duration - fadeOut, clip.start + clip.duration, 'fadeOut');
+      push(clip, clip.start + clip.duration - fadeOut, clip.start + clip.duration, 'fadeOut', 'quick');
     }
   }
   return out;

@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows, type FadeShape, localFadeRegionsByClip } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -595,8 +595,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       if (!outClip || !inClip) return null;
       // The crossfade CONSUMES authored extents (2026-09-21): both
       // ramps always span the overlap; only the shapes carry over
-      const shapedOut = { start: r.start, end: r.end, shape: outClip.fadeOutShape ?? 1 };
-      const shapedIn = { start: r.start, end: r.end, shape: inClip.fadeInShape ?? 1 };
+      const shapedOut = { start: r.start, end: r.end, shape: outClip.fadeOutShape ?? DEFAULT_CROSSFADE_SHAPE };
+      const shapedIn = { start: r.start, end: r.end, shape: inClip.fadeInShape ?? DEFAULT_CROSSFADE_SHAPE };
       const point = crossfadeIntersection(shapedOut, shapedIn, r.start, r.end);
       return {
         outgoingClipId: r.outgoingClipId,
@@ -751,7 +751,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         if (crossfadedEdges.has(`${clip.id}:${side}`)) continue;
         const dragKey = `${clip.id}:${side}`;
         if (!clip.selected && shapeDrag !== dragKey) continue;
-        const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? 1;
+        const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
         const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
         // The base curve at normalised position t — the closed-form
         // solve inverts this: shape = ln(g) / ln(base(t)).
@@ -770,15 +770,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-clip-ref={clip.id}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in shape' : 'Quick fade out shape'}
-            aria-valuenow={typeof shape === 'number' ? shape : 1}
+            aria-valuenow={typeof shape === 'number' ? shape : DEFAULT_QUICK_FADE_SHAPE}
             aria-valuetext={shape === 'linear' ? 'linear' : undefined}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
-            // Double-click: a straight-line fade; again restores
-            // equal-power. Same gesture as the crossfade node.
+            // Double-click: a straight-line fade; again restores the
+            // default (the S-curve). Same gesture as the crossfade node.
             onDoubleClick={(e) => {
               e.stopPropagation();
-              onClipFadeShapeChange(clip.id, side, shape === 'linear' ? 1 : 'linear');
+              onClipFadeShapeChange(clip.id, side, shape === 'linear' ? DEFAULT_QUICK_FADE_SHAPE : 'linear');
             }}
             onPointerDown={(e) => {
               if (e.button !== 0) return;

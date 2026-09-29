@@ -25,9 +25,9 @@ export interface CrossfadeClipLike {
    *  a crossfade honours it instead of the overlap-default ramp. */
   fadeIn?: number;
   fadeOut?: number;
-  /** Curve shape exponents (default 1 = equal-power). Set by dragging
-   *  the crossfade's intersection node: the base curve is raised to
-   *  this power, bending the fade without moving its extent. */
+  /** Curve shapes: an exponent on the equal-power base curve, or
+   *  'linear'. Absent = the default for the kind of fade the edge is
+   *  wearing — DEFAULT_QUICK_FADE_SHAPE or DEFAULT_CROSSFADE_SHAPE. */
   fadeInShape?: FadeShape;
   fadeOutShape?: FadeShape;
 }
@@ -117,7 +117,8 @@ export interface FadeCurveRegion {
   /** True when the region is the clip's own fadeIn/fadeOut; false when
    *  it is the overlap-default crossfade ramp. */
   authored: boolean;
-  /** Curve shape exponent (1 = equal-power) */
+  /** Curve shape, resolved: the stored one, else the default for
+   *  this kind of fade (see `authored`) */
   shape: FadeShape;
 }
 
@@ -139,11 +140,11 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
     const inClip = clips.find((c) => c.id === r.incomingClipId);
     if (outClip) {
       crossfadedOut.add(String(outClip.id));
-      regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false, shape: outClip.fadeOutShape ?? 1 });
+      regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false, shape: outClip.fadeOutShape ?? DEFAULT_CROSSFADE_SHAPE });
     }
     if (inClip) {
       crossfadedIn.add(String(inClip.id));
-      regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false, shape: inClip.fadeInShape ?? 1 });
+      regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false, shape: inClip.fadeInShape ?? DEFAULT_CROSSFADE_SHAPE });
     }
   }
   const windows = quickFadeWindows(clips);
@@ -157,10 +158,10 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
       Math.max(0, w.end - w.start),
     );
     if (fadeIn > EPSILON) {
-      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + fadeIn, authored: true, shape: c.fadeInShape ?? 1 });
+      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + fadeIn, authored: true, shape: c.fadeInShape ?? DEFAULT_QUICK_FADE_SHAPE });
     }
     if (fadeOut > EPSILON) {
-      regions.push({ clipId: c.id, side: 'out', start: c.start + c.duration - fadeOut, end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? 1 });
+      regions.push({ clipId: c.id, side: 'out', start: c.start + c.duration - fadeOut, end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? DEFAULT_QUICK_FADE_SHAPE });
     }
   }
   return regions.sort((a, b) => a.start - b.start || String(a.clipId).localeCompare(String(b.clipId)));
@@ -189,12 +190,12 @@ export function crossfadeIntersection(
   const gainOut = (x: number) => {
     if (x <= outRegion.start) return 1;
     if (x >= outRegion.end) return 0;
-    return fadeOutGain((x - outRegion.start) / (outRegion.end - outRegion.start), outRegion.shape ?? 1);
+    return fadeOutGain((x - outRegion.start) / (outRegion.end - outRegion.start), outRegion.shape ?? DEFAULT_CROSSFADE_SHAPE);
   };
   const gainIn = (x: number) => {
     if (x <= inRegion.start) return 0;
     if (x >= inRegion.end) return 1;
-    return fadeInGain((x - inRegion.start) / (inRegion.end - inRegion.start), inRegion.shape ?? 1);
+    return fadeInGain((x - inRegion.start) / (inRegion.end - inRegion.start), inRegion.shape ?? DEFAULT_CROSSFADE_SHAPE);
   };
   let lo = overlapStart;
   let hi = overlapEnd;
@@ -207,8 +208,6 @@ export function crossfadeIntersection(
   return { time: t, gain: (gainOut(t) + gainIn(t)) / 2 };
 }
 
-/** Gain for the OUTGOING side at normalized position t (0..1).
- *  `shape` bends the equal-power base curve (1 = equal-power). */
 /** A fade's shape: an exponent on the equal-power base curve (1 =
  *  equal-power, 2 = S-curve, <1 = sharper end), or `'linear'` — a
  *  straight line, which no exponent can produce (cos^k always starts
@@ -218,6 +217,35 @@ export type FadeShape = number | 'linear';
 
 export const LINEAR: FadeShape = 'linear';
 
+/**
+ * What a fade's shape IS when none is stored. There are two defaults,
+ * because there are two kinds of fade, and a clip stores one shape per
+ * edge for whichever kind that edge is wearing:
+ *
+ *  - a QUICK FADE (the clip's own fade in or out) is an S-CURVE: it
+ *    leaves silence gently, moves fastest through the middle and
+ *    arrives gently. Exponent 2 on the equal-power base is exactly the
+ *    raised cosine, (1 − cos πt) / 2. User decision 2026-09-29; it was
+ *    equal-power, which starts abruptly.
+ *  - a CROSSFADE stays EQUAL-POWER (exponent 1): two unrelated sounds
+ *    crossing hold their combined loudness. S-curves there would dip
+ *    by 3 dB in the middle.
+ *
+ * So `undefined` means "this kind's default", not a fixed curve: an
+ * edge with nothing stored is an S-curve while it is a quick fade and
+ * equal-power while it is crossfaded.
+ *
+ * MUST MATCH packages/audio/src/crossfadeGain.ts, which bakes the same
+ * curves into the sound (the audio package cannot import this one). A
+ * sandbox test holds the two together.
+ */
+export const DEFAULT_QUICK_FADE_SHAPE = 2;
+export const DEFAULT_CROSSFADE_SHAPE = 1;
+
+/** Gain for the OUTGOING side at normalized position t (0..1).
+ *  `shape` bends the equal-power base curve (1 = equal-power). Callers
+ *  pass a RESOLVED shape — the defaults above are applied where a
+ *  clip's stored value is read, not here. */
 export function fadeOutGain(t: number, shape: FadeShape = 1): number {
   const u = Math.max(0, Math.min(1, t));
   if (shape === 'linear') return 1 - u;

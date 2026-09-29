@@ -8,6 +8,8 @@ import {
   fadeCurvePath,
   fadeGainAt,
   localFadeRegionsByClip,
+  DEFAULT_QUICK_FADE_SHAPE,
+  DEFAULT_CROSSFADE_SHAPE,
 } from '../clipCrossfades';
 
 const clip = (id: number, start: number, duration: number) => ({ id, start, duration });
@@ -67,14 +69,14 @@ describe('computeFadeCurves — one fade per edge, the crossfade wins', () => {
   it('lone clip fades render at their own extents', () => {
     const curves = computeFadeCurves([{ ...clip(1, 2, 6), fadeIn: 1, fadeOut: 2 }]);
     expect(curves).toEqual([
-      { clipId: 1, side: 'in', start: 2, end: 3, authored: true, shape: 1 },
-      { clipId: 1, side: 'out', start: 6, end: 8, authored: true, shape: 1 },
+      { clipId: 1, side: 'in', start: 2, end: 3, authored: true, shape: 2 },
+      { clipId: 1, side: 'out', start: 6, end: 8, authored: true, shape: 2 },
     ]);
   });
 
   it('a fade on the NON-overlapped (free) edge coexists with the crossfade ramps', () => {
     const curves = computeFadeCurves([{ ...clip(1, 0, 5), fadeIn: 1 }, clip(2, 3, 4)]);
-    expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 1, authored: true, shape: 1 });
+    expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 1, authored: true, shape: 2 });
     expect(curves).toContainEqual({ clipId: 1, side: 'out', start: 3, end: 5, authored: false, shape: 1 });
     expect(curves).toContainEqual({ clipId: 2, side: 'in', start: 3, end: 5, authored: false, shape: 1 });
   });
@@ -99,8 +101,8 @@ describe('effectiveFades — quick fades never cross on one clip', () => {
   it('computeFadeCurves emits the scaled regions — no overlap', () => {
     const curves = computeFadeCurves([{ ...clip(1, 0, 4), fadeIn: 4, fadeOut: 4 }]);
     expect(curves).toEqual([
-      { clipId: 1, side: 'in', start: 0, end: 2, authored: true, shape: 1 },
-      { clipId: 1, side: 'out', start: 2, end: 4, authored: true, shape: 1 },
+      { clipId: 1, side: 'in', start: 0, end: 2, authored: true, shape: 2 },
+      { clipId: 1, side: 'out', start: 2, end: 4, authored: true, shape: 2 },
     ]);
   });
 });
@@ -110,14 +112,14 @@ describe('quick fades never overlap a crossfade', () => {
     // A[0..5] × B[3..7]: B's head is crossfaded to 5; its 3s fade-out
     // may only span the free window [5, 7] → clamped to 2s
     const curves = computeFadeCurves([clip(1, 0, 5), { ...clip(2, 3, 4), fadeOut: 3 }]);
-    expect(curves).toContainEqual({ clipId: 2, side: 'out', start: 5, end: 7, authored: true, shape: 1 });
+    expect(curves).toContainEqual({ clipId: 2, side: 'out', start: 5, end: 7, authored: true, shape: 2 });
   });
 
   it('the outgoing clip\'s head fade clamps against its tail crossfade', () => {
     // A[0..5] fades in over 4.5s but its tail from 3 is crossfaded →
     // free window [0, 3] → fade-in clamped to 3s
     const curves = computeFadeCurves([{ ...clip(1, 0, 5), fadeIn: 4.5 }, clip(2, 3, 4)]);
-    expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 3, authored: true, shape: 1 });
+    expect(curves).toContainEqual({ clipId: 1, side: 'in', start: 0, end: 3, authored: true, shape: 2 });
   });
 });
 
@@ -199,5 +201,48 @@ describe('fadeGainAt — the gain the waveform is drawn with', () => {
     ]);
     expect(map.get(1)).toEqual([{ side: 'out', start: 3, end: 5, shape: 1 }]);
     expect(map.get(2)).toEqual([{ side: 'in', start: 0, end: 2, shape: 2 }]);
+  });
+});
+
+describe('the default shape — an S-curve for quick fades, equal-power for crossfades', () => {
+  const clip = (id: number, start: number, duration: number) => ({ id, start, duration });
+
+  it('a quick fade with no stored shape is the raised cosine', () => {
+    expect(DEFAULT_QUICK_FADE_SHAPE).toBe(2);
+    const [region] = computeFadeCurves([{ ...clip(1, 0, 4), fadeIn: 1 }]);
+    expect(region.shape).toBe(DEFAULT_QUICK_FADE_SHAPE);
+    // Flat at both ends, half gain at the middle, symmetric about it
+    for (const t of [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]) {
+      const raisedCosine = (1 - Math.cos(Math.PI * t)) / 2;
+      expect(fadeInGain(t, region.shape)).toBeCloseTo(raisedCosine, 10);
+      expect(fadeOutGain(t, region.shape)).toBeCloseTo(1 - raisedCosine, 10);
+    }
+    expect(fadeInGain(0.5, region.shape)).toBeCloseTo(0.5, 10);
+    // Gentle away from silence: far below the equal-power curve early on
+    expect(fadeInGain(0.1, region.shape)).toBeLessThan(fadeInGain(0.1, 1) / 5);
+  });
+
+  it('a crossfade with no stored shape stays equal-power', () => {
+    expect(DEFAULT_CROSSFADE_SHAPE).toBe(1);
+    const curves = computeFadeCurves([clip(1, 0, 5), clip(2, 3, 4)]);
+    expect(curves.map((r) => r.shape)).toEqual([1, 1]);
+    // Constant power across the overlap — no dip in the middle
+    for (const t of [0.25, 0.5, 0.75]) {
+      expect(fadeOutGain(t, curves[0].shape) ** 2 + fadeInGain(t, curves[1].shape) ** 2).toBeCloseTo(1, 10);
+    }
+  });
+
+  it('a STORED shape wins over either default — equal-power is a choice a quick fade can make', () => {
+    const [quick] = computeFadeCurves([{ ...clip(1, 0, 4), fadeIn: 1, fadeInShape: 1 }]);
+    expect(quick.shape).toBe(1);
+    const [lin] = computeFadeCurves([{ ...clip(1, 0, 4), fadeOut: 1, fadeOutShape: 'linear' as const }]);
+    expect(lin.shape).toBe('linear');
+  });
+
+  it('one edge, nothing stored: S-curve as a quick fade, equal-power once crossfaded', () => {
+    const a = { ...clip(1, 0, 5), fadeOut: 1 };
+    expect(computeFadeCurves([a])[0].shape).toBe(2);
+    const crossed = computeFadeCurves([a, clip(2, 3, 4)]);
+    expect(crossed.find((r) => r.clipId === 1 && r.side === 'out')!.shape).toBe(1);
   });
 });

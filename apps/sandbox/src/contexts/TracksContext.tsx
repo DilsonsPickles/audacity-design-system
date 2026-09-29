@@ -60,7 +60,10 @@ export interface Clip {
   fadeOut?: number;
   /** Curve shape exponents (default 1 = equal-power) — the crossfade
    *  intersection node's state; extents never move, curves bend. */
-  /** Fade curve: exponent on equal-power (1 = default), or 'linear' */
+  /** Fade curve: exponent on the equal-power base (1 = equal-power,
+   *  2 = S-curve), or 'linear'. Absent = the default for the kind of
+   *  fade the edge is wearing — S-curve for a quick fade, equal-power
+   *  for a crossfade (DEFAULT_*_SHAPE in components' clipCrossfades). */
   fadeInShape?: number | 'linear';
   fadeOutShape?: number | 'linear';
   /**
