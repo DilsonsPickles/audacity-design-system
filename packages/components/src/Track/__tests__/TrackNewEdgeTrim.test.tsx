@@ -153,9 +153,7 @@ describe('trimming an unselected clip by its edge', () => {
 
   it('the zones and the fade handles share the edge without overlapping', () => {
     const { container, zone, span } = renderTrack();
-    // The fade controls show while the pointer is on a zone — it counts as over the clip
-    expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
-    fireEvent.mouseEnter(zone(2, 'left')!, { buttons: 0 });
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="2"]') as HTMLElement, { buttons: 0 });
     const fade = (side: 'in' | 'out') => {
       const el = container.querySelector<HTMLElement>(`[data-fade-handle="${side}"][data-fade-clip="2"]`)!;
       const left = parseInt(el.style.left, 10);
@@ -167,9 +165,45 @@ describe('trimming an unselected clip by its edge', () => {
     expect(fade('out').right).toBeLessThanOrEqual(span(zone(2, 'right')!).left);
     // …and the fade controls are stacked above the zones regardless
     expect(fade('in').z).toBeGreaterThan(Number(zone(2, 'left')!.style.zIndex));
-    // Leaving the zone for empty track takes the fade controls away again
-    fireEvent.mouseLeave(zone(2, 'left')!);
-    expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
+  });
+
+  it('the fade handles do not show until the pointer is at least 4px into the clip', () => {
+    const { container, zone } = renderTrack({
+      clips: [{ id: 2, name: 'Unselected', start: 5, duration: 4, fadeIn: 1 }],
+    });
+    const clipEl = container.querySelector('[data-clip-id="2"]') as HTMLElement;
+    Object.defineProperty(clipEl, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 500, top: 0, right: 900, bottom: 114, width: 400, height: 114, x: 500, y: 0, toJSON: () => ({}) }),
+    });
+    const controls = () => container.querySelectorAll('[data-fade-handle], [data-quickfade-node]').length;
+    const at = (clientX: number) => fireEvent.mouseMove(clipEl, { clientX, clientY: 60, buttons: 0 });
+
+    // On the trim zone: nothing
+    fireEvent.mouseEnter(zone(2, 'left')!, { clientX: 498, buttons: 0 });
+    fireEvent.mouseMove(zone(2, 'left')!, { clientX: 498, buttons: 0 });
+    expect(controls()).toBe(0);
+    // In the clip, but within 4px of its edge: still nothing
+    fireEvent.mouseEnter(clipEl, { clientX: 501, clientY: 60, buttons: 0 });
+    expect(controls()).toBe(0);
+    at(503);
+    expect(controls()).toBe(0);
+    // 4px in: they show
+    at(504);
+    expect(controls()).toBe(3); // two length handles + the fade-in's shape handle
+    at(700);
+    expect(controls()).toBe(3);
+    // Back toward the edge: they go again…
+    at(502);
+    expect(controls()).toBe(0);
+    // …and the same from the right-hand side
+    at(896);
+    expect(controls()).toBe(3);
+    at(897);
+    expect(controls()).toBe(0);
+    // A press already under way is not a hover, however far in
+    fireEvent.mouseMove(clipEl, { clientX: 700, clientY: 60, buttons: 1 });
+    expect(controls()).toBe(0);
   });
 
   it('clips that touch: each edge keeps its own side of the joint', () => {

@@ -640,6 +640,30 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [shapeHandleHover, setShapeHandleHover] = React.useState<string | null>(null);
   // Prefix for the per-curve SVG clip ids (unique across tracks)
   const fadeClipIdBase = React.useId();
+  // …and "over the clip" means WELL inside it (user decision
+  // 2026-09-29): at least as far in from either side as the edge trim
+  // zone reaches. On the edge itself the pointer is there to trim (or,
+  // lower down, to start a selection) — fade handles appearing beside it
+  // would only compete. An element that has not been laid out (zero
+  // width — nothing to measure against) counts as inside.
+  const isWellInsideClip = (rect: DOMRect | undefined, clientX: number) =>
+    !rect || rect.width <= 0
+    || (clientX >= rect.left + EDGE_HIT_INSIDE_PX && clientX <= rect.right - EDGE_HIT_INSIDE_PX);
+  // The clip's own surface: hover follows the pointer's position in it
+  const clipSurfaceHoverProps = (clipId: string | number) => {
+    const clear = () => setFadeHoverClipId((prev) => (prev === clipId ? null : prev));
+    const track = (e: React.MouseEvent) => {
+      // A press already under way is not a hover (see fadeHoverProps)
+      if (e.buttons !== 0) return;
+      if (isWellInsideClip(e.currentTarget.getBoundingClientRect(), e.clientX)) {
+        setFadeHoverClipId((prev) => (prev === clipId ? prev : clipId));
+      } else {
+        clear();
+      }
+    };
+    return { onMouseEnter: track, onMouseMove: track, onMouseLeave: clear };
+  };
+  // The fade controls themselves, which all sit well inside the clip
   const fadeHoverProps = (clipId: string | number) => ({
     // A press already under way (a selection or clip drag passing over)
     // is not a hover — controls popping up mid-gesture would only flicker
@@ -659,7 +683,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // far from the clip. Settle it from where the pointer actually is.
   const settleFadeHover = (clipId: string | number, ev: PointerEvent, el: HTMLElement) => {
     const r = el.ownerDocument.querySelector(`[data-clip-id="${clipId}"]`)?.getBoundingClientRect();
-    const inside = !!r && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+    const inside = !!r && isWellInsideClip(r, ev.clientX) && ev.clientY >= r.top && ev.clientY <= r.bottom;
     setFadeHoverClipId((prev) => (inside ? clipId : prev === clipId ? null : prev));
   };
 
@@ -1199,12 +1223,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           aria-label={`${clip.name} clip, starts at ${formatTimeForA11y(clip.start)}, ${formatTimeForA11y(clip.duration)} long`}
           onMouseEnter={(e) => {
             onHoverClip?.(clip.id as number);
-            fadeHoverProps(clip.id).onMouseEnter(e);
+            clipSurfaceHoverProps(clip.id).onMouseEnter(e);
           }}
-          onMouseMove={fadeHoverProps(clip.id).onMouseMove}
+          onMouseMove={clipSurfaceHoverProps(clip.id).onMouseMove}
           onMouseLeave={() => {
             onHoverClip?.(null);
-            fadeHoverProps(clip.id).onMouseLeave();
+            clipSurfaceHoverProps(clip.id).onMouseLeave();
           }}
           onMouseDown={(e) => {
             // Clip receives DOM focus naturally via its tabIndex.
@@ -1572,9 +1596,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // Living with the fade handles: a zone reaches EDGE_HIT_INSIDE_PX
   // into the clip and a fade handle's box starts that far in (see
   // FADE_HANDLE_EDGE_INSET), so they meet and never overlap; the fade
-  // controls are also stacked above the zones, should they ever. A zone
-  // counts as "over the clip" for the fade controls' hover, so they do
-  // not blink off as the pointer crosses the edge on its way in.
+  // controls are also stacked above the zones, should they ever. And
+  // the fade controls do not SHOW until the pointer is past the zone —
+  // at least EDGE_HIT_INSIDE_PX into the clip (isWellInsideClip) — so
+  // on the edge there is one thing to do, not two.
   //
   // Only the TOP THIRD of the clip's BODY (user decision 2026-09-29):
   // below it the edge belongs to the time selection, which can then
@@ -1612,7 +1637,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         data-edge-trim={zone.edge}
         data-clip-ref={zone.clipId}
         aria-hidden="true"
-        {...fadeHoverProps(zone.clipId)}
         onMouseDown={(e) => {
           if (e.button !== 0) return;
           // The edge is not the clip's body or header: no clip drag, no

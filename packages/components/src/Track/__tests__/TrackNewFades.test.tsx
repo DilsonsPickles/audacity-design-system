@@ -447,7 +447,7 @@ describe('clip fades', () => {
       value: () => ({ left: 500, top: 0, right: 900, bottom: 100, width: 400, height: 100, x: 500, y: 0, toJSON: () => ({}) }),
     });
     const handles = () => container.querySelectorAll('[data-fade-handle]');
-    fireEvent.mouseEnter(clip2, { buttons: 0 });
+    fireEvent.mouseEnter(clip2, { clientX: 700, clientY: 50, buttons: 0 });
 
     // Pointer capture means no enter/leave arrives during the drag. Let
     // go over the clip: the controls stay, without the pointer having
