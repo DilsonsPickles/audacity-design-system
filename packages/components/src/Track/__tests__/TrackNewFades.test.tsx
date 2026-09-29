@@ -30,12 +30,58 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
-    const fadeInOverlay = container.querySelector<HTMLElement>('[data-fade-overlay="in"]');
-    const fadeOutOverlay = container.querySelector<HTMLElement>('[data-fade-overlay="out"]');
+    const fadeInOverlay = container.querySelector<HTMLElement>('[data-fade-curve="in"]');
+    const fadeOutOverlay = container.querySelector<HTMLElement>('[data-fade-curve="out"]');
     expect(fadeInOverlay).toBeTruthy();
     expect(fadeOutOverlay).toBeTruthy();
     expect(fadeInOverlay!.style.width).toBe('100px');
     expect(fadeOutOverlay!.style.width).toBe('50px');
+  });
+
+  it('a quick fade dims the area above its curve, and nothing else', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, fadeIn: 1, fadeOut: 0.5, fadeOutShape: { t: 0.3, g: 0.6 } }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+        />
+      </Providers>,
+    );
+    // No wash over the whole region any more
+    expect(container.querySelector('[data-fade-overlay]')).toBeNull();
+    for (const side of ['in', 'out'] as const) {
+      const shape = side === 'in' ? 2 : { t: 0.3, g: 0.6 };
+      const dim = container.querySelector(`[data-fade-dim="${side}"]`)!;
+      const line = container.querySelector(`[data-fade-line="${side}"]`)!;
+      // The dimmed area's lower edge IS the drawn curve, whatever its shape…
+      expect(line.getAttribute('d')).toBe(fadeCurvePath(side, 64, shape));
+      expect(dim.getAttribute('d')!.startsWith(line.getAttribute('d')!)).toBe(true);
+      // …and it closes along the top, through the corner above the silent end
+      expect(dim.getAttribute('d')!.endsWith(side === 'in' ? ' L 0.00,0.00 Z' : ' L 100.00,0.00 Z')).toBe(true);
+      expect(dim.getAttribute('fill')).toMatch(/^rgba\(0, 0, 0, 0\.\d+\)$/);
+      expect(dim.getAttribute('stroke')).toBe('none');
+    }
+  });
+
+  it('a crossfade keeps its veils and is not dimmed', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5 },
+            { id: 2, name: 'B', start: 3, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+        />
+      </Providers>,
+    );
+    expect(container.querySelectorAll('[data-fade-overlay]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-fade-line]')).toHaveLength(2);
+    expect(container.querySelector('[data-fade-dim]')).toBeNull();
   });
 
   it('handles show for the selected clip, and for an unselected clip only while the pointer is over it', () => {
@@ -474,7 +520,7 @@ describe('clip fades', () => {
     }
     const { container } = render(<Providers><Host /></Providers>);
     const node = () => container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
-    const path = () => container.querySelector('[data-fade-curve="in"] path')!.getAttribute('d')!;
+    const path = () => container.querySelector('[data-fade-line="in"]')!.getAttribute('d')!;
     const last = () => shapes[shapes.length - 1] as FadeHandle;
     // Body is 21..113 (92 tall); the handle is 16px square. The fade is
     // 1s at 100px/s, so 1% along it is 1px.

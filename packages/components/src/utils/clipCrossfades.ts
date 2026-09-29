@@ -403,3 +403,13 @@ export function fadeCurvePath(side: 'out' | 'in', samples = 64, shape: FadeShape
   }
   return `M ${pts.join(' L ')}`;
 }
+
+/** The area ABOVE a fade's curve, as a closed SVG path in the same
+ *  0..100 box as `fadeCurvePath`: the part of the clip the fade takes
+ *  away. It is the curve itself, closed along the top edge through the
+ *  corner the curve never visits — top-left for a fade in (the curve
+ *  runs bottom-left → top-right), top-right for a fade out. */
+export function fadeAreaAbovePath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1): string {
+  const corner = side === 'in' ? '0.00,0.00' : '100.00,0.00';
+  return `${fadeCurvePath(side, samples, shape)} L ${corner} Z`;
+}

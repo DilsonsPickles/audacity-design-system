@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeAreaAbovePath, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -873,10 +873,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       width: Math.max(1, Math.round((region.end - region.start) * pixelsPerSecond)),
       key: `${region.clipId}-${region.side}-${region.authored ? 'authored' : 'default'}-${region.start}`,
     });
+    // A QUICK FADE dims the area ABOVE its curve (user decision
+    // 2026-09-29) — what the fade takes away reads darker, what is left
+    // keeps the clip's own colour. It replaces the white veil there; a
+    // CROSSFADE keeps the veil (two clips share that region, and
+    // "denser = shared" is what the stacked veils say).
+    const FADE_DIM_FILL = 'rgba(0, 0, 0, 0.14)';
     // TWO passes: every veil first (449), every curve above them (450)
     // — in a crossfade the two regions overlap, and a single-pass DOM
     // order would wash one region's curve under the other's veil.
-    const veils = fadeCurves.map((region) => {
+    const veils = fadeCurves.filter((region) => !region.authored).map((region) => {
       const g = geometry(region);
       // Selected clip bodies are far more saturated, so the same white
       // wash reads weaker there — compensate with a stronger veil
@@ -908,6 +914,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         <div
           key={`fade-curve-${g.key}`}
           data-fade-curve={region.side}
+          data-fade-authored={region.authored ? 'true' : 'false'}
           style={{
             position: 'absolute',
             left: `${g.left}px`,
@@ -925,7 +932,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             preserveAspectRatio="none"
             style={{ display: 'block', overflow: 'visible' }}
           >
+            {region.authored && (
+              <path
+                data-fade-dim={region.side}
+                d={fadeAreaAbovePath(region.side, 64, region.shape)}
+                fill={FADE_DIM_FILL}
+                stroke="none"
+              />
+            )}
             <path
+              data-fade-line={region.side}
               d={fadeCurvePath(region.side, 64, region.shape)}
               fill="none"
               stroke="rgba(0, 0, 0, 0.55)"
