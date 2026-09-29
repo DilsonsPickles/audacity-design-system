@@ -939,10 +939,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const curves = fadeCurves.map((region) => {
       const g = geometry(region);
       // A quick fade being EDITED — the pointer is over its clip, or one
-      // of its handles is mid-drag — draws its curve WHITE, inside a dark
-      // casing (user decision 2026-09-29): the same white-with-a-dark-
-      // edge as the shape handle sitting on it, so the two read as one
-      // editable thing. At rest the curve is the plain dark line.
+      // of its handles is mid-drag — gains a WHITE stroke UNDERNEATH its
+      // line (user decision 2026-09-29): the dark line itself does not
+      // change, it just stands on a white outline. At rest there is only
+      // the dark line.
       const editing = region.authored && (
         fadeHoverClipId === region.clipId
         || fadeDragClipId === region.clipId
@@ -985,7 +985,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 data-fade-line-casing={region.side}
                 d={curvePath}
                 fill="none"
-                stroke="rgba(0, 0, 0, 0.6)"
+                stroke="#FFFFFF"
                 strokeWidth={4}
                 // Butt caps: a round cap would poke out past the clip's
                 // edge at both ends of the fade
@@ -997,7 +997,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               data-fade-line={region.side}
               d={curvePath}
               fill="none"
-              stroke={editing ? '#FFFFFF' : 'rgba(0, 0, 0, 0.55)'}
+              stroke="rgba(0, 0, 0, 0.55)"
               strokeWidth={1.5}
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"

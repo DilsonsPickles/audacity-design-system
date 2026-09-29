@@ -70,7 +70,7 @@ describe('clip fades', () => {
     }
   });
 
-  it('a quick fade being edited draws its curve white inside a dark casing; at rest it is the plain dark line', () => {
+  it('a quick fade being edited gains a white stroke UNDER its line; the dark line itself never changes', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -91,7 +91,9 @@ describe('clip fades', () => {
     const curves = (clip: 1 | 2) => Array.from(container.querySelectorAll<HTMLElement>('[data-fade-curve]'))
       .filter((el) => (parseInt(el.style.left, 10) === clip2Left) === (clip === 2));
     const strokes = (clip: 1 | 2) => curves(clip).map((el) => el.querySelector('[data-fade-line]')!.getAttribute('stroke'));
-    const casings = (clip: 1 | 2) => curves(clip).filter((el) => el.querySelector('[data-fade-line-casing]')).length;
+    const casings = (clip: 1 | 2) => curves(clip)
+      .map((el) => el.querySelector('[data-fade-line-casing]')?.getAttribute('stroke'))
+      .filter((stroke) => stroke !== undefined);
     const DARK = 'rgba(0, 0, 0, 0.55)';
 
     // At rest — selection alone is not editing
@@ -101,11 +103,11 @@ describe('clip fades', () => {
 
     // Pointer over clip 1: both of ITS curves, and only its
     hoverClip(container, 1);
-    expect(strokes(1)).toEqual(['#FFFFFF', '#FFFFFF']);
-    expect(casings(1)).toBe(2);
+    expect(casings(1)).toEqual(['#FFFFFF', '#FFFFFF']);
+    expect(strokes(1)).toEqual([DARK, DARK]); // the line on top is untouched
+    expect(casings(2)).toEqual([]);
     expect(strokes(2)).toEqual([DARK]);
-    expect(casings(2)).toBe(0);
-    // The casing runs under the line, along the same curve, and is wider
+    // The white runs UNDER the line, along the same curve, and is wider
     const edited = curves(1)[0];
     const casing = edited.querySelector('[data-fade-line-casing]')!;
     const line = edited.querySelector('[data-fade-line]')!;
@@ -117,11 +119,13 @@ describe('clip fades', () => {
     const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 51 });
     fireEvent.mouseLeave(handle);
-    expect(strokes(1)).toEqual(['#FFFFFF', '#FFFFFF']);
+    expect(casings(1)).toEqual(['#FFFFFF', '#FFFFFF']);
     // …and letting go away from the clip returns it to rest
     fireEvent.pointerUp(handle, { clientX: 900, clientY: 400, pointerId: 51 });
     expect(strokes(1)).toEqual([DARK, DARK]);
     expect(container.querySelector('[data-fade-line-casing]')).toBeNull();
+    // Nothing on top of the curve is ever white
+    expect(container.querySelector('[data-fade-line][stroke="#FFFFFF"]')).toBeNull();
   });
 
   it('the fade handle icon is a rounded outline: no white fill, and the wedge is clipped to it', () => {
@@ -173,7 +177,7 @@ describe('clip fades', () => {
     expect(container.querySelectorAll('[data-fade-overlay]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-fade-line]')).toHaveLength(2);
     expect(container.querySelector('[data-fade-dim]')).toBeNull();
-    // …nor drawn white under the pointer: that is the quick fade's editing state
+    // …nor given the white underlay under the pointer: that is the quick fade's editing state
     hoverClip(container, 1);
     expect(container.querySelector('[data-fade-line-casing]')).toBeNull();
     expect(container.querySelector('[data-fade-line][stroke="#FFFFFF"]')).toBeNull();
