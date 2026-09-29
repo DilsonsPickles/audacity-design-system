@@ -198,10 +198,13 @@ describe('clip fades', () => {
     expect(glyphs).toHaveLength(2);
     const clipIds = glyphs.map((svg) => {
       const frame = svg.querySelector('[data-fade-glyph-frame]')!;
-      // A solid black body, the stretch disc's 12px, with rounded corners
+      // A solid black body with rounded corners — 10px, so that with its
+      // 1px outline it measures the stretch disc's 12px
       expect(frame.getAttribute('fill')).toBe('#000000');
-      expect(frame.getAttribute('width')).toBe('12');
-      expect(frame.getAttribute('height')).toBe('12');
+      expect(frame.getAttribute('width')).toBe('10');
+      expect(frame.getAttribute('height')).toBe('10');
+      const halo = svg.querySelector('[data-fade-glyph-halo]')!;
+      expect(Number(halo.getAttribute('width')) + Number(halo.getAttribute('stroke-width') ?? 1)).toBe(12);
       expect(Number(frame.getAttribute('rx'))).toBeGreaterThan(0);
       // The mark inside is white, and clipped to the body's rounding
       const curve = svg.querySelector('[data-fade-glyph-curve]')!;
@@ -239,8 +242,8 @@ describe('clip fades', () => {
     fireEvent.pointerUp(handle('out'), { clientX: 0, clientY: 0, pointerId: 81 });
     expect(container.querySelector('[data-fade-handle][data-pressed]')).toBeNull();
     // It grows from the middle of its visible body, which is off-centre in the box
-    expect(handle('in').style.transformOrigin).toBe('10px 10px');
-    expect(handle('out').style.transformOrigin).toBe('6px 10px');
+    expect(handle('in').style.transformOrigin).toBe('11px 11px');
+    expect(handle('out').style.transformOrigin).toBe('5px 11px');
   });
 
   it('a crossfade keeps its veils and is not dimmed', () => {

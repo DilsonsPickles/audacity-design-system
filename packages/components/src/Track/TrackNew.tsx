@@ -22,8 +22,11 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
  * One of the clip's handles, drawn the way the TRIM and STRETCH handles
  * are (user decision 2026-09-29): a solid BLACK body with a 1px WHITE
  * outline and the mark inside it in white — here the fade's curve, as
- * the stretch handle carries its clock. The body is 12px, the stretch
- * disc's size, with rounded corners. The outline is there in every
+ * the stretch handle carries its clock. The body is 10px with rounded
+ * corners: 12px over the outline, which is what the stretch disc
+ * measures (a 12px BODY was tried and read too big — a square carries
+ * more weight than a disc of the same width, and the outline adds to
+ * it). The outline is there in every
  * state, so the handle holds its edge on any clip colour, waveform or
  * dimmed fade area behind it.
  *
@@ -31,8 +34,8 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
  * axes (the far corner, away from the clip's edge); the outline is the
  * pixel outside it, so the svg overflows its box by that pixel.
  */
-const FADE_GLYPH_RADIUS = 3;
-const FADE_GLYPH_BODY = { start: 4, size: 12 } as const;
+const FADE_GLYPH_RADIUS = 2.5;
+const FADE_GLYPH_BODY = { start: 6, size: 10 } as const;
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
   const clipId = React.useId();
   const { start, size } = FADE_GLYPH_BODY;
@@ -1666,7 +1669,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
         const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
         // The glyph is asymmetric inside its 16px box (the body spans
-        // [4, 16] unmirrored; [0, 12] mirrored), so the box is
+        // [6, 16] unmirrored; [0, 10] mirrored), so the box is
         // positioned by the VISIBLE BODY: its near edge keeps a
         // constant gap to the boundary whichever side it sits on — 3px,
         // which leaves 2px clear of the white outline around it.
