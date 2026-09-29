@@ -206,3 +206,24 @@
 .clip-display__handle--stretch-right {
   cursor: url('../assets/cursors/ClipStretchRight.png') 8 10, ew-resize;
 }
+
+/* Edge strips — how an UNSELECTED clip is trimmed. Invisible, full
+   height, just inside each edge; the cursor is the trim handles' own, so
+   it previews the same action. Above the clip's content (the handles are
+   25), below the track-level fade controls, which sit further in. */
+.clip-display__edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 20;
+}
+
+.clip-display__edge--left {
+  left: 0;
+  cursor: url('../assets/cursors/ClipTrimLeft.png') 8 10, ew-resize;
+}
+
+.clip-display__edge--right {
+  right: 0;
+  cursor: url('../assets/cursors/ClipTrimRight.png') 8 10, ew-resize;
+}

@@ -68,7 +68,7 @@ Behavior is locked by `__tests__/tracksReducer.characterization.test.ts` and `__
 | File | What it owns |
 |---|---|
 | `useClipDragging.ts` | Clip drag with multi-select support |
-| `useClipTrimming.ts` | Clip left/right edge trimming |
+| `useClipTrimming.ts` | Clip left/right edge trimming — driven by the trim handles on a selected clip, and by the edge strips (`.clip-display__edge` in components' `Clip`) on an unselected one |
 | `useClipStretching.ts` | Clip time-stretching |
 | `useMarqueeSelection.ts` | Rubber-band marquee selection |
 | `useZoomControls.ts` | Zoom in/out, fit-to-window |
