@@ -20,7 +20,10 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
  *  The square is an OUTLINE with ROUNDED corners (user decisions
  *  2026-09-29): no white fill — the clip shows through it, and only the
  *  wedge is tinted. The wedge is clipped to the rounded square, so its
- *  two tips follow the corners instead of poking out of them. */
+ *  two tips follow the corners instead of poking out of them. A 1px
+ *  WHITE stroke runs AROUND the dark outline, always — at rest, under
+ *  the pointer and mid-drag alike — so the handle holds its edge on any
+ *  clip colour, waveform or dimmed fade area behind it. */
 const FADE_GLYPH_RADIUS = 2;
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
   const clipId = React.useId();
@@ -31,8 +34,21 @@ const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
+      // The white stroke's outer edge lands half a pixel outside the box
+      style={{ overflow: 'visible', ...(mirrored ? { transform: 'scaleX(-1)' } : {}) }}
     >
+      {/* Outside the dark outline only: the ring from 5 to 6, against
+          the outline's 6 to 7 */}
+      <rect
+        data-fade-glyph-halo
+        x="5.5"
+        y="5.5"
+        width="11"
+        height="11"
+        rx={FADE_GLYPH_RADIUS + 1}
+        fill="none"
+        stroke="#FFFFFF"
+      />
       <defs>
         <clipPath id={clipId}>
           <rect x="6.5" y="6.5" width="9" height="9" rx={FADE_GLYPH_RADIUS} />

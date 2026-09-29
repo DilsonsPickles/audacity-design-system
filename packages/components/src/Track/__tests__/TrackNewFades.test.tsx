@@ -138,6 +138,50 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-quickfade-node]')).toBeTruthy(); // the pointer IS still over the clip
   });
 
+  it('the fade handle icon always carries a white stroke around its outline — at rest, hovered and mid-drag', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 4, selected: true },
+            { id: 2, name: 'B', start: 5, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const check = (expected: number) => {
+      const glyphs = Array.from(container.querySelectorAll('[data-fade-handle] svg'));
+      expect(glyphs).toHaveLength(expected);
+      for (const svg of glyphs) {
+        const halo = svg.querySelector('[data-fade-glyph-halo]')!;
+        const frame = svg.querySelector('[data-fade-glyph-frame]')!;
+        expect(halo.getAttribute('stroke')).toBe('#FFFFFF');
+        expect(halo.getAttribute('fill')).toBe('none');
+        // Around the outline: one pixel further out on every side, corners to match
+        for (const edge of ['x', 'y'] as const) {
+          expect(Number(halo.getAttribute(edge))).toBe(Number(frame.getAttribute(edge)) - 1);
+        }
+        for (const size of ['width', 'height'] as const) {
+          expect(Number(halo.getAttribute(size))).toBe(Number(frame.getAttribute(size)) + 2);
+        }
+        expect(Number(halo.getAttribute('rx'))).toBe(Number(frame.getAttribute('rx')) + 1);
+        // …and under it, so the dark outline stays whole
+        expect(halo.compareDocumentPosition(frame) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    };
+    check(2); // the selected clip, pointer elsewhere
+    hoverClip(container, 2);
+    check(4); // plus the unselected clip under the pointer
+    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 71 });
+    check(4); // mid-drag
+    fireEvent.pointerUp(handle, { clientX: 0, clientY: 0, pointerId: 71 });
+  });
+
   it('the fade handle icon is a rounded outline: no white fill, and the wedge is clipped to it', () => {
     const { container } = render(
       <Providers>
