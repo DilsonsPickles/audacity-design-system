@@ -1576,6 +1576,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // counts as "over the clip" for the fade controls' hover, so they do
   // not blink off as the pointer crosses the edge on its way in.
   //
+  // Only the TOP THIRD of the clip's BODY (user decision 2026-09-29):
+  // below it the edge belongs to the time selection, which can then
+  // start exactly on a clip's edge; above it the header keeps its own
+  // jobs (select, drag). A short clip still gets a grabbable strip —
+  // never less than EDGE_TRIM_MIN_HEIGHT, or the whole body if that is
+  // shorter still.
+  //
   // A selected clip has its trim handles and no zones. Dragging a zone
   // streams to the same onClipTrimEdge the handles do; whether the trim
   // selects anything is the host's call, not made here.
@@ -1590,6 +1597,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
   const renderEdgeTrimZones = () => {
     if (!onClipTrimEdge || edgeTrimZones.length === 0) return null;
+    // The body as the fade overlays measure it: under the header and
+    // the clip's 1px border
+    const CLIP_HEADER_H = 20;
+    const EDGE_TRIM_MIN_HEIGHT = 16;
+    const bodyTop = CLIP_HEADER_H + 1;
+    const bodyHeight = Math.max(0, height - bodyTop - 1);
+    const zoneHeight = Math.min(bodyHeight, Math.max(EDGE_TRIM_MIN_HEIGHT, Math.round(bodyHeight / 3)));
+    if (zoneHeight <= 0) return null;
     return edgeTrimZones.map((zone) => (
       <div
         key={`edge-trim-${zone.clipId}-${zone.edge}`}
@@ -1619,8 +1634,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         onDoubleClick={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',
-          top: 0,
-          height: `${height}px`,
+          top: `${bodyTop}px`,
+          height: `${zoneHeight}px`,
           left: `${CLIP_CONTENT_OFFSET + zone.left}px`,
           width: `${zone.width}px`,
           // Above every stacked clip, below the fade veils and controls

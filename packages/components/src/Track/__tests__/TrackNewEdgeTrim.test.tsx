@@ -59,18 +59,57 @@ function renderTrack(props: Partial<React.ComponentProps<typeof TrackNew>> = {})
 }
 
 describe('trimming an unselected clip by its edge', () => {
-  it('the hit box is ON the edge: 4px outside the clip and 4px inside, the full height of the track', () => {
+  it('the hit box is ON the edge: 4px outside the clip and 4px inside', () => {
     const { zone, clipBox, span } = renderTrack({ height: 120 });
     const box = clipBox(2);
     expect(span(zone(2, 'left')!)).toEqual({ left: box.left - 4, right: box.left + 4 });
     expect(span(zone(2, 'right')!)).toEqual({ left: box.right - 4, right: box.right + 4 });
     for (const edge of ['left', 'right'] as const) {
       const el = zone(2, edge)!;
-      expect(el.style.top).toBe('0px');
-      expect(el.style.height).toBe('120px');
       expect(el.getAttribute('aria-hidden')).toBe('true');
       expect(el.className).toContain(`track-edge-trim--${edge}`); // the trim cursor
     }
+  });
+
+  it('it covers the TOP THIRD of the clip body only — the rest of the edge is left to the time selection', () => {
+    // The body is what lies under the 20px header and the 1px border:
+    // for a 120px clip, 21..119 = 98px, a third of which is 33px
+    const vertical = (height: number) => {
+      const { zone } = renderTrack({ height });
+      const el = zone(2, 'left')!;
+      const other = zone(2, 'right')!;
+      expect(other.style.top).toBe(el.style.top);
+      expect(other.style.height).toBe(el.style.height);
+      const result = { top: parseInt(el.style.top, 10), height: parseInt(el.style.height, 10) };
+      cleanup();
+      return result;
+    };
+    expect(vertical(120)).toEqual({ top: 21, height: 33 });
+    expect(vertical(114)).toEqual({ top: 21, height: 31 }); // the default track height
+    expect(vertical(300)).toEqual({ top: 21, height: 93 });
+    // Never over the header, and never past two thirds of the way down
+    for (const height of [90, 114, 200, 400]) {
+      const v = vertical(height);
+      expect(v.top).toBeGreaterThanOrEqual(21);
+      expect(v.top + v.height).toBeLessThan(21 + (height - 22) / 2);
+    }
+    // A short clip keeps a strip worth grabbing: 16px, or its whole body if that is less
+    expect(vertical(60)).toEqual({ top: 21, height: 16 });  // body 38: a third would be 13
+    expect(vertical(34)).toEqual({ top: 21, height: 12 });  // body 12
+  });
+
+  it('a press on the edge BELOW the zone is not caught by it', () => {
+    const { container, zone, onBelow } = renderTrack({ height: 120 });
+    const el = zone(2, 'left')!;
+    const bottom = parseInt(el.style.top, 10) + parseInt(el.style.height, 10);
+    expect(bottom).toBeLessThan(120);
+    // Nothing of the zone is there to catch it: every zone ends above
+    for (const z of Array.from(container.querySelectorAll<HTMLElement>('[data-edge-trim]'))) {
+      expect(parseInt(z.style.top, 10) + parseInt(z.style.height, 10)).toBe(bottom);
+    }
+    // …so the press goes to what is underneath, as it always did
+    fireEvent.mouseDown(container.querySelector('[data-clip-id="2"]') as HTMLElement, { button: 0, clientX: 500, clientY: 100 });
+    expect(onBelow.mouseDown).toHaveBeenCalledTimes(1);
   });
 
   it('a selected clip has its handles and no edge zones; an unselected one the reverse', () => {
