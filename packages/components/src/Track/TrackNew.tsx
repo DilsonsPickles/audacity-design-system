@@ -4,7 +4,7 @@ import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeAreaAbovePath, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeAreaAbovePath, fadeAreaBelowPath, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
@@ -599,10 +599,19 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // report the hover themselves — leaving the clip FOR one of its own
   // controls must not hide it.
   const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
+  // Prefix for the per-curve SVG clip ids (unique across tracks)
+  const fadeClipIdBase = React.useId();
   const fadeHoverProps = (clipId: string | number) => ({
     // A press already under way (a selection or clip drag passing over)
     // is not a hover — controls popping up mid-gesture would only flicker
     onMouseEnter: (e: React.MouseEvent) => { if (e.buttons === 0) setFadeHoverClipId(clipId); },
+    // Enter alone is not enough: a drag that ENDS over the clip (a
+    // selection, a clip move) entered it mid-press, which did not
+    // count, and no second enter follows. The first free move inside
+    // the clip picks the hover up. (Same value = no re-render.)
+    onMouseMove: (e: React.MouseEvent) => {
+      if (e.buttons === 0) setFadeHoverClipId((prev) => (prev === clipId ? prev : clipId));
+    },
     onMouseLeave: () => setFadeHoverClipId((prev) => (prev === clipId ? null : prev)),
   });
   // A fade drag holds the pointer (capture), so the browser sends no
@@ -939,16 +948,21 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const curves = fadeCurves.map((region) => {
       const g = geometry(region);
       // A quick fade being EDITED — the pointer is over its clip, or one
-      // of its handles is mid-drag — gains a WHITE stroke UNDERNEATH its
-      // line (user decision 2026-09-29): the dark line itself does not
-      // change, it just stands on a white outline. At rest there is only
-      // the dark line.
+      // of its handles is mid-drag — gains a WHITE edge along the
+      // UNDERSIDE of its line, and only there (user decision
+      // 2026-09-29): the dark line does not change, and nothing white
+      // shows above it, where the clip is dimmed. It is a wide white
+      // stroke on the same curve, CLIPPED to the area below the curve —
+      // that keeps the edge the same thickness where the curve is steep,
+      // which shifting a copy of the line downward would not. At rest
+      // there is only the dark line.
       const editing = region.authored && (
         fadeHoverClipId === region.clipId
         || fadeDragClipId === region.clipId
         || shapeDrag === `${region.clipId}:${region.side}`
       );
       const curvePath = fadeCurvePath(region.side, 64, region.shape);
+      const belowClipId = `${fadeClipIdBase}-below-${region.clipId}-${region.side}`;
       return (
         <div
           key={`fade-curve-${g.key}`}
@@ -981,17 +995,25 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               />
             )}
             {editing && (
-              <path
-                data-fade-line-casing={region.side}
-                d={curvePath}
-                fill="none"
-                stroke="#FFFFFF"
-                strokeWidth={4}
-                // Butt caps: a round cap would poke out past the clip's
-                // edge at both ends of the fade
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-              />
+              <>
+                <defs>
+                  <clipPath id={belowClipId}>
+                    <path d={fadeAreaBelowPath(region.side, 64, region.shape)} />
+                  </clipPath>
+                </defs>
+                <path
+                  data-fade-line-underside={region.side}
+                  d={curvePath}
+                  fill="none"
+                  stroke="#FFFFFF"
+                  // Half of it is clipped away and the dark line covers
+                  // 0.75px more: ~1.5px of white shows under the line
+                  strokeWidth={4.5}
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                  clipPath={`url(#${belowClipId})`}
+                />
+              </>
             )}
             <path
               data-fade-line={region.side}
@@ -1102,6 +1124,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             onHoverClip?.(clip.id as number);
             fadeHoverProps(clip.id).onMouseEnter(e);
           }}
+          onMouseMove={fadeHoverProps(clip.id).onMouseMove}
           onMouseLeave={() => {
             onHoverClip?.(null);
             fadeHoverProps(clip.id).onMouseLeave();

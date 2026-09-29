@@ -6,6 +6,8 @@ import {
   fadeInGain,
   fadeOutGain,
   fadeCurvePath,
+  fadeAreaAbovePath,
+  fadeAreaBelowPath,
   fadeGainAt,
   localFadeRegionsByClip,
   DEFAULT_QUICK_FADE_SHAPE,
@@ -360,5 +362,23 @@ describe('the handle-shaped S-curve', () => {
     const h = { t: 0.2, g: 0.7 };
     const [region] = computeFadeCurves([{ id: 1, start: 0, duration: 4, fadeIn: 1, fadeInShape: h }]);
     expect(region.shape).toEqual(h);
+  });
+});
+
+describe('the areas either side of a fade curve', () => {
+  it('both are the curve itself, closed through the corner on their own side', () => {
+    for (const shape of [2, 'linear' as const, { t: 0.2, g: 0.7 }]) {
+      for (const side of ['in', 'out'] as const) {
+        const curve = fadeCurvePath(side, 8, shape);
+        const above = fadeAreaAbovePath(side, 8, shape);
+        const below = fadeAreaBelowPath(side, 8, shape);
+        expect(above.startsWith(curve)).toBe(true);
+        expect(below.startsWith(curve)).toBe(true);
+        // A fade in runs bottom-left → top-right: top-left is above it,
+        // bottom-right below. A fade out is the mirror image.
+        expect(above.slice(curve.length)).toBe(side === 'in' ? ' L 0.00,0.00 Z' : ' L 100.00,0.00 Z');
+        expect(below.slice(curve.length)).toBe(side === 'in' ? ' L 100.00,100.00 Z' : ' L 0.00,100.00 Z');
+      }
+    }
   });
 });
