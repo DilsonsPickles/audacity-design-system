@@ -1,7 +1,6 @@
 import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { ENVELOPE_POINT_STYLES } from '@audacity-ui/core';
 import { TrackNew } from '../TrackNew';
 import { fadeAreaBelowPath, fadeCurvePath, fadeInGain, type FadeHandle, type FadeShape } from '../../utils/clipCrossfades';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
@@ -161,15 +160,16 @@ describe('clip fades', () => {
         const frame = svg.querySelector('[data-fade-glyph-frame]')!;
         expect(halo.getAttribute('stroke')).toBe('#FFFFFF');
         expect(halo.getAttribute('fill')).toBe('none');
-        // Around the outline: one pixel further out on every side, corners to match
+        // Around the body: a 1px stroke centred half a pixel outside it
+        // on every side, corners to match
         for (const edge of ['x', 'y'] as const) {
-          expect(Number(halo.getAttribute(edge))).toBe(Number(frame.getAttribute(edge)) - 1);
+          expect(Number(halo.getAttribute(edge))).toBe(Number(frame.getAttribute(edge)) - 0.5);
         }
         for (const size of ['width', 'height'] as const) {
-          expect(Number(halo.getAttribute(size))).toBe(Number(frame.getAttribute(size)) + 2);
+          expect(Number(halo.getAttribute(size))).toBe(Number(frame.getAttribute(size)) + 1);
         }
-        expect(Number(halo.getAttribute('rx'))).toBe(Number(frame.getAttribute('rx')) + 1);
-        // …and under it, so the dark outline stays whole
+        expect(Number(halo.getAttribute('rx'))).toBe(Number(frame.getAttribute('rx')) + 0.5);
+        // …and under it, so the body stays whole
         expect(halo.compareDocumentPosition(frame) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       }
     };
@@ -182,7 +182,7 @@ describe('clip fades', () => {
     fireEvent.pointerUp(handle, { clientX: 0, clientY: 0, pointerId: 71 });
   });
 
-  it('the fade handle icon is a rounded outline: no white fill, and the wedge is clipped to it', () => {
+  it('the fade handle is drawn like the trim and stretch handles: a black body, its curve in white', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -198,20 +198,49 @@ describe('clip fades', () => {
     expect(glyphs).toHaveLength(2);
     const clipIds = glyphs.map((svg) => {
       const frame = svg.querySelector('[data-fade-glyph-frame]')!;
+      // A solid black body, the stretch disc's 12px, with rounded corners
+      expect(frame.getAttribute('fill')).toBe('#000000');
+      expect(frame.getAttribute('width')).toBe('12');
+      expect(frame.getAttribute('height')).toBe('12');
       expect(Number(frame.getAttribute('rx'))).toBeGreaterThan(0);
-      expect(frame.getAttribute('fill')).toBe('none');
-      // Nothing in the icon is filled white
-      svg.querySelectorAll('[fill]').forEach((el) => {
-        expect((el.getAttribute('fill') ?? '').toUpperCase()).not.toMatch(/^#FFF(FFF)?$/);
-      });
-      // The wedge is clipped to a square with the same rounding
+      // The mark inside is white, and clipped to the body's rounding
+      const curve = svg.querySelector('[data-fade-glyph-curve]')!;
+      expect(curve.getAttribute('stroke')).toBe('#FFFFFF');
       const clip = svg.querySelector('clipPath')!;
       expect(clip.querySelector('rect')!.getAttribute('rx')).toBe(frame.getAttribute('rx'));
-      expect(svg.querySelector('g')!.getAttribute('clip-path')).toBe(`url(#${clip.id})`);
+      expect(curve.getAttribute('clip-path')).toBe(`url(#${clip.id})`);
+      expect(frame.compareDocumentPosition(curve) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       return clip.id;
     });
     // Each icon has its own clip id — a shared one would point both at the first
     expect(new Set(clipIds).size).toBe(2);
+  });
+
+  it('the fade handle wears the pressed look for the whole drag, and only the one in hand', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const handle = (side: 'in' | 'out') => container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
+    expect(handle('in').className).toContain('track-fade-handle');
+    expect(container.querySelector('[data-fade-handle][data-pressed]')).toBeNull();
+    fireEvent.pointerDown(handle('out'), { button: 0, clientX: 0, clientY: 0, pointerId: 81 });
+    expect(handle('out').getAttribute('data-pressed')).toBe('true');
+    expect(handle('in').getAttribute('data-pressed')).toBeNull();
+    fireEvent.mouseLeave(handle('out')); // the pointer wanders; the drag goes on
+    expect(handle('out').getAttribute('data-pressed')).toBe('true');
+    fireEvent.pointerUp(handle('out'), { clientX: 0, clientY: 0, pointerId: 81 });
+    expect(container.querySelector('[data-fade-handle][data-pressed]')).toBeNull();
+    // It grows from the middle of its visible body, which is off-centre in the box
+    expect(handle('in').style.transformOrigin).toBe('10px 10px');
+    expect(handle('out').style.transformOrigin).toBe('6px 10px');
   });
 
   it('a crossfade keeps its veils and is not dimmed', () => {
@@ -328,8 +357,7 @@ describe('clip fades', () => {
     expect(shapeNode()).toBeNull();
   });
 
-  it('the shape handle answers the pointer the way an envelope point does: it grows, with a black disc and a white centre', () => {
-    const style = ENVELOPE_POINT_STYLES.solidGreenSimple.solidCircle!;
+  it('the shape handle enlarges under the pointer and mid-drag — and stays a plain white dot', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -343,34 +371,30 @@ describe('clip fades', () => {
     );
     hoverClip(container, 1);
     const node = (side: 'in' | 'out') => container.querySelector(`[data-quickfade-node="${side}"]`) as HTMLElement;
-    const dotRadius = (side: 'in' | 'out') => Number(node(side).querySelector('[data-quickfade-dot]')!.getAttribute('r'));
-    const idle = dotRadius('in');
+    const plainWhiteDot = (side: 'in' | 'out') => {
+      const shapes = Array.from(node(side).querySelectorAll('svg *'));
+      expect(shapes).toHaveLength(1); // one circle — no roundel inside it
+      expect(shapes[0].getAttribute('fill')).toBe('#FFFFFF');
+      return shapes[0].getAttribute('r');
+    };
+    const idleRadius = plainWhiteDot('in');
+    expect(node('in').className).toContain('track-fade-shape-handle');
 
-    // Over the clip but not on the handle: the plain white dot
+    // Over the clip but not on the handle: at rest
     expect(node('in').getAttribute('data-hovered')).toBeNull();
-    expect(node('in').querySelector('[data-quickfade-dot-ring]')).toBeNull();
-    expect(node('in').querySelector('[data-quickfade-dot]')!.getAttribute('fill')).toBe('#FFFFFF');
 
-    // On the handle: the envelope point's own numbers
+    // On the handle: flagged for the enlarge, otherwise unchanged
     fireEvent.mouseOut(container.querySelector('[data-clip-id="1"]') as HTMLElement, { relatedTarget: node('in'), buttons: 0 });
     expect(node('in').getAttribute('data-hovered')).toBe('true');
-    expect(dotRadius('in') - idle).toBeCloseTo(style.radiusHover - style.radius, 10);
-    const ring = node('in').querySelector('[data-quickfade-dot-ring]')!;
-    const centre = node('in').querySelector('[data-quickfade-dot-centre]')!;
-    expect(ring.getAttribute('fill')).toBe('#000000');
-    expect(Number(ring.getAttribute('r'))).toBe(style.whiteCenterOnHover!.blackRadius);
-    expect(centre.getAttribute('fill')).toBe('#FFFFFF');
-    expect(Number(centre.getAttribute('r'))).toBe(style.whiteCenterOnHover!.outerRadius);
-    expect(ring.compareDocumentPosition(centre) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Only the handle under the pointer — and it does not move or change its hit area
+    expect(plainWhiteDot('in')).toBe(idleRadius);
+    // Only the handle under the pointer
     expect(node('out').getAttribute('data-hovered')).toBeNull();
-    expect(dotRadius('out')).toBe(idle);
-    expect(node('in').style.width).toBe(node('out').style.width);
 
     // Held through a drag, even with the pointer off the handle…
     fireEvent.pointerDown(node('in'), { button: 0, clientX: 50, clientY: 60, pointerId: 61 });
     fireEvent.mouseLeave(node('in'));
     expect(node('in').getAttribute('data-hovered')).toBe('true');
+    expect(plainWhiteDot('in')).toBe(idleRadius);
     // …and gone when it is let go away from it
     fireEvent.pointerUp(node('in'), { clientX: 900, clientY: 400, pointerId: 61 });
     expect(container.querySelector('[data-quickfade-node][data-hovered]')).toBeNull();

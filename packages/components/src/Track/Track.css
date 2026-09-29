@@ -38,3 +38,37 @@
   display: block;
   cursor: text;
 }
+
+/* Fade handles — one family with the clip's trim and stretch handles.
+   The hover and press numbers are Clip.css's (.clip-display__handle):
+   keep the two in step. The pressed look is driven by the drag state
+   (data-pressed), not :active alone — the handle captures the pointer
+   and cancels the press's default, and the look must last the whole
+   drag wherever the pointer goes. */
+.track-fade-handle {
+  transition: transform 0.12s ease-out, opacity 0.12s ease-out;
+}
+
+.track-fade-handle:hover {
+  transform: scale(1.18);
+}
+
+.track-fade-handle:active,
+.track-fade-handle[data-pressed] {
+  transform: scale(1.08);
+  opacity: 0.85;
+}
+
+/* The white shape handle on a fade's curve: a subtle enlarge under the
+   pointer and for the length of its drag — the same amount the clip's
+   other handles grow by on hover, and nothing more. State-driven
+   (data-hovered) rather than :hover, so it holds while the pointer
+   trails the handle at its limits. The handle is centred in its box, so
+   it grows about its own middle and stays on the curve. */
+.track-fade-shape-handle {
+  transition: transform 0.12s ease-out;
+}
+
+.track-fade-shape-handle[data-hovered] {
+  transform: scale(1.18);
+}

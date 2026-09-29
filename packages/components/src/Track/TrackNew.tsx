@@ -1,5 +1,5 @@
 import React from 'react';
-import { ENVELOPE_POINT_STYLES, type MidiNote } from '@audacity-ui/core';
+import type { MidiNote } from '@audacity-ui/core';
 import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
@@ -16,17 +16,30 @@ import './Track.css';
 
 const EMPTY_NUMBER_ARRAY: number[] = [];
 
-/** Fade handle glyph (design-provided). The 'out' side renders mirrored.
- *  The square is an OUTLINE with ROUNDED corners (user decisions
- *  2026-09-29): no white fill — the clip shows through it, and only the
- *  wedge is tinted. The wedge is clipped to the rounded square, so its
- *  two tips follow the corners instead of poking out of them. A 1px
- *  WHITE stroke runs AROUND the dark outline, always — at rest, under
- *  the pointer and mid-drag alike — so the handle holds its edge on any
- *  clip colour, waveform or dimmed fade area behind it. */
-const FADE_GLYPH_RADIUS = 2;
+/**
+ * Fade handle glyph. The 'out' side renders mirrored.
+ *
+ * One of the clip's handles, drawn the way the TRIM and STRETCH handles
+ * are (user decision 2026-09-29): a solid BLACK body with a 1px WHITE
+ * outline and the mark inside it in white — here the fade's curve, as
+ * the stretch handle carries its clock. The body is 12px, the stretch
+ * disc's size, with rounded corners. The outline is there in every
+ * state, so the handle holds its edge on any clip colour, waveform or
+ * dimmed fade area behind it.
+ *
+ * Geometry, in the 16px box: the body spans FADE_GLYPH_BODY on both
+ * axes (the far corner, away from the clip's edge); the outline is the
+ * pixel outside it, so the svg overflows its box by that pixel.
+ */
+const FADE_GLYPH_RADIUS = 3;
+const FADE_GLYPH_BODY = { start: 4, size: 12 } as const;
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
   const clipId = React.useId();
+  const { start, size } = FADE_GLYPH_BODY;
+  const end = start + size;
+  // The curve runs corner to corner, bowed toward the corner between
+  // them; its control points sit two thirds of the way along each side
+  const bow = start + (size * 2) / 3;
   return (
     <svg
       width="16"
@@ -34,39 +47,39 @@ const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      // The white stroke's outer edge lands half a pixel outside the box
-      style={{ overflow: 'visible', ...(mirrored ? { transform: 'scaleX(-1)' } : {}) }}
+      style={{ display: 'block', overflow: 'visible', ...(mirrored ? { transform: 'scaleX(-1)' } : {}) }}
     >
-      {/* Outside the dark outline only: the ring from 5 to 6, against
-          the outline's 6 to 7 */}
+      <defs>
+        <clipPath id={clipId}>
+          <rect x={start} y={start} width={size} height={size} rx={FADE_GLYPH_RADIUS} />
+        </clipPath>
+      </defs>
+      {/* Outside the body only: the pixel from start − 1 to start */}
       <rect
         data-fade-glyph-halo
-        x="5.5"
-        y="5.5"
-        width="11"
-        height="11"
-        rx={FADE_GLYPH_RADIUS + 1}
+        x={start - 0.5}
+        y={start - 0.5}
+        width={size + 1}
+        height={size + 1}
+        rx={FADE_GLYPH_RADIUS + 0.5}
         fill="none"
         stroke="#FFFFFF"
       />
-      <defs>
-        <clipPath id={clipId}>
-          <rect x="6.5" y="6.5" width="9" height="9" rx={FADE_GLYPH_RADIUS} />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#${clipId})`}>
-        <path d="M16 6.5C12.8421 6.5 6.5 12.8421 6.5 16V6.5H16Z" fill="#9295A6" fillOpacity="0.75" />
-        <path d="M16 6.5C12.8421 6.5 6.5 12.8421 6.5 16" stroke="#14151A" />
-      </g>
       <rect
         data-fade-glyph-frame
-        x="6.5"
-        y="6.5"
-        width="9"
-        height="9"
+        x={start}
+        y={start}
+        width={size}
+        height={size}
         rx={FADE_GLYPH_RADIUS}
-        fill="none"
-        stroke="#14151A"
+        fill="#000000"
+      />
+      <path
+        data-fade-glyph-curve
+        d={`M${end} ${start}C${bow} ${start} ${start} ${bow} ${start} ${end}`}
+        stroke="#FFFFFF"
+        strokeWidth={1.5}
+        clipPath={`url(#${clipId})`}
       />
     </svg>
   );
@@ -606,6 +619,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // Which clip's fade handle is being dragged (keeps the handles
   // visible while the pointer is captured, even off-hover)
   const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
+  // …and which of its two handles — that one wears the pressed look
+  const [fadeDragSide, setFadeDragSide] = React.useState<'in' | 'out' | null>(null);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
   // The clip under the pointer. Its fade controls show WITHOUT the clip
@@ -615,9 +630,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // report the hover themselves — leaving the clip FOR one of its own
   // controls must not hide it.
   const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
-  // The shape handle the pointer is ON (`clipId:side`) — it answers the
-  // way an envelope point does. Distinct from the clip hover above,
-  // which only decides whether the handle is there at all.
+  // The shape handle the pointer is ON (`clipId:side`) — it enlarges a
+  // little. Distinct from the clip hover above, which only decides
+  // whether the handle is there at all.
   const [shapeHandleHover, setShapeHandleHover] = React.useState<string | null>(null);
   // Prefix for the per-curve SVG clip ids (unique across tracks)
   const fadeClipIdBase = React.useId();
@@ -817,13 +832,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
     const NODE_R = 5;
-    // Hover borrows the ENVELOPE POINT's effect (user decision
-    // 2026-09-29) — the point grows, and a black disc with a white
-    // centre appears inside it — read from the same style profile the
-    // envelope uses, so the two cannot drift apart.
-    const pointStyle = ENVELOPE_POINT_STYLES.solidGreenSimple.solidCircle;
-    const hoverGrow = pointStyle ? pointStyle.radiusHover - pointStyle.radius : 1;
-    const hoverCentre = pointStyle?.whiteCenterOnHover ?? { blackRadius: 3.5, outerRadius: 1.5, innerRadius: 0 };
+    // Under the pointer or mid-drag the handle ENLARGES, subtly, and
+    // nothing else (user decision 2026-09-29, replacing the envelope
+    // point's roundel tried the same day): it stays a plain white dot.
+    // The amount is the clip handles' hover scale — Track.css.
     const BOX = (NODE_R + 3) * 2;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
@@ -845,7 +857,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         // Under the pointer, or being dragged (the pointer may trail the
         // handle at its limits — it is still the thing in hand)
         const handleActive = shapeHandleHover === dragKey || shapeDrag === dragKey;
-        const radius = NODE_R + (handleActive ? hoverGrow : 0);
         const x = CLIP_CONTENT_OFFSET + (regionStart + tDot * fade) * pixelsPerSecond;
         const y = bodyTop + (1 - gain) * bodyHeight;
         nodes.push(
@@ -855,6 +866,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-clip-ref={clip.id}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in shape' : 'Quick fade out shape'}
+            className="track-fade-shape-handle"
             data-hovered={handleActive ? 'true' : undefined}
             onMouseEnter={(e) => {
               fadeHoverProps(clip.id).onMouseEnter(e);
@@ -933,17 +945,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 data-quickfade-dot
                 cx={BOX / 2}
                 cy={BOX / 2}
-                r={radius - 0.75}
+                r={NODE_R - 0.75}
                 fill="#FFFFFF"
                 stroke="rgba(0, 0, 0, 0.6)"
                 strokeWidth={1.5}
               />
-              {handleActive && (
-                <>
-                  <circle data-quickfade-dot-ring cx={BOX / 2} cy={BOX / 2} r={hoverCentre.blackRadius} fill="#000000" />
-                  <circle data-quickfade-dot-centre cx={BOX / 2} cy={BOX / 2} r={hoverCentre.outerRadius} fill="#FFFFFF" />
-                </>
-              )}
             </svg>
           </div>,
         );
@@ -1659,14 +1665,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const handle = (side: 'in' | 'out') => {
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
         const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
-        // The glyph is asymmetric inside its 16px box (the square spans
-        // [6.5, 15.5] unmirrored; [0.5, 9.5] mirrored), so the box is
-        // positioned by the VISIBLE SQUARE: its near edge keeps a
-        // constant 2px gap to the boundary whichever side it sits on.
-        const PAD = 2;
+        // The glyph is asymmetric inside its 16px box (the body spans
+        // [4, 16] unmirrored; [0, 12] mirrored), so the box is
+        // positioned by the VISIBLE BODY: its near edge keeps a
+        // constant gap to the boundary whichever side it sits on — 3px,
+        // which leaves 2px clear of the white outline around it.
+        const PAD = 3;
         const mirrored = side === 'out';
-        const squareLeft = mirrored ? 0.5 : 6.5;   // square's left edge within the box
-        const squareRight = mirrored ? 9.5 : 15.5; // square's right edge within the box
+        const bodyStart = FADE_GLYPH_BODY.start;
+        const bodyEnd = bodyStart + FADE_GLYPH_BODY.size;
+        const squareLeft = mirrored ? 16 - bodyEnd : bodyStart;   // body's left edge within the box
+        const squareRight = mirrored ? 16 - bodyStart : bodyEnd;  // body's right edge within the box
         // Box extending right of the boundary: square's LEFT edge sits
         // PAD past it; extending left: square's RIGHT edge sits PAD short
         const raw = inward ? boundaryX + PAD - squareLeft : boundaryX - PAD - squareRight;
@@ -1676,6 +1685,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             key={`fade-handle-${clip.id}-${side}`}
             data-fade-handle={side}
             data-fade-clip={clip.id}
+            // Hover and press answer the way the trim and stretch
+            // handles do (Track.css mirrors Clip.css's numbers)
+            className="track-fade-handle"
+            data-pressed={fadeDragClipId === clip.id && fadeDragSide === side ? 'true' : undefined}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in' : 'Quick fade out'}
             {...fadeHoverProps(clip.id)}
@@ -1694,6 +1707,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const rect = wrapper.getBoundingClientRect();
               try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
               setFadeDragClipId(clip.id);
+              setFadeDragSide(side);
               // The clip is static during a fade drag, so the rect and the
               // opposite fade captured here stay valid for the session.
               // The handle is EXTENT ONLY (2026-09-21: "keep them
@@ -1712,6 +1726,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 handleEl.removeEventListener('pointermove', onMove);
                 handleEl.removeEventListener('pointerup', onUp);
                 setFadeDragClipId(null);
+                setFadeDragSide(null);
                 settleFadeHover(clip.id, ev, handleEl);
               };
               handleEl.addEventListener('pointermove', onMove);
@@ -1724,6 +1739,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               width: 16,
               height: 16,
               cursor: 'ew-resize',
+              // Grow from the middle of the visible body, not of the box
+              transformOrigin: `${(squareLeft + squareRight) / 2}px ${bodyStart + FADE_GLYPH_BODY.size / 2}px`,
               // Above the fade veils (450), beside the shape dots (460)
               zIndex: 455,
             }}
