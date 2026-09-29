@@ -379,13 +379,11 @@
 }
 
 /* A command dragged in from the list, shown as the step it would
-   become: a real row in the list, at full height, so the steps below
-   it sit exactly where they will after the drop. Washed with the
-   accent and faded — it is not there yet. Takes no pointer events:
-   what is UNDER it decides where it lands. */
+   become. Its LOOK is `--dragging`'s, above — the same as a step being
+   reordered (user decision 2026-09-29; an accent wash was tried). All
+   this adds is that it takes no pointer events: what is UNDER it
+   decides where it lands. */
 .macro-builder__step--ghost {
-  background: color-mix(in srgb, var(--accent-primary, #677ce4) 18%, var(--bg-table-item-idle, #f8f8f9));
-  opacity: 0.7;
   pointer-events: none;
 }
 

@@ -278,7 +278,10 @@ selected command carries, adds it to the end; and a command can be
 **dragged into the step list** to put it where it is
 wanted. Picking it up selects it. Over the steps it is shown as a GHOST
 STEP in the list, where it would land, with the steps below it
-renumbered — the list shows the result, as a reordered track does.
+renumbered — the list shows the result, as a reordered track does. The
+ghost looks exactly like a step being reordered (the same row at half
+opacity, grip and action icons drawn): to the eye both are a step in
+flight.
 Outside the steps it is a chip at the pointer. Nothing is added until
 the drop (let go anywhere else, or press Escape, to abandon it — the
 command stays selected).

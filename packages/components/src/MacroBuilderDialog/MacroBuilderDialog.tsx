@@ -309,22 +309,35 @@ export function MacroBuilderDialog({
   // renumbered — the list shows the result, not a mark to be read
   // (user decision 2026-09-29, as a reordered track is shown).
   const ghostAt = commandDrag?.insertAt ?? null;
+  //
+  // It LOOKS exactly like a step being reordered — the same row, the
+  // same `--dragging` fade, grip and action icons included — because to
+  // the eye it is the same thing: a step in flight. The icons are
+  // pictures, not controls.
   const ghostStep = commandDrag && ghostAt !== null ? (
     <div
       key="ghost"
-      className="macro-builder__step macro-builder__step--ghost"
+      className="macro-builder__step macro-builder__step--dragging macro-builder__step--ghost"
       data-step-ghost
       // Not a step yet: out of the list for assistive tech, and with no
       // data-step-index, so neither the keyboard nor the drag's own
       // hit test mistakes it for one
       aria-hidden="true"
     >
-      <span className="macro-builder__step-grip" />
+      <span className="macro-builder__step-grip">
+        <Icon name="gripper" size={16} />
+      </span>
       <span className="macro-builder__step-number">{Math.min(ghostAt, stepCount) + 1}</span>
       <div className="macro-builder__step-text">
         <span className="macro-builder__step-command">{commandDrag.command.name}</span>
       </div>
-      <div className="macro-builder__step-actions" />
+      <div className="macro-builder__step-actions">
+        {(['edit', 'menu'] as const).map((icon) => (
+          <span key={icon} className="ghost-button ghost-button--medium ghost-button--variant-ghost">
+            <Icon name={icon} size={16} />
+          </span>
+        ))}
+      </div>
     </div>
   ) : null;
   /** A step's number as the list would read after the drop. */

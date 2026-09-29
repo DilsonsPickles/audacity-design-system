@@ -581,9 +581,28 @@ describe('MacroBuilderDialog — dragging a command into the steps', () => {
     expect(g.getAttribute('aria-hidden')).toBe('true');
     expect(g.hasAttribute('data-step-index')).toBe(false);
     expect(g.hasAttribute('role')).toBe(false);
-    expect(g.querySelectorAll('button')).toHaveLength(0);
+    // Its icons are pictures of a step's controls, not controls
+    expect(g.querySelectorAll('button, [tabindex], [role="button"]')).toHaveLength(0);
     // The real rows keep their own indices while it is among them
     expect(stepRows(container).map((r) => r.dataset.stepIndex)).toEqual(['0', '1', '2']);
+    fireEvent.mouseUp(document);
+  });
+
+  it('the ghost step looks like a step being reordered: the same row, the same drag state', () => {
+    const { container } = renderBuilder();
+    startDrag(container, 3);
+    fireEvent.mouseMove(document, { clientX: 500, clientY: 210 });
+    const g = ghostStep(container)!;
+    expect(g.classList.contains('macro-builder__step')).toBe(true);
+    expect(g.classList.contains('macro-builder__step--dragging')).toBe(true);
+    // The same four columns as a real step, in the same order
+    const columns = (row: Element) => Array.from(row.children).map((c) => c.className.split(' ')[0]);
+    expect(columns(g)).toEqual(columns(stepRows(container)[0]));
+    // ...with its grip and both action icons drawn
+    expect(g.querySelector('.macro-builder__step-grip')!.children).toHaveLength(1);
+    expect(g.querySelector('.macro-builder__step-actions')!.children).toHaveLength(2);
+    // ...and nothing of its own painted over that
+    expect(g.style.background).toBe('');
     fireEvent.mouseUp(document);
   });
 
