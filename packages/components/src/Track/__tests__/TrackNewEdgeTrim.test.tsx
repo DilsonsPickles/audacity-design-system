@@ -293,3 +293,70 @@ describe('Cmd+click anywhere on a clip toggles its selection (2026-09-30)', () =
     expect(onBelow).toHaveBeenCalledTimes(3); // the container still sees them
   });
 });
+
+describe('Option over an edge zone stretches instead of trimming (2026-09-30)', () => {
+  function renderWithStretch() {
+    const onClipTrimEdge = vi.fn();
+    const onClipStretchEdge = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 2, name: 'Unselected', start: 5, duration: 4 }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipTrimEdge={onClipTrimEdge}
+          onClipStretchEdge={onClipStretchEdge}
+        />
+      </Providers>,
+    );
+    const zone = (edge: 'left' | 'right') => container.querySelector<HTMLElement>(`[data-edge-trim="${edge}"]`)!;
+    return { zone, onClipTrimEdge, onClipStretchEdge };
+  }
+
+  it('an Option press streams to the stretch, for that clip and edge, and only to it', () => {
+    const { zone, onClipTrimEdge, onClipStretchEdge } = renderWithStretch();
+    fireEvent.mouseDown(zone('right'), { button: 0, clientX: 900, altKey: true });
+    fireEvent.mouseMove(document, { clientX: 930, altKey: true });
+    // Letting go of Option mid-drag changes nothing: it was decided at the press
+    fireEvent.mouseMove(document, { clientX: 960 });
+    expect(onClipStretchEdge.mock.calls).toEqual([[2, 'right', 930], [2, 'right', 960]]);
+    expect(onClipTrimEdge).not.toHaveBeenCalled();
+    fireEvent.mouseUp(document);
+  });
+
+  it('without Option the press trims, as before', () => {
+    const { zone, onClipTrimEdge, onClipStretchEdge } = renderWithStretch();
+    fireEvent.mouseDown(zone('left'), { button: 0, clientX: 500 });
+    fireEvent.mouseMove(document, { clientX: 530, altKey: true }); // Option pressed AFTER the press
+    expect(onClipTrimEdge).toHaveBeenCalledWith(2, 'left', 530);
+    expect(onClipStretchEdge).not.toHaveBeenCalled();
+    fireEvent.mouseUp(document);
+  });
+
+  it('the zone shows the stretch cursor while Option is held, ahead of any press', () => {
+    const { zone } = renderWithStretch();
+    expect(zone('left').getAttribute('data-edge-mode')).toBe('trim');
+    expect(zone('left').className).not.toContain('--stretch');
+    fireEvent.keyDown(document, { key: 'Alt' });
+    expect(zone('left').getAttribute('data-edge-mode')).toBe('stretch');
+    expect(zone('left').className).toContain('track-edge-trim--stretch');
+    fireEvent.keyUp(document, { key: 'Alt' });
+    expect(zone('left').getAttribute('data-edge-mode')).toBe('trim');
+    // Losing the window with Option down must not leave it stuck
+    fireEvent.keyDown(document, { key: 'Alt' });
+    fireEvent.blur(window);
+    expect(zone('left').getAttribute('data-edge-mode')).toBe('trim');
+  });
+
+  it('with no stretch wired, Option is ignored and the edge trims', () => {
+    const { zone, onClipTrimEdge } = renderTrack();
+    fireEvent.keyDown(document, { key: 'Alt' });
+    expect(zone(2, 'left')!.getAttribute('data-edge-mode')).toBe('trim');
+    fireEvent.mouseDown(zone(2, 'left')!, { button: 0, clientX: 500, altKey: true });
+    fireEvent.mouseMove(document, { clientX: 530, altKey: true });
+    expect(onClipTrimEdge).toHaveBeenCalledWith(2, 'left', 530);
+    fireEvent.mouseUp(document);
+    fireEvent.keyUp(document, { key: 'Alt' });
+  });
+});

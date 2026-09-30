@@ -83,3 +83,14 @@
 .track-edge-trim--right {
   cursor: url('../assets/cursors/ClipTrimRight.png') 17 16, ew-resize;
 }
+
+/* …and with Option/Alt held the same strips STRETCH: the stretch
+   handles' cursor, so the press previews the right action. Set from
+   keyboard state (data-edge-mode), since CSS cannot see modifiers. */
+.track-edge-trim--left.track-edge-trim--stretch {
+  cursor: url('../assets/cursors/ClipStretchLeft.png') 15 16, ew-resize;
+}
+
+.track-edge-trim--right.track-edge-trim--stretch {
+  cursor: url('../assets/cursors/ClipStretchRight.png') 16 16, ew-resize;
+}

@@ -660,6 +660,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // little. Distinct from the clip hover above, which only decides
   // whether the handle is there at all.
   const [shapeHandleHover, setShapeHandleHover] = React.useState<string | null>(null);
+  // Is Option/Alt held? Over an edge trim zone it turns the press into
+  // a STRETCH (user decision 2026-09-30), and the zone's cursor says so
+  // ahead of the press. Read from the keyboard, cleared on blur — a
+  // modifier can be down when the window loses focus.
+  const [altHeld, setAltHeld] = React.useState(false);
+  React.useEffect(() => {
+    if (!onClipStretchEdge) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Alt') setAltHeld(e.type === 'keydown'); };
+    const onBlur = () => setAltHeld(false);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('keyup', onKey);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKey);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [onClipStretchEdge]);
   // Prefix for the per-curve SVG clip ids (unique across tracks)
   const fadeClipIdBase = React.useId();
   // …and "over the clip" means WELL inside it (user decision
@@ -1655,8 +1673,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // shorter still.
   //
   // A selected clip has its trim handles and no zones. Dragging a zone
-  // streams to the same onClipTrimEdge the handles do; whether the trim
-  // selects anything is the host's call, not made here.
+  // streams to the same onClipTrimEdge the handles do — or, with
+  // OPTION/ALT held at the press (2026-09-30), to onClipStretchEdge:
+  // the edge STRETCHES instead. Whether either selects anything is the
+  // host's call, not made here.
   const edgeTrimZones = React.useMemo(() => {
     if (!onClipTrimEdge) return [];
     return computeEdgeHitZones(clips, {
@@ -1679,8 +1699,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     return edgeTrimZones.map((zone) => (
       <div
         key={`edge-trim-${zone.clipId}-${zone.edge}`}
-        className={`track-edge-trim track-edge-trim--${zone.edge}`}
+        className={`track-edge-trim track-edge-trim--${zone.edge}${altHeld && onClipStretchEdge ? ' track-edge-trim--stretch' : ''}`}
         data-edge-trim={zone.edge}
+        data-edge-mode={altHeld && onClipStretchEdge ? 'stretch' : 'trim'}
         data-clip-ref={zone.clipId}
         aria-hidden="true"
         onMouseDown={(e) => {
@@ -1689,10 +1710,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           // time selection and no playhead move starts from it
           e.stopPropagation();
           e.preventDefault();
+          // Option at the press: the edge stretches. Decided at the
+          // press, like the handles; letting go of Option mid-drag does
+          // not turn a stretch into a trim.
+          const stream = e.altKey && onClipStretchEdge ? onClipStretchEdge : onClipTrimEdge;
           // Self-cleaning attach-on-mousedown pair (as the buried
           // handles below): the pointer streams until mouseup. A press
-          // that never moves trims nothing.
-          const onMove = (ev: MouseEvent) => onClipTrimEdge(zone.clipId, zone.edge, ev.clientX);
+          // that never moves changes nothing.
+          const onMove = (ev: MouseEvent) => stream(zone.clipId, zone.edge, ev.clientX);
           const onUp = () => {
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);

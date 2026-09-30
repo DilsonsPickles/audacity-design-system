@@ -997,17 +997,15 @@ const CanvasTrack = React.memo(function CanvasTrack({
           if (clipStretchStateRef.current) return;
           const clip = track.clips.find(c => c.id === clipId);
           if (!clip) return;
-          if (!clip.selected) {
-            dispatch({
-              type: 'SELECT_CLIP',
-              payload: { trackIndex, clipId: clipId as number },
-            });
-          }
-          // Snapshot initial state for every selected clip
+          // Stretching does NOT select (2026-09-30, the trim rule —
+          // reversing the select-on-stretch this seed used to do). A
+          // SELECTED clip, grabbed by its stretch handle, stretches
+          // with every selected clip; an UNSELECTED one — Option held
+          // over its edge — stretches alone and stays unselected.
+          const asGroup = !!clip.selected;
+          // Snapshot initial state for every participating clip
           // (audio + MIDI) so the stretch hook can apply the
-          // dragged clip's ratio across all of them. Include
-          // the dragged clip even if it wasn't selected before —
-          // we just selected it above.
+          // dragged clip's ratio across all of them.
           const allClipsInitialState: Array<{
             trackIndex: number;
             clipId: number;
@@ -1019,7 +1017,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           tracksRef.current.forEach((t, tIndex) => {
             t.clips.forEach((c) => {
               if (
-                c.selected
+                (asGroup && c.selected)
                 || (tIndex === trackIndex && c.id === clipId)
               ) {
                 allClipsInitialState.push({
@@ -1033,7 +1031,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
               }
             });
             (t.midiClips || []).forEach((c) => {
-              if (c.selected) {
+              if (asGroup && c.selected) {
                 allClipsInitialState.push({
                   trackIndex: tIndex,
                   clipId: c.id,
