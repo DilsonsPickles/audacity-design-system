@@ -1924,11 +1924,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const bodyLeft = Math.round(Math.max(FADE_HANDLE_EDGE_INSET, Math.min(clipWidth - FADE_HANDLE_EDGE_INSET - size, rawBodyLeft)));
         const bodyCentre = bodyLeft + HALF_BODY;
         // The HIT BOX: the trim box's size, centred on the body, and
-        // clipped where it would reach into either trim box's inside
-        // reach — the trim box wins that ground. At rest that is the
-        // 24px from 12 to 36; away from the edge the whole 36.
-        const boxLeft = Math.max(FADE_HANDLE_BOX_INSET, bodyCentre - HALF_BOX);
-        const boxRight = Math.min(clipWidth - FADE_HANDLE_BOX_INSET, bodyCentre + HALF_BOX);
+        // clipped where it would reach into whatever owns the edge —
+        // that wins the ground. On a SELECTED clip that is the trim
+        // box's 12px inside reach, so at rest the box is the 24px from
+        // 12 to 36; on an UNSELECTED clip it is the edge trim zone's
+        // 6px, and the box butts right up against the zone (user
+        // decision 2026-09-30): 6 to 36. Away from the edge, the whole 36.
+        const edgeReach = clip.selected ? FADE_HANDLE_BOX_INSET : EDGE_HIT_INSIDE_PX;
+        const boxLeft = Math.max(edgeReach, bodyCentre - HALF_BOX);
+        const boxRight = Math.min(clipWidth - edgeReach, bodyCentre + HALF_BOX);
         const left = xBase + boxLeft;
         // The glyph stays centred on the body; where the box is clipped
         // it overflows the box (pointer-events: none — it adds nothing)

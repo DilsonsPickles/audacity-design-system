@@ -163,10 +163,15 @@ describe('trimming an unselected clip by its edge', () => {
       const left = parseInt(el.style.left, 10);
       return { left, right: left + parseInt(el.style.width, 10), z: Number(el.style.zIndex) };
     };
-    // Left edge: the zone ends where the fade handle's box begins
-    expect(span(zone(2, 'left')!).right).toBeLessThanOrEqual(fade('in').left);
+    // Left edge: the zone ends EXACTLY where the fade handle's box
+    // begins — on an unselected clip the box butts up against the zone
+    // (6px in), rather than stopping at the selected clip's trim box
+    // reach (12px), and runs to 36
+    expect(span(zone(2, 'left')!).right).toBe(fade('in').left);
+    expect(fade('in').right - fade('in').left).toBe(30);
     // Right edge: the fade handle's box ends where the zone begins
-    expect(fade('out').right).toBeLessThanOrEqual(span(zone(2, 'right')!).left);
+    expect(fade('out').right).toBe(span(zone(2, 'right')!).left);
+    expect(fade('out').right - fade('out').left).toBe(30);
     // …and the fade controls are stacked above the zones regardless
     expect(fade('in').z).toBeGreaterThan(Number(zone(2, 'left')!.style.zIndex));
   });
