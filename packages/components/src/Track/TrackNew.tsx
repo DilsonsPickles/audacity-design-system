@@ -2001,13 +2001,20 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               width: FADE_HANDLE_BOX.width,
               height: FADE_HANDLE_BOX.height,
               cursor: 'ew-resize',
-              // Grow from the middle of the visible body, not of the box
-              transformOrigin: `${(squareLeft + squareRight) / 2}px ${FADE_GLYPH_BODY.y + FADE_GLYPH_BODY.size / 2}px`,
               // Above the fade veils (450), beside the shape dots (460)
               zIndex: 455,
             }}
           >
-            <FadeHandleGlyph mirrored={side === 'out'} />
+            {/* Hover and press grow the GLYPH (Track.css), never the box
+                — the hit area holds still under the pointer, as the trim
+                and stretch handles' do. It grows from the middle of the
+                visible body, not of the box. */}
+            <div
+              className="track-fade-handle__glyph"
+              style={{ transformOrigin: `${(squareLeft + squareRight) / 2}px ${FADE_GLYPH_BODY.y + FADE_GLYPH_BODY.size / 2}px` }}
+            >
+              <FadeHandleGlyph mirrored={side === 'out'} />
+            </div>
           </div>
         );
       };

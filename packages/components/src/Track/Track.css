@@ -44,17 +44,21 @@
    keep the two in step. The pressed look is driven by the drag state
    (data-pressed), not :active alone — the handle captures the pointer
    and cancels the press's default, and the look must last the whole
-   drag wherever the pointer goes. */
-.track-fade-handle {
+   drag wherever the pointer goes.
+   The scale is on the GLYPH, never on the handle itself: the handle is
+   the hit box, and a hit box that grows under the pointer is a hit box
+   that shrinks away as the pointer leaves (the debug overlay showed it
+   breathing). */
+.track-fade-handle__glyph {
   transition: transform 0.12s ease-out, opacity 0.12s ease-out;
 }
 
-.track-fade-handle:hover {
+.track-fade-handle:hover .track-fade-handle__glyph {
   transform: scale(1.18);
 }
 
-.track-fade-handle:active,
-.track-fade-handle[data-pressed] {
+.track-fade-handle:active .track-fade-handle__glyph,
+.track-fade-handle[data-pressed] .track-fade-handle__glyph {
   transform: scale(1.08);
   opacity: 0.85;
 }

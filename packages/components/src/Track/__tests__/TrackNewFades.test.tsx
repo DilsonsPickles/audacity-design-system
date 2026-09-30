@@ -241,10 +241,13 @@ describe('clip fades', () => {
     expect(handle('out').getAttribute('data-pressed')).toBe('true');
     fireEvent.pointerUp(handle('out'), { clientX: 0, clientY: 0, pointerId: 81 });
     expect(container.querySelector('[data-fade-handle][data-pressed]')).toBeNull();
-    // It grows from the middle of its visible body, which is at the near
-    // end of the 24 × 32 box: [1, 11] for 'in', [13, 23] mirrored
-    expect(handle('in').style.transformOrigin).toBe('6px 16px');
-    expect(handle('out').style.transformOrigin).toBe('18px 16px');
+    // What grows is the GLYPH inside the handle, never the handle (the
+    // hit box) itself — from the middle of the visible body, which is at
+    // the near end of the 24 × 32 box: [1, 11] for 'in', [13, 23] mirrored
+    const glyph = (side: 'in' | 'out') => handle(side).querySelector('.track-fade-handle__glyph') as HTMLElement;
+    expect(glyph('in').style.transformOrigin).toBe('6px 16px');
+    expect(glyph('out').style.transformOrigin).toBe('18px 16px');
+    expect(handle('in').style.transformOrigin).toBe('');
   });
 
   it('a crossfade keeps its veils and is not dimmed', () => {
