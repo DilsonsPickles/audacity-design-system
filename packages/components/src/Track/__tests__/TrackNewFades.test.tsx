@@ -241,9 +241,10 @@ describe('clip fades', () => {
     expect(handle('out').getAttribute('data-pressed')).toBe('true');
     fireEvent.pointerUp(handle('out'), { clientX: 0, clientY: 0, pointerId: 81 });
     expect(container.querySelector('[data-fade-handle][data-pressed]')).toBeNull();
-    // It grows from the middle of its visible body, which is off-centre in the box
-    expect(handle('in').style.transformOrigin).toBe('11px 11px');
-    expect(handle('out').style.transformOrigin).toBe('5px 11px');
+    // It grows from the middle of its visible body, which is at the near
+    // end of the 24 × 32 box: [1, 11] for 'in', [13, 23] mirrored
+    expect(handle('in').style.transformOrigin).toBe('6px 16px');
+    expect(handle('out').style.transformOrigin).toBe('18px 16px');
   });
 
   it('a crossfade keeps its veils and is not dimmed', () => {
@@ -849,7 +850,7 @@ describe('clip fades', () => {
     expect(onClipFadeShapeChange.mock.calls.map((c) => c[2])).toEqual(['linear', 'linear']);
   });
 
-  it('the fade handles sit inside the clip: 10px in from its edge, on the trim handle\'s line', () => {
+  it('the fade handles sit inside the clip, after the trim box\'s reach, in the trim row (spec 2026-09-30)', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -866,15 +867,30 @@ describe('clip fades', () => {
     const clipRight = clipLeft + 400;
     const box = (side: 'in' | 'out') => {
       const el = container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
-      return { left: parseInt(el.style.left, 10), top: parseInt(el.style.top, 10) };
+      return {
+        left: parseInt(el.style.left, 10),
+        top: parseInt(el.style.top, 10),
+        width: parseInt(el.style.width, 10),
+        height: parseInt(el.style.height, 10),
+      };
     };
-    // No fade yet: each handle is at its corner. The body is the 10px
-    // at the far side of the 16px box — [6, 16] for 'in', [0, 10] mirrored
-    expect(box('in').left + 6 - clipLeft).toBe(10);
-    expect(clipRight - (box('out').left + 10)).toBe(10);
-    // The body's middle (11px down the box) is 38px below the clip's
-    // top — the middle of the trim handle (top 28, 20 tall)
-    expect(box('in').top + 11).toBe(38);
+    // The box is 24 × 32: the trim box's height, and the width of its
+    // outer part
+    expect(box('in').width).toBe(24);
+    expect(box('in').height).toBe(32);
+    // No fade yet: each box starts 12px in from its edge — where the
+    // trim box's inside reach ends (Clip.css: 36 wide at −24)
+    expect(box('in').left - clipLeft).toBe(12);
+    expect(clipRight - (box('out').left + 24)).toBe(12);
+    // The body is at the box's NEAR end, a pixel in for its outline:
+    // [1, 11] for 'in', [13, 23] mirrored — so 13px in from the edge
+    expect(box('in').left + 1 - clipLeft).toBe(13);
+    expect(clipRight - (box('out').left + 23)).toBe(13);
+    // The row is the trim box's: top 20 (the header's bottom), 32 tall,
+    // so the body's middle (16px down the box) is on the trim and
+    // stretch icons' middle, 36px below the clip's top
+    expect(box('in').top).toBe(20);
+    expect(box('in').top + 16).toBe(36);
     expect(box('out').top).toBe(box('in').top);
   });
 

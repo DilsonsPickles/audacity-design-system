@@ -89,12 +89,22 @@
 /* ===========================================================================
    Icon-button handles (selected clips only).
 
-   Layout per side, sitting just outside the clip body and vertically
-   anchored *below the clip header* (which is 20px tall):
+   The app's geometry (ClipHandles.qml; spec 2026-09-30, the Figma "hit
+   zones" frame): each handle is a 36 × 32 box that STRADDLES the clip's
+   edge — 24px outside, 12px inside — stacked directly under the 20px
+   header, trim then stretch. The icon is centred in the box's OUTER 24
+   (the inside 12 is reach with nothing drawn in it):
+
        header (20px)
-       ────────────────────
-       [T]   trim    (top: 24px)
-       [S]   stretch (top: 48px)
+       ─────────────┬──────────────
+      [ T ]         │  top 20 … 52   trim
+      [ S ]         │  top 52 … 84   stretch
+         ↑ box: −24 … +12 from the edge
+
+   The fade LENGTH handle's box (TrackNew) starts where the trim box's
+   reach ends, 12px in, so the three boxes at an edge share one row and
+   never overlap. Hover and press grow the ICON, never the box, so the
+   hit area holds still under the pointer.
 
    Each button has its own custom cursor PNG (in src/assets/cursors/) so
    hover previews the action. tsup inlines the PNGs as data URLs at build
@@ -102,8 +112,9 @@
    =========================================================================== */
 .clip-display__handle {
   position: absolute;
-  width: 22px;
-  height: 20px;
+  box-sizing: border-box;
+  width: 36px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,8 +123,13 @@
   border: 0;
   background: transparent;
   z-index: 25;
-  /* Hover/active scale uses transform — transition stays subtle so it
-     reads as a polish detail, not a chunky motion. */
+}
+
+/* The icon is what grows on hover and press — transform on the glyph,
+   transition subtle so it reads as a polish detail, not a chunky motion.
+   (An inline span takes no transform: hence inline-block.) */
+.clip-display__handle .musescore-icon {
+  display: inline-block;
   transition: transform 0.12s ease-out, opacity 0.12s ease-out;
 }
 
@@ -130,27 +146,9 @@
 }
 
 /* Stretch handles — the clock glyph is a circle, so we just put a real
-   black circle behind it via a pseudo-element. The glyph itself is white
-   with no stroke; the disc fills the body of the clock. */
-.clip-display__handle--stretch-left,
-.clip-display__handle--stretch-right {
-  position: absolute; /* re-stated so isolation works */
-}
-
-.clip-display__handle--stretch-left::before,
-.clip-display__handle--stretch-right::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 12px;
-  height: 12px;
-  background: #000;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 0;
-}
-
+   black circle behind it via a pseudo-element ON THE GLYPH, so the two
+   grow together. The glyph itself is white with no stroke; the disc
+   fills the body of the clock. */
 .clip-display__handle--stretch-left .musescore-icon,
 .clip-display__handle--stretch-right .musescore-icon {
   color: #FFF;
@@ -160,36 +158,54 @@
   z-index: 1;
 }
 
-.clip-display__handle:hover {
+.clip-display__handle--stretch-left .musescore-icon::before,
+.clip-display__handle--stretch-right .musescore-icon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: #000;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+}
+
+.clip-display__handle:hover .musescore-icon {
   transform: scale(1.18);
 }
 
-.clip-display__handle:active {
+.clip-display__handle:active .musescore-icon {
   transform: scale(1.08);
   opacity: 0.85;
 }
 
-/* Vertical positioning — sit below the clip header (HEADER_HEIGHT = 20px)
-   with a comfortable gap between the trim and stretch rows. */
+/* Vertical positioning — the trim row is directly under the clip header
+   (HEADER_HEIGHT = 20px), the stretch row directly under the trim row. */
 .clip-display__handle--trim-left,
 .clip-display__handle--trim-right {
-  top: 28px;
+  top: 20px;
 }
 
 .clip-display__handle--stretch-left,
 .clip-display__handle--stretch-right {
-  top: 60px;
+  top: 52px;
 }
 
-/* Horizontal positioning — hug the clip edge from the outside. */
+/* Horizontal positioning — the box straddles the edge, 24 out and 12
+   in; the padding on the INSIDE end keeps the icon centred in the outer
+   24. */
 .clip-display__handle--trim-left,
 .clip-display__handle--stretch-left {
-  left: -26px;
+  left: -24px;
+  padding-right: 12px;
 }
 
 .clip-display__handle--trim-right,
 .clip-display__handle--stretch-right {
-  right: -26px;
+  right: -24px;
+  padding-left: 12px;
 }
 
 /* Per-button custom cursor — the PNG appears while hovering the button.

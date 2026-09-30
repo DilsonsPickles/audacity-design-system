@@ -31,38 +31,53 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
  * state, so the handle holds its edge on any clip colour, waveform or
  * dimmed fade area behind it.
  *
- * Geometry, in the 16px box: the body spans FADE_GLYPH_BODY on both
- * axes (the far corner, away from the clip's edge); the outline is the
- * pixel outside it, so the svg overflows its box by that pixel.
+ * Geometry (spec 2026-09-30, the Figma "hit zones" frame): the HIT BOX
+ * is FADE_HANDLE_BOX, the same 32px tall as the trim and stretch boxes
+ * and the width of their outer part, and the body sits at the box's
+ * NEAR end (the end toward the clip's edge — the box extends into the
+ * clip), one pixel in for its outline, centred vertically. The outline
+ * is the pixel outside the body: with the body at x 1 the halo starts
+ * at 0, so nothing overflows the box.
  */
 const FADE_GLYPH_RADIUS = 2.5;
-const FADE_GLYPH_BODY = { start: 6, size: 10 } as const;
+const FADE_HANDLE_BOX = { width: 24, height: 32 } as const;
+const FADE_GLYPH_BODY = { x: 1, y: 11, size: 10 } as const;
+/** Where the fade box starts, in from the clip's edge: the inside reach
+ *  of the clip's trim box (Clip.css: 36 wide at −24, so 12 inside). It
+ *  must be at or past EDGE_HIT_INSIDE_PX, where an unselected clip's
+ *  edge trim zone ends. */
+const FADE_HANDLE_BOX_INSET: number = 12;
+if (FADE_HANDLE_BOX_INSET < EDGE_HIT_INSIDE_PX) {
+  throw new Error('The fade handle box must start where the edge trim zone ends, or past it');
+}
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
   const clipId = React.useId();
-  const { start, size } = FADE_GLYPH_BODY;
-  const end = start + size;
+  const { x, y, size } = FADE_GLYPH_BODY;
+  const xEnd = x + size;
+  const yEnd = y + size;
   // The curve runs corner to corner, bowed toward the corner between
   // them; its control points sit two thirds of the way along each side
-  const bow = start + (size * 2) / 3;
+  const bowX = x + (size * 2) / 3;
+  const bowY = y + (size * 2) / 3;
   return (
     <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
+      width={FADE_HANDLE_BOX.width}
+      height={FADE_HANDLE_BOX.height}
+      viewBox={`0 0 ${FADE_HANDLE_BOX.width} ${FADE_HANDLE_BOX.height}`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block', overflow: 'visible', ...(mirrored ? { transform: 'scaleX(-1)' } : {}) }}
     >
       <defs>
         <clipPath id={clipId}>
-          <rect x={start} y={start} width={size} height={size} rx={FADE_GLYPH_RADIUS} />
+          <rect x={x} y={y} width={size} height={size} rx={FADE_GLYPH_RADIUS} />
         </clipPath>
       </defs>
-      {/* Outside the body only: the pixel from start − 1 to start */}
+      {/* Outside the body only: the pixel from x − 1 to x */}
       <rect
         data-fade-glyph-halo
-        x={start - 0.5}
-        y={start - 0.5}
+        x={x - 0.5}
+        y={y - 0.5}
         width={size + 1}
         height={size + 1}
         rx={FADE_GLYPH_RADIUS + 0.5}
@@ -71,8 +86,8 @@ const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
       />
       <rect
         data-fade-glyph-frame
-        x={start}
-        y={start}
+        x={x}
+        y={y}
         width={size}
         height={size}
         rx={FADE_GLYPH_RADIUS}
@@ -80,7 +95,7 @@ const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
       />
       <path
         data-fade-glyph-curve
-        d={`M${end} ${start}C${bow} ${start} ${start} ${bow} ${start} ${end}`}
+        d={`M${xEnd} ${y}C${bowX} ${y} ${x} ${bowY} ${x} ${yEnd}`}
         stroke="#FFFFFF"
         strokeWidth={1.5}
         clipPath={`url(#${clipId})`}
@@ -1658,9 +1673,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // and overlaps: utils/clipEdgeHitZones.ts.
   //
   // Living with the fade handles: a zone reaches EDGE_HIT_INSIDE_PX
-  // into the clip and a fade handle's box starts that far in (see
-  // FADE_HANDLE_EDGE_INSET), so they meet and never overlap; the fade
-  // controls are also stacked above the zones, should they ever. And
+  // into the clip and a fade handle's box starts past that (at
+  // FADE_HANDLE_BOX_INSET, the selected clip's trim box reach), so the
+  // two never overlap; the fade controls are also stacked above the
+  // zones, should they ever. And
   // the fade controls do not SHOW until the pointer is past the zone —
   // at least EDGE_HIT_INSIDE_PX into the clip (isWellInsideClip) — so
   // on the edge there is one thing to do, not two.
@@ -1765,9 +1781,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       if (covered(clip.start)) edges.push('left');
       if (covered(clip.start + clip.duration)) edges.push('right');
       for (const edge of edges) {
-        // Same geometry as Clip.css: buttons hug the edge from outside
-        // (±26px), trim at top 28, stretch at 60
-        const xLeft = Math.round(edge === 'left' ? xBase - 26 : xBase + clipWidth + 4);
+        // Same geometry as Clip.css: 36px boxes STRADDLING the edge, 24
+        // outside and 12 inside (the app's), trim at top 20, stretch at 52
+        const xLeft = Math.round(edge === 'left' ? xBase - 24 : xBase + clipWidth - 12);
         const startDrag = (kind: 'trim' | 'stretch') => (e: React.MouseEvent) => {
           e.stopPropagation();
           e.preventDefault();
@@ -1794,7 +1810,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               className={`clip-display__handle clip-display__handle--trim-${edge}`}
               aria-label={`Trim ${edge} edge`}
               onMouseDown={startDrag('trim')}
-              style={{ position: 'absolute', left: xLeft, right: 'auto', top: 28, zIndex: 455 }}
+              style={{ position: 'absolute', left: xLeft, right: 'auto', top: 20, zIndex: 455 }}
             >
               {edge === 'left' ? <TrimLeftIcon /> : <TrimRightIcon />}
             </button>,
@@ -1809,7 +1825,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             className={`clip-display__handle clip-display__handle--stretch-${edge}`}
             aria-label={`Stretch ${edge} edge`}
             onMouseDown={startDrag('stretch')}
-            style={{ position: 'absolute', left: xLeft, right: 'auto', top: 60, zIndex: 455 }}
+            style={{ position: 'absolute', left: xLeft, right: 'auto', top: 52, zIndex: 455 }}
           >
             <StretchIcon />
           </button>,
@@ -1838,20 +1854,21 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (isMidiTrack || !onClipFadeChange || clipDragInProgress) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
-    // Below this rendered width there is no room to grab (or read) the
-    // two corner handles — zoom in to edit fades on a narrow clip
-    const FADE_HANDLE_MIN_CLIP_PX = 64;
-    // How far INTO the clip the handles sit (user decision 2026-09-29,
-    // "a little more" than the 6px / 7px they had). Sideways: the body
-    // stays 10px inside the clip's left or right edge. Downward: the
-    // body's middle is on the TRIM handle's middle (Clip.css: top 28,
-    // 20 tall = 38 below the clip's top), so the clip's handles share a
-    // line — that puts the body 12px under the header.
-    // (The handle's 16px hit box therefore starts 4px in — exactly where
-    // the edge trim zone ends. Keep it ≥ EDGE_HIT_INSIDE_PX + the body's
-    // offset in its box, or the two will fight over the same pixels.)
-    const FADE_HANDLE_EDGE_INSET = EDGE_HIT_INSIDE_PX + FADE_GLYPH_BODY.start;
-    const FADE_HANDLE_TOP = 38 - HEADER_H - (FADE_GLYPH_BODY.start + FADE_GLYPH_BODY.size / 2);
+    // Below this rendered width the two corner boxes would overlap each
+    // other — zoom in to edit fades on a narrow clip
+    const FADE_HANDLE_MIN_CLIP_PX = 2 * (FADE_HANDLE_BOX_INSET + FADE_HANDLE_BOX.width);
+    // The handle's box sits INSIDE the clip, directly after the trim
+    // box's inside reach (spec 2026-09-30): the trim box straddles the
+    // edge by 12px, so the fade box starts 12px in and runs 24px; its
+    // top is the header's bottom, the trim box's top, so the three
+    // boxes at an edge share one row. The BODY is at the box's near
+    // end, one pixel in for its outline (13px in), centred in the row,
+    // so its middle is on the trim and stretch icons' middle.
+    // (The box must start at or past EDGE_HIT_INSIDE_PX, where an
+    // unselected clip's edge trim zone ends, or the two will fight
+    // over the same pixels.)
+    const FADE_HANDLE_EDGE_INSET = FADE_HANDLE_BOX_INSET + FADE_GLYPH_BODY.x;
+    const FADE_HANDLE_TOP = 0;
     for (const clip of clips) {
       // Handles show on the SELECTED clip and on the clip UNDER THE
       // POINTER (2026-09-29, widening the 2026-09-21 selected-only
@@ -1870,22 +1887,23 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // side of its boundary (the natural spot) until the two would
       // collide — then both retreat INSIDE their own fade regions, so at
       // a mid-clip meeting each handle stays on its own curve instead of
-      // swapping sides. 40px = two 16px handles + breathing room.
-      const handlesRetreat = boundaryOutX - boundaryInX < 40;
+      // swapping sides. 56px = two 24px boxes + breathing room.
+      const handlesRetreat = boundaryOutX - boundaryInX < 2 * FADE_HANDLE_BOX.width + 8;
       const handle = (side: 'in' | 'out') => {
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
         const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
-        // The glyph is asymmetric inside its 16px box (the body spans
-        // [6, 16] unmirrored; [0, 10] mirrored), so the box is
+        // The glyph is asymmetric inside its 24px box (the body spans
+        // [1, 11] unmirrored; [13, 23] mirrored), so the box is
         // positioned by the VISIBLE BODY: its near edge keeps a
         // constant gap to the boundary whichever side it sits on — 3px,
         // which leaves 2px clear of the white outline around it.
         const PAD = 3;
         const mirrored = side === 'out';
-        const bodyStart = FADE_GLYPH_BODY.start;
+        const bodyStart = FADE_GLYPH_BODY.x;
         const bodyEnd = bodyStart + FADE_GLYPH_BODY.size;
-        const squareLeft = mirrored ? 16 - bodyEnd : bodyStart;   // body's left edge within the box
-        const squareRight = mirrored ? 16 - bodyStart : bodyEnd;  // body's right edge within the box
+        const boxW = FADE_HANDLE_BOX.width;
+        const squareLeft = mirrored ? boxW - bodyEnd : bodyStart;   // body's left edge within the box
+        const squareRight = mirrored ? boxW - bodyStart : bodyEnd;  // body's right edge within the box
         // Box extending right of the boundary: square's LEFT edge sits
         // PAD past it; extending left: square's RIGHT edge sits PAD short
         const raw = inward ? boundaryX + PAD - squareLeft : boundaryX - PAD - squareRight;
@@ -1970,11 +1988,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               position: 'absolute',
               top: HEADER_H + FADE_HANDLE_TOP,
               left: `${left}px`,
-              width: 16,
-              height: 16,
+              width: FADE_HANDLE_BOX.width,
+              height: FADE_HANDLE_BOX.height,
               cursor: 'ew-resize',
               // Grow from the middle of the visible body, not of the box
-              transformOrigin: `${(squareLeft + squareRight) / 2}px ${bodyStart + FADE_GLYPH_BODY.size / 2}px`,
+              transformOrigin: `${(squareLeft + squareRight) / 2}px ${FADE_GLYPH_BODY.y + FADE_GLYPH_BODY.size / 2}px`,
               // Above the fade veils (450), beside the shape dots (460)
               zIndex: 455,
             }}
