@@ -90,19 +90,22 @@
    Icon-button handles (selected clips only).
 
    The app's geometry (ClipHandles.qml; spec 2026-09-30, the Figma "hit
-   zones" frame): each handle is a 36 × 32 box that STRADDLES the clip's
-   edge — 24px outside, 12px inside — stacked directly under the 20px
-   header, trim then stretch. The icon is centred in the box's OUTER 24
-   (the inside 12 is reach with nothing drawn in it):
+   zones" frame), with the inside reach brought down to the edge zone's
+   the same day: each handle is a 30 × 32 box that STRADDLES the clip's
+   edge — 24px outside, 6px inside (the app's is 12; 6 is what an
+   unselected clip's edge zone reaches, EDGE_HIT_INSIDE_PX in
+   utils/clipEdgeHitZones.ts — keep the two in step) — stacked directly
+   under the 20px header, trim then stretch. The icon is centred in the
+   box's OUTER 24 (the inside 6 is reach with nothing drawn in it):
 
        header (20px)
        ─────────────┬──────────────
       [ T ]         │  top 20 … 52   trim
       [ S ]         │  top 52 … 84   stretch
-         ↑ box: −24 … +12 from the edge
+         ↑ box: −24 … +6 from the edge
 
    The fade LENGTH handle's box (TrackNew) starts where the trim box's
-   reach ends, 12px in, so the three boxes at an edge share one row and
+   reach ends, 6px in, so the three boxes at an edge share one row and
    never overlap. Hover and press grow the ICON, never the box, so the
    hit area holds still under the pointer.
 
@@ -113,7 +116,7 @@
 .clip-display__handle {
   position: absolute;
   box-sizing: border-box;
-  width: 36px;
+  width: 30px;
   height: 32px;
   display: flex;
   align-items: center;
@@ -193,19 +196,19 @@
   top: 52px;
 }
 
-/* Horizontal positioning — the box straddles the edge, 24 out and 12
+/* Horizontal positioning — the box straddles the edge, 24 out and 6
    in; the padding on the INSIDE end keeps the icon centred in the outer
    24. */
 .clip-display__handle--trim-left,
 .clip-display__handle--stretch-left {
   left: -24px;
-  padding-right: 12px;
+  padding-right: 6px;
 }
 
 .clip-display__handle--trim-right,
 .clip-display__handle--stretch-right {
   right: -24px;
-  padding-left: 12px;
+  padding-left: 6px;
 }
 
 /* Per-button custom cursor — the PNG appears while hovering the button.

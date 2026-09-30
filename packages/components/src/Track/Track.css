@@ -125,7 +125,7 @@
   outline-offset: -1px;
 }
 
-/* Fade LENGTH handle: the 24 × 32 box (TrackNew) */
+/* Fade LENGTH handle: the 36 × 32 box, clipped at the edge (TrackNew) */
 [data-debug-hit-areas] .track-fade-handle {
   box-shadow: inset 0 0 0 100px rgba(47, 200, 65, 0.25);
   outline: 1px solid rgba(60, 140, 70, 0.9);

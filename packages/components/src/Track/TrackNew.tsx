@@ -36,11 +36,12 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
  * stretch boxes' own size — CENTRED on the body, and the svg is drawn
  * at that size with the body in its middle, so mirroring it for the
  * fade-out handle moves nothing. Near the clip's edge the box is
- * CLIPPED at FADE_HANDLE_BOX_INSET, where the trim box's inside reach
- * ends (the trim box wins the overlap): at rest that leaves 24px, and
- * the box fills out as the handle comes away from the edge. The svg
- * itself is never clipped — it takes no pointer events, so its
- * overflow adds nothing to the hit area.
+ * CLIPPED at FADE_HANDLE_BOX_INSET, where whatever owns the edge —
+ * the selected clip's trim box, the unselected clip's edge zone, both
+ * reaching 6px in — ends, and that wins the overlap: at rest that
+ * leaves 30px, and the box fills out as the handle comes away from the
+ * edge. The svg itself is never clipped — it takes no pointer events,
+ * so its overflow adds nothing to the hit area.
  */
 const FADE_GLYPH_RADIUS = 2.5;
 const FADE_HANDLE_BOX = { width: 36, height: 32 } as const;
@@ -50,13 +51,15 @@ const FADE_GLYPH_BODY = {
   size: 10,
 } as const;
 /** Where the fade box starts, in from the clip's edge: the inside reach
- *  of the clip's trim box (Clip.css: 36 wide at −24, so 12 inside). It
- *  must be at or past EDGE_HIT_INSIDE_PX, where an unselected clip's
- *  edge trim zone ends. */
-const FADE_HANDLE_BOX_INSET: number = 12;
-if (FADE_HANDLE_BOX_INSET < EDGE_HIT_INSIDE_PX) {
-  throw new Error('The fade handle box must start where the edge trim zone ends, or past it');
-}
+ *  of what owns the edge. The selected clip's trim box reaches the same
+ *  6px in as the unselected clip's edge zone (user decision 2026-09-30,
+ *  it was 12 — Clip.css: 30 wide at −24), so it is one line whatever
+ *  the clip's state. */
+const FADE_HANDLE_BOX_INSET: number = EDGE_HIT_INSIDE_PX;
+/** Where the fade handle's BODY rests, in from the clip's edge: the
+ *  spec's 13px (the Figma "hit zones" frame — 12 plus the outline's
+ *  pixel), kept when the trim reach shrank from 12 to 6. */
+const FADE_HANDLE_BODY_INSET = 13;
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
   const clipId = React.useId();
   const { x, y, size } = FADE_GLYPH_BODY;
@@ -1680,9 +1683,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // and overlaps: utils/clipEdgeHitZones.ts.
   //
   // Living with the fade handles: a zone reaches EDGE_HIT_INSIDE_PX
-  // into the clip and a fade handle's box starts past that (at
-  // FADE_HANDLE_BOX_INSET, the selected clip's trim box reach), so the
-  // two never overlap; the fade controls are also stacked above the
+  // into the clip and a fade handle's box starts exactly there
+  // (FADE_HANDLE_BOX_INSET is that same number), so the two butt up
+  // and never overlap; the fade controls are also stacked above the
   // zones, should they ever. And
   // the fade controls do not SHOW until the pointer is past the zone —
   // at least EDGE_HIT_INSIDE_PX into the clip (isWellInsideClip) — so
@@ -1792,9 +1795,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       if (covered(clip.start)) edges.push('left');
       if (covered(clip.start + clip.duration)) edges.push('right');
       for (const edge of edges) {
-        // Same geometry as Clip.css: 36px boxes STRADDLING the edge, 24
-        // outside and 12 inside (the app's), trim at top 20, stretch at 52
-        const xLeft = Math.round(edge === 'left' ? xBase - 24 : xBase + clipWidth - 12);
+        // Same geometry as Clip.css: 30px boxes STRADDLING the edge, 24
+        // outside (the app's) and EDGE_HIT_INSIDE_PX inside (the edge
+        // zone's), trim at top 20, stretch at 52
+        const xLeft = Math.round(edge === 'left' ? xBase - 24 : xBase + clipWidth - EDGE_HIT_INSIDE_PX);
         const startDrag = (kind: 'trim' | 'stretch') => (e: React.MouseEvent) => {
           e.stopPropagation();
           e.preventDefault();
@@ -1866,16 +1870,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
     // The handle's BODY rests 13px inside the clip's edge (spec
-    // 2026-09-30): the trim box straddles the edge by 12px and the
-    // body's outline takes the next pixel. Its box is centred on it and
-    // clipped at the trim box's reach, so at rest the box is the 24px
-    // from 12 to 36; the row is the trim box's (top = the header's
-    // bottom), so the three boxes at an edge share one row and the
-    // body's middle is on the trim and stretch icons' middle.
-    // (The box must start at or past EDGE_HIT_INSIDE_PX, where an
-    // unselected clip's edge trim zone ends, or the two will fight
-    // over the same pixels.)
-    const FADE_HANDLE_EDGE_INSET = FADE_HANDLE_BOX_INSET + 1;
+    // 2026-09-30). Its box is centred on it and clipped at the edge's
+    // owner's reach (6px), so at rest the box is the 30px from 6 to
+    // 36; the row is the trim box's (top = the header's bottom), so the
+    // boxes at an edge share one row and the body's middle is on the
+    // trim and stretch icons' middle.
+    const FADE_HANDLE_EDGE_INSET = FADE_HANDLE_BODY_INSET;
     const FADE_HANDLE_TOP = 0;
     const HALF_BOX = FADE_HANDLE_BOX.width / 2;
     const HALF_BODY = FADE_GLYPH_BODY.size / 2;
@@ -1925,14 +1925,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const bodyCentre = bodyLeft + HALF_BODY;
         // The HIT BOX: the trim box's size, centred on the body, and
         // clipped where it would reach into whatever owns the edge —
-        // that wins the ground. On a SELECTED clip that is the trim
-        // box's 12px inside reach, so at rest the box is the 24px from
-        // 12 to 36; on an UNSELECTED clip it is the edge trim zone's
-        // 6px, and the box butts right up against the zone (user
-        // decision 2026-09-30): 6 to 36. Away from the edge, the whole 36.
-        const edgeReach = clip.selected ? FADE_HANDLE_BOX_INSET : EDGE_HIT_INSIDE_PX;
-        const boxLeft = Math.max(edgeReach, bodyCentre - HALF_BOX);
-        const boxRight = Math.min(clipWidth - edgeReach, bodyCentre + HALF_BOX);
+        // that wins the ground. The selected clip's trim box and the
+        // unselected clip's edge zone both reach 6px in, so at rest the
+        // box is the 30px from 6 to 36, butting up against either (user
+        // decision 2026-09-30). Away from the edge, the whole 36.
+        const boxLeft = Math.max(FADE_HANDLE_BOX_INSET, bodyCentre - HALF_BOX);
+        const boxRight = Math.min(clipWidth - FADE_HANDLE_BOX_INSET, bodyCentre + HALF_BOX);
         const left = xBase + boxLeft;
         // The glyph stays centred on the body; where the box is clipped
         // it overflows the box (pointer-events: none — it adds nothing)

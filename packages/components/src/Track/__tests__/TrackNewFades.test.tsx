@@ -518,8 +518,8 @@ describe('clip fades', () => {
     expect(bodyCentre()).toBe(18);
     const pressX = 18;
     act(() => { fireEvent.pointerDown(handle(), { button: 0, clientX: pressX, clientY: 30, pointerId: 11 }); });
-    // At rest the box is clipped to 24 by the trim box's reach
-    expect(handle().style.width).toBe('24px');
+    // At rest the box is clipped to 30 by the trim box's reach
+    expect(handle().style.width).toBe('30px');
     // Out by 100px: a 1s fade, and the handle has come along under the pointer
     act(() => { fireEvent.pointerMove(handle(), { clientX: pressX + 100, clientY: 30, pointerId: 11 }); });
     expect(curve()).toBeTruthy();
@@ -930,18 +930,19 @@ describe('clip fades', () => {
         height: parseInt(el.style.height, 10),
       };
     };
-    // At rest the box is the trim box's size (36 × 32) centred on the
-    // body, CLIPPED where it would reach into the trim box's 12px inside
-    // reach — so 24 wide, from 12 to 36 (Clip.css: trim 36 wide at −24)
-    expect(box('in').width).toBe(24);
+    // At rest the box is 36 × 32 (the size of the trim box before its
+    // inside reach was cut) centred on the body, CLIPPED where it would
+    // reach into the trim box's 6px inside reach — so 30 wide, from 6
+    // to 36 (Clip.css: trim 30 wide at −24)
+    expect(box('in').width).toBe(30);
     expect(box('in').height).toBe(32);
-    expect(box('in').left - clipLeft).toBe(12);
-    expect(clipRight - (box('out').left + 24)).toBe(12);
-    // The body is 13px in from the edge (the trim reach plus its outline
-    // pixel): the glyph is 36 wide with the body at [13, 23], centred on
-    // the body, so it overflows the clipped box by 12
+    expect(box('in').left - clipLeft).toBe(6);
+    expect(clipRight - (box('out').left + 30)).toBe(6);
+    // The body is 13px in from the edge (the spec's rest place): the
+    // glyph is 36 wide with the body at [13, 23], centred on the body,
+    // so it overflows the clipped box by 6
     const glyphLeft = (side: 'in' | 'out') => parseInt((container.querySelector(`[data-fade-handle="${side}"] .track-fade-handle__glyph`) as HTMLElement).style.left, 10);
-    expect(glyphLeft('in')).toBe(-12);
+    expect(glyphLeft('in')).toBe(-6);
     expect(box('in').left + glyphLeft('in') + 13 - clipLeft).toBe(13);
     expect(glyphLeft('out')).toBe(0);
     expect(clipRight - (box('out').left + glyphLeft('out') + 23)).toBe(13);
