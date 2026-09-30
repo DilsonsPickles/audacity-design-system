@@ -56,6 +56,37 @@ function renderTrack(draggingClipIds: ReadonlySet<number>) {
   return { ...utils, count };
 }
 
+describe('while a fade is being dragged, every OTHER clip\'s handles are hidden (2026-10-01)', () => {
+  it('dragging an unselected clip\'s fade handle hides the selected clip\'s handles; they return on release', () => {
+    const { container, count } = renderTrack(new Set());
+    const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
+    fireEvent.mouseEnter(clip2, { buttons: 0 });
+    // Before: the selected clip 1 has its handles (one fade handle —
+    // its out edge is crossfaded under clip 3), clip 2 its fade handles
+    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(4);
+    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
+    expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(2);
+    expect(count('[data-buried-handle]')).toBeGreaterThan(0);
+    const inHandle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
+    fireEvent.pointerDown(inHandle, { button: 0, clientX: 620, clientY: 30, pointerId: 51 });
+    // In hand: everything on clip 1 is gone (in-clip handles, fade
+    // handles, buried duplicates), and so are clip 3's edge zones and
+    // the crossfade node; clip 2 keeps its own fade handles
+    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(0);
+    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(0);
+    expect(count('[data-buried-handle]')).toBe(0);
+    expect(count('[data-quickfade-node][data-clip-ref="1"]')).toBe(0);
+    expect(count('[data-crossfade-node]')).toBe(0);
+    expect(count('[data-edge-trim][data-clip-ref="3"]')).toBe(0);
+    expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(2);
+    fireEvent.pointerUp(inHandle, { clientX: 620, clientY: 30, pointerId: 51 });
+    // Released: back as they were
+    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(4);
+    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
+    expect(count('[data-buried-handle]')).toBeGreaterThan(0);
+  });
+});
+
 describe('while clips are being dragged, every drag handle is hidden', () => {
   it('at rest every kind of handle is there', () => {
     const { container, count } = renderTrack(new Set());

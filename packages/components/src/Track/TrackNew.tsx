@@ -674,6 +674,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // the ones they pass: trim, stretch, fade length, fade shape,
   // crossfade, edge zones. The drag is the only thing in hand.
   const clipDragInProgress = (draggingClipIds?.size ?? 0) > 0;
+  // While a FADE is being dragged — a length handle or a shape node —
+  // every OTHER clip's handles hide too (user decision 2026-10-01): a
+  // selected clip elsewhere on the track was still showing its trim,
+  // stretch and fade handles beside a drag that had nothing to do with
+  // it. The clip in hand keeps its own controls. The same rule as the
+  // clip drag, scoped to one clip; the shape drag's key is `${id}:${side}`.
+  const fadeDragInHand: string | null = fadeDragClipId != null
+    ? String(fadeDragClipId)
+    : shapeDrag ? shapeDrag.slice(0, shapeDrag.lastIndexOf(':')) : null;
+  const hidesHandlesOf = (clipId: string | number) =>
+    clipDragInProgress || (fadeDragInHand != null && fadeDragInHand !== String(clipId));
   // The clip under the pointer. Its fade controls show WITHOUT the clip
   // being selected (user decision 2026-09-29, widening the 2026-09-21
   // selected-only rule): fading a clip is not a reason to change the
@@ -802,7 +813,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   }, [crossfadeNodes]);
 
   const renderCrossfadeNodes = () => {
-    if (clipDragInProgress) return null;
+    // A crossfade node belongs to two clips; while a fade is in hand on
+    // one clip the pair it sits between is not that clip's business
+    if (clipDragInProgress || fadeDragInHand != null) return null;
     if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
@@ -947,6 +960,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const BOX = (NODE_R + 3) * 2;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
+      if (hidesHandlesOf(clip.id)) continue;
       const eff = clipQuickFadeGeometry(clip);
       for (const side of ['in', 'out'] as const) {
         const fade = side === 'in' ? eff.fadeIn : eff.fadeOut;
@@ -1653,7 +1667,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             envelopePointSizes={envelopePointSizes}
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
-            handlesHidden={clipDragInProgress}
+            handlesHidden={hidesHandlesOf(clip.id)}
             midiNotes={clip.midiNotes}
             forceHeaderHover={isClipHovered}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
@@ -1718,6 +1732,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
   const renderEdgeTrimZones = () => {
     if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
+    const shownZones = edgeTrimZones.filter((zone) => !hidesHandlesOf(zone.clipId));
+    if (shownZones.length === 0) return null;
     // The trim box's row (Clip.css: top 20, 32 tall), or half of a
     // collapsed clip (Clip hides the header at MIN_CLIP_HEIGHT and below)
     const CLIP_HEADER_H = 20;
@@ -1726,7 +1742,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const zoneTop = collapsed ? 0 : CLIP_HEADER_H;
     const zoneHeight = collapsed ? Math.round(height / 2) : Math.min(TRIM_BOX_H, height - CLIP_HEADER_H);
     if (zoneHeight <= 0) return null;
-    return edgeTrimZones.map((zone) => (
+    return shownZones.map((zone) => (
       <div
         key={`edge-trim-${zone.clipId}-${zone.edge}`}
         className={`track-edge-trim track-edge-trim--${zone.edge}${altHeld && onClipStretchEdge ? ' track-edge-trim--stretch' : ''}`}
@@ -1783,7 +1799,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge) || clipDragInProgress) return null;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
-      if (!clip.selected) continue;
+      if (!clip.selected || hidesHandlesOf(clip.id)) continue;
       const z = clipZIndex.get(clip.id) ?? 2;
       const clipWidth = clip.duration * pixelsPerSecond;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
@@ -1888,6 +1904,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // rule); the drag guard keeps them up while the pointer is
       // captured.
       if (!(clip.selected || fadeHoverClipId === clip.id || fadeDragClipId === clip.id)) continue;
+      if (hidesHandlesOf(clip.id)) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
       if (clipWidth < FADE_HANDLE_MIN_CLIP_PX) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;

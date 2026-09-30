@@ -178,7 +178,7 @@ describe('clip fades', () => {
     check(4); // plus the unselected clip under the pointer
     const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 71 });
-    check(4); // mid-drag
+    check(2); // mid-drag: only the clip in hand keeps its handles (2026-10-01)
     fireEvent.pointerUp(handle, { clientX: 0, clientY: 0, pointerId: 71 });
   });
 
