@@ -3,6 +3,7 @@ import { effectiveTrackHeight } from '../utils/trackFolders';
 import { ClipDragState, useTracksDispatch, Track } from '../contexts/TracksContext';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 import { snapToClipEdges } from '../utils/snapToClipEdges';
+import { cloneClipsInPlace } from '../utils/cloneClipsInPlace';
 
 export interface UseClipDraggingOptions {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -116,6 +117,33 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       const dragState = clipDragStateRef.current;
       didDragRef.current = true; // Mark that dragging has occurred
       lastPointerYRef.current = y;
+
+      // Cmd+drag: the first movement turns the drag into a DUPLICATE.
+      // Copies of every clip in the drag appear over their sources and
+      // become the selection; the drag state is rewritten to move the
+      // copies, and the MOVE_CLIP dispatches below land after the
+      // ADD_CLIPs in the same batch. The sources never move.
+      if (dragState.duplicateOnFirstMove) {
+        dragState.duplicateOnFirstMove = false;
+        const members = dragState.selectedClipsInitialPositions
+          ?? [{ clipId: dragState.clip.id, trackIndex: dragState.trackIndex, startTime: dragState.initialStartTime }];
+        const copies = cloneClipsInPlace(tracks, members);
+        if (copies.length > 0) {
+          const copyFor = (m: { clipId: number; trackIndex: number }) =>
+            copies.find((c) => c.from.clipId === m.clipId && c.from.trackIndex === m.trackIndex);
+          copies.forEach(({ trackIndex, clip }) => dispatch({ type: 'ADD_CLIP', payload: { trackIndex, clip } }));
+          dispatch({ type: 'SELECT_CLIPS', payload: copies.map((c) => ({ trackIndex: c.trackIndex, clipId: c.clip.id })) });
+          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+          const leadCopy = copyFor({ clipId: dragState.clip.id, trackIndex: dragState.trackIndex });
+          if (leadCopy) dragState.clip = leadCopy.clip;
+          // The drag moves the copies from where their sources were; a
+          // member with no copy (not an audio clip) drops out of it
+          dragState.selectedClipsInitialPositions = members.flatMap((m) => {
+            const c = copyFor(m);
+            return c ? [{ clipId: c.clip.id, trackIndex: c.trackIndex, startTime: m.startTime }] : [];
+          });
+        }
+      }
 
       // First mousemove of this drag: freeze the pre-drag track count
       // so grow / shrink can compute deltas against a stable baseline.

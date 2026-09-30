@@ -121,6 +121,9 @@ export interface ClipProps {
   };
   /** Whether this clip is currently being recorded (shows menu, removes right border radius) */
   isRecording?: boolean;
+  /** Hide the trim and stretch handles (a clip drag is in progress —
+   *  no handle anywhere is grabbable while clips are moving). */
+  handlesHidden?: boolean;
   /** Frequency scale for spectrogram rendering */
   spectrogramScale?: SpectrogramScale;
   /** MIDI notes for midi variant */
@@ -184,6 +187,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   timeSelectionRange = null,
   envelopePointSizes,
   isRecording = false,
+  handlesHidden = false,
   spectrogramScale,
   midiNotes,
   forceHeaderHover = false,
@@ -425,7 +429,7 @@ const ClipComponent: React.FC<ClipProps> = ({
           Trim buttons render only when onTrimEdge is wired (matches the
           original contract); stretch buttons always render but no-op if
           onStretchEdge is absent. */}
-      {selected && (
+      {selected && !handlesHidden && (
         <>
           {/* Mouse-only handles. tabIndex={-1} keeps them out of the
               main tab order; the equivalent actions are reachable via

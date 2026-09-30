@@ -73,12 +73,13 @@ export function useClipMouseDown({
     // Ignore right-click (button 2) to allow context menus
     if (e.button !== 0) return;
 
-    // Cmd / Ctrl is the grab-to-pan modifier — clicks with it held
-    // shouldn't select or drag clips. The capture-phase pan listener
-    // also stops the event, but this is a belt-and-braces guard in
-    // case anything has already wired into the React mousedown by
-    // the time we get here.
-    if (e.metaKey || e.ctrlKey) return;
+    // Cmd / Ctrl is the grab-to-pan modifier everywhere EXCEPT on a
+    // clip's header, where Cmd+drag DUPLICATES the clip (user decision
+    // 2026-09-30; useGrabToPan yields the press there). Off the header
+    // the pan owns the press: its capture-phase listener stops the
+    // event before it gets here, and this guard makes sure of it.
+    const duplicating = e.metaKey || e.ctrlKey;
+    if (duplicating && !(e.target instanceof Element && e.target.closest('.clip-header'))) return;
 
     // Each fresh mousedown is a new gesture, so clear the "consume the
     // upcoming click" flags. Without this, a previous drag whose mouseup
@@ -130,9 +131,19 @@ export function useClipMouseDown({
           if (x >= clipX && x <= clipX + clipWidth &&
               y >= clipHeaderY && y < clipHeaderY + trackHeight) {
 
-            // For Shift/Cmd clicks anywhere on the clip, block the mousedown
-            // so time selection doesn't start — the click event will handle selection
-            if (e.shiftKey || e.metaKey || e.ctrlKey) {
+            // For Shift clicks anywhere on the clip, block the mousedown
+            // so time selection doesn't start — the click event will
+            // handle selection. (A Cmd press got here only via a header;
+            // it is a duplicating drag, set up below. Nothing is
+            // selected or copied at the press: a Cmd+CLICK that never
+            // moves stays the selection toggle the click handler runs.)
+            if (e.shiftKey) {
+              e.stopPropagation();
+              return;
+            }
+            // MIDI clips are not duplicated by dragging (their copies
+            // live in another list); a Cmd press on one is left alone
+            if (duplicating && (track.midiClips || []).some((c) => c.id === clip.id)) {
               e.stopPropagation();
               return;
             }
@@ -161,7 +172,7 @@ export function useClipMouseDown({
               );
               const trackInSelectionScope = scopedTrackIndices.includes(trackIndex);
 
-              if (timeSelection && clipOverlapsSelection && trackInSelectionScope) {
+              if (!duplicating && timeSelection && clipOverlapsSelection && trackInSelectionScope) {
                 const members: Array<{ clipId: number; trackIndex: number; startTime: number }> = [];
                 for (const ti of scopedTrackIndices) {
                   const t = tracks[ti];
@@ -215,17 +226,21 @@ export function useClipMouseDown({
               // and only include this clip in the drag
               let selectedClipsInitialPositions;
               if (!clip.selected) {
-                // Clear time selection when starting drag on unselected clip
-                dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-                setSpectralSelection(null);
+                // (A duplicating drag changes nothing at the press: the
+                // copies, when the drag moves, are what gets selected)
+                if (!duplicating) {
+                  // Clear time selection when starting drag on unselected clip
+                  dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+                  setSpectralSelection(null);
 
-                dispatch({
-                  type: 'SELECT_CLIP',
-                  payload: { trackIndex, clipId: clip.id },
-                });
+                  dispatch({
+                    type: 'SELECT_CLIP',
+                    payload: { trackIndex, clipId: clip.id },
+                  });
 
-                // Mark that we just selected on mouse down to prevent immediate deselection on click
-                justSelectedOnMouseDownRef.current = true;
+                  // Mark that we just selected on mouse down to prevent immediate deselection on click
+                  justSelectedOnMouseDownRef.current = true;
+                }
 
                 // If the clip is in a group, include every member in the drag (state from
                 // SELECT_CLIP hasn't propagated yet, so we compute the expansion ourselves).
@@ -275,6 +290,7 @@ export function useClipMouseDown({
                 initialTrackIndex: trackIndex,
                 initialStartTime: clip.start,
                 selectedClipsInitialPositions,
+                ...(duplicating ? { duplicateOnFirstMove: true } : {}),
               };
               didDragRef.current = false; // Reset drag flag
               onDragStart?.();

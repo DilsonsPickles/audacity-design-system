@@ -105,6 +105,11 @@ export function useGrabToPan({
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
+      // A clip's HEADER is the one place Cmd+drag means something
+      // else — duplicate the clip (useClipMouseDown, 2026-09-30). The
+      // pan leaves that press alone; the header's click still toggles
+      // selection, as it did when the pan swallowed the press.
+      if (e.target instanceof Element && e.target.closest('.clip-header')) return;
       panStartRef.current = {
         scrollLeft: container.scrollLeft,
         scrollTop: container.scrollTop,

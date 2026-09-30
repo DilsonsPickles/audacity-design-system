@@ -179,6 +179,12 @@ export interface ClipDragState {
     trackIndex: number;
     startTime: number;
   }>;
+  /** Cmd/Ctrl+drag (2026-09-30): the drag DUPLICATES. Nothing is copied
+   *  at the press — a Cmd+click that never moves is still the selection
+   *  toggle — so the first movement makes the copies (in place, over
+   *  their sources) and rewrites this state to drag THEM; the sources
+   *  stay where they are. Cleared once that has happened. */
+  duplicateOnFirstMove?: boolean;
 }
 
 export interface StereoChannelResizeDragState {

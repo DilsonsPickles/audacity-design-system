@@ -642,6 +642,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [fadeDragSide, setFadeDragSide] = React.useState<'in' | 'out' | null>(null);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
+  // While clips are being DRAGGED no drag handle shows anywhere on the
+  // track (user decision 2026-09-30) — not on the moving clips, not on
+  // the ones they pass: trim, stretch, fade length, fade shape,
+  // crossfade, edge zones. The drag is the only thing in hand.
+  const clipDragInProgress = (draggingClipIds?.size ?? 0) > 0;
   // The clip under the pointer. Its fade controls show WITHOUT the clip
   // being selected (user decision 2026-09-29, widening the 2026-09-21
   // selected-only rule): fading a clip is not a reason to change the
@@ -752,6 +757,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   }, [crossfadeNodes]);
 
   const renderCrossfadeNodes = () => {
+    if (clipDragInProgress) return null;
     if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
@@ -870,7 +876,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // neither leave the curve nor bend it into a corner. Extents are
   // pinned — length is the corner handle's job.
   const renderQuickFadeNodes = () => {
-    if (!onClipFadeShapeChange) return null;
+    if (!onClipFadeShapeChange || clipDragInProgress) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
@@ -1580,6 +1586,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             envelopePointSizes={envelopePointSizes}
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
+            handlesHidden={clipDragInProgress}
             midiNotes={clip.midiNotes}
             forceHeaderHover={isClipHovered}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
@@ -1636,7 +1643,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId]);
 
   const renderEdgeTrimZones = () => {
-    if (!onClipTrimEdge || edgeTrimZones.length === 0) return null;
+    if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
     // The body as the fade overlays measure it: under the header and
     // the clip's 1px border
     const CLIP_HEADER_H = 20;
@@ -1694,7 +1701,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // re-rendered here at track level, above the stack — the originals
   // inside the Clip are covered. Visible edges keep only the originals.
   const renderBuriedEdgeHandles = () => {
-    if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge)) return null;
+    if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge) || clipDragInProgress) return null;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
       if (!clip.selected) continue;
@@ -1779,7 +1786,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // they were trapped under its low stacking context and the veil
   // sheeted over them.
   const renderFadeHandles = () => {
-    if (isMidiTrack || !onClipFadeChange) return null;
+    if (isMidiTrack || !onClipFadeChange || clipDragInProgress) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
     // Below this rendered width there is no room to grab (or read) the
