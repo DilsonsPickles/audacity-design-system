@@ -1887,17 +1887,22 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // side of its boundary (the natural spot) until the two would
       // collide — then both retreat INSIDE their own fade regions, so at
       // a mid-clip meeting each handle stays on its own curve instead of
-      // swapping sides. 56px = two 24px boxes + breathing room.
-      const handlesRetreat = boundaryOutX - boundaryInX < 2 * FADE_HANDLE_BOX.width + 8;
+      // swapping sides. The boxes (their bodies GAP past the boundary)
+      // would overlap below 2 × (GAP − 1 + 24); 8px of breathing room.
+      const GAP = FADE_HANDLE_EDGE_INSET;
+      const handlesRetreat = boundaryOutX - boundaryInX < 2 * (GAP - FADE_GLYPH_BODY.x + FADE_HANDLE_BOX.width) + 8;
       const handle = (side: 'in' | 'out') => {
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
         const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
         // The glyph is asymmetric inside its 24px box (the body spans
         // [1, 11] unmirrored; [13, 23] mirrored), so the box is
         // positioned by the VISIBLE BODY: its near edge keeps a
-        // constant gap to the boundary whichever side it sits on — 3px,
-        // which leaves 2px clear of the white outline around it.
-        const PAD = 3;
+        // constant gap to the boundary whichever side it sits on. The
+        // gap is the body's rest inset from the clip's edge, so with NO
+        // fade the handle's natural place IS its rest place — nothing
+        // clamps, and pulling the handle back to where it rests pulls
+        // the fade back to nothing (it was 3px, and the last 10px of a
+        // retracting fade had to be dragged past the parked handle).
         const mirrored = side === 'out';
         const bodyStart = FADE_GLYPH_BODY.x;
         const bodyEnd = bodyStart + FADE_GLYPH_BODY.size;
@@ -1905,11 +1910,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const squareLeft = mirrored ? boxW - bodyEnd : bodyStart;   // body's left edge within the box
         const squareRight = mirrored ? boxW - bodyStart : bodyEnd;  // body's right edge within the box
         // Box extending right of the boundary: square's LEFT edge sits
-        // PAD past it; extending left: square's RIGHT edge sits PAD short
-        const raw = inward ? boundaryX + PAD - squareLeft : boundaryX - PAD - squareRight;
+        // GAP past it; extending left: square's RIGHT edge sits GAP short
+        const raw = inward ? boundaryX + GAP - squareLeft : boundaryX - GAP - squareRight;
         // However short the fade, the body keeps FADE_HANDLE_EDGE_INSET
         // clear of the clip's own edge — it sits IN the clip, not on
         // its border, and clear of the trim handle just outside it
+        // (with GAP equal to it, only the retreating side ever clamps)
         const minLeft = FADE_HANDLE_EDGE_INSET - squareLeft;
         const maxLeft = clipWidth - FADE_HANDLE_EDGE_INSET - squareRight;
         const left = xBase + Math.round(Math.max(minLeft, Math.min(maxLeft, raw)));
@@ -1935,23 +1941,27 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.stopPropagation();
               e.preventDefault();
               const handleEl = e.currentTarget as HTMLElement;
-              const wrapper = handleEl.ownerDocument.querySelector(`[data-clip-id="${clip.id}"]`);
-              if (!wrapper) return;
-              const rect = wrapper.getBoundingClientRect();
               try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
               setFadeHoverClipId(clip.id); // a press on it proves the pointer is here
               setFadeDragClipId(clip.id);
               setFadeDragSide(side);
-              // The clip is static during a fade drag, so the rect and the
-              // opposite fade captured here stay valid for the session.
+              // The clip is static during a fade drag, so the fades
+              // captured here stay valid for the session. The drag is
+              // RELATIVE: the boundary moves by the pointer's travel from
+              // the press, so the handle stays under the pointer wherever
+              // on it the press landed (it used to put the boundary
+              // itself under the pointer, a body's width away from the
+              // handle in hand).
               // The handle is EXTENT ONLY (2026-09-21: "keep them
               // separate") — the midpoint dot owns the shape.
+              const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
               const otherFade = side === 'in' ? fadeOutSec : fadeInSec;
+              const pressX = e.clientX;
               const clipEnd = clip.start + clip.duration;
               const maxSeconds = windowLen - otherFade;
               const onMove = (ev: PointerEvent) => {
-                const rel = (ev.clientX - rect.left) / pixelsPerSecond;
-                let seconds = side === 'in' ? rel : clip.duration - rel;
+                const travel = (ev.clientX - pressX) / pixelsPerSecond;
+                let seconds = ownFade + (side === 'in' ? travel : -travel);
                 // Grid snap (host's, when snapping is on; Alt bypasses):
                 // it is the fade's BOUNDARY, in project time, that lands
                 // on the grid — not its length

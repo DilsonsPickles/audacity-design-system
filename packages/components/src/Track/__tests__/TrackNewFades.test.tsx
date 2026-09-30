@@ -482,6 +482,45 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-fade-handle]')).toBeNull();
   });
 
+  it('the drag is relative: the handle stays under the pointer, and back at its rest place the fade is gone', () => {
+    // A host that applies the change, as the app does, so the handle
+    // is re-placed as the fade grows
+    function Host() {
+      const [fadeIn, setFadeIn] = React.useState(0);
+      return (
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={(_id, _side, seconds) => setFadeIn(seconds)}
+        />
+      );
+    }
+    const { container } = render(<Providers><Host /></Providers>);
+    const clip = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    const clipLeft = parseInt(clip.style.left, 10);
+    const handle = () => container.querySelector('[data-fade-handle="in"]') as HTMLElement;
+    const bodyCentre = () => parseInt(handle().style.left, 10) - clipLeft + 1 + 5; // body [1, 11] in the box
+    const curve = () => container.querySelector('[data-fade-curve="in"]') as HTMLElement | null;
+    // At rest the body sits 13..23px into the clip; press on its middle
+    expect(bodyCentre()).toBe(18);
+    const pressX = 18;
+    act(() => { fireEvent.pointerDown(handle(), { button: 0, clientX: pressX, clientY: 30, pointerId: 11 }); });
+    // Out by 100px: a 1s fade, and the handle has come along under the pointer
+    act(() => { fireEvent.pointerMove(handle(), { clientX: pressX + 100, clientY: 30, pointerId: 11 }); });
+    expect(curve()).toBeTruthy();
+    expect(bodyCentre()).toBe(pressX + 100);
+    // Part way back: still under the pointer
+    act(() => { fireEvent.pointerMove(handle(), { clientX: pressX + 40, clientY: 30, pointerId: 11 }); });
+    expect(bodyCentre()).toBe(pressX + 40);
+    // Back where it was pressed: the fade is gone — no overshoot needed
+    act(() => { fireEvent.pointerMove(handle(), { clientX: pressX, clientY: 30, pointerId: 11 }); });
+    expect(curve()).toBeNull();
+    expect(bodyCentre()).toBe(18);
+    act(() => { fireEvent.pointerUp(handle(), { clientX: pressX, clientY: 30, pointerId: 11 }); });
+  });
+
   it('dragging the fade-in handle reports clamped seconds', () => {
     const onClipFadeChange = vi.fn();
     const { container } = render(
