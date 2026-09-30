@@ -94,3 +94,58 @@
 .track-edge-trim--right.track-edge-trim--stretch {
   cursor: url('../assets/cursors/ClipStretchRight.png') 16 16, ew-resize;
 }
+
+/* ===========================================================================
+   DEBUG — every clip handle's HIT AREA, painted in place.
+
+   Switched on by `data-debug-hit-areas` on <html> (the sandbox's Debug
+   panel). Each rule paints the element the pointer actually meets, so
+   the picture cannot drift from the behaviour: a box here IS the hit
+   box. Colours follow the spec's hit-zone frame in Figma — trim
+   purple, stretch red, fade length green — with the rest kept apart.
+   Fills go through box-shadow (inset) rather than background so a
+   handle's own look (the stretch disc, the fade glyph) stays readable
+   on top; the outline sits on the box's outer edge.
+   =========================================================================== */
+[data-debug-hit-areas] .clip-display__handle--trim-left,
+[data-debug-hit-areas] .clip-display__handle--trim-right {
+  box-shadow: inset 0 0 0 100px rgba(149, 0, 255, 0.24);
+  outline: 1px solid rgba(140, 100, 148, 0.9);
+  outline-offset: -1px;
+}
+
+[data-debug-hit-areas] .clip-display__handle--stretch-left,
+[data-debug-hit-areas] .clip-display__handle--stretch-right {
+  box-shadow: inset 0 0 0 100px rgba(255, 63, 63, 0.25);
+  outline: 1px solid rgba(183, 74, 74, 0.9);
+  outline-offset: -1px;
+}
+
+/* Fade LENGTH handle: the 24 × 32 box (TrackNew) */
+[data-debug-hit-areas] .track-fade-handle {
+  box-shadow: inset 0 0 0 100px rgba(47, 200, 65, 0.25);
+  outline: 1px solid rgba(60, 140, 70, 0.9);
+  outline-offset: -1px;
+}
+
+/* Fade SHAPE handle and the CROSSFADE node: 16 × 16 boxes around a
+   10px dot, hover-only — they show here only when they show at all */
+[data-debug-hit-areas] .track-fade-shape-handle,
+[data-debug-hit-areas] [data-crossfade-node] {
+  box-shadow: inset 0 0 0 100px rgba(0, 140, 255, 0.3);
+  outline: 1px solid rgba(0, 100, 200, 0.9);
+  outline-offset: -1px;
+}
+
+[data-debug-hit-areas] [data-crossfade-node] {
+  box-shadow: inset 0 0 0 100px rgba(255, 150, 0, 0.35);
+  outline-color: rgba(200, 110, 0, 0.9);
+}
+
+/* An UNSELECTED clip's edge trim zone: 8px on the edge, top third of
+   the body — invisible in use, so the whole thing is the fill */
+[data-debug-hit-areas] [data-edge-trim] {
+  box-shadow: inset 0 0 0 100px rgba(255, 105, 180, 0.45);
+  outline: 1px solid rgba(200, 60, 130, 0.9);
+  outline-offset: -1px;
+}

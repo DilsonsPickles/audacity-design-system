@@ -241,6 +241,17 @@ function CanvasDemoContent() {
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const focusedElement = useFocusDebugger({ showFocusDebug });
+  // Debug: paint every clip handle's HIT element in place (Track.css,
+  // `[data-debug-hit-areas]`) — the real boxes the pointer meets, not a
+  // drawing of them. A document attribute, so the components' own CSS
+  // can key off it without a prop reaching every handle.
+  const [showHitAreas, setShowHitAreas] = React.useState(false);
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (showHitAreas) root.setAttribute('data-debug-hit-areas', '');
+    else root.removeAttribute('data-debug-hit-areas');
+    return () => root.removeAttribute('data-debug-hit-areas');
+  }, [showHitAreas]);
   const controlPointStyle: EnvelopePointStyleKey = 'solidGreenSimple';
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
@@ -1169,6 +1180,8 @@ function CanvasDemoContent() {
         setDebugTrackCount={setDebugTrackCount}
         showFocusDebug={showFocusDebug}
         setShowFocusDebug={setShowFocusDebug}
+        showHitAreas={showHitAreas}
+        setShowHitAreas={setShowHitAreas}
         activeProfile={activeProfile}
         profiles={profiles}
         setProfile={setProfile}

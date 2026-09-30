@@ -44,6 +44,10 @@ export interface DebugPanelProps {
   showFocusDebug: boolean;
   onShowFocusDebugChange: (value: boolean) => void;
 
+  // Clip handle hit areas, painted in place
+  showHitAreas: boolean;
+  onShowHitAreasChange: (value: boolean) => void;
+
   // Accessibility profile
   accessibilityProfileId: string;
   accessibilityProfiles: Array<{ id: string; name: string; description: string }>;
@@ -96,6 +100,8 @@ export function DebugPanel({
   onTestMissingPlugins,
   showFocusDebug,
   onShowFocusDebugChange,
+  showHitAreas,
+  onShowHitAreasChange,
   accessibilityProfileId,
   accessibilityProfiles,
   onAccessibilityProfileChange,
@@ -405,6 +411,11 @@ export function DebugPanel({
               label="Show focused element in selection toolbar"
               checked={showFocusDebug}
               onChange={onShowFocusDebugChange}
+            />
+            <LabeledCheckbox
+              label="Show clip handle hit areas (trim, stretch, fade, edge zones)"
+              checked={showHitAreas}
+              onChange={onShowHitAreasChange}
             />
           </div>
         </div>
