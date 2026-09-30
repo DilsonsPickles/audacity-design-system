@@ -71,7 +71,7 @@ describe('trimming an unselected clip by its edge', () => {
     }
   });
 
-  it('it covers the TOP THIRD of the clip, from its top (the app\'s extent) — the rest of the edge is left to the time selection', () => {
+  it('it covers the TRIM BOX\'S ROW — the 32px under the header — so selecting the clip never moves the grabbable edge', () => {
     const vertical = (height: number) => {
       const { zone } = renderTrack({ height });
       const el = zone(2, 'left')!;
@@ -82,20 +82,22 @@ describe('trimming an unselected clip by its edge', () => {
       cleanup();
       return result;
     };
-    // From the clip's very top — over the ends of the 20px header — so
-    // on a 120px clip the zone is 0..40
-    expect(vertical(120)).toEqual({ top: 0, height: 40 });
-    expect(vertical(114)).toEqual({ top: 0, height: 38 }); // the default track height
-    expect(vertical(300)).toEqual({ top: 0, height: 100 });
-    // Never past half way down, so a selection can always start on the edge
+    // Where the selected clip's trim handle sits (Clip.css: top 20, 32
+    // tall), whatever the clip's height — the header above it is left
+    // whole for dragging, the edge below it for the time selection
+    expect(vertical(120)).toEqual({ top: 20, height: 32 });
+    expect(vertical(114)).toEqual({ top: 20, height: 32 }); // the default track height
+    expect(vertical(300)).toEqual({ top: 20, height: 32 });
+    // Never past half way down the body, so a selection can always start on the edge
     for (const height of [90, 114, 200, 400]) {
       const v = vertical(height);
-      expect(v.top).toBe(0);
-      expect(v.top + v.height).toBeLessThanOrEqual(height / 2);
+      expect(v.top).toBe(20);
+      expect(v.top + v.height).toBeLessThanOrEqual(20 + (height - 20) / 2);
     }
-    // A COLLAPSED clip (too short for its header, 44px and under) gives
-    // the zone half of itself instead
-    expect(vertical(60)).toEqual({ top: 0, height: 20 });
+    // A short clip with a header keeps the row; a COLLAPSED clip (too
+    // short for its header, 44px and under) gives the zone half of
+    // itself instead, from its top — as the app does
+    expect(vertical(60)).toEqual({ top: 20, height: 32 });
     expect(vertical(44)).toEqual({ top: 0, height: 22 });
     expect(vertical(34)).toEqual({ top: 0, height: 17 });
   });

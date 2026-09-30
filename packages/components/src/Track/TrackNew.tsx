@@ -1688,12 +1688,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // at least EDGE_HIT_INSIDE_PX into the clip (isWellInsideClip) — so
   // on the edge there is one thing to do, not two.
   //
-  // The app's vertical extent (ClipItem.qml, matched 2026-09-30): the
-  // TOP THIRD of the CLIP, from its very top — so it reaches over the
-  // ends of the header — and HALF of a collapsed clip (one too short
-  // for its header). Below it the edge belongs to the time selection,
-  // which can then start exactly on a clip's edge. (It was the top
-  // third of the body, under the header, with a 16px floor.)
+  // Vertically the zone IS THE TRIM BOX'S ROW (user decision
+  // 2026-09-30): the 32px directly under the 20px header, where the
+  // selected clip's trim handle sits — so selecting a clip never moves
+  // the grabbable edge, and the header stays whole for dragging. (The
+  // app's zone runs from the clip's very top for a third of it, over
+  // the header's ends; it was matched and then moved down the same
+  // day, the header overlap being the accidental half of it.) A
+  // collapsed clip — too short for its header — gives the zone half of
+  // itself, as the app does. Below the zone the edge belongs to the
+  // time selection, which can then start exactly on a clip's edge.
   //
   // A selected clip has its trim handles and no zones. Dragging a zone
   // streams to the same onClipTrimEdge the handles do — or, with
@@ -1711,11 +1715,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
   const renderEdgeTrimZones = () => {
     if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
-    // From the clip's top: a third of it, or half when it is collapsed
-    // (Clip hides the header at MIN_CLIP_HEIGHT and below)
+    // The trim box's row (Clip.css: top 20, 32 tall), or half of a
+    // collapsed clip (Clip hides the header at MIN_CLIP_HEIGHT and below)
+    const CLIP_HEADER_H = 20;
+    const TRIM_BOX_H = 32;
     const collapsed = height <= MIN_CLIP_HEIGHT;
-    const zoneTop = 0;
-    const zoneHeight = Math.round(height / (collapsed ? 2 : 3));
+    const zoneTop = collapsed ? 0 : CLIP_HEADER_H;
+    const zoneHeight = collapsed ? Math.round(height / 2) : Math.min(TRIM_BOX_H, height - CLIP_HEADER_H);
     if (zoneHeight <= 0) return null;
     return edgeTrimZones.map((zone) => (
       <div
