@@ -160,6 +160,43 @@ export function DebugPanel({
         flexDirection: 'column',
         gap: '24px',
       }}>
+        {/* Hit Markers Section — first, it is the one reached for most */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Hit Markers
+          </h3>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <LabeledCheckbox
+              label="Show clip handle hit areas"
+              checked={showHitAreas}
+              onChange={onShowHitAreasChange}
+            />
+            <span style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '12px',
+              lineHeight: '16px',
+              color: '#14151a',
+              opacity: 0.7,
+            }}>
+              Paints every handle&apos;s real hit element in place: trim (purple), stretch (red),
+              fade length (green), fade shape and crossfade nodes (blue, orange), the unselected
+              clip&apos;s edge zone (pink) and the fade controls&apos; reveal buffer (amber stripes).
+              Hover-only controls show only when they show. Remembered across reloads.
+            </span>
+          </div>
+        </div>
+
         {/* User State Section */}
         <div>
           <h3 style={{
@@ -411,11 +448,6 @@ export function DebugPanel({
               label="Show focused element in selection toolbar"
               checked={showFocusDebug}
               onChange={onShowFocusDebugChange}
-            />
-            <LabeledCheckbox
-              label="Show clip handle hit areas (trim, stretch, fade, edge zones)"
-              checked={showHitAreas}
-              onChange={onShowHitAreasChange}
             />
           </div>
         </div>
