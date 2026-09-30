@@ -829,6 +829,7 @@ export function Canvas({
           setSelectionAnchor={setSelectionAnchor}
           wasJustDragging={selection.selection.wasJustDragging}
           wasJustTrimming={wasJustTrimming}
+          wasMarqueeing={marquee.wasMarqueeing}
           wasJustStretching={wasJustStretching}
           onTrackNavigateVertical={onTrackNavigateVertical}
           onTrackReorder={onTrackReorder}

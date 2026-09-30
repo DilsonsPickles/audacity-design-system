@@ -250,3 +250,46 @@ describe('trimming an unselected clip by its edge', () => {
     expect(zone(2, 'right')).toBeNull();
   });
 });
+
+describe('Cmd+click anywhere on a clip toggles its selection (2026-09-30)', () => {
+  function renderClip() {
+    const onClipClick = vi.fn();
+    const onBelow = vi.fn();
+    const { container } = render(
+      <Providers>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+        <div onClick={onBelow}>
+          <TrackNew
+            clips={[{ id: 2, name: 'Unselected', start: 5, duration: 4 }]}
+            width={1200}
+            trackIndex={0}
+            pixelsPerSecond={100}
+            onClipClick={onClipClick}
+          />
+        </div>
+      </Providers>,
+    );
+    const wrapper = container.querySelector('[data-clip-id="2"]') as HTMLElement;
+    const body = wrapper.querySelector('.clip-display__inner canvas, .clip-display__inner') as HTMLElement;
+    return { wrapper, body, onClipClick, onBelow };
+  }
+
+  it('a Cmd or Ctrl click on the BODY is the toggle, as on the header', () => {
+    for (const mods of [{ metaKey: true }, { ctrlKey: true }]) {
+      const { body, onClipClick, onBelow } = renderClip();
+      fireEvent.click(body, mods);
+      expect(onClipClick).toHaveBeenCalledWith(2, false, true);
+      expect(onBelow).not.toHaveBeenCalled(); // and goes no further
+      cleanup();
+    }
+  });
+
+  it('a plain or Shift click on the body still selects nothing — the body is the time-selection surface', () => {
+    const { body, onClipClick, onBelow } = renderClip();
+    fireEvent.click(body);
+    fireEvent.click(body, { shiftKey: true });
+    fireEvent.click(body, { metaKey: true, shiftKey: true });
+    expect(onClipClick).not.toHaveBeenCalled();
+    expect(onBelow).toHaveBeenCalledTimes(3); // the container still sees them
+  });
+});

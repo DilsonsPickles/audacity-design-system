@@ -96,6 +96,10 @@ export interface CanvasTrackListProps {
    *  deselecting the clip the user just edited. */
   wasJustDragging: () => boolean;
   wasJustTrimming: () => boolean;
+  /** A marquee just committed — the click the browser fires after it
+   *  (on a clip, when the drag began and ended over one) is not a
+   *  click on that clip */
+  wasMarqueeing?: () => boolean;
   wasJustStretching: () => boolean;
   /** Track-level keyboard nav/reorder — from useTrackKeyboardHandlers (Task 5.7). */
   onTrackNavigateVertical: (trackIndex: number, direction: 1 | -1, shiftKey?: boolean, decouple?: boolean) => void;
@@ -423,6 +427,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   setSelectionAnchor,
   wasJustDragging,
   wasJustTrimming,
+  wasMarqueeing,
   wasJustStretching,
   onTrackNavigateVertical,
   onTrackReorder,
@@ -866,6 +871,8 @@ const CanvasTrack = React.memo(function CanvasTrack({
             didDragRef.current = false; // Reset immediately after blocking one click
             return;
           }
+          // …or a Cmd+drag marquee that began and ended on this clip
+          if (wasMarqueeing?.()) return;
 
           // Don't deselect if we just selected this clip on mouse down
           if (justSelectedOnMouseDownRef.current) {

@@ -1260,15 +1260,23 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             (e.currentTarget as HTMLElement).setAttribute('data-focus-mouse', '');
           }}
           onClick={(e) => {
-            // The clip body is a pass-through for time-selection / pan
-            // gestures — modifier-clicks intentionally do not register
-            // as clip selection here. Header clicks (handled by
-            // ClipHeader's onClick, which stops propagation) are the
-            // only path to plain / shift+range / cmd+toggle selection.
+            // The clip body is a pass-through for time-selection
+            // gestures: a plain or Shift click here does not register
+            // as clip selection — the header (ClipHeader's onClick,
+            // which stops propagation) is the path to plain and
+            // shift+range selection. ONE exception (user decision
+            // 2026-09-30): a CMD/CTRL click ANYWHERE on the clip is the
+            // selection toggle, body included — Cmd is not a
+            // time-selection modifier, so the body has nothing else to
+            // do with it. (A Cmd+DRAG is the marquee; the host ignores
+            // the click that follows one.)
             // We still consume mouseDownPosRef so a body drag doesn't
             // leave stale state for the next click.
             mouseDownPosRef.current = null;
-            void e;
+            if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
+              e.stopPropagation();
+              onClipClick?.(clip.id, false, true);
+            }
           }}
           onFocus={(e) => {
             if (clipFocusFromMouseRef.current) {
