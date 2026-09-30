@@ -59,11 +59,11 @@ function renderTrack(props: Partial<React.ComponentProps<typeof TrackNew>> = {})
 }
 
 describe('trimming an unselected clip by its edge', () => {
-  it('the hit box is ON the edge: 4px outside the clip and 4px inside', () => {
+  it('the hit box is ON the edge: the app\'s 5px outside the clip and 6px inside', () => {
     const { zone, clipBox, span } = renderTrack({ height: 120 });
     const box = clipBox(2);
-    expect(span(zone(2, 'left')!)).toEqual({ left: box.left - 4, right: box.left + 4 });
-    expect(span(zone(2, 'right')!)).toEqual({ left: box.right - 4, right: box.right + 4 });
+    expect(span(zone(2, 'left')!)).toEqual({ left: box.left - 5, right: box.left + 6 });
+    expect(span(zone(2, 'right')!)).toEqual({ left: box.right - 6, right: box.right + 5 });
     for (const edge of ['left', 'right'] as const) {
       const el = zone(2, edge)!;
       expect(el.getAttribute('aria-hidden')).toBe('true');
@@ -71,9 +71,7 @@ describe('trimming an unselected clip by its edge', () => {
     }
   });
 
-  it('it covers the TOP THIRD of the clip body only — the rest of the edge is left to the time selection', () => {
-    // The body is what lies under the 20px header and the 1px border:
-    // for a 120px clip, 21..119 = 98px, a third of which is 33px
+  it('it covers the TOP THIRD of the clip, from its top (the app\'s extent) — the rest of the edge is left to the time selection', () => {
     const vertical = (height: number) => {
       const { zone } = renderTrack({ height });
       const el = zone(2, 'left')!;
@@ -84,18 +82,22 @@ describe('trimming an unselected clip by its edge', () => {
       cleanup();
       return result;
     };
-    expect(vertical(120)).toEqual({ top: 21, height: 33 });
-    expect(vertical(114)).toEqual({ top: 21, height: 31 }); // the default track height
-    expect(vertical(300)).toEqual({ top: 21, height: 93 });
-    // Never over the header, and never past two thirds of the way down
+    // From the clip's very top — over the ends of the 20px header — so
+    // on a 120px clip the zone is 0..40
+    expect(vertical(120)).toEqual({ top: 0, height: 40 });
+    expect(vertical(114)).toEqual({ top: 0, height: 38 }); // the default track height
+    expect(vertical(300)).toEqual({ top: 0, height: 100 });
+    // Never past half way down, so a selection can always start on the edge
     for (const height of [90, 114, 200, 400]) {
       const v = vertical(height);
-      expect(v.top).toBeGreaterThanOrEqual(21);
-      expect(v.top + v.height).toBeLessThan(21 + (height - 22) / 2);
+      expect(v.top).toBe(0);
+      expect(v.top + v.height).toBeLessThanOrEqual(height / 2);
     }
-    // A short clip keeps a strip worth grabbing: 16px, or its whole body if that is less
-    expect(vertical(60)).toEqual({ top: 21, height: 16 });  // body 38: a third would be 13
-    expect(vertical(34)).toEqual({ top: 21, height: 12 });  // body 12
+    // A COLLAPSED clip (too short for its header, 44px and under) gives
+    // the zone half of itself instead
+    expect(vertical(60)).toEqual({ top: 0, height: 20 });
+    expect(vertical(44)).toEqual({ top: 0, height: 22 });
+    expect(vertical(34)).toEqual({ top: 0, height: 17 });
   });
 
   it('a press on the edge BELOW the zone is not caught by it', () => {
@@ -167,7 +169,7 @@ describe('trimming an unselected clip by its edge', () => {
     expect(fade('in').z).toBeGreaterThan(Number(zone(2, 'left')!.style.zIndex));
   });
 
-  it('the fade handles do not show until the pointer is at least 4px into the clip', () => {
+  it('the fade handles do not show until the pointer is at least 6px into the clip — past the zone', () => {
     const { container, zone } = renderTrack({
       clips: [{ id: 2, name: 'Unselected', start: 5, duration: 4, fadeIn: 1 }],
     });
@@ -183,23 +185,23 @@ describe('trimming an unselected clip by its edge', () => {
     fireEvent.mouseEnter(zone(2, 'left')!, { clientX: 498, buttons: 0 });
     fireEvent.mouseMove(zone(2, 'left')!, { clientX: 498, buttons: 0 });
     expect(controls()).toBe(0);
-    // In the clip, but within 4px of its edge: still nothing
+    // In the clip, but within 6px of its edge: still nothing
     fireEvent.mouseEnter(clipEl, { clientX: 501, clientY: 60, buttons: 0 });
     expect(controls()).toBe(0);
-    at(503);
+    at(505);
     expect(controls()).toBe(0);
-    // 4px in: they show
-    at(504);
+    // 6px in: they show
+    at(506);
     expect(controls()).toBe(3); // two length handles + the fade-in's shape handle
     at(700);
     expect(controls()).toBe(3);
     // Back toward the edge: they go again…
-    at(502);
+    at(504);
     expect(controls()).toBe(0);
     // …and the same from the right-hand side
-    at(896);
+    at(894);
     expect(controls()).toBe(3);
-    at(897);
+    at(895);
     expect(controls()).toBe(0);
     // A press already under way is not a hover, however far in
     fireEvent.mouseMove(clipEl, { clientX: 700, clientY: 60, buttons: 1 });
@@ -214,8 +216,8 @@ describe('trimming an unselected clip by its edge', () => {
       ],
     });
     const joint = clipBox(2).left;
-    expect(span(zone(1, 'right')!)).toEqual({ left: joint - 4, right: joint });
-    expect(span(zone(2, 'left')!)).toEqual({ left: joint, right: joint + 4 });
+    expect(span(zone(1, 'right')!)).toEqual({ left: joint - 6, right: joint });
+    expect(span(zone(2, 'left')!)).toEqual({ left: joint, right: joint + 6 });
   });
 
   it('a selected neighbour keeps the unselected clip\'s zone out of itself', () => {
@@ -226,7 +228,7 @@ describe('trimming an unselected clip by its edge', () => {
       ],
     });
     const joint = clipBox(2).left;
-    expect(span(zone(2, 'left')!)).toEqual({ left: joint, right: joint + 4 });
+    expect(span(zone(2, 'left')!)).toEqual({ left: joint, right: joint + 6 });
   });
 
   it('an edge buried under a higher clip has no zone', () => {

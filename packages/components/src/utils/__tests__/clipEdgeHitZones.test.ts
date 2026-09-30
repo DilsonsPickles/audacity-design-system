@@ -9,53 +9,53 @@ const find = (list: ReturnType<typeof zones>, id: number, edge: 'left' | 'right'
   list.find((z) => z.clipId === id && z.edge === edge);
 
 describe('computeEdgeHitZones — where a clip edge can be grabbed', () => {
-  it('a zone sits ON the edge: 4px outside it and 4px inside', () => {
-    expect(EDGE_HIT_OUTSIDE_PX).toBe(4);
-    expect(EDGE_HIT_INSIDE_PX).toBe(4);
+  it('a zone sits ON the edge: the app\'s 5px outside it and 6px inside', () => {
+    expect(EDGE_HIT_OUTSIDE_PX).toBe(5);
+    expect(EDGE_HIT_INSIDE_PX).toBe(6);
     const list = zones([clip(1, 2, 3)]); // 200px..500px
     expect(list).toEqual([
-      { clipId: 1, edge: 'left', edgeX: 200, left: 196, width: 8 },
-      { clipId: 1, edge: 'right', edgeX: 500, left: 496, width: 8 },
+      { clipId: 1, edge: 'left', edgeX: 200, left: 195, width: 11 },
+      { clipId: 1, edge: 'right', edgeX: 500, left: 494, width: 11 },
     ]);
   });
 
-  it('the inside half stays clear of where the fade handles start', () => {
+  it('the inside part stays clear of where the fade handles start', () => {
     // TrackNew puts a fade handle's hit box no closer than this to the edge
-    const FADE_HANDLE_BOX_FROM_EDGE = 4;
+    const FADE_HANDLE_BOX_FROM_EDGE = 12;
     for (const z of zones([clip(1, 2, 3)])) {
       const insideReach = z.edge === 'left' ? z.left + z.width - z.edgeX : z.edgeX - z.left;
       expect(insideReach).toBeLessThanOrEqual(FADE_HANDLE_BOX_FROM_EDGE);
     }
   });
 
-  it('a clip at time zero still has the outside half of its left zone', () => {
-    expect(find(zones([clip(1, 0, 3)]), 1, 'left')).toEqual({ clipId: 1, edge: 'left', edgeX: 0, left: -4, width: 8 });
+  it('a clip at time zero still has the outside part of its left zone', () => {
+    expect(find(zones([clip(1, 0, 3)]), 1, 'left')).toEqual({ clipId: 1, edge: 'left', edgeX: 0, left: -5, width: 11 });
   });
 
   it('clips that touch: each keeps its own side of the joint', () => {
     const list = zones([clip(1, 0, 3), clip(2, 3, 2)]); // joint at 300px
-    expect(find(list, 1, 'right')).toEqual({ clipId: 1, edge: 'right', edgeX: 300, left: 296, width: 4 });
-    expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 300, width: 4 });
+    expect(find(list, 1, 'right')).toEqual({ clipId: 1, edge: 'right', edgeX: 300, left: 294, width: 6 });
+    expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 300, width: 6 });
     // …whichever way round they are stacked or listed
     const flipped = zones([clip(2, 3, 2), clip(1, 0, 3)]);
     expect(find(flipped, 1, 'right')).toEqual(find(list, 1, 'right'));
     expect(find(flipped, 2, 'left')).toEqual(find(list, 2, 'left'));
   });
 
-  it('clips a few pixels apart split the gap down the middle', () => {
+  it('clips a few pixels apart split the gap down the middle — the app\'s half-the-gap rule', () => {
     const list = zones([clip(1, 0, 3), clip(2, 3.06, 2)]); // 300px and 306px
     const a = find(list, 1, 'right')!;
     const b = find(list, 2, 'left')!;
     expect(a.left + a.width).toBeCloseTo(303, 9);
     expect(b.left).toBeCloseTo(303, 9);
-    expect(a.left).toBe(296);
-    expect(b.left + b.width).toBeCloseTo(310, 9);
+    expect(a.left).toBe(294);
+    expect(b.left + b.width).toBeCloseTo(312, 9);
   });
 
-  it('clips further apart than two half-zones are left alone', () => {
-    const list = zones([clip(1, 0, 3), clip(2, 3.2, 2)]);
-    expect(find(list, 1, 'right')!.width).toBe(8);
-    expect(find(list, 2, 'left')!.width).toBe(8);
+  it('clips 10px or more apart are left alone', () => {
+    const list = zones([clip(1, 0, 3), clip(2, 3.1, 2)]);
+    expect(find(list, 1, 'right')!.width).toBe(11);
+    expect(find(list, 2, 'left')!.width).toBe(11);
   });
 
   it('no two zones ever overlap, however the clips are packed', () => {
@@ -69,27 +69,27 @@ describe('computeEdgeHitZones — where a clip edge can be grabbed', () => {
 
   it('a very short clip: its two zones meet at its middle and do not cross', () => {
     const list = zones([clip(1, 2, 0.04)]); // 4px wide
-    expect(find(list, 1, 'left')).toEqual({ clipId: 1, edge: 'left', edgeX: 200, left: 196, width: 6 });
-    expect(find(list, 1, 'right')).toEqual({ clipId: 1, edge: 'right', edgeX: 204, left: 202, width: 6 });
+    expect(find(list, 1, 'left')).toEqual({ clipId: 1, edge: 'left', edgeX: 200, left: 195, width: 7 });
+    expect(find(list, 1, 'right')).toEqual({ clipId: 1, edge: 'right', edgeX: 204, left: 202, width: 7 });
   });
 
   it('an edge under a higher clip has no zone; the higher clip\'s own edge straddles as usual', () => {
     // A 0..5 below, B 3..7 on top: A's right edge (5) is under B
     const list = zones([clip(1, 0, 5), clip(2, 3, 4)]);
     expect(find(list, 1, 'right')).toBeUndefined();
-    expect(find(list, 1, 'left')!.width).toBe(8);
-    expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 296, width: 8 });
-    expect(find(list, 2, 'right')!.width).toBe(8);
+    expect(find(list, 1, 'left')!.width).toBe(11);
+    expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 295, width: 11 });
+    expect(find(list, 2, 'right')!.width).toBe(11);
     // Stacked the other way, it is B's left edge that is buried
     const flipped = zones([clip(1, 0, 5), clip(2, 3, 4)], { zOf: (c: { id: number }) => -c.id });
     expect(find(flipped, 2, 'left')).toBeUndefined();
-    expect(find(flipped, 1, 'right')!.width).toBe(8);
+    expect(find(flipped, 1, 'right')!.width).toBe(11);
   });
 
   it('a clip with no zone of its own still keeps a neighbour\'s zone out', () => {
     // Clip 1 is (say) selected — it has handles, not zones
     const list = zones([clip(1, 0, 3), clip(2, 3, 2)], { eligible: (c: { id: number }) => c.id !== 1 });
     expect(list.filter((z) => z.clipId === 1)).toEqual([]);
-    expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 300, width: 4 });
+    expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 300, width: 6 });
   });
 });

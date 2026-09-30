@@ -32,7 +32,10 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
 
 export type ClipState = 'default' | 'headerHover';
 
-const MIN_CLIP_HEIGHT = 44; // Minimum height before header is hidden
+// Minimum height before the header is hidden — the clip is COLLAPSED
+// below it. Exported for TrackNew's edge trim zones, which (as the app's)
+// take half of a collapsed clip and a third of one with its header.
+export const MIN_CLIP_HEIGHT = 44;
 const HEADER_HEIGHT = 20;
 
 export interface ClipProps {

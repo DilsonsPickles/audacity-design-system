@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MidiNote } from '@audacity-ui/core';
-import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
+import { Clip, MIN_CLIP_HEIGHT, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
@@ -1688,12 +1688,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // at least EDGE_HIT_INSIDE_PX into the clip (isWellInsideClip) — so
   // on the edge there is one thing to do, not two.
   //
-  // Only the TOP THIRD of the clip's BODY (user decision 2026-09-29):
-  // below it the edge belongs to the time selection, which can then
-  // start exactly on a clip's edge; above it the header keeps its own
-  // jobs (select, drag). A short clip still gets a grabbable strip —
-  // never less than EDGE_TRIM_MIN_HEIGHT, or the whole body if that is
-  // shorter still.
+  // The app's vertical extent (ClipItem.qml, matched 2026-09-30): the
+  // TOP THIRD of the CLIP, from its very top — so it reaches over the
+  // ends of the header — and HALF of a collapsed clip (one too short
+  // for its header). Below it the edge belongs to the time selection,
+  // which can then start exactly on a clip's edge. (It was the top
+  // third of the body, under the header, with a 16px floor.)
   //
   // A selected clip has its trim handles and no zones. Dragging a zone
   // streams to the same onClipTrimEdge the handles do — or, with
@@ -1711,13 +1711,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
   const renderEdgeTrimZones = () => {
     if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
-    // The body as the fade overlays measure it: under the header and
-    // the clip's 1px border
-    const CLIP_HEADER_H = 20;
-    const EDGE_TRIM_MIN_HEIGHT = 16;
-    const bodyTop = CLIP_HEADER_H + 1;
-    const bodyHeight = Math.max(0, height - bodyTop - 1);
-    const zoneHeight = Math.min(bodyHeight, Math.max(EDGE_TRIM_MIN_HEIGHT, Math.round(bodyHeight / 3)));
+    // From the clip's top: a third of it, or half when it is collapsed
+    // (Clip hides the header at MIN_CLIP_HEIGHT and below)
+    const collapsed = height <= MIN_CLIP_HEIGHT;
+    const zoneTop = 0;
+    const zoneHeight = Math.round(height / (collapsed ? 2 : 3));
     if (zoneHeight <= 0) return null;
     return edgeTrimZones.map((zone) => (
       <div
@@ -1752,7 +1750,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         onDoubleClick={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',
-          top: `${bodyTop}px`,
+          top: `${zoneTop}px`,
           height: `${zoneHeight}px`,
           left: `${CLIP_CONTENT_OFFSET + zone.left}px`,
           width: `${zone.width}px`,

@@ -1,8 +1,11 @@
 /**
  * Where a clip's EDGE can be grabbed to trim it (user decision
- * 2026-09-29): a strip ON the edge — half of it outside the clip, half
+ * 2026-09-29): a strip ON the edge — part of it outside the clip, part
  * inside — not a strip inside the clip. This is how an UNSELECTED clip
  * is trimmed; a selected clip has its trim handles.
+ *
+ * The numbers are the app's (ClipItem.qml, `leftTrimStretchEdgeHover`;
+ * matched 2026-09-30): 11px on the edge, 5 outside and 6 inside.
  *
  * Pure geometry, in pixels along the track (0 = time zero; the caller
  * adds its content offset). Three rules decide what each edge gets:
@@ -11,21 +14,23 @@
  *  2. Two zones never overlap. Where they would (clips that touch, or
  *     sit a few pixels apart) the ground between the two edges is split
  *     down the middle; at a butt joint that is the joint itself, so each
- *     clip keeps exactly its own side.
- *  3. The inside half stops at the clip's middle, so a very short clip's
+ *     clip keeps exactly its own side. (The app's rule, put the other
+ *     way round: within 10px of a neighbour the outside reach is half
+ *     the gap.)
+ *  3. The inside part stops at the clip's middle, so a very short clip's
  *     two zones do not cross.
  *
  * Every visible edge claims its ground under rule 2, including the edges
  * of clips that get no zone of their own (`eligible` = false, e.g. a
  * selected clip) — otherwise a neighbour's zone would reach into them.
  *
- * The fade handles live further in: their hit box starts
+ * The fade handles live further in: their hit box starts past
  * EDGE_HIT_INSIDE_PX from the clip's edge (TrackNew positions them), so
- * a zone and a fade handle meet and never overlap.
+ * a zone and a fade handle never overlap.
  */
 
-export const EDGE_HIT_OUTSIDE_PX = 4;
-export const EDGE_HIT_INSIDE_PX = 4;
+export const EDGE_HIT_OUTSIDE_PX = 5;
+export const EDGE_HIT_INSIDE_PX = 6;
 
 export interface EdgeZoneClipLike {
   id: number | string;
