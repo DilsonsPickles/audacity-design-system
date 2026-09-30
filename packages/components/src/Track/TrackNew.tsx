@@ -2259,7 +2259,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           height: `${height}px`,
           backgroundColor: getTrackBackgroundColor(),
           opacity: isMuted ? 0.5 : 1,
-        }}
+          // For the debug hit-area overlay (Track.css): the fade
+          // controls' reveal buffer is drawn from the same constant
+          // isWellInsideClip reads, so the picture cannot drift from it
+          ['--edge-hit-inside' as string]: `${EDGE_HIT_INSIDE_PX}px`,
+        } as React.CSSProperties}
         tabIndex={trackTabIndex ?? -1}
         role="group"
         aria-label={`${trackName ?? `Track ${trackIndex + 1}`}, ${isLabelTrack ? 'label track' : isMidiTrack ? 'MIDI track' : 'audio track'}`}

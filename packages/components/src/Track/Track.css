@@ -146,10 +146,35 @@
   outline-color: rgba(200, 110, 0, 0.9);
 }
 
-/* An UNSELECTED clip's edge trim zone: 8px on the edge, top third of
-   the body — invisible in use, so the whole thing is the fill */
+/* An UNSELECTED clip's edge trim zone: on the edge, in the trim box's
+   row — invisible in use, so the whole thing is the fill */
 [data-debug-hit-areas] [data-edge-trim] {
   box-shadow: inset 0 0 0 100px rgba(255, 105, 180, 0.45);
   outline: 1px solid rgba(200, 60, 130, 0.9);
   outline-offset: -1px;
 }
+
+/* The fade controls' REVEAL BUFFER: they do not show until the pointer
+   is EDGE_HIT_INSIDE_PX in from either side (isWellInsideClip). Not an
+   element — a condition on the pointer's x — so it is drawn: a striped
+   band down each edge of every clip, its width the constant itself
+   (--edge-hit-inside, set by TrackNew), any height. Below the clip's
+   own handles (z 25) and taking no pointer events. */
+[data-debug-hit-areas] [data-clip-id]::before,
+[data-debug-hit-areas] [data-clip-id]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--edge-hit-inside, 6px);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 190, 0, 0.55) 0 2px,
+    rgba(255, 190, 0, 0.15) 2px 4px
+  );
+  pointer-events: none;
+  z-index: 20;
+}
+
+[data-debug-hit-areas] [data-clip-id]::before { left: 0; }
+[data-debug-hit-areas] [data-clip-id]::after { right: 0; }
