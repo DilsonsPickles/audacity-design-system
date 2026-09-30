@@ -272,6 +272,12 @@ export interface TrackProps {
    *  null when it has not / when the drag ends — for the host's snap
    *  guideline. Only fires when `snapTime` is set. */
   onFadeSnapGuideline?: (time: number | null) => void;
+  /** The clip whose fade (length handle or shape node) is in hand
+   *  ANYWHERE — on this track or another. Reported through
+   *  onFadeDragChange; the host hands it back to every track so all of
+   *  them hide their other clips' handles (2026-10-01). */
+  fadeInHandClipId?: string | number | null;
+  onFadeDragChange?: (clipId: string | number | null) => void;
 
   /** Alt+drag on the crossfade's intersection node — a ROLL: both clip
    *  edges slide by `deltaSeconds` (the seam moves, the overlap length
@@ -521,6 +527,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipFadeChange,
   snapTime,
   onFadeSnapGuideline,
+  fadeInHandClipId,
+  onFadeDragChange,
   onCrossfadeRoll,
   onCrossfadeShapeChange,
   onClipFadeShapeChange,
@@ -680,9 +688,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // stretch and fade handles beside a drag that had nothing to do with
   // it. The clip in hand keeps its own controls. The same rule as the
   // clip drag, scoped to one clip; the shape drag's key is `${id}:${side}`.
+  // This track's own drag is known here; a drag on ANOTHER track comes
+  // back from the host as fadeInHandClipId (it was reported to it).
   const fadeDragInHand: string | null = fadeDragClipId != null
     ? String(fadeDragClipId)
-    : shapeDrag ? shapeDrag.slice(0, shapeDrag.lastIndexOf(':')) : null;
+    : shapeDrag ? shapeDrag.slice(0, shapeDrag.lastIndexOf(':'))
+    : fadeInHandClipId != null ? String(fadeInHandClipId) : null;
   const hidesHandlesOf = (clipId: string | number) =>
     clipDragInProgress || (fadeDragInHand != null && fadeDragInHand !== String(clipId));
   // The clip under the pointer. Its fade controls show WITHOUT the clip
@@ -1036,6 +1047,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const nodeEl = e.currentTarget as HTMLElement;
               try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
               setShapeDrag(dragKey);
+              onFadeDragChange?.(clip.id);
               const startClientX = e.clientX;
               const startClientY = e.clientY;
               const startT = tDot;
@@ -1054,6 +1066,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 nodeEl.removeEventListener('pointermove', onMove);
                 nodeEl.removeEventListener('pointerup', onUp);
                 setShapeDrag(null);
+                onFadeDragChange?.(null);
                 settleFadeHover(clip.id, ev, nodeEl);
               };
               nodeEl.addEventListener('pointermove', onMove);
@@ -1978,6 +1991,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               setFadeHoverClipId(clip.id); // a press on it proves the pointer is here
               setFadeDragClipId(clip.id);
               setFadeDragSide(side);
+              onFadeDragChange?.(clip.id);
               // The clip is static during a fade drag, so the fades
               // captured here stay valid for the session. The drag is
               // RELATIVE: the boundary moves by the pointer's travel from
@@ -2021,6 +2035,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 handleEl.removeEventListener('pointerup', onUp);
                 setFadeDragClipId(null);
                 setFadeDragSide(null);
+                onFadeDragChange?.(null);
                 settleFadeHover(clip.id, ev, handleEl);
                 if (snapTime) onFadeSnapGuideline?.(null);
               };

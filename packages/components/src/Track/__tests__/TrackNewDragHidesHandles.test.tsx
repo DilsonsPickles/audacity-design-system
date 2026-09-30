@@ -87,6 +87,54 @@ describe('while a fade is being dragged, every OTHER clip\'s handles are hidden 
   });
 });
 
+describe('a fade drag on ANOTHER track hides this track\'s handles too', () => {
+  it('the host hands the in-hand clip back as fadeInHandClipId; a foreign id hides everything here', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={clips}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          fadeInHandClipId={99}
+          onClipTrimEdge={vi.fn()}
+          onClipStretchEdge={vi.fn()}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+          onCrossfadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
+    for (const selector of HANDLES) {
+      expect(container.querySelectorAll(selector).length, selector).toBe(0);
+    }
+  });
+
+  it('this track reports its own fade drags to the host, start and end', () => {
+    const onFadeDragChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={clips}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onFadeDragChange={onFadeDragChange}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="2"]') as HTMLElement, { buttons: 0 });
+    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 620, clientY: 30, pointerId: 61 });
+    expect(onFadeDragChange).toHaveBeenLastCalledWith(2);
+    fireEvent.pointerUp(handle, { clientX: 620, clientY: 30, pointerId: 61 });
+    expect(onFadeDragChange).toHaveBeenLastCalledWith(null);
+  });
+});
+
 describe('while clips are being dragged, every drag handle is hidden', () => {
   it('at rest every kind of handle is there', () => {
     const { container, count } = renderTrack(new Set());

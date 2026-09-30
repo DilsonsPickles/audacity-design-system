@@ -411,6 +411,10 @@ export function Canvas({
   // itself lives in TrackNew; it reports where it snapped to, and null
   // when it has not or has ended). Same grid as the other drags.
   const [fadeSnapGuidelineTime, setFadeSnapGuidelineTime] = useState<number | null>(null);
+  // The clip whose fade is in hand, on whichever track: TrackNew reports
+  // it and every track gets it back, so a fade drag on one track hides
+  // the other clips' handles on all of them (2026-10-01)
+  const [fadeInHandClipId, setFadeInHandClipId] = useState<string | number | null>(null);
   // (Keyed on the settings, not on `snapOptions` — that object is
   // rebuilt every render, and a fresh function each time would re-render
   // every memoised track row.)
@@ -808,6 +812,8 @@ export function Canvas({
           showQuickFadeHandles={showQuickFadeHandles}
           snapTime={snapTime}
           onFadeSnapGuideline={setFadeSnapGuidelineTime}
+          fadeInHandClipId={fadeInHandClipId}
+          onFadeDragChange={setFadeInHandClipId}
           draggingClipIds={draggingClipIds}
           raisedClipIds={raisedClipIds}
           marqueePreview={marqueePreview}

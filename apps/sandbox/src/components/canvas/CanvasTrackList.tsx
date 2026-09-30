@@ -65,6 +65,10 @@ export interface CanvasTrackListProps {
    *  where such a drag has snapped to, for the canvas's guideline */
   snapTime?: (time: number) => number;
   onFadeSnapGuideline?: (time: number | null) => void;
+  /** The clip whose fade is in hand on ANY track (TrackNew reports it;
+   *  every track gets it back so all hide their other clips' handles) */
+  fadeInHandClipId: string | number | null;
+  onFadeDragChange: (clipId: string | number | null) => void;
   draggingClipIds: Set<number>;
   raisedClipIds: Set<number>;
   /** Live right-drag marquee preview, trackIndex -> covered clip ids.
@@ -406,6 +410,8 @@ const CanvasTrack = React.memo(function CanvasTrack({
   showQuickFadeHandles,
   snapTime,
   onFadeSnapGuideline,
+  fadeInHandClipId,
+  onFadeDragChange,
   draggingClipIds,
   raisedClipIds,
   marqueePreviewClipIds,
@@ -990,6 +996,8 @@ const CanvasTrack = React.memo(function CanvasTrack({
         } : undefined}
         snapTime={snapTime}
         onFadeSnapGuideline={onFadeSnapGuideline}
+        fadeInHandClipId={fadeInHandClipId}
+        onFadeDragChange={onFadeDragChange}
         onClipStretchEdge={(clipId, edge) => {
           // Only initialize once per drag — Clip.tsx calls back on every
           // mousemove. Subsequent mousemoves are handled inside the
