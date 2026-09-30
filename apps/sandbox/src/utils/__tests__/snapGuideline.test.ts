@@ -27,6 +27,13 @@ describe('resolveSnapGuideline', () => {
     expect(result).toEqual({ time: 3, kind: 'grid' });
   });
 
+  it('a fade-handle drag comes last: it shows only when nothing else is snapping', () => {
+    expect(resolveSnapGuideline(none, none, none, { time: 4, kind: 'grid' })).toEqual({ time: 4, kind: 'grid' });
+    expect(resolveSnapGuideline(none, none, { time: 3, kind: 'grid' }, { time: 4, kind: 'grid' })).toEqual({ time: 3, kind: 'grid' });
+    // …and leaving it out is the same as it having nothing to say
+    expect(resolveSnapGuideline(none, none, none)).toEqual(resolveSnapGuideline(none, none, none, none));
+  });
+
   it('returns nulls when drag, trim, and stretch are all null', () => {
     const result = resolveSnapGuideline(none, none, none);
     expect(result).toEqual({ time: null, kind: null });

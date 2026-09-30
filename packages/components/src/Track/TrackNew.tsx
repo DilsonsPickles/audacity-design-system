@@ -235,6 +235,19 @@ export interface TrackProps {
    *  length for that side (0 removes the fade). */
   onClipFadeChange?: (clipId: string | number, side: 'in' | 'out', seconds: number) => void;
 
+  /** The host's grid snap, as a function of PROJECT time (seconds from
+   *  time zero) — present only while snapping is on. A fade handle drag
+   *  snaps the fade's boundary (where the fade meets the clip's body)
+   *  through it, Alt held excepted; the snapped boundary is then still
+   *  held to the fade's limits. Same contract as the trim and stretch
+   *  drags (user decision 2026-09-30). */
+  snapTime?: (time: number) => number;
+
+  /** Reports where a fade handle drag has snapped to (project time), or
+   *  null when it has not / when the drag ends — for the host's snap
+   *  guideline. Only fires when `snapTime` is set. */
+  onFadeSnapGuideline?: (time: number | null) => void;
+
   /** Alt+drag on the crossfade's intersection node — a ROLL: both clip
    *  edges slide by `deltaSeconds` (the seam moves, the overlap length
    *  stays). Fired incrementally during the drag. */
@@ -481,6 +494,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipTrimEdge,
   onClipStretchEdge,
   onClipFadeChange,
+  snapTime,
+  onFadeSnapGuideline,
   onCrossfadeRoll,
   onCrossfadeShapeChange,
   onClipFadeShapeChange,
@@ -1858,14 +1873,31 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // The handle is EXTENT ONLY (2026-09-21: "keep them
               // separate") — the midpoint dot owns the shape.
               const otherFade = side === 'in' ? fadeOutSec : fadeInSec;
+              const clipEnd = clip.start + clip.duration;
+              const maxSeconds = windowLen - otherFade;
               const onMove = (ev: PointerEvent) => {
                 const rel = (ev.clientX - rect.left) / pixelsPerSecond;
                 let seconds = side === 'in' ? rel : clip.duration - rel;
+                // Grid snap (host's, when snapping is on; Alt bypasses):
+                // it is the fade's BOUNDARY, in project time, that lands
+                // on the grid — not its length
+                let snappedTo: number | null = null;
+                if (snapTime && !ev.altKey) {
+                  const boundary = snapTime(side === 'in' ? clip.start + seconds : clipEnd - seconds);
+                  const snappedSeconds = side === 'in' ? boundary - clip.start : clipEnd - boundary;
+                  // A gridline the fade cannot reach (past its limits) is
+                  // not a snap: keep the pointer's own value there
+                  if (snappedSeconds >= 0 && snappedSeconds <= maxSeconds) {
+                    seconds = snappedSeconds;
+                    snappedTo = boundary;
+                  }
+                }
                 // Clamp to the free window: a quick fade never overlaps
                 // a crossfade (or the opposite quick fade)
-                seconds = Math.max(0, Math.min(windowLen - otherFade, seconds));
+                seconds = Math.max(0, Math.min(maxSeconds, seconds));
                 if (seconds < 0.02) seconds = 0; // snap tiny fades away
                 onClipFadeChange?.(clip.id, side, seconds);
+                if (snapTime) onFadeSnapGuideline?.(snappedTo);
               };
               const onUp = (ev: PointerEvent) => {
                 handleEl.removeEventListener('pointermove', onMove);
@@ -1873,6 +1905,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 setFadeDragClipId(null);
                 setFadeDragSide(null);
                 settleFadeHover(clip.id, ev, handleEl);
+                if (snapTime) onFadeSnapGuideline?.(null);
               };
               handleEl.addEventListener('pointermove', onMove);
               handleEl.addEventListener('pointerup', onUp);

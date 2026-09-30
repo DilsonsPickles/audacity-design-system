@@ -25,6 +25,7 @@ import { SplitPreviewLine } from './canvas/SplitPreviewLine';
 import { MarqueeRect } from './canvas/MarqueeRect';
 import { computeCanvasHeights } from '../utils/canvasLayout';
 import { resolveSnapGuideline } from '../utils/snapGuideline';
+import { snapToGrid } from '../utils/snapToGrid';
 import { deriveEnvelopePointSizes } from '../utils/envelopePointSizes';
 import { useDragHighlightIds } from '../hooks/useDragHighlightIds';
 import { effectiveTrackHeight } from '../utils/trackFolders';
@@ -403,12 +404,27 @@ export function Canvas({
     snapOptions,
   });
 
+  // A fade handle drag snaps its boundary to the grid too (the drag
+  // itself lives in TrackNew; it reports where it snapped to, and null
+  // when it has not or has ended). Same grid as the other drags.
+  const [fadeSnapGuidelineTime, setFadeSnapGuidelineTime] = useState<number | null>(null);
+  // (Keyed on the settings, not on `snapOptions` — that object is
+  // rebuilt every render, and a fresh function each time would re-render
+  // every memoised track row.)
+  const snapTime = useMemo(
+    () => (snapEnabled
+      ? (time: number) => snapToGrid(time, { timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond })
+      : undefined),
+    [snapEnabled, timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond],
+  );
+
   // Whichever drag is active reports its snap target; we render at
   // most one guideline. Cyan for grid snap, yellow for alignment snap.
   const { time: snapGuidelineTime, kind: snapGuidelineKind } = resolveSnapGuideline(
     { time: dragSnapGuidelineTime, kind: dragSnapGuidelineKind },
     { time: trimSnapGuidelineTime, kind: trimSnapGuidelineKind },
-    { time: stretchSnapGuidelineTime, kind: stretchSnapGuidelineKind }
+    { time: stretchSnapGuidelineTime, kind: stretchSnapGuidelineKind },
+    { time: fadeSnapGuidelineTime, kind: fadeSnapGuidelineTime !== null ? 'grid' : null },
   );
   const snapGuidelineColor = snapGuidelineKind === 'grid' ? '#22D3EE' : '#FFD60A';
   const snapGuidelineShadow = snapGuidelineKind === 'grid'
@@ -787,6 +803,8 @@ export function Canvas({
           recordingClipId={recordingClipId}
           showRmsInWaveform={showRmsInWaveform}
           showQuickFadeHandles={showQuickFadeHandles}
+          snapTime={snapTime}
+          onFadeSnapGuideline={setFadeSnapGuidelineTime}
           draggingClipIds={draggingClipIds}
           raisedClipIds={raisedClipIds}
           marqueePreview={marqueePreview}

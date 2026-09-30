@@ -1083,3 +1083,114 @@ describe('clip fades', () => {
     expect(parentSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('fade handle grid snap (2026-09-30)', () => {
+  // A 0.5s grid; the clip runs 1s..5s at 100px/s, so its left edge is
+  // at x=100 and its right edge at x=500 in the mocked rect below
+  const snapTime = (t: number) => Math.round(t / 0.5) * 0.5;
+  function renderIt(extra: Record<string, unknown> = {}) {
+    const onClipFadeChange = vi.fn();
+    const onFadeSnapGuideline = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 1, duration: 4, selected: true, ...extra }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          snapTime={snapTime}
+          onFadeSnapGuideline={onFadeSnapGuideline}
+        />
+      </Providers>,
+    );
+    const wrapper = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    Object.defineProperty(wrapper, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 100, top: 0, right: 500, bottom: 100, width: 400, height: 100, x: 100, y: 0, toJSON: () => ({}) }),
+    });
+    const handle = (side: 'in' | 'out') => container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
+    return { handle, onClipFadeChange, onFadeSnapGuideline };
+  }
+
+  it('the fade boundary lands on the grid, in project time — not the fade length', () => {
+    const { handle, onClipFadeChange, onFadeSnapGuideline } = renderIt();
+    fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 1 });
+    // Pointer at x=237 = 1.37s into the clip = project time 2.37s → 2.5s
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 1 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5);
+    fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 1 });
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null); // the guideline goes with the drag
+
+    // Fade out: the boundary is measured from the clip's END. Pointer at
+    // x=380 = project 3.8s → 4.0s; the clip ends at 5s → a 1.0s fade
+    onClipFadeChange.mockClear();
+    fireEvent.pointerDown(handle('out'), { button: 0, clientX: 490, clientY: 30, pointerId: 2 });
+    fireEvent.pointerMove(handle('out'), { clientX: 380, clientY: 30, pointerId: 2 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 1);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(4);
+    fireEvent.pointerUp(handle('out'), { clientX: 380, clientY: 30, pointerId: 2 });
+  });
+
+  it('Alt held: no snapping, and no guideline', () => {
+    const { handle, onClipFadeChange, onFadeSnapGuideline } = renderIt();
+    fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 3 });
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, altKey: true });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.37);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null);
+    fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, altKey: true });
+  });
+
+  it('a gridline the fade cannot reach is not a snap: the limits still hold', () => {
+    // A 3s fade out leaves the fade in at most 1s; the pointer at 1.3s
+    // (project 2.3s) would snap to 2.5s — a 1.5s fade, past that limit —
+    // so it clamps to 1s instead, and shows no guideline
+    const { handle, onClipFadeChange, onFadeSnapGuideline } = renderIt({ fadeOut: 3 });
+    fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 4 });
+    fireEvent.pointerMove(handle('in'), { clientX: 230, clientY: 30, pointerId: 4 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null);
+    // …while a gridline AT the limit is reachable, and is a snap
+    fireEvent.pointerMove(handle('in'), { clientX: 215, clientY: 30, pointerId: 4 }); // 1.15s → project 2.0s = exactly a 1s fade
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2);
+    fireEvent.pointerUp(handle('in'), { clientX: 215, clientY: 30, pointerId: 4 });
+  });
+
+  it('snapping to the clip\'s own edge removes the fade, like dragging there does', () => {
+    const { handle, onClipFadeChange } = renderIt();
+    fireEvent.pointerDown(handle('in'), { button: 0, clientX: 110, clientY: 30, pointerId: 5 });
+    fireEvent.pointerMove(handle('in'), { clientX: 115, clientY: 30, pointerId: 5 }); // 0.15s → grid at 1.0s = the clip's start
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 0);
+    fireEvent.pointerUp(handle('in'), { clientX: 115, clientY: 30, pointerId: 5 });
+  });
+
+  it('without a snap function nothing snaps and the guideline is never mentioned', () => {
+    const onClipFadeChange = vi.fn();
+    const onFadeSnapGuideline = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 1, duration: 4, selected: true }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          onFadeSnapGuideline={onFadeSnapGuideline}
+        />
+      </Providers>,
+    );
+    const wrapper = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    Object.defineProperty(wrapper, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 100, top: 0, right: 500, bottom: 100, width: 400, height: 100, x: 100, y: 0, toJSON: () => ({}) }),
+    });
+    const handle = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 30, pointerId: 6 });
+    fireEvent.pointerMove(handle, { clientX: 237, clientY: 30, pointerId: 6 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.37);
+    fireEvent.pointerUp(handle, { clientX: 237, clientY: 30, pointerId: 6 });
+    expect(onFadeSnapGuideline).not.toHaveBeenCalled();
+  });
+});

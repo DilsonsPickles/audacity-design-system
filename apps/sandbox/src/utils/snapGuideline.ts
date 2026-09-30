@@ -15,22 +15,23 @@ export interface SnapGuideline {
 }
 
 /**
- * Resolve which snap guideline to render when clip dragging, trimming, and
- * stretching can each report their own snap target. Only one guideline is
- * ever drawn at a time.
+ * Resolve which snap guideline to render when clip dragging, trimming,
+ * stretching and (2026-09-30) fade-handle dragging can each report their
+ * own snap target. Only one guideline is ever drawn at a time.
  *
  * Mirrors Canvas.tsx's inline coalescing verbatim: `time` and `kind` are
- * each resolved independently via a drag ?? trim ?? stretch chain (not as
- * a single paired source), so drag wins over trim which wins over stretch,
- * per field.
+ * each resolved independently via a drag ?? trim ?? stretch ?? fade chain
+ * (not as a single paired source), so drag wins over trim which wins over
+ * stretch which wins over fade, per field.
  */
 export function resolveSnapGuideline(
   drag: SnapGuidelineInput,
   trim: SnapGuidelineInput,
-  stretch: SnapGuidelineInput
+  stretch: SnapGuidelineInput,
+  fade: SnapGuidelineInput = { time: null, kind: null },
 ): SnapGuideline {
   return {
-    time: drag.time ?? trim.time ?? stretch.time,
-    kind: drag.kind ?? trim.kind ?? stretch.kind,
+    time: drag.time ?? trim.time ?? stretch.time ?? fade.time,
+    kind: drag.kind ?? trim.kind ?? stretch.kind ?? fade.kind,
   };
 }
