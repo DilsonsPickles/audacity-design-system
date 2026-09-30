@@ -118,6 +118,18 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       didDragRef.current = true; // Mark that dragging has occurred
       lastPointerYRef.current = y;
 
+      // A drag from inside the time selection: now that it IS a drag,
+      // the bracketed clips come along. Promote them to selected so the
+      // multi-clip path below moves them, and drop the bracket — it has
+      // done its job, and MOVE_CLIP's reducer would otherwise slide it
+      // once per member.
+      if (dragState.sweepOnFirstMove) {
+        dragState.sweepOnFirstMove = false;
+        const members = dragState.selectedClipsInitialPositions ?? [];
+        dispatch({ type: 'SELECT_CLIPS', payload: members.map((m) => ({ trackIndex: m.trackIndex, clipId: m.clipId })) });
+        dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+      }
+
       // Shift+drag from an unselected clip: the press left the selection
       // alone; the drag's first movement takes it (as a plain press does)
       if (dragState.selectOnFirstMove) {

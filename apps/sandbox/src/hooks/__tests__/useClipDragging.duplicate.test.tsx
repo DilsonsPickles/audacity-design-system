@@ -67,6 +67,8 @@ function setUp(seed: (tracks: Track[]) => ClipDragState, snapEnabled = false) {
       act(() => { fireEvent.mouseMove(document, { clientX: x, clientY: y, ...mods }); }),
     release: () => act(() => { fireEvent.mouseUp(document); }),
     clipsOf: (trackIndex: number) => last.tracks[trackIndex].clips.map((c) => ({ id: c.id, start: c.start, selected: !!c.selected, sourceClipId: c.sourceClipId })),
+    timeSelection: () => last.timeSelection,
+    dispatch: () => last,
   };
 }
 
@@ -195,5 +197,40 @@ describe('Shift+drag inverts snapping (2026-09-30)', () => {
     expect(t.clipsOf(1)[0]).toMatchObject({ id: 3, start: 9, selected: true });
     // …and the previous selection is gone, as after a plain press
     expect(t.clipsOf(0).every((c) => !c.selected)).toBe(true);
+  });
+});
+
+describe('a drag from inside the time selection sweeps the bracketed clips — on the first movement, not the press (2026-09-30)', () => {
+  // Clip 3 (track B, unselected, 8s..10s) is pressed; the time selection
+  // brackets clips 2 and 3, so both ride along once the drag moves
+  const seedSweep = (tracks: Track[]): ClipDragState => {
+    const lead = tracks[1].clips[0];
+    return {
+      clip: lead, trackIndex: 1, offsetX: 0, initialX: lead.start * 100, initialTrackIndex: 1, initialStartTime: lead.start,
+      selectedClipsInitialPositions: [
+        { clipId: 2, trackIndex: 0, startTime: 5 },
+        { clipId: 3, trackIndex: 1, startTime: 8 },
+      ],
+      sweepOnFirstMove: true,
+    };
+  };
+
+  it('a press alone leaves the selection and the time selection as they are', () => {
+    const { press, release, clipsOf } = setUp(seedSweep);
+    press(800, 150);
+    release();
+    expect(clipsOf(0).map((c) => c.selected)).toEqual([true, true]); // the seed's selection
+    expect(clipsOf(1)[0].selected).toBe(false);
+  });
+
+  it('once it moves, the bracketed clips are selected, the bracket is dropped, and all of them move together', () => {
+    const { press, move, release, clipsOf, timeSelection } = setUp(seedSweep);
+    press(800, 150);
+    move(900, 150);
+    release();
+    expect(clipsOf(1)[0]).toMatchObject({ id: 3, start: 9, selected: true });
+    expect(clipsOf(0).find((c) => c.id === 2)).toMatchObject({ start: 6, selected: true });
+    expect(clipsOf(0).find((c) => c.id === 1)).toMatchObject({ start: 1, selected: false }); // outside the bracket
+    expect(timeSelection()).toBeNull();
   });
 });

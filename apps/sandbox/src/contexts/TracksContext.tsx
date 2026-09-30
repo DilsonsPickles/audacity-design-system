@@ -185,6 +185,12 @@ export interface ClipDragState {
    *  their sources) and rewrites this state to drag THEM; the sources
    *  stay where they are. Cleared once that has happened. */
   duplicateOnFirstMove?: boolean;
+  /** The press was on a clip inside the TIME SELECTION: the press
+   *  selected that clip alone (2026-09-30); the drag's first movement
+   *  sweeps every clip the selection brackets into the drag —
+   *  `selectedClipsInitialPositions` already lists them — selects them
+   *  and drops the bracket. Cleared once that has happened. */
+  sweepOnFirstMove?: boolean;
   /** Shift+drag on an UNSELECTED clip: the press selected nothing (a
    *  Shift+click that never moves is the range select), so the first
    *  movement selects the dragged clip. Cleared once that has happened. */

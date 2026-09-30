@@ -179,6 +179,12 @@ export function useClipMouseDown({
               );
               const trackInSelectionScope = scopedTrackIndices.includes(trackIndex);
 
+              // The sweep is a DRAG's business, not the press's (user
+              // decision 2026-09-30): pressing a clip inside a time
+              // selection selects THAT clip, as anywhere else; only
+              // once the drag moves does it pull the bracketed clips
+              // in (useClipDragging, `sweepOnFirstMove`).
+              let sweepMembers: Array<{ clipId: number; trackIndex: number; startTime: number }> | null = null;
               if (!modifiedPress && timeSelection && clipOverlapsSelection && trackInSelectionScope) {
                 const members: Array<{ clipId: number; trackIndex: number; startTime: number }> = [];
                 for (const ti of scopedTrackIndices) {
@@ -198,35 +204,7 @@ export function useClipMouseDown({
                 if (!members.some((m) => m.clipId === clip.id && m.trackIndex === trackIndex)) {
                   members.push({ clipId: clip.id, trackIndex, startTime: clip.start });
                 }
-
-                // Promote every overlapping clip to selected so the
-                // existing multi-clip drag path picks them up, then
-                // hide the time-selection bracket — once the drag
-                // starts the bracket has done its job, and clearing
-                // it also prevents MOVE_CLIP's reducer from sliding
-                // it once per member (which would compound the shift).
-                dispatch({
-                  type: 'SELECT_CLIPS',
-                  payload: members.map((m) => ({
-                    trackIndex: m.trackIndex,
-                    clipId: m.clipId,
-                  })),
-                });
-                dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-
-                clipDragStateRef.current = {
-                  clip: clip as Clip, // justified: allClips merges Clip|MidiClip; ClipDragState.clip is Clip
-                  trackIndex,
-                  offsetX: x - clipX,
-                  initialX: x,
-                  initialTrackIndex: trackIndex,
-                  initialStartTime: clip.start,
-                  selectedClipsInitialPositions: members,
-                };
-                didDragRef.current = false;
-                onDragStart?.();
-                e.stopPropagation();
-                return;
+                sweepMembers = members;
               }
 
               // If clicking on an unselected clip, select it exclusively first
@@ -298,7 +276,8 @@ export function useClipMouseDown({
                 initialX: x,
                 initialTrackIndex: trackIndex,
                 initialStartTime: clip.start,
-                selectedClipsInitialPositions,
+                selectedClipsInitialPositions: sweepMembers ?? selectedClipsInitialPositions,
+                ...(sweepMembers ? { sweepOnFirstMove: true } : {}),
                 ...(duplicating ? { duplicateOnFirstMove: true } : {}),
                 ...(e.shiftKey && !duplicating && !clip.selected ? { selectOnFirstMove: true } : {}),
               };
