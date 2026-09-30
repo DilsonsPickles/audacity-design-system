@@ -73,13 +73,22 @@ export function useClipMouseDown({
     // Ignore right-click (button 2) to allow context menus
     if (e.button !== 0) return;
 
-    // Cmd / Ctrl is the grab-to-pan modifier everywhere EXCEPT on a
-    // clip's header, where Cmd+drag DUPLICATES the clip (user decision
-    // 2026-09-30; useGrabToPan yields the press there). Off the header
-    // the pan owns the press: its capture-phase listener stops the
-    // event before it gets here, and this guard makes sure of it.
-    const duplicating = e.metaKey || e.ctrlKey;
-    if (duplicating && !(e.target instanceof Element && e.target.closest('.clip-header'))) return;
+    // Cmd / Ctrl is the grab-to-pan modifier — clicks with it held
+    // shouldn't select or drag clips. The capture-phase pan listener
+    // also stops the event, but this is a belt-and-braces guard in
+    // case anything has already wired into the React mousedown by
+    // the time we get here.
+    if (e.metaKey || e.ctrlKey) return;
+
+    // The drag modifiers (user decision 2026-09-30):
+    //  - OPTION/Alt + drag DUPLICATES: the drag moves a copy, the
+    //    original stays;
+    //  - SHIFT + drag INVERTS SNAPPING for the drag (off if it is on,
+    //    on if it is off) — read live by useClipDragging.
+    // Neither changes anything at the PRESS: a modified click that
+    // never moves keeps its click meaning (Shift+click = range select).
+    const duplicating = e.altKey;
+    const modifiedPress = duplicating || e.shiftKey;
 
     // Each fresh mousedown is a new gesture, so clear the "consume the
     // upcoming click" flags. Without this, a previous drag whose mouseup
@@ -131,25 +140,23 @@ export function useClipMouseDown({
           if (x >= clipX && x <= clipX + clipWidth &&
               y >= clipHeaderY && y < clipHeaderY + trackHeight) {
 
-            // For Shift clicks anywhere on the clip, block the mousedown
-            // so time selection doesn't start — the click event will
-            // handle selection. (A Cmd press got here only via a header;
-            // it is a duplicating drag, set up below. Nothing is
-            // selected or copied at the press: a Cmd+CLICK that never
-            // moves stays the selection toggle the click handler runs.)
-            if (e.shiftKey) {
+            // A Shift press on the clip's BODY: block the mousedown so
+            // time selection doesn't start — the click will range-select.
+            // (On the header it starts a drag, below.)
+            const onHeader = y <= clipHeaderY + CLIP_HEADER_HEIGHT;
+            if (e.shiftKey && !onHeader) {
               e.stopPropagation();
               return;
             }
             // MIDI clips are not duplicated by dragging (their copies
-            // live in another list); a Cmd press on one is left alone
+            // live in another list); an Option press on one is left alone
             if (duplicating && (track.midiClips || []).some((c) => c.id === clip.id)) {
               e.stopPropagation();
               return;
             }
 
             // Only start drag from the clip header area
-            if (y <= clipHeaderY + CLIP_HEADER_HEIGHT) {
+            if (onHeader) {
               // If the user is dragging a clip that sits inside the
               // current time selection, pull every other clip the
               // selection touches (on the selection's tracks) into the
@@ -172,7 +179,7 @@ export function useClipMouseDown({
               );
               const trackInSelectionScope = scopedTrackIndices.includes(trackIndex);
 
-              if (!duplicating && timeSelection && clipOverlapsSelection && trackInSelectionScope) {
+              if (!modifiedPress && timeSelection && clipOverlapsSelection && trackInSelectionScope) {
                 const members: Array<{ clipId: number; trackIndex: number; startTime: number }> = [];
                 for (const ti of scopedTrackIndices) {
                   const t = tracks[ti];
@@ -226,9 +233,11 @@ export function useClipMouseDown({
               // and only include this clip in the drag
               let selectedClipsInitialPositions;
               if (!clip.selected) {
-                // (A duplicating drag changes nothing at the press: the
-                // copies, when the drag moves, are what gets selected)
-                if (!duplicating) {
+                // (A modified press changes nothing at the press. A
+                // duplicating drag selects its copies when it moves; a
+                // Shift drag selects the clip when it moves — so that a
+                // Shift+CLICK stays the range select.)
+                if (!modifiedPress) {
                   // Clear time selection when starting drag on unselected clip
                   dispatch({ type: 'SET_TIME_SELECTION', payload: null });
                   setSpectralSelection(null);
@@ -291,6 +300,7 @@ export function useClipMouseDown({
                 initialStartTime: clip.start,
                 selectedClipsInitialPositions,
                 ...(duplicating ? { duplicateOnFirstMove: true } : {}),
+                ...(e.shiftKey && !duplicating && !clip.selected ? { selectOnFirstMove: true } : {}),
               };
               didDragRef.current = false; // Reset drag flag
               onDragStart?.();

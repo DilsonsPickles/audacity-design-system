@@ -179,12 +179,16 @@ export interface ClipDragState {
     trackIndex: number;
     startTime: number;
   }>;
-  /** Cmd/Ctrl+drag (2026-09-30): the drag DUPLICATES. Nothing is copied
-   *  at the press — a Cmd+click that never moves is still the selection
-   *  toggle — so the first movement makes the copies (in place, over
+  /** Option/Alt+drag (2026-09-30): the drag DUPLICATES. Nothing is
+   *  copied at the press — an Option+click that never moves is still a
+   *  click — so the first movement makes the copies (in place, over
    *  their sources) and rewrites this state to drag THEM; the sources
    *  stay where they are. Cleared once that has happened. */
   duplicateOnFirstMove?: boolean;
+  /** Shift+drag on an UNSELECTED clip: the press selected nothing (a
+   *  Shift+click that never moves is the range select), so the first
+   *  movement selects the dragged clip. Cleared once that has happened. */
+  selectOnFirstMove?: boolean;
 }
 
 export interface StereoChannelResizeDragState {

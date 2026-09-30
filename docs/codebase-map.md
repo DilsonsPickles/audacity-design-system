@@ -68,7 +68,7 @@ Behavior is locked by `__tests__/tracksReducer.characterization.test.ts` and `__
 | File | What it owns |
 |---|---|
 | `useClipDragging.ts` | Clip drag with multi-select support |
-| `utils/cloneClipsInPlace.ts` | Copies of clips over their sources — the first move of a Cmd+drag (`useClipDragging`, `duplicateOnFirstMove`) |
+| `utils/cloneClipsInPlace.ts` | Copies of clips over their sources — the first move of an Option+drag (`useClipDragging`, `duplicateOnFirstMove`) |
 | `useClipTrimming.ts` | Clip left/right edge trimming — driven by the trim handles on a selected clip, and by the edge hit zones `TrackNew` draws on an unselected one (`packages/components/src/utils/clipEdgeHitZones.ts`). Which clips a drag moves: `utils/trimParticipants.ts` |
 | `useClipStretching.ts` | Clip time-stretching |
 | `useMarqueeSelection.ts` | Rubber-band marquee selection |

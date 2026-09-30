@@ -118,7 +118,15 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       didDragRef.current = true; // Mark that dragging has occurred
       lastPointerYRef.current = y;
 
-      // Cmd+drag: the first movement turns the drag into a DUPLICATE.
+      // Shift+drag from an unselected clip: the press left the selection
+      // alone; the drag's first movement takes it (as a plain press does)
+      if (dragState.selectOnFirstMove) {
+        dragState.selectOnFirstMove = false;
+        dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+        dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: dragState.trackIndex, clipId: dragState.clip.id } });
+      }
+
+      // Option+drag: the first movement turns the drag into a DUPLICATE.
       // Copies of every clip in the drag appear over their sources and
       // become the selection; the drag state is rewritten to move the
       // copies, and the MOVE_CLIP dispatches below land after the
@@ -162,12 +170,19 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
       let guideline: number | null = null;
       let guidelineKind: SnapGuidelineKind | null = null;
 
-      if (snapEnabled && snapOptions && !e.altKey) {
+      // SHIFT inverts snapping for the drag (user decision 2026-09-30,
+      // taking over from Alt, which now duplicates): grid snap off while
+      // it is on, grid snap ON while it is off — and in the latter case
+      // the grid is what snaps, not the clip-edge alignment that stands
+      // in for it when the switch is off.
+      const gridSnap = e.shiftKey ? !snapEnabled : snapEnabled;
+      const noSnapAtAll = e.shiftKey && snapEnabled;
+      if (gridSnap && snapOptions) {
         // Grid snap path.
         newStartTime = Math.max(0, snapToGrid(rawStart, snapOptions));
         guideline = newStartTime;
         guidelineKind = 'grid';
-      } else if (!e.altKey) {
+      } else if (!noSnapAtAll) {
         // Alignment snap path — magnetically align to another clip's
         // start or end when within ~6px. Compares the moving clip's
         // start AND end edges to every other clip's edges so trailing

@@ -319,14 +319,17 @@ export function Canvas({
     buildTrackForDrop,
   });
 
-  // Snap options for grid snapping
-  const snapOptions: SnapOptions | undefined = snapEnabled ? {
+  // Snap options for grid snapping. Built whether or not snapping is
+  // ON: every drag gates on `snapEnabled` itself, and a clip drag can
+  // INVERT it (Shift, 2026-09-30) — snapping while the switch is off
+  // needs the grid to snap to.
+  const snapOptions: SnapOptions = {
     timeFormat,
     bpm,
     beatsPerMeasure,
     snap,
     pixelsPerSecond,
-  } : undefined;
+  };
 
   const [isDraggingClips, setIsDraggingClips] = useState(false);
 
