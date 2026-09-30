@@ -3,6 +3,7 @@ import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCol
 import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, groupLabelIndent, type GroupRowLayout } from '@audacity-ui/core';
 import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
 import { buildTrimParticipants } from '../../utils/trimParticipants';
+import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';
 import type { ClipStretchState } from '../../hooks/useClipStretching';
@@ -938,10 +939,14 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // The actual trimming happens in the mousemove handler
         }}
         onClipFadeShapeChange={showQuickFadeHandles ? (clipId, side, shape) => {
-          dispatch({
-            type: 'SET_CLIP_FADE_SHAPE',
-            payload: { trackIndex, clipId: clipId as number, side, shape },
-          });
+          // A fade edit on a SELECTED clip applies to every selected
+          // clip (utils/fadeTargets.ts, 2026-09-30) — shape included
+          for (const target of fadeTargets(tracksRef.current, trackIndex, clipId as number)) {
+            dispatch({
+              type: 'SET_CLIP_FADE_SHAPE',
+              payload: { trackIndex: target.trackIndex, clipId: target.clipId, side, shape },
+            });
+          }
         } : undefined}
         onCrossfadeShapeChange={(outgoingClipId, incomingClipId, outShape, inShape) => {
           dispatch({
@@ -967,10 +972,21 @@ const CanvasTrack = React.memo(function CanvasTrack({
           });
         }}
         onClipFadeChange={showQuickFadeHandles ? (clipId, side, seconds) => {
-          dispatch({
-            type: 'SET_CLIP_FADE',
-            payload: { trackIndex, clipId: clipId as number, side, seconds },
-          });
+          // A fade edit on a SELECTED clip applies to every selected
+          // clip (utils/fadeTargets.ts, 2026-09-30), each held to the
+          // room it has; the dragged clip's own value is already clamped
+          for (const target of fadeTargets(tracksRef.current, trackIndex, clipId as number)) {
+            const own = target.trackIndex === trackIndex && target.clipId === clipId;
+            dispatch({
+              type: 'SET_CLIP_FADE',
+              payload: {
+                trackIndex: target.trackIndex,
+                clipId: target.clipId,
+                side,
+                seconds: own ? seconds : clampFadeSeconds(tracksRef.current, target, side, seconds),
+              },
+            });
+          }
         } : undefined}
         snapTime={snapTime}
         onFadeSnapGuideline={onFadeSnapGuideline}
