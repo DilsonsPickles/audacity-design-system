@@ -245,11 +245,18 @@ function CanvasDemoContent() {
   // `[data-debug-hit-areas]`) — the real boxes the pointer meets, not a
   // drawing of them. A document attribute, so the components' own CSS
   // can key off it without a prop reaching every handle.
-  const [showHitAreas, setShowHitAreas] = React.useState(false);
+  // Remembered across reloads (its own key, not the preferences blob —
+  // it is a developer switch, not a user setting): a package rebuild
+  // reloads the page, and the overlay must not vanish with it.
+  const HIT_AREAS_KEY = 'audacity-debug-hit-areas';
+  const [showHitAreas, setShowHitAreas] = React.useState(() => {
+    try { return localStorage.getItem(HIT_AREAS_KEY) === '1'; } catch { return false; }
+  });
   React.useEffect(() => {
     const root = document.documentElement;
     if (showHitAreas) root.setAttribute('data-debug-hit-areas', '');
     else root.removeAttribute('data-debug-hit-areas');
+    try { localStorage.setItem(HIT_AREAS_KEY, showHitAreas ? '1' : '0'); } catch { /* storage unavailable: the switch just does not persist */ }
     return () => root.removeAttribute('data-debug-hit-areas');
   }, [showHitAreas]);
   const controlPointStyle: EnvelopePointStyleKey = 'solidGreenSimple';
