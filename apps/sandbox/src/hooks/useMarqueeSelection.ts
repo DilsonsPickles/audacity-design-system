@@ -142,7 +142,15 @@ export interface UseMarqueeSelectionReturn {
   wasMarqueeing: () => boolean;
 }
 
-const MARQUEE_MOVE_THRESHOLD = 4; // px — below this we treat the gesture as a right-click.
+const MARQUEE_MOVE_THRESHOLD = 4; // px — below this we treat the gesture as a click.
+
+/** The presses that draw a marquee: the right button, or Cmd/Ctrl with
+ *  the left (user decision 2026-09-30 — Cmd+drag was grab-to-pan, which
+ *  moved to the middle button). Below the movement threshold either is
+ *  still its click: a right-click's context menu, a Cmd+click's toggle. */
+export function isMarqueeTrigger(e: { button: number; metaKey: boolean; ctrlKey: boolean }): boolean {
+  return e.button === 2 || (e.button === 0 && (e.metaKey || e.ctrlKey));
+}
 
 export function useMarqueeSelection({
   containerRef,
@@ -180,6 +188,8 @@ export function useMarqueeSelection({
     | {
         startX: number;
         startY: number;
+        /** Which button began it — the same one has to end it */
+        button: number;
         modifiers: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean };
       }
     | null
@@ -200,13 +210,14 @@ export function useMarqueeSelection({
 
   const onMouseDownCapture = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (e.button !== 2) return; // right button only
+      if (!isMarqueeTrigger(e)) return;
       if (!containerRef.current) return;
 
       const rect = containerRef.current.getBoundingClientRect();
       dragStartRef.current = {
         startX: e.clientX - rect.left,
         startY: e.clientY - rect.top,
+        button: e.button,
         modifiers: {
           shiftKey: e.shiftKey,
           metaKey: e.metaKey,
@@ -274,10 +285,9 @@ export function useMarqueeSelection({
     const handleMouseUp = (e: MouseEvent) => {
       const start = dragStartRef.current;
       if (!start) return;
-      // Only care about the right button coming up. If a left-button
-      // release happens mid-right-drag (unlikely) we leave the drag
-      // alive.
-      if (e.button !== 2) return;
+      // Only the button that began it ends it. Any other release
+      // mid-drag (unlikely) leaves the drag alive.
+      if (e.button !== start.button) return;
 
       const marqueed = isMarqueeing;
       dragStartRef.current = null;
@@ -290,8 +300,8 @@ export function useMarqueeSelection({
       };
 
       if (!marqueed) {
-        // Below threshold — treat as a plain right-click. Leave the
-        // context-menu path to Canvas.
+        // Below threshold — treat as a plain click (a right-click's
+        // context menu, a Cmd+click's toggle). Leave those to Canvas.
         setMarqueeRect(null);
         clearPreview();
         return;

@@ -6,7 +6,7 @@ import { calculateTrackYOffset } from '../utils/trackLayout';
 import { resolveTrackIndexFromY } from '../utils/canvasGeometry';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
 import type { UseSplitToolResult } from './useSplitTool';
-import type { UseMarqueeSelectionReturn } from './useMarqueeSelection';
+import { isMarqueeTrigger, type UseMarqueeSelectionReturn } from './useMarqueeSelection';
 import { pointerTimelineTimeRef } from './pointerTimelineTime';
 import type { CanvasProps } from '../components/Canvas';
 
@@ -96,14 +96,16 @@ export function useCanvasPointerHandlers(
   const clickChainRef = React.useRef<{ time: number; x: number; y: number; count: number } | null>(null);
 
   const onMouseDownCapture: React.MouseEventHandler<HTMLDivElement> = (e) => {
-    // Right-drag marquee selection runs at capture so it beats
-    // the browser's context-menu dispatch and any bubble-phase
-    // handlers that would otherwise register a plain right-click.
-    if (e.button === 2) {
+    // Marquee selection (right-drag, or Cmd/Ctrl+left-drag) runs at
+    // capture so it beats the browser's context-menu dispatch and any
+    // bubble-phase handlers that would otherwise register a plain
+    // press. Fall through — the marquee only activates once the
+    // pointer moves past the threshold; a bare right-click still
+    // reaches the contextmenu handler below, and a bare Cmd+click its
+    // own click handling (nothing on the bubble path acts on a Cmd
+    // press: clip drags and time selection both step aside from it).
+    if (isMarqueeTrigger(e)) {
       marquee.onMouseDownCapture(e);
-      // Fall through — marquee only activates once the pointer
-      // moves past the threshold; a bare right-click still
-      // reaches the existing contextmenu handler below.
     }
 
     // Split mode runs in the capture phase so it beats clip-level
@@ -177,6 +179,9 @@ export function useCanvasPointerHandlers(
 
   const onClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
     if (splitMode) return;
+    // The click the browser fires after a Cmd+drag marquee is the drag
+    // letting go, not a Cmd+click: no scope toggle, no playhead move
+    if (marquee.wasMarqueeing()) return;
 
     // Advance our multi-click chain (see clickChainRef above — deliberately
     // NOT e.detail, whose windows are too forgiving across gestures).

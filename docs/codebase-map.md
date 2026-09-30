@@ -71,7 +71,7 @@ Behavior is locked by `__tests__/tracksReducer.characterization.test.ts` and `__
 | `utils/cloneClipsInPlace.ts` | Copies of clips over their sources — the first move of an Option+drag (`useClipDragging`, `duplicateOnFirstMove`) |
 | `useClipTrimming.ts` | Clip left/right edge trimming — driven by the trim handles on a selected clip, and by the edge hit zones `TrackNew` draws on an unselected one (`packages/components/src/utils/clipEdgeHitZones.ts`). Which clips a drag moves: `utils/trimParticipants.ts` |
 | `useClipStretching.ts` | Clip time-stretching |
-| `useMarqueeSelection.ts` | Rubber-band marquee selection |
+| `useMarqueeSelection.ts` | Rubber-band marquee selection — right-drag or Cmd/Ctrl+left-drag (`isMarqueeTrigger`) |
 | `useZoomControls.ts` | Zoom in/out, fit-to-window |
 | `useGrabToPan.ts` | Middle-click / grab-to-pan scrolling |
 | `useLoopRegion.ts` | Loop region drag and resize |
@@ -152,7 +152,7 @@ EditorLayout's focus routing and track-management math are extracted the same wa
 | `apps/sandbox/src/components/labels/labelColors.ts` | `BUILD_LABEL_COLORS` — the real build's `clip_color_1..9` palette lifted from au4 `light.cfg`/`dark.cfg` (Blue `#66A3FF` … Cyan `#48BECF`; Turquoise→`teal`). An end-to-end test (`EditorLayout.integration.test.tsx`) asserts a rendered ear is `#66A3FF` |
 | `apps/sandbox/src/components/labels/labelDragTracker.ts` | Module-scoped singleton (same pattern as `pendingClipMoveResolution`): `markLabelDragEnd()`/`labelDragJustEnded()` (75ms window) let `useContainerClick` swallow the click that ends a label drag so label gestures never move the playhead |
 | `apps/sandbox/src/utils/labelLayout.ts` | THE label metrics engine: `getLabelMetrics(fontSizePx)` derives banner/rowGap/padX/pointFlagGap etc. from the text size per the hand-tuned "Scaling" spec (strap = `max(20, round(1.5×text))`; ears constant 10×20; stalk 1px with 9px hit zone; radius 2px; 4px-grid rhythm). `labelPtToPx` converts at CSS 96dpi (9pt = classic 12px — AU3's font dialog is POINTS). Row packing (`calculateLabelRows`), hit testing and point-label width all take a metrics param (`CLASSIC_METRICS` default) |
-| `apps/sandbox/src/components/canvas/MarqueeRect.tsx` | Right-drag marquee-selection rectangle overlay |
+| `apps/sandbox/src/components/canvas/MarqueeRect.tsx` | Marquee-selection rectangle overlay (right-drag or Cmd+left-drag) |
 | `apps/sandbox/src/components/canvas/SnapGuideline.tsx` | 1px vertical guideline shown at the snap target during trim/stretch |
 | `apps/sandbox/src/components/canvas/SplitPreviewLine.tsx` | Split-tool hover preview line (single track, or all tracks with Shift held) |
 | `apps/sandbox/src/components/editor/LoopRegionStalks.tsx` | Two vertical stalks marking loop-region start/end; used in both the timeline ruler row and the canvas row of `EditorLayout.tsx` (differ only in `height`) |
