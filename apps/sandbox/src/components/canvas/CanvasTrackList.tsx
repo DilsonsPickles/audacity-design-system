@@ -1072,7 +1072,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
 
           if (e.shiftKey) {
             const anchor = selectionAnchor ?? (selectedTrackIndices.length > 0 ? selectedTrackIndices[0] : trackIndex);
-            if (selectionAnchor === null) {
+            if (selectionAnchor === null && setSelectionAnchor) {
               setSelectionAnchor(anchor);
             }
             const start = Math.min(anchor, trackIndex);

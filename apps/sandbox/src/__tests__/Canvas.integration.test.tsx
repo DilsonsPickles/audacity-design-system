@@ -162,6 +162,32 @@ describe('Shift+Click time-selection scope', () => {
     expect(overlayColor(1)).toContain('98, 119, 136'); // in scope
     expect(overlayColor(2)).toContain('49, 56, 70'); // out of scope
   });
+
+  it('a Shift+Click on a clip BODY extends the range too — the body is the same surface as bare canvas (2026-09-30)', () => {
+    const tracks: Track[] = [0, 1, 2].map((i) => ({
+      id: i + 1,
+      name: `Track ${i + 1}`,
+      clips: i === 1 ? [{ id: 11, name: 'On track 2', start: 0, duration: 3, envelopePoints: [] } as unknown as Track['clips'][number]] : [],
+    }));
+    const { container } = renderCanvas(tracks);
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+    fireEvent.click(pointerContainer, { clientX: 50, clientY: 50 }); // anchor: track 0
+
+    // The clip on track 1 sits at x 0..300 (100px/s); its body is below
+    // the 20px header. Press and click there with Shift held.
+    const clipBody = container.querySelector('[data-clip-id="11"] .clip-display__inner') as HTMLElement;
+    expect(clipBody).toBeTruthy();
+    fireEvent.mouseDown(clipBody, { clientX: 150, clientY: 175, shiftKey: true, button: 0 });
+    fireEvent.click(clipBody, { clientX: 150, clientY: 175, shiftKey: true });
+
+    const overlayColor = (idx: number) => (trackEl(container, idx).children[0] as HTMLElement).style.backgroundColor;
+    expect(overlayColor(0)).toContain('98, 119, 136'); // in scope
+    expect(overlayColor(1)).toContain('98, 119, 136'); // in scope — the clip's track
+    expect(overlayColor(2)).toContain('49, 56, 70'); // out of scope
+    // …and it was a time range, not a clip selection
+    expect(container.querySelector('[data-clip-id="11"] .clip-display--selected')).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -140,9 +140,12 @@ export function useClipMouseDown({
           if (x >= clipX && x <= clipX + clipWidth &&
               y >= clipHeaderY && y < clipHeaderY + trackHeight) {
 
-            // A Shift press on the clip's BODY: block the mousedown so
-            // time selection doesn't start — the click will range-select.
-            // (On the header it starts a drag, below.)
+            // A Shift press on the clip's BODY never gets here: the
+            // container's own mousedown takes it first, as it takes a
+            // Shift press on bare canvas — the body is the same
+            // time-selection surface, and the click builds the range
+            // (useCanvasPointerHandlers, 2026-09-30). Should one arrive
+            // anyway, it is not a drag.
             const onHeader = y <= clipHeaderY + CLIP_HEADER_HEIGHT;
             if (e.shiftKey && !onHeader) {
               e.stopPropagation();

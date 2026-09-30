@@ -119,13 +119,16 @@ export function useCanvasPointerHandlers(
   const onMouseDown: React.MouseEventHandler<HTMLDivElement> = (e) => {
     lastMouseButtonRef.current = e.button;
 
-    // Shift+Click on the canvas background extends the current
-    // playhead into a time range selection (handled on click,
-    // not mousedown, so the underlying time-selection hook
-    // doesn't start a drag we then have to clean up). We still
-    // preventDefault on mousedown to keep selection-text drag
-    // from kicking off, and we remember to skip the click that
-    // would normally reposition the playhead.
+    // Shift+Click on the canvas background — or on a clip's BODY, which
+    // is the same time-selection surface (user decision 2026-09-30) —
+    // extends the current playhead into a time range selection
+    // (handled on click, not mousedown, so the underlying
+    // time-selection hook doesn't start a drag we then have to clean
+    // up). We still preventDefault on mousedown to keep selection-text
+    // drag from kicking off, and we remember to skip the click that
+    // would normally reposition the playhead. A clip's HEADER is the
+    // exception: Shift there is the clip range select (and the
+    // snap-inverting drag), handled by the clip.
     if (
       !splitMode
       && e.button === 0
@@ -133,7 +136,7 @@ export function useCanvasPointerHandlers(
       && !e.metaKey
       && !e.ctrlKey
       && !e.altKey
-      && !(e.target as HTMLElement).closest('[data-clip-id]')
+      && !(e.target as HTMLElement).closest('.clip-header')
     ) {
       const rect = e.currentTarget.getBoundingClientRect();
       const y = e.clientY - rect.top;
@@ -251,7 +254,7 @@ export function useCanvasPointerHandlers(
       && !e.metaKey
       && !e.ctrlKey
       && !e.altKey
-      && !(e.target as HTMLElement).closest('[data-clip-id]')
+      && !(e.target as HTMLElement).closest('.clip-header')
     ) {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
