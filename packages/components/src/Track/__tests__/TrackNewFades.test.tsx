@@ -592,6 +592,7 @@ describe('clip fades', () => {
     );
     // symmetric default: crossing at 4.0s, gain cos(π/4)≈0.7071;
     // track height 114 → bodyHeight 92
+    hoverClip(container, 2);
     const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
     expect(node).toBeTruthy();
     fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 48, pointerId: 3 });
@@ -627,6 +628,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1);
     const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
     fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 60, pointerId: 4 });
     fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 4 });
@@ -1192,5 +1194,46 @@ describe('fade handle grid snap (2026-09-30)', () => {
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.37);
     fireEvent.pointerUp(handle, { clientX: 237, clientY: 30, pointerId: 6 });
     expect(onFadeSnapGuideline).not.toHaveBeenCalled();
+  });
+});
+
+describe('the crossfade handle shows on hover only, like the quick-fade handle (2026-09-30)', () => {
+  it('appears while the pointer is over either of its clips, stays for its drag, and goes when the pointer leaves', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5, selected: true },
+            { id: 2, name: 'B', start: 3, duration: 4, selected: true },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onCrossfadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const node = () => container.querySelector('[data-crossfade-node]') as HTMLElement | null;
+    const clipEl = (id: number) => container.querySelector(`[data-clip-id="${id}"]`) as HTMLElement;
+    // Both selected: not enough
+    expect(node()).toBeNull();
+    // Over the outgoing clip
+    hoverClip(container, 1);
+    expect(node()).toBeTruthy();
+    fireEvent.mouseLeave(clipEl(1));
+    expect(node()).toBeNull();
+    // Over the incoming clip
+    hoverClip(container, 2);
+    expect(node()).toBeTruthy();
+    // Onto the node itself (the browser's single mouseout, clip → node)
+    fireEvent.mouseOut(clipEl(2), { relatedTarget: node()!, buttons: 0 });
+    expect(node()).toBeTruthy();
+    // A drag holds it wherever the pointer goes…
+    fireEvent.pointerDown(node()!, { button: 0, clientX: 400, clientY: 60, pointerId: 21 });
+    fireEvent.mouseLeave(node()!);
+    expect(node()).toBeTruthy();
+    // …and letting go away from both clips takes it away
+    fireEvent.pointerUp(node()!, { clientX: 2000, clientY: 900, pointerId: 21 });
+    expect(node()).toBeNull();
   });
 });

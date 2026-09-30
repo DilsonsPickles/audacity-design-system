@@ -642,6 +642,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [fadeDragSide, setFadeDragSide] = React.useState<'in' | 'out' | null>(null);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
+  // Crossfade node being dragged (`out-in`) — kept visible off-hover
+  const [crossfadeDrag, setCrossfadeDrag] = React.useState<string | null>(null);
   // While clips are being DRAGGED no drag handle shows anywhere on the
   // track (user decision 2026-09-30) — not on the moving clips, not on
   // the ones they pass: trim, stretch, fade length, fade shape,
@@ -764,15 +766,25 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const bodyHeight = Math.max(0, height - bodyTop - 1);
     const NODE_R = 5;
     return crossfadeNodes.map((n) => {
+      // Shown under the SAME rules as the quick-fade shape handle (user
+      // decision 2026-09-30): only while the pointer is well inside one
+      // of the two clips it belongs to (or on the node itself), or
+      // while it is being dragged. Selection alone does not show it.
+      const nodeKey = `${n.outgoingClipId}-${n.incomingClipId}`;
+      const hovered = fadeHoverClipId === n.outgoingClipId || fadeHoverClipId === n.incomingClipId;
+      if (!hovered && crossfadeDrag !== nodeKey) return null;
       const x = CLIP_CONTENT_OFFSET + n.point.time * pixelsPerSecond;
       const y = bodyTop + (1 - n.point.gain) * bodyHeight;
       return (
         <div
-          key={`crossfade-node-${n.outgoingClipId}-${n.incomingClipId}`}
-          data-crossfade-node={`${n.outgoingClipId}-${n.incomingClipId}`}
+          key={`crossfade-node-${nodeKey}`}
+          data-crossfade-node={nodeKey}
           role="slider"
           aria-label="Crossfade centre"
           aria-valuenow={n.point.time}
+          // Reaching the node from either clip keeps it up: the pointer
+          // "leaves" the clip for the node, which sits over the overlap
+          {...fadeHoverProps(n.incomingClipId)}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => {
@@ -781,6 +793,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             e.preventDefault();
             const nodeEl = e.currentTarget as HTMLElement;
             try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+            setFadeHoverClipId(n.incomingClipId); // a press on it proves the pointer is here
+            setCrossfadeDrag(nodeKey);
             // Alt+drag = ROLL (content edit: both clip edges slide,
             // clamped to hidden material). Plain drag = SHAPE: the fade
             // extents never move — both curves bend (shape exponents)
@@ -818,9 +832,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, outShape, inShape);
               }
             };
-            const onUp = () => {
+            const onUp = (ev: PointerEvent) => {
               nodeEl.removeEventListener('pointermove', onMove);
               nodeEl.removeEventListener('pointerup', onUp);
+              setCrossfadeDrag(null);
+              settleFadeHover(n.incomingClipId, ev, nodeEl);
             };
             nodeEl.addEventListener('pointermove', onMove);
             nodeEl.addEventListener('pointerup', onUp);
