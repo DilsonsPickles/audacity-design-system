@@ -21,7 +21,9 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, op
     case 'edge-trim':
       return join('Drag to trim the clip', `${alt}-drag to stretch`);
     case 'edge-stretch':
-      return 'Drag to stretch the clip';
+      // Shown while the modifier is HELD — the line names it, so the
+      // user knows what they are holding
+      return `${alt}-drag to stretch the clip`;
     case 'fade-length':
       // Shift inverts the snapping switch, as it does for a clip drag:
       // the line names what Shift will do from where the switch is now
@@ -34,6 +36,6 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, op
       // The roll is a content edit: it can only go as far as the clips
       // have audio beyond their edges, so a fresh overlap of untrimmed
       // clips will not roll at all — say so, or it reads as broken
-      return join('Drag left or right to roll the crossfade', 'only as far as the clips have hidden audio');
+      return join(`${alt}-drag left or right to roll the crossfade`, 'only as far as the clips have hidden audio');
   }
 }

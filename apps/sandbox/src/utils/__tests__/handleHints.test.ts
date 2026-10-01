@@ -27,7 +27,10 @@ describe('handleHintText — what the status bar says for the handle under the p
     expect(handleHintText('fade-length', 'macos', { snapEnabled: false })).toBe('Drag to set the fade length · Shift-drag to snap to the grid');
     expect(handleHintText('fade-shape', 'macos')).toBe('Drag up or down to shape the fade · Cmd-click to toggle linear · Double-click to reset');
     expect(handleHintText('crossfade', 'macos')).toBe('Drag up or down to shape the crossfade · Option-drag to roll · Cmd-click to toggle linear · Double-click to reset');
-    expect(handleHintText('crossfade-roll', 'macos')).toBe('Drag left or right to roll the crossfade · only as far as the clips have hidden audio');
-    expect(handleHintText('edge-stretch', 'windows')).toBe('Drag to stretch the clip');
+    // The Alt-held lines name the modifier being held (2026-10-01)
+    expect(handleHintText('crossfade-roll', 'macos')).toBe('Option-drag left or right to roll the crossfade · only as far as the clips have hidden audio');
+    expect(handleHintText('crossfade-roll', 'windows')).toBe('Alt-drag left or right to roll the crossfade · only as far as the clips have hidden audio');
+    expect(handleHintText('edge-stretch', 'windows')).toBe('Alt-drag to stretch the clip');
+    expect(handleHintText('edge-stretch', 'macos')).toBe('Option-drag to stretch the clip');
   });
 });
