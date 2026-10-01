@@ -2,6 +2,7 @@ import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { TrackNew } from '../TrackNew';
+import { CLIP_CONTENT_OFFSET } from '../../constants';
 import { fadeAreaBelowPath, fadeCurvePath, fadeInGain, type FadeHandle, type FadeShape } from '../../utils/clipCrossfades';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
@@ -1295,8 +1296,63 @@ describe('fade handle grid snap (2026-09-30)', () => {
       value: () => ({ left: 100, top: 0, right: 500, bottom: 100, width: 400, height: 100, x: 100, y: 0, toJSON: () => ({}) }),
     });
     const handle = (side: 'in' | 'out') => container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
-    return { handle, onClipFadeChange, onFadeSnapGuideline };
+    return { container, handle, onClipFadeChange, onFadeSnapGuideline };
   }
+
+  it('a LENGTH drag drops a marching-ants guideline from the boundary to the clip\'s bottom, and only for the drag (2026-10-01)', () => {
+    // The clip is 1s..5s at 100px/s and the track 114px tall; the line
+    // stands where the curve meets the body (20px down) and runs to the
+    // clip's bottom — not the canvas's. The clip is CONTROLLED here: the
+    // line is drawn at the clip's effective boundary, so the fade must
+    // flow back in as it would from the host's reducer
+    function Harness() {
+      const [fades, setFades] = React.useState({ fadeIn: 0, fadeOut: 0 });
+      return (
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 1, duration: 4, selected: true, ...fades }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={(_id, side, seconds) => setFades((f) => (side === 'in' ? { ...f, fadeIn: seconds } : { ...f, fadeOut: seconds }))}
+          snapTime={snapTime}
+          snapEnabled
+        />
+      );
+    }
+    const { container } = render(<Providers><Harness /></Providers>);
+    const handle = (side: 'in' | 'out') => container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
+    const line = () => container.querySelector('[data-fade-guideline]') as HTMLElement | null;
+    expect(line()).toBeNull(); // nothing at rest…
+    hoverClip(container, 1);
+    expect(line()).toBeNull(); // …or on hover
+    fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 7 });
+    // Snapped: project 2.37s → 2.5s, and the line is on the gridline
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 7 });
+    let l = line()!;
+    expect(l.getAttribute('data-fade-guideline')).toBe('in');
+    expect(l.className).toBe('track-fade-guideline'); // the march lives in Track.css
+    expect(l.style.left).toBe(`${CLIP_CONTENT_OFFSET + 250}px`);
+    expect(l.style.top).toBe('20px');
+    expect(l.style.height).toBe('94px');
+    expect(l.style.width).toBe('1px');
+    expect(l.style.pointerEvents).toBe('none');
+    // Shift (no snap): the line follows the fade off the grid too
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 7, shiftKey: true });
+    expect(line()!.style.left).toBe(`${CLIP_CONTENT_OFFSET + 237}px`);
+    fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 7 });
+    expect(line()).toBeNull(); // goes with the drag
+
+    // Fade out: the boundary is measured from the clip's END. A 1.1s
+    // pull from the end (3.9s) snaps to 4.0s → a 1.0s fade, the line at
+    // project 4.0s
+    fireEvent.pointerDown(handle('out'), { button: 0, clientX: 490, clientY: 30, pointerId: 8 });
+    fireEvent.pointerMove(handle('out'), { clientX: 380, clientY: 30, pointerId: 8 });
+    l = line()!;
+    expect(l.getAttribute('data-fade-guideline')).toBe('out');
+    expect(l.style.left).toBe(`${CLIP_CONTENT_OFFSET + 400}px`);
+    fireEvent.pointerUp(handle('out'), { clientX: 380, clientY: 30, pointerId: 8 });
+    expect(line()).toBeNull();
+  });
 
   it('the fade boundary lands on the grid, in project time — not the fade length', () => {
     const { handle, onClipFadeChange, onFadeSnapGuideline } = renderIt();

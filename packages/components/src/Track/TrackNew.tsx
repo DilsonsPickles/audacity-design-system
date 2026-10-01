@@ -2272,6 +2272,35 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         own > 0 || (windowLen - other) * pixelsPerSecond >= NO_ROOM_PX;
       if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec, fadeOutSec)) nodes.push(handle('in'));
       if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec, fadeInSec)) nodes.push(handle('out'));
+      // While a LENGTH handle is dragged, a marching-ants line drops
+      // from the fade's boundary — where the curve meets the body's
+      // top — to the clip's BOTTOM, so the boundary can be lined up
+      // against the waveform (the dev's lining-up aid, user decision
+      // 2026-10-01; "only down to the bottom of the clip" — it was
+      // canvas-deep). It follows the EFFECTIVE boundary, so a snapped
+      // drag's line sits on the gridline. The march is Track.css.
+      if (fadeDragClipId === clip.id && fadeDragSide) {
+        const boundaryX = fadeDragSide === 'in' ? boundaryInX : boundaryOutX;
+        nodes.push(
+          <div
+            key={`fade-guideline-${clip.id}`}
+            className="track-fade-guideline"
+            data-fade-guideline={fadeDragSide}
+            data-fade-clip={clip.id}
+            style={{
+              position: 'absolute',
+              top: HEADER_H,
+              left: `${Math.round(xBase + boundaryX)}px`,
+              width: 1,
+              height: height - HEADER_H,
+              pointerEvents: 'none',
+              // Over the handles (455) and the shape dots (460): a line
+              // this thin must not be cut by a box it crosses
+              zIndex: 461,
+            }}
+          />,
+        );
+      }
     }
     return nodes.length > 0 ? nodes : null;
   };
