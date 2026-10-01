@@ -9,7 +9,7 @@ import type { ClipHandleHint } from '@audacity-ui/components';
 
 export type HintOperatingSystem = 'windows' | 'macos';
 
-export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem): string {
+export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, options: { snapEnabled?: boolean } = {}): string {
   const alt = os === 'macos' ? 'Option' : 'Alt';
   const cmd = os === 'macos' ? 'Cmd' : 'Ctrl';
   const join = (...parts: string[]) => parts.join(' · ');
@@ -23,7 +23,9 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem): s
     case 'edge-stretch':
       return 'Drag to stretch the clip';
     case 'fade-length':
-      return join('Drag to set the fade length', `${alt}-drag to ignore snapping`);
+      // Shift inverts the snapping switch, as it does for a clip drag:
+      // the line names what Shift will do from where the switch is now
+      return join('Drag to set the fade length', options.snapEnabled ? 'Shift-drag to ignore snapping' : 'Shift-drag to snap to the grid');
     case 'fade-shape':
       return join('Drag up or down to shape the fade', `${cmd}-click to toggle linear`, 'Double-click to reset');
     case 'crossfade':

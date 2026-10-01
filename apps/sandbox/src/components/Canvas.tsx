@@ -421,11 +421,12 @@ export function Canvas({
   // (Keyed on the settings, not on `snapOptions` — that object is
   // rebuilt every render, and a fresh function each time would re-render
   // every memoised track row.)
+  // The grid itself, whether or not snapping is on: the fade handle
+  // drag reads the switch separately (snapEnabled) because Shift
+  // inverts it, as a clip drag's Shift does (2026-10-01)
   const snapTime = useMemo(
-    () => (snapEnabled
-      ? (time: number) => snapToGrid(time, { timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond })
-      : undefined),
-    [snapEnabled, timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond],
+    () => (time: number) => snapToGrid(time, { timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond }),
+    [timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond],
   );
 
   // Whichever drag is active reports its snap target; we render at
@@ -814,6 +815,7 @@ export function Canvas({
           showRmsInWaveform={showRmsInWaveform}
           showQuickFadeHandles={showQuickFadeHandles}
           snapTime={snapTime}
+          snapEnabled={snapEnabled}
           onFadeSnapGuideline={setFadeSnapGuidelineTime}
           fadeInHandClipId={fadeInHandClipId}
           onFadeDragChange={setFadeInHandClipId}

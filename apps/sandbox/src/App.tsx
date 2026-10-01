@@ -1064,7 +1064,7 @@ function CanvasDemoContent() {
           // The handle under the pointer names its gestures here (user
           // decision 2026-10-01); otherwise the focus debugger, if on,
           // or the component's own "Click and drag to select audio"
-          instructionText={handleHint ? handleHintText(handleHint, preferences.operatingSystem) : (showFocusDebug ? focusedElement : undefined)}
+          instructionText={handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined)}
           onFormatChange={setSelectionTimeCodeFormat}
           onDurationFormatChange={setDurationTimeCodeFormat}
           onSelectionStartChange={(newStart) => {

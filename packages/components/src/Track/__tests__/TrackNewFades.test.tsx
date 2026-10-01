@@ -1261,7 +1261,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
   // A 0.5s grid; the clip runs 1s..5s at 100px/s, so its left edge is
   // at x=100 and its right edge at x=500 in the mocked rect below
   const snapTime = (t: number) => Math.round(t / 0.5) * 0.5;
-  function renderIt(extra: Record<string, unknown> = {}) {
+  function renderIt(extra: Record<string, unknown> = {}, snapEnabled = true) {
     const onClipFadeChange = vi.fn();
     const onFadeSnapGuideline = vi.fn();
     const { container } = render(
@@ -1273,6 +1273,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
           pixelsPerSecond={100}
           onClipFadeChange={onClipFadeChange}
           snapTime={snapTime}
+          snapEnabled={snapEnabled}
           onFadeSnapGuideline={onFadeSnapGuideline}
         />
       </Providers>,
@@ -1306,13 +1307,32 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerUp(handle('out'), { clientX: 380, clientY: 30, pointerId: 2 });
   });
 
-  it('Alt held: no snapping, and no guideline', () => {
+  it('Shift INVERTS snapping, as a clip drag\'s Shift does (2026-10-01): on → none, and no guideline', () => {
     const { handle, onClipFadeChange, onFadeSnapGuideline } = renderIt();
     fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 3 });
-    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, altKey: true });
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, shiftKey: true });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.37);
     expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null);
-    fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, altKey: true });
+    // Read live: let go of Shift mid-drag and the next move snaps again
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5);
+    // Alt is nothing to a fade length drag now
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, altKey: true });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
+    fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 3 });
+  });
+
+  it('…and off → the grid: with snapping off a plain drag is free and a Shift-drag snaps', () => {
+    const { handle, onClipFadeChange, onFadeSnapGuideline } = renderIt({}, false);
+    fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 4 });
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 4 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.37);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null);
+    fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 4, shiftKey: true });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5);
+    fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 4, shiftKey: true });
   });
 
   it('a gridline the fade cannot reach is not a snap: the limits still hold', () => {

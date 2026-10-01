@@ -275,13 +275,17 @@ export interface TrackProps {
    *  length for that side (0 removes the fade). */
   onClipFadeChange?: (clipId: string | number, side: 'in' | 'out', seconds: number) => void;
 
-  /** The host's grid snap, as a function of PROJECT time (seconds from
-   *  time zero) — present only while snapping is on. A fade handle drag
-   *  snaps the fade's boundary (where the fade meets the clip's body)
-   *  through it, Alt held excepted; the snapped boundary is then still
-   *  held to the fade's limits. Same contract as the trim and stretch
-   *  drags (user decision 2026-09-30). */
+  /** The host's grid, as a function of PROJECT time (seconds from time
+   *  zero) — present whenever there is a grid, snapping on or off. A
+   *  fade handle drag snaps the fade's boundary (where the fade meets
+   *  the clip's body) through it while snapping is on, and SHIFT INVERTS
+   *  that — snapping on, Shift means none; snapping off, Shift means the
+   *  grid — as a clip drag's Shift does (user decision 2026-10-01; it
+   *  was Alt-to-bypass). The snapped boundary is still held to the
+   *  fade's limits. */
   snapTime?: (time: number) => number;
+  /** Whether snapping is on (the host's switch); read live with Shift. */
+  snapEnabled?: boolean;
 
   /** Reports where a fade handle drag has snapped to (project time), or
    *  null when it has not / when the drag ends — for the host's snap
@@ -548,6 +552,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipStretchEdge,
   onClipFadeChange,
   snapTime,
+  snapEnabled = false,
   onFadeSnapGuideline,
   fadeInHandClipId,
   onFadeDragChange,
@@ -2120,11 +2125,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const onMove = (ev: PointerEvent) => {
                 const travel = (ev.clientX - pressX) / pixelsPerSecond;
                 let seconds = ownFade + (side === 'in' ? travel : -travel);
-                // Grid snap (host's, when snapping is on; Alt bypasses):
-                // it is the fade's BOUNDARY, in project time, that lands
-                // on the grid — not its length
+                // Grid snap: it is the fade's BOUNDARY, in project time,
+                // that lands on the grid — not its length. Shift INVERTS
+                // the host's switch, read live on each move, as a clip
+                // drag's does (2026-10-01; it was Alt-to-bypass)
                 let snappedTo: number | null = null;
-                if (snapTime && !ev.altKey) {
+                const snapNow = ev.shiftKey ? !snapEnabled : snapEnabled;
+                if (snapTime && snapNow) {
                   const boundary = snapTime(side === 'in' ? clip.start + seconds : clipEnd - seconds);
                   const snappedSeconds = side === 'in' ? boundary - clip.start : clipEnd - boundary;
                   // A gridline the fade cannot reach (past its limits) is
