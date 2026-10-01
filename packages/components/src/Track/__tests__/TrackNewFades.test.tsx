@@ -303,7 +303,18 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
-    expect(container.querySelectorAll('[data-fade-overlay]')).toHaveLength(2);
+    // No veils any more (2026-10-01): the overlap shows BOTH waveforms —
+    // the top clip's own body, and a ghost of the clip underneath's,
+    // over the overlap exactly. Clip 1 is earlier in the array, so it
+    // is underneath (later = on top) — the ghost is its
+    expect(container.querySelectorAll('[data-fade-overlay]')).toHaveLength(0);
+    const ghosts = container.querySelectorAll<HTMLElement>('[data-crossfade-ghost]');
+    expect(ghosts).toHaveLength(1);
+    expect(ghosts[0].getAttribute('data-crossfade-ghost')).toBe('1');
+    expect(ghosts[0].style.left).toBe('312px'); // 12 + 3s × 100
+    expect(ghosts[0].style.width).toBe('200px'); // the 2s overlap
+    expect(ghosts[0].style.top).toBe('21px'); // the body, under the header
+    expect(Number(ghosts[0].style.zIndex)).toBeLessThan(450); // under the curves
     expect(container.querySelectorAll('[data-fade-line]')).toHaveLength(2);
     expect(container.querySelector('[data-fade-dim]')).toBeNull();
     // …nor given the white edge: that belongs to a quick fade's curve being edited

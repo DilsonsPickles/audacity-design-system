@@ -4,6 +4,7 @@ import { Clip, MIN_CLIP_HEIGHT, StretchIcon, TrimLeftIcon, TrimRightIcon } from 
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
+import { CrossfadeGhost } from './CrossfadeGhost';
 import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeAreaAbovePath, fadeAreaBelowPath, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
 import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZones';
 import { CLIP_CONTENT_OFFSET } from '../constants';
@@ -1243,36 +1244,47 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     });
     // A QUICK FADE dims the area ABOVE its curve (user decision
     // 2026-09-29) — what the fade takes away reads darker, what is left
-    // keeps the clip's own colour. It replaces the white veil there; a
-    // CROSSFADE keeps the veil (two clips share that region, and
-    // "denser = shared" is what the stacked veils say).
+    // keeps the clip's own colour. A CROSSFADE instead shows BOTH
+    // waveforms (user decision 2026-10-01, "you see what plays"): the
+    // top clip's body already draws its own waveform shrunk by its
+    // fade; the clip underneath, painted over by that body, gets a
+    // GHOST of its waveform drawn over the overlap, shrunk by its own
+    // fade — dwindling as the other grows — in its colour at half
+    // opacity. The white veils that used to say "shared" here are
+    // gone: two waveforms say it better. (ClipBody's TODO: a stereo
+    // under clip ghosts its left channel.)
     const FADE_DIM_FILL = 'rgba(0, 0, 0, 0.14)';
-    // TWO passes: every veil first (449), every curve above them (450)
-    // — in a crossfade the two regions overlap, and a single-pass DOM
-    // order would wash one region's curve under the other's veil.
-    const veils = fadeCurves.filter((region) => !region.authored).map((region) => {
-      const g = geometry(region);
-      // Selected clip bodies are far more saturated, so the same white
-      // wash reads weaker there — compensate with a stronger veil
-      const regionClipSelected = clips.find((c) => c.id === region.clipId)?.selected ?? false;
+    // TWO passes: every ghost first (449), every curve above them (450)
+    const ghosts = crossfadeNodes.map((n) => {
+      const outClip = clips.find((c) => c.id === n.outgoingClipId);
+      const inClip = clips.find((c) => c.id === n.incomingClipId);
+      if (!outClip || !inClip) return null;
+      // The clip underneath: lower z (array position when equal — later is on top)
+      const zOut = clipZIndex.get(outClip.id) ?? 2;
+      const zIn = clipZIndex.get(inClip.id) ?? 2;
+      const under = zOut === zIn ? (clips.indexOf(outClip) < clips.indexOf(inClip) ? outClip : inClip) : (zOut < zIn ? outClip : inClip);
+      const wf = clipWaveforms.get(under.id);
+      const data = wf?.mono ?? wf?.left;
+      if (!data) return null;
+      const left = Math.round(CLIP_CONTENT_OFFSET + n.overlapStart * pixelsPerSecond);
+      const width = Math.max(1, Math.round((n.overlapEnd - n.overlapStart) * pixelsPerSecond));
       return (
-        <div
-          key={`fade-veil-${g.key}`}
-          data-fade-overlay={region.side}
-          data-fade-authored={region.authored ? 'true' : 'false'}
-          style={{
-            position: 'absolute',
-            left: `${g.left}px`,
-            top: `${bodyTop}px`,
-            width: `${g.width}px`,
-            height: `${bodyHeight}px`,
-            pointerEvents: 'none',
-            // Above every stacked clip (2+index band), below the curves.
-            // The two default ramps of a plain crossfade stack their
-            // veils in the shared region: "denser = shared".
-            zIndex: 449,
-            background: regionClipSelected ? 'rgba(255, 255, 255, 0.38)' : 'rgba(255, 255, 255, 0.2)',
-          }}
+        <CrossfadeGhost
+          key={`crossfade-ghost-${n.outgoingClipId}-${n.incomingClipId}`}
+          clipId={under.id}
+          data={data}
+          left={left}
+          top={bodyTop}
+          width={width}
+          height={bodyHeight}
+          color={clipStyle === 'classic' ? 'classic' : trackColor}
+          offsetSeconds={n.overlapStart - under.start}
+          pixelsPerSecond={pixelsPerSecond}
+          clipTrimStart={(under as any).trimStart || 0} // justified: trimStart not on Clip type — pending components sweep
+          clipDuration={under.duration}
+          clipFullDuration={(under as any).fullDuration} // justified: fullDuration not on Clip type — pending components sweep
+          clipStretchFactor={(under as any).stretchFactor ?? 1} // justified: stretchFactor not on Clip type — pending components sweep
+          fadeRegions={fadeRegionsByClip.get(under.id) ?? []}
         />
       );
     });
@@ -1362,38 +1374,49 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         </div>
       );
     });
-    return [...veils, ...curves];
+    return [...ghosts, ...curves];
   };
 
   // Calculate clip dimensions and positions
+  // Each clip's waveform data, with the placeholder generated ONCE per
+  // clip for clips that bring none (it is random: generated inside the
+  // render, as it used to be, it changed every render — and the
+  // crossfade ghost must draw the SAME array the clip's body does).
+  // Full-duration arrays: a trimmed clip's hidden material is in here.
+  const clipWaveforms = React.useMemo(() => {
+    const map = new Map<string | number, { mono?: number[]; left?: number[]; right?: number[] }>();
+    for (const clip of clips) {
+      const isStereo = Boolean(clip.waveformLeft || clip.waveformRight);
+      const trimStart = (clip as any).trimStart || 0; // justified: trimStart not on Clip type — pending components sweep
+      const fullDuration = (clip as any).fullDuration || (trimStart + clip.duration); // justified: fullDuration not on Clip type — pending components sweep
+      const entry: { mono?: number[]; left?: number[]; right?: number[] } = {
+        mono: clip.waveform,
+        left: clip.waveformLeft,
+        right: clip.waveformRight,
+      };
+      if (!entry.mono && !isStereo) entry.mono = generateSpeechWaveform(fullDuration, 1800);
+      if (isStereo && (!entry.left || !entry.right)) {
+        entry.left = generateSpeechWaveform(fullDuration, 1800);
+        entry.right = generateSpeechWaveform(fullDuration, 1800);
+      }
+      map.set(clip.id, entry);
+    }
+    return map;
+  }, [clips]);
+
   const renderClips = () => {
     return sortedClips.map((clip, clipIndex) => {
       const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
       const isFirstClip = clipIndex === 0;
 
-      // Generate waveform if not provided
-      // IMPORTANT: For trimmed clips, calculate full duration from trimStart + duration
-      let waveformData = clip.waveform;
-      let waveformLeft = clip.waveformLeft;
-      let waveformRight = clip.waveformRight;
-
+      // The clip's waveform data — its own, or the placeholder made once
+      // for it (clipWaveforms); the crossfade ghost draws the same array
+      const wf = clipWaveforms.get(clip.id);
+      const waveformData = wf?.mono;
+      const waveformLeft = wf?.left;
+      const waveformRight = wf?.right;
       const isStereo = Boolean(clip.waveformLeft || clip.waveformRight);
-
-      // Use stored fullDuration if available (set by split cut), otherwise calculate it
-      const trimStart = (clip as any).trimStart || 0; // justified: trimStart not on Clip type — pending components sweep
-      const fullDuration = (clip as any).fullDuration || (trimStart + clip.duration); // justified: fullDuration not on Clip type — pending components sweep
-
-      if (!waveformData && !isStereo) {
-        // Generate mono waveform using FULL duration
-        waveformData = generateSpeechWaveform(fullDuration, 1800);
-      }
-
-      if (isStereo && (!waveformLeft || !waveformRight)) {
-        // Generate stereo waveforms using FULL duration
-        waveformLeft = generateSpeechWaveform(fullDuration, 1800);
-        waveformRight = generateSpeechWaveform(fullDuration, 1800);
-      }
 
       // Determine variant and channel mode
       let variant: 'waveform' | 'spectrogram' | 'midi' = 'waveform';
