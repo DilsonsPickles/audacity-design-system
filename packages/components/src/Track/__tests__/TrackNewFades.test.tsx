@@ -1179,10 +1179,13 @@ describe('clip fades', () => {
       <Providers>
         <TrackNew
           clips={[
-            // clip 1 selected, BELOW in z; its right edge (5s) lies
-            // inside clip 2's span → covered
-            { id: 1, name: 'A', start: 0, duration: 5, selected: true },
-            { id: 2, name: 'B', start: 3, duration: 4 },
+            // clip 1 selected, BELOW in z, wholly inside clip 2's span →
+            // both edges covered. (Containment: an EDGE overlap is a
+            // crossfade, and a crossfaded edge gets no duplicates — the
+            // crossfade owns it, 2026-10-01.) Clip 3 is free.
+            { id: 1, name: 'A', start: 1, duration: 4, selected: true },
+            { id: 2, name: 'B', start: 0, duration: 7 },
+            { id: 3, name: 'C', start: 9, duration: 2, selected: true },
           ]}
           width={1200}
           trackIndex={0}
@@ -1191,11 +1194,11 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
-    // Covered right edge gets duplicates; visible left edge gets none
+    // Covered edges get duplicates; the free clip's visible edges get none
     const trim = container.querySelector('[data-buried-handle="trim-right"]') as HTMLElement;
     expect(trim).toBeTruthy();
     expect(container.querySelector('[data-buried-handle="stretch-right"]')).toBeTruthy();
-    expect(container.querySelector('[data-buried-handle="trim-left"]')).toBeNull();
+    expect(container.querySelectorAll('[data-buried-handle]')).toHaveLength(4); // clip 1's four, none of clip 3's
     // The duplicate drives the same trim callback stream
     fireEvent.mouseDown(trim, { clientX: 500 });
     fireEvent.mouseMove(document, { clientX: 480 });

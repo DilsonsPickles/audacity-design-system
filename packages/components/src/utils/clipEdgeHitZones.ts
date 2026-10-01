@@ -52,8 +52,14 @@ export interface EdgeHitZoneOptions {
   pixelsPerSecond: number;
   /** Stacking order; higher = on top. Defaults to array position. */
   zOf?: (clip: EdgeZoneClipLike, index: number) => number;
-  /** Clips that get a zone. Others still claim their ground. Default: all. */
-  eligible?: (clip: EdgeZoneClipLike) => boolean;
+  /** Edges that get a zone. Others still claim their ground. Default: all. */
+  eligible?: (clip: EdgeZoneClipLike, edge: 'left' | 'right') => boolean;
+  /** Edges that get a zone EVEN under a higher clip, waiving rule 1 —
+   *  a crossfaded edge (user decision 2026-10-01): the overlap is the
+   *  crossfade, the crossfade owns its edges, and the zone sits above
+   *  the clips, so the under clip's edge is reachable through the top
+   *  clip's body. Default: none. */
+  throughOverlap?: (clip: EdgeZoneClipLike, edge: 'left' | 'right') => boolean;
 }
 
 const EPSILON = 1e-9;
@@ -62,7 +68,7 @@ export function computeEdgeHitZones(
   clips: readonly EdgeZoneClipLike[],
   options: EdgeHitZoneOptions,
 ): EdgeHitZone[] {
-  const { pixelsPerSecond, zOf = (_clip, index) => index, eligible = () => true } = options;
+  const { pixelsPerSecond, zOf = (_clip, index) => index, eligible = () => true, throughOverlap = () => false } = options;
 
   interface Claim extends EdgeHitZone { right: number; eligible: boolean }
   const claims: Claim[] = [];
@@ -79,18 +85,18 @@ export function computeEdgeHitZones(
       && other.start < t - EPSILON
       && t < other.start + other.duration - EPSILON);
 
-    if (!buried(clip.start)) {
+    if (throughOverlap(clip, 'left') || !buried(clip.start)) {
       claims.push({
         clipId: clip.id, edge: 'left', edgeX: startX,
         left: startX - EDGE_HIT_OUTSIDE_PX, right: startX + inside, width: 0,
-        eligible: eligible(clip),
+        eligible: eligible(clip, 'left'),
       });
     }
-    if (!buried(clip.start + clip.duration)) {
+    if (throughOverlap(clip, 'right') || !buried(clip.start + clip.duration)) {
       claims.push({
         clipId: clip.id, edge: 'right', edgeX: endX,
         left: endX - inside, right: endX + EDGE_HIT_OUTSIDE_PX, width: 0,
-        eligible: eligible(clip),
+        eligible: eligible(clip, 'right'),
       });
     }
   });

@@ -18,9 +18,12 @@ function Providers({ children }: { children: React.ReactNode }) {
 }
 
 // A selected clip with fades (handles + shape nodes), an unselected
-// clip (edge zones), and a crossfading pair (the crossfade node); the
-// selected clip is also buried at its right edge under clip 3.
+// clip (edge zones), a crossfading pair (the crossfade node) — the
+// selected clip 1's right edge is crossfaded under clip 3 — and a
+// selected clip 4 wholly under clip 2 (buried handles: containment,
+// since a crossfaded edge gets none, 2026-10-01).
 const clips = [
+  { id: 4, name: 'D', start: 7, duration: 1, selected: true },
   { id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeOut: 1, selected: true },
   { id: 2, name: 'B', start: 6, duration: 4 },
   { id: 3, name: 'C', start: 3, duration: 2 },
@@ -61,19 +64,23 @@ describe('while a fade is being dragged, every OTHER clip\'s handles are hidden 
     const { container, count } = renderTrack(new Set());
     const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
     fireEvent.mouseEnter(clip2, { buttons: 0 });
-    // Before: the selected clip 1 has its handles (one fade handle —
-    // its out edge is crossfaded under clip 3), clip 2 its fade handles
-    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(4);
+    // Before: the selected clip 1 has its LEFT pair of handles and one
+    // fade handle — its out edge is crossfaded under clip 3, so that
+    // edge has no buttons and no buried duplicates (the crossfade owns
+    // it, 2026-10-01) but an edge zone; clip 2 has its fade handles
+    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(2);
     expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
     expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(2);
-    expect(count('[data-buried-handle]')).toBeGreaterThan(0);
+    expect(count('[data-buried-handle]')).toBe(4); // clip 4's, under clip 2
+    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(1);
     const inHandle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
     fireEvent.pointerDown(inHandle, { button: 0, clientX: 620, clientY: 30, pointerId: 51 });
     // In hand: everything on clip 1 is gone (in-clip handles, fade
-    // handles, buried duplicates), and so are clip 3's edge zones and
-    // the crossfade node; clip 2 keeps its own fade handles
+    // handles, its crossfaded edge's zone), and so are clip 3's edge
+    // zones and the crossfade node; clip 2 keeps its own fade handles
     expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(0);
     expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(0);
+    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(0);
     expect(count('[data-buried-handle]')).toBe(0);
     expect(count('[data-quickfade-node][data-clip-ref="1"]')).toBe(0);
     expect(count('[data-crossfade-node]')).toBe(0);
@@ -81,9 +88,10 @@ describe('while a fade is being dragged, every OTHER clip\'s handles are hidden 
     expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(2);
     fireEvent.pointerUp(inHandle, { clientX: 620, clientY: 30, pointerId: 51 });
     // Released: back as they were
-    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(4);
+    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(2);
     expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
-    expect(count('[data-buried-handle]')).toBeGreaterThan(0);
+    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(1);
+    expect(count('[data-buried-handle]')).toBe(4);
   });
 });
 
@@ -152,7 +160,7 @@ describe('while clips are being dragged, every drag handle is hidden', () => {
         expect(count(selector), `${selector} with ${[...dragging]} dragging`).toBe(0);
       }
       // The clips themselves, and the fade curves, are still drawn
-      expect(count('[data-clip-id]')).toBe(3);
+      expect(count('[data-clip-id]')).toBe(4);
       expect(count('[data-fade-curve]')).toBeGreaterThan(0);
       cleanup();
     }

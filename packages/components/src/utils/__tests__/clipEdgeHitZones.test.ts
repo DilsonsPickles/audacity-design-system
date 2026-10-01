@@ -93,3 +93,32 @@ describe('computeEdgeHitZones — where a clip edge can be grabbed', () => {
     expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 300, width: 6 });
   });
 });
+
+describe('crossfaded edges (2026-10-01): eligible per EDGE, and reachable through the overlap', () => {
+  // Clip 1 (0..5) under clip 2 (3..7): the overlap 3..5 is a crossfade.
+  // Clip 1's right edge lies under clip 2 — buried by rule 1.
+  const pair = [clip(1, 0, 5), clip(2, 3, 4)];
+  const crossfaded = (c: { id: number }, edge: 'left' | 'right') => (c.id === 1 && edge === 'right') || (c.id === 2 && edge === 'left');
+
+  it('eligible takes the edge: a selected clip can keep a zone on one edge only', () => {
+    const list = zones(pair, { eligible: (c: { id: number }, edge: 'left' | 'right') => c.id !== 2 || edge === 'left' });
+    expect(find(list, 2, 'left')).toBeTruthy();
+    expect(find(list, 2, 'right')).toBeUndefined();
+  });
+
+  it('throughOverlap waives the burial: the under clip\'s crossfaded edge gets its zone, on the edge as ever', () => {
+    expect(find(zones(pair), 1, 'right')).toBeUndefined(); // buried without it
+    const list = zones(pair, { throughOverlap: crossfaded });
+    expect(find(list, 1, 'right')).toEqual({ clipId: 1, edge: 'right', edgeX: 500, left: 494, width: 11 });
+    expect(find(list, 2, 'left')).toEqual({ clipId: 2, edge: 'left', edgeX: 300, left: 295, width: 11 });
+  });
+
+  it('a very short overlap still keeps the two zones apart (rule 2)', () => {
+    // Overlap 4px: clip 2 starts at 4.96s; the zones would cross, so
+    // the ground between the edges is split down the middle
+    const list = zones([clip(1, 0, 5), clip(2, 4.96, 2)], { throughOverlap: crossfaded });
+    const a = find(list, 2, 'left')!; const b = find(list, 1, 'right')!;
+    expect(a.left + a.width).toBeLessThanOrEqual(b.left + 1e-9);
+    expect(a.left + a.width).toBeCloseTo(498, 5); // the middle of 496..500
+  });
+});

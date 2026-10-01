@@ -127,6 +127,10 @@ export interface ClipProps {
   /** Hide the trim and stretch handles (a clip drag is in progress —
    *  no handle anywhere is grabbable while clips are moving). */
   handlesHidden?: boolean;
+  /** Hide the trim and stretch handles of ONE edge — a crossfaded edge
+   *  (user decision 2026-10-01): the crossfade's node owns it, and the
+   *  track's edge zone still trims it. The other edge keeps its pair. */
+  handlesHiddenAt?: { left?: boolean; right?: boolean };
   /** The pointer has entered (kind) or left (null) a trim or stretch
    *  handle — for the host's status-bar hint. */
   onHandleHover?: (kind: 'trim' | 'stretch' | null) => void;
@@ -194,6 +198,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   envelopePointSizes,
   isRecording = false,
   handlesHidden = false,
+  handlesHiddenAt,
   onHandleHover,
   spectrogramScale,
   midiNotes,
@@ -440,55 +445,64 @@ const ClipComponent: React.FC<ClipProps> = ({
         <>
           {/* Mouse-only handles. tabIndex={-1} keeps them out of the
               main tab order; the equivalent actions are reachable via
-              dedicated keyboard shortcuts. */}
-          {onTrimEdge && (
-            <button
-              type="button"
-              tabIndex={-1}
-              className="clip-display__handle clip-display__handle--trim-left"
-              aria-label="Trim left edge"
-              onMouseDown={handleVisibleTrimMouseDown('left')}
-              onMouseEnter={() => onHandleHover?.('trim')}
-              onMouseLeave={() => onHandleHover?.(null)}
-            >
-              <TrimLeftIcon />
-            </button>
+              dedicated keyboard shortcuts. A crossfaded edge shows
+              neither of its pair (handlesHiddenAt). */}
+          {!handlesHiddenAt?.left && (
+            <>
+              {onTrimEdge && (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="clip-display__handle clip-display__handle--trim-left"
+                  aria-label="Trim left edge"
+                  onMouseDown={handleVisibleTrimMouseDown('left')}
+                  onMouseEnter={() => onHandleHover?.('trim')}
+                  onMouseLeave={() => onHandleHover?.(null)}
+                >
+                  <TrimLeftIcon />
+                </button>
+              )}
+              <button
+                type="button"
+                tabIndex={-1}
+                className="clip-display__handle clip-display__handle--stretch-left"
+                aria-label="Stretch left edge"
+                onMouseDown={handleStretchMouseDown('left')}
+                onMouseEnter={() => onHandleHover?.('stretch')}
+                onMouseLeave={() => onHandleHover?.(null)}
+              >
+                <StretchIcon />
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            tabIndex={-1}
-            className="clip-display__handle clip-display__handle--stretch-left"
-            aria-label="Stretch left edge"
-            onMouseDown={handleStretchMouseDown('left')}
-            onMouseEnter={() => onHandleHover?.('stretch')}
-            onMouseLeave={() => onHandleHover?.(null)}
-          >
-            <StretchIcon />
-          </button>
-          {onTrimEdge && (
-            <button
-              type="button"
-              tabIndex={-1}
-              className="clip-display__handle clip-display__handle--trim-right"
-              aria-label="Trim right edge"
-              onMouseDown={handleVisibleTrimMouseDown('right')}
-              onMouseEnter={() => onHandleHover?.('trim')}
-              onMouseLeave={() => onHandleHover?.(null)}
-            >
-              <TrimRightIcon />
-            </button>
+          {!handlesHiddenAt?.right && (
+            <>
+              {onTrimEdge && (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="clip-display__handle clip-display__handle--trim-right"
+                  aria-label="Trim right edge"
+                  onMouseDown={handleVisibleTrimMouseDown('right')}
+                  onMouseEnter={() => onHandleHover?.('trim')}
+                  onMouseLeave={() => onHandleHover?.(null)}
+                >
+                  <TrimRightIcon />
+                </button>
+              )}
+              <button
+                type="button"
+                tabIndex={-1}
+                className="clip-display__handle clip-display__handle--stretch-right"
+                aria-label="Stretch right edge"
+                onMouseDown={handleStretchMouseDown('right')}
+                onMouseEnter={() => onHandleHover?.('stretch')}
+                onMouseLeave={() => onHandleHover?.(null)}
+              >
+                <StretchIcon />
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            tabIndex={-1}
-            className="clip-display__handle clip-display__handle--stretch-right"
-            aria-label="Stretch right edge"
-            onMouseDown={handleStretchMouseDown('right')}
-            onMouseEnter={() => onHandleHover?.('stretch')}
-            onMouseLeave={() => onHandleHover?.(null)}
-          >
-            <StretchIcon />
-          </button>
         </>
       )}
     </div>

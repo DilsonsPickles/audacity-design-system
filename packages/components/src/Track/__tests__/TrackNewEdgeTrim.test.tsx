@@ -239,14 +239,18 @@ describe('trimming an unselected clip by its edge', () => {
   });
 
   it('an edge buried under a higher clip has no zone', () => {
+    // Containment, not an edge overlap: clip 1 sits wholly under clip 2
+    // (later in the array = on top), so neither of its edges is there
+    // to grab. (An EDGE overlap is a crossfade, whose buried edge DOES
+    // get a zone — 2026-10-01, see the crossfaded-edge tests below.)
     const { zone } = renderTrack({
       clips: [
-        { id: 1, name: 'A', start: 0, duration: 5 },
-        { id: 2, name: 'B', start: 3, duration: 4 }, // later in the array = on top
+        { id: 1, name: 'A', start: 2, duration: 1 },
+        { id: 2, name: 'B', start: 0, duration: 5 },
       ],
     });
+    expect(zone(1, 'left')).toBeNull();
     expect(zone(1, 'right')).toBeNull();
-    expect(zone(1, 'left')).toBeTruthy();
     expect(zone(2, 'left')).toBeTruthy();
     expect(zone(2, 'right')).toBeTruthy();
   });
@@ -367,5 +371,59 @@ describe('Option over an edge zone stretches instead of trimming (2026-09-30)', 
     expect(onClipTrimEdge).toHaveBeenCalledWith(2, 'left', 530);
     fireEvent.mouseUp(document);
     fireEvent.keyUp(document, { key: 'Alt' });
+  });
+});
+
+describe('a crossfaded edge belongs to the crossfade (2026-10-01): no trim or stretch buttons there, a zone instead', () => {
+  // Clip 1 (0..5) under clip 2 (3..7), BOTH selected: the overlap 3..5
+  // is a crossfade. Clip 1's right edge and clip 2's left edge are the
+  // crossfaded ones; the two outer edges are free.
+  const bothSelected = [
+    { id: 1, name: 'A', start: 0, duration: 5, selected: true },
+    { id: 2, name: 'B', start: 3, duration: 4, selected: true },
+  ];
+  const button = (container: HTMLElement, clipId: number, label: string) =>
+    container.querySelector(`[data-clip-id="${clipId}"] [aria-label="${label}"]`);
+
+  it('the crossfaded edges show no handles; the free edges keep both of theirs', () => {
+    const { container } = renderTrack({ clips: bothSelected, onClipStretchEdge: vi.fn() });
+    expect(button(container, 1, 'Trim right edge')).toBeNull();
+    expect(button(container, 1, 'Stretch right edge')).toBeNull();
+    expect(button(container, 2, 'Trim left edge')).toBeNull();
+    expect(button(container, 2, 'Stretch left edge')).toBeNull();
+    expect(button(container, 1, 'Trim left edge')).toBeTruthy();
+    expect(button(container, 1, 'Stretch left edge')).toBeTruthy();
+    expect(button(container, 2, 'Trim right edge')).toBeTruthy();
+    expect(button(container, 2, 'Stretch right edge')).toBeTruthy();
+  });
+
+  it('…and get edge zones instead, selected or not — the under clip\'s reaching through the top clip', () => {
+    const { zone } = renderTrack({ clips: bothSelected });
+    expect(zone(1, 'right')).toBeTruthy(); // buried under clip 2, but crossfaded
+    expect(zone(2, 'left')).toBeTruthy();
+    expect(zone(1, 'left')).toBeNull(); // selected: the free edges keep their handles, no zone
+    expect(zone(2, 'right')).toBeNull();
+    // On the edge, as every zone is: 5 out, 6 in
+    expect(zone(1, 'right')!.style.left).toBe(`${12 + 500 - 6}px`);
+    expect(zone(2, 'left')!.style.left).toBe(`${12 + 300 - 5}px`);
+  });
+
+  it('dragging the under clip\'s crossfaded zone trims THAT clip\'s right edge — the overlap\'s length', () => {
+    const { zone, onClipTrimEdge } = renderTrack({ clips: bothSelected });
+    const z = zone(1, 'right')!;
+    fireEvent.mouseDown(z, { button: 0, clientX: 506, clientY: 30 });
+    fireEvent.mouseMove(document, { clientX: 480 });
+    expect(onClipTrimEdge.mock.calls).toEqual([[1, 'right', 480]]);
+    fireEvent.mouseUp(document);
+  });
+
+  it('with the clips apart the rule is the old one: handles on every selected edge, no zones', () => {
+    const { container, zone } = renderTrack({ clips: [
+      { id: 1, name: 'A', start: 0, duration: 3, selected: true },
+      { id: 2, name: 'B', start: 4, duration: 3, selected: true },
+    ] });
+    expect(container.querySelectorAll('.clip-display__handle')).toHaveLength(8);
+    expect(zone(1, 'right')).toBeNull();
+    expect(zone(2, 'left')).toBeNull();
   });
 });

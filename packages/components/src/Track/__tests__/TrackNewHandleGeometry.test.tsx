@@ -28,14 +28,15 @@ function Providers({ children }: { children: React.ReactNode }) {
 
 describe('buried-edge trim and stretch handles use the app\'s boxes', () => {
   it('a selected clip buried at both edges gets 30px boxes straddling each edge, trim at 20 and stretch at 52', () => {
-    // Clip 1 (selected) lies under clips 2 and 3 at both of its edges
+    // Clip 1 (selected) lies wholly under clip 2 — containment, so both
+    // its edges are covered (an edge overlap would be a crossfade, and a
+    // crossfaded edge gets no duplicates, 2026-10-01)
     const { container } = render(
       <Providers>
         <TrackNew
           clips={[
             { id: 1, name: 'A', start: 2, duration: 4, selected: true },
-            { id: 2, name: 'B', start: 0, duration: 3 },
-            { id: 3, name: 'C', start: 5, duration: 3 },
+            { id: 2, name: 'B', start: 0, duration: 8 },
           ]}
           width={1200}
           trackIndex={0}

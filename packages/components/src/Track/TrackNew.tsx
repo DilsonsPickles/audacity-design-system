@@ -1863,6 +1863,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
             handlesHidden={hidesHandlesOf(clip.id)}
+            handlesHiddenAt={{ left: isCrossfadedEdge(clip.id, 'left'), right: isCrossfadedEdge(clip.id, 'right') }}
             onHandleHover={setHintHover}
             midiNotes={clip.midiNotes}
             forceHeaderHover={isClipHovered}
@@ -1912,19 +1913,29 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // itself, as the app does. Below the zone the edge belongs to the
   // time selection, which can then start exactly on a clip's edge.
   //
-  // A selected clip has its trim handles and no zones. Dragging a zone
-  // streams to the same onClipTrimEdge the handles do — or, with
-  // OPTION/ALT held at the press (2026-09-30), to onClipStretchEdge:
-  // the edge STRETCHES instead. Whether either selects anything is the
-  // host's call, not made here.
+  // A selected clip has its trim handles and no zones — EXCEPT at a
+  // crossfaded edge (user decision 2026-10-01, to thin the pile-up in a
+  // short overlap): there the crossfade owns the edge, the trim and
+  // stretch buttons hide (Clip's handlesHiddenAt), and the zone stands
+  // in for them whether or not the clip is selected — reaching through
+  // the top clip's body for the under clip's edge, which rule 1 would
+  // otherwise bury. Dragging a zone streams to the same onClipTrimEdge
+  // the handles do — or, with OPTION/ALT held at the press (2026-09-30),
+  // to onClipStretchEdge: the edge STRETCHES instead. Whether either
+  // selects anything is the host's call, not made here.
+  const isCrossfadedEdge = React.useCallback(
+    (clipId: string | number, edge: 'left' | 'right') => crossfadedEdges.has(`${clipId}:${edge === 'left' ? 'in' : 'out'}`),
+    [crossfadedEdges],
+  );
   const edgeTrimZones = React.useMemo(() => {
     if (!onClipTrimEdge) return [];
     return computeEdgeHitZones(clips, {
       pixelsPerSecond,
       zOf: (clip) => clipZIndex.get(clip.id) ?? 2,
-      eligible: (clip) => !(clip as TrackClip).selected && clip.id !== recordingClipId,
+      eligible: (clip, edge) => clip.id !== recordingClipId && (!(clip as TrackClip).selected || isCrossfadedEdge(clip.id, edge)),
+      throughOverlap: (clip, edge) => isCrossfadedEdge(clip.id, edge),
     });
-  }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId]);
+  }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId, isCrossfadedEdge]);
 
   const renderEdgeTrimZones = () => {
     if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
@@ -2007,9 +2018,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         d.id !== clip.id
         && (clipZIndex.get(d.id) ?? 2) > z
         && d.start < t && t < d.start + d.duration);
+      // A crossfaded edge gets no duplicates either: the crossfade owns
+      // it, and its zone reaches through the top clip (2026-10-01)
       const edges: Array<'left' | 'right'> = [];
-      if (covered(clip.start)) edges.push('left');
-      if (covered(clip.start + clip.duration)) edges.push('right');
+      if (covered(clip.start) && !isCrossfadedEdge(clip.id, 'left')) edges.push('left');
+      if (covered(clip.start + clip.duration) && !isCrossfadedEdge(clip.id, 'right')) edges.push('right');
       for (const edge of edges) {
         // Same geometry as Clip.css: 30px boxes STRADDLING the edge, 24
         // outside (the app's) and EDGE_HIT_INSIDE_PX inside (the edge
