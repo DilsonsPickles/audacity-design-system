@@ -629,7 +629,7 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-fade-handle="out"][data-fade-clip="2"]')).toBeTruthy();
   });
 
-  it('dragging the intersection node bends both curves — extents never move', () => {
+  it('a VERTICAL drag on the intersection node sets the crossing\'s depth — both curves, its time held, extents never move', () => {
     const onCrossfadeShapeChange = vi.fn();
     const onClipFadeChange = vi.fn();
     const { container } = render(
@@ -667,8 +667,13 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 3 });
   });
 
-  it('Alt+drag on the node rolls instead (content edit)', () => {
+  // The node's plain gestures (2026-10-01): horizontal ROLLS the
+  // crossfade — a content edit, both boundaries slide — and vertical sets
+  // its depth; Alt+drag is the asymmetric bend. The axis locks at the
+  // first movement, so a diagonal never does two things.
+  const crossfadePair = () => {
     const onCrossfadeRoll = vi.fn();
+    const onCrossfadeShapeChange = vi.fn();
     const onClipFadeChange = vi.fn();
     const { container } = render(
       <Providers>
@@ -682,16 +687,71 @@ describe('clip fades', () => {
           pixelsPerSecond={100}
           onClipFadeChange={onClipFadeChange}
           onCrossfadeRoll={onCrossfadeRoll}
+          onCrossfadeShapeChange={onCrossfadeShapeChange}
         />
       </Providers>,
     );
     hoverClip(container, 1);
     const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
-    fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 60, pointerId: 4 });
+    return { node, onCrossfadeRoll, onCrossfadeShapeChange, onClipFadeChange };
+  };
+
+  it('a plain HORIZONTAL drag on the node ROLLS the crossfade — the boundaries move, nothing bends', () => {
+    const { node, onCrossfadeRoll, onCrossfadeShapeChange, onClipFadeChange } = crossfadePair();
+    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 4 });
     fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 4 });
     expect(onCrossfadeRoll).toHaveBeenCalledWith(1, 2, expect.closeTo(0.3, 5));
+    expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
     expect(onClipFadeChange).not.toHaveBeenCalled();
     fireEvent.pointerUp(node, { pointerId: 4 });
+  });
+
+  it('the drag locks to its first axis: a mostly-sideways start keeps rolling, a mostly-vertical one keeps shaping', () => {
+    {
+      const { node, onCrossfadeRoll, onCrossfadeShapeChange } = crossfadePair();
+      fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 5 });
+      fireEvent.pointerMove(node, { clientX: 401, clientY: 61, pointerId: 5 }); // under the threshold: nothing yet
+      expect(onCrossfadeRoll).not.toHaveBeenCalled();
+      expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
+      fireEvent.pointerMove(node, { clientX: 410, clientY: 64, pointerId: 5 }); // sideways wins
+      fireEvent.pointerMove(node, { clientX: 420, clientY: 100, pointerId: 5 }); // now mostly down — still rolling
+      expect(onCrossfadeRoll).toHaveBeenCalledTimes(2);
+      expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
+      fireEvent.pointerUp(node, { pointerId: 5 });
+    }
+    cleanup();
+    {
+      const { node, onCrossfadeRoll, onCrossfadeShapeChange } = crossfadePair();
+      fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 48, pointerId: 6 });
+      fireEvent.pointerMove(node, { clientX: 402, clientY: 60, pointerId: 6 }); // down wins
+      fireEvent.pointerMove(node, { clientX: 440, clientY: 67, pointerId: 6 }); // now mostly sideways — still shaping, time held
+      expect(onCrossfadeRoll).not.toHaveBeenCalled();
+      expect(onCrossfadeShapeChange).toHaveBeenCalledTimes(2);
+      // Depth: the crossing's time is held at 4.0s, so both curves take
+      // the SAME exponent (symmetric); at 67px down the dip is ≈ 2
+      const [, , outShape, inShape] = onCrossfadeShapeChange.mock.calls[1];
+      expect(outShape).toBeCloseTo(inShape, 5);
+      expect(outShape).toBeCloseTo(2, 1);
+      fireEvent.pointerUp(node, { pointerId: 6 });
+    }
+  });
+
+  it('Alt+drag on the node is the asymmetric BEND: the crossing follows the pointer in both axes, extents never move', () => {
+    const { node, onCrossfadeRoll, onCrossfadeShapeChange, onClipFadeChange } = crossfadePair();
+    fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 48, pointerId: 7 });
+    // 30px right at the same gain: the crossing moves to 4.3s, so the
+    // outgoing curve must hold up longer (a shallower exponent) and the
+    // incoming one arrive later (a steeper one)
+    fireEvent.pointerMove(node, { clientX: 430, clientY: 48, pointerId: 7, altKey: true });
+    expect(onCrossfadeShapeChange).toHaveBeenCalledTimes(1);
+    const [outId, inId, outShape, inShape] = onCrossfadeShapeChange.mock.calls[0];
+    expect(outId).toBe(1);
+    expect(inId).toBe(2);
+    expect(outShape).toBeLessThan(1);
+    expect(inShape).toBeGreaterThan(1);
+    expect(onCrossfadeRoll).not.toHaveBeenCalled();
+    expect(onClipFadeChange).not.toHaveBeenCalled();
+    fireEvent.pointerUp(node, { pointerId: 7 });
   });
 
   it('the shape handle shows on HOVER only — selection alone does not show it', () => {

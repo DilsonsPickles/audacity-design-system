@@ -862,25 +862,47 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
             setFadeHoverClipId(n.incomingClipId); // a press on it proves the pointer is here
             setCrossfadeDrag(nodeKey);
-            // Alt+drag = ROLL (content edit: both clip edges slide,
-            // clamped to hidden material). Plain drag = SHAPE: the fade
-            // extents never move — both curves bend (shape exponents)
-            // so the crossing lands under the pointer. Closed form:
+            // The node's gestures (user decision 2026-10-01, swapping the
+            // earlier plain-drag-shapes rule after a sense check against
+            // how Reaper, Pro Tools and Cubase treat a crossfade's centre):
+            //  - plain HORIZONTAL drag = ROLL, a content edit: both clip
+            //    edges slide, the seam moves, the overlap's length holds
+            //    (clamped to hidden material) — the boundaries are what a
+            //    crossfade's centre moves, since the overlap IS the fade;
+            //  - plain VERTICAL drag = DEPTH: both curves bend so the
+            //    crossing's gain lands under the pointer, its time held —
+            //    equal-power and shallower or deeper;
+            //  - ALT+drag = the asymmetric BEND (the old plain drag): both
+            //    curves bend so the crossing lands under the pointer in
+            //    BOTH axes, the extents never move.
+            // A plain drag LOCKS to its dominant axis at the first
+            // AXIS_LOCK_PX of movement, so a diagonal never rolls and
+            // bends at once. Closed form for the bends:
             // shape = ln(gain) / ln(baseCurve(t)).
-            const rollMode = e.altKey && !!onCrossfadeRoll;
+            const AXIS_LOCK_PX = 3;
+            let mode: 'undecided' | 'roll' | 'depth' | 'bend' = e.altKey ? 'bend' : 'undecided';
             const startClientX = e.clientX;
             const startClientY = e.clientY;
             const startPoint = n.point;
             let lastX = e.clientX;
             const onMove = (ev: PointerEvent) => {
-              if (rollMode) {
+              if (mode === 'undecided') {
+                const dx = ev.clientX - startClientX;
+                const dy = ev.clientY - startClientY;
+                if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
+                mode = Math.abs(dx) >= Math.abs(dy) ? 'roll' : 'depth';
+              }
+              if (mode === 'roll') {
                 const dx = (ev.clientX - lastX) / pixelsPerSecond;
                 lastX = ev.clientX;
                 if (dx !== 0) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
                 return;
               }
               if (!onCrossfadeShapeChange) return;
-              const time = startPoint.time + (ev.clientX - startClientX) / pixelsPerSecond;
+              // Depth holds the crossing's time; the bend takes the pointer's
+              const time = mode === 'depth'
+                ? startPoint.time
+                : startPoint.time + (ev.clientX - startClientX) / pixelsPerSecond;
               const gain = startPoint.gain - (ev.clientY - startClientY) / Math.max(1, bodyHeight);
               // The pointer must stay strictly inside BOTH curve regions
               // (and the gain away from 0/1) for the solve to exist
