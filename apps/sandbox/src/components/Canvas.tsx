@@ -26,6 +26,7 @@ import { SplitPreviewLine } from './canvas/SplitPreviewLine';
 import { MarqueeRect } from './canvas/MarqueeRect';
 import { computeCanvasHeights } from '../utils/canvasLayout';
 import { resolveSnapGuideline } from '../utils/snapGuideline';
+import { nearestClipEdgeOnOtherTracks, FADE_ALIGN_THRESHOLD_PX } from '../utils/fadeAlignment';
 import { snapToGrid } from '../utils/snapToGrid';
 import { deriveEnvelopePointSizes } from '../utils/envelopePointSizes';
 import { useDragHighlightIds } from '../hooks/useDragHighlightIds';
@@ -414,10 +415,19 @@ export function Canvas({
     snapOptions,
   });
 
-  // A fade handle drag snaps its boundary to the grid too (the drag
-  // itself lives in TrackNew; it reports where it snapped to, and null
-  // when it has not or has ended). Same grid as the other drags.
-  const [fadeSnapGuidelineTime, setFadeSnapGuidelineTime] = useState<number | null>(null);
+  // A fade handle drag snaps its boundary too (the drag itself lives in
+  // TrackNew; it reports where it snapped to and to what — the grid, or
+  // a clip edge on another track — and null when it has not or has
+  // ended). Same grid and same alignment rule as the other drags.
+  const [fadeSnapGuideline, setFadeSnapGuideline] = useState<{ time: number; kind: 'grid' | 'alignment' } | null>(null);
+  const onFadeSnapGuideline = useMemo(
+    () => (time: number | null, kind: 'grid' | 'alignment' | null) => setFadeSnapGuideline(time === null || kind === null ? null : { time, kind }),
+    [],
+  );
+  const alignFadeBoundary = useMemo(
+    () => (time: number, trackIndex: number) => nearestClipEdgeOnOtherTracks(tracks, trackIndex, time, FADE_ALIGN_THRESHOLD_PX / pixelsPerSecond),
+    [tracks, pixelsPerSecond],
+  );
   const [selectionSnapGuidelineTime, setSelectionSnapGuidelineTime] = useState<number | null>(null);
   // The clip whose fade is in hand, on whichever track: TrackNew reports
   // it and every track gets it back, so a fade drag on one track hides
@@ -442,7 +452,7 @@ export function Canvas({
     { time: dragSnapGuidelineTime, kind: dragSnapGuidelineKind },
     { time: trimSnapGuidelineTime, kind: trimSnapGuidelineKind },
     { time: stretchSnapGuidelineTime, kind: stretchSnapGuidelineKind },
-    { time: fadeSnapGuidelineTime, kind: fadeSnapGuidelineTime !== null ? 'grid' : null },
+    { time: fadeSnapGuideline?.time ?? null, kind: fadeSnapGuideline?.kind ?? null },
     { time: selectionSnapGuidelineTime, kind: selectionSnapGuidelineTime !== null ? 'grid' : null },
   );
   const snapGuidelineColor = snapGuidelineKind === 'grid' ? '#22D3EE' : '#FFD60A';
@@ -829,7 +839,8 @@ export function Canvas({
           showQuickFadeHandles={showQuickFadeHandles}
           snapTime={snapTime}
           snapEnabled={snapEnabled}
-          onFadeSnapGuideline={setFadeSnapGuidelineTime}
+          alignFadeBoundary={alignFadeBoundary}
+          onFadeSnapGuideline={onFadeSnapGuideline}
           fadeInHandClipId={fadeInHandClipId}
           onFadeDragChange={setFadeInHandClipId}
           onHandleHint={setHandleHint}

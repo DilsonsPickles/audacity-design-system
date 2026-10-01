@@ -65,7 +65,10 @@ export interface CanvasTrackListProps {
    *  where such a drag has snapped to, for the canvas's guideline */
   snapTime?: (time: number) => number;
   snapEnabled?: boolean;
-  onFadeSnapGuideline?: (time: number | null) => void;
+  /** Clip-edge alignment for a fade boundary when the grid is not in
+   *  play (utils/fadeAlignment.ts) */
+  alignFadeBoundary?: (time: number, trackIndex: number) => number | null;
+  onFadeSnapGuideline?: (time: number | null, kind: 'grid' | 'alignment' | null) => void;
   /** The clip whose fade is in hand on ANY track (TrackNew reports it;
    *  every track gets it back so all hide their other clips' handles) */
   fadeInHandClipId: string | number | null;
@@ -417,6 +420,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   showQuickFadeHandles,
   snapTime,
   snapEnabled,
+  alignFadeBoundary,
   onFadeSnapGuideline,
   fadeInHandClipId,
   onFadeDragChange,
@@ -1007,6 +1011,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         } : undefined}
         snapTime={snapTime}
         snapEnabled={snapEnabled}
+        alignFadeBoundary={alignFadeBoundary}
         onFadeSnapGuideline={onFadeSnapGuideline}
         fadeInHandClipId={fadeInHandClipId}
         onFadeDragChange={onFadeDragChange}

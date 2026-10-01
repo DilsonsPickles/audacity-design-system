@@ -292,10 +292,17 @@ export interface TrackProps {
   /** Whether snapping is on (the host's switch); read live with Shift. */
   snapEnabled?: boolean;
 
-  /** Reports where a fade handle drag has snapped to (project time), or
-   *  null when it has not / when the drag ends — for the host's snap
-   *  guideline. Only fires when `snapTime` is set. */
-  onFadeSnapGuideline?: (time: number | null) => void;
+  /** The host's clip-edge ALIGNMENT for a fade boundary (user decision
+   *  2026-10-01): the nearest clip edge on another track within reach of
+   *  `time`, or null. Consulted when the grid is not — snapping off, or
+   *  on with Shift held — exactly as a clip drag's alignment stands in
+   *  for its grid; Shift with snapping on is no snap at all. */
+  alignFadeBoundary?: (time: number, trackIndex: number) => number | null;
+  /** Reports where a fade handle drag has snapped to (project time) and
+   *  to what — the grid or a clip edge — or null when it has not / when
+   *  the drag ends, for the host's snap guideline. Only fires when
+   *  `snapTime` or `alignFadeBoundary` is set. */
+  onFadeSnapGuideline?: (time: number | null, kind: 'grid' | 'alignment' | null) => void;
   /** The clip whose fade (length handle or shape node) is in hand
    *  ANYWHERE — on this track or another. Reported through
    *  onFadeDragChange; the host hands it back to every track so all of
@@ -566,6 +573,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipFadeChange,
   snapTime,
   snapEnabled = false,
+  alignFadeBoundary,
   onFadeSnapGuideline,
   fadeInHandClipId,
   onFadeDragChange,
@@ -2200,23 +2208,36 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 // the host's switch, read live on each move, as a clip
                 // drag's does (2026-10-01; it was Alt-to-bypass)
                 let snappedTo: number | null = null;
+                let snappedKind: 'grid' | 'alignment' | null = null;
                 const snapNow = ev.shiftKey ? !snapEnabled : snapEnabled;
-                if (snapTime && snapNow) {
-                  const boundary = snapTime(side === 'in' ? clip.start + seconds : clipEnd - seconds);
+                // Shift with snapping ON is no snap at all — not even the
+                // clip-edge alignment that stands in for the grid when
+                // the switch is off (the clip drag's rule, 2026-10-01)
+                const noSnapAtAll = ev.shiftKey && snapEnabled;
+                const rawBoundary = side === 'in' ? clip.start + seconds : clipEnd - seconds;
+                // A target the fade cannot reach (past its limits) is
+                // not a snap: keep the pointer's own value there
+                const take = (boundary: number, kind: 'grid' | 'alignment') => {
                   const snappedSeconds = side === 'in' ? boundary - clip.start : clipEnd - boundary;
-                  // A gridline the fade cannot reach (past its limits) is
-                  // not a snap: keep the pointer's own value there
-                  if (snappedSeconds >= 0 && snappedSeconds <= maxSeconds) {
-                    seconds = snappedSeconds;
-                    snappedTo = boundary;
-                  }
+                  if (snappedSeconds < 0 || snappedSeconds > maxSeconds) return;
+                  seconds = snappedSeconds;
+                  snappedTo = boundary;
+                  snappedKind = kind;
+                };
+                if (snapTime && snapNow) {
+                  take(snapTime(rawBoundary), 'grid');
+                } else if (alignFadeBoundary && !noSnapAtAll) {
+                  // Alignment: the boundary magnetically meets a clip
+                  // edge on another track, as a clip's edges do
+                  const edge = alignFadeBoundary(rawBoundary, trackIndex);
+                  if (edge !== null) take(edge, 'alignment');
                 }
                 // Clamp to the free window: a quick fade never overlaps
                 // a crossfade (or the opposite quick fade)
                 seconds = Math.max(0, Math.min(maxSeconds, seconds));
                 if (seconds < 0.02) seconds = 0; // snap tiny fades away
                 onClipFadeChange?.(clip.id, side, seconds);
-                if (snapTime) onFadeSnapGuideline?.(snappedTo);
+                if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(snappedTo, snappedKind);
               };
               const onUp = (ev: PointerEvent) => {
                 handleEl.removeEventListener('pointermove', onMove);
@@ -2226,7 +2247,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 onFadeDragChange?.(null);
                 settleHint(handleEl, ev);
                 settleFadeHover(clip.id, ev, handleEl);
-                if (snapTime) onFadeSnapGuideline?.(null);
+                if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(null, null);
               };
               handleEl.addEventListener('pointermove', onMove);
               handleEl.addEventListener('pointerup', onUp);

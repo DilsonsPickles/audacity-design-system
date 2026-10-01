@@ -1360,9 +1360,9 @@ describe('fade handle grid snap (2026-09-30)', () => {
     // Pointer at x=237 = 1.37s into the clip = project time 2.37s → 2.5s
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 1 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5, 'grid');
     fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 1 });
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null); // the guideline goes with the drag
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null); // the guideline goes with the drag
 
     // Fade out: the boundary is measured from the clip's END. Pointer at
     // x=380 = project 3.8s → 4.0s; the clip ends at 5s → a 1.0s fade
@@ -1370,7 +1370,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerDown(handle('out'), { button: 0, clientX: 490, clientY: 30, pointerId: 2 });
     fireEvent.pointerMove(handle('out'), { clientX: 380, clientY: 30, pointerId: 2 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 1);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(4);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(4, 'grid');
     fireEvent.pointerUp(handle('out'), { clientX: 380, clientY: 30, pointerId: 2 });
   });
 
@@ -1379,11 +1379,11 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 3 });
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, shiftKey: true });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.37);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
     // Read live: let go of Shift mid-drag and the next move snaps again
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5, 'grid');
     // Alt is nothing to a fade length drag now
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 3, altKey: true });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
@@ -1395,10 +1395,10 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 4 });
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 4 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.37);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 4, shiftKey: true });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5, 'grid');
     fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 4, shiftKey: true });
   });
 
@@ -1410,11 +1410,11 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 4 });
     fireEvent.pointerMove(handle('in'), { clientX: 230, clientY: 30, pointerId: 4 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
     // …while a gridline AT the limit is reachable, and is a snap
     fireEvent.pointerMove(handle('in'), { clientX: 215, clientY: 30, pointerId: 4 }); // 1.15s → project 2.0s = exactly a 1s fade
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2, 'grid');
     fireEvent.pointerUp(handle('in'), { clientX: 215, clientY: 30, pointerId: 4 });
   });
 
@@ -1586,5 +1586,101 @@ describe('the crossfade node\'s clicks match the quick fade handle\'s (2026-10-0
     const prevented = !fireEvent.contextMenu(node, { clientX: 410, clientY: 55 });
     expect(prevented).toBe(true);
     expect(onCrossfadeContextMenu).toHaveBeenCalledWith(1, 2, 410, 55);
+  });
+});
+
+describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) — the clip drag\'s rule', () => {
+  // The clip runs 1s..5s at 100px/s. The host's lookup answers "4.0s"
+  // for any boundary within 0.06s of it (6px) and nothing otherwise —
+  // a clip on another track starting at 4.0s
+  const snapTime = (t: number) => Math.round(t / 0.5) * 0.5;
+  function renderIt(snapEnabled: boolean, opts: { withGrid?: boolean; withAlign?: boolean } = { withGrid: true, withAlign: true }) {
+    const onClipFadeChange = vi.fn();
+    const onFadeSnapGuideline = vi.fn();
+    const alignFadeBoundary = vi.fn((time: number) => (Math.abs(time - 4) <= 0.06 ? 4 : null));
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 1, duration: 4, selected: true }]}
+          width={800}
+          trackIndex={3}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          snapTime={opts.withGrid === false ? undefined : snapTime}
+          snapEnabled={snapEnabled}
+          alignFadeBoundary={opts.withAlign === false ? undefined : alignFadeBoundary}
+          onFadeSnapGuideline={onFadeSnapGuideline}
+        />
+      </Providers>,
+    );
+    const handle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
+    return { handle, onClipFadeChange, onFadeSnapGuideline, alignFadeBoundary };
+  }
+
+  it('snapping OFF: the boundary meets a clip edge on another track within 6px, and the guideline says so', () => {
+    const { handle, onClipFadeChange, onFadeSnapGuideline, alignFadeBoundary } = renderIt(false);
+    fireEvent.pointerDown(handle, { button: 0, clientX: 500, clientY: 30, pointerId: 1 });
+    // A 0.96s pull from the end → boundary 4.04s → 4.0s, a 1.0s fade
+    fireEvent.pointerMove(handle, { clientX: 404, clientY: 30, pointerId: 1 });
+    expect(alignFadeBoundary).toHaveBeenLastCalledWith(expect.closeTo(4.04, 5), 3); // asked with the track, so its own is left out
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 1);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(4, 'alignment');
+    // Out of reach: the pointer's own boundary, no guideline
+    fireEvent.pointerMove(handle, { clientX: 380, clientY: 30, pointerId: 1 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', expect.closeTo(1.2, 5));
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
+    fireEvent.pointerUp(handle, { clientX: 380, clientY: 30, pointerId: 1 });
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
+  });
+
+  it('snapping OFF + Shift: the grid, not the edge', () => {
+    const { handle, onClipFadeChange, onFadeSnapGuideline, alignFadeBoundary } = renderIt(false);
+    fireEvent.pointerDown(handle, { button: 0, clientX: 500, clientY: 30, pointerId: 2 });
+    // Boundary 3.74s: within nothing's reach but the grid's 3.5s
+    fireEvent.pointerMove(handle, { clientX: 374, clientY: 30, pointerId: 2, shiftKey: true });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 1.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(3.5, 'grid');
+    expect(alignFadeBoundary).not.toHaveBeenCalled();
+    fireEvent.pointerUp(handle, { clientX: 374, clientY: 30, pointerId: 2, shiftKey: true });
+  });
+
+  it('snapping ON: the grid wins; ON + Shift is no snap at all — the edge is not consulted', () => {
+    const { handle, onClipFadeChange, onFadeSnapGuideline, alignFadeBoundary } = renderIt(true);
+    fireEvent.pointerDown(handle, { button: 0, clientX: 500, clientY: 30, pointerId: 3 });
+    fireEvent.pointerMove(handle, { clientX: 404, clientY: 30, pointerId: 3 });
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(4, 'grid');
+    expect(alignFadeBoundary).not.toHaveBeenCalled();
+    fireEvent.pointerMove(handle, { clientX: 404, clientY: 30, pointerId: 3, shiftKey: true });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', expect.closeTo(0.96, 5));
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
+    expect(alignFadeBoundary).not.toHaveBeenCalled();
+    fireEvent.pointerUp(handle, { clientX: 404, clientY: 30, pointerId: 3, shiftKey: true });
+  });
+
+  it('an edge the fade cannot reach is not a snap, and alignment works without any grid', () => {
+    // No grid at all; a 3.5s fade in leaves the fade out at most 0.5s,
+    // so the edge at 4.0s (a 1.0s fade) is past its limit
+    const onClipFadeChange = vi.fn();
+    const onFadeSnapGuideline = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 1, duration: 4, selected: true, fadeIn: 3.5 }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+          snapEnabled={false}
+          alignFadeBoundary={(time) => (Math.abs(time - 4) <= 0.06 ? 4 : null)}
+          onFadeSnapGuideline={onFadeSnapGuideline}
+        />
+      </Providers>,
+    );
+    const handle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 500, clientY: 30, pointerId: 4 });
+    fireEvent.pointerMove(handle, { clientX: 404, clientY: 30, pointerId: 4 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 0.5); // clamped, not snapped
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
+    fireEvent.pointerUp(handle, { clientX: 404, clientY: 30, pointerId: 4 });
   });
 });
