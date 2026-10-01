@@ -116,6 +116,8 @@ export interface AppDialogsProps {
   setShowFocusDebug: React.Dispatch<React.SetStateAction<boolean>>;
   showHitAreas: boolean;
   setShowHitAreas: React.Dispatch<React.SetStateAction<boolean>>;
+  showInspector: boolean;
+  setShowInspector: React.Dispatch<React.SetStateAction<boolean>>;
   activeProfile: AccessibilityProfile;
   profiles: AccessibilityProfile[];
   setProfile: (id: string) => void;
@@ -176,6 +178,7 @@ export function AppDialogs(props: AppDialogsProps) {
     debugTrackCount, setDebugTrackCount,
     showFocusDebug, setShowFocusDebug,
     showHitAreas, setShowHitAreas,
+    showInspector, setShowInspector,
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
     showMixer, setShowMixer,
@@ -1171,6 +1174,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onShowFocusDebugChange={setShowFocusDebug}
         showHitAreas={showHitAreas}
         onShowHitAreasChange={setShowHitAreas}
+        showInspector={showInspector}
+        onShowInspectorChange={setShowInspector}
         accessibilityProfileId={activeProfile.id}
         accessibilityProfiles={profiles.map((p) => ({ id: p.id, name: p.name, description: p.description }))}
         onAccessibilityProfileChange={setProfile}

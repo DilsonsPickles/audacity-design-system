@@ -47,6 +47,9 @@ export interface DebugPanelProps {
   // Clip handle hit areas, painted in place
   showHitAreas: boolean;
   onShowHitAreasChange: (value: boolean) => void;
+  // The Inspector: sizes, offsets and gaps of the control under the pointer
+  showInspector: boolean;
+  onShowInspectorChange: (value: boolean) => void;
 
   // Accessibility profile
   accessibilityProfileId: string;
@@ -102,6 +105,8 @@ export function DebugPanel({
   onShowFocusDebugChange,
   showHitAreas,
   onShowHitAreasChange,
+  showInspector,
+  onShowInspectorChange,
   accessibilityProfileId,
   accessibilityProfiles,
   onAccessibilityProfileChange,
@@ -193,6 +198,22 @@ export function DebugPanel({
               fade length (green), fade shape and crossfade nodes (blue, orange), the unselected
               clip&apos;s edge zone (pink) and the fade controls&apos; reveal buffer (amber stripes).
               Hover-only controls show only when they show. Remembered across reloads.
+            </span>
+            <LabeledCheckbox
+              label="Inspector: sizes, offsets and gaps"
+              checked={showInspector}
+              onChange={onShowInspectorChange}
+            />
+            <span style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '12px',
+              lineHeight: '16px',
+              color: '#14151a',
+              opacity: 0.7,
+            }}>
+              Hover any clip control (or a clip) for its W × H, its offsets from the clip&apos;s edges
+              (negative = outside) and the gap to the nearest control on each side — measured from
+              the real boxes, in pixels. Remembered across reloads.
             </span>
           </div>
         </div>

@@ -12,6 +12,7 @@ import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineContext';
 import { AppContextMenus } from './components/AppContextMenus';
 import { AppDialogs } from './components/AppDialogs';
+import { DevInspector } from './components/DevInspector';
 import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
@@ -264,6 +265,16 @@ function CanvasDemoContent() {
     try { localStorage.setItem(HIT_AREAS_KEY, showHitAreas ? '1' : '0'); } catch { /* storage unavailable: the switch just does not persist */ }
     return () => root.removeAttribute('data-debug-hit-areas');
   }, [showHitAreas]);
+  // Debug: the Inspector — sizes, offsets and gaps of the clip control
+  // under the pointer, drawn over the page (components/DevInspector).
+  // Remembered across reloads like Hit Markers.
+  const INSPECTOR_KEY = 'audacity-debug-inspector';
+  const [showInspector, setShowInspector] = React.useState(() => {
+    try { return localStorage.getItem(INSPECTOR_KEY) === '1'; } catch { return false; }
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem(INSPECTOR_KEY, showInspector ? '1' : '0'); } catch { /* storage unavailable: the switch just does not persist */ }
+  }, [showInspector]);
   const controlPointStyle: EnvelopePointStyleKey = 'solidGreenSimple';
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
@@ -1144,6 +1155,8 @@ function CanvasDemoContent() {
         </div>
       </Dialog>
 
+      <DevInspector enabled={showInspector} />
+
       <AppDialogs
         welcomeDialog={welcomeDialog}
         audioEngine={audioEngine}
@@ -1197,6 +1210,8 @@ function CanvasDemoContent() {
         setShowFocusDebug={setShowFocusDebug}
         showHitAreas={showHitAreas}
         setShowHitAreas={setShowHitAreas}
+        showInspector={showInspector}
+        setShowInspector={setShowInspector}
         activeProfile={activeProfile}
         profiles={profiles}
         setProfile={setProfile}
