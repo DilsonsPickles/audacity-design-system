@@ -137,6 +137,41 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-quickfade-node]')).toBeTruthy(); // the pointer IS still over the clip
   });
 
+  it('a crossfade\'s two curves get the white underside edge together while its node is in hand (2026-10-01)', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5, fadeIn: 1 },
+            { id: 2, name: 'B', start: 3, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeShapeChange={vi.fn()}
+          onCrossfadeShapeChange={vi.fn()}
+          onCrossfadeRoll={vi.fn()}
+        />
+      </Providers>,
+    );
+    hoverClip(container, 1);
+    const whites = () => Array.from(container.querySelectorAll('[data-fade-line-underside]')).map((p) => p.closest('[data-fade-curve]')!.getAttribute('data-fade-authored') + ':' + p.getAttribute('data-fade-line-underside'));
+    expect(whites()).toEqual([]);
+    const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
+    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 48, pointerId: 72 });
+    // Both halves of the X, and nothing on A's authored fade-in
+    expect(whites().sort()).toEqual(['false:in', 'false:out']);
+    fireEvent.pointerMove(node, { clientX: 400, clientY: 60, pointerId: 72 });
+    expect(whites().sort()).toEqual(['false:in', 'false:out']);
+    fireEvent.pointerUp(node, { pointerId: 72 });
+    expect(whites()).toEqual([]);
+    // The roll (Alt) is the node in hand too
+    fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 48, pointerId: 73 });
+    expect(whites().sort()).toEqual(['false:in', 'false:out']);
+    fireEvent.pointerUp(node, { pointerId: 73 });
+    expect(whites()).toEqual([]);
+  });
+
   it('the fade handle icon always carries a white stroke around its outline — at rest, hovered and mid-drag', () => {
     const { container } = render(
       <Providers>

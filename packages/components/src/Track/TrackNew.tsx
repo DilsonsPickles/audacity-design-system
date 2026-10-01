@@ -1203,8 +1203,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // curve, CLIPPED to the area below the curve — that keeps the edge
       // the same thickness where the curve is steep, which shifting a
       // copy of the line downward would not. One curve at a time: the
-      // clip's other fade stays plain.
-      const editing = region.authored && shapeDrag === `${region.clipId}:${region.side}`;
+      // clip's other fade stays plain. A CROSSFADE's two curves get the
+      // same edge together while its node is in hand (user decision
+      // 2026-10-01) — the X is one thing being edited.
+      const crossfadeOf = region.authored ? undefined : crossfadeNodes.find((k) =>
+        region.side === 'out' ? k.outgoingClipId === region.clipId : k.incomingClipId === region.clipId);
+      const editing = region.authored
+        ? shapeDrag === `${region.clipId}:${region.side}`
+        : crossfadeOf != null && crossfadeDrag === `${crossfadeOf.outgoingClipId}-${crossfadeOf.incomingClipId}`;
       const curvePath = fadeCurvePath(region.side, 64, region.shape);
       const belowClipId = `${fadeClipIdBase}-below-${region.clipId}-${region.side}`;
       return (
