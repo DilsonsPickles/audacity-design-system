@@ -31,6 +31,9 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, op
     case 'crossfade':
       return join('Drag up or down to shape the crossfade', `${alt}-drag to roll`, 'Double-click for linear');
     case 'crossfade-roll':
-      return 'Drag left or right to roll the crossfade';
+      // The roll is a content edit: it can only go as far as the clips
+      // have audio beyond their edges, so a fresh overlap of untrimmed
+      // clips will not roll at all — say so, or it reads as broken
+      return join('Drag left or right to roll the crossfade', 'only as far as the clips have hidden audio');
   }
 }

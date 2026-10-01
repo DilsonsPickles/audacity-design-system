@@ -389,9 +389,15 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
             if (newStart !== undefined) {
               updatedClip.start = newStart;
             }
-            // Store full duration if not already stored
+            // Lock in the source length if not already stored — from the
+            // clip as it was BEFORE this trim: a never-trimmed clip shows
+            // its whole source, so that is trimStart + duration. (Locking
+            // the post-trim sum, as this did, forgot the hidden tail on a
+            // right-edge trim and re-derived the waveform's sample rate
+            // against the shorter length — the waveform squashed. The
+            // crossfade roll had the same hole; 2026-10-01.)
             if (!clip.fullDuration) {
-              updatedClip.fullDuration = newTrimStart + newDuration;
+              updatedClip.fullDuration = (clip.trimStart ?? 0) + clip.duration;
             }
             return updatedClip;
           }

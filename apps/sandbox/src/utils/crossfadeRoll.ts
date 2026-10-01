@@ -13,8 +13,13 @@ const EPSILON = 1e-6;
 export interface CrossfadeRollResult {
   /** The delta actually applied after clamping */
   appliedDelta: number;
-  outgoing: { duration: number; fadeOut?: number };
-  incoming: { start: number; trimStart: number; duration: number; fadeIn?: number };
+  /** Both carry `fullDuration`, LOCKED IN from what it was or was
+   *  inferred to be before the roll (2026-10-01): a clip that never
+   *  had one is drawn against trimStart + duration, so shrinking its
+   *  duration without recording the source length re-derived its
+   *  sample rate and squashed its waveform. */
+  outgoing: { duration: number; fullDuration: number; fadeOut?: number };
+  incoming: { start: number; trimStart: number; duration: number; fullDuration: number; fadeIn?: number };
 }
 
 /** Clamped roll of `deltaSeconds` (positive = seam moves right).
@@ -32,6 +37,7 @@ export function computeCrossfadeRoll(
   const outTrimStart = outgoing.trimStart ?? 0;
   const outFull = outgoing.fullDuration ?? (outTrimStart + outgoing.duration);
   const inTrimStart = incoming.trimStart ?? 0;
+  const inFull = incoming.fullDuration ?? (inTrimStart + incoming.duration);
 
   const maxRight = Math.min(
     Math.max(0, (outFull - outTrimStart) - outgoing.duration),
@@ -51,6 +57,7 @@ export function computeCrossfadeRoll(
     appliedDelta: applied,
     outgoing: {
       duration: newOutDuration,
+      fullDuration: outFull,
       // An authored fade never outgrows its clip
       fadeOut: outgoing.fadeOut !== undefined ? Math.min(outgoing.fadeOut, newOutDuration) : undefined,
     },
@@ -58,6 +65,7 @@ export function computeCrossfadeRoll(
       start: incoming.start + applied,
       trimStart: inTrimStart + applied,
       duration: newInDuration,
+      fullDuration: inFull,
       fadeIn: incoming.fadeIn !== undefined ? Math.min(incoming.fadeIn, newInDuration) : undefined,
     },
   };

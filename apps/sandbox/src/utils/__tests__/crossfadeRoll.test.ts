@@ -59,3 +59,20 @@ describe('computeCrossfadeRoll', () => {
     expect(r!.incoming.fadeIn).toBe(3);    // clamped to the shrunk 3s clip
   });
 });
+
+describe('computeCrossfadeRoll locks in each clip\'s source length (2026-10-01)', () => {
+  it('a clip with no fullDuration keeps the span it showed before the roll, so its waveform is not re-derived against the new duration', () => {
+    const clip = (overrides: Partial<Clip>): Clip => ({ id: 1, name: 'Clip', start: 0, duration: 5, envelopePoints: [], ...overrides });
+    // outgoing never trimmed (no fullDuration — its source IS its 5s);
+    // incoming has 2s of hidden head and no fullDuration either
+    const outgoing = clip({ id: 1, start: 0, duration: 5 });
+    const incoming = clip({ id: 2, start: 3, duration: 4, trimStart: 2 });
+    const r = computeCrossfadeRoll(outgoing, incoming, -1);
+    expect(r).not.toBeNull();
+    expect(r!.outgoing).toMatchObject({ duration: 4, fullDuration: 5 });
+    expect(r!.incoming).toMatchObject({ start: 2, trimStart: 1, duration: 5, fullDuration: 6 });
+    // and a clip that already had one keeps it
+    const r2 = computeCrossfadeRoll(clip({ id: 1, start: 0, duration: 5, fullDuration: 9 }), incoming, -1);
+    expect(r2!.outgoing.fullDuration).toBe(9);
+  });
+});
