@@ -946,8 +946,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             position: 'absolute',
             left: `${Math.round(x - NODE_R - 3)}px`,
             top: `${Math.round(y - NODE_R - 3)}px`,
-            // Generous hit area around the visible dot
-            width: (NODE_R + 3) * 2,
+            // Generous hit area around the visible dot. The extra pixel
+            // while Alt is held is a LAYOUT nudge, not a hit area:
+            // Chromium (so Electron too) re-evaluates the cursor after a
+            // layout change under the pointer or a mouse move, but not
+            // for a change to `cursor` alone — without it the arrows only
+            // turned on the next mouse movement, which read as lag.
+            width: (NODE_R + 3) * 2 + (altHeld ? 1 : 0),
             height: (NODE_R + 3) * 2,
             display: 'flex',
             alignItems: 'center',
@@ -1820,7 +1825,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         style={{
           position: 'absolute',
           top: `${zoneTop}px`,
-          height: `${zoneHeight}px`,
+          // +1 while Alt is held: a layout nudge so Chromium switches the
+          // cursor at once (see the crossfade node's width), not a reach
+          height: `${zoneHeight + (altHeld && onClipStretchEdge ? 1 : 0)}px`,
           left: `${CLIP_CONTENT_OFFSET + zone.left}px`,
           width: `${zone.width}px`,
           // Above every stacked clip, below the fade veils and controls
