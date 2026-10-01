@@ -3,6 +3,7 @@ import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCol
 import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, groupLabelIndent, type GroupRowLayout } from '@audacity-ui/core';
 import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
 import { buildTrimParticipants } from '../../utils/trimParticipants';
+import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';
@@ -12,7 +13,6 @@ import {
   computeKeyboardTrimAnnouncement,
   computeKeyboardStretch,
   computeKeyboardStretchAnnouncement,
-  type KeyboardTrimTarget,
 } from '../../utils/clipKeyboardEdit';
 import { pendingClipMoveResolution } from '../../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrackIds';
@@ -742,48 +742,16 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // No track with clips found — don't move focus
         }}
         onClipTrim={(clipId, edge, deltaSeconds) => {
-          // Pressing [ or ] on a focused clip always makes
-          // it the selected clip — even when the trim
-          // itself hits a source boundary and the reducer
-          // no-ops. Selection is the "you're operating on
-          // this" signal, independent of whether the edge
-          // actually moved.
-          const focusedClip = tracksRef.current[trackIndex]?.clips.find((c) => c.id === clipId)
-            || (tracksRef.current[trackIndex]?.midiClips || []).find((c) => c.id === clipId);
-          if (focusedClip && !focusedClip.selected) {
-            dispatch({
-              type: 'SELECT_CLIP',
-              payload: { trackIndex, clipId: clipId as number },
-            });
-          }
-
-          // Collect every selected clip (audio + MIDI). If the
-          // shortcut was triggered on a not-yet-selected clip we
-          // still trim that one. The same canvas-time delta is
-          // applied to each clip independently, with per-clip
+          // The FOCUSED clip's edit, by the mouse trim's rule
+          // (utils/keyboardEditTargets.ts, 2026-10-01): a selected
+          // focused clip trims with every selected clip; an unselected
+          // one trims alone, and the selection is left as it was. (It
+          // used to trim every selected clip PLUS the focused one, then
+          // select the focused clip — so with one clip selected and the
+          // focus on another, [ trimmed both.) The same canvas-time
+          // delta is applied to each clip independently, with per-clip
           // bounds checks against its own source duration.
-          const targets: KeyboardTrimTarget[] = [];
-          tracksRef.current.forEach((t, tIndex) => {
-            t.clips.forEach((c) => {
-              if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
-                targets.push({ trackIndex: tIndex, clip: c });
-              }
-            });
-            (t.midiClips || []).forEach((c) => {
-              if (c.selected) {
-                targets.push({ trackIndex: tIndex, clip: c });
-              }
-            });
-          });
-
-          // Dedupe (the dispatched clip may already be in selection).
-          const seen = new Set<string>();
-          const uniqueTargets = targets.filter(({ trackIndex: ti, clip }) => {
-            const key = `${ti}-${clip.id}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
+          const uniqueTargets = keyboardEditTargets(tracksRef.current, trackIndex, clipId);
 
           // Per-clip trim math is pure — computed in clipKeyboardEdit.ts
           // and unit-tested there. Overlap is legal (2026-09-21): a trim
@@ -818,31 +786,12 @@ const CanvasTrack = React.memo(function CanvasTrack({
           }
         }}
         onClipStretch={(clipId, edge, deltaSeconds) => {
-          // Keyboard time-stretch (Alt+Arrow). Sign convention
+          // Keyboard time-stretch (Cmd+[ ]). Sign convention
           // matches onClipTrim: positive delta shrinks the clip
-          // from `edge`, negative grows it.
-          // Applied to every selected clip; if the originating
-          // clip isn't currently selected we still stretch it.
-          const targets: KeyboardTrimTarget[] = [];
-          tracksRef.current.forEach((t, tIndex) => {
-            t.clips.forEach((c) => {
-              if (c.selected || (tIndex === trackIndex && c.id === clipId)) {
-                targets.push({ trackIndex: tIndex, clip: c });
-              }
-            });
-            (t.midiClips || []).forEach((c) => {
-              if (c.selected) {
-                targets.push({ trackIndex: tIndex, clip: c });
-              }
-            });
-          });
-          const seen = new Set<string>();
-          const uniqueTargets = targets.filter(({ trackIndex: ti, clip }) => {
-            const key = `${ti}-${clip.id}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
+          // from `edge`, negative grows it. The targets are the
+          // trim's (utils/keyboardEditTargets.ts): the focused clip
+          // with every selected clip if it is selected, alone if not.
+          const uniqueTargets = keyboardEditTargets(tracksRef.current, trackIndex, clipId);
 
           // Time-stretch is audio-only — stretchFactor never
           // applies to MidiClip (the STRETCH_CLIP reducer only
