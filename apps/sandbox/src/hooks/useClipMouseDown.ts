@@ -1,5 +1,5 @@
 import { MutableRefObject } from 'react';
-import { effectiveTrackHeight } from '../utils/trackFolders';
+import { effectiveTrackHeight, effectiveTrackStride } from '../utils/trackFolders';
 import { CLIP_CONTENT_OFFSET, useAppearancePrefs } from '@audacity-ui/components';
 import { calculateLabelRows, isPointInLabel, getLabelMetrics, labelPtToPx } from '../utils/labelLayout';
 import type { Track, Clip, TracksAction, ClipDragState } from '../contexts/TracksContext';
@@ -329,7 +329,12 @@ export function useClipMouseDown({
         }
       }
 
-      currentY += trackHeight + TRACK_GAP;
+      // The SHARED stride: height + gap + the floors of any groups this
+      // row closes (core's rowGapAfter). A private `height + gap` here
+      // drifted the walk by one floor per closed group above, so a press
+      // on a header below a group evaluated as the row above's body —
+      // and started a time selection instead of a clip drag (2026-10-01).
+      currentY += effectiveTrackStride(tracks, trackIndex, DEFAULT_TRACK_HEIGHT, TRACK_GAP);
     }
 
     // No clip interaction, pass through to audio selection

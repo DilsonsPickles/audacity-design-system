@@ -628,3 +628,39 @@ describe('Label clicks and the playhead', () => {
     expect(probe()).toBe('0');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Row N: a clip-header press BELOW A TRACK GROUP starts a clip drag, not a
+// time selection. Seam: useClipMouseDown's y-walk vs core's row geometry.
+// The walk used `height + gap` per row; every other walk adds the floors
+// of the groups a row closes (rowGapAfter), so below a group the hit test
+// drifted by one floor per closed group and a press low on a header read
+// as the row above's body — a time selection (2026-10-01).
+// ---------------------------------------------------------------------------
+
+describe('Clip drag below a track group', () => {
+  it('pressing low on a header under a closed group drags the clip (the walk includes the group floor)', async () => {
+    const { trackIndexToY, GROUP_END_PAD } = await import('@audacity-ui/core');
+    const { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } = await import('../constants/canvas');
+    const tracks: Track[] = [
+      { id: 10, name: 'Group', type: 'folder', clips: [] },
+      { id: 1, name: 'In group', folderId: 10, clips: [{ id: 1, name: 'A', start: 0, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 }] },
+      { id: 2, name: 'Plain', clips: [{ id: 2, name: 'B', start: 0, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 }] },
+    ];
+    const { container } = renderCanvas(tracks);
+    const pointerContainer = getPointerContainer(container);
+    stubZeroRect(pointerContainer);
+    // The plain track's row, by the shared geometry — one group floor
+    // below where a height+gap walk would put it
+    const rowTop = trackIndexToY(2, tracks as never, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT);
+    expect(rowTop).toBe(TOP_GAP + 28 + TRACK_GAP + DEFAULT_TRACK_HEIGHT + TRACK_GAP + GROUP_END_PAD);
+    // Press 18px into the 20px header: inside it, but past the drift
+    const header = clipHeaderEl(container, 2);
+    const leftBefore = parseInt(clipEl(container, 2).style.left, 10);
+    fireEvent.mouseDown(header, { clientX: 60, clientY: rowTop + 18, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 120, clientY: rowTop + 18 });
+    await waitFor(() => expect(parseInt(clipEl(container, 2).style.left, 10)).toBe(leftBefore + 60));
+    fireEvent.mouseUp(document, { clientX: 120, clientY: rowTop + 18 });
+    expect(isClipSelected(container, 2)).toBe(true);
+  });
+});
