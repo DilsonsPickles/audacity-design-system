@@ -1103,14 +1103,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               ? 'linear'
               : `${Math.round(gain * 100)}% level, ${Math.round(tDot * 100)}% along the fade`}
             onMouseDown={(e) => e.stopPropagation()}
-            // Two gestures beside the drag (user decision 2026-09-29,
-            // replacing the double-click that toggled linear):
-            //  - Cmd/Ctrl+CLICK makes the fade LINEAR — a straight line;
-            //  - DOUBLE-CLICK RESETS it to the default, the S-curve.
-            // Neither toggles: each says where the fade ends up.
+            // Two gestures beside the drag:
+            //  - Cmd/Ctrl+CLICK TOGGLES LINEAR — a straight line, or back
+            //    to the default S-curve if it already is one (2026-10-01;
+            //    the 2026-09-29 rule had it one-way, which read oddly next
+            //    to the crossfade node's two-way double-click);
+            //  - DOUBLE-CLICK RESETS it to the default, the S-curve,
+            //    whatever it is now.
             onClick={(e) => {
               e.stopPropagation();
-              if (e.metaKey || e.ctrlKey) onClipFadeShapeChange(clip.id, side, 'linear');
+              if (e.metaKey || e.ctrlKey) {
+                onClipFadeShapeChange(clip.id, side, shape === 'linear' ? DEFAULT_QUICK_FADE_SHAPE : 'linear');
+              }
             }}
             onDoubleClick={(e) => {
               e.stopPropagation();

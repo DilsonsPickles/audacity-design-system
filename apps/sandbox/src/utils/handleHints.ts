@@ -25,7 +25,7 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem): s
     case 'fade-length':
       return join('Drag to set the fade length', `${alt}-drag to ignore snapping`);
     case 'fade-shape':
-      return join('Drag up or down to shape the fade', `${cmd}-click for linear`, 'Double-click to reset');
+      return join('Drag up or down to shape the fade', `${cmd}-click to toggle linear`, 'Double-click to reset');
     case 'crossfade':
       return join('Drag up or down to shape the crossfade', `${alt}-drag to roll`, 'Double-click for linear');
     case 'crossfade-roll':

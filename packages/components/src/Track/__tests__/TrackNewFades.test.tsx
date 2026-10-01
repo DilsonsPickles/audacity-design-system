@@ -924,7 +924,7 @@ describe('clip fades', () => {
     }
   });
 
-  it('Cmd/Ctrl+click makes the fade linear; double-click resets it to the S-curve — neither toggles', () => {
+  it('Cmd/Ctrl+click toggles linear and the S-curve; double-click resets to the S-curve whatever the fade is', () => {
     const renderIt = (extra: Record<string, unknown>) => {
       const onClipFadeShapeChange = vi.fn();
       const onClipClick = vi.fn();
@@ -944,8 +944,10 @@ describe('clip fades', () => {
       const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
       return { node, onClipFadeShapeChange, onClipClick };
     };
-    // Whatever the fade is now, each gesture names where it ends up
+    // Cmd-click: linear from anything else, the S-curve from linear.
+    // Double-click: the S-curve from anything.
     for (const extra of [{}, { fadeInShape: 'linear' }, { fadeInShape: { t: 0.2, g: 0.7 } }, { fadeInShape: 1 }]) {
+      const cmdClickGives = extra.fadeInShape === 'linear' ? 2 : 'linear';
       for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
         const { node, onClipFadeShapeChange, onClipClick } = renderIt(extra);
         fireEvent.pointerDown(node, { button: 0, clientX: 50, clientY: 60, pointerId: 91, ...modifier });
@@ -955,7 +957,7 @@ describe('clip fades', () => {
         fireEvent.pointerUp(node, { clientX: 50, clientY: 60, pointerId: 91, ...modifier });
         fireEvent.click(node, modifier);
         expect(onClipFadeShapeChange).toHaveBeenCalledTimes(1);
-        expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 'linear');
+        expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', cmdClickGives);
         expect(onClipClick).not.toHaveBeenCalled(); // and the clip is not selected by it
         cleanup();
       }
@@ -987,7 +989,9 @@ describe('clip fades', () => {
       expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', 'linear');
       cleanup();
     }
-    // Two quick Cmd+clicks stay linear — the double-click they add up to is not a reset
+    // Two quick Cmd+clicks are two toggles (here, with a host that applies
+    // nothing, two requests for linear) — the double-click they add up
+    // to is not a reset
     const { node, onClipFadeShapeChange } = renderIt({});
     fireEvent.click(node, { metaKey: true });
     fireEvent.click(node, { metaKey: true });

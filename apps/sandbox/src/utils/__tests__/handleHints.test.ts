@@ -24,7 +24,7 @@ describe('handleHintText — what the status bar says for the handle under the p
 
   it('names the gestures TrackNew implements', () => {
     expect(handleHintText('fade-length', 'macos')).toBe('Drag to set the fade length · Option-drag to ignore snapping');
-    expect(handleHintText('fade-shape', 'macos')).toBe('Drag up or down to shape the fade · Cmd-click for linear · Double-click to reset');
+    expect(handleHintText('fade-shape', 'macos')).toBe('Drag up or down to shape the fade · Cmd-click to toggle linear · Double-click to reset');
     expect(handleHintText('crossfade', 'macos')).toBe('Drag up or down to shape the crossfade · Option-drag to roll · Double-click for linear');
     expect(handleHintText('crossfade-roll', 'macos')).toBe('Drag left or right to roll the crossfade');
     expect(handleHintText('edge-stretch', 'windows')).toBe('Drag to stretch the clip');
