@@ -196,7 +196,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
     effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
-    setClipContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
+    setClipContextMenu, setFadeContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
     contextMenuClosedTimeRef,
   } = useContextMenus();
 
@@ -521,6 +521,11 @@ export function EditorLayout(props: EditorLayoutProps) {
   const handleClipMenuClick = React.useCallback((clipId: number, trackIndex: number, x: number, y: number, openedViaKeyboard?: boolean) => {
     setClipContextMenu({ isOpen: true, x, y, clipId, trackIndex, openedViaKeyboard });
   }, [setClipContextMenu]);
+
+  // A right-click on a quick fade's handle opens the fade's own menu
+  const handleFadeContextMenu = React.useCallback((clipId: number, trackIndex: number, side: 'in' | 'out', x: number, y: number) => {
+    setFadeContextMenu({ isOpen: true, x, y, clipId, trackIndex, side });
+  }, [setFadeContextMenu]);
 
   const handleTrackFocusChange = React.useCallback((_trackIndex: number, _hasFocus: boolean) => {
     // Track focus no longer follows clip focus —
@@ -1165,6 +1170,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     beatsPerMeasure={beatsPerMeasure}
                     timeFormat={timelineFormat}
                     onClipMenuClick={handleClipMenuClick}
+                    onFadeContextMenu={handleFadeContextMenu}
                     onTimeSelectionMenuClick={(x, y, trackIndex) => {
                       const timeSinceClosed = Date.now() - contextMenuClosedTimeRef.current;
                       if (timeSinceClosed > 300) {

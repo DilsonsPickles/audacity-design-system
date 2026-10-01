@@ -11,6 +11,8 @@ import { useTracks } from '../contexts/TracksContext';
 import type { Track, Clip } from '../contexts/TracksContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
 import { FadeDurationDialog } from './FadeDurationDialog';
+import { fadeTargets } from '../utils/fadeTargets';
+import { FADE_SHAPE_PRESETS, fadeShapePresetOf } from '../utils/fadeShapePresets';
 
 export interface AppContextMenusProps {
   // Spectrogram
@@ -68,22 +70,26 @@ export function AppContextMenus({
     targets: Array<{ trackIndex: number; clipId: number; duration: number }>;
     initialSeconds: number | undefined;
   } | null>(null);
-  const openFadeDialog = (side: 'in' | 'out') => {
-    if (!clipContextMenu) return;
-    const track = tracks[clipContextMenu.trackIndex];
-    const clicked = track?.clips.find((c: Clip) => c.id === clipContextMenu.clipId);
+  const openFadeDialogFor = (trackIndex: number, clipId: number, side: 'in' | 'out') => {
+    const track = tracks[trackIndex];
+    const clicked = track?.clips.find((c: Clip) => c.id === clipId);
     if (!clicked) return;
     const selected: Array<{ trackIndex: number; clipId: number; duration: number }> = [];
     tracks.forEach((t: Track, ti: number) => t.clips.forEach((c: Clip) => { if (c.selected) selected.push({ trackIndex: ti, clipId: c.id, duration: c.duration }); }));
     const targets = clicked.selected && selected.length > 0
       ? selected
-      : [{ trackIndex: clipContextMenu.trackIndex, clipId: clicked.id, duration: clicked.duration }];
+      : [{ trackIndex, clipId: clicked.id, duration: clicked.duration }];
     setFadeDialog({ side, targets, initialSeconds: side === 'in' ? clicked.fadeIn : clicked.fadeOut });
+  };
+  const openFadeDialog = (side: 'in' | 'out') => {
+    if (!clipContextMenu) return;
+    openFadeDialogFor(clipContextMenu.trackIndex, clipContextMenu.clipId, side);
     setClipContextMenu(null);
   };
   const { isSpectrogramSettingsOpen, setIsSpectrogramSettingsOpen } = useDialogs();
   const {
     clipContextMenu, setClipContextMenu,
+    fadeContextMenu, setFadeContextMenu,
     trackContextMenu, setTrackContextMenu,
     timelineRulerContextMenu, setTimelineRulerContextMenu,
     effectSelectorMenu, setEffectSelectorMenu,
@@ -523,6 +529,55 @@ export function AppContextMenus({
                 ))}
               </ContextMenuItem>
             ))}
+          </ContextMenu>
+        );
+      })()}
+      {/* A quick fade's own menu, from a right-click on its length or
+          shape handle (2026-10-01): the shape presets (the fade's current
+          one checked; a handle dragged between them checks none), its
+          length by the number, and removal. Every action follows the
+          fade-edit rule — a selected clip's fade is every selected
+          clip's (utils/fadeTargets.ts). */}
+      {fadeContextMenu && (() => {
+        const { trackIndex, clipId, side, x, y } = fadeContextMenu;
+        const clip = tracks[trackIndex]?.clips.find((c: Clip) => c.id === clipId);
+        if (!clip) return null;
+        const sideLabel = side === 'in' ? 'Fade in' : 'Fade out';
+        const current = fadeShapePresetOf(side === 'in' ? clip.fadeInShape : clip.fadeOutShape);
+        const close = () => setFadeContextMenu(null);
+        const targets = fadeTargets(tracks, trackIndex, clipId);
+        return (
+          <ContextMenu isOpen={fadeContextMenu.isOpen} x={x} y={y} onClose={close}>
+            {FADE_SHAPE_PRESETS.map((preset) => (
+              <ContextMenuItem
+                key={preset.id}
+                label={preset.label}
+                checked={current === preset.id}
+                onClick={() => {
+                  for (const t of targets) {
+                    dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, shape: preset.shape } });
+                  }
+                  close();
+                }}
+              />
+            ))}
+            <ContextMenuItem isDivider />
+            <ContextMenuItem
+              label={`${sideLabel} length…`}
+              onClick={() => {
+                openFadeDialogFor(trackIndex, clipId, side);
+                close();
+              }}
+            />
+            <ContextMenuItem
+              label={`Remove ${sideLabel.toLowerCase()}`}
+              onClick={() => {
+                for (const t of targets) {
+                  dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, seconds: 0 } });
+                }
+                close();
+              }}
+            />
           </ContextMenu>
         );
       })()}

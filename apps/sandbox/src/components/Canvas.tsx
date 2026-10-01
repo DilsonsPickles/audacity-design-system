@@ -62,6 +62,8 @@ export interface CanvasProps {
    * Callback when clip menu button is clicked
    */
   onClipMenuClick?: (clipId: number, trackIndex: number, x: number, y: number, openedViaKeyboard?: boolean) => void;
+  /** Right-click on a quick fade's handle: open the fade menu */
+  onFadeContextMenu?: (clipId: number, trackIndex: number, side: 'in' | 'out', x: number, y: number) => void;
   /**
    * Callback when time selection context menu is requested
    */
@@ -191,6 +193,7 @@ export function Canvas({
   leftPadding = 0,
   onHeightChange,
   onClipMenuClick,
+  onFadeContextMenu,
   onTimeSelectionMenuClick,
   onTrackFocusChange,
   onTrackContainerFocusChange,
@@ -827,6 +830,7 @@ export function Canvas({
           fadeInHandClipId={fadeInHandClipId}
           onFadeDragChange={setFadeInHandClipId}
           onHandleHint={setHandleHint}
+          onFadeContextMenu={onFadeContextMenu}
           draggingClipIds={draggingClipIds}
           raisedClipIds={raisedClipIds}
           marqueePreview={marqueePreview}

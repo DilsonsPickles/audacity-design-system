@@ -56,6 +56,34 @@ function renderTrack() {
   return { ...utils, onHandleHint, q, last };
 }
 
+describe('a right-click on a quick fade\'s handle asks the host for the fade menu (2026-10-01)', () => {
+  it('both the length handle and the shape handle, with the clip, side and pointer position; the browser menu is suppressed', () => {
+    const onFadeContextMenu = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={clips}
+          width={2000}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onFadeContextMenu={onFadeContextMenu}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
+    const lengthHandle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
+    const prevented = !fireEvent.contextMenu(lengthHandle, { clientX: 40, clientY: 50 });
+    expect(prevented).toBe(true);
+    expect(onFadeContextMenu).toHaveBeenLastCalledWith(1, 'in', 40, 50);
+    const node = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
+    fireEvent.contextMenu(node, { clientX: 70, clientY: 60 });
+    expect(onFadeContextMenu).toHaveBeenLastCalledWith(1, 'in', 70, 60);
+    expect(onFadeContextMenu).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('the handle under the pointer is reported for the status bar', () => {
   it('says nothing on mount', () => {
     const { onHandleHint } = renderTrack();

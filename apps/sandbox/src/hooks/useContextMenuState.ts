@@ -67,12 +67,27 @@ export interface TimeSelectionContextMenuState {
   trackType?: string;
 }
 
+/** A quick fade's menu, from a right-click on its length or shape
+ *  handle (user decision 2026-10-01) */
+export interface FadeContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+  clipId: number;
+  trackIndex: number;
+  side: 'in' | 'out';
+}
+
 // --- Return type ---
 
 export interface UseContextMenuStateReturn {
   // Clip context menu
   clipContextMenu: ClipContextMenuState | null;
   setClipContextMenu: React.Dispatch<React.SetStateAction<ClipContextMenuState | null>>;
+
+  // Quick fade context menu
+  fadeContextMenu: FadeContextMenuState | null;
+  setFadeContextMenu: React.Dispatch<React.SetStateAction<FadeContextMenuState | null>>;
 
   // Track context menu
   trackContextMenu: TrackContextMenuState | null;
@@ -129,6 +144,9 @@ export interface UseContextMenuStateReturn {
 export function useContextMenuState(): UseContextMenuStateReturn {
   // Clip context menu state
   const [clipContextMenu, setClipContextMenu] = useState<ClipContextMenuState | null>(null);
+
+  // Quick fade context menu state
+  const [fadeContextMenu, setFadeContextMenu] = useState<FadeContextMenuState | null>(null);
 
   // Track context menu state
   const [trackContextMenu, setTrackContextMenu] = useState<TrackContextMenuState | null>(null);
@@ -187,6 +205,8 @@ export function useContextMenuState(): UseContextMenuStateReturn {
   return {
     clipContextMenu,
     setClipContextMenu,
+    fadeContextMenu,
+    setFadeContextMenu,
     trackContextMenu,
     setTrackContextMenu,
     timelineRulerContextMenu,

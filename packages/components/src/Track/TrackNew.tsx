@@ -302,6 +302,11 @@ export interface TrackProps {
    *  Alt down is 'edge-stretch', the crossfade node 'crossfade-roll'),
    *  or null when the pointer is on none. Reported on change only. */
   onHandleHint?: (hint: ClipHandleHint | null) => void;
+  /** Right-click on a quick fade's length handle or shape handle: the
+   *  host opens the fade's menu — presets, length, remove — at (x, y)
+   *  in client space (user decision 2026-10-01, the "dive deeper" door
+   *  beside the direct gestures). */
+  onFadeContextMenu?: (clipId: string | number, side: 'in' | 'out', x: number, y: number) => void;
 
   /** Alt+drag on the crossfade's intersection node — a ROLL: both clip
    *  edges slide so the seam (the incoming clip's start) lands at
@@ -557,6 +562,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   fadeInHandClipId,
   onFadeDragChange,
   onHandleHint,
+  onFadeContextMenu,
   onCrossfadeRoll,
   onCrossfadeShapeChange,
   onClipFadeShapeChange,
@@ -1126,6 +1132,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // Two quick Cmd+clicks are two requests for linear, not a reset
               if (e.metaKey || e.ctrlKey) return;
               onClipFadeShapeChange(clip.id, side, DEFAULT_QUICK_FADE_SHAPE);
+            }}
+            onContextMenu={(e) => {
+              if (!onFadeContextMenu) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onFadeContextMenu(clip.id, side, e.clientX, e.clientY);
             }}
             onPointerDown={(e) => {
               if (e.button !== 0) return;
@@ -2093,6 +2105,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in' : 'Quick fade out'}
             {...withHint(fadeHoverProps(clip.id), 'fade-length')}
+            onContextMenu={(e) => {
+              if (!onFadeContextMenu) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onFadeContextMenu(clip.id, side, e.clientX, e.clientY);
+            }}
             aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
             // The clip body is the time-selection surface — a fade drag
             // must not bubble into it (mirrors the trim handles)
