@@ -64,6 +64,8 @@ export interface CanvasProps {
   onClipMenuClick?: (clipId: number, trackIndex: number, x: number, y: number, openedViaKeyboard?: boolean) => void;
   /** Right-click on a quick fade's handle: open the fade menu */
   onFadeContextMenu?: (clipId: number, trackIndex: number, side: 'in' | 'out', x: number, y: number) => void;
+  /** Right-click on a crossfade's node: open the crossfade menu */
+  onCrossfadeContextMenu?: (outgoingClipId: number, incomingClipId: number, trackIndex: number, x: number, y: number) => void;
   /**
    * Callback when time selection context menu is requested
    */
@@ -194,6 +196,7 @@ export function Canvas({
   onHeightChange,
   onClipMenuClick,
   onFadeContextMenu,
+  onCrossfadeContextMenu,
   onTimeSelectionMenuClick,
   onTrackFocusChange,
   onTrackContainerFocusChange,
@@ -831,6 +834,7 @@ export function Canvas({
           onFadeDragChange={setFadeInHandClipId}
           onHandleHint={setHandleHint}
           onFadeContextMenu={onFadeContextMenu}
+          onCrossfadeContextMenu={onCrossfadeContextMenu}
           draggingClipIds={draggingClipIds}
           raisedClipIds={raisedClipIds}
           marqueePreview={marqueePreview}

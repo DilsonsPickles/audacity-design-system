@@ -78,6 +78,17 @@ export interface FadeContextMenuState {
   side: 'in' | 'out';
 }
 
+/** A crossfade's menu, from a right-click on its intersection node
+ *  (user decision 2026-10-01) */
+export interface CrossfadeContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+  trackIndex: number;
+  outgoingClipId: number;
+  incomingClipId: number;
+}
+
 // --- Return type ---
 
 export interface UseContextMenuStateReturn {
@@ -88,6 +99,10 @@ export interface UseContextMenuStateReturn {
   // Quick fade context menu
   fadeContextMenu: FadeContextMenuState | null;
   setFadeContextMenu: React.Dispatch<React.SetStateAction<FadeContextMenuState | null>>;
+
+  // Crossfade context menu
+  crossfadeContextMenu: CrossfadeContextMenuState | null;
+  setCrossfadeContextMenu: React.Dispatch<React.SetStateAction<CrossfadeContextMenuState | null>>;
 
   // Track context menu
   trackContextMenu: TrackContextMenuState | null;
@@ -148,6 +163,9 @@ export function useContextMenuState(): UseContextMenuStateReturn {
   // Quick fade context menu state
   const [fadeContextMenu, setFadeContextMenu] = useState<FadeContextMenuState | null>(null);
 
+  // Crossfade context menu state
+  const [crossfadeContextMenu, setCrossfadeContextMenu] = useState<CrossfadeContextMenuState | null>(null);
+
   // Track context menu state
   const [trackContextMenu, setTrackContextMenu] = useState<TrackContextMenuState | null>(null);
 
@@ -207,6 +225,8 @@ export function useContextMenuState(): UseContextMenuStateReturn {
     setClipContextMenu,
     fadeContextMenu,
     setFadeContextMenu,
+    crossfadeContextMenu,
+    setCrossfadeContextMenu,
     trackContextMenu,
     setTrackContextMenu,
     timelineRulerContextMenu,

@@ -12,7 +12,7 @@ import type { Track, Clip } from '../contexts/TracksContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
 import { FadeDurationDialog } from './FadeDurationDialog';
 import { fadeTargets } from '../utils/fadeTargets';
-import { FADE_SHAPE_PRESETS, fadeShapePresetOf } from '../utils/fadeShapePresets';
+import { FADE_SHAPE_PRESETS, fadeShapePresetOf, CROSSFADE_SHAPE_PRESETS, crossfadeShapePresetOf } from '../utils/fadeShapePresets';
 
 export interface AppContextMenusProps {
   // Spectrogram
@@ -90,6 +90,7 @@ export function AppContextMenus({
   const {
     clipContextMenu, setClipContextMenu,
     fadeContextMenu, setFadeContextMenu,
+    crossfadeContextMenu, setCrossfadeContextMenu,
     trackContextMenu, setTrackContextMenu,
     timelineRulerContextMenu, setTimelineRulerContextMenu,
     effectSelectorMenu, setEffectSelectorMenu,
@@ -528,6 +529,35 @@ export function AppContextMenus({
                   />
                 ))}
               </ContextMenuItem>
+            ))}
+          </ContextMenu>
+        );
+      })()}
+      {/* A crossfade's own menu, from a right-click on its intersection
+          node (2026-10-01): its shape presets, applied to both curves
+          at once so the crossing stays in the middle; the current one
+          checked, a depth-dragged crossing checks none. The crossfade is
+          its two clips' — no selection rule applies. */}
+      {crossfadeContextMenu && (() => {
+        const { trackIndex, outgoingClipId, incomingClipId, x, y } = crossfadeContextMenu;
+        const track = tracks[trackIndex];
+        const outgoing = track?.clips.find((c: Clip) => c.id === outgoingClipId);
+        const incoming = track?.clips.find((c: Clip) => c.id === incomingClipId);
+        if (!outgoing || !incoming) return null;
+        const current = crossfadeShapePresetOf(outgoing.crossfadeOutShape, incoming.crossfadeInShape);
+        const close = () => setCrossfadeContextMenu(null);
+        return (
+          <ContextMenu isOpen={crossfadeContextMenu.isOpen} x={x} y={y} onClose={close}>
+            {CROSSFADE_SHAPE_PRESETS.map((preset) => (
+              <ContextMenuItem
+                key={preset.id}
+                label={preset.label}
+                checked={current === preset.id}
+                onClick={() => {
+                  dispatch({ type: 'SET_CROSSFADE_SHAPE', payload: { trackIndex, outgoingClipId, incomingClipId, outShape: preset.shape, inShape: preset.shape } });
+                  close();
+                }}
+              />
             ))}
           </ContextMenu>
         );

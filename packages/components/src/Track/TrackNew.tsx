@@ -312,6 +312,9 @@ export interface TrackProps {
    *  in client space (user decision 2026-10-01, the "dive deeper" door
    *  beside the direct gestures). */
   onFadeContextMenu?: (clipId: string | number, side: 'in' | 'out', x: number, y: number) => void;
+  /** Right-click on the crossfade's intersection node: the host opens
+   *  the crossfade's menu — its shape presets — at (x, y). */
+  onCrossfadeContextMenu?: (outgoingClipId: string | number, incomingClipId: string | number, x: number, y: number) => void;
 
   /** Alt+drag on the crossfade's intersection node — a ROLL: both clip
    *  edges slide so the seam (the incoming clip's start) lands at
@@ -568,6 +571,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onFadeDragChange,
   onHandleHint,
   onFadeContextMenu,
+  onCrossfadeContextMenu,
   onCrossfadeRoll,
   onCrossfadeShapeChange,
   onClipFadeShapeChange,
@@ -927,11 +931,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           // "leaves" the clip for the node, which sits over the overlap
           {...withHint(fadeHoverProps(n.incomingClipId), 'crossfade')}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => {
             if (e.button !== 0) return;
             e.stopPropagation();
             e.preventDefault();
+            // A Cmd/Ctrl press is the click below, never a drag
+            if (e.metaKey || e.ctrlKey) return;
             const nodeEl = e.currentTarget as HTMLElement;
             try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
             setFadeHoverClipId(n.incomingClipId); // a press on it proves the pointer is here
@@ -1004,15 +1009,32 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             nodeEl.addEventListener('pointermove', onMove);
             nodeEl.addEventListener('pointerup', onUp);
           }}
-          // Double-click: a LINEAR crossfade — straight lines on both
-          // sides, the equal-gain law (user decision 2026-09-24). A
-          // second double-click restores equal-power. Only pointermove
-          // rewrites the shape, so the two clicks themselves are inert.
+          // The same two clicks as the quick fade's shape handle (user
+          // decision 2026-10-01, replacing the 2026-09-24 double-click
+          // that toggled linear):
+          //  - Cmd/Ctrl+CLICK TOGGLES LINEAR — straight lines both sides,
+          //    the equal-gain law — or back to equal-power from linear;
+          //  - DOUBLE-CLICK RESETS to equal-power, whatever it is now.
+          // Only pointermove rewrites the shape, so the clicks are inert
+          // to the drag; a right-click opens the crossfade's menu.
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!onCrossfadeShapeChange || !(e.metaKey || e.ctrlKey)) return;
+            const isLinear = n.outRegion.shape === 'linear' && n.inRegion.shape === 'linear';
+            const next = isLinear ? DEFAULT_CROSSFADE_SHAPE : 'linear';
+            onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, next, next);
+          }}
           onDoubleClick={(e) => {
             e.stopPropagation();
-            if (!onCrossfadeShapeChange) return;
-            const isLinear = n.outRegion.shape === 'linear' && n.inRegion.shape === 'linear';
-            onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, isLinear ? 1 : 'linear', isLinear ? 1 : 'linear');
+            // Two quick Cmd+clicks are two toggles, not a reset
+            if (!onCrossfadeShapeChange || e.metaKey || e.ctrlKey) return;
+            onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, DEFAULT_CROSSFADE_SHAPE, DEFAULT_CROSSFADE_SHAPE);
+          }}
+          onContextMenu={(e) => {
+            if (!onCrossfadeContextMenu) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onCrossfadeContextMenu(n.outgoingClipId, n.incomingClipId, e.clientX, e.clientY);
           }}
           style={{
             position: 'absolute',

@@ -1464,3 +1464,71 @@ describe('the crossfade node ignores the clips\' quick-fade shapes (2026-10-01)'
     expect(Number(node.getAttribute('aria-valuenow'))).toBeCloseTo(4, 6);
   });
 });
+
+describe('the crossfade node\'s clicks match the quick fade handle\'s (2026-10-01)', () => {
+  const pair = (shapes: { out?: number | 'linear'; in?: number | 'linear' } = {}) => {
+    const onCrossfadeShapeChange = vi.fn();
+    const onCrossfadeContextMenu = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5, crossfadeOutShape: shapes.out },
+            { id: 2, name: 'B', start: 3, duration: 4, crossfadeInShape: shapes.in },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onCrossfadeShapeChange={onCrossfadeShapeChange}
+          onCrossfadeContextMenu={onCrossfadeContextMenu}
+        />
+      </Providers>,
+    );
+    hoverClip(container, 1);
+    const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
+    return { node, onCrossfadeShapeChange, onCrossfadeContextMenu };
+  };
+
+  it('Cmd/Ctrl+click toggles linear and equal-power; the press is not a drag', () => {
+    for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+      {
+        const { node, onCrossfadeShapeChange } = pair();
+        fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 48, pointerId: 61, ...modifier });
+        fireEvent.pointerMove(node, { clientX: 400, clientY: 90, pointerId: 61, ...modifier });
+        expect(onCrossfadeShapeChange).not.toHaveBeenCalled(); // no depth drag from a Cmd press
+        fireEvent.pointerUp(node, { clientX: 400, clientY: 90, pointerId: 61, ...modifier });
+        fireEvent.click(node, modifier);
+        expect(onCrossfadeShapeChange).toHaveBeenLastCalledWith(1, 2, 'linear', 'linear');
+        cleanup();
+      }
+      {
+        const { node, onCrossfadeShapeChange } = pair({ out: 'linear', in: 'linear' });
+        fireEvent.click(node, modifier);
+        expect(onCrossfadeShapeChange).toHaveBeenLastCalledWith(1, 2, 1, 1);
+        cleanup();
+      }
+    }
+  });
+
+  it('double-click resets to equal-power whatever the crossfade is; a plain click does nothing', () => {
+    for (const shapes of [{}, { out: 'linear' as const, in: 'linear' as const }, { out: 2, in: 2 }, { out: 0.4, in: 3 }]) {
+      const { node, onCrossfadeShapeChange } = pair(shapes);
+      fireEvent.click(node);
+      expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
+      fireEvent.doubleClick(node);
+      expect(onCrossfadeShapeChange).toHaveBeenLastCalledWith(1, 2, 1, 1);
+      // Two quick Cmd+clicks are not a reset
+      onCrossfadeShapeChange.mockClear();
+      fireEvent.doubleClick(node, { metaKey: true });
+      expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
+      cleanup();
+    }
+  });
+
+  it('a right-click asks the host for the crossfade menu, with both clips and the pointer', () => {
+    const { node, onCrossfadeContextMenu } = pair();
+    const prevented = !fireEvent.contextMenu(node, { clientX: 410, clientY: 55 });
+    expect(prevented).toBe(true);
+    expect(onCrossfadeContextMenu).toHaveBeenCalledWith(1, 2, 410, 55);
+  });
+});

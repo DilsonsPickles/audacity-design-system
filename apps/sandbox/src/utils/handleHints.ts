@@ -29,7 +29,7 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, op
     case 'fade-shape':
       return join('Drag up or down to shape the fade', `${cmd}-click to toggle linear`, 'Double-click to reset');
     case 'crossfade':
-      return join('Drag up or down to shape the crossfade', `${alt}-drag to roll`, 'Double-click for linear');
+      return join('Drag up or down to shape the crossfade', `${alt}-drag to roll`, `${cmd}-click to toggle linear`, 'Double-click to reset');
     case 'crossfade-roll':
       // The roll is a content edit: it can only go as far as the clips
       // have audio beyond their edges, so a fresh overlap of untrimmed

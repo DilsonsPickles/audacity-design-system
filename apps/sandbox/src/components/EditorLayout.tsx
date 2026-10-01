@@ -196,7 +196,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
     effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
-    setClipContextMenu, setFadeContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
+    setClipContextMenu, setFadeContextMenu, setCrossfadeContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
     contextMenuClosedTimeRef,
   } = useContextMenus();
 
@@ -526,6 +526,11 @@ export function EditorLayout(props: EditorLayoutProps) {
   const handleFadeContextMenu = React.useCallback((clipId: number, trackIndex: number, side: 'in' | 'out', x: number, y: number) => {
     setFadeContextMenu({ isOpen: true, x, y, clipId, trackIndex, side });
   }, [setFadeContextMenu]);
+
+  // …and on a crossfade's node, the crossfade's
+  const handleCrossfadeContextMenu = React.useCallback((outgoingClipId: number, incomingClipId: number, trackIndex: number, x: number, y: number) => {
+    setCrossfadeContextMenu({ isOpen: true, x, y, trackIndex, outgoingClipId, incomingClipId });
+  }, [setCrossfadeContextMenu]);
 
   const handleTrackFocusChange = React.useCallback((_trackIndex: number, _hasFocus: boolean) => {
     // Track focus no longer follows clip focus —
@@ -1171,6 +1176,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     timeFormat={timelineFormat}
                     onClipMenuClick={handleClipMenuClick}
                     onFadeContextMenu={handleFadeContextMenu}
+                    onCrossfadeContextMenu={handleCrossfadeContextMenu}
                     onTimeSelectionMenuClick={(x, y, trackIndex) => {
                       const timeSinceClosed = Date.now() - contextMenuClosedTimeRef.current;
                       if (timeSinceClosed > 300) {
