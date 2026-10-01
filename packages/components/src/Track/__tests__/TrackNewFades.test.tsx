@@ -1428,3 +1428,28 @@ describe('the crossfade handle shows on hover only, like the quick-fade handle (
     expect(node()).toBeNull();
   });
 });
+
+describe('the crossfade node ignores the clips\' quick-fade shapes (2026-10-01)', () => {
+  it('two clips with authored, lopsided quick fades make a SYMMETRIC crossfade: the node sits at the overlap\'s middle', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 5, fadeOut: 1, fadeOutShape: { t: 0.5, g: 0.3 } },
+            { id: 2, name: 'B', start: 3, duration: 4, fadeIn: 1, fadeInShape: 'linear' },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onCrossfadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    hoverClip(container, 1);
+    const node = container.querySelector('[data-crossfade-node]') as HTMLElement;
+    // Overlap 3s..5s: equal-power curves cross at 4.0s, gain 0.7071.
+    // x = 12 + 400 = 412; the 16px box is centred on it → left 404
+    expect(node.style.left).toBe('404px');
+    expect(Number(node.getAttribute('aria-valuenow'))).toBeCloseTo(4, 6);
+  });
+});

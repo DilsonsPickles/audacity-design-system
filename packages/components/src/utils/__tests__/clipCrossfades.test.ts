@@ -382,3 +382,30 @@ describe('the areas either side of a fade curve', () => {
     }
   });
 });
+
+describe('a crossfade has its own shapes (2026-10-01)', () => {
+  it('a fresh overlap is symmetric equal-power whatever quick fades the clips had, and those shapes survive it', () => {
+    const outgoing = { id: 1, start: 0, duration: 5, fadeOut: 1, fadeOutShape: { t: 0.5, g: 0.3 } };
+    const incoming = { id: 2, start: 3, duration: 4, fadeIn: 1, fadeInShape: 'linear' as const };
+    const regions = computeFadeCurves([outgoing, incoming]);
+    const crossfade = regions.filter((r) => !r.authored);
+    expect(crossfade).toHaveLength(2);
+    for (const r of crossfade) expect(r.shape).toBe(DEFAULT_CROSSFADE_SHAPE);
+    // The quick fades' shapes are not consumed — they are still on the clips
+    expect(outgoing.fadeOutShape).toEqual({ t: 0.5, g: 0.3 });
+    expect(incoming.fadeInShape).toBe('linear');
+    // …and with the clips apart they draw as authored again
+    const apart = computeFadeCurves([outgoing, { ...incoming, start: 6 }]);
+    expect(apart.find((r) => r.clipId === 1 && r.side === 'out')!.shape).toEqual({ t: 0.5, g: 0.3 });
+    expect(apart.find((r) => r.clipId === 2 && r.side === 'in')!.shape).toBe('linear');
+  });
+
+  it('the crossfade reads crossfade*Shape, the quick fade fade*Shape — never the other way round', () => {
+    const regions = computeFadeCurves([
+      { id: 1, start: 0, duration: 5, crossfadeOutShape: 'linear', fadeOutShape: 3 },
+      { id: 2, start: 3, duration: 4, crossfadeInShape: 2, fadeInShape: 3 },
+    ]);
+    expect(regions.find((r) => r.clipId === 1 && !r.authored)!.shape).toBe('linear');
+    expect(regions.find((r) => r.clipId === 2 && !r.authored)!.shape).toBe(2);
+  });
+});

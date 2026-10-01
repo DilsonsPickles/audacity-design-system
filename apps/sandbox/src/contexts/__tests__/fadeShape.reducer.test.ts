@@ -16,8 +16,26 @@ describe('fade shapes — linear is stored, the default is cleared', () => {
       type: 'SET_CROSSFADE_SHAPE',
       payload: { trackIndex: 0, outgoingClipId: 10, incomingClipId: 11, outShape: 'linear', inShape: 'linear' },
     });
-    expect(next.tracks[0].clips[0].fadeOutShape).toBe('linear');
+    // …in the crossfade's OWN fields (2026-10-01): the quick fades'
+    // shapes are not touched, so they are there when the clips come apart
+    expect(next.tracks[0].clips[0].crossfadeOutShape).toBe('linear');
+    expect(next.tracks[0].clips[1].crossfadeInShape).toBe('linear');
+    expect(next.tracks[0].clips[0].fadeOutShape).toBeUndefined();
+    expect(next.tracks[0].clips[1].fadeInShape).toBeUndefined();
+  });
+
+  it('SET_CROSSFADE_SHAPE leaves an authored quick-fade shape alone', () => {
+    const s = state();
+    s.tracks[0].clips[0].fadeOutShape = { t: 0.5, g: 0.3 };
+    s.tracks[0].clips[1].fadeInShape = 'linear';
+    const next = tracksReducer(s, {
+      type: 'SET_CROSSFADE_SHAPE',
+      payload: { trackIndex: 0, outgoingClipId: 10, incomingClipId: 11, outShape: 2, inShape: 2 },
+    });
+    expect(next.tracks[0].clips[0].fadeOutShape).toEqual({ t: 0.5, g: 0.3 });
     expect(next.tracks[0].clips[1].fadeInShape).toBe('linear');
+    expect(next.tracks[0].clips[0].crossfadeOutShape).toBe(2);
+    expect(next.tracks[0].clips[1].crossfadeInShape).toBe(2);
   });
 
   it('...and an exponent of ~1 clears back to the equal-power default', () => {
@@ -29,8 +47,8 @@ describe('fade shapes — linear is stored, the default is cleared', () => {
       type: 'SET_CROSSFADE_SHAPE',
       payload: { trackIndex: 0, outgoingClipId: 10, incomingClipId: 11, outShape: 1, inShape: 1.004 },
     });
-    expect(back.tracks[0].clips[0].fadeOutShape).toBeUndefined();
-    expect(back.tracks[0].clips[1].fadeInShape).toBeUndefined();
+    expect(back.tracks[0].clips[0].crossfadeOutShape).toBeUndefined();
+    expect(back.tracks[0].clips[1].crossfadeInShape).toBeUndefined();
   });
 
   it('SET_CLIP_FADE_SHAPE stores linear for one edge', () => {
@@ -80,7 +98,7 @@ describe('fade shapes — linear is stored, the default is cleared', () => {
       type: 'SET_CROSSFADE_SHAPE',
       payload: { trackIndex: 0, outgoingClipId: 10, incomingClipId: 11, outShape: 2, inShape: 2 },
     });
-    expect(next.tracks[0].clips[0].fadeOutShape).toBe(2);
-    expect(next.tracks[0].clips[1].fadeInShape).toBe(2);
+    expect(next.tracks[0].clips[0].crossfadeOutShape).toBe(2);
+    expect(next.tracks[0].clips[1].crossfadeInShape).toBe(2);
   });
 });

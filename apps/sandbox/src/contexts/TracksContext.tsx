@@ -67,6 +67,11 @@ export interface Clip {
    *  for a crossfade (DEFAULT_*_SHAPE in components' clipCrossfades). */
   fadeInShape?: FadeShape;
   fadeOutShape?: FadeShape;
+  /** The crossfade's own curve shapes on this clip's edges — the
+   *  intersection node's state (2026-10-01); the quick fades' shapes
+   *  above are never read by a crossfade and survive one untouched */
+  crossfadeInShape?: number | 'linear';
+  crossfadeOutShape?: number | 'linear';
   /**
    * Original clip id that owns the audio buffer. When a clip is split,
    * the right segment gets a new id but should still play from the
@@ -313,7 +318,7 @@ export type TracksAction =
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'SET_CLIP_FADE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; seconds: number } }
   | { type: 'ROLL_CROSSFADE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; seamTime: number } }
-  | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: FadeShape; inShape: FadeShape } }
+  | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: number | 'linear'; inShape: number | 'linear' } }
   | { type: 'SET_CLIP_FADE_SHAPE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; shape: FadeShape } }
   | {
       type: 'APPLY_CLIP_PLACEMENT';

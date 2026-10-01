@@ -151,6 +151,10 @@ export interface TrackClip {
    *  the crossfade intersection node. */
   fadeInShape?: FadeShape;
   fadeOutShape?: FadeShape;
+  /** The crossfade's own curve shapes on this clip's edges (the
+   *  intersection node's state; see utils/clipCrossfades.ts) */
+  crossfadeInShape?: number | 'linear';
+  crossfadeOutShape?: number | 'linear';
 }
 
 export interface TrackProps {
@@ -320,8 +324,8 @@ export interface TrackProps {
   onCrossfadeShapeChange?: (
     outgoingClipId: string | number,
     incomingClipId: string | number,
-    outShape: FadeShape,
-    inShape: FadeShape,
+    outShape: number | 'linear',
+    inShape: number | 'linear',
   ) => void;
 
   /** Vertical drag on a quick fade's midpoint node — bows that fade's
@@ -856,9 +860,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const inClip = clips.find((c) => c.id === r.incomingClipId);
       if (!outClip || !inClip) return null;
       // The crossfade CONSUMES authored extents (2026-09-21): both
-      // ramps always span the overlap; only the shapes carry over
-      const shapedOut = { start: r.start, end: r.end, shape: outClip.fadeOutShape ?? DEFAULT_CROSSFADE_SHAPE };
-      const shapedIn = { start: r.start, end: r.end, shape: inClip.fadeInShape ?? DEFAULT_CROSSFADE_SHAPE };
+      // ramps always span the overlap. Its shapes are its OWN
+      // (crossfade*Shape, 2026-10-01) — a fresh overlap is symmetric
+      // equal-power whatever quick fades the clips had, and those come
+      // back untouched when the clips separate
+      const shapedOut = { start: r.start, end: r.end, shape: outClip.crossfadeOutShape ?? DEFAULT_CROSSFADE_SHAPE };
+      const shapedIn = { start: r.start, end: r.end, shape: inClip.crossfadeInShape ?? DEFAULT_CROSSFADE_SHAPE };
       const point = crossfadeIntersection(shapedOut, shapedIn, r.start, r.end);
       return {
         outgoingClipId: r.outgoingClipId,

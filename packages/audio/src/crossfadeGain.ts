@@ -37,6 +37,12 @@ export interface OverlapClipLike {
    *  curves; the two must agree. */
   fadeInShape?: FadeShape;
   fadeOutShape?: FadeShape;
+  /** The CROSSFADE's own shapes on this clip's edges (2026-10-01) — an
+   *  exponent or 'linear', never a handle; absent = equal-power. A
+   *  crossfade region reads these and never the quick fades' shapes.
+   *  MUST MATCH clipCrossfades.ts. */
+  crossfadeInShape?: number | 'linear';
+  crossfadeOutShape?: number | 'linear';
 }
 
 /** The point a quick fade's S-curve passes through: `t` along the fade
@@ -111,10 +117,13 @@ export function computeClipGainSegments(
   ) => {
     const key = String(clip.id);
     const trimStart = clip.trimStart ?? 0;
-    const fallback = kind === 'quick' ? DEFAULT_QUICK_FADE_SHAPE : DEFAULT_CROSSFADE_SHAPE;
-    const curve = shape === 'fadeOut' ? (clip.fadeOutShape ?? fallback)
-      : shape === 'fadeIn' ? (clip.fadeInShape ?? fallback)
-      : undefined;
+    // A crossfade region takes the crossfade's own shape fields; a quick
+    // fade its own — the two never read each other's (2026-10-01)
+    const curve = shape === 'fadeOut'
+      ? (kind === 'quick' ? (clip.fadeOutShape ?? DEFAULT_QUICK_FADE_SHAPE) : (clip.crossfadeOutShape ?? DEFAULT_CROSSFADE_SHAPE))
+      : shape === 'fadeIn'
+        ? (kind === 'quick' ? (clip.fadeInShape ?? DEFAULT_QUICK_FADE_SHAPE) : (clip.crossfadeInShape ?? DEFAULT_CROSSFADE_SHAPE))
+        : undefined;
     const list = out.get(key) ?? [];
     list.push({
       startSec: trimStart + (startAbs - clip.start),

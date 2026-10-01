@@ -244,8 +244,10 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       newTracks[trackIndex] = {
         ...track,
         clips: track.clips.map(clip => {
-          if (clip.id === outgoingClipId) return { ...clip, fadeOutShape: bothDefault ? undefined : outShape };
-          if (clip.id === incomingClipId) return { ...clip, fadeInShape: bothDefault ? undefined : inShape };
+          // The crossfade's OWN fields (2026-10-01): the quick fades'
+          // shapes are left alone for when the clips come apart
+          if (clip.id === outgoingClipId) return { ...clip, crossfadeOutShape: bothDefault ? undefined : outShape };
+          if (clip.id === incomingClipId) return { ...clip, crossfadeInShape: bothDefault ? undefined : inShape };
           return clip;
         }),
       };
@@ -326,8 +328,8 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
           // Spreading the whole clip into both put the fade-out on the left
           // half's cut edge and the fade-in on the right's — every split
           // grew two fades that nobody asked for.
-          const { fadeOut: _lo, fadeOutShape: _los, ...leftBase } = clip;
-          const { fadeIn: _ri, fadeInShape: _ris, ...rightBase } = clip;
+          const { fadeOut: _lo, fadeOutShape: _los, crossfadeOutShape: _lxs, ...leftBase } = clip;
+          const { fadeIn: _ri, fadeInShape: _ris, crossfadeInShape: _rxs, ...rightBase } = clip;
 
           // Left segment keeps the original id and waveform reference.
           const leftSegment: Clip = {

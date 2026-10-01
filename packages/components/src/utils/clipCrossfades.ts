@@ -25,11 +25,20 @@ export interface CrossfadeClipLike {
    *  a crossfade honours it instead of the overlap-default ramp. */
   fadeIn?: number;
   fadeOut?: number;
-  /** Curve shapes — see `FadeShape`. Absent = the default for the kind
-   *  of fade the edge is wearing — DEFAULT_QUICK_FADE_SHAPE or
-   *  DEFAULT_CROSSFADE_SHAPE. */
+  /** The QUICK fades' curve shapes — see `FadeShape`. Absent = the
+   *  S-curve (DEFAULT_QUICK_FADE_SHAPE). A crossfade never reads these
+   *  (2026-10-01): they are kept for when the clips come apart. */
   fadeInShape?: FadeShape;
   fadeOutShape?: FadeShape;
+  /** The CROSSFADE's curve shapes on this clip's edges, written by the
+   *  intersection node — an exponent on the equal-power base, or
+   *  'linear'; never a handle. Absent = equal-power
+   *  (DEFAULT_CROSSFADE_SHAPE), so a fresh overlap is symmetric whatever
+   *  quick fades the two clips had (user decision 2026-10-01: the quick
+   *  fades' shapes used to leak into the X and make it lopsided, with
+   *  no way back). */
+  crossfadeInShape?: number | 'linear';
+  crossfadeOutShape?: number | 'linear';
 }
 
 export interface CrossfadeRegion {
@@ -140,11 +149,11 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
     const inClip = clips.find((c) => c.id === r.incomingClipId);
     if (outClip) {
       crossfadedOut.add(String(outClip.id));
-      regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false, shape: outClip.fadeOutShape ?? DEFAULT_CROSSFADE_SHAPE });
+      regions.push({ clipId: outClip.id, side: 'out', start: r.start, end: r.end, authored: false, shape: outClip.crossfadeOutShape ?? DEFAULT_CROSSFADE_SHAPE });
     }
     if (inClip) {
       crossfadedIn.add(String(inClip.id));
-      regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false, shape: inClip.fadeInShape ?? DEFAULT_CROSSFADE_SHAPE });
+      regions.push({ clipId: inClip.id, side: 'in', start: r.start, end: r.end, authored: false, shape: inClip.crossfadeInShape ?? DEFAULT_CROSSFADE_SHAPE });
     }
   }
   const windows = quickFadeWindows(clips);
