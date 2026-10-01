@@ -124,6 +124,7 @@ export * from './EnvelopeInteractionLayer';
 export * from './EnvelopeOverlay';
 export * from './Track';
 export { TrackNew } from './Track/TrackNew';
+export type { ClipHandleHint } from './Track/TrackNew';
 export * from './LabelMarker';
 export * from './RegionLabel';
 export * from './PointLabel';

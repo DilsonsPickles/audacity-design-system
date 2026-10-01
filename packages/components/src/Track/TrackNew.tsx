@@ -43,6 +43,21 @@ const EMPTY_NUMBER_ARRAY: number[] = [];
  * edge. The svg itself is never clipped — it takes no pointer events,
  * so its overflow adds nothing to the hit area.
  */
+/** The clip handle under the pointer, as reported to a host's status
+ *  bar (user decision 2026-10-01). Alt is folded in where it changes the
+ *  gesture: an edge zone with Alt down is 'edge-stretch', the crossfade
+ *  node 'crossfade-roll'. The words are the host's (it knows the
+ *  operating system's modifier names); these are only which handle. */
+export type ClipHandleHint =
+  | 'trim'
+  | 'stretch'
+  | 'edge-trim'
+  | 'edge-stretch'
+  | 'fade-length'
+  | 'fade-shape'
+  | 'crossfade'
+  | 'crossfade-roll';
+
 const FADE_GLYPH_RADIUS = 2.5;
 const FADE_HANDLE_BOX = { width: 36, height: 32 } as const;
 const FADE_GLYPH_BODY = {
@@ -278,6 +293,11 @@ export interface TrackProps {
    *  them hide their other clips' handles (2026-10-01). */
   fadeInHandClipId?: string | number | null;
   onFadeDragChange?: (clipId: string | number | null) => void;
+  /** The clip handle under the pointer, for a status bar (user decision
+   *  2026-10-01): which handle, with Alt folded in (an edge zone with
+   *  Alt down is 'edge-stretch', the crossfade node 'crossfade-roll'),
+   *  or null when the pointer is on none. Reported on change only. */
+  onHandleHint?: (hint: ClipHandleHint | null) => void;
 
   /** Alt+drag on the crossfade's intersection node — a ROLL: both clip
    *  edges slide so the seam (the incoming clip's start) lands at
@@ -531,6 +551,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onFadeSnapGuideline,
   fadeInHandClipId,
   onFadeDragChange,
+  onHandleHint,
   onCrossfadeRoll,
   onCrossfadeShapeChange,
   onClipFadeShapeChange,
@@ -729,6 +750,30 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       window.removeEventListener('blur', onBlur);
     };
   }, [onClipStretchEdge, onCrossfadeRoll]);
+  // The handle under the pointer, for the host's status bar: each control
+  // reports itself on enter and nothing on leave; Alt is folded in here
+  // (so the hint changes while the pointer rests on an edge zone or the
+  // crossfade node), and the host hears only CHANGES — never a null on
+  // mount, which would wipe another track's hint.
+  const [hintHover, setHintHover] = React.useState<'trim' | 'stretch' | 'edge' | 'fade-length' | 'fade-shape' | 'crossfade' | null>(null);
+  const resolvedHint: ClipHandleHint | null = hintHover === 'edge'
+    ? (altHeld && onClipStretchEdge ? 'edge-stretch' : 'edge-trim')
+    : hintHover === 'crossfade'
+      ? (altHeld && onCrossfadeRoll ? 'crossfade-roll' : 'crossfade')
+      : hintHover;
+  const lastHintRef = React.useRef<ClipHandleHint | null>(null);
+  React.useEffect(() => {
+    if (resolvedHint === lastHintRef.current) return;
+    lastHintRef.current = resolvedHint;
+    onHandleHint?.(resolvedHint);
+  }, [resolvedHint, onHandleHint]);
+  // A drag that ends with the pointer off its handle gets no mouseleave
+  // (the pointer was captured): clear the hint unless it is still there
+  const settleHint = (el: HTMLElement, ev: PointerEvent) => {
+    if (typeof document.elementFromPoint !== 'function') return;
+    const under = document.elementFromPoint(ev.clientX, ev.clientY);
+    if (!under || !el.contains(under)) setHintHover(null);
+  };
   // Prefix for the per-curve SVG clip ids (unique across tracks)
   const fadeClipIdBase = React.useId();
   // …and "over the clip" means WELL inside it (user decision
@@ -826,6 +871,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     return set;
   }, [crossfadeNodes]);
 
+  // The fade controls' hover props, with the status-bar hint folded in
+  const withHint = (props: ReturnType<typeof fadeHoverProps>, hint: 'fade-length' | 'crossfade') => ({
+    ...props,
+    onMouseEnter: (e: React.MouseEvent) => { props.onMouseEnter(e); setHintHover(hint); },
+    onMouseLeave: () => { props.onMouseLeave(); setHintHover((prev) => (prev === hint ? null : prev)); },
+  });
+
   const renderCrossfadeNodes = () => {
     // A crossfade node belongs to two clips; while a fade is in hand on
     // one clip the pair it sits between is not that clip's business
@@ -854,7 +906,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           aria-valuenow={n.point.time}
           // Reaching the node from either clip keeps it up: the pointer
           // "leaves" the clip for the node, which sits over the overlap
-          {...fadeHoverProps(n.incomingClipId)}
+          {...withHint(fadeHoverProps(n.incomingClipId), 'crossfade')}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => {
@@ -928,6 +980,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               nodeEl.removeEventListener('pointerup', onUp);
               setCrossfadeDrag(null);
               settleFadeHover(n.incomingClipId, ev, nodeEl);
+              settleHint(nodeEl, ev);
             };
             nodeEl.addEventListener('pointermove', onMove);
             nodeEl.addEventListener('pointerup', onUp);
@@ -1035,11 +1088,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             onMouseEnter={(e) => {
               fadeHoverProps(clip.id).onMouseEnter(e);
               if (e.buttons === 0) setShapeHandleHover(dragKey);
+              setHintHover('fade-shape');
             }}
             onMouseMove={fadeHoverProps(clip.id).onMouseMove}
             onMouseLeave={() => {
               fadeHoverProps(clip.id).onMouseLeave();
               setShapeHandleHover((prev) => (prev === dragKey ? null : prev));
+              setHintHover((prev) => (prev === 'fade-shape' ? null : prev));
             }}
             aria-valuemin={0}
             aria-valuemax={100}
@@ -1103,6 +1158,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 setShapeDrag(null);
                 onFadeDragChange?.(null);
                 settleFadeHover(clip.id, ev, nodeEl);
+                settleHint(nodeEl, ev);
               };
               nodeEl.addEventListener('pointermove', onMove);
               nodeEl.addEventListener('pointerup', onUp);
@@ -1723,6 +1779,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
             handlesHidden={hidesHandlesOf(clip.id)}
+            onHandleHover={setHintHover}
             midiNotes={clip.midiNotes}
             forceHeaderHover={isClipHovered}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
@@ -1803,6 +1860,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         className={`track-edge-trim track-edge-trim--${zone.edge}${altHeld && onClipStretchEdge ? ' track-edge-trim--stretch' : ''}`}
         data-edge-trim={zone.edge}
         data-edge-mode={altHeld && onClipStretchEdge ? 'stretch' : 'trim'}
+        onMouseEnter={() => setHintHover('edge')}
+        onMouseLeave={() => setHintHover((prev) => (prev === 'edge' ? null : prev))}
         data-clip-ref={zone.clipId}
         aria-hidden="true"
         onMouseDown={(e) => {
@@ -1895,6 +1954,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               type="button"
               tabIndex={-1}
               data-buried-handle={`trim-${edge}`}
+              onMouseEnter={() => setHintHover('trim')}
+              onMouseLeave={() => setHintHover((prev) => (prev === 'trim' ? null : prev))}
               className={`clip-display__handle clip-display__handle--trim-${edge}`}
               aria-label={`Trim ${edge} edge`}
               onMouseDown={startDrag('trim')}
@@ -1910,6 +1971,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             type="button"
             tabIndex={-1}
             data-buried-handle={`stretch-${edge}`}
+            onMouseEnter={() => setHintHover('stretch')}
+            onMouseLeave={() => setHintHover((prev) => (prev === 'stretch' ? null : prev))}
             className={`clip-display__handle clip-display__handle--stretch-${edge}`}
             aria-label={`Stretch ${edge} edge`}
             onMouseDown={startDrag('stretch')}
@@ -2020,7 +2083,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-pressed={fadeDragClipId === clip.id && fadeDragSide === side ? 'true' : undefined}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in' : 'Quick fade out'}
-            {...fadeHoverProps(clip.id)}
+            {...withHint(fadeHoverProps(clip.id), 'fade-length')}
             aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
             // The clip body is the time-selection surface — a fade drag
             // must not bubble into it (mirrors the trim handles)
@@ -2080,6 +2143,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 setFadeDragClipId(null);
                 setFadeDragSide(null);
                 onFadeDragChange?.(null);
+                settleHint(handleEl, ev);
                 settleFadeHover(clip.id, ev, handleEl);
                 if (snapTime) onFadeSnapGuideline?.(null);
               };

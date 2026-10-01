@@ -4,6 +4,7 @@ import type { SpectrogramScale } from '@audacity-ui/components';
 import { type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
 import { useTracksState, useTracksDispatch, type Track } from '../contexts/TracksContext';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
+import { useHandleHint } from '../contexts/HandleHintContext';
 import { useEditingBehaviorPrefs, useAppearancePrefs } from '@audacity-ui/components';
 import { useClipDragging } from '../hooks/useClipDragging';
 import { useClipTrimming } from '../hooks/useClipTrimming';
@@ -415,6 +416,8 @@ export function Canvas({
   // it and every track gets it back, so a fade drag on one track hides
   // the other clips' handles on all of them (2026-10-01)
   const [fadeInHandClipId, setFadeInHandClipId] = useState<string | number | null>(null);
+  // The handle under the pointer goes to the status bar (HandleHintContext)
+  const { setHint: setHandleHint } = useHandleHint();
   // (Keyed on the settings, not on `snapOptions` — that object is
   // rebuilt every render, and a fresh function each time would re-render
   // every memoised track row.)
@@ -814,6 +817,7 @@ export function Canvas({
           onFadeSnapGuideline={setFadeSnapGuidelineTime}
           fadeInHandClipId={fadeInHandClipId}
           onFadeDragChange={setFadeInHandClipId}
+          onHandleHint={setHandleHint}
           draggingClipIds={draggingClipIds}
           raisedClipIds={raisedClipIds}
           marqueePreview={marqueePreview}

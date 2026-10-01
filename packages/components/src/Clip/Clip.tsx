@@ -127,6 +127,9 @@ export interface ClipProps {
   /** Hide the trim and stretch handles (a clip drag is in progress —
    *  no handle anywhere is grabbable while clips are moving). */
   handlesHidden?: boolean;
+  /** The pointer has entered (kind) or left (null) a trim or stretch
+   *  handle — for the host's status-bar hint. */
+  onHandleHover?: (kind: 'trim' | 'stretch' | null) => void;
   /** Frequency scale for spectrogram rendering */
   spectrogramScale?: SpectrogramScale;
   /** MIDI notes for midi variant */
@@ -191,6 +194,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   envelopePointSizes,
   isRecording = false,
   handlesHidden = false,
+  onHandleHover,
   spectrogramScale,
   midiNotes,
   forceHeaderHover = false,
@@ -444,6 +448,8 @@ const ClipComponent: React.FC<ClipProps> = ({
               className="clip-display__handle clip-display__handle--trim-left"
               aria-label="Trim left edge"
               onMouseDown={handleVisibleTrimMouseDown('left')}
+              onMouseEnter={() => onHandleHover?.('trim')}
+              onMouseLeave={() => onHandleHover?.(null)}
             >
               <TrimLeftIcon />
             </button>
@@ -454,6 +460,8 @@ const ClipComponent: React.FC<ClipProps> = ({
             className="clip-display__handle clip-display__handle--stretch-left"
             aria-label="Stretch left edge"
             onMouseDown={handleStretchMouseDown('left')}
+            onMouseEnter={() => onHandleHover?.('stretch')}
+            onMouseLeave={() => onHandleHover?.(null)}
           >
             <StretchIcon />
           </button>
@@ -464,6 +472,8 @@ const ClipComponent: React.FC<ClipProps> = ({
               className="clip-display__handle clip-display__handle--trim-right"
               aria-label="Trim right edge"
               onMouseDown={handleVisibleTrimMouseDown('right')}
+              onMouseEnter={() => onHandleHover?.('trim')}
+              onMouseLeave={() => onHandleHover?.(null)}
             >
               <TrimRightIcon />
             </button>
@@ -474,6 +484,8 @@ const ClipComponent: React.FC<ClipProps> = ({
             className="clip-display__handle clip-display__handle--stretch-right"
             aria-label="Stretch right edge"
             onMouseDown={handleStretchMouseDown('right')}
+            onMouseEnter={() => onHandleHover?.('stretch')}
+            onMouseLeave={() => onHandleHover?.(null)}
           >
             <StretchIcon />
           </button>

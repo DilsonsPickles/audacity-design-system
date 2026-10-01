@@ -60,6 +60,8 @@ import { useMasterMeter } from './hooks/useMasterMeter';
 import { useDraggableToolbar } from './hooks/useDraggableToolbar';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
+import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
+import { handleHintText } from './utils/handleHints';
 import { useMixerPanelListener } from './hooks/useMixerPanelListener';
 import { useTimeCodeFormats } from './hooks/useTimeCodeFormats';
 import { useLocalStorageBackedState } from './hooks/useLocalStorageBackedState';
@@ -241,6 +243,9 @@ function CanvasDemoContent() {
   const [debugTrackCount, setDebugTrackCount] = React.useState(4);
   const [showFocusDebug, setShowFocusDebug] = React.useState(false);
   const focusedElement = useFocusDebugger({ showFocusDebug });
+  // The clip handle under the pointer, for the selection toolbar's
+  // instruction text (TrackNew reports it; Canvas writes it)
+  const { hint: handleHint } = useHandleHint();
   // Debug: paint every clip handle's HIT element in place (Track.css,
   // `[data-debug-hit-areas]`) — the real boxes the pointer meets, not a
   // drawing of them. A document attribute, so the components' own CSS
@@ -1055,8 +1060,11 @@ function CanvasDemoContent() {
           showCloudIndicator={isCloudProject || isCloudUploading}
           isCloudUploading={isCloudUploading}
           showDuration={true}
-          status={showFocusDebug ? 'Focused element' : undefined}
-          instructionText={showFocusDebug ? focusedElement : undefined}
+          status={showFocusDebug && !handleHint ? 'Focused element' : undefined}
+          // The handle under the pointer names its gestures here (user
+          // decision 2026-10-01); otherwise the focus debugger, if on,
+          // or the component's own "Click and drag to select audio"
+          instructionText={handleHint ? handleHintText(handleHint, preferences.operatingSystem) : (showFocusDebug ? focusedElement : undefined)}
           onFormatChange={setSelectionTimeCodeFormat}
           onDurationFormatChange={setDurationTimeCodeFormat}
           onSelectionStartChange={(newStart) => {
@@ -1328,7 +1336,9 @@ function ThemedApp() {
                           MuseIdContext.tsx's file header for the full
                           provider-pattern justification. */}
                       <MuseIdProvider>
-                        <CanvasDemoContent />
+                        <HandleHintProvider>
+                          <CanvasDemoContent />
+                        </HandleHintProvider>
                       </MuseIdProvider>
                     </AdieuProvider>
                   </MuseHubProvider>
