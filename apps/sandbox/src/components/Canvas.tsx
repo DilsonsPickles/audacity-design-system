@@ -412,6 +412,7 @@ export function Canvas({
   // itself lives in TrackNew; it reports where it snapped to, and null
   // when it has not or has ended). Same grid as the other drags.
   const [fadeSnapGuidelineTime, setFadeSnapGuidelineTime] = useState<number | null>(null);
+  const [selectionSnapGuidelineTime, setSelectionSnapGuidelineTime] = useState<number | null>(null);
   // The clip whose fade is in hand, on whichever track: TrackNew reports
   // it and every track gets it back, so a fade drag on one track hides
   // the other clips' handles on all of them (2026-10-01)
@@ -436,6 +437,7 @@ export function Canvas({
     { time: trimSnapGuidelineTime, kind: trimSnapGuidelineKind },
     { time: stretchSnapGuidelineTime, kind: stretchSnapGuidelineKind },
     { time: fadeSnapGuidelineTime, kind: fadeSnapGuidelineTime !== null ? 'grid' : null },
+    { time: selectionSnapGuidelineTime, kind: selectionSnapGuidelineTime !== null ? 'grid' : null },
   );
   const snapGuidelineColor = snapGuidelineKind === 'grid' ? '#22D3EE' : '#FFD60A';
   const snapGuidelineShadow = snapGuidelineKind === 'grid'
@@ -568,6 +570,11 @@ export function Canvas({
       defaultTrackHeight: DEFAULT_TRACK_HEIGHT,
       trackGap: TRACK_GAP,
       initialGap: TOP_GAP,
+      // A selection drag snaps its moving edge when snapping is on;
+      // Shift inverts, as everywhere else (2026-10-01)
+      snapTime,
+      snapEnabled,
+      onSnapGuideline: setSelectionSnapGuidelineTime,
     },
     {
       onTimeSelectionChange: (sel) => {

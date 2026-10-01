@@ -62,6 +62,17 @@ export interface UseTimeSelectionOptions extends TimeSelectionConfig {
   clipHeaderHeight?: number;
   /** Whether in spectrogram mode */
   spectrogramMode?: boolean;
+  /** The host's grid, as a function of PROJECT time — present whenever
+   *  there is a grid, snapping on or off. A selection's moving edge
+   *  snaps through it while snapping is on, and SHIFT INVERTS that,
+   *  read live on each move, as a clip drag's or a fade handle's Shift
+   *  does (user decision 2026-10-01): on → none, off → the grid. */
+  snapTime?: (time: number) => number;
+  /** Whether snapping is on (the host's switch). */
+  snapEnabled?: boolean;
+  /** Where the moving edge snapped (project time), null when it did not
+   *  or at release — for the host's one snap guideline. */
+  onSnapGuideline?: (time: number | null) => void;
 }
 
 export interface UseTimeSelectionReturn {
@@ -103,6 +114,9 @@ export function useTimeSelection({
   edgeThreshold = 6,
   clipHeaderHeight = 20,
   spectrogramMode = false,
+  snapTime,
+  snapEnabled = false,
+  onSnapGuideline,
 }: UseTimeSelectionOptions): UseTimeSelectionReturn {
   const dragStateRef = useRef<ExtendedDragState | null>(null);
   const wasDraggingRef = useRef<boolean>(false);
@@ -205,9 +219,17 @@ export function useTimeSelection({
 
       const { mode, initialSelection, initialSelectedTracks } = dragStateRef.current;
 
+      // Grid snap for the edge in hand: the host's switch, inverted by
+      // Shift, read live on each move (2026-10-01). The guideline marks
+      // where that edge snapped, and nothing while it did not.
+      const snapNow = !!snapTime && (e.shiftKey ? !snapEnabled : snapEnabled);
+      const snapped = (t: number) => (snapNow && snapTime ? snapTime(t) : t);
+      const reportSnap = (edgeTime: number) => onSnapGuideline?.(snapNow ? edgeTime : null);
+
       if (mode === 'resize-start' && initialSelection) {
         // Resizing start edge - allow inverting by dragging past end edge
-        const newStartTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET));
+        const newStartTime = Math.max(0, snapped(pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET)));
+        reportSnap(newStartTime);
 
         // If dragged past the end, swap start and end
         if (newStartTime > initialSelection.endTime) {
@@ -225,7 +247,8 @@ export function useTimeSelection({
         }
       } else if (mode === 'resize-end' && initialSelection) {
         // Resizing end edge - allow inverting by dragging past start edge
-        const newEndTime = Math.max(0, pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET));
+        const newEndTime = Math.max(0, snapped(pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET)));
+        reportSnap(newEndTime);
 
         // If dragged past the start, swap start and end
         if (newEndTime < initialSelection.startTime) {
@@ -260,9 +283,12 @@ export function useTimeSelection({
           startTime = dragStateRef.current.fixedTimeBounds.startTime;
           endTime = dragStateRef.current.fixedTimeBounds.endTime;
         } else {
-          // Normal behavior - calculate from mouse positions
-          startTime = pixelsToTime(dragStateRef.current.startX, pixelsPerSecond, CLIP_CONTENT_OFFSET);
-          endTime = pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET);
+          // Normal behavior - calculate from mouse positions. Both ends
+          // snap: the anchor too, so a snapped selection starts on the
+          // grid as well as ending on it
+          startTime = snapped(pixelsToTime(dragStateRef.current.startX, pixelsPerSecond, CLIP_CONTENT_OFFSET));
+          endTime = snapped(pixelsToTime(x, pixelsPerSecond, CLIP_CONTENT_OFFSET));
+          reportSnap(endTime);
         }
 
         // Update selected tracks based on drag range
@@ -328,6 +354,7 @@ export function useTimeSelection({
     // Handle mouse up - end drag
     const handleDocumentMouseUp = (e: MouseEvent) => {
       if (!dragStateRef.current || !container) return;
+      onSnapGuideline?.(null); // the guideline goes with the drag
 
       const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -412,6 +439,9 @@ export function useTimeSelection({
     spectrogramMode,
     onConvertToSpectralSelection,
     findClipAtPosition,
+    snapTime,
+    snapEnabled,
+    onSnapGuideline,
   ]);
 
   /**

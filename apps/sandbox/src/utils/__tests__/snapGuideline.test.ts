@@ -34,6 +34,12 @@ describe('resolveSnapGuideline', () => {
     expect(resolveSnapGuideline(none, none, none)).toEqual(resolveSnapGuideline(none, none, none, none));
   });
 
+  it('a time-selection drag comes after the fade handle, last of all', () => {
+    expect(resolveSnapGuideline(none, none, none, none, { time: 5, kind: 'grid' })).toEqual({ time: 5, kind: 'grid' });
+    expect(resolveSnapGuideline(none, none, none, { time: 4, kind: 'grid' }, { time: 5, kind: 'grid' })).toEqual({ time: 4, kind: 'grid' });
+    expect(resolveSnapGuideline(none, none, none, none)).toEqual(resolveSnapGuideline(none, none, none, none, none));
+  });
+
   it('returns nulls when drag, trim, and stretch are all null', () => {
     const result = resolveSnapGuideline(none, none, none);
     expect(result).toEqual({ time: null, kind: null });

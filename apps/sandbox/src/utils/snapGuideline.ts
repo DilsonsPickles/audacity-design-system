@@ -29,9 +29,10 @@ export function resolveSnapGuideline(
   trim: SnapGuidelineInput,
   stretch: SnapGuidelineInput,
   fade: SnapGuidelineInput = { time: null, kind: null },
+  selection: SnapGuidelineInput = { time: null, kind: null },
 ): SnapGuideline {
   return {
-    time: drag.time ?? trim.time ?? stretch.time ?? fade.time,
-    kind: drag.kind ?? trim.kind ?? stretch.kind ?? fade.kind,
+    time: drag.time ?? trim.time ?? stretch.time ?? fade.time ?? selection.time,
+    kind: drag.kind ?? trim.kind ?? stretch.kind ?? fade.kind ?? selection.kind,
   };
 }

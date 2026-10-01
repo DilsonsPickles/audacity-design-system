@@ -29,6 +29,12 @@ export interface UseAudioSelectionConfig extends TimeSelectionConfig {
   enabled?: boolean;
   /** Edge detection threshold in pixels for resize handles */
   edgeThreshold?: number;
+  /** Grid snap for a selection drag's moving edge — see useTimeSelection
+   *  (passed through): the host's grid, its switch, and where the edge
+   *  snapped for the host's guideline. Shift inverts the switch. */
+  snapTime?: (time: number) => number;
+  snapEnabled?: boolean;
+  onSnapGuideline?: (time: number | null) => void;
 }
 
 export interface UseAudioSelectionCallbacks {
