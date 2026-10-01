@@ -317,8 +317,18 @@ describe('clip fades', () => {
     expect(ghosts[0].style.top).toBe('21px'); // the body, under the header
     expect(Number(ghosts[0].style.zIndex)).toBeLessThan(450); // under the curves
     expect(container.querySelectorAll('[data-fade-line]')).toHaveLength(2);
-    expect(container.querySelector('[data-fade-dim]')).toBeNull();
-    // …nor given the white edge: that belongs to a quick fade's curve being edited
+    // Each of the X's curves dims the area above itself, as a quick
+    // fade's does (2026-10-01; the X was undimmed before) — same fill,
+    // each in its own curve's SVG over the overlap
+    for (const side of ['out', 'in'] as const) {
+      const dim = container.querySelector(`[data-fade-dim="${side}"]`)!;
+      const line = container.querySelector(`[data-fade-line="${side}"]`)!;
+      expect(dim.getAttribute('d')!.startsWith(line.getAttribute('d')!)).toBe(true);
+      expect(dim.getAttribute('d')!.endsWith(side === 'in' ? ' L 0.00,0.00 Z' : ' L 100.00,0.00 Z')).toBe(true);
+      expect(dim.getAttribute('fill')).toMatch(/^rgba\(0, 0, 0, 0\.\d+\)$/);
+      expect(dim.closest('[data-fade-curve]')).toBe(line.closest('[data-fade-curve]'));
+    }
+    // It is not given the white edge: that belongs to a quick fade's curve being edited
     hoverClip(container, 1);
     expect(container.querySelector('[data-fade-line-underside]')).toBeNull();
     expect(container.querySelector('[data-fade-line][stroke="#FFFFFF"]')).toBeNull();

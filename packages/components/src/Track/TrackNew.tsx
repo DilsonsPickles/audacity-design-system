@@ -1362,14 +1362,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             preserveAspectRatio="none"
             style={{ display: 'block', overflow: 'visible' }}
           >
-            {region.authored && (
-              <path
-                data-fade-dim={region.side}
-                d={fadeAreaAbovePath(region.side, 64, region.shape)}
-                fill={FADE_DIM_FILL}
-                stroke="none"
-              />
-            )}
+            {/* The area above the curve dims — a quick fade's and a
+                crossfade's alike (user decision 2026-10-01; the X was
+                undimmed before). Each of the X's curves dims above
+                itself in its own SVG, so the cap above the crossing,
+                above both, takes both dims. */}
+            <path
+              data-fade-dim={region.side}
+              d={fadeAreaAbovePath(region.side, 64, region.shape)}
+              fill={FADE_DIM_FILL}
+              stroke="none"
+            />
             {editing && (
               <>
                 <defs>
