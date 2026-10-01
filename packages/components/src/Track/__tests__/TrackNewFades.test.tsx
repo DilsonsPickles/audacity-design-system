@@ -667,10 +667,9 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 3 });
   });
 
-  // The node's plain gestures (2026-10-01): horizontal ROLLS the
-  // crossfade — a content edit, both boundaries slide — and vertical sets
-  // its depth; Alt+drag is the asymmetric bend. The axis locks at the
-  // first movement, so a diagonal never does two things.
+  // The node's gestures (2026-10-01): a plain drag sets the crossing's
+  // DEPTH, vertical only; Alt+drag ROLLS the crossfade — a content edit,
+  // both boundaries slide — horizontal only, as an ABSOLUTE seam time.
   const crossfadePair = () => {
     const onCrossfadeRoll = vi.fn();
     const onCrossfadeShapeChange = vi.fn();
@@ -696,84 +695,57 @@ describe('clip fades', () => {
     return { node, onCrossfadeRoll, onCrossfadeShapeChange, onClipFadeChange };
   };
 
-  it('a plain HORIZONTAL drag on the node ROLLS the crossfade — the boundaries move, nothing bends', () => {
+  it('Alt+drag on the node ROLLS the crossfade — an absolute seam time, the boundaries move, nothing bends', () => {
     const { node, onCrossfadeRoll, onCrossfadeShapeChange, onClipFadeChange } = crossfadePair();
-    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 4 });
-    fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 4 });
-    expect(onCrossfadeRoll).toHaveBeenCalledWith(1, 2, expect.closeTo(0.3, 5));
+    // The seam (B's start) is at 3.0s; 30px right at 100px/s asks for 3.3s
+    fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 60, pointerId: 4 });
+    fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 4, altKey: true });
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(3.3, 5));
+    // Vertical travel is ignored by the roll
+    fireEvent.pointerMove(node, { clientX: 430, clientY: 100, pointerId: 4, altKey: true });
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(3.3, 5));
     expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
     expect(onClipFadeChange).not.toHaveBeenCalled();
     fireEvent.pointerUp(node, { pointerId: 4 });
   });
 
-  it('the roll targets the seam absolutely, so a step the host clamps is asked for again, never lost', () => {
+  it('the roll is absolute: each move asks for the seam the pointer wants, so a clamped step is asked for again and a stale one changes nothing', () => {
     // The host here applies nothing (the clips never move), as a clamp
-    // against missing hidden material would. Each move asks for the
-    // seam the pointer wants relative to the press — not for the pointer's
-    // travel since the last move, which would roll the seam away on the
-    // way back while the pointer was still well past the node.
+    // against missing hidden material would. On the way back the request
+    // is still "3.1s" — not "roll left by 0.2s", which would have moved
+    // the seam away from a pointer still right of the node.
     const { node, onCrossfadeRoll } = crossfadePair();
-    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 8 });
-    fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 8 });
-    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(0.3, 5));
-    fireEvent.pointerMove(node, { clientX: 410, clientY: 60, pointerId: 8 }); // back, but still right of the press
-    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(0.1, 5)); // not −0.2
-    fireEvent.pointerMove(node, { clientX: 390, clientY: 60, pointerId: 8 }); // past the press: now a roll left
-    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(-0.1, 5));
+    fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 60, pointerId: 8 });
+    fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 8, altKey: true });
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(3.3, 5));
+    fireEvent.pointerMove(node, { clientX: 410, clientY: 60, pointerId: 8, altKey: true });
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(3.1, 5));
+    fireEvent.pointerMove(node, { clientX: 390, clientY: 60, pointerId: 8, altKey: true });
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(2.9, 5));
     fireEvent.pointerUp(node, { pointerId: 8 });
   });
 
-  it('the node wears up/down arrows', () => {
+  it('a plain drag is DEPTH only: the crossing\'s time is held whatever the pointer does sideways', () => {
+    const { node, onCrossfadeRoll, onCrossfadeShapeChange } = crossfadePair();
+    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 48, pointerId: 6 });
+    fireEvent.pointerMove(node, { clientX: 440, clientY: 67, pointerId: 6 }); // 40 right, 19 down
+    expect(onCrossfadeRoll).not.toHaveBeenCalled();
+    expect(onCrossfadeShapeChange).toHaveBeenCalledTimes(1);
+    // The crossing's time is held at 4.0s, so both curves take the SAME
+    // exponent (symmetric); 19px down from 0.7071 is ≈ 2 (a deeper dip)
+    const [, , outShape, inShape] = onCrossfadeShapeChange.mock.calls[0];
+    expect(outShape).toBeCloseTo(inShape, 5);
+    expect(outShape).toBeCloseTo(2, 1);
+    fireEvent.pointerUp(node, { pointerId: 6 });
+  });
+
+  it('the node wears up/down arrows, and left/right while Alt is held', () => {
     const { node } = crossfadePair();
     expect(node.style.cursor).toBe('ns-resize');
-  });
-
-  it('the drag locks to its first axis: a mostly-sideways start keeps rolling, a mostly-vertical one keeps shaping', () => {
-    {
-      const { node, onCrossfadeRoll, onCrossfadeShapeChange } = crossfadePair();
-      fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 5 });
-      fireEvent.pointerMove(node, { clientX: 401, clientY: 61, pointerId: 5 }); // under the threshold: nothing yet
-      expect(onCrossfadeRoll).not.toHaveBeenCalled();
-      expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
-      fireEvent.pointerMove(node, { clientX: 410, clientY: 64, pointerId: 5 }); // sideways wins
-      fireEvent.pointerMove(node, { clientX: 420, clientY: 100, pointerId: 5 }); // now mostly down — still rolling
-      expect(onCrossfadeRoll).toHaveBeenCalledTimes(2);
-      expect(onCrossfadeShapeChange).not.toHaveBeenCalled();
-      fireEvent.pointerUp(node, { pointerId: 5 });
-    }
-    cleanup();
-    {
-      const { node, onCrossfadeRoll, onCrossfadeShapeChange } = crossfadePair();
-      fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 48, pointerId: 6 });
-      fireEvent.pointerMove(node, { clientX: 402, clientY: 60, pointerId: 6 }); // down wins
-      fireEvent.pointerMove(node, { clientX: 440, clientY: 67, pointerId: 6 }); // now mostly sideways — still shaping, time held
-      expect(onCrossfadeRoll).not.toHaveBeenCalled();
-      expect(onCrossfadeShapeChange).toHaveBeenCalledTimes(2);
-      // Depth: the crossing's time is held at 4.0s, so both curves take
-      // the SAME exponent (symmetric); at 67px down the dip is ≈ 2
-      const [, , outShape, inShape] = onCrossfadeShapeChange.mock.calls[1];
-      expect(outShape).toBeCloseTo(inShape, 5);
-      expect(outShape).toBeCloseTo(2, 1);
-      fireEvent.pointerUp(node, { pointerId: 6 });
-    }
-  });
-
-  it('Alt+drag on the node is the asymmetric BEND: the crossing follows the pointer in both axes, extents never move', () => {
-    const { node, onCrossfadeRoll, onCrossfadeShapeChange, onClipFadeChange } = crossfadePair();
-    fireEvent.pointerDown(node, { button: 0, altKey: true, clientX: 400, clientY: 48, pointerId: 7 });
-    // 30px right at the same gain: the crossing moves to 4.3s, so the
-    // outgoing curve must hold up longer (a shallower exponent) and the
-    // incoming one arrive later (a steeper one)
-    fireEvent.pointerMove(node, { clientX: 430, clientY: 48, pointerId: 7, altKey: true });
-    expect(onCrossfadeShapeChange).toHaveBeenCalledTimes(1);
-    const [outId, inId, outShape, inShape] = onCrossfadeShapeChange.mock.calls[0];
-    expect(outId).toBe(1);
-    expect(inId).toBe(2);
-    expect(outShape).toBeLessThan(1);
-    expect(inShape).toBeGreaterThan(1);
-    expect(onCrossfadeRoll).not.toHaveBeenCalled();
-    expect(onClipFadeChange).not.toHaveBeenCalled();
-    fireEvent.pointerUp(node, { pointerId: 7 });
+    fireEvent.keyDown(document, { key: 'Alt', altKey: true });
+    expect(node.style.cursor).toBe('ew-resize');
+    fireEvent.keyUp(document, { key: 'Alt', altKey: false });
+    expect(node.style.cursor).toBe('ns-resize');
   });
 
   it('the shape handle shows on HOVER only — selection alone does not show it', () => {
@@ -1069,30 +1041,32 @@ describe('clip fades', () => {
     };
     const release = (pointerId: number) => act(() => { fireEvent.pointerUp(node(), { pointerId }); });
 
-    // Inside the limits the handle is under the pointer
+    // Inside the limits the handle is under the pointer — vertically; the
+    // sideways 20px is ignored (2026-10-01) and it stays at the middle
     drag(11, 20, -10);
-    expect(last().t).toBeCloseTo(0.7, 10);
+    expect(last().t).toBeCloseTo(0.5, 10);
     expect(last().g).toBeCloseTo(0.5 + 10 / 92, 10);
-    expect(left()).toBe(centreLeft + 20);
+    expect(left()).toBe(centreLeft);
     expect(node().style.top).toBe(topFor(0.5 + 10 / 92));
     expect(path()).toBe(fadeCurvePath('in', 64, last()));
     expect(fadeInGain(last().t, last())).toBeCloseTo(last().g, 10); // on the curve
     release(11);
     // …and it stays there: nothing re-centres on release
-    expect(left()).toBe(centreLeft + 20);
+    expect(left()).toBe(centreLeft);
     expect(node().style.top).toBe(topFor(0.5 + 10 / 92));
 
-    // Far past every limit, toward each corner in turn
+    // Far past every limit, toward each corner in turn: only the gain
+    // limit bites, and the handle never leaves the middle
     const corners: Array<[number, number, FadeHandle]> = [
-      [-400, -400, { t: 0.15, g: 0.725 }],
-      [400, -400, { t: 0.85, g: 0.725 }],
-      [400, 400, { t: 0.85, g: 0.275 }],
-      [-400, 400, { t: 0.15, g: 0.275 }],
+      [-400, -400, { t: 0.5, g: 0.725 }],
+      [400, -400, { t: 0.5, g: 0.725 }],
+      [400, 400, { t: 0.5, g: 0.275 }],
+      [-400, 400, { t: 0.5, g: 0.275 }],
     ];
     corners.forEach(([dx, dy, corner], i) => {
       drag(20 + i, dx, dy);
       expect(last()).toEqual(corner);
-      expect(left()).toBe(centreLeft + Math.round((corner.t - 0.5) * 100));
+      expect(left()).toBe(centreLeft);
       expect(node().style.top).toBe(topFor(corner.g));
       expect(path()).toBe(fadeCurvePath('in', 64, corner));
       release(20 + i);
@@ -1100,7 +1074,7 @@ describe('clip fades', () => {
     });
   });
 
-  it('the handle moves in BOTH axes; the fade extent never moves', () => {
+  it('the handle moves UP and DOWN only — sideways travel is ignored — and the fade extent never moves', () => {
     const onClipFadeChange = vi.fn();
     const onClipFadeShapeChange = vi.fn();
     const { container } = render(
@@ -1119,21 +1093,21 @@ describe('clip fades', () => {
     hoverClip(container, 1);
     const inNode = container.querySelector('[data-quickfade-node="in"]') as HTMLElement;
     fireEvent.pointerDown(inNode, { button: 0, clientX: 62, clientY: 67, pointerId: 8 });
-    fireEvent.pointerMove(inNode, { clientX: 72, clientY: 58, pointerId: 8 }); // 10px right, 9px up
+    fireEvent.pointerMove(inNode, { clientX: 72, clientY: 58, pointerId: 8 }); // 10px right (ignored), 9px up
     expect(lastCall()[1]).toBe('in');
-    expect(lastCall()[2].t).toBeCloseTo(0.6, 10);
+    expect(lastCall()[2].t).toBeCloseTo(0.5, 10);
     expect(lastCall()[2].g).toBeCloseTo(0.5 + 9 / 92, 10);
     fireEvent.pointerUp(inNode, { pointerId: 8 });
 
-    // The fade OUT is 2s = 200px: the same 10px is 5% along it, and
-    // "along" runs from the fade's start toward the clip's end
+    // The fade OUT: the same — sideways ignored, down lowers the gain
     const outNode = container.querySelector('[data-quickfade-node="out"]') as HTMLElement;
     fireEvent.pointerDown(outNode, { button: 0, clientX: 300, clientY: 67, pointerId: 9 });
-    fireEvent.pointerMove(outNode, { clientX: 310, clientY: 76, pointerId: 9 }); // 10px right, 9px down
+    fireEvent.pointerMove(outNode, { clientX: 310, clientY: 76, pointerId: 9 }); // 10px right (ignored), 9px down
     expect(lastCall()[1]).toBe('out');
-    expect(lastCall()[2].t).toBeCloseTo(0.55, 10);
+    expect(lastCall()[2].t).toBeCloseTo(0.5, 10);
     expect(lastCall()[2].g).toBeCloseTo(0.5 - 9 / 92, 10);
     fireEvent.pointerUp(outNode, { pointerId: 9 });
+    expect(outNode.style.cursor).toBe('ns-resize');
 
     expect(onClipFadeChange).not.toHaveBeenCalled(); // extents pinned
   });

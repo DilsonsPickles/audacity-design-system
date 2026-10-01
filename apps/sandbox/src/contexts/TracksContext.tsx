@@ -312,7 +312,7 @@ export type TracksAction =
   | { type: 'UPDATE_RECORDING_CLIP'; payload: { trackIndex: number; clipId: number; updates: Partial<Clip> } }
   | { type: 'MOVE_CLIP'; payload: { clipId: number; fromTrackIndex: number; toTrackIndex: number; newStartTime: number } }
   | { type: 'SET_CLIP_FADE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; seconds: number } }
-  | { type: 'ROLL_CROSSFADE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; deltaSeconds: number } }
+  | { type: 'ROLL_CROSSFADE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; seamTime: number } }
   | { type: 'SET_CROSSFADE_SHAPE'; payload: { trackIndex: number; outgoingClipId: number; incomingClipId: number; outShape: FadeShape; inShape: FadeShape } }
   | { type: 'SET_CLIP_FADE_SHAPE'; payload: { trackIndex: number; clipId: number; side: 'in' | 'out'; shape: FadeShape } }
   | {

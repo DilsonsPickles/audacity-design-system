@@ -280,9 +280,11 @@ export interface TrackProps {
   onFadeDragChange?: (clipId: string | number | null) => void;
 
   /** Alt+drag on the crossfade's intersection node — a ROLL: both clip
-   *  edges slide by `deltaSeconds` (the seam moves, the overlap length
-   *  stays). Fired incrementally during the drag. */
-  onCrossfadeRoll?: (outgoingClipId: string | number, incomingClipId: string | number, deltaSeconds: number) => void;
+   *  edges slide so the seam (the incoming clip's start) lands at
+   *  `seamTime`, the overlap length staying. ABSOLUTE, so the host can
+   *  clamp it and a repeated or stale request changes nothing — fired on
+   *  every move of the drag. */
+  onCrossfadeRoll?: (outgoingClipId: string | number, incomingClipId: string | number, seamTime: number) => void;
 
   /** Plain drag on the intersection node — reshapes BOTH curves (fade
    *  extents never move) so the crossing lands under the pointer. */
@@ -709,11 +711,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [shapeHandleHover, setShapeHandleHover] = React.useState<string | null>(null);
   // Is Option/Alt held? Over an edge trim zone it turns the press into
   // a STRETCH (user decision 2026-09-30), and the zone's cursor says so
-  // ahead of the press. Read from the keyboard, cleared on blur — a
-  // modifier can be down when the window loses focus.
+  // ahead of the press; over the crossfade node it turns the press into
+  // a ROLL (2026-10-01), and the node's arrows turn sideways. Read from
+  // the keyboard, cleared on blur — a modifier can be down when the
+  // window loses focus.
   const [altHeld, setAltHeld] = React.useState(false);
   React.useEffect(() => {
-    if (!onClipStretchEdge) return;
+    if (!onClipStretchEdge && !onCrossfadeRoll) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Alt') setAltHeld(e.type === 'keydown'); };
     const onBlur = () => setAltHeld(false);
     document.addEventListener('keydown', onKey);
@@ -724,7 +728,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       document.removeEventListener('keyup', onKey);
       window.removeEventListener('blur', onBlur);
     };
-  }, [onClipStretchEdge]);
+  }, [onClipStretchEdge, onCrossfadeRoll]);
   // Prefix for the per-curve SVG clip ids (unique across tracks)
   const fadeClipIdBase = React.useId();
   // …and "over the clip" means WELL inside it (user decision
@@ -811,16 +815,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       };
     }).filter((n): n is NonNullable<typeof n> => n !== null);
   }, [clips]);
-  // Ref-mirror for the roll drag's document-level listener: it targets
-  // the seam ABSOLUTELY (where it was at the press plus the pointer's
-  // travel) and sends only the difference from where the seam IS, so a
-  // step the host clamps (no hidden material to roll into) is simply
-  // asked for again on the next move rather than lost — incremental
-  // deltas drifted: the pointer travelled on, nothing applied, and the
-  // way back rolled the seam away from a pointer that was nowhere near it.
-  const crossfadeNodesRef = React.useRef(crossfadeNodes);
-  React.useEffect(() => { crossfadeNodesRef.current = crossfadeNodes; }, [crossfadeNodes]);
-
   // Edges owned by a crossfade — their quick-fade handles hide; the
   // intersection node does the work there (2026-09-21 decision)
   const crossfadedEdges = React.useMemo(() => {
@@ -871,51 +865,34 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             try { nodeEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
             setFadeHoverClipId(n.incomingClipId); // a press on it proves the pointer is here
             setCrossfadeDrag(nodeKey);
-            // The node's gestures (user decision 2026-10-01, swapping the
-            // earlier plain-drag-shapes rule after a sense check against
-            // how Reaper, Pro Tools and Cubase treat a crossfade's centre):
-            //  - plain HORIZONTAL drag = ROLL, a content edit: both clip
-            //    edges slide, the seam moves, the overlap's length holds
-            //    (clamped to hidden material) — the boundaries are what a
-            //    crossfade's centre moves, since the overlap IS the fade;
-            //  - plain VERTICAL drag = DEPTH: both curves bend so the
-            //    crossing's gain lands under the pointer, its time held —
-            //    equal-power and shallower or deeper;
-            //  - ALT+drag = the asymmetric BEND (the old plain drag): both
-            //    curves bend so the crossing lands under the pointer in
-            //    BOTH axes, the extents never move.
-            // A plain drag LOCKS to its dominant axis at the first
-            // AXIS_LOCK_PX of movement, so a diagonal never rolls and
-            // bends at once. Closed form for the bends:
-            // shape = ln(gain) / ln(baseCurve(t)).
-            const AXIS_LOCK_PX = 3;
-            let mode: 'undecided' | 'roll' | 'depth' | 'bend' = e.altKey ? 'bend' : 'undecided';
+            // The node's gestures (user decisions 2026-10-01; the morning's
+            // plain-horizontal roll made the roll and the shape reachable
+            // from one press, which "felt weird"):
+            //  - plain drag = DEPTH, vertical only: both curves bend so the
+            //    crossing's gain lands under the pointer, its TIME held —
+            //    equal-power and shallower or deeper. Sideways travel is
+            //    ignored. Closed form: shape = ln(gain) / ln(baseCurve(t)).
+            //  - ALT+drag = ROLL, horizontal only, a content edit: both
+            //    clip edges slide, the seam moves, the overlap's length
+            //    holds (the host clamps to hidden material). The request
+            //    is ABSOLUTE — the seam at the press plus the pointer's
+            //    travel — so a repeated or stale request is idempotent:
+            //    incremental deltas both drifted against the clamp and
+            //    stuttered (two moves between commits asked twice).
+            // The asymmetric bend (crossing following the pointer in both
+            // axes) has no gesture now and is gone.
+            const rollMode = e.altKey;
             const startClientX = e.clientX;
             const startClientY = e.clientY;
             const startPoint = n.point;
             const seamAtPress = n.overlapStart;
             const onMove = (ev: PointerEvent) => {
-              if (mode === 'undecided') {
-                const dx = ev.clientX - startClientX;
-                const dy = ev.clientY - startClientY;
-                if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
-                mode = Math.abs(dx) >= Math.abs(dy) ? 'roll' : 'depth';
-              }
-              if (mode === 'roll') {
-                // Absolute: the seam the pointer asks for, less where the
-                // seam is now (crossfadeNodesRef — see its comment)
-                const live = crossfadeNodesRef.current.find((k) => `${k.outgoingClipId}-${k.incomingClipId}` === nodeKey);
-                const seamNow = live ? live.overlapStart : seamAtPress;
-                const seamWanted = seamAtPress + (ev.clientX - startClientX) / pixelsPerSecond;
-                const dx = seamWanted - seamNow;
-                if (Math.abs(dx) > 1e-9) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
+              if (rollMode) {
+                onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, seamAtPress + (ev.clientX - startClientX) / pixelsPerSecond);
                 return;
               }
               if (!onCrossfadeShapeChange) return;
-              // Depth holds the crossing's time; the bend takes the pointer's
-              const time = mode === 'depth'
-                ? startPoint.time
-                : startPoint.time + (ev.clientX - startClientX) / pixelsPerSecond;
+              const time = startPoint.time;
               const gain = startPoint.gain - (ev.clientY - startClientY) / Math.max(1, bodyHeight);
               // The pointer must stay strictly inside BOTH curve regions
               // (and the gain away from 0/1) for the solve to exist
@@ -924,12 +901,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const span = xHi - xLo;
               if (span <= 0) return;
               const x = Math.max(xLo + span * 0.02, Math.min(xHi - span * 0.02, time));
-              const g = Math.max(0.05, Math.min(0.95, gain));
               const tOut = (x - n.outRegion.start) / (n.outRegion.end - n.outRegion.start);
               const tIn = (x - n.inRegion.start) / (n.inRegion.end - n.inRegion.start);
-              const clampShape = (v: number) => Math.max(0.15, Math.min(6, v));
-              const outShape = clampShape(Math.log(g) / Math.log(Math.cos((tOut * Math.PI) / 2)));
-              const inShape = clampShape(Math.log(g) / Math.log(Math.sin((tIn * Math.PI) / 2)));
+              const baseOut = Math.cos((tOut * Math.PI) / 2);
+              const baseIn = Math.sin((tIn * Math.PI) / 2);
+              // The exponents are held to [SHAPE_MIN, SHAPE_MAX]. Clamping
+              // each SIDE on its own would, off-centre, bite one side
+              // before the other and walk the crossing sideways while
+              // the time is meant to be held — so the GAIN is clamped
+              // instead, to the range both sides can reach (shape = ln g
+              // / ln base ⇔ g = base^shape), and neither exponent is
+              // ever clamped alone.
+              const SHAPE_MIN = 0.15;
+              const SHAPE_MAX = 6;
+              const gLo = Math.max(0.05, Math.pow(baseOut, SHAPE_MAX), Math.pow(baseIn, SHAPE_MAX));
+              const gHi = Math.min(0.95, Math.pow(baseOut, SHAPE_MIN), Math.pow(baseIn, SHAPE_MIN));
+              const g = gLo > gHi ? gLo : Math.max(gLo, Math.min(gHi, gain));
+              const outShape = Math.log(g) / Math.log(baseOut);
+              const inShape = Math.log(g) / Math.log(baseIn);
               if (Number.isFinite(outShape) && Number.isFinite(inShape)) {
                 onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, outShape, inShape);
               }
@@ -963,8 +952,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            // Up/down arrows (user decision 2026-10-01; it was left/right)
-            cursor: 'ns-resize',
+            // Up/down arrows for the depth drag; left/right while Alt is
+            // held, previewing the roll (user decision 2026-10-01)
+            cursor: altHeld ? 'ew-resize' : 'ns-resize',
             // Above the fade curves (450), below envelope layers (500+)
             zIndex: 460,
           }}
@@ -1088,12 +1078,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const startClientY = e.clientY;
               const startT = tDot;
               const startGain = gain;
-              // Both axes: the pointer's (t, g) inside the fade, held to
-              // the handle's limits, IS the new shape — the S-curve
-              // through that point. The fade's start and end never move.
+              // VERTICAL only (user decision 2026-10-01, as the crossfade
+              // node): the handle's place along the fade is held — the
+              // middle, unless a stored project put it elsewhere — and
+              // its gain follows the pointer, held to the handle's
+              // limits. That point IS the new shape, the S-curve through
+              // it. Sideways travel is ignored; the fade's start and end
+              // never move.
               const onMove = (ev: PointerEvent) => {
                 const next = clampFadeHandle({
-                  t: startT + (ev.clientX - startClientX) / Math.max(1, fade * pixelsPerSecond),
+                  t: startT,
                   g: startGain - (ev.clientY - startClientY) / Math.max(1, bodyHeight),
                 });
                 onClipFadeShapeChange(clip.id, side, next);
@@ -1117,7 +1111,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'move',
+              // Up/down arrows: the handle only moves vertically
+              cursor: 'ns-resize',
               zIndex: 460,
             }}
           >

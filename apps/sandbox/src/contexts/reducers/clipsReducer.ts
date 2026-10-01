@@ -202,14 +202,17 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
     case 'ROLL_CROSSFADE': {
       // Roll edit from the crossfade's intersection node: both clip
       // edges slide together (utils/crossfadeRoll.ts does the clamped
-      // math), the seam moves, the overlap length stays.
-      const { trackIndex, outgoingClipId, incomingClipId, deltaSeconds } = action.payload;
+      // math), the seam moves, the overlap length stays. The request is
+      // ABSOLUTE — where the seam (the incoming clip's start) should be —
+      // so the delta is taken from the clip's own state here and a
+      // repeated or stale request changes nothing (2026-10-01).
+      const { trackIndex, outgoingClipId, incomingClipId, seamTime } = action.payload;
       const track = state.tracks[trackIndex];
       if (!track) return state;
       const outgoing = track.clips.find(c => c.id === outgoingClipId);
       const incoming = track.clips.find(c => c.id === incomingClipId);
       if (!outgoing || !incoming) return state;
-      const roll = computeCrossfadeRoll(outgoing, incoming, deltaSeconds);
+      const roll = computeCrossfadeRoll(outgoing, incoming, seamTime - incoming.start);
       if (!roll) return state;
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
@@ -230,14 +233,19 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       const { trackIndex, outgoingClipId, incomingClipId, outShape, inShape } = action.payload;
       const track = state.tracks[trackIndex];
       if (!track) return state;
-      // 'linear' is stored as-is; an exponent of ~1 clears the field
-      const norm = (v: FadeShape) => (typeof v === 'number' && Math.abs(v - DEFAULT_CROSSFADE_SHAPE) < 0.01 ? undefined : v);
+      // 'linear' is stored as-is; exponents of ~1 clear the fields —
+      // but only TOGETHER: snapping one side to exactly 1 while the
+      // other keeps its value would move the crossing sideways by a
+      // hair as a depth drag passes equal-power on an off-centre
+      // crossing (2026-10-01). A symmetric crossing clears both at once.
+      const near = (v: FadeShape) => typeof v === 'number' && Math.abs(v - DEFAULT_CROSSFADE_SHAPE) < 0.01;
+      const bothDefault = near(outShape) && near(inShape);
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...track,
         clips: track.clips.map(clip => {
-          if (clip.id === outgoingClipId) return { ...clip, fadeOutShape: norm(outShape) };
-          if (clip.id === incomingClipId) return { ...clip, fadeInShape: norm(inShape) };
+          if (clip.id === outgoingClipId) return { ...clip, fadeOutShape: bothDefault ? undefined : outShape };
+          if (clip.id === incomingClipId) return { ...clip, fadeInShape: bothDefault ? undefined : inShape };
           return clip;
         }),
       };

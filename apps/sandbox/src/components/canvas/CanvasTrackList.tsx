@@ -966,14 +966,14 @@ const CanvasTrack = React.memo(function CanvasTrack({
             },
           });
         }}
-        onCrossfadeRoll={(outgoingClipId, incomingClipId, deltaSeconds) => {
+        onCrossfadeRoll={(outgoingClipId, incomingClipId, seamTime) => {
           dispatch({
             type: 'ROLL_CROSSFADE',
             payload: {
               trackIndex,
               outgoingClipId: outgoingClipId as number,
               incomingClipId: incomingClipId as number,
-              deltaSeconds,
+              seamTime,
             },
           });
         }}
