@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nearestGaps, clipOffsets, sizeOf, describeControl, type Box } from '../inspectorGeometry';
+import { nearestGaps, clipOffsets, sizeOf, describeControl, describeElement, spacingText, type Box } from '../inspectorGeometry';
 
 const box = (left: number, top: number, w: number, h: number): Box => ({ left, top, right: left + w, bottom: top + h });
 
@@ -41,5 +41,21 @@ describe('inspectorGeometry — the dev Inspector\'s measurements (2026-10-01)',
     expect(describeControl({ edgeTrim: 'right', edgeMode: 'trim' })).toBe('Edge zone (right)');
     expect(describeControl({ clipId: '7' })).toBe('Clip 7');
     expect(describeControl({})).toBe('Element');
+  });
+});
+
+describe('inspectorGeometry — any element (2026-10-01, "I was hoping that dev view would work anywhere")', () => {
+  it('names an element by tag, id, first two classes, role and label', () => {
+    expect(describeElement({ tag: 'BUTTON', className: 'toolbar__button toolbar__button--play extra', role: 'button', ariaLabel: 'Play' }))
+      .toBe('button.toolbar__button.toolbar__button--play[button] "Play"');
+    expect(describeElement({ tag: 'DIV', id: 'root' })).toBe('div#root');
+    expect(describeElement({ tag: 'SPAN', ariaLabel: 'A label that is far too long to show whole' })).toBe('span "A label that is far too lon…"');
+  });
+
+  it('writes spacing the CSS way, or not at all', () => {
+    expect(spacingText('padding', 0, 0, 0, 0)).toBeNull();
+    expect(spacingText('padding', 4, 4, 4, 4)).toBe('padding 4');
+    expect(spacingText('margin', 0, 8, 0, 8)).toBe('margin 0 8');
+    expect(spacingText('padding', 1, 2, 3, 4)).toBe('padding 1 2 3 4');
   });
 });

@@ -211,9 +211,10 @@ export function DebugPanel({
               color: '#14151a',
               opacity: 0.7,
             }}>
-              Hover any clip control (or a clip) for its W × H, its offsets from the clip&apos;s edges
-              (negative = outside) and the gap to the nearest control on each side — measured from
-              the real boxes, in pixels. Remembered across reloads.
+              Hover anything for its W × H, padding and margin, its offsets from its container&apos;s
+              edges (negative = outside) and the gap to the nearest sibling on each side — measured
+              from the real boxes, in pixels. Shift inspects the parent instead. Clip controls are
+              measured against their clip. Remembered across reloads.
             </span>
           </div>
         </div>

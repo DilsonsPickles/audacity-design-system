@@ -100,3 +100,29 @@ export function describeControl(attrs: {
   if (attrs.clipId) return `Clip ${attrs.clipId}`;
   return 'Element';
 }
+
+/** A readable name for ANY element: tag, id, the first classes, role
+ *  and label — enough to find it in the source */
+export function describeElement(attrs: {
+  tag: string;
+  id?: string | null;
+  className?: string;
+  role?: string | null;
+  ariaLabel?: string | null;
+}): string {
+  const classes = (attrs.className ?? '').split(/\s+/).filter(Boolean).slice(0, 2);
+  let s = attrs.tag.toLowerCase();
+  if (attrs.id) s += `#${attrs.id}`;
+  for (const c of classes) s += `.${c}`;
+  if (attrs.role) s += `[${attrs.role}]`;
+  if (attrs.ariaLabel) s += ` "${attrs.ariaLabel.length > 28 ? `${attrs.ariaLabel.slice(0, 27)}…` : attrs.ariaLabel}"`;
+  return s;
+}
+
+/** Four-sided spacing, written the CSS way (and nothing when all zero) */
+export function spacingText(name: string, t: number, r: number, b: number, l: number): string | null {
+  if (!t && !r && !b && !l) return null;
+  if (t === r && r === b && b === l) return `${name} ${t}`;
+  if (t === b && r === l) return `${name} ${t} ${r}`;
+  return `${name} ${t} ${r} ${b} ${l}`;
+}
