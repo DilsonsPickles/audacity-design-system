@@ -142,6 +142,23 @@ const ICON_MAP: Record<IconName, string> = {
   search: '\uEF17',
 };
 
+/** The glyph each icon name draws — the MusescoreIcon codepoints, read
+ *  back by the dev Inspector ("show the icon's code", 2026-10-01) */
+export const ICON_CODES: Readonly<Record<IconName, string>> = ICON_MAP;
+
+/** The icon name(s) a glyph is registered under — a few codepoints
+ *  carry two names (cloud / cloud-sync, plug / plugins, mixer /
+ *  microphone); empty for a glyph the map does not know. */
+export function iconNamesOf(glyph: string): IconName[] {
+  return (Object.keys(ICON_MAP) as IconName[]).filter((name) => ICON_MAP[name] === glyph);
+}
+
+/** A glyph's codepoint, written U+XXXX */
+export function glyphCodepoint(glyph: string): string {
+  const cp = glyph.codePointAt(0);
+  return cp === undefined ? '' : `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+}
+
 export interface IconProps {
   /**
    * Icon name from MusescoreIcon font

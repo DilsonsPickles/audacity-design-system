@@ -213,8 +213,9 @@ export function DebugPanel({
             }}>
               Hover anything for its W × H, padding and margin, its offsets from its container&apos;s
               edges (negative = outside) and the gap to the nearest sibling on each side — measured
-              from the real boxes, in pixels. Shift inspects the parent instead. Clip controls are
-              measured against their clip. Remembered across reloads.
+              from the real boxes, in pixels, plus any icon it shows as its name, codepoint and JSX.
+              Shift inspects the parent instead. Clip controls are measured against their clip.
+              Remembered across reloads.
             </span>
           </div>
         </div>

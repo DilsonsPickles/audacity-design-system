@@ -15,10 +15,21 @@
  * nothing.
  */
 import React from 'react';
+import { iconNamesOf, glyphCodepoint } from '@audacity-ui/components';
 import {
   nearestGaps, clipOffsets, sizeOf, describeControl, describeElement, spacingText, round,
   type Box, type Gap, type Neighbour,
 } from '../utils/inspectorGeometry';
+
+/** The icon glyph an element shows — itself, or the first icon inside
+ *  it (a button's) — as its name, codepoint and the JSX that draws it
+ *  ("show the icon's code", 2026-10-01). Null when there is none. */
+function iconInfo(el: Element): { names: string[]; codepoint: string; glyph: string } | null {
+  const icon = el.matches('.musescore-icon') ? el : el.querySelector('.musescore-icon');
+  const glyph = icon?.textContent?.trim() ?? '';
+  if (!glyph || [...glyph].length !== 1) return null;
+  return { names: iconNamesOf(glyph), codepoint: glyphCodepoint(glyph), glyph };
+}
 
 const CONTROL_SELECTOR = [
   '[data-buried-handle]',
@@ -91,12 +102,14 @@ interface Reading {
   container?: { label: string; box: Box; offsets: { left: number; right: number; top: number } };
   gaps: Gap[];
   spacing: string[];
+  icon: ReturnType<typeof iconInfo>;
   pointer: { x: number; y: number };
 }
 
 const INK = '#ff2d9b';   // the target
 const CTR = '#22d3ee';   // offsets from the container
 const GAP = '#f59e0b';   // gaps to neighbours
+const ICON_COLOR = '#a3e635'; // the icon glyph's name and code
 
 export function DevInspector({ enabled }: { enabled: boolean }) {
   const [reading, setReading] = React.useState<Reading | null>(null);
@@ -149,7 +162,7 @@ export function DevInspector({ enabled }: { enabled: boolean }) {
         spacingText('border', px(cs.borderTopWidth), px(cs.borderRightWidth), px(cs.borderBottomWidth), px(cs.borderLeftWidth)),
       ].filter((s): s is string => s !== null);
 
-      setReading({ label: describe(el), box, size: sizeOf(box), container, gaps: nearestGaps(box, neighbours), spacing, pointer: p });
+      setReading({ label: describe(el), box, size: sizeOf(box), container, gaps: nearestGaps(box, neighbours), spacing, icon: iconInfo(el), pointer: p });
     };
     let raf = 0;
     const schedule = () => {
@@ -182,7 +195,7 @@ export function DevInspector({ enabled }: { enabled: boolean }) {
   }, [enabled]);
 
   if (!enabled || !reading) return null;
-  const { box, size, container, gaps, label, spacing, pointer: p } = reading;
+  const { box, size, container, gaps, label, spacing, icon, pointer: p } = reading;
   const midY = (box.top + box.bottom) / 2;
   const midX = (box.left + box.right) / 2;
 
@@ -245,6 +258,14 @@ export function DevInspector({ enabled }: { enabled: boolean }) {
             {g.side === 'left' ? '←' : g.side === 'right' ? '→' : g.side === 'above' ? '↑' : '↓'} {g.px} to {g.to}
           </div>
         ))}
+        {icon && (
+          <div style={{ color: ICON_COLOR, marginTop: 4 }}>
+            <span className="musescore-icon" style={{ fontSize: 14, verticalAlign: -2, marginRight: 6 }} aria-hidden="true">{icon.glyph}</span>
+            {icon.names.length > 0
+              ? <>{icon.names.map((n) => `<Icon name="${n}" />`).join(' / ')} · {icon.codepoint}</>
+              : <>{icon.codepoint} (not in ICON_MAP)</>}
+          </div>
+        )}
         <div style={{ opacity: 0.55, marginTop: 4 }}>Shift: parent</div>
       </div>
     </div>
