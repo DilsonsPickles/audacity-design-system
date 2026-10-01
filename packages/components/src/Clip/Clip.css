@@ -234,15 +234,29 @@
   cursor: url('../assets/cursors/ClipStretchRight.png') 16 16, ew-resize;
 }
 
-/* A handle on its way out (hooks/useLeavingKeys.ts keeps it mounted
-   for HANDLE_LEAVE_MS with data-leaving) fades, and takes no pointer
-   — a subtle exit, under half a second (user decision 2026-10-01).
-   Appearance stays instant. */
+/* A handle fades in on arrival (@starting-style: the transition runs
+   from the first frame) and out on its way out — hooks/useLeavingKeys.ts
+   keeps it mounted for HANDLE_LEAVE_MS with data-leaving, and it takes
+   no pointer then. Quick: the hover scale's tempo (user decision
+   2026-10-01, "fade in and fade out, but quicker"). Keep the duration
+   in step with HANDLE_LEAVE_MS. */
 .clip-display__handle {
-  transition: opacity 0.2s ease-out;
+  transition: opacity 0.12s ease-out;
+}
+
+@starting-style {
+  .clip-display__handle {
+    opacity: 0;
+  }
 }
 
 .clip-display__handle[data-leaving] {
   opacity: 0;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clip-display__handle {
+    transition: none;
+  }
 }

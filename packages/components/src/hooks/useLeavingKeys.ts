@@ -1,13 +1,14 @@
 /**
  * A soft exit for the hover-dependent clip controls (user decision
- * 2026-10-01: "subtle fade out, less than 0.5s"). The trim and stretch
+ * 2026-10-01: "subtle fade out, less than 0.5s", then "fade in and
+ * fade out, but quicker" — the entry is CSS alone, `@starting-style`
+ * in Clip.css / Track.css, at the same HANDLE_LEAVE_MS). The trim and stretch
  * handles, the fade handles, the shape handles and the crossfade node
  * are MOUNTED only while they apply; to fade out they have to stay a
  * moment longer. These hooks keep a key "leaving" for HANDLE_LEAVE_MS
  * after it stops being active; the control renders for that long with
  * `data-leaving`, and the CSS (Clip.css / Track.css) fades it and takes
- * its pointer events. Appearance stays instant — the fade is on the
- * way out only.
+ * its pointer events.
  *
  * The leaving set is known IN THE RENDER where a key goes (from the
  * previous render's keys), not an effect later — otherwise the element
@@ -19,7 +20,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
-export const HANDLE_LEAVE_MS = 200;
+export const HANDLE_LEAVE_MS = 120;
 
 export function handleLeaveMs(): number {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 0;

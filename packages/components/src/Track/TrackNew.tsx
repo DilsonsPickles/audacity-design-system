@@ -773,6 +773,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // fade hover above, this one is not "well inside": the handles ARE
   // the edges.
   const [handleHoverClipId, setHandleHoverClipId] = React.useState<string | number | null>(null);
+  // The clip with DOM focus: its FADE handles show without the pointer
+  // (user decision 2026-10-01, "if a clip is in focus we need to show
+  // fade handles") — the keyboard user's way to see them. Focus moving
+  // to one of the clip's own controls is not a blur.
+  const [focusedClipId, setFocusedClipId] = React.useState<string | number | null>(null);
   const [edgeDragClipId, setEdgeDragClipId] = React.useState<string | number | null>(null);
   const handleHoverProps = (clipId: string | number) => ({
     onMouseEnter: (e: React.MouseEvent) => { if (e.buttons === 0) setHandleHoverClipId(clipId); },
@@ -1585,6 +1590,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             }
           }}
           onFocus={(e) => {
+            setFocusedClipId(clip.id);
             if (clipFocusFromMouseRef.current) {
               // Mouse-driven focus: don't scroll, keep data-focus-mouse attr for CSS
               clipFocusFromMouseRef.current = false;
@@ -1593,6 +1599,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // Keyboard-driven focus: clear mouse attr so outline shows, and scroll into view
             (e.currentTarget as HTMLElement).removeAttribute('data-focus-mouse');
             scrollIntoViewIfNeeded(e.currentTarget as HTMLElement);
+          }}
+          onBlur={(e) => {
+            // The clip's own controls: inside the wrapper (the trim
+            // pair) or at track level carrying its id (fade handles,
+            // buried duplicates)
+            const to = e.relatedTarget;
+            if (to instanceof Element && (e.currentTarget.contains(to)
+              || to.closest(`[data-fade-clip="${clip.id}"], [data-clip-ref="${clip.id}"]`))) return;
+            setFocusedClipId((prev) => (prev === clip.id ? null : prev));
           }}
           onKeyDown={(e) => {
             // If focus is invisible (mouse click), first Tab/Shift+Tab reveals the outline
@@ -1994,13 +2009,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId, isCrossfadedEdge, handlesFollow]);
 
   // THE SOFT EXIT (hooks/useLeavingKeys.ts; user decision 2026-10-01,
-  // "subtle fade out, less than 0.5s"): each hover-dependent control
+  // "fade in and fade out, but quicker" — the fade IN is CSS alone,
+  // @starting-style in Track.css): each hover-dependent control
   // stays HANDLE_LEAVE_MS after it stops applying, with data-leaving,
   // fading (Track.css). One key set per control; the render functions
   // draw active ∪ leaving. (Clip's in-clip trim/stretch pair does the
   // same for itself.)
   const fadeHandleActive = clips
-    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
+    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id || focusedClipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   const leavingFadeHandles = useLeavingKeys(fadeHandleActive);
   const buriedActive = clips
@@ -2139,6 +2155,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               type="button"
               tabIndex={-1}
               data-buried-handle={`trim-${edge}`}
+              data-clip-ref={clip.id}
               data-leaving={leavingAttr}
               onMouseEnter={() => setHintHover('trim')}
               onMouseLeave={() => setHintHover((prev) => (prev === 'trim' ? null : prev))}
@@ -2157,6 +2174,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             type="button"
             tabIndex={-1}
             data-buried-handle={`stretch-${edge}`}
+            data-clip-ref={clip.id}
             data-leaving={leavingAttr}
             onMouseEnter={() => setHintHover('stretch')}
             onMouseLeave={() => setHintHover((prev) => (prev === 'stretch' ? null : prev))}

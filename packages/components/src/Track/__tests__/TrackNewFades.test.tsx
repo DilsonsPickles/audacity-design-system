@@ -1732,3 +1732,37 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
     fireEvent.pointerUp(handle, { clientX: 404, clientY: 30, pointerId: 4 });
   });
 });
+
+describe('a clip with FOCUS shows its fade handles without the pointer (2026-10-01)', () => {
+  it('focus brings the corner handles up (not the shape handles), blur takes them down; focus on one of its own controls is not a blur', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1 },
+            { id: 2, name: 'B', start: 5, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const clip = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    expect(container.querySelector('[data-fade-handle]')).toBeNull();
+    act(() => { clip.focus(); });
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
+    expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
+    expect(container.querySelector('[data-quickfade-node]')).toBeNull(); // hover only, still
+    // Focus moving to the clip's own handle keeps them (the handles are
+    // mouse-only, but a click can focus a button)
+    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
+    fireEvent.blur(clip, { relatedTarget: handle });
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
+    // Focus leaving for elsewhere takes them down
+    act(() => { clip.blur(); });
+    expect(container.querySelector('[data-fade-handle]')).toBeNull();
+  });
+});

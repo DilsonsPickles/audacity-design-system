@@ -70,7 +70,7 @@
    trails the handle at its limits. The handle is centred in its box, so
    it grows about its own middle and stays on the curve. */
 .track-fade-shape-handle {
-  transition: transform 0.12s ease-out, opacity 0.2s ease-out;
+  transition: transform 0.12s ease-out, opacity 0.12s ease-out;
 }
 
 .track-fade-shape-handle[data-hovered] {
@@ -202,18 +202,36 @@
 [data-debug-hit-areas] [data-clip-id]::before { left: 0; }
 [data-debug-hit-areas] [data-clip-id]::after { right: 0; }
 
-/* A hover-dependent control on its way out — fade handle, shape handle,
-   crossfade node, buried trim/stretch duplicate (Clip.css covers the
-   in-clip pair) — lingers for HANDLE_LEAVE_MS with data-leaving
-   (hooks/useLeavingKeys.ts), fading and taking no pointer: a subtle
-   exit, under half a second (user decision 2026-10-01). Appearance
-   stays instant. */
+/* A hover-dependent control — fade handle, shape handle, crossfade
+   node, buried trim/stretch duplicate (Clip.css covers the in-clip
+   pair) — fades IN on arrival (@starting-style: the transition runs
+   from the first frame) and OUT on its way out: it lingers for
+   HANDLE_LEAVE_MS with data-leaving (hooks/useLeavingKeys.ts), fading
+   and taking no pointer. Quick: the hover scale's tempo (user decision
+   2026-10-01, "fade in and fade out, but quicker"). Keep the durations
+   in step with HANDLE_LEAVE_MS. */
 .track-fade-handle,
 [data-crossfade-node] {
-  transition: opacity 0.2s ease-out;
+  transition: opacity 0.12s ease-out;
+}
+
+@starting-style {
+  .track-fade-handle,
+  .track-fade-shape-handle,
+  [data-crossfade-node] {
+    opacity: 0;
+  }
 }
 
 [data-leaving] {
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-fade-handle,
+  .track-fade-shape-handle,
+  [data-crossfade-node] {
+    transition: none;
+  }
 }
