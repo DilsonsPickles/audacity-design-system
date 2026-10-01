@@ -706,6 +706,28 @@ describe('clip fades', () => {
     fireEvent.pointerUp(node, { pointerId: 4 });
   });
 
+  it('the roll targets the seam absolutely, so a step the host clamps is asked for again, never lost', () => {
+    // The host here applies nothing (the clips never move), as a clamp
+    // against missing hidden material would. Each move asks for the
+    // seam the pointer wants relative to the press — not for the pointer's
+    // travel since the last move, which would roll the seam away on the
+    // way back while the pointer was still well past the node.
+    const { node, onCrossfadeRoll } = crossfadePair();
+    fireEvent.pointerDown(node, { button: 0, clientX: 400, clientY: 60, pointerId: 8 });
+    fireEvent.pointerMove(node, { clientX: 430, clientY: 60, pointerId: 8 });
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(0.3, 5));
+    fireEvent.pointerMove(node, { clientX: 410, clientY: 60, pointerId: 8 }); // back, but still right of the press
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(0.1, 5)); // not −0.2
+    fireEvent.pointerMove(node, { clientX: 390, clientY: 60, pointerId: 8 }); // past the press: now a roll left
+    expect(onCrossfadeRoll).toHaveBeenLastCalledWith(1, 2, expect.closeTo(-0.1, 5));
+    fireEvent.pointerUp(node, { pointerId: 8 });
+  });
+
+  it('the node wears up/down arrows', () => {
+    const { node } = crossfadePair();
+    expect(node.style.cursor).toBe('ns-resize');
+  });
+
   it('the drag locks to its first axis: a mostly-sideways start keeps rolling, a mostly-vertical one keeps shaping', () => {
     {
       const { node, onCrossfadeRoll, onCrossfadeShapeChange } = crossfadePair();

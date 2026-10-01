@@ -811,6 +811,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       };
     }).filter((n): n is NonNullable<typeof n> => n !== null);
   }, [clips]);
+  // Ref-mirror for the roll drag's document-level listener: it targets
+  // the seam ABSOLUTELY (where it was at the press plus the pointer's
+  // travel) and sends only the difference from where the seam IS, so a
+  // step the host clamps (no hidden material to roll into) is simply
+  // asked for again on the next move rather than lost — incremental
+  // deltas drifted: the pointer travelled on, nothing applied, and the
+  // way back rolled the seam away from a pointer that was nowhere near it.
+  const crossfadeNodesRef = React.useRef(crossfadeNodes);
+  React.useEffect(() => { crossfadeNodesRef.current = crossfadeNodes; }, [crossfadeNodes]);
 
   // Edges owned by a crossfade — their quick-fade handles hide; the
   // intersection node does the work there (2026-09-21 decision)
@@ -884,7 +893,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             const startClientX = e.clientX;
             const startClientY = e.clientY;
             const startPoint = n.point;
-            let lastX = e.clientX;
+            const seamAtPress = n.overlapStart;
             const onMove = (ev: PointerEvent) => {
               if (mode === 'undecided') {
                 const dx = ev.clientX - startClientX;
@@ -893,9 +902,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 mode = Math.abs(dx) >= Math.abs(dy) ? 'roll' : 'depth';
               }
               if (mode === 'roll') {
-                const dx = (ev.clientX - lastX) / pixelsPerSecond;
-                lastX = ev.clientX;
-                if (dx !== 0) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
+                // Absolute: the seam the pointer asks for, less where the
+                // seam is now (crossfadeNodesRef — see its comment)
+                const live = crossfadeNodesRef.current.find((k) => `${k.outgoingClipId}-${k.incomingClipId}` === nodeKey);
+                const seamNow = live ? live.overlapStart : seamAtPress;
+                const seamWanted = seamAtPress + (ev.clientX - startClientX) / pixelsPerSecond;
+                const dx = seamWanted - seamNow;
+                if (Math.abs(dx) > 1e-9) onCrossfadeRoll?.(n.outgoingClipId, n.incomingClipId, dx);
                 return;
               }
               if (!onCrossfadeShapeChange) return;
@@ -950,7 +963,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'ew-resize',
+            // Up/down arrows (user decision 2026-10-01; it was left/right)
+            cursor: 'ns-resize',
             // Above the fade curves (450), below envelope layers (500+)
             zIndex: 460,
           }}
