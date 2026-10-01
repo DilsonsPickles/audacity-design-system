@@ -233,3 +233,16 @@
 .clip-display__handle--stretch-right {
   cursor: url('../assets/cursors/ClipStretchRight.png') 16 16, ew-resize;
 }
+
+/* A handle on its way out (hooks/useLeavingKeys.ts keeps it mounted
+   for HANDLE_LEAVE_MS with data-leaving) fades, and takes no pointer
+   — a subtle exit, under half a second (user decision 2026-10-01).
+   Appearance stays instant. */
+.clip-display__handle {
+  transition: opacity 0.2s ease-out;
+}
+
+.clip-display__handle[data-leaving] {
+  opacity: 0;
+  pointer-events: none;
+}

@@ -7,6 +7,7 @@ import { ClipBody, ClipBodyVariant, ClipBodyChannelMode } from '../ClipBody/Clip
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { MidiClipBody } from '../MidiClipBody/MidiClipBody';
 import type { EnvelopePointData } from '../utils/envelope';
+import { useLeaveDelay } from '../hooks/useLeavingKeys';
 import '../assets/fonts/musescore-icon.css';
 import './Clip.css';
 
@@ -217,6 +218,11 @@ const ClipComponent: React.FC<ClipProps> = ({
   const [isHeaderHovering, setIsHeaderHovering] = useState(false);
   const [trimEdge, setTrimEdge] = useState<'left' | 'right' | null>(null);
   const [stretchEdge, setStretchEdge] = useState<'left' | 'right' | null>(null);
+  // The handles' tenure: shown while the host says so or one is in
+  // hand, and kept a moment after that, fading (useLeaveDelay)
+  const handlesShown = !handlesHidden && ((handlesVisible ?? selected) || trimEdge !== null || stretchEdge !== null);
+  const { mounted: handlesMounted, leaving: handlesLeaving } = useLeaveDelay(handlesShown);
+  const leavingAttr = handlesLeaving ? 'true' : undefined;
   const outerRef = React.useRef<HTMLDivElement>(null);
 
   // Restart the source-boundary shake animation on every trigger.
@@ -448,12 +454,13 @@ const ClipComponent: React.FC<ClipProps> = ({
           Trim buttons render only when onTrimEdge is wired (matches the
           original contract); stretch buttons always render but no-op if
           onStretchEdge is absent. */}
-      {!handlesHidden && ((handlesVisible ?? selected) || trimEdge !== null || stretchEdge !== null) && (
+      {handlesMounted && (
         <>
           {/* Mouse-only handles. tabIndex={-1} keeps them out of the
               main tab order; the equivalent actions are reachable via
               dedicated keyboard shortcuts. A crossfaded edge shows
-              neither of its pair (handlesHiddenAt). */}
+              neither of its pair (handlesHiddenAt). On their way out
+              they linger a moment with data-leaving, fading (Clip.css). */}
           {!handlesHiddenAt?.left && (
             <>
               {onTrimEdge && (
@@ -462,6 +469,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   tabIndex={-1}
                   className="clip-display__handle clip-display__handle--trim-left"
                   aria-label="Trim left edge"
+                  data-leaving={leavingAttr}
                   onMouseDown={handleVisibleTrimMouseDown('left')}
                   onMouseEnter={() => onHandleHover?.('trim')}
                   onMouseLeave={() => onHandleHover?.(null)}
@@ -474,6 +482,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                 tabIndex={-1}
                 className="clip-display__handle clip-display__handle--stretch-left"
                 aria-label="Stretch left edge"
+                data-leaving={leavingAttr}
                 onMouseDown={handleStretchMouseDown('left')}
                 onMouseEnter={() => onHandleHover?.('stretch')}
                 onMouseLeave={() => onHandleHover?.(null)}
@@ -490,6 +499,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   tabIndex={-1}
                   className="clip-display__handle clip-display__handle--trim-right"
                   aria-label="Trim right edge"
+                  data-leaving={leavingAttr}
                   onMouseDown={handleVisibleTrimMouseDown('right')}
                   onMouseEnter={() => onHandleHover?.('trim')}
                   onMouseLeave={() => onHandleHover?.(null)}
@@ -502,6 +512,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                 tabIndex={-1}
                 className="clip-display__handle clip-display__handle--stretch-right"
                 aria-label="Stretch right edge"
+                data-leaving={leavingAttr}
                 onMouseDown={handleStretchMouseDown('right')}
                 onMouseEnter={() => onHandleHover?.('stretch')}
                 onMouseLeave={() => onHandleHover?.(null)}

@@ -9,6 +9,7 @@ import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveF
 import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZones';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
+import { useLeavingKeys } from '../hooks/useLeavingKeys';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { getInputMode } from '../utils/inputMode';
 import { scrollIntoViewIfNeeded } from '../utils/scrollIntoViewIfNeeded';
@@ -938,7 +939,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const renderCrossfadeNodes = () => {
     // A crossfade node belongs to two clips; while a fade is in hand on
     // one clip the pair it sits between is not that clip's business
-    if (clipDragInProgress || fadeDragInHand != null) return null;
+    // (xNodeActive is empty then; a leaving node still fades out)
     if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
@@ -950,14 +951,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // of the two clips it belongs to (or on the node itself), or
       // while it is being dragged. Selection alone does not show it.
       const nodeKey = `${n.outgoingClipId}-${n.incomingClipId}`;
-      const hovered = fadeHoverClipId === n.outgoingClipId || fadeHoverClipId === n.incomingClipId;
-      if (!hovered && crossfadeDrag !== nodeKey) return null;
+      const active = xNodeActive.includes(nodeKey);
+      const leaving = !active && leavingXNodes.has(nodeKey);
+      if (!active && !leaving) return null;
       const x = CLIP_CONTENT_OFFSET + n.point.time * pixelsPerSecond;
       const y = bodyTop + (1 - n.point.gain) * bodyHeight;
       return (
         <div
           key={`crossfade-node-${nodeKey}`}
           data-crossfade-node={nodeKey}
+          data-leaving={leaving ? 'true' : undefined}
           role="slider"
           aria-label="Crossfade centre"
           aria-valuenow={n.point.time}
@@ -1118,7 +1121,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // neither leave the curve nor bend it into a corner. Extents are
   // pinned — length is the corner handle's job.
   const renderQuickFadeNodes = () => {
-    if (!onClipFadeShapeChange || clipDragInProgress) return null;
+    if (!onClipFadeShapeChange) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
@@ -1130,7 +1133,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const BOX = (NODE_R + 3) * 2;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
-      if (hidesHandlesOf(clip.id)) continue;
+      // Active, or on its way out (the soft exit)
+      const clipActive = shapeActive.includes(String(clip.id));
+      const leaving = !clipActive && leavingShape.has(String(clip.id));
+      if (!clipActive && !leaving) continue;
       const eff = clipQuickFadeGeometry(clip);
       for (const side of ['in', 'out'] as const) {
         const fade = side === 'in' ? eff.fadeIn : eff.fadeOut;
@@ -1139,8 +1145,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const dragKey = `${clip.id}:${side}`;
         // HOVER ONLY (user decision 2026-09-29): selection alone does
         // not show the shape handle — it would sit on every selected
-        // clip's fades. The corner handles still show on selection.
-        if (fadeHoverClipId !== clip.id && shapeDrag !== dragKey) continue;
+        // clip's fades. (The corner handles joined it on 2026-10-01.)
+        if (!leaving && fadeHoverClipId !== clip.id && shapeDrag !== dragKey) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
         const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
         // Position and gain are read off the drawn curve, never the
@@ -1156,6 +1162,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             key={`quickfade-node-${dragKey}`}
             data-quickfade-node={side}
             data-clip-ref={clip.id}
+            data-leaving={leaving ? 'true' : undefined}
             role="slider"
             aria-label={side === 'in' ? 'Quick fade in shape' : 'Quick fade out shape'}
             className="track-fade-shape-handle"
@@ -1986,6 +1993,32 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     });
   }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId, isCrossfadedEdge, handlesFollow]);
 
+  // THE SOFT EXIT (hooks/useLeavingKeys.ts; user decision 2026-10-01,
+  // "subtle fade out, less than 0.5s"): each hover-dependent control
+  // stays HANDLE_LEAVE_MS after it stops applying, with data-leaving,
+  // fading (Track.css). One key set per control; the render functions
+  // draw active ∪ leaving. (Clip's in-clip trim/stretch pair does the
+  // same for itself.)
+  const fadeHandleActive = clips
+    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
+    .map((c) => String(c.id));
+  const leavingFadeHandles = useLeavingKeys(fadeHandleActive);
+  const buriedActive = clips
+    .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
+    .map((c) => String(c.id));
+  const leavingBuried = useLeavingKeys(buriedActive);
+  const shapeActive = clips
+    .filter((c) => !hidesHandlesOf(c.id) && (fadeHoverClipId === c.id || (shapeDrag != null && shapeDrag.startsWith(`${c.id}:`))))
+    .map((c) => String(c.id));
+  const leavingShape = useLeavingKeys(shapeActive);
+  const xNodeActive = (clipDragInProgress || fadeDragInHand != null)
+    ? []
+    : crossfadeNodes
+      .filter((n) => fadeHoverClipId === n.outgoingClipId || fadeHoverClipId === n.incomingClipId
+        || crossfadeDrag === `${n.outgoingClipId}-${n.incomingClipId}`)
+      .map((n) => `${n.outgoingClipId}-${n.incomingClipId}`);
+  const leavingXNodes = useLeavingKeys(xNodeActive);
+
   const renderEdgeTrimZones = () => {
     if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
     const shownZones = edgeTrimZones.filter((zone) => !hidesHandlesOf(zone.clipId));
@@ -2056,10 +2089,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // re-rendered here at track level, above the stack — the originals
   // inside the Clip are covered. Visible edges keep only the originals.
   const renderBuriedEdgeHandles = () => {
-    if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge) || clipDragInProgress) return null;
+    if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge)) return null;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
-      if (!handlesFollow(clip) || hidesHandlesOf(clip.id)) continue;
+      // Active, or on its way out (the soft exit)
+      const clipActive = buriedActive.includes(String(clip.id));
+      const leaving = !clipActive && leavingBuried.has(String(clip.id));
+      if (!clipActive && !leaving) continue;
+      const leavingAttr = leaving ? 'true' : undefined;
       const z = clipZIndex.get(clip.id) ?? 2;
       const clipWidth = clip.duration * pixelsPerSecond;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
@@ -2102,6 +2139,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               type="button"
               tabIndex={-1}
               data-buried-handle={`trim-${edge}`}
+              data-leaving={leavingAttr}
               onMouseEnter={() => setHintHover('trim')}
               onMouseLeave={() => setHintHover((prev) => (prev === 'trim' ? null : prev))}
               className={`clip-display__handle clip-display__handle--trim-${edge}`}
@@ -2119,6 +2157,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             type="button"
             tabIndex={-1}
             data-buried-handle={`stretch-${edge}`}
+            data-leaving={leavingAttr}
             onMouseEnter={() => setHintHover('stretch')}
             onMouseLeave={() => setHintHover((prev) => (prev === 'stretch' ? null : prev))}
             className={`clip-display__handle clip-display__handle--stretch-${edge}`}
@@ -2150,7 +2189,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // they were trapped under its low stacking context and the veil
   // sheeted over them.
   const renderFadeHandles = () => {
-    if (isMidiTrack || !onClipFadeChange || clipDragInProgress) return null;
+    // (A clip drag empties fadeHandleActive via hidesHandlesOf; the
+    // leaving ones still get their fade out)
+    if (isMidiTrack || !onClipFadeChange) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
     // The handle's BODY rests 13px inside the clip's edge (spec
@@ -2175,8 +2216,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // handles follow the pointer, not the selection (see
       // handleHoverClipId). A drag on a selected clip's handle still
       // applies to every selected clip.
-      if (!(fadeHoverClipId === clip.id || fadeDragClipId === clip.id)) continue;
-      if (hidesHandlesOf(clip.id)) continue;
+      // Active, or on its way out (the soft exit)
+      const clipActive = fadeHandleActive.includes(String(clip.id));
+      const leaving = !clipActive && leavingFadeHandles.has(String(clip.id));
+      if (!clipActive && !leaving) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
       if (clipWidth < FADE_HANDLE_MIN_CLIP_PX) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
@@ -2229,6 +2272,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             key={`fade-handle-${clip.id}-${side}`}
             data-fade-handle={side}
             data-fade-clip={clip.id}
+            data-leaving={leaving ? 'true' : undefined}
             // Hover and press answer the way the trim and stretch
             // handles do (Track.css mirrors Clip.css's numbers)
             className="track-fade-handle"
