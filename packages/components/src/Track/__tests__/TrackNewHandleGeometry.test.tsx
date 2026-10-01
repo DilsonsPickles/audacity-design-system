@@ -8,7 +8,7 @@
  * numbers — this pins those, since a stylesheet cannot be read in jsdom.
  */
 import React from 'react';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TrackNew } from '../TrackNew';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
@@ -47,6 +47,7 @@ describe('buried-edge trim and stretch handles use the app\'s boxes', () => {
       </Providers>,
     );
     const clip = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    fireEvent.mouseEnter(clip, { buttons: 0 }); // the handles follow the pointer (2026-10-01)
     const clipLeft = parseInt(clip.style.left, 10);
     const clipRight = clipLeft + 400;
     const handle = (kind: string) => {

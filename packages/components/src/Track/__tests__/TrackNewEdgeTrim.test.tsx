@@ -116,12 +116,30 @@ describe('trimming an unselected clip by its edge', () => {
     expect(onBelow.mouseDown).toHaveBeenCalledTimes(1);
   });
 
-  it('a selected clip has its handles and no edge zones; an unselected one the reverse', () => {
-    const { container, zone } = renderTrack();
+  it('a SELECTED clip under the pointer has its handles and no edge zones; every other clip the reverse (2026-10-01)', () => {
+    // Two clips selected elsewhere, so no single-selection exception
+    const { container, zone } = renderTrack({ singleSelection: false });
+    // At rest: zones everywhere, handles nowhere — selection alone shows none
+    expect(zone(1, 'left')).toBeTruthy();
+    expect(zone(1, 'right')).toBeTruthy();
+    expect(container.querySelectorAll('.clip-display__handle')).toHaveLength(0);
+    // Under the pointer: the selected clip 1 swaps its zones for handles
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
     expect(zone(1, 'left')).toBeNull();
     expect(zone(1, 'right')).toBeNull();
     expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle--trim-left')).toHaveLength(1);
     expect(container.querySelectorAll('[data-clip-id="2"] .clip-display__handle')).toHaveLength(0);
+    expect(zone(2, 'left')).toBeTruthy();
+    // …but the UNSELECTED clip 2 does not: hovered, it keeps its zones
+    // and shows no trim or stretch handles ("unselected items don't
+    // need to show handles on hover") — only its fade handles
+    fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement);
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="2"]') as HTMLElement, { buttons: 0 });
+    expect(zone(1, 'left')).toBeTruthy();
+    expect(zone(2, 'left')).toBeTruthy();
+    expect(zone(2, 'right')).toBeTruthy();
+    expect(container.querySelectorAll('[data-clip-id="2"] .clip-display__handle')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="2"]')).toHaveLength(2);
   });
 
   it('dragging a zone streams the pointer to onClipTrimEdge, for that clip and that edge, until release', () => {
@@ -157,6 +175,12 @@ describe('trimming an unselected clip by its edge', () => {
 
   it('the zones and the fade handles share the edge without overlapping', () => {
     const { container, zone, span } = renderTrack();
+    // The zones are there while the clip is NOT under the pointer; the
+    // fade handles (and the trim boxes, with the same 6px inside reach)
+    // take over when it is — measure the zones first
+    const zoneLeft = span(zone(2, 'left')!);
+    const zoneRight = span(zone(2, 'right')!);
+    const zoneZ = Number(zone(2, 'left')!.style.zIndex);
     fireEvent.mouseEnter(container.querySelector('[data-clip-id="2"]') as HTMLElement, { buttons: 0 });
     const fade = (side: 'in' | 'out') => {
       const el = container.querySelector<HTMLElement>(`[data-fade-handle="${side}"][data-fade-clip="2"]`)!;
@@ -164,16 +188,15 @@ describe('trimming an unselected clip by its edge', () => {
       return { left, right: left + parseInt(el.style.width, 10), z: Number(el.style.zIndex) };
     };
     // Left edge: the zone ends EXACTLY where the fade handle's box
-    // begins — on an unselected clip the box butts up against the zone
-    // (6px in), rather than stopping at the selected clip's trim box
-    // reach (12px), and runs to 36
-    expect(span(zone(2, 'left')!).right).toBe(fade('in').left);
+    // begins (6px in — the trim box's inside reach too), and the box
+    // runs to 36
+    expect(zoneLeft.right).toBe(fade('in').left);
     expect(fade('in').right - fade('in').left).toBe(30);
     // Right edge: the fade handle's box ends where the zone begins
-    expect(fade('out').right).toBe(span(zone(2, 'right')!).left);
+    expect(fade('out').right).toBe(zoneRight.left);
     expect(fade('out').right - fade('out').left).toBe(30);
     // …and the fade controls are stacked above the zones regardless
-    expect(fade('in').z).toBeGreaterThan(Number(zone(2, 'left')!.style.zIndex));
+    expect(fade('in').z).toBeGreaterThan(zoneZ);
   });
 
   it('the fade handles do not show until the pointer is at least 6px into the clip — past the zone', () => {
@@ -385,27 +408,41 @@ describe('a crossfaded edge belongs to the crossfade (2026-10-01): no trim or st
   const button = (container: HTMLElement, clipId: number, label: string) =>
     container.querySelector(`[data-clip-id="${clipId}"] [aria-label="${label}"]`);
 
+  const hover = (container: HTMLElement, clipId: number) =>
+    fireEvent.mouseEnter(container.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement, { buttons: 0 });
+  const leave = (container: HTMLElement, clipId: number) =>
+    fireEvent.mouseLeave(container.querySelector(`[data-clip-id="${clipId}"]`) as HTMLElement);
+
   it('the crossfaded edges show no handles; the free edges keep both of theirs', () => {
+    // Handles follow the pointer: one clip at a time
     const { container } = renderTrack({ clips: bothSelected, onClipStretchEdge: vi.fn() });
+    hover(container, 1);
     expect(button(container, 1, 'Trim right edge')).toBeNull();
     expect(button(container, 1, 'Stretch right edge')).toBeNull();
-    expect(button(container, 2, 'Trim left edge')).toBeNull();
-    expect(button(container, 2, 'Stretch left edge')).toBeNull();
     expect(button(container, 1, 'Trim left edge')).toBeTruthy();
     expect(button(container, 1, 'Stretch left edge')).toBeTruthy();
+    leave(container, 1);
+    hover(container, 2);
+    expect(button(container, 2, 'Trim left edge')).toBeNull();
+    expect(button(container, 2, 'Stretch left edge')).toBeNull();
     expect(button(container, 2, 'Trim right edge')).toBeTruthy();
     expect(button(container, 2, 'Stretch right edge')).toBeTruthy();
   });
 
-  it('…and get edge zones instead, selected or not — the under clip\'s reaching through the top clip', () => {
-    const { zone } = renderTrack({ clips: bothSelected });
+  it('…and get edge zones instead, hovered or not — the under clip\'s reaching through the top clip', () => {
+    const { container, zone } = renderTrack({ clips: bothSelected });
     expect(zone(1, 'right')).toBeTruthy(); // buried under clip 2, but crossfaded
     expect(zone(2, 'left')).toBeTruthy();
-    expect(zone(1, 'left')).toBeNull(); // selected: the free edges keep their handles, no zone
-    expect(zone(2, 'right')).toBeNull();
     // On the edge, as every zone is: 5 out, 6 in
     expect(zone(1, 'right')!.style.left).toBe(`${12 + 500 - 6}px`);
     expect(zone(2, 'left')!.style.left).toBe(`${12 + 300 - 5}px`);
+    // Under the pointer, the clip's FREE edge swaps its zone for handles;
+    // its crossfaded edge keeps the zone
+    hover(container, 1);
+    expect(zone(1, 'left')).toBeNull();
+    expect(zone(1, 'right')).toBeTruthy();
+    expect(zone(2, 'left')).toBeTruthy();
+    expect(zone(2, 'right')).toBeTruthy();
   });
 
   it('dragging the under clip\'s crossfaded zone trims THAT clip\'s right edge — the overlap\'s length', () => {
@@ -417,13 +454,37 @@ describe('a crossfaded edge belongs to the crossfade (2026-10-01): no trim or st
     fireEvent.mouseUp(document);
   });
 
-  it('with the clips apart the rule is the old one: handles on every selected edge, no zones', () => {
+  it('with the clips apart the rule is the plain one: the hovered clip has handles on both edges and no zones', () => {
     const { container, zone } = renderTrack({ clips: [
       { id: 1, name: 'A', start: 0, duration: 3, selected: true },
       { id: 2, name: 'B', start: 4, duration: 3, selected: true },
     ] });
-    expect(container.querySelectorAll('.clip-display__handle')).toHaveLength(8);
+    hover(container, 1);
+    expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle')).toHaveLength(4);
+    expect(container.querySelectorAll('[data-clip-id="2"] .clip-display__handle')).toHaveLength(0);
     expect(zone(1, 'right')).toBeNull();
-    expect(zone(2, 'left')).toBeNull();
+    expect(zone(2, 'left')).toBeTruthy();
+  });
+});
+
+describe('a SINGLE selected clip keeps its trim and stretch handles without the pointer (2026-10-01)', () => {
+  it('with singleSelection the selected clip has handles and no zones, unhovered; its fade handles still wait for the pointer', () => {
+    const { container, zone } = renderTrack({ singleSelection: true, onClipStretchEdge: vi.fn() });
+    expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle')).toHaveLength(4);
+    expect(zone(1, 'left')).toBeNull();
+    expect(zone(1, 'right')).toBeNull();
+    expect(container.querySelector('[data-fade-handle][data-fade-clip="1"]')).toBeNull(); // fades: hover only
+    // The unselected clip is as ever: zones, no handles
+    expect(container.querySelectorAll('[data-clip-id="2"] .clip-display__handle')).toHaveLength(0);
+    expect(zone(2, 'left')).toBeTruthy();
+    // Under the pointer the selected clip gains its fade handles too
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
+  });
+
+  it('without singleSelection (the host counted more than one) selection shows nothing', () => {
+    const { container, zone } = renderTrack({ singleSelection: false });
+    expect(container.querySelectorAll('.clip-display__handle')).toHaveLength(0);
+    expect(zone(1, 'left')).toBeTruthy();
   });
 });

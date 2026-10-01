@@ -73,6 +73,9 @@ export interface CanvasTrackListProps {
    *  every track gets it back so all hide their other clips' handles) */
   fadeInHandClipId: string | number | null;
   onFadeDragChange: (clipId: string | number | null) => void;
+  /** The project's selection is exactly one clip: it keeps its trim and
+   *  stretch handles without the pointer (2026-10-01) */
+  singleSelection: boolean;
   /** The clip handle under the pointer, for the status bar */
   onHandleHint: (hint: ClipHandleHint | null) => void;
   /** Right-click on a quick fade's handle: open the fade menu */
@@ -424,6 +427,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   onFadeSnapGuideline,
   fadeInHandClipId,
   onFadeDragChange,
+  singleSelection,
   onHandleHint,
   onFadeContextMenu,
   onCrossfadeContextMenu,
@@ -1014,6 +1018,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         alignFadeBoundary={alignFadeBoundary}
         onFadeSnapGuideline={onFadeSnapGuideline}
         fadeInHandClipId={fadeInHandClipId}
+        singleSelection={singleSelection}
         onFadeDragChange={onFadeDragChange}
         onHandleHint={onHandleHint}
         onFadeContextMenu={onFadeContextMenu && showQuickFadeHandles

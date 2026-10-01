@@ -64,34 +64,29 @@ describe('while a fade is being dragged, every OTHER clip\'s handles are hidden 
     const { container, count } = renderTrack(new Set());
     const clip2 = container.querySelector('[data-clip-id="2"]') as HTMLElement;
     fireEvent.mouseEnter(clip2, { buttons: 0 });
-    // Before: the selected clip 1 has its LEFT pair of handles and one
-    // fade handle — its out edge is crossfaded under clip 3, so that
-    // edge has no buttons and no buried duplicates (the crossfade owns
-    // it, 2026-10-01) but an edge zone; clip 2 has its fade handles
-    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(2);
-    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
+    // Before: clip 2, under the pointer, has its fade handles; the
+    // selected clip 1 is not under the pointer, so it shows no handles
+    // of its own (they follow the pointer, 2026-10-01) — just its edge
+    // zones (its free left edge, and its right edge crossfaded under
+    // clip 3); the crossfade node needs its clips hovered, so it is not
+    // up either
     expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(2);
-    expect(count('[data-buried-handle]')).toBe(4); // clip 4's, under clip 2
-    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(1);
-    const inHandle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
-    fireEvent.pointerDown(inHandle, { button: 0, clientX: 620, clientY: 30, pointerId: 51 });
-    // In hand: everything on clip 1 is gone (in-clip handles, fade
-    // handles, its crossfaded edge's zone), and so are clip 3's edge
-    // zones and the crossfade node; clip 2 keeps its own fade handles
     expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(0);
     expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(0);
+    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(2);
+    expect(count('[data-edge-trim][data-clip-ref="3"]')).toBe(2);
+    const inHandle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
+    fireEvent.pointerDown(inHandle, { button: 0, clientX: 620, clientY: 30, pointerId: 51 });
+    // In hand: the other clips' zones are gone; clip 2 keeps its own
+    // fade handles
     expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(0);
-    expect(count('[data-buried-handle]')).toBe(0);
-    expect(count('[data-quickfade-node][data-clip-ref="1"]')).toBe(0);
-    expect(count('[data-crossfade-node]')).toBe(0);
     expect(count('[data-edge-trim][data-clip-ref="3"]')).toBe(0);
+    expect(count('[data-crossfade-node]')).toBe(0);
     expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(2);
     fireEvent.pointerUp(inHandle, { clientX: 620, clientY: 30, pointerId: 51 });
     // Released: back as they were
-    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(2);
-    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
-    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(1);
-    expect(count('[data-buried-handle]')).toBe(4);
+    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(2);
+    expect(count('[data-edge-trim][data-clip-ref="3"]')).toBe(2);
   });
 });
 
@@ -146,10 +141,17 @@ describe('a fade drag on ANOTHER track hides this track\'s handles too', () => {
 describe('while clips are being dragged, every drag handle is hidden', () => {
   it('at rest every kind of handle is there', () => {
     const { container, count } = renderTrack(new Set());
+    // Handles follow the pointer: clip 1 under it shows its own (in-clip
+    // handles, fade handles, shape node, the crossfade node it is half
+    // of), the others their edge zones…
     fireEvent.mouseEnter(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
-    for (const selector of HANDLES) {
+    for (const selector of HANDLES.filter((s) => s !== '[data-buried-handle]')) {
       expect(count(selector), selector).toBeGreaterThan(0);
     }
+    // …and the buried duplicates are clip 4's, under the pointer in turn
+    fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement);
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="4"]') as HTMLElement, { buttons: 0 });
+    expect(count('[data-buried-handle]')).toBeGreaterThan(0);
   });
 
   it('with a clip in flight — even one that is not on this track — none of them is', () => {

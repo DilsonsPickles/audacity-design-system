@@ -92,13 +92,19 @@ describe('the handle under the pointer is reported for the status bar', () => {
 
   it('trim and stretch handles, in the clip and buried', () => {
     const { q, last } = renderTrack();
+    // The handles follow the pointer (2026-10-01): over the clip first.
+    // Leaving a handle FOR the clip (relatedTarget) keeps the clip
+    // hovered — a bare mouseout would read as leaving the window and
+    // take the handles down with it.
+    const clip = q('[data-clip-id="1"]');
+    fireEvent.mouseEnter(clip, { buttons: 0 });
     fireEvent.mouseEnter(q('[data-clip-id="1"] .clip-display__handle--trim-left'));
     expect(last()).toBe('trim');
-    fireEvent.mouseLeave(q('[data-clip-id="1"] .clip-display__handle--trim-left'));
+    fireEvent.mouseLeave(q('[data-clip-id="1"] .clip-display__handle--trim-left'), { relatedTarget: clip });
     expect(last()).toBeNull();
     fireEvent.mouseEnter(q('[data-clip-id="1"] .clip-display__handle--stretch-right'));
     expect(last()).toBe('stretch');
-    fireEvent.mouseLeave(q('[data-clip-id="1"] .clip-display__handle--stretch-right'));
+    fireEvent.mouseLeave(q('[data-clip-id="1"] .clip-display__handle--stretch-right'), { relatedTarget: clip });
     expect(last()).toBeNull();
   });
 

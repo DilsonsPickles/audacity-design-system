@@ -127,6 +127,12 @@ export interface ClipProps {
   /** Hide the trim and stretch handles (a clip drag is in progress —
    *  no handle anywhere is grabbable while clips are moving). */
   handlesHidden?: boolean;
+  /** Whether the trim and stretch handles are shown at all. The host
+   *  decides — TrackNew shows them on the clip UNDER THE POINTER, not
+   *  on selection (user decision 2026-10-01: six selected clips put
+   *  forty icons on screen). Undefined = the old rule, `selected`. A
+   *  handle in hand stays whatever this says. */
+  handlesVisible?: boolean;
   /** Hide the trim and stretch handles of ONE edge — a crossfaded edge
    *  (user decision 2026-10-01): the crossfade's node owns it, and the
    *  track's edge zone still trims it. The other edge keeps its pair. */
@@ -198,6 +204,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   envelopePointSizes,
   isRecording = false,
   handlesHidden = false,
+  handlesVisible,
   handlesHiddenAt,
   onHandleHover,
   spectrogramScale,
@@ -441,7 +448,7 @@ const ClipComponent: React.FC<ClipProps> = ({
           Trim buttons render only when onTrimEdge is wired (matches the
           original contract); stretch buttons always render but no-op if
           onStretchEdge is absent. */}
-      {selected && !handlesHidden && (
+      {!handlesHidden && ((handlesVisible ?? selected) || trimEdge !== null || stretchEdge !== null) && (
         <>
           {/* Mouse-only handles. tabIndex={-1} keeps them out of the
               main tab order; the equivalent actions are reachable via

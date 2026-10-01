@@ -309,6 +309,10 @@ export interface TrackProps {
    *  them hide their other clips' handles (2026-10-01). */
   fadeInHandClipId?: string | number | null;
   onFadeDragChange?: (clipId: string | number | null) => void;
+  /** The project's selection is ONE clip (the host counts across
+   *  tracks): that clip keeps its trim and stretch handles without the
+   *  pointer. Otherwise handles follow the pointer only (2026-10-01). */
+  singleSelection?: boolean;
   /** The clip handle under the pointer, for a status bar (user decision
    *  2026-10-01): which handle, with Alt folded in (an edge zone with
    *  Alt down is 'edge-stretch', the crossfade node 'crossfade-roll'),
@@ -577,6 +581,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onFadeSnapGuideline,
   fadeInHandClipId,
   onFadeDragChange,
+  singleSelection = false,
   onHandleHint,
   onFadeContextMenu,
   onCrossfadeContextMenu,
@@ -754,6 +759,27 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // report the hover themselves — leaving the clip FOR one of its own
   // controls must not hide it.
   const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
+  // HANDLES FOLLOW THE POINTER, NOT THE SELECTION (user decision
+  // 2026-10-01: six selected clips put forty icons on screen, most of
+  // them 24px outside the clips in empty track). The trim and stretch
+  // handles — in the clip and the buried duplicates — show on the clip
+  // the pointer is over, anywhere on it or on one of its handles (the
+  // wrapper's enter/leave: a handle is a descendant, so sitting on one
+  // 20px outside the clip still counts), and for the length of a drag
+  // from one. Selection changes nothing here; a drag on a selected
+  // clip's handle still applies to every selected clip — the rule is
+  // just no longer advertised by every clip's furniture. Unlike the
+  // fade hover above, this one is not "well inside": the handles ARE
+  // the edges.
+  const [handleHoverClipId, setHandleHoverClipId] = React.useState<string | number | null>(null);
+  const [edgeDragClipId, setEdgeDragClipId] = React.useState<string | number | null>(null);
+  const handleHoverProps = (clipId: string | number) => ({
+    onMouseEnter: (e: React.MouseEvent) => { if (e.buttons === 0) setHandleHoverClipId(clipId); },
+    onMouseMove: (e: React.MouseEvent) => {
+      if (e.buttons === 0) setHandleHoverClipId((prev) => (prev === clipId ? prev : clipId));
+    },
+    onMouseLeave: () => setHandleHoverClipId((prev) => (prev === clipId ? null : prev)),
+  });
   // The shape handle the pointer is ON (`clipId:side`) — it enlarges a
   // little. Distinct from the clip hover above, which only decides
   // whether the handle is there at all.
@@ -1513,11 +1539,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           onMouseEnter={(e) => {
             onHoverClip?.(clip.id as number);
             clipSurfaceHoverProps(clip.id).onMouseEnter(e);
+            handleHoverProps(clip.id).onMouseEnter(e);
           }}
-          onMouseMove={clipSurfaceHoverProps(clip.id).onMouseMove}
+          onMouseMove={(e) => {
+            clipSurfaceHoverProps(clip.id).onMouseMove(e);
+            handleHoverProps(clip.id).onMouseMove(e);
+          }}
           onMouseLeave={() => {
             onHoverClip?.(null);
             clipSurfaceHoverProps(clip.id).onMouseLeave();
+            handleHoverProps(clip.id).onMouseLeave();
           }}
           onMouseDown={(e) => {
             // Clip receives DOM focus naturally via its tabIndex.
@@ -1863,6 +1894,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             spectrogramScale={spectrogramScale}
             isRecording={recordingClipId === clip.id}
             handlesHidden={hidesHandlesOf(clip.id)}
+            handlesVisible={handlesFollow(clip)}
             handlesHiddenAt={{ left: isCrossfadedEdge(clip.id, 'left'), right: isCrossfadedEdge(clip.id, 'right') }}
             onHandleHover={setHintHover}
             midiNotes={clip.midiNotes}
@@ -1927,15 +1959,32 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     (clipId: string | number, edge: 'left' | 'right') => crossfadedEdges.has(`${clipId}:${edge === 'left' ? 'in' : 'out'}`),
     [crossfadedEdges],
   );
+  // The clip whose trim/stretch handles are up: a SELECTED clip under
+  // the pointer, or with one of them (or a fade handle) in hand (see
+  // handleHoverClipId) — or THE one selected clip, when the selection
+  // is a single clip (`singleSelection`, the host's count): one clip's
+  // furniture is not the mess, and it says "this is the clip you have".
+  // An UNSELECTED clip shows none, hovered or not — it trims by its edge
+  // zone (user decision 2026-10-01: "unselected items don't need to
+  // show handles on hover"). The fade handles are a separate rule:
+  // hover-only, selected or not.
+  const handlesFollow = React.useCallback(
+    (clip: TrackClip) => !!clip.selected
+      && (handleHoverClipId === clip.id || edgeDragClipId === clip.id || fadeDragClipId === clip.id || singleSelection),
+    [handleHoverClipId, edgeDragClipId, fadeDragClipId, singleSelection],
+  );
+  // The clip with its handles up has no zones (the handles ARE its
+  // edges, with the zone's inside reach); every other clip trims by its
+  // zones, selected or not (2026-10-01 — it was selected = handles).
   const edgeTrimZones = React.useMemo(() => {
     if (!onClipTrimEdge) return [];
     return computeEdgeHitZones(clips, {
       pixelsPerSecond,
       zOf: (clip) => clipZIndex.get(clip.id) ?? 2,
-      eligible: (clip, edge) => clip.id !== recordingClipId && (!(clip as TrackClip).selected || isCrossfadedEdge(clip.id, edge)),
+      eligible: (clip, edge) => clip.id !== recordingClipId && (!handlesFollow(clip as TrackClip) || isCrossfadedEdge(clip.id, edge)),
       throughOverlap: (clip, edge) => isCrossfadedEdge(clip.id, edge),
     });
-  }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId, isCrossfadedEdge]);
+  }, [clips, pixelsPerSecond, clipZIndex, onClipTrimEdge, recordingClipId, isCrossfadedEdge, handlesFollow]);
 
   const renderEdgeTrimZones = () => {
     if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
@@ -2010,7 +2059,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge) || clipDragInProgress) return null;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
-      if (!clip.selected || hidesHandlesOf(clip.id)) continue;
+      if (!handlesFollow(clip) || hidesHandlesOf(clip.id)) continue;
       const z = clipZIndex.get(clip.id) ?? 2;
       const clipWidth = clip.duration * pixelsPerSecond;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
@@ -2039,9 +2088,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           const onUp = () => {
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
+            setEdgeDragClipId((prev) => (prev === clip.id ? null : prev));
           };
           document.addEventListener('mousemove', onMove);
           document.addEventListener('mouseup', onUp);
+          setEdgeDragClipId(clip.id); // the duplicate stays up for its drag
           cb(clip.id, edge, e.clientX);
         };
         if (onClipTrimEdge) {
@@ -2120,7 +2171,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // POINTER (2026-09-29, widening the 2026-09-21 selected-only
       // rule); the drag guard keeps them up while the pointer is
       // captured.
-      if (!(clip.selected || fadeHoverClipId === clip.id || fadeDragClipId === clip.id)) continue;
+      // …and since 2026-10-01 on the clip under the pointer ONLY: the
+      // handles follow the pointer, not the selection (see
+      // handleHoverClipId). A drag on a selected clip's handle still
+      // applies to every selected clip.
+      if (!(fadeHoverClipId === clip.id || fadeDragClipId === clip.id)) continue;
       if (hidesHandlesOf(clip.id)) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
       if (clipWidth < FADE_HANDLE_MIN_CLIP_PX) continue;

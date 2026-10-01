@@ -188,6 +188,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const check = (expected: number) => {
       const glyphs = Array.from(container.querySelectorAll('[data-fade-handle] svg'));
       expect(glyphs).toHaveLength(expected);
@@ -209,9 +210,10 @@ describe('clip fades', () => {
         expect(halo.compareDocumentPosition(frame) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       }
     };
-    check(2); // the selected clip, pointer elsewhere
+    check(2); // the clip under the pointer (selection alone shows none)
+    fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement);
     hoverClip(container, 2);
-    check(4); // plus the unselected clip under the pointer
+    check(2); // the unselected clip under the pointer, in its turn
     const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 0, clientY: 0, pointerId: 71 });
     check(2); // mid-drag: only the clip in hand keeps its handles (2026-10-01)
@@ -230,6 +232,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const glyphs = Array.from(container.querySelectorAll('[data-fade-handle] svg'));
     expect(glyphs).toHaveLength(2);
     const clipIds = glyphs.map((svg) => {
@@ -267,6 +270,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const handle = (side: 'in' | 'out') => container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
     expect(handle('in').className).toContain('track-fade-handle');
     expect(container.querySelector('[data-fade-handle][data-pressed]')).toBeNull();
@@ -334,7 +338,7 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-fade-line][stroke="#FFFFFF"]')).toBeNull();
   });
 
-  it('handles show for the selected clip, and for an unselected clip only while the pointer is over it', () => {
+  it('handles show for the clip under the pointer only — selection alone shows none (2026-10-01)', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -349,8 +353,17 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    // Selected, unhovered: nothing (it was "the selected clip's show")
+    expect(container.querySelector('[data-fade-handle]')).toBeNull();
+    hoverClip(container, 1);
     expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
     expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
+    fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement);
+    expect(container.querySelector('[data-fade-handle]')).toBeNull();
+    // …and the unselected clip the same, under the pointer
+    hoverClip(container, 2);
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="2"]')).toHaveLength(2);
+    expect(container.querySelector('[data-fade-handle][data-fade-clip="1"]')).toBeNull();
   });
 
   it('an UNSELECTED clip can be faded: its controls show under the pointer, and using them selects nothing', () => {
@@ -387,8 +400,9 @@ describe('clip fades', () => {
     fireEvent.mouseEnter(clip2, { buttons: 0 });
     expect(handles()).toHaveLength(2);
     expect(shapeNode()).toBeTruthy();
-    // The selected clip keeps its own
-    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
+    // The selected clip, not under the pointer, shows none of its own
+    // (handles follow the pointer, 2026-10-01)
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(0);
 
     // Moving from the clip onto one of its controls keeps them up: the
     // controls sit above the clip, so the clip itself is "left"
@@ -562,6 +576,7 @@ describe('clip fades', () => {
       );
     }
     const { container } = render(<Providers><Host /></Providers>);
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const clip = container.querySelector('[data-clip-id="1"]') as HTMLElement;
     const clipLeft = parseInt(clip.style.left, 10);
     const handle = () => container.querySelector('[data-fade-handle="in"]') as HTMLElement;
@@ -614,6 +629,7 @@ describe('clip fades', () => {
       configurable: true,
       value: () => ({ left: 0, top: 0, right: 400, bottom: 100, width: 400, height: 100, x: 0, y: 0, toJSON: () => ({}) }),
     });
+    fireEvent.mouseEnter(wrapper, { buttons: 0, clientX: 200, clientY: 50 }); // the handles follow the pointer (2026-10-01)
 
     const inHandle = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
     const outHandle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
@@ -652,6 +668,7 @@ describe('clip fades', () => {
       configurable: true,
       value: () => ({ left: 0, top: 0, right: 400, bottom: 100, width: 400, height: 100, x: 0, y: 0, toJSON: () => ({}) }),
     });
+    fireEvent.mouseEnter(wrapper, { buttons: 0, clientX: 200, clientY: 50 }); // the handles follow the pointer (2026-10-01)
 
     const outHandle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
     fireEvent.pointerDown(outHandle, { button: 0, clientX: 400, clientY: 30, pointerId: 2 });
@@ -680,8 +697,12 @@ describe('clip fades', () => {
       </Providers>,
     );
     // A's tail and B's head belong to the crossfade — node owns them
+    // (handles follow the pointer: one clip at a time)
+    hoverClip(container, 1);
     expect(container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]')).toBeTruthy();
     expect(container.querySelector('[data-fade-handle="out"][data-fade-clip="1"]')).toBeNull();
+    fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement);
+    hoverClip(container, 2);
     expect(container.querySelector('[data-fade-handle="in"][data-fade-clip="2"]')).toBeNull();
     expect(container.querySelector('[data-fade-handle="out"][data-fade-clip="2"]')).toBeTruthy();
   });
@@ -818,14 +839,16 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
-    // Selected: the corner handles are there, the shape handles are not
-    expect(container.querySelectorAll('[data-fade-handle]')).toHaveLength(2);
+    // Selected, unhovered: neither the corner handles nor the shape
+    // handles (since 2026-10-01 the corner handles follow the pointer too)
+    expect(container.querySelectorAll('[data-fade-handle]')).toHaveLength(0);
     expect(container.querySelector('[data-quickfade-node]')).toBeNull();
     hoverClip(container, 1);
+    expect(container.querySelectorAll('[data-fade-handle]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-quickfade-node]')).toHaveLength(2);
     fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement);
     expect(container.querySelector('[data-quickfade-node]')).toBeNull();
-    expect(container.querySelectorAll('[data-fade-handle]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-fade-handle]')).toHaveLength(0);
   });
 
   it('a hovered clip with a quick fade shows a shape handle; dragging it reports the point the curve must pass through', () => {
@@ -898,6 +921,7 @@ describe('clip fades', () => {
       configurable: true,
       value: () => ({ left: 0, top: 0, right: 400, bottom: 100, width: 400, height: 100, x: 0, y: 0, toJSON: () => ({}) }),
     });
+    fireEvent.mouseEnter(wrapper, { buttons: 0, clientX: 200, clientY: 50 }); // the handles follow the pointer (2026-10-01)
     const inHandle = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
     fireEvent.pointerDown(inHandle, { button: 0, clientX: 0, clientY: 30, pointerId: 7 });
     // diagonal input: only the horizontal component registers
@@ -1033,6 +1057,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const clip = container.querySelector('[data-clip-id="1"]') as HTMLElement;
     const clipLeft = parseInt(clip.style.left, 10);
     const clipRight = clipLeft + 400;
@@ -1194,6 +1219,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     // Covered edges get duplicates; the free clip's visible edges get none
     const trim = container.querySelector('[data-buried-handle="trim-right"]') as HTMLElement;
     expect(trim).toBeTruthy();
@@ -1254,6 +1280,7 @@ describe('clip fades', () => {
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     // fade-out spans the clip → its boundary is at the clip start; the
     // roomless zero-extent fade-in handle must not stack on top of it
     expect(container.querySelector('[data-fade-handle="out"]')).toBeTruthy();
@@ -1276,6 +1303,7 @@ describe('clip fades', () => {
         </div>
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const inHandle = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
     fireEvent.mouseDown(inHandle, { button: 0 });
     expect(parentSpy).not.toHaveBeenCalled();
@@ -1308,6 +1336,8 @@ describe('fade handle grid snap (2026-09-30)', () => {
       configurable: true,
       value: () => ({ left: 100, top: 0, right: 500, bottom: 100, width: 400, height: 100, x: 100, y: 0, toJSON: () => ({}) }),
     });
+    // The handles follow the pointer (2026-10-01): put it well inside the clip
+    fireEvent.mouseEnter(wrapper, { buttons: 0, clientX: 300, clientY: 50 });
     const handle = (side: 'in' | 'out') => container.querySelector(`[data-fade-handle="${side}"]`) as HTMLElement;
     return { container, handle, onClipFadeChange, onFadeSnapGuideline };
   }
@@ -1357,7 +1387,9 @@ describe('fade handle grid snap (2026-09-30)', () => {
 
     // Fade out: the boundary is measured from the clip's END. A 1.1s
     // pull from the end (3.9s) snaps to 4.0s → a 1.0s fade, the line at
-    // project 4.0s
+    // project 4.0s. (The release settled the hover from a zero rect, so
+    // put the pointer back on the clip first.)
+    hoverClip(container, 1);
     fireEvent.pointerDown(handle('out'), { button: 0, clientX: 490, clientY: 30, pointerId: 8 });
     fireEvent.pointerMove(handle('out'), { clientX: 380, clientY: 30, pointerId: 8 });
     l = line()!;
@@ -1459,6 +1491,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
       configurable: true,
       value: () => ({ left: 100, top: 0, right: 500, bottom: 100, width: 400, height: 100, x: 100, y: 0, toJSON: () => ({}) }),
     });
+    fireEvent.mouseEnter(wrapper, { buttons: 0, clientX: 300, clientY: 50 }); // the handles follow the pointer (2026-10-01)
     const handle = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 30, pointerId: 6 });
     fireEvent.pointerMove(handle, { clientX: 237, clientY: 30, pointerId: 6 });
@@ -1626,6 +1659,7 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const handle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
     return { handle, onClipFadeChange, onFadeSnapGuideline, alignFadeBoundary };
   }
@@ -1689,6 +1723,7 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
         />
       </Providers>,
     );
+    hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const handle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 500, clientY: 30, pointerId: 4 });
     fireEvent.pointerMove(handle, { clientX: 404, clientY: 30, pointerId: 4 });
