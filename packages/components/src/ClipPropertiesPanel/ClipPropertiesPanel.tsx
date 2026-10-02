@@ -66,7 +66,7 @@ export interface ClipPropertiesPanelProps {
    *  before the tracks, right or bottom = after) */
   placement?: 'start' | 'end';
   /** `stack` (a side dock: one column of groups) or `columns` (the
-   *  bottom drawer: wide and short, the groups side by side in two
+   *  bottom drawer: wide and short, the groups side by side in three
    *  columns — user decision 2026-10-02) */
   layout?: 'stack' | 'columns';
 }
@@ -171,7 +171,7 @@ export function ClipPropertiesPanel({
         </p>
       ) : (
         <div className="clip-properties__body" data-clip-properties-clip={clip.id}>
-          <div className="clip-properties__group">
+          <div className="clip-properties__group" data-group="clip">
           <h3 className="clip-properties__section">Clip</h3>
           <Field label="Name">
             <div
@@ -206,7 +206,7 @@ export function ClipPropertiesPanel({
           )}
           </div>
 
-          <div className="clip-properties__group">
+          <div className="clip-properties__group" data-group="position">
           <h3 className="clip-properties__section">Position</h3>
           <Field label="Start">
             <NumberField id={`clip-properties-start-${clip.id}`} value={clip.start} onCommit={onStartChange} suffix="s" />
@@ -222,7 +222,7 @@ export function ClipPropertiesPanel({
           </Field>
           </div>
 
-          <div className="clip-properties__group">
+          <div className="clip-properties__group" data-group="fades">
           <h3 className="clip-properties__section">Fades</h3>
           <Field label="Fade in">
             <NumberField id={`clip-properties-fade-in-${clip.id}`} value={clip.fadeIn} onCommit={onFadeChange && ((n) => onFadeChange('in', n))} suffix="s" />
@@ -250,7 +250,7 @@ export function ClipPropertiesPanel({
           </Field>
           </div>
 
-          <div className="clip-properties__group">
+          <div className="clip-properties__group" data-group="speed">
           <h3 className="clip-properties__section">Speed</h3>
           <Field label="Speed">
             <NumberField

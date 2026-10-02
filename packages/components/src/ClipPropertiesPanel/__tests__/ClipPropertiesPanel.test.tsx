@@ -52,7 +52,7 @@ describe('ClipPropertiesPanel (2026-10-02)', () => {
   it('lays its groups out in one column by default and two in the bottom drawer', () => {
     const { container } = renderPanel();
     expect(container.querySelector('[data-clip-properties-panel]')?.getAttribute('data-layout')).toBe('stack');
-    expect(container.querySelectorAll('.clip-properties__group')).toHaveLength(4); // Clip, Position, Fades, Speed
+    expect([...container.querySelectorAll('.clip-properties__group')].map((g) => g.getAttribute('data-group'))).toEqual(['clip', 'position', 'fades', 'speed']);
     cleanup();
     const wide = renderPanel({ layout: 'columns', placement: 'end' });
     const panel = wide.container.querySelector('[data-clip-properties-panel]')!;

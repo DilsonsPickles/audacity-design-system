@@ -1664,6 +1664,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       clipPropertiesOpen={propsDockedBottom}
       onCloseClipProperties={() => setIsClipPropertiesOpen(false)}
       onClipPropertiesMenuClick={openClipPropertiesDockMenu}
+      onTabTearOff={handleDockTabTearOff}
       state={state}
       theme={theme}
       activeMenuItem={activeMenuItem}

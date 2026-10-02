@@ -57,22 +57,27 @@
   background: var(--dock-well, #ebedf0);
 }
 
-/* Two columns in the bottom drawer (data-layout="columns"): wide and
-   short, so the groups sit side by side — Clip + Fades on the left,
-   Position + Speed on the right — instead of scrolling a single column.
-   In a side dock (`stack`) the groups simply follow each other. */
+/* Three columns in the bottom drawer (data-layout="columns"; user
+   decision 2026-10-02, after two): wide and short, so the groups sit
+   side by side — Clip, then Position, then Fades, with Speed under Clip
+   — instead of scrolling a single column. In a side dock (`stack`) the
+   groups simply follow each other. */
 .clip-properties[data-layout="columns"] .clip-properties__body {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-flow: column;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: auto auto;
   column-gap: 24px;
   align-content: start;
   padding: 0 16px 12px;
 }
 
+.clip-properties[data-layout="columns"] .clip-properties__group[data-group="clip"] { grid-column: 1; grid-row: 1; }
+.clip-properties[data-layout="columns"] .clip-properties__group[data-group="speed"] { grid-column: 1; grid-row: 2; }
+.clip-properties[data-layout="columns"] .clip-properties__group[data-group="position"] { grid-column: 2; grid-row: 1 / span 2; }
+.clip-properties[data-layout="columns"] .clip-properties__group[data-group="fades"] { grid-column: 3; grid-row: 1 / span 2; }
+
 .clip-properties[data-layout="columns"] .clip-properties__field {
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: 80px minmax(0, 1fr);
 }
 
 .clip-properties__section {

@@ -45,6 +45,15 @@ export interface EditorBottomDrawerProps {
   clipPropertiesOpen?: boolean;
   onCloseClipProperties?: () => void;
   onClipPropertiesMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** A dockable panel's tab dragged UP out of the drawer's header: the
+   *  host pops it into its OS window mid-gesture, as the side docks do
+   *  (2026-10-02 — the drawer had no way out but the kebab menu). Only
+   *  the dockable tabs (Macros, Clip properties) tear; Mixer and Piano
+   *  roll live here. */
+  onTabTearOff?: (
+    tabId: string,
+    e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
+  ) => void;
 }
 
 /** Unified tabbed panel for Mixer and Piano Roll, docked to the bottom of
@@ -78,6 +87,7 @@ export function EditorBottomDrawer({
   clipPropertiesOpen,
   onCloseClipProperties,
   onClipPropertiesMenuClick,
+  onTabTearOff,
 }: EditorBottomDrawerProps) {
   const dispatch = useTracksDispatch();
 
@@ -147,6 +157,9 @@ export function EditorBottomDrawer({
         activeTabId={activeTab}
         onTabChange={(tabId) => setDrawerActiveTab(tabId as DrawerTabId)}
         onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as DrawerTabId[])}
+        onTabTearOff={onTabTearOff
+          ? (tabId, e) => { if (tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
+          : undefined}
         onMenuClick={activeTab === 'macros'
           ? onMacrosMenuClick
           : activeTab === 'clip-properties'
