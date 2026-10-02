@@ -21,6 +21,8 @@ node scripts/check-any.mjs                     # from repo root
 
 CI runs these same gates on every push/PR — `.github/workflows/test.yml`.
 
+**The sandbox imports `@audacity-ui/components` AND `@audacity-ui/audio` from their `dist`.** After editing either package, run `pnpm build` in it (the Vite page reloads itself) — or the app keeps running the old build while the source and the tests say otherwise. (2026-10-02: pitch "not changing" was a stale audio dist from 2026-09-29.) The audio package's `tsc` cannot resolve any Tone type (53 errors, its known state) — build with tsup regardless; it is not a gate.
+
 **The baseline is fully green**: all tests pass with no skips, `tsc --noEmit` reports 0 errors in both packages, and the `any` guard reports 0 violations. If a gate fails, your change caused it — do not assume pre-existing breakage. Every `any` (including `as any`, `Record<string, any>`, etc.) needs a `// justified: <reason>` comment or the guard fails.
 
 **One exception to "your change caused it" — the Node version.** CI pins Node 20. Node 22+ ships native `localStorage`/`sessionStorage` globals that take precedence over the ones jsdom installs on `window`, but resolve to `undefined` unless `--localstorage-file` is passed — so on a newer local Node, every test touching storage fails with `Cannot read properties of undefined (reading 'clear')` (~96 of them) while CI stays green.
