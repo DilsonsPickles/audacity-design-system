@@ -7,12 +7,12 @@
  * into the reducer action the rest of the app already uses for it —
  * rename and colour through UPDATE_CLIP, start through MOVE_CLIP,
  * length through TRIM_CLIP (clamped to the source), fades through
- * SET_CLIP_FADE / SET_CLIP_FADE_SHAPE (the fade menu's presets), speed
- * through STRETCH_CLIP — so the panel is one more way in, never a
+ * SET_CLIP_FADE / SET_CLIP_FADE_SHAPE (the fade menu's presets), pitch
+ * through UPDATE_CLIP (pitchSemitones), speed through STRETCH_CLIP — so the panel is one more way in, never a
  * second rule.
  */
 import React from 'react';
-import { ClipPropertiesPanel, type ClipPropertiesClip, type ClipPropertiesOption, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
+import { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, type ClipPropertiesClip, type ClipPropertiesOption, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
 import { useTracks, type Clip } from '../../contexts/TracksContext';
 import { useClipProperties } from '../../contexts/ClipPropertiesContext';
 import { resolveClipPropertiesClip, singleSelectedClip } from '../../utils/clipPropertiesTarget';
@@ -72,6 +72,7 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
     trimStart,
     fullDuration,
     stretchFactor,
+    pitchSemitones: clip.pitchSemitones ?? 0,
     fadeIn: clip.fadeIn ?? 0,
     fadeOut: clip.fadeOut ?? 0,
     fadeInShapeId: fadeShapePresetOf(clip.fadeInShape),
@@ -120,6 +121,11 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
         if (!clip) return;
         const preset = FADE_SHAPE_PRESETS.find((p) => p.id === shapeId);
         if (preset) dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex, clipId: clip.id, side, shape: preset.shape } });
+      }}
+      onPitchChange={(semitones) => {
+        // Two octaves either way; 0 clears the field rather than storing it
+        const n = Math.max(-PITCH_LIMIT_SEMITONES, Math.min(PITCH_LIMIT_SEMITONES, semitones));
+        update({ pitchSemitones: n === 0 ? undefined : n });
       }}
       onSpeedChange={(percent) => {
         if (!clip || !(percent > 0)) return;

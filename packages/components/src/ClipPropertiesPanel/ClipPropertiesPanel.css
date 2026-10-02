@@ -115,24 +115,10 @@
   display: block;
 }
 
-.clip-properties__number .clip-properties__input {
+.clip-properties__number .clip-properties__input,
+.clip-properties__number .number-stepper {
   width: 100%;
   box-sizing: border-box;
-}
-
-.clip-properties__input--suffixed {
-  padding-right: 24px;
-}
-
-.clip-properties__suffix {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  line-height: 16px;
-  opacity: 0.55;
-  pointer-events: none;
 }
 
 .clip-properties__readonly {

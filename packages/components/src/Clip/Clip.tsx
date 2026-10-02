@@ -85,6 +85,9 @@ export interface ClipProps {
   /** Visual time-stretch factor (default 1). Forwarded to ClipBody so the
    *  waveform expands / compresses horizontally without changing trim. */
   clipStretchFactor?: number;
+  /** Pitch shift in semitones (default 0 = none) — shown as the header's
+   *  ♪ badge (2026-10-02, the Clip properties panel's Pitch field) */
+  clipPitchSemitones?: number;
   /** Pixels per second (timeline zoom level) */
   pixelsPerSecond?: number;
   /** Points to hide during drag (eating behavior) */
@@ -189,6 +192,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   clipTrimStart = 0,
   clipFullDuration,
   clipStretchFactor = 1,
+  clipPitchSemitones = 0,
   pixelsPerSecond = 100,
   hiddenPointIndices = EMPTY_NUMBER_ARRAY,
   fadeRegions,
@@ -374,6 +378,8 @@ const ClipComponent: React.FC<ClipProps> = ({
             // The audio plays inversely proportional to the visible width —
             // 2× wider clip = 50% speed, half-width = 200% speed.
             stretchPercent={100 / clipStretchFactor}
+            showPitch={clipPitchSemitones !== 0}
+            pitchValue={`${clipPitchSemitones > 0 ? '+' : ''}${Number.isInteger(clipPitchSemitones) ? clipPitchSemitones : clipPitchSemitones.toFixed(2)}`}
             clipStartTime={clipStartTime}
             clipDuration={clipDuration}
             timeSelectionRange={timeSelectionRange}

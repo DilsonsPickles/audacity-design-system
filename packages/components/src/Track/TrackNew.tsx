@@ -141,6 +141,9 @@ export interface TrackClip {
    *  or the clip menu, 2026-10-02); absent = the track's. Distinct from
    *  any host-side `color` mirror of the track's colour. */
   ownColor?: ClipColor;
+  /** Pitch shift in semitones (the Clip properties panel's Pitch field,
+   *  2026-10-02); absent = none */
+  pitchSemitones?: number;
   selected?: boolean;
   waveform?: number[];
   waveformRms?: number[];
@@ -1912,6 +1915,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             clipTrimStart={(clip as any).trimStart || 0} // justified: trimStart not on Clip type — pending components sweep
             clipFullDuration={(clip as any).fullDuration} // justified: fullDuration not on Clip type — pending components sweep
             clipStretchFactor={(clip as any).stretchFactor ?? 1} // justified: stretchFactor not on Clip type — pending components sweep
+            clipPitchSemitones={clip.pitchSemitones ?? 0}
             pixelsPerSecond={pixelsPerSecond}
             hiddenPointIndices={clipHiddenPoints.get(clip.id) ?? EMPTY_NUMBER_ARRAY}
             hoveredPointIndices={clipHoveredPoints.get(clip.id) ?? EMPTY_NUMBER_ARRAY}

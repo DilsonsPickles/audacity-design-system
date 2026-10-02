@@ -58,6 +58,10 @@ export interface Clip {
    *  with the destination track — never read for rendering, never the
    *  user's choice; this is. */
   ownColor?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
+  /** Pitch shift in semitones (the Clip properties panel, 2026-10-02);
+   *  absent = none. Audible: the audio engine plays a pitched or
+   *  stretched clip through a GrainPlayer. */
+  pitchSemitones?: number;
   groupId?: string;
   /** Clip fade lengths in seconds (equal-power; same curves as the
    *  overlap crossfade). Absent/0 = no fade. Baked into playback and

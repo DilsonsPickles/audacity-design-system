@@ -8,7 +8,7 @@ import audioBufferToWav from 'audiobuffer-to-wav';
  * Handles playback of audio clips with envelope automation
  */
 export class AudioPlaybackManager {
-  private players: Map<string, Tone.Player> = new Map();
+  private players: Map<string, Tone.Player | Tone.GrainPlayer> = new Map();
   private volumes: Map<string, Tone.Volume> = new Map();
   private audioBuffers: Map<string, AudioBuffer> = new Map();
   private meters: Map<number, Tone.Meter> = new Map(); // Track index -> Meter
@@ -236,6 +236,27 @@ export class AudioPlaybackManager {
    * every playhead move. The parameter is kept for call-site compatibility and
    * recorded in `lastLoadedPosition` only.
    */
+  /** A player for a clip's buffer: Tone.Player as ever — or, when the
+   *  clip is pitched or time-stretched, a GrainPlayer, whose playbackRate
+   *  stretches time WITHOUT moving pitch and whose detune moves pitch
+   *  WITHOUT changing time (2026-10-02; until then the stretch was
+   *  visual-only and pitch did not exist). start/offset/duration are the
+   *  same on both. */
+  private makePlayer(toneBuffer: Tone.ToneAudioBuffer, clip: any, trackGain: Tone.InputNode | undefined): Tone.Player | Tone.GrainPlayer { // justified: the host's clip shape — pending audio-package sweep
+    const stretch = typeof clip.stretchFactor === 'number' && clip.stretchFactor > 0 ? clip.stretchFactor : 1;
+    const semitones = typeof clip.pitchSemitones === 'number' && Number.isFinite(clip.pitchSemitones) ? clip.pitchSemitones : 0;
+    const destination = trackGain || Tone.getDestination();
+    if (stretch === 1 && semitones === 0) return new Tone.Player(toneBuffer).connect(destination);
+    const grain = new Tone.GrainPlayer({
+      url: toneBuffer,
+      grainSize: 0.1,
+      overlap: 0.05,
+      playbackRate: 1 / stretch,
+      detune: semitones * 100,
+    });
+    return grain.connect(destination);
+  }
+
   loadClips(tracks: any[], startTime: number = 0): void { // justified: Track[] not imported into audio package — pending audio-package sweep
     // Clear existing players
     this.players.forEach(player => {
@@ -363,7 +384,7 @@ export class AudioPlaybackManager {
             // No deleted regions - create a single player for the entire clip
             const toneBuffer = clipToneBuffer;
             const trackGain = this.trackGains.get(trackIndex);
-            const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
+            const player = this.makePlayer(toneBuffer, clip, trackGain);
 
             // Sync player to transport and schedule it. The duration arg
             // is required so split segments only play their own slice —
@@ -380,7 +401,7 @@ export class AudioPlaybackManager {
               // Segments share the clip's cached buffer
               const toneBuffer = clipToneBuffer;
               const trackGain = this.trackGains.get(trackIndex);
-              const player = new Tone.Player(toneBuffer).connect(trackGain || Tone.getDestination());
+              const player = this.makePlayer(toneBuffer, clip, trackGain);
 
               // Calculate timeline position for this segment
               const timelineStart = clip.start + segment.timelineOffset;
