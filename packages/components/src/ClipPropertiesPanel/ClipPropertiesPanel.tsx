@@ -6,12 +6,19 @@
  *
  * Shows ONE clip: its name and colour, where it sits (start, length,
  * end, source length), its quick fades (length and shape, each side),
- * its pitch and its speed. Every field is a small controlled form: the
- * host passes the clip and gets a callback per edit. Numeric fields are
- * STEPPERS (user request, the same day) in seconds, semitones or
- * percent: the arrows commit at once (a deliberate edit); a typed value
- * commits on Enter or blur — Escape puts the old value back — so a
- * half-typed number never reaches the reducer.
+ * its pitch and its speed — or a SELECTION of several (`selection`,
+ * user request the same day): the count and tracks in the header, the
+ * selection's earliest start / latest end / span, and every per-clip
+ * field MERGED — the value when every selected clip agrees, "Mixed"
+ * when they do not. An edit in that state applies to every selected
+ * clip (the host's rule for edits on a selection); a mixed stepper
+ * hides its arrows, since there is no one value to step from.
+ *
+ * Every field is a small controlled form: the host passes the clip (or
+ * selection) and gets a callback per edit. Numeric fields are STEPPERS
+ * in seconds, semitones or percent: the arrows commit at once (a
+ * deliberate edit); a typed value commits on Enter or blur — Escape puts
+ * the old value back — so a half-typed number never reaches the reducer.
  */
 import React from 'react';
 import { TextInput } from '../TextInput';
@@ -45,6 +52,28 @@ export interface ClipPropertiesClip {
   groupId?: string;
 }
 
+/** A field whose selected clips disagree */
+export const MIXED = 'mixed' as const;
+export type Mixed = typeof MIXED;
+
+/** Several selected clips, merged: a field is its shared value, or MIXED */
+export interface ClipPropertiesSelection {
+  /** How many clips (≥ 2) */
+  count: number;
+  /** The distinct tracks they are on, in track order */
+  trackNames: string[];
+  /** The earliest start and the latest end, seconds of project time */
+  start: number;
+  end: number;
+  color?: string | Mixed;
+  stretchFactor: number | Mixed;
+  pitchSemitones: number | Mixed;
+  fadeIn: number | Mixed;
+  fadeOut: number | Mixed;
+  fadeInShapeId?: string | Mixed;
+  fadeOutShapeId?: string | Mixed;
+}
+
 export interface ClipPropertiesOption {
   id: string;
   label: string;
@@ -53,6 +82,8 @@ export interface ClipPropertiesOption {
 export interface ClipPropertiesPanelProps {
   /** The clip shown, or null for the empty state */
   clip: ClipPropertiesClip | null;
+  /** Several selected clips: takes the place of `clip` when set */
+  selection?: ClipPropertiesSelection | null;
   /** The colours a clip can wear */
   colors: ReadonlyArray<ClipPropertiesOption>;
   /** The fade shape presets */
@@ -83,12 +114,14 @@ export const PITCH_LIMIT_SEMITONES = 24;
 
 const fmt = (n: number, digits = 3) => (Math.round(n * 10 ** digits) / 10 ** digits).toString();
 const clamp = (n: number, min?: number, max?: number) => Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n));
+const speedOf = (stretchFactor: number) => Math.round(100 / stretchFactor * 100) / 100;
 
 /** A number in a stepper: shows the value; the arrows commit at once;
  *  typing holds a draft that commits on Enter or blur when it parses,
- *  and Escape reverts. The field itself never holds a bad number. */
+ *  and Escape reverts. The field itself never holds a bad number. A
+ *  MIXED value shows blank with "Mixed" and no arrows. */
 function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3, testId }: {
-  value: number;
+  value: number | Mixed;
   onCommit?: (n: number) => void;
   disabled?: boolean;
   step?: number;
@@ -105,12 +138,13 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
   const draftRef = React.useRef<string | null>(null);
   const setDraft = (d: string | null) => { draftRef.current = d; setDraftState(d); };
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const shown = draft ?? fmt(value, digits);
+  const mixed = value === MIXED;
+  const shown = draft ?? (mixed ? '' : fmt(value, digits));
   const commitText = (text: string) => {
     const n = Number(text.trim());
     if (text.trim() === '' || !Number.isFinite(n)) return;
     const next = clamp(n, min, max);
-    if (next !== value) onCommit?.(next);
+    if (mixed || next !== value) onCommit?.(next);
   };
   const commitDraft = () => {
     const d = draftRef.current;
@@ -122,6 +156,7 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
     <div
       className="clip-properties__number"
       data-clip-properties-field={testId}
+      data-mixed={mixed ? 'true' : undefined}
       onKeyDown={(e) => {
         if (e.key === 'Enter') { commitDraft(); inputRef.current?.blur(); }
         if (e.key === 'Escape') { setDraft(null); inputRef.current?.blur(); e.stopPropagation(); }
@@ -131,6 +166,7 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
       <NumberStepper
         ref={inputRef}
         value={shown}
+        placeholder={mixed ? 'Mixed' : undefined}
         step={step}
         min={min}
         max={max}
@@ -162,6 +198,7 @@ function ReadOnly({ children }: { children: React.ReactNode }) {
 
 export function ClipPropertiesPanel({
   clip,
+  selection = null,
   colors,
   fadeShapes,
   onRename,
@@ -192,93 +229,136 @@ export function ClipPropertiesPanel({
     ...(current === undefined ? [{ value: 'custom', label: 'Custom', disabled: true }] : []),
   ];
 
+  // What the fields show: the one clip, or the selection's merge
+  const multi = selection && selection.count >= 2 ? selection : null;
+  const subject = multi ?? clip;
+  const color = multi ? multi.color : clip?.color;
+  const fadeIn = multi ? multi.fadeIn : clip?.fadeIn ?? 0;
+  const fadeOut = multi ? multi.fadeOut : clip?.fadeOut ?? 0;
+  const fadeInShapeId = multi ? multi.fadeInShapeId : clip?.fadeInShapeId;
+  const fadeOutShapeId = multi ? multi.fadeOutShapeId : clip?.fadeOutShapeId;
+  const pitch = multi ? multi.pitchSemitones : clip?.pitchSemitones ?? 0;
+  const speed: number | Mixed = multi
+    ? (multi.stretchFactor === MIXED ? MIXED : speedOf(multi.stretchFactor))
+    : speedOf(clip?.stretchFactor ?? 1);
+  const subtitle = multi
+    ? `${multi.count} clips · ${multi.trackNames.join(', ')}`
+    : clip?.trackName;
+  // A shape dropdown: its preset, 'custom' for a shape between presets,
+  // or blank with "Mixed"
+  const shapeValue = (id: string | Mixed | undefined) => (id === MIXED ? '' : id ?? 'custom');
+  const shapeOptionsFor = (id: string | Mixed | undefined) => shapeOptions(id === MIXED ? 'mixed' : id);
+
   return (
-    <section className="clip-properties" data-clip-properties-panel data-placement={placement} data-layout={layout} aria-label="Clip properties">
+    <section
+      className="clip-properties"
+      data-clip-properties-panel
+      data-placement={placement}
+      data-layout={layout}
+      data-selection={multi ? multi.count : undefined}
+      aria-label="Clip properties"
+    >
       <header className="clip-properties__header">
         <h2 className="clip-properties__title">Clip properties</h2>
-        {clip && <span className="clip-properties__subtitle" title={clip.trackName}>{clip.trackName}</span>}
+        {subject && <span className="clip-properties__subtitle" title={subtitle}>{subtitle}</span>}
       </header>
 
-      {!clip ? (
+      {!subject ? (
         <p className="clip-properties__empty" data-clip-properties-empty>
           No clip selected. Select a clip, or right-click one and choose Clip properties.
         </p>
       ) : (
-        <div className="clip-properties__body" data-clip-properties-clip={clip.id}>
+        <div className="clip-properties__body" data-clip-properties-clip={multi ? undefined : clip?.id}>
           <div className="clip-properties__group" data-group="clip">
-          <h3 className="clip-properties__section">Clip</h3>
-          <Field label="Name">
-            <div
-              className="clip-properties__number"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { commitName(); (e.target as HTMLElement).blur(); }
-                if (e.key === 'Escape') { setNameDraft(null); (e.target as HTMLElement).blur(); e.stopPropagation(); }
-              }}
-            >
-              <TextInput
-                value={nameDraft ?? clip.name}
-                onChange={setNameDraft}
-                onBlur={commitName}
-                disabled={!onRename}
-                className="clip-properties__input"
-                tabIndex={0}
-              />
-            </div>
-          </Field>
+          <h3 className="clip-properties__section">{multi ? 'Clips' : 'Clip'}</h3>
+          {multi ? (
+            <Field label="Selected"><ReadOnly>{multi.count} clips</ReadOnly></Field>
+          ) : clip && (
+            <Field label="Name">
+              <div
+                className="clip-properties__number"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { commitName(); (e.target as HTMLElement).blur(); }
+                  if (e.key === 'Escape') { setNameDraft(null); (e.target as HTMLElement).blur(); e.stopPropagation(); }
+                }}
+              >
+                <TextInput
+                  value={nameDraft ?? clip.name}
+                  onChange={setNameDraft}
+                  onBlur={commitName}
+                  disabled={!onRename}
+                  className="clip-properties__input"
+                  tabIndex={0}
+                />
+              </div>
+            </Field>
+          )}
           <Field label="Color">
             <Dropdown
               options={colorOptions}
-              value={clip.color ?? ''}
-              placeholder="Track color"
+              value={color === MIXED ? '' : color ?? ''}
+              placeholder={color === MIXED ? 'Mixed' : 'Track color'}
               onChange={(v) => onColorChange?.(v)}
               disabled={!onColorChange}
               width="100%"
             />
           </Field>
-          {clip.groupId && (
+          {!multi && clip?.groupId && (
             <Field label="Group"><ReadOnly>{clip.groupId}</ReadOnly></Field>
           )}
           </div>
 
           <div className="clip-properties__group" data-group="position">
           <h3 className="clip-properties__section">Position</h3>
-          <Field label="Start (s)">
-            <NumberField testId="start" value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
-          </Field>
-          <Field label="Length (s)">
-            <NumberField testId="length" value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
-          </Field>
-          <Field label="End"><ReadOnly>{fmt(clip.start + clip.duration)} s</ReadOnly></Field>
-          <Field label="Source">
-            <ReadOnly>
-              {fmt(clip.fullDuration)} s{clip.trimStart > 0 ? `, from ${fmt(clip.trimStart)} s` : ''}
-            </ReadOnly>
-          </Field>
+          {multi ? (
+            <>
+              <Field label="First start"><ReadOnly>{fmt(multi.start)} s</ReadOnly></Field>
+              <Field label="Last end"><ReadOnly>{fmt(multi.end)} s</ReadOnly></Field>
+              <Field label="Span"><ReadOnly>{fmt(multi.end - multi.start)} s</ReadOnly></Field>
+            </>
+          ) : clip && (
+            <>
+              <Field label="Start (s)">
+                <NumberField testId="start" value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
+              </Field>
+              <Field label="Length (s)">
+                <NumberField testId="length" value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
+              </Field>
+              <Field label="End"><ReadOnly>{fmt(clip.start + clip.duration)} s</ReadOnly></Field>
+              <Field label="Source">
+                <ReadOnly>
+                  {fmt(clip.fullDuration)} s{clip.trimStart > 0 ? `, from ${fmt(clip.trimStart)} s` : ''}
+                </ReadOnly>
+              </Field>
+            </>
+          )}
           </div>
 
           <div className="clip-properties__group" data-group="fades">
           <h3 className="clip-properties__section">Fades</h3>
           <Field label="Fade in (s)">
-            <NumberField testId="fade-in" value={clip.fadeIn} onCommit={onFadeChange && ((n) => onFadeChange('in', n))} step={0.1} min={0} />
+            <NumberField testId="fade-in" value={fadeIn} onCommit={onFadeChange && ((n) => onFadeChange('in', n))} step={0.1} min={0} />
           </Field>
           <Field label="In shape">
             <Dropdown
-              options={shapeOptions(clip.fadeInShapeId)}
-              value={clip.fadeInShapeId ?? 'custom'}
+              options={shapeOptionsFor(fadeInShapeId)}
+              value={shapeValue(fadeInShapeId)}
+              placeholder={fadeInShapeId === MIXED ? 'Mixed' : undefined}
               onChange={(v) => onFadeShapeChange?.('in', v)}
-              disabled={!onFadeShapeChange || clip.fadeIn <= 0}
+              disabled={!onFadeShapeChange || fadeIn === 0}
               width="100%"
             />
           </Field>
           <Field label="Fade out (s)">
-            <NumberField testId="fade-out" value={clip.fadeOut} onCommit={onFadeChange && ((n) => onFadeChange('out', n))} step={0.1} min={0} />
+            <NumberField testId="fade-out" value={fadeOut} onCommit={onFadeChange && ((n) => onFadeChange('out', n))} step={0.1} min={0} />
           </Field>
           <Field label="Out shape">
             <Dropdown
-              options={shapeOptions(clip.fadeOutShapeId)}
-              value={clip.fadeOutShapeId ?? 'custom'}
+              options={shapeOptionsFor(fadeOutShapeId)}
+              value={shapeValue(fadeOutShapeId)}
+              placeholder={fadeOutShapeId === MIXED ? 'Mixed' : undefined}
               onChange={(v) => onFadeShapeChange?.('out', v)}
-              disabled={!onFadeShapeChange || clip.fadeOut <= 0}
+              disabled={!onFadeShapeChange || fadeOut === 0}
               width="100%"
             />
           </Field>
@@ -289,7 +369,7 @@ export function ClipPropertiesPanel({
           <Field label="Pitch (st)">
             <NumberField
               testId="pitch"
-              value={clip.pitchSemitones}
+              value={pitch}
               onCommit={onPitchChange}
               step={1}
               min={-PITCH_LIMIT_SEMITONES}
@@ -298,14 +378,7 @@ export function ClipPropertiesPanel({
             />
           </Field>
           <Field label="Speed (%)">
-            <NumberField
-              testId="speed"
-              value={Math.round(100 / clip.stretchFactor * 100) / 100}
-              onCommit={onSpeedChange}
-              step={5}
-              min={1}
-              digits={2}
-            />
+            <NumberField testId="speed" value={speed} onCommit={onSpeedChange} step={5} min={1} digits={2} />
           </Field>
           </div>
         </div>

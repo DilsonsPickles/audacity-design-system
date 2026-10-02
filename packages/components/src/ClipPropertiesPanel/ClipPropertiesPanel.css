@@ -131,3 +131,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* A MIXED field (several selected clips disagree): blank, "Mixed" as
+   its placeholder, and no arrows — there is no one value to step from;
+   a typed value applies to every selected clip. */
+.clip-properties__number[data-mixed] .number-stepper__arrows {
+  display: none;
+}

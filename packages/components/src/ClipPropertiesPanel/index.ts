@@ -1,2 +1,2 @@
-export { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES } from './ClipPropertiesPanel';
-export type { ClipPropertiesPanelProps, ClipPropertiesClip, ClipPropertiesOption } from './ClipPropertiesPanel';
+export { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, MIXED } from './ClipPropertiesPanel';
+export type { ClipPropertiesPanelProps, ClipPropertiesClip, ClipPropertiesSelection, ClipPropertiesOption, Mixed } from './ClipPropertiesPanel';

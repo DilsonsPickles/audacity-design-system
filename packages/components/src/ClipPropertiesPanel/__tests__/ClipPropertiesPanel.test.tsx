@@ -143,3 +143,41 @@ describe('ClipPropertiesPanel (2026-10-02)', () => {
     expect(onSpeedChange).toHaveBeenCalledWith(200);
   });
 });
+
+describe('ClipPropertiesPanel › several clips selected (2026-10-02)', () => {
+  const selection = {
+    count: 3, trackNames: ['Track 1', 'Track 2'], start: 0.5, end: 6.5,
+    color: 'mixed' as const, stretchFactor: 1, pitchSemitones: 2, fadeIn: 0.5, fadeOut: 'mixed' as const,
+    fadeInShapeId: 'default', fadeOutShapeId: 'mixed' as const,
+  };
+
+  it('shows the count and tracks, the span, shared values, and Mixed where they differ — arrows gone on a mixed field', () => {
+    const { container, field, input, arrow } = renderPanel({ selection });
+    const panel = container.querySelector('[data-clip-properties-panel]')!;
+    expect(panel.getAttribute('data-selection')).toBe('3');
+    expect(container.querySelector('.clip-properties__subtitle')?.textContent).toBe('3 clips · Track 1, Track 2');
+    expect(field('Selected').textContent).toContain('3 clips');
+    expect(field('First start').textContent).toContain('0.5 s');
+    expect(field('Last end').textContent).toContain('6.5 s');
+    expect(field('Span').textContent).toContain('6 s');
+    expect(container.querySelector('[data-clip-properties-field="start"]')).toBeNull(); // no per-clip position
+    expect(input('Fade in (s)').value).toBe('0.5'); // shared
+    expect(input('Pitch (st)').value).toBe('2');
+    const out = input('Fade out (s)');
+    expect(out.value).toBe(''); // mixed
+    expect(out.placeholder).toBe('Mixed');
+    expect(arrow('Fade out (s)', 'up')).toBeTruthy(); // in the DOM (hidden by CSS)…
+    expect(container.querySelector('[data-clip-properties-field="fade-out"]')?.getAttribute('data-mixed')).toBe('true');
+    expect(arrow('Fade in (s)', 'up')).toBeTruthy();
+  });
+
+  it('typing into a mixed field commits — there is no old value to equal; the single clip is ignored while a selection shows', () => {
+    const { input, onFadeChange, container } = renderPanel({ selection });
+    const out = input('Fade out (s)');
+    out.focus();
+    fireEvent.change(out, { target: { value: '0.25' } });
+    fireEvent.keyDown(out, { key: 'Enter' });
+    expect(onFadeChange).toHaveBeenCalledWith('out', 0.25);
+    expect(container.querySelector('[data-clip-properties-clip]')).toBeNull();
+  });
+});
