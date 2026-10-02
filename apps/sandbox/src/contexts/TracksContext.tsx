@@ -52,6 +52,12 @@ export interface Clip {
   fullDuration?: number;
   deletedRegions?: DeletedRegion[]; // Sorted, non-overlapping deleted regions
   color?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
+  /** The clip's OWN colour, set by the user (Clip properties panel /
+   *  clip menu, 2026-10-02). Absent = the track's. `color` above is the
+   *  track-colour MIRROR that MOVE_CLIP / paste / seeding keep in step
+   *  with the destination track — never read for rendering, never the
+   *  user's choice; this is. */
+  ownColor?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
   groupId?: string;
   /** Clip fade lengths in seconds (equal-power; same curves as the
    *  overlap crossfade). Absent/0 = no fade. Baked into playback and

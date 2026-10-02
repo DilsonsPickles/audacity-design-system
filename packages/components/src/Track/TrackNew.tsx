@@ -10,6 +10,7 @@ import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZon
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useLeavingKeys } from '../hooks/useLeavingKeys';
+import type { ClipColor } from '../types/clip';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { getInputMode } from '../utils/inputMode';
 import { scrollIntoViewIfNeeded } from '../utils/scrollIntoViewIfNeeded';
@@ -136,6 +137,10 @@ export interface TrackClip {
   name: string;
   start: number;
   duration: number;
+  /** The clip's OWN colour, set by the user (the Clip properties panel
+   *  or the clip menu, 2026-10-02); absent = the track's. Distinct from
+   *  any host-side `color` mirror of the track's colour. */
+  ownColor?: ClipColor;
   selected?: boolean;
   waveform?: number[];
   waveformRms?: number[];
@@ -1345,7 +1350,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           top={bodyTop}
           width={width}
           height={bodyHeight}
-          color={clipStyle === 'classic' ? 'classic' : trackColor}
+          color={clipStyle === 'classic' ? 'classic' : (under.ownColor ?? trackColor)}
           offsetSeconds={n.overlapStart - under.start}
           pixelsPerSecond={pixelsPerSecond}
           clipTrimStart={(under as any).trimStart || 0} // justified: trimStart not on Clip type — pending components sweep
@@ -1871,18 +1876,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
           <Clip
             shakeEdge={shakeState?.clipId === clip.id ? shakeState.edge : null}
             shakeToken={shakeState?.clipId === clip.id ? shakeState.token : 0}
-            // Render always uses the track's colour rather than each
-            // clip's own `color` field. MOVE_CLIP / paste / initial
-            // seeding all try to keep `clip.color` in sync with the
-            // destination track, but any one of those paths drifting
-            // out of sync (drop-below-creates-track, a stale palette
-            // default cached on `state.tracks[i].color`, an older
-            // pasted clip carrying its source colour) shows up as a
-            // clip on a yellow track rendering blue. Sourcing colour
-            // from the track — the same value that drives the header
-            // and swatch — keeps every clip on a track visually
-            // consistent by construction.
-            color={clipStyle === 'classic' ? 'classic' : trackColor}
+            // The TRACK's colour, unless the user gave the clip its own
+            // (`ownColor`, 2026-10-02 — the Clip properties panel and
+            // the clip menu). Never the host's `color` field: MOVE_CLIP /
+            // paste / seeding keep that in sync with the destination
+            // track, and any path drifting (drop-below-creates-track, a
+            // stale palette default, an older pasted clip) showed up as
+            // a clip on a yellow track rendering blue — so the track's
+            // own value, the one that drives the header and swatch, is
+            // the default by construction, and the user's choice is a
+            // separate field that no sync path writes.
+            color={clipStyle === 'classic' ? 'classic' : (clip.ownColor ?? trackColor)}
             name={clip.name}
             width={clipWidth}
             height={height}

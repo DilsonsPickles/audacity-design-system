@@ -1,31 +1,28 @@
 /**
  * ClipPropertiesDockPanel — sandbox wiring for the dockable
  * ClipPropertiesPanel (2026-10-02). Resolves the clip to show
- * (utils/clipPropertiesTarget.ts), maps it to the panel's view of a
- * clip, and turns each edit into the reducer action the rest of the app
- * already uses for it — rename and colour through UPDATE_CLIP, start
- * through MOVE_CLIP, length through TRIM_CLIP (clamped to the source),
- * fades through SET_CLIP_FADE / SET_CLIP_FADE_SHAPE (the fade menu's
- * presets), speed through STRETCH_CLIP — so the panel is one more way
- * in, never a second rule.
+ * (utils/clipPropertiesTarget.ts — the single selected clip first, so
+ * selecting another clip switches the panel; else the clip it last
+ * showed), maps it to the panel's view of a clip, and turns each edit
+ * into the reducer action the rest of the app already uses for it —
+ * rename and colour through UPDATE_CLIP, start through MOVE_CLIP,
+ * length through TRIM_CLIP (clamped to the source), fades through
+ * SET_CLIP_FADE / SET_CLIP_FADE_SHAPE (the fade menu's presets), speed
+ * through STRETCH_CLIP — so the panel is one more way in, never a
+ * second rule.
  */
-import { ClipPropertiesPanel, type ClipPropertiesClip, type ClipPropertiesOption } from '@audacity-ui/components';
+import React from 'react';
+import { ClipPropertiesPanel, type ClipPropertiesClip, type ClipPropertiesOption, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
 import { useTracks, type Clip } from '../../contexts/TracksContext';
 import { useClipProperties } from '../../contexts/ClipPropertiesContext';
-import { resolveClipPropertiesClip } from '../../utils/clipPropertiesTarget';
+import { resolveClipPropertiesClip, singleSelectedClip } from '../../utils/clipPropertiesTarget';
 import { FADE_SHAPE_PRESETS, fadeShapePresetOf } from '../../utils/fadeShapePresets';
 
-/** The colours a clip can wear — Clip['color'], labelled */
-const CLIP_COLORS: ReadonlyArray<ClipPropertiesOption & { id: NonNullable<Clip['color']> }> = [
-  { id: 'cyan', label: 'Cyan' },
-  { id: 'blue', label: 'Blue' },
-  { id: 'violet', label: 'Violet' },
-  { id: 'magenta', label: 'Magenta' },
-  { id: 'red', label: 'Red' },
-  { id: 'orange', label: 'Orange' },
-  { id: 'yellow', label: 'Yellow' },
-  { id: 'green', label: 'Green' },
-  { id: 'teal', label: 'Teal' },
+/** The track's own colour, then the clip palette (the clip menu's list) */
+const TRACK_COLOR = 'track';
+const CLIP_COLORS: ReadonlyArray<ClipPropertiesOption> = [
+  { id: TRACK_COLOR, label: 'Track color' },
+  ...CLIP_COLOR_ITEMS.map(([id, label]) => ({ id, label })),
 ];
 
 const FADE_SHAPES: ReadonlyArray<ClipPropertiesOption> = FADE_SHAPE_PRESETS.map((p) => ({ id: p.id, label: p.label }));
@@ -36,11 +33,23 @@ export interface ClipPropertiesDockPanelProps {
   /** Where the panel sits in the app's reading order (docked left =
    *  before the tracks, right or bottom = after) */
   placement?: 'start' | 'end';
+  /** The bottom drawer lays the groups out in two columns */
+  layout?: 'stack' | 'columns';
 }
 
-export function ClipPropertiesDockPanel({ placement = 'start' }: ClipPropertiesDockPanelProps = {}) {
+export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' }: ClipPropertiesDockPanelProps = {}) {
   const { state, dispatch } = useTracks();
-  const { clipPropertiesTarget } = useClipProperties();
+  const { clipPropertiesTarget, setClipPropertiesTarget } = useClipProperties();
+
+  // The panel FOLLOWS the selection: a single selected clip becomes the
+  // clip it shows, and stays it when the selection is cleared — until
+  // the next single selection (user decision 2026-10-02)
+  const single = singleSelectedClip(state.tracks);
+  React.useEffect(() => {
+    if (!single) return;
+    if (clipPropertiesTarget?.trackIndex === single.trackIndex && clipPropertiesTarget.clipId === single.clip.id) return;
+    setClipPropertiesTarget({ trackIndex: single.trackIndex, clipId: single.clip.id });
+  }, [single?.trackIndex, single?.clip.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resolved = resolveClipPropertiesClip(state.tracks, clipPropertiesTarget);
   const track = resolved ? state.tracks[resolved.trackIndex] : null;
@@ -56,7 +65,7 @@ export function ClipPropertiesDockPanel({ placement = 'start' }: ClipPropertiesD
   const view: ClipPropertiesClip | null = clip && track ? {
     id: clip.id,
     name: clip.name,
-    color: clip.color,
+    color: clip.ownColor ?? TRACK_COLOR,
     trackName: track.name,
     start: clip.start,
     duration: clip.duration,
@@ -81,10 +90,12 @@ export function ClipPropertiesDockPanel({ placement = 'start' }: ClipPropertiesD
       colors={CLIP_COLORS}
       fadeShapes={FADE_SHAPES}
       placement={placement}
+      layout={layout}
       onRename={(name) => update({ name })}
       onColorChange={(colorId) => {
-        const color = CLIP_COLORS.find((c) => c.id === colorId)?.id;
-        if (color) update({ color });
+        if (colorId === TRACK_COLOR) { update({ ownColor: undefined }); return; }
+        const own = CLIP_COLOR_ITEMS.find(([id]) => id === colorId)?.[0];
+        if (own) update({ ownColor: own });
       }}
       onStartChange={(seconds) => {
         if (!clip) return;

@@ -177,7 +177,7 @@ export function EditorBottomDrawer({
 
       {/* Macros content — same sandbox wiring as the side docks */}
       {activeTab === 'macros' && macrosOpen && <MacrosDockPanel placement="end" />}
-      {activeTab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" />}
+      {activeTab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" layout="columns" />}
 
       {/* Mixer content */}
       {activeTab === 'mixer' && mixerOpen && (() => {

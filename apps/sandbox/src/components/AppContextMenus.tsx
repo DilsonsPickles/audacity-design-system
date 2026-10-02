@@ -172,13 +172,25 @@ export function AppContextMenus({
             autoFocus={clipContextMenu.openedViaKeyboard}
             onClose={() => setClipContextMenu(null)}
             onOpenProperties={() => {
+              // The panel follows the selection, so opening it on a clip
+              // selects that clip — the two never disagree
+              if (!targetClip?.selected) {
+                dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: clipContextMenu.trackIndex, clipId: clipContextMenu.clipId } });
+              }
               openClipProperties({ trackIndex: clipContextMenu.trackIndex, clipId: clipContextMenu.clipId });
               setClipContextMenu(null);
             }}
             onRename={() => {
               setClipContextMenu(null);
             }}
-            onColorChange={(_color) => {
+            onColorChange={(color) => {
+              // The clip's OWN colour (2026-10-02): the clicked clip, or
+              // every selected clip when the clicked one is selected —
+              // the fade menu's rule. 'track' takes the override away.
+              const ownColor = color === 'track' ? undefined : (color as Clip['ownColor']);
+              for (const t of fadeTargets(tracks, clipContextMenu.trackIndex, clipContextMenu.clipId)) {
+                dispatch({ type: 'UPDATE_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clipId, updates: { ownColor } } });
+              }
               setClipContextMenu(null);
             }}
             onCut={() => {

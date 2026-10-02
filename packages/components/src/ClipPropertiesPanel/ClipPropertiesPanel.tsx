@@ -65,6 +65,10 @@ export interface ClipPropertiesPanelProps {
   /** Where the panel sits in the app's reading order (docked left =
    *  before the tracks, right or bottom = after) */
   placement?: 'start' | 'end';
+  /** `stack` (a side dock: one column of groups) or `columns` (the
+   *  bottom drawer: wide and short, the groups side by side in two
+   *  columns — user decision 2026-10-02) */
+  layout?: 'stack' | 'columns';
 }
 
 const fmt = (seconds: number, digits = 3) => (Math.round(seconds * 10 ** digits) / 10 ** digits).toString();
@@ -135,6 +139,7 @@ export function ClipPropertiesPanel({
   onFadeShapeChange,
   onSpeedChange,
   placement = 'start',
+  layout = 'stack',
 }: ClipPropertiesPanelProps) {
   // The name commits on Enter or blur too, so typing never renames
   // letter by letter (every keystroke would be an undo step)
@@ -154,7 +159,7 @@ export function ClipPropertiesPanel({
   ];
 
   return (
-    <section className="clip-properties" data-clip-properties-panel data-placement={placement} aria-label="Clip properties">
+    <section className="clip-properties" data-clip-properties-panel data-placement={placement} data-layout={layout} aria-label="Clip properties">
       <header className="clip-properties__header">
         <h2 className="clip-properties__title">Clip properties</h2>
         {clip && <span className="clip-properties__subtitle" title={clip.trackName}>{clip.trackName}</span>}
@@ -166,6 +171,7 @@ export function ClipPropertiesPanel({
         </p>
       ) : (
         <div className="clip-properties__body" data-clip-properties-clip={clip.id}>
+          <div className="clip-properties__group">
           <h3 className="clip-properties__section">Clip</h3>
           <Field label="Name">
             <div
@@ -198,7 +204,9 @@ export function ClipPropertiesPanel({
           {clip.groupId && (
             <Field label="Group"><ReadOnly>{clip.groupId}</ReadOnly></Field>
           )}
+          </div>
 
+          <div className="clip-properties__group">
           <h3 className="clip-properties__section">Position</h3>
           <Field label="Start">
             <NumberField id={`clip-properties-start-${clip.id}`} value={clip.start} onCommit={onStartChange} suffix="s" />
@@ -212,7 +220,9 @@ export function ClipPropertiesPanel({
               {fmt(clip.fullDuration)} s{clip.trimStart > 0 ? `, from ${fmt(clip.trimStart)} s` : ''}
             </ReadOnly>
           </Field>
+          </div>
 
+          <div className="clip-properties__group">
           <h3 className="clip-properties__section">Fades</h3>
           <Field label="Fade in">
             <NumberField id={`clip-properties-fade-in-${clip.id}`} value={clip.fadeIn} onCommit={onFadeChange && ((n) => onFadeChange('in', n))} suffix="s" />
@@ -238,7 +248,9 @@ export function ClipPropertiesPanel({
               width="100%"
             />
           </Field>
+          </div>
 
+          <div className="clip-properties__group">
           <h3 className="clip-properties__section">Speed</h3>
           <Field label="Speed">
             <NumberField
@@ -248,6 +260,7 @@ export function ClipPropertiesPanel({
               suffix="%"
             />
           </Field>
+          </div>
         </div>
       )}
     </section>

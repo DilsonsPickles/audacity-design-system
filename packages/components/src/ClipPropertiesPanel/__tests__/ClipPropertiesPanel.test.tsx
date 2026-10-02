@@ -49,6 +49,17 @@ describe('ClipPropertiesPanel (2026-10-02)', () => {
     expect(input('Speed').value).toBe('100');
   });
 
+  it('lays its groups out in one column by default and two in the bottom drawer', () => {
+    const { container } = renderPanel();
+    expect(container.querySelector('[data-clip-properties-panel]')?.getAttribute('data-layout')).toBe('stack');
+    expect(container.querySelectorAll('.clip-properties__group')).toHaveLength(4); // Clip, Position, Fades, Speed
+    cleanup();
+    const wide = renderPanel({ layout: 'columns', placement: 'end' });
+    const panel = wide.container.querySelector('[data-clip-properties-panel]')!;
+    expect(panel.getAttribute('data-layout')).toBe('columns');
+    expect(panel.getAttribute('data-placement')).toBe('end');
+  });
+
   it('with no clip, the empty state', () => {
     const { container } = renderPanel({ clip: null });
     expect(container.querySelector('[data-clip-properties-empty]')).toBeTruthy();

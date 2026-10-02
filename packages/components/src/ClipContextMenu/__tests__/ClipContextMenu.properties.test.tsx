@@ -31,4 +31,22 @@ describe('ClipContextMenu › Clip properties… (2026-10-02)', () => {
     );
     expect(queryByText('Clip properties…')).toBeNull();
   });
+
+  it('the colour submenu is the clip palette plus "Track color", reported by id (2026-10-02)', () => {
+    const onColorChange = vi.fn();
+    const { getByText, queryByText } = render(
+      <ThemeProvider>
+        <ClipContextMenu isOpen x={0} y={0} onClose={vi.fn()} onColorChange={onColorChange} />
+      </ThemeProvider>,
+    );
+    fireEvent.mouseEnter(getByText('Clip color')); // open the submenu
+    for (const label of ['Cyan', 'Blue', 'Violet', 'Magenta', 'Red', 'Orange', 'Yellow', 'Green', 'Teal', 'Track color']) {
+      expect(getByText(label), label).toBeTruthy();
+    }
+    expect(queryByText('Purple')).toBeNull(); // the old list's colours no clip can wear
+    fireEvent.click(getByText('Red'));
+    expect(onColorChange).toHaveBeenLastCalledWith('red');
+    fireEvent.click(getByText('Track color'));
+    expect(onColorChange).toHaveBeenLastCalledWith('track');
+  });
 });

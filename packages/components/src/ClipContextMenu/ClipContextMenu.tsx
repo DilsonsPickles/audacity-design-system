@@ -1,6 +1,13 @@
 import React from 'react';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem/ContextMenuItem';
+import type { ClipColor } from '../types/clip';
+
+/** The colours a clip can wear, in the palette's order */
+export const CLIP_COLOR_ITEMS: ReadonlyArray<[Exclude<ClipColor, 'classic'>, string]> = [
+  ['cyan', 'Cyan'], ['blue', 'Blue'], ['violet', 'Violet'], ['magenta', 'Magenta'], ['red', 'Red'],
+  ['orange', 'Orange'], ['yellow', 'Yellow'], ['green', 'Green'], ['teal', 'Teal'],
+];
 import { useTheme } from '../ThemeProvider';
 import './ClipContextMenu.css';
 
@@ -31,7 +38,8 @@ export interface ClipContextMenuProps {
   onRename?: () => void;
 
   /**
-   * Callback for changing clip color (submenu will handle color selection)
+   * Callback for changing clip color: a `ClipColor` id from the palette,
+   * or `'track'` to go back to the track's own colour
    */
   onColorChange?: (color: string) => void;
 
@@ -187,15 +195,14 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
         hasSubmenu
         onClose={onClose}
       >
-        <ContextMenuItem label="Blue" onClick={() => { onColorChange?.('blue'); onClose(); }} />
-        <ContextMenuItem label="Green" onClick={() => { onColorChange?.('green'); onClose(); }} />
-        <ContextMenuItem label="Yellow" onClick={() => { onColorChange?.('yellow'); onClose(); }} />
-        <ContextMenuItem label="Orange" onClick={() => { onColorChange?.('orange'); onClose(); }} />
-        <ContextMenuItem label="Red" onClick={() => { onColorChange?.('red'); onClose(); }} />
-        <ContextMenuItem label="Purple" onClick={() => { onColorChange?.('purple'); onClose(); }} />
-        <ContextMenuItem label="Pink" onClick={() => { onColorChange?.('pink'); onClose(); }} />
-        <ContextMenuItem label="Gray" onClick={() => { onColorChange?.('gray'); onClose(); }} />
-        <ContextMenuItem label="Teal" onClick={() => { onColorChange?.('teal'); onClose(); }} />
+        {/* The clip palette (types/clip.ts ClipColor), plus the track's
+            own colour to go back to (2026-10-02 — the list was an older
+            palette with colours no clip can wear) */}
+        <ContextMenuItem label="Track color" onClick={() => { onColorChange?.('track'); onClose(); }} />
+        <ContextMenuItem isDivider label="" />
+        {CLIP_COLOR_ITEMS.map(([id, label]) => (
+          <ContextMenuItem key={id} label={label} onClick={() => { onColorChange?.(id); onClose(); }} />
+        ))}
       </ContextMenuItem>
 
       {/* Divider */}

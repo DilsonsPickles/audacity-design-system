@@ -57,6 +57,24 @@
   background: var(--dock-well, #ebedf0);
 }
 
+/* Two columns in the bottom drawer (data-layout="columns"): wide and
+   short, so the groups sit side by side — Clip + Fades on the left,
+   Position + Speed on the right — instead of scrolling a single column.
+   In a side dock (`stack`) the groups simply follow each other. */
+.clip-properties[data-layout="columns"] .clip-properties__body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-template-rows: auto auto;
+  column-gap: 24px;
+  align-content: start;
+  padding: 0 16px 12px;
+}
+
+.clip-properties[data-layout="columns"] .clip-properties__field {
+  grid-template-columns: 88px minmax(0, 1fr);
+}
+
 .clip-properties__section {
   margin: 12px 0 4px;
   font-size: 12px;
