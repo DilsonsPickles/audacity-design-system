@@ -60,6 +60,10 @@ export interface ClipContextMenuProps {
    */
   onSplit?: () => void;
 
+  /** "Clip properties…" — the host opens the Clip properties panel on
+   *  this clip (user request 2026-10-02). The item shows only when wired. */
+  onOpenProperties?: () => void;
+
   /** "Fade in…" — the host opens a duration dialog and applies it to the
    *  clicked clip, or to every selected clip when the clicked one is
    *  part of the selection. */
@@ -140,6 +144,7 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   stretchWithTempo = false,
   onToggleStretchWithTempo,
   onOpenPitchSpeedDialog,
+  onOpenProperties,
   onRenderPitchSpeed,
   canGroup,
   canUngroup,
@@ -159,6 +164,15 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
     <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="clip-context-menu" autoFocus={autoFocus} style={style}>
       {/* Clip properties header */}
       <div className="clip-context-menu-header">Clip properties</div>
+
+      {/* The panel — first under its own heading */}
+      {onOpenProperties && (
+        <ContextMenuItem
+          label="Clip properties…"
+          onClick={onOpenProperties}
+          onClose={onClose}
+        />
+      )}
 
       {/* Rename clip */}
       <ContextMenuItem

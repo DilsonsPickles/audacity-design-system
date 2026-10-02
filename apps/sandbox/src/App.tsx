@@ -55,6 +55,7 @@ import { useProjectManagement } from './hooks/useProjectManagement';
 import { usePlugins } from './hooks/usePlugins';
 import { DialogProvider, useDialogs } from './contexts/DialogContext';
 import { MacrosProvider, useMacros } from './contexts/MacrosContext';
+import { ClipPropertiesProvider } from './contexts/ClipPropertiesContext';
 import { ContextMenuProvider, useContextMenus } from './contexts/ContextMenuContext';
 import { useLoopRegion } from './hooks/useLoopRegion';
 import { useMasterMeter } from './hooks/useMasterMeter';
@@ -1340,6 +1341,7 @@ function ThemedApp() {
             <SpectralSelectionProvider>
               <DialogProvider>
                 <MacrosProvider>
+                <ClipPropertiesProvider>
                 <ContextMenuProvider>
                   <MuseHubProvider>
                     <AdieuProvider>
@@ -1358,6 +1360,7 @@ function ThemedApp() {
                     </AdieuProvider>
                   </MuseHubProvider>
                 </ContextMenuProvider>
+                </ClipPropertiesProvider>
                 </MacrosProvider>
               </DialogProvider>
             </SpectralSelectionProvider>

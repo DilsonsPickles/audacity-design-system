@@ -101,6 +101,7 @@ export * from './LabelEditorTableRow';
 export * from './PluginManagerDialog';
 export * from './MacroManager';
 export * from './MacrosPanel';
+export * from './ClipPropertiesPanel';
 export * from './MacroEditorDialog';
 export * from './MacroBuilderDialog';
 export * from './RunMacroOnFilesDialog';

@@ -5,8 +5,9 @@ import { useTracksDispatch, type TracksState } from '../../contexts/TracksContex
 import { MIDI_INSTRUMENTS } from '../../contexts/AudioEngineContext';
 import type { EffectSelectorMenuState } from '../../hooks/useContextMenuState';
 import { MacrosDockPanel } from './MacrosDockPanel';
+import { ClipPropertiesDockPanel } from './ClipPropertiesDockPanel';
 
-export type DrawerTabId = 'mixer' | 'piano-roll' | 'macros';
+export type DrawerTabId = 'mixer' | 'piano-roll' | 'macros' | 'clip-properties';
 
 export interface EditorBottomDrawerProps {
   /** Same TracksState object EditorLayout reads today — passed through
@@ -40,6 +41,10 @@ export interface EditorBottomDrawerProps {
   onCloseMacros?: () => void;
   /** Opens the Macros placement menu (Float / Dock left / right / bottom) */
   onMacrosMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Whether the Clip properties panel is docked into this drawer (2026-10-02) */
+  clipPropertiesOpen?: boolean;
+  onCloseClipProperties?: () => void;
+  onClipPropertiesMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 /** Unified tabbed panel for Mixer and Piano Roll, docked to the bottom of
@@ -70,6 +75,9 @@ export function EditorBottomDrawer({
   macrosOpen,
   onCloseMacros,
   onMacrosMenuClick,
+  clipPropertiesOpen,
+  onCloseClipProperties,
+  onClipPropertiesMenuClick,
 }: EditorBottomDrawerProps) {
   const dispatch = useTracksDispatch();
 
@@ -80,18 +88,20 @@ export function EditorBottomDrawer({
 
   const mixerOpen = showMixer && activeMenuItem !== 'export';
   const pianoRollOpen = state.pianoRollOpen && state.pianoRollTrackIndex !== null;
-  if (!mixerOpen && !pianoRollOpen && !macrosOpen) return null;
+  if (!mixerOpen && !pianoRollOpen && !macrosOpen && !clipPropertiesOpen) return null;
 
   // Build tabs for open panels, respecting user's drag order
   const allTabDefs: Record<string, PanelHeaderTab> = {
     mixer: { id: 'mixer', label: 'Mixer' },
     'piano-roll': { id: 'piano-roll', label: 'Piano roll' },
     macros: { id: 'macros', label: 'Macro manager' },
+    'clip-properties': { id: 'clip-properties', label: 'Clip properties' },
   };
   const openIds = new Set<string>();
   if (mixerOpen) openIds.add('mixer');
   if (pianoRollOpen) openIds.add('piano-roll');
   if (macrosOpen) openIds.add('macros');
+  if (clipPropertiesOpen) openIds.add('clip-properties');
   const tabs: PanelHeaderTab[] = drawerTabOrder
     .filter(id => openIds.has(id))
     .map(id => allTabDefs[id]);
@@ -110,6 +120,8 @@ export function EditorBottomDrawer({
       dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
     } else if (tabId === 'macros') {
       onCloseMacros?.();
+    } else if (tabId === 'clip-properties') {
+      onCloseClipProperties?.();
     }
   };
 
@@ -137,6 +149,8 @@ export function EditorBottomDrawer({
         onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as DrawerTabId[])}
         onMenuClick={activeTab === 'macros'
           ? onMacrosMenuClick
+          : activeTab === 'clip-properties'
+          ? onClipPropertiesMenuClick
           : (e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             setTabMenu({ x: rect.right, y: rect.bottom });
@@ -163,6 +177,7 @@ export function EditorBottomDrawer({
 
       {/* Macros content — same sandbox wiring as the side docks */}
       {activeTab === 'macros' && macrosOpen && <MacrosDockPanel placement="end" />}
+      {activeTab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" />}
 
       {/* Mixer content */}
       {activeTab === 'mixer' && mixerOpen && (() => {

@@ -5,6 +5,7 @@ import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
+import { useClipProperties } from '../contexts/ClipPropertiesContext';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { useTracks } from '../contexts/TracksContext';
@@ -96,6 +97,7 @@ export function AppContextMenus({
     effectSelectorMenu, setEffectSelectorMenu,
     setEffectDialog,
   } = useContextMenus();
+  const { openClipProperties } = useClipProperties();
   const {
     loopRegionEnabled, setLoopRegionEnabled,
     loopRegionStart, setLoopRegionStart,
@@ -169,6 +171,10 @@ export function AppContextMenus({
             y={clipContextMenu.y}
             autoFocus={clipContextMenu.openedViaKeyboard}
             onClose={() => setClipContextMenu(null)}
+            onOpenProperties={() => {
+              openClipProperties({ trackIndex: clipContextMenu.trackIndex, clipId: clipContextMenu.clipId });
+              setClipContextMenu(null);
+            }}
             onRename={() => {
               setClipContextMenu(null);
             }}

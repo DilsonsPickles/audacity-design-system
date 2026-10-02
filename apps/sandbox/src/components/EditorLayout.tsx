@@ -29,12 +29,15 @@ import { buildNewTrack, buildDuplicatedTracks } from '../utils/trackManagement';
 import { LoopRegionStalks } from './editor/LoopRegionStalks';
 import { PunchPointIndicator } from './editor/PunchPointIndicator';
 import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
-import { EditorBottomDrawer } from './editor/EditorBottomDrawer';
+import { EditorBottomDrawer, type DrawerTabId } from './editor/EditorBottomDrawer';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
 import { ancestorFolders, effectiveTrackHeight, effectiveTrackStride, folderDescendantIndices } from '../utils/trackFolders';
 import { PopoutPanel } from './editor/PopoutPanel';
 import { useMacros } from '../contexts/MacrosContext';
+import { useClipProperties } from '../contexts/ClipPropertiesContext';
+import { ClipPropertiesDockPanel } from './editor/ClipPropertiesDockPanel';
+import { type DockPanelId, type PanelSide, DOCK_PANEL_LABELS, docksBottom } from './editor/dockPanels';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
 import {
   findTrackControlPanelByIndex,
@@ -154,13 +157,13 @@ const DOCK_ZONE_SIZE = 88;
 function dockZoneAt(
   x: number,
   y: number,
-  panel: 'effects' | 'macros',
+  panel: DockPanelId,
   rect: DOMRect,
 ): 'left' | 'right' | 'bottom' | null {
   if (y < rect.top || y > rect.bottom || x < rect.left || x > rect.right) return null;
   if (x <= rect.left + DOCK_ZONE_SIZE) return 'left';
   if (x >= rect.right - DOCK_ZONE_SIZE) return 'right';
-  if (panel === 'macros' && y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
+  if (docksBottom(panel) && y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
   return null;
 }
 
@@ -230,8 +233,8 @@ export function EditorLayout(props: EditorLayoutProps) {
     anchorRect: DOMRect | null;
   }>({ open: false, x: 0, y: 0, anchorRect: null });
   const [drawerHeight, setDrawerHeight] = React.useState(376);
-  const [drawerActiveTab, setDrawerActiveTab] = React.useState<'mixer' | 'piano-roll' | 'macros'>('mixer');
-  const [drawerTabOrder, setDrawerTabOrder] = React.useState<Array<'mixer' | 'piano-roll' | 'macros'>>(['mixer', 'piano-roll', 'macros']);
+  const [drawerActiveTab, setDrawerActiveTab] = React.useState<DrawerTabId>('mixer');
+  const [drawerTabOrder, setDrawerTabOrder] = React.useState<DrawerTabId[]>(['mixer', 'piano-roll', 'macros', 'clip-properties']);
 
   // Side docks — the left dock hosts Effects and (optionally) Macros as
   // tabs. The Macros panel opens floating by default; its tab's kebab menu
@@ -240,18 +243,23 @@ export function EditorLayout(props: EditorLayoutProps) {
     isMacrosPanelOpen, setIsMacrosPanelOpen,
     macrosPanelSide, setMacrosPanelSide,
   } = useMacros();
-  const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<'effects' | 'macros'>('effects');
-  const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
+  // The Clip properties panel takes the same placements as Macros (2026-10-02)
+  const {
+    isClipPropertiesOpen, setIsClipPropertiesOpen,
+    clipPropertiesSide, setClipPropertiesSide,
+  } = useClipProperties();
+  const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<DockPanelId>('effects');
+  const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'macros', 'clip-properties']);
   // Effects panel placement — docked left (the classic position), docked
   // right, or floating in its own OS window, moved via its tab's kebab
   // menu or by dragging its tab/header.
   const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'right' | 'window'>('left');
   // The right dock hosts Effects and/or Macros as tabs, mirroring the left
-  const [rightDockActiveTab, setRightDockActiveTab] = React.useState<'effects' | 'macros'>('macros');
-  const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<'effects' | 'macros'>>(['effects', 'macros']);
+  const [rightDockActiveTab, setRightDockActiveTab] = React.useState<DockPanelId>('macros');
+  const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'macros', 'clip-properties']);
   // Which tab's kebab menu is open. Closing a panel lives in this menu —
   // panel headers deliberately have no close button (2026-09-10).
-  const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number; tab: 'macros' | 'effects' } | null>(null);
+  const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number; tab: DockPanelId } | null>(null);
 
   const effectsOpen = activeMenuItem !== 'export' && !!effectsPanel?.isOpen;
   const effectsDockedLeft = effectsOpen && effectsPanelSide === 'left';
@@ -261,6 +269,11 @@ export function EditorLayout(props: EditorLayoutProps) {
   const macrosDockedRight = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'right';
   const macrosDockedBottom = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'bottom';
   const macrosInWindow = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'window';
+  const propsOpen = activeMenuItem !== 'export' && isClipPropertiesOpen;
+  const propsDockedLeft = propsOpen && clipPropertiesSide === 'left';
+  const propsDockedRight = propsOpen && clipPropertiesSide === 'right';
+  const propsDockedBottom = propsOpen && clipPropertiesSide === 'bottom';
+  const propsInWindow = propsOpen && clipPropertiesSide === 'window';
 
   // Auto-activate a dock tab when its panel opens (mirrors the bottom
   // drawer's useDrawerTabAutoSwitch behavior).
@@ -273,45 +286,58 @@ export function EditorLayout(props: EditorLayoutProps) {
     if (isMacrosPanelOpen && macrosPanelSide === 'right') setRightDockActiveTab('macros');
     if (isMacrosPanelOpen && macrosPanelSide === 'bottom') setDrawerActiveTab('macros');
   }, [isMacrosPanelOpen, macrosPanelSide]);
+  React.useEffect(() => {
+    if (isClipPropertiesOpen && clipPropertiesSide === 'left') setLeftDockActiveTab('clip-properties');
+    if (isClipPropertiesOpen && clipPropertiesSide === 'right') setRightDockActiveTab('clip-properties');
+    if (isClipPropertiesOpen && clipPropertiesSide === 'bottom') setDrawerActiveTab('clip-properties');
+  }, [isClipPropertiesOpen, clipPropertiesSide]);
 
   const macrosTabDef: PanelHeaderTab = { id: 'macros', label: 'Macro manager' };
-  const leftDockTabDefs: Record<'effects' | 'macros', PanelHeaderTab> = {
+  const leftDockTabDefs: Record<DockPanelId, PanelHeaderTab> = {
     effects: { id: 'effects', label: 'Effects' },
     macros: macrosTabDef,
+    'clip-properties': { id: 'clip-properties', label: DOCK_PANEL_LABELS['clip-properties'] },
   };
   const openLeftDockIds = new Set<string>();
   if (effectsDockedLeft) openLeftDockIds.add('effects');
   if (macrosDockedLeft) openLeftDockIds.add('macros');
+  if (propsDockedLeft) openLeftDockIds.add('clip-properties');
   const leftDockTabs: PanelHeaderTab[] = leftDockTabOrder
     .filter((id) => openLeftDockIds.has(id))
     .map((id) => leftDockTabDefs[id]);
   const activeLeftDockTab = leftDockTabs.find((t) => t.id === leftDockActiveTab)
     ? leftDockActiveTab
-    : (leftDockTabs[0]?.id as 'effects' | 'macros' | undefined);
+    : (leftDockTabs[0]?.id as DockPanelId | undefined);
 
   const openRightDockIds = new Set<string>();
   if (effectsDockedRight) openRightDockIds.add('effects');
   if (macrosDockedRight) openRightDockIds.add('macros');
+  if (propsDockedRight) openRightDockIds.add('clip-properties');
   const rightDockTabs: PanelHeaderTab[] = rightDockTabOrder
     .filter((id) => openRightDockIds.has(id))
     .map((id) => leftDockTabDefs[id]);
   const activeRightDockTab = rightDockTabs.find((t) => t.id === rightDockActiveTab)
     ? rightDockActiveTab
-    : (rightDockTabs[0]?.id as 'effects' | 'macros' | undefined);
+    : (rightDockTabs[0]?.id as DockPanelId | undefined);
 
   const openDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDockMenu({ x: rect.right, y: rect.bottom, tab: 'macros' });
   };
 
+  const openClipPropertiesDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: 'clip-properties' });
+  };
+
   const openLeftDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setDockMenu({ x: rect.right, y: rect.bottom, tab: activeLeftDockTab === 'effects' ? 'effects' : 'macros' });
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: activeLeftDockTab ?? 'macros' });
   };
 
   const openRightDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setDockMenu({ x: rect.right, y: rect.bottom, tab: activeRightDockTab === 'effects' ? 'effects' : 'macros' });
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: activeRightDockTab ?? 'macros' });
   };
 
   // ── Drag-to-dock ────────────────────────────────────────────────────
@@ -321,18 +347,18 @@ export function EditorLayout(props: EditorLayoutProps) {
   // (the drawer).
   const editorRowRef = React.useRef<HTMLDivElement>(null);
   const [panelDrag, setPanelDrag] = React.useState<{
-    panel: 'effects' | 'macros';
+    panel: DockPanelId;
     zone: 'left' | 'right' | 'bottom' | null;
     rowRect: DOMRect;
   } | null>(null);
 
-  const dockDragMove = React.useCallback((panel: 'effects' | 'macros', x: number, y: number) => {
+  const dockDragMove = React.useCallback((panel: DockPanelId, x: number, y: number) => {
     const rowRect = editorRowRef.current?.getBoundingClientRect();
     if (!rowRect) return;
     setPanelDrag({ panel, zone: dockZoneAt(x, y, panel, rowRect), rowRect });
   }, []);
 
-  const dockDragEnd = React.useCallback((panel: 'effects' | 'macros', x: number, y: number) => {
+  const dockDragEnd = React.useCallback((panel: DockPanelId, x: number, y: number) => {
     const rowRect = editorRowRef.current?.getBoundingClientRect();
     setPanelDrag(null);
     if (!rowRect) return;
@@ -340,12 +366,14 @@ export function EditorLayout(props: EditorLayoutProps) {
     if (!zone) return;
     if (panel === 'effects') {
       if (zone !== 'bottom') setEffectsPanelSide(zone);
-    } else {
+    } else if (panel === 'macros') {
       setMacrosPanelSide(zone);
+    } else {
+      setClipPropertiesSide(zone);
     }
-  }, [setMacrosPanelSide]);
+  }, [setMacrosPanelSide, setClipPropertiesSide]);
 
-  const handlePanelDragMove = (panel: 'effects' | 'macros') => (x: number, y: number) =>
+  const handlePanelDragMove = (panel: DockPanelId) => (x: number, y: number) =>
     dockDragMove(panel, x, y);
 
   // Tear-off: dragging a dock tab vertically out of its header pops the
@@ -354,7 +382,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   // into the zone-highlight/dock flow. The kebab menu items stay as the
   // discoverable path; the drag is the direct one.
   const [panelTearDrag, setPanelTearDrag] = React.useState<{
-    panel: 'effects' | 'macros';
+    panel: DockPanelId;
     clientX: number;
     clientY: number;
     screenX: number;
@@ -365,16 +393,17 @@ export function EditorLayout(props: EditorLayoutProps) {
     tabId: string,
     e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
   ) => {
-    if (tabId !== 'effects' && tabId !== 'macros') return;
+    if (tabId !== 'effects' && tabId !== 'macros' && tabId !== 'clip-properties') return;
     // Keep pointer events flowing to this document even when the cursor
     // leaves the app window mid-drag (the torn panel is an OS window)
     try { document.body.setPointerCapture(e.pointerId); } catch { /* jsdom / no capture */ }
     if (tabId === 'effects') setEffectsPanelSide('window');
-    else setMacrosPanelSide('window');
+    else if (tabId === 'macros') setMacrosPanelSide('window');
+    else setClipPropertiesSide('window');
     setPanelTearDrag({ panel: tabId, clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY });
   };
 
-  const handlePopoutDragEnd = (panel: 'effects' | 'macros') => (x: number, y: number) => {
+  const handlePopoutDragEnd = (panel: DockPanelId) => (x: number, y: number) => {
     setPanelTearDrag(null);
     dockDragEnd(panel, x, y);
   };
@@ -700,8 +729,8 @@ export function EditorLayout(props: EditorLayoutProps) {
           maxWidth={400}
           tabs={leftDockTabs}
           activeTabId={activeLeftDockTab ?? leftDockTabs[0].id}
-          onTabChange={(tabId) => setLeftDockActiveTab(tabId as 'effects' | 'macros')}
-          onTabReorder={(newTabs) => setLeftDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
+          onTabChange={(tabId) => setLeftDockActiveTab(tabId as DockPanelId)}
+          onTabReorder={(newTabs) => setLeftDockTabOrder(newTabs.map((t) => t.id) as Array<DockPanelId>)}
           onMenuClick={openLeftDockMenu}
           onTabTearOff={handleDockTabTearOff}
         >
@@ -721,6 +750,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             />
           )}
           {activeLeftDockTab === 'macros' && macrosDockedLeft && <MacrosDockPanel placement="start" />}
+          {activeLeftDockTab === 'clip-properties' && propsDockedLeft && <ClipPropertiesDockPanel placement="start" />}
         </DockPanel>
       )}
 
@@ -1433,8 +1463,8 @@ export function EditorLayout(props: EditorLayoutProps) {
           maxWidth={400}
           tabs={rightDockTabs}
           activeTabId={activeRightDockTab ?? rightDockTabs[0].id}
-          onTabChange={(tabId) => setRightDockActiveTab(tabId as 'effects' | 'macros')}
-          onTabReorder={(newTabs) => setRightDockTabOrder(newTabs.map((t) => t.id) as Array<'effects' | 'macros'>)}
+          onTabChange={(tabId) => setRightDockActiveTab(tabId as DockPanelId)}
+          onTabReorder={(newTabs) => setRightDockTabOrder(newTabs.map((t) => t.id) as Array<DockPanelId>)}
           onMenuClick={openRightDockMenu}
           onTabTearOff={handleDockTabTearOff}
         >
@@ -1454,6 +1484,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             />
           )}
           {activeRightDockTab === 'macros' && macrosDockedRight && <MacrosDockPanel placement="end" />}
+          {activeRightDockTab === 'clip-properties' && propsDockedRight && <ClipPropertiesDockPanel placement="end" />}
         </DockPanel>
       )}
     </div>
@@ -1479,7 +1510,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         right: { left: r.right - 280, top: r.top, width: 280, height: r.height },
         bottom: { left: r.left, top: r.bottom - bottomPreviewH, width: r.width, height: bottomPreviewH },
       };
-      const zones: Array<'left' | 'right' | 'bottom'> = panelDrag.panel === 'macros'
+      const zones: Array<'left' | 'right' | 'bottom'> = docksBottom(panelDrag.panel)
         ? ['left', 'right', 'bottom']
         : ['left', 'right'];
       return (
@@ -1564,6 +1595,28 @@ export function EditorLayout(props: EditorLayoutProps) {
       </PopoutPanel>
     )}
 
+    {/* Clip properties in its own OS window; closing docks it back right. */}
+    {propsInWindow && (
+      <PopoutPanel
+        title={DOCK_PANEL_LABELS['clip-properties']}
+        width={320}
+        height={560}
+        onClose={() => setClipPropertiesSide('right')}
+        onDragMove={handlePanelDragMove('clip-properties')}
+        onDragEnd={handlePopoutDragEnd('clip-properties')}
+        continueDragFrom={panelTearDrag?.panel === 'clip-properties' ? panelTearDrag : null}
+        menuItems={[
+          { label: 'Dock left', onClick: () => setClipPropertiesSide('left') },
+          { label: 'Dock right', onClick: () => setClipPropertiesSide('right') },
+          { label: 'Dock bottom', onClick: () => setClipPropertiesSide('bottom') },
+          { label: '', isDivider: true },
+          { label: 'Close', onClick: () => setIsClipPropertiesOpen(false) },
+        ]}
+      >
+        <ClipPropertiesDockPanel />
+      </PopoutPanel>
+    )}
+
     {/* Tab kebab menu — placement (Macros) and Close. Closing a panel
         lives HERE: panel headers have no close button (2026-09-10). */}
     <ContextMenu
@@ -1572,78 +1625,34 @@ export function EditorLayout(props: EditorLayoutProps) {
       x={dockMenu?.x ?? 0}
       y={dockMenu?.y ?? 0}
     >
-      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'left' && (
-        <ContextMenuItem
-          label="Dock left"
-          onClick={() => {
-            setMacrosPanelSide('left');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'right' && (
-        <ContextMenuItem
-          label="Dock right"
-          onClick={() => {
-            setMacrosPanelSide('right');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'bottom' && (
-        <ContextMenuItem
-          label="Dock bottom"
-          onClick={() => {
-            setMacrosPanelSide('bottom');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      {dockMenu?.tab === 'macros' && macrosPanelSide !== 'window' && (
-        <ContextMenuItem
-          label="Open in window"
-          onClick={() => {
-            setMacrosPanelSide('window');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'left' && (
-        <ContextMenuItem
-          label="Dock left"
-          onClick={() => {
-            setEffectsPanelSide('left');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'right' && (
-        <ContextMenuItem
-          label="Dock right"
-          onClick={() => {
-            setEffectsPanelSide('right');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      {dockMenu?.tab === 'effects' && effectsPanelSide !== 'window' && (
-        <ContextMenuItem
-          label="Open in window"
-          onClick={() => {
-            setEffectsPanelSide('window');
-            setDockMenu(null);
-          }}
-        />
-      )}
-      <ContextMenuItem isDivider label="" />
-      <ContextMenuItem
-        label="Close"
-        onClick={() => {
-          if (dockMenu?.tab === 'effects') setEffectsPanel(null);
-          else setIsMacrosPanelOpen(false);
+      {/* One generic menu for every dockable panel: the placements it
+          is not already in, then Close (dockPanels.ts). */}
+      {dockMenu && (() => {
+        const tab = dockMenu.tab;
+        const side = tab === 'effects' ? effectsPanelSide : tab === 'macros' ? macrosPanelSide : clipPropertiesSide;
+        const place = (next: PanelSide) => {
+          if (tab === 'effects') { if (next !== 'bottom') setEffectsPanelSide(next); }
+          else if (tab === 'macros') setMacrosPanelSide(next);
+          else setClipPropertiesSide(next);
           setDockMenu(null);
-        }}
-      />
+        };
+        const close = () => {
+          if (tab === 'effects') setEffectsPanel(null);
+          else if (tab === 'macros') setIsMacrosPanelOpen(false);
+          else setIsClipPropertiesOpen(false);
+          setDockMenu(null);
+        };
+        return (
+          <>
+            {side !== 'left' && <ContextMenuItem label="Dock left" onClick={() => place('left')} />}
+            {side !== 'right' && <ContextMenuItem label="Dock right" onClick={() => place('right')} />}
+            {docksBottom(tab) && side !== 'bottom' && <ContextMenuItem label="Dock bottom" onClick={() => place('bottom')} />}
+            {side !== 'window' && <ContextMenuItem label="Open in window" onClick={() => place('window')} />}
+            <ContextMenuItem isDivider label="" />
+            <ContextMenuItem label="Close" onClick={close} />
+          </>
+        );
+      })()}
     </ContextMenu>
 
     {/* Bottom Drawer — unified tabbed panel for Mixer, Piano Roll and (when
@@ -1652,6 +1661,9 @@ export function EditorLayout(props: EditorLayoutProps) {
       macrosOpen={macrosDockedBottom}
       onCloseMacros={() => setIsMacrosPanelOpen(false)}
       onMacrosMenuClick={openDockMenu}
+      clipPropertiesOpen={propsDockedBottom}
+      onCloseClipProperties={() => setIsClipPropertiesOpen(false)}
+      onClipPropertiesMenuClick={openClipPropertiesDockMenu}
       state={state}
       theme={theme}
       activeMenuItem={activeMenuItem}
