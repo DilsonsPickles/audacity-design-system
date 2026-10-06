@@ -149,6 +149,71 @@ export const colors = {
 /**
  * Typography Tokens
  */
+/**
+ * Dark-mode TINTS of every hue (2026-10-06, for the warning/info/error
+ * banners — "I need the colour values for dark mode for all sets").
+ *
+ * The ramps are anchored at the light end: step 900 is the most
+ * SATURATED colour, not a dark one, so a dark fill cannot be a ramp
+ * step. The recipe, matched to the hand-drawn dark error banner in the
+ * Figma: the hue's 700 sunk into the dark panel surface (midnight-200)
+ * — 25% for the FILL, 55% for the BORDER — and the hue's 400 for the
+ * ICON and HEADING (body text stays slate-100). Light mode uses the
+ * ramp directly: 200 fill, 500 border, 800 icon and heading.
+ *
+ * Derived from `colors` at module load, so a ramp change moves these.
+ * In CSS the same thing is
+ * `color-mix(in srgb, var(--<hue>-700) 25%, var(--midnight-200))`.
+ */
+export interface DarkTint {
+  /** The banner's fill: hue 700 at 25% over midnight-200 */
+  fill: string;
+  /** The banner's border: hue 700 at 55% over midnight-200 */
+  border: string;
+  /** Icon and heading: the hue's 400 */
+  accent: string;
+}
+
+export type TintHue = Exclude<keyof typeof colors, 'shade'>;
+
+/** Mix two hex colours: `t` of `a` over `1 − t` of `b` (sRGB, as color-mix) */
+export function mixHex(a: string, b: string, t: number): string {
+  const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [ar, ag, ab] = rgb(a);
+  const [br, bg, bb] = rgb(b);
+  const ch = (x: number, y: number) => Math.round(x * t + y * (1 - t)).toString(16).padStart(2, '0').toUpperCase();
+  return `#${ch(ar, br)}${ch(ag, bg)}${ch(ab, bb)}`;
+}
+
+export const DARK_TINT_FILL_MIX = 0.25;
+export const DARK_TINT_BORDER_MIX = 0.55;
+
+export const darkTints: Record<TintHue, DarkTint> = (() => {
+  const surface = colors.midnight[200];
+  const out = {} as Record<TintHue, DarkTint>;
+  for (const hue of Object.keys(colors) as Array<keyof typeof colors>) {
+    if (hue === 'shade') continue;
+    const ramp = colors[hue] as Record<number, string>;
+    out[hue] = {
+      fill: mixHex(ramp[700], surface, DARK_TINT_FILL_MIX),
+      border: mixHex(ramp[700], surface, DARK_TINT_BORDER_MIX),
+      accent: ramp[400],
+    };
+  }
+  return out;
+})();
+
+/** The light-mode counterpart, straight off the ramp */
+export const lightTints: Record<TintHue, DarkTint> = (() => {
+  const out = {} as Record<TintHue, DarkTint>;
+  for (const hue of Object.keys(colors) as Array<keyof typeof colors>) {
+    if (hue === 'shade') continue;
+    const ramp = colors[hue] as Record<number, string>;
+    out[hue] = { fill: ramp[200], border: ramp[500], accent: ramp[800] };
+  }
+  return out;
+})();
+
 export interface TypographyStyle {
   fontFamily: string;
   fontSize: string;

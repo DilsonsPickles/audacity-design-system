@@ -230,3 +230,5 @@ These are not-yet-decomposed monoliths. They work but are prime targets for futu
 | `clip-interactions.md` | Clip interaction model (drag, trim, stretch, selection) |
 | `debugging-protocol.md` | Debugging workflow and conventions |
 | `playback-tracking.md` | Playhead and playback position tracking |
+
+- `packages/tokens/src/index.ts` — `darkTints` / `lightTints` (2026-10-06): per-hue banner tints — dark = the hue's 700 mixed 25% (fill) / 55% (border) into midnight-200, accent = 400; light = 200 / 500 / 800 straight off the ramp. Derived from `colors`, with `mixHex`.
