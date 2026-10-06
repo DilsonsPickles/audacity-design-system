@@ -223,6 +223,20 @@
   }
 }
 
+/* The fade curve's LINE shows only while its clip is selected,
+   focused, hovered or being edited (TrackNew sets
+   data-fade-line-visible; 2026-10-06 — "what if the line disappears
+   entirely when not selected/hovered?"); at rest the dim alone says
+   there is a fade. Same tempo as the handles. */
+[data-fade-curve] [data-fade-line] {
+  opacity: 0;
+  transition: opacity 0.12s ease-out;
+}
+
+[data-fade-curve][data-fade-line-visible] [data-fade-line] {
+  opacity: 1;
+}
+
 [data-leaving] {
   opacity: 0 !important;
   pointer-events: none !important;
@@ -231,7 +245,8 @@
 @media (prefers-reduced-motion: reduce) {
   .track-fade-handle,
   .track-fade-shape-handle,
-  [data-crossfade-node] {
+  [data-crossfade-node],
+  [data-fade-curve] [data-fade-line] {
     transition: none;
   }
 }

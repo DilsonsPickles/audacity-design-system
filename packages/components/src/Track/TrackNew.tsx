@@ -1333,7 +1333,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // 2026-10-06 ("the idle curve a little less bold… the curve just
     // stops abruptly" where it met the clip's top): the dim went from
     // 14% to 20% so the faded region reads as quieter audio, the line
-    // from 55% to 35% so its end at the clip's edge is not a hard stop
+    // from 55% to 35% — and, later the same day, the line HIDES at
+    // rest altogether (data-fade-line-visible, Track.css)
     const FADE_DIM_FILL = 'rgba(0, 0, 0, 0.2)';
     const FADE_LINE_STROKE = 'rgba(0, 0, 0, 0.35)';
     // TWO passes: every ghost first (449), every curve above them (450)
@@ -1391,12 +1392,25 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         : crossfadeOf != null && crossfadeDrag === `${crossfadeOf.outgoingClipId}-${crossfadeOf.incomingClipId}`;
       const curvePath = fadeCurvePath(region.side, 64, region.shape);
       const belowClipId = `${fadeClipIdBase}-below-${region.clipId}-${region.side}`;
+      // The LINE shows only while its clip is selected, focused, under
+      // the pointer, or being edited (2026-10-06, "what if the line
+      // disappears entirely when not selected/hovered?"); at rest the
+      // dim alone says there is a fade. A crossfade's line belongs to
+      // both its clips. CSS fades it in and out at the handles' tempo.
+      const owners = crossfadeOf ? [crossfadeOf.outgoingClipId, crossfadeOf.incomingClipId] : [region.clipId];
+      const lineVisible = editing || owners.some((id) =>
+        clips.find((c) => c.id === id)?.selected
+        || focusedClipId === id
+        || handleHoverClipId === id
+        || fadeHoverClipId === id
+        || fadeDragClipId === id);
       return (
         <div
           key={`fade-curve-${g.key}`}
           data-fade-curve={region.side}
           data-fade-authored={region.authored ? 'true' : 'false'}
           data-fade-editing={editing ? 'true' : undefined}
+          data-fade-line-visible={lineVisible ? 'true' : undefined}
           style={{
             position: 'absolute',
             left: `${g.left}px`,
@@ -2030,7 +2044,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // draw active ∪ leaving. (Clip's in-clip trim/stretch pair does the
   // same for itself.)
   const fadeHandleActive = clips
-    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id || focusedClipId === c.id) && !hidesHandlesOf(c.id))
+    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   const leavingFadeHandles = useLeavingKeys(fadeHandleActive);
   const buriedActive = clips

@@ -1733,13 +1733,13 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
   });
 });
 
-describe('a clip with FOCUS shows its fade handles without the pointer (2026-10-01)', () => {
-  it('focus brings the corner handles up (not the shape handles), blur takes them down; focus on one of its own controls is not a blur', () => {
+describe('the fade length handles are HOVER-ONLY — focus and selection show none (2026-10-06, reversing 2026-10-01)', () => {
+  it('focus brings no corner handles up (the curve\'s line shows instead); the pointer does', () => {
     const { container } = render(
       <Providers>
         <TrackNew
           clips={[
-            { id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1 },
+            { id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, selected: true },
             { id: 2, name: 'B', start: 5, duration: 4 },
           ]}
           width={1200}
@@ -1751,18 +1751,13 @@ describe('a clip with FOCUS shows its fade handles without the pointer (2026-10-
       </Providers>,
     );
     const clip = container.querySelector('[data-clip-id="1"]') as HTMLElement;
-    expect(container.querySelector('[data-fade-handle]')).toBeNull();
+    expect(container.querySelector('[data-fade-handle]')).toBeNull(); // selected: none
     act(() => { clip.focus(); });
-    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
-    expect(container.querySelector('[data-fade-handle][data-fade-clip="2"]')).toBeNull();
-    expect(container.querySelector('[data-quickfade-node]')).toBeNull(); // hover only, still
-    // Focus moving to the clip's own handle keeps them (the handles are
-    // mouse-only, but a click can focus a button)
-    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
-    fireEvent.blur(clip, { relatedTarget: handle });
-    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
-    // Focus leaving for elsewhere takes them down
-    act(() => { clip.blur(); });
-    expect(container.querySelector('[data-fade-handle]')).toBeNull();
+    expect(container.querySelector('[data-fade-handle]')).toBeNull(); // focused: none
+    expect(container.querySelector('[data-fade-curve="in"]')!.hasAttribute('data-fade-line-visible')).toBe(true);
+    // The pointer, well inside, brings them up
+    fireEvent.mouseEnter(clip, { buttons: 0 });
+    fireEvent.mouseMove(clip, { clientX: 200, clientY: 60, buttons: 0 });
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]').length).toBeGreaterThan(0);
   });
 });
