@@ -50,10 +50,10 @@ describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', ()
     expect(input('pitch').value).toBe('0');
     expect(input('speed').value).toBe('100');
     // Glyphs, not labels: each field carries its name as a tooltip and for screen readers
-    expect(field('start').getAttribute('data-tooltip')).toContain('Start');
+    expect(field('start').getAttribute('data-tooltip')).toBe('Start');
     expect(field('start').querySelector('[data-glyph="Start"]')).toBeTruthy();
     expect(field('pitch').querySelector('[data-glyph="Pitch"]')).toBeTruthy();
-    expect(field('start').querySelector('.clip-properties__sr')?.textContent).toBe('Start (s)');
+    expect(field('start').querySelector('.clip-properties__sr')?.textContent).toBe('Start');
     expect(container.querySelector('.clip-properties__label')).toBeNull();
     // Start and End share a row; the name has a row to itself
     expect(field('start').parentElement).toBe(field('end').parentElement);
@@ -237,7 +237,7 @@ describe('ClipPropertiesPanel › Reset and Export (2026-10-06)', () => {
 });
 
 describe('ClipPropertiesPanel › tooltips (2026-10-06)', () => {
-  it('every control shows the design system\'s tooltip after a beat on hover, above its middle; leaving hides it', () => {
+  it('every control shows the design system\'s tooltip — its name, nothing more — after a beat on hover; leaving hides it', () => {
     vi.useFakeTimers();
     try {
       const { field, container } = renderPanel({ onResetPitchSpeed: vi.fn(), exportFormats: [{ id: 'wav', label: 'WAV' }], exportSampleRates: [{ id: '44100', label: '44.1 kHz' }], onExport: vi.fn() });
@@ -254,13 +254,13 @@ describe('ClipPropertiesPanel › tooltips (2026-10-06)', () => {
       fireEvent.mouseOver(pitch.querySelector('input') as HTMLElement);
       expect(tooltip()).toBeNull(); // not yet
       act(() => { vi.advanceTimersByTime(400); });
-      expect(tooltip()?.textContent).toContain('semitones');
+      expect(tooltip()?.textContent).toBe('Pitch');
       fireEvent.mouseOut(pitch, { relatedTarget: field('speed') });
       expect(tooltip()).toBeNull();
       // Pressing a control hides its tooltip too
       fireEvent.mouseOver(field('speed'));
       act(() => { vi.advanceTimersByTime(400); });
-      expect(tooltip()?.textContent).toContain('Speed');
+      expect(tooltip()?.textContent).toBe('Speed');
       fireEvent.mouseDown(field('speed'));
       expect(tooltip()).toBeNull();
     } finally {

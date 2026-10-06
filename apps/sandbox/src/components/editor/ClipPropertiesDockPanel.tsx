@@ -39,15 +39,7 @@ const CLIP_COLORS: ReadonlyArray<ClipPropertiesOption> = [
   ...CLIP_COLOR_ITEMS.map(([id, label]) => ({ id, label })),
 ];
 
-/** A word on each preset's curve, for its tooltip */
-const FADE_SHAPE_TIPS: Record<string, string> = {
-  default: 'eases in and out, the default',
-  linear: 'even from start to end',
-  'equal-power': 'holds loudness through the fade',
-  fast: 'most of the change early',
-  slow: 'most of the change late',
-};
-const FADE_SHAPES: ReadonlyArray<ClipPropertiesShapeOption> = FADE_SHAPE_PRESETS.map((p) => ({ id: p.id, label: p.label, shape: p.shape, tip: FADE_SHAPE_TIPS[p.id] }));
+const FADE_SHAPES: ReadonlyArray<ClipPropertiesShapeOption> = FADE_SHAPE_PRESETS.map((p) => ({ id: p.id, label: p.label, shape: p.shape }));
 
 const MIN_CLIP_SECONDS = 0.02;
 
