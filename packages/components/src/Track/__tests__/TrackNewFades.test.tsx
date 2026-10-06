@@ -596,10 +596,10 @@ describe('clip fades', () => {
     act(() => { fireEvent.pointerMove(handle(), { clientX: pressX + 100, clientY: 30, pointerId: 11 }); });
     expect(curve()).toBeTruthy();
     expect(bodyCentre()).toBe(pressX + 100);
-    // …and away from the edge the box has filled out to the trim box's
-    // full 36, centred on the body
-    expect(handle().style.width).toBe('36px');
-    expect(parseInt(handle().style.left, 10) - clipLeft).toBe(pressX + 100 - 18);
+    // …and away from the edge the box keeps its 30 — 12 toward the
+    // edge, 18 toward the inside — no filling out (2026-10-06)
+    expect(handle().style.width).toBe('30px');
+    expect(parseInt(handle().style.left, 10) - clipLeft).toBe(pressX + 100 - 12);
     // Part way back: still under the pointer
     act(() => { fireEvent.pointerMove(handle(), { clientX: pressX + 40, clientY: 30, pointerId: 11 }); });
     expect(bodyCentre()).toBe(pressX + 40);

@@ -63,6 +63,14 @@ export type ClipHandleHint =
 
 const FADE_GLYPH_RADIUS = 2.5;
 const FADE_HANDLE_BOX = { width: 36, height: 32 } as const;
+/** The HIT BOX's reach from the body's centre, toward the clip's edge
+ *  and toward its inside: the rest geometry (a body 13px in, the box
+ *  from the 6px line to 36) held WHATEVER the fade's length — 30px,
+ *  never filling out to 36 as it came away from the edge (user
+ *  decision 2026-10-06, "can we try it not scaling up?", replacing
+ *  2026-09-30's fill-out). The glyph svg stays FADE_HANDLE_BOX wide,
+ *  centred on the body, and overflows the box harmlessly. */
+const FADE_HIT_REACH = { toEdge: 12, toInside: 18 } as const;
 const FADE_GLYPH_BODY = {
   x: (FADE_HANDLE_BOX.width - 10) / 2,
   y: (FADE_HANDLE_BOX.height - 10) / 2,
@@ -2301,14 +2309,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const rawBodyLeft = inward ? boundaryX + GAP : boundaryX - GAP - size;
         const bodyLeft = Math.round(Math.max(FADE_HANDLE_EDGE_INSET, Math.min(clipWidth - FADE_HANDLE_EDGE_INSET - size, rawBodyLeft)));
         const bodyCentre = bodyLeft + HALF_BODY;
-        // The HIT BOX: the trim box's size, centred on the body, and
-        // clipped where it would reach into whatever owns the edge —
-        // that wins the ground. The selected clip's trim box and the
-        // unselected clip's edge zone both reach 6px in, so at rest the
-        // box is the 30px from 6 to 36, butting up against either (user
-        // decision 2026-09-30). Away from the edge, the whole 36.
-        const boxLeft = Math.max(FADE_HANDLE_BOX_INSET, bodyCentre - HALF_BOX);
-        const boxRight = Math.min(clipWidth - FADE_HANDLE_BOX_INSET, bodyCentre + HALF_BOX);
+        // The HIT BOX: 30 wide, FADE_HIT_REACH either side of the body —
+        // 12 toward the clip's edge, 18 toward its inside — so at rest
+        // it is the 30px from the 6px line (what owns the edge: the
+        // selected clip's trim box or the unselected clip's edge zone,
+        // both reach 6 in) to 36, and it keeps that shape as the handle
+        // comes away from the edge (2026-10-06; it filled out to the
+        // trim box's 36 before). Still clamped to the 6px lines.
+        const reachLeft = side === 'in' ? FADE_HIT_REACH.toEdge : FADE_HIT_REACH.toInside;
+        const reachRight = side === 'in' ? FADE_HIT_REACH.toInside : FADE_HIT_REACH.toEdge;
+        const boxLeft = Math.max(FADE_HANDLE_BOX_INSET, bodyCentre - reachLeft);
+        const boxRight = Math.min(clipWidth - FADE_HANDLE_BOX_INSET, bodyCentre + reachRight);
         const left = xBase + boxLeft;
         // The glyph stays centred on the body; where the box is clipped
         // it overflows the box (pointer-events: none — it adds nothing)
