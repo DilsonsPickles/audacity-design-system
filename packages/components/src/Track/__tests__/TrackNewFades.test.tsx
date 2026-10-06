@@ -649,7 +649,7 @@ describe('clip fades', () => {
     fireEvent.pointerUp(inHandle, { pointerId: 1 });
   });
 
-  it('the fade-out drag measures from the clip end and respects the fade-in', () => {
+  it('the fade-out drag measures from the clip end; the fade-in is no cap — it gives way (2026-10-06)', () => {
     const onClipFadeChange = vi.fn();
     const { container } = render(
       <Providers>
@@ -672,12 +672,13 @@ describe('clip fades', () => {
 
     const outHandle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
     fireEvent.pointerDown(outHandle, { button: 0, clientX: 400, clientY: 30, pointerId: 2 });
-    // pointer at 300px → 1s from the 4s end… but fadeIn=3 caps fadeOut at 1s anyway
+    // pointer at 300px → 1s from the 4s end
     fireEvent.pointerMove(outHandle, { clientX: 300, clientY: 30, pointerId: 2 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 1);
-    // pointer at 0px would mean 4s — clamped to duration - fadeIn = 1s
+    // pointer at 0px → the whole 4s: the 3s fade in is pushed out of the
+    // way by the host's reducer, not a cap here
     fireEvent.pointerMove(outHandle, { clientX: 0, clientY: 30, pointerId: 2 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 1);
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 4);
     fireEvent.pointerUp(outHandle, { pointerId: 2 });
   });
 
@@ -1143,10 +1144,10 @@ describe('clip fades', () => {
     // Far past every limit, toward each corner in turn: only the gain
     // limit bites, and the handle never leaves the middle
     const corners: Array<[number, number, FadeHandle]> = [
-      [-400, -400, { t: 0.5, g: 0.9 }],
-      [400, -400, { t: 0.5, g: 0.9 }],
-      [400, 400, { t: 0.5, g: 0.1 }],
-      [-400, 400, { t: 0.5, g: 0.1 }],
+      [-400, -400, { t: 0.5, g: 0.95 }],
+      [400, -400, { t: 0.5, g: 0.95 }],
+      [400, 400, { t: 0.5, g: 0.05 }],
+      [-400, 400, { t: 0.5, g: 0.05 }],
     ];
     corners.forEach(([dx, dy, corner], i) => {
       drag(20 + i, dx, dy);
@@ -1267,7 +1268,7 @@ describe('clip fades', () => {
     expect(container.querySelector('[data-fade-handle]')).toBeNull();
   });
 
-  it('a zero-extent handle hides when the opposite fade consumed the whole clip', () => {
+  it('a zero-extent handle still shows when the opposite fade fills the clip — pulling it pushes that fade back (2026-10-06)', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -1280,10 +1281,10 @@ describe('clip fades', () => {
       </Providers>,
     );
     hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
-    // fade-out spans the clip → its boundary is at the clip start; the
-    // roomless zero-extent fade-in handle must not stack on top of it
+    // fade-out spans the clip, yet the fade-in handle is there: the
+    // opposite fade is no cap any more (it used to hide as roomless)
     expect(container.querySelector('[data-fade-handle="out"]')).toBeTruthy();
-    expect(container.querySelector('[data-fade-handle="in"]')).toBeNull();
+    expect(container.querySelector('[data-fade-handle="in"]')).toBeTruthy();
   });
 
   it('fade handle pointerdown does not leak into the clip mousedown path', () => {
@@ -1446,20 +1447,25 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 4, shiftKey: true });
   });
 
-  it('a gridline the fade cannot reach is not a snap: the limits still hold', () => {
-    // A 3s fade out leaves the fade in at most 1s; the pointer at 1.3s
-    // (project 2.3s) would snap to 2.5s — a 1.5s fade, past that limit —
-    // so it clamps to 1s instead, and shows no guideline
+  it('a gridline the fade cannot reach is not a snap: the limit is the clip\'s length (the opposite fade gives way, 2026-10-06)', () => {
+    // The clip is 1s..5s. A 3s fade out is no limit on the fade in: the
+    // pointer at 1.3s (project 2.3s) snaps to the 2.5s gridline — a 1.5s
+    // fade, into the fade out (it used to clamp to 1s, the room left)
     const { handle, onClipFadeChange, onFadeSnapGuideline } = renderIt({ fadeOut: 3 });
     fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 4 });
     fireEvent.pointerMove(handle('in'), { clientX: 230, clientY: 30, pointerId: 4 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1);
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2.5, 'grid');
+    // Past the clip's end (4.3s → project 5.3s) the gridline at 5.5s is
+    // out of reach: the fade clamps to the clip's 4s, and shows no guideline
+    fireEvent.pointerMove(handle('in'), { clientX: 530, clientY: 30, pointerId: 4 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 4);
     expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
     // …while a gridline AT the limit is reachable, and is a snap
-    fireEvent.pointerMove(handle('in'), { clientX: 215, clientY: 30, pointerId: 4 }); // 1.15s → project 2.0s = exactly a 1s fade
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(2, 'grid');
-    fireEvent.pointerUp(handle('in'), { clientX: 215, clientY: 30, pointerId: 4 });
+    fireEvent.pointerMove(handle('in'), { clientX: 500, clientY: 30, pointerId: 4 }); // project 5.0s = the whole clip
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 4);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(5, 'grid');
+    fireEvent.pointerUp(handle('in'), { clientX: 500, clientY: 30, pointerId: 4 });
   });
 
   it('snapping to the clip\'s own edge removes the fade, like dragging there does', () => {
@@ -1703,7 +1709,7 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
     fireEvent.pointerUp(handle, { clientX: 404, clientY: 30, pointerId: 3, shiftKey: true });
   });
 
-  it('an edge the fade cannot reach is not a snap, and alignment works without any grid', () => {
+  it('an edge the fade cannot reach (past the clip) is not a snap; one inside the opposite fade is, since that fade gives way; alignment works without any grid', () => {
     // No grid at all; a 3.5s fade in leaves the fade out at most 0.5s,
     // so the edge at 4.0s (a 1.0s fade) is past its limit
     const onClipFadeChange = vi.fn();
@@ -1717,7 +1723,7 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
           pixelsPerSecond={100}
           onClipFadeChange={onClipFadeChange}
           snapEnabled={false}
-          alignFadeBoundary={(time) => (Math.abs(time - 4) <= 0.06 ? 4 : null)}
+          alignFadeBoundary={(time) => (Math.abs(time - 4) <= 0.06 ? 4 : Math.abs(time - 0.8) <= 0.06 ? 0.8 : null)}
           onFadeSnapGuideline={onFadeSnapGuideline}
         />
       </Providers>,
@@ -1725,10 +1731,17 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
     hoverClip(container, 1); // the handles follow the pointer (2026-10-01)
     const handle = container.querySelector('[data-fade-handle="out"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 500, clientY: 30, pointerId: 4 });
+    // 0.96s → the edge at project 4 is within reach (a 1s fade, into the
+    // 3.5s fade in, which gives way): aligned
     fireEvent.pointerMove(handle, { clientX: 404, clientY: 30, pointerId: 4 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 0.5); // clamped, not snapped
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 1);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(4, 'alignment');
+    // 4.2s → the edge at project 0.8 is before the clip's start: a 4.2s
+    // fade cannot be — clamped to the clip's 4s, not snapped
+    fireEvent.pointerMove(handle, { clientX: 80, clientY: 30, pointerId: 4 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 4);
     expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
-    fireEvent.pointerUp(handle, { clientX: 404, clientY: 30, pointerId: 4 });
+    fireEvent.pointerUp(handle, { clientX: 80, clientY: 30, pointerId: 4 });
   });
 });
 

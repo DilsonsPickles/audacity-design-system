@@ -24,12 +24,11 @@ describe('fadeTargets — which clips a quick-fade edit applies to', () => {
   });
 });
 
-describe('clampFadeSeconds — each clip takes what it has room for', () => {
-  it('a long clip takes the full length; a short one stops at its own room', () => {
+describe('clampFadeSeconds — each clip takes what it has, up to its whole length', () => {
+  it('a long clip takes the full length; a short one stops at its own length — its opposite fade gives way (2026-10-06), it is no cap', () => {
     expect(clampFadeSeconds(tracks(), { trackIndex: 0, clipId: 1 }, 'in', 2.5)).toBe(2.5);
-    // clip 3: 1s long with a 0.5s fade out → 0.5s of room for a fade in
-    expect(clampFadeSeconds(tracks(), { trackIndex: 0, clipId: 3 }, 'in', 2.5)).toBe(0.5);
-    // …and its fade out is not limited by its own fade out
+    // clip 3: 1s long with a 0.5s fade out → a fade in may take the whole 1s
+    expect(clampFadeSeconds(tracks(), { trackIndex: 0, clipId: 3 }, 'in', 2.5)).toBe(1);
     expect(clampFadeSeconds(tracks(), { trackIndex: 0, clipId: 3 }, 'out', 0.8)).toBe(0.8);
   });
   it('tiny fades snap away, as the handle does', () => {

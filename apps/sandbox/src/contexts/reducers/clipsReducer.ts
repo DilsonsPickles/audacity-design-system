@@ -11,6 +11,9 @@ import { DEFAULT_CROSSFADE_SHAPE, isDefaultQuickFadeShape, type FadeShape } from
  *  moved clip(s) to the top of the stack, preserving the moved set's
  *  relative order. Cross-track moves already append (same effect).
  *  midiClips are never reordered — pianoRollClipIndex is positional. */
+
+/** A fade shorter than this is no fade: cleared (the handle's own snap-away) */
+const MIN_FADE_SECONDS = 0.02;
 function raiseClips(clips: Clip[], shouldRaise: (c: Clip) => boolean): Clip[] {
   const staying: Clip[] = [];
   const raised: Clip[] = [];
@@ -183,18 +186,24 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       const newTracks = [...state.tracks];
       newTracks[trackIndex] = {
         ...track,
-        clips: track.clips.map(clip =>
-          clip.id === clipId
-            ? {
-                ...clip,
-                // 0 clears the field (undefined is dropped by JSON
-                // persistence, keeping stored projects clean)
-                ...(side === 'in'
-                  ? { fadeIn: seconds > 0 ? seconds : undefined }
-                  : { fadeOut: seconds > 0 ? seconds : undefined }),
-              }
-            : clip
-        ),
+        clips: track.clips.map(clip => {
+          if (clip.id !== clipId) return clip;
+          // THE FADE BEING SET WINS THE ROOM (2026-10-06, "pull a fade
+          // handle into another one and have the other one pushed out
+          // of the way"): a fade may take up to the whole clip, and
+          // where it reaches into the opposite fade, that fade gives
+          // way — shrinks to what is left — rather than capping this
+          // one. One rule for every way in: handle drag, panel, menu,
+          // dialog. 0 clears a field (undefined is dropped by JSON
+          // persistence, keeping stored projects clean).
+          const own = Math.max(0, Math.min(clip.duration, seconds));
+          const otherNow = (side === 'in' ? clip.fadeOut : clip.fadeIn) ?? 0;
+          const otherLeft = Math.min(otherNow, Math.max(0, clip.duration - own));
+          const store = (n: number) => (n >= MIN_FADE_SECONDS ? n : undefined);
+          return side === 'in'
+            ? { ...clip, fadeIn: store(own), fadeOut: store(otherLeft) }
+            : { ...clip, fadeOut: store(own), fadeIn: store(otherLeft) };
+        }),
       };
       return { ...state, tracks: newTracks };
     }

@@ -2371,10 +2371,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // The handle is EXTENT ONLY (2026-09-21: "keep them
               // separate") — the midpoint dot owns the shape.
               const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
-              const otherFade = side === 'in' ? fadeOutSec : fadeInSec;
               const pressX = e.clientX;
               const clipEnd = clip.start + clip.duration;
-              const maxSeconds = windowLen - otherFade;
+              // The whole window: the opposite fade is no cap — pulled
+              // into, it gives way (the host's reducer shrinks it;
+              // 2026-10-06, "have the other one pushed out of the way")
+              const maxSeconds = windowLen;
               const onMove = (ev: PointerEvent) => {
                 const travel = (ev.clientX - pressX) / pixelsPerSecond;
                 let seconds = ownFade + (side === 'in' ? travel : -travel);
@@ -2459,15 +2461,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         );
       };
       // A crossfaded edge's quick-fade handle hides — the crossfade's
-      // intersection node does the work there. A ZERO-extent handle
-      // whose fade has no room left to grow (the opposite fade consumed
-      // the window) also hides — otherwise it stacks uselessly on top
-      // of the other handle at the boundary.
+      // intersection node does the work there. A ZERO-extent handle on
+      // a clip too narrow to grow a fade in also hides — otherwise it
+      // stacks uselessly on top of the other handle. (The opposite fade
+      // is no longer a cap — pulled into, it gives way, 2026-10-06 — so
+      // the window alone decides.)
       const NO_ROOM_PX = 24;
-      const roomFor = (own: number, other: number) =>
-        own > 0 || (windowLen - other) * pixelsPerSecond >= NO_ROOM_PX;
-      if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec, fadeOutSec)) nodes.push(handle('in'));
-      if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec, fadeInSec)) nodes.push(handle('out'));
+      const roomFor = (own: number) =>
+        own > 0 || windowLen * pixelsPerSecond >= NO_ROOM_PX;
+      if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
+      if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
       // While a LENGTH handle is dragged, a marching-ants line drops
       // from the fade's boundary — where the curve meets the body's
       // top — to the clip's BOTTOM, so the boundary can be lined up

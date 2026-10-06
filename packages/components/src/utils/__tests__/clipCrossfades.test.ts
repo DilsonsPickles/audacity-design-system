@@ -264,10 +264,10 @@ describe('the handle-shaped S-curve', () => {
   ];
   const handles = [...corners, { t: 0.5, g: 0.5 }, { t: 0.3, g: 0.6 }, { t: 0.7, g: 0.35 }, { t: 0.5, g: gMax }, { t: tMin, g: 0.5 }];
 
-  it('the limits are the box: 25–75% along, 10–90% gain (2026-10-06; it was 15–85% and 27.5–72.5%)', () => {
-    expect(FADE_HANDLE_LIMITS).toEqual({ tMin: 0.25, tMax: 0.75, gMin: 0.1, gMax: 0.9 });
-    expect(clampFadeHandle({ t: -3, g: 9 })).toEqual({ t: 0.25, g: 0.9 });
-    expect(clampFadeHandle({ t: 3, g: -9 })).toEqual({ t: 0.75, g: 0.1 });
+  it('the limits are the box: 30–70% along, 5–95% gain (2026-10-06; it was 15–85% and 27.5–72.5%, then 25–75% and 10–90%)', () => {
+    expect(FADE_HANDLE_LIMITS).toEqual({ tMin: 0.3, tMax: 0.7, gMin: 0.05, gMax: 0.95 });
+    expect(clampFadeHandle({ t: -3, g: 9 })).toEqual({ t: 0.3, g: 0.95 });
+    expect(clampFadeHandle({ t: 3, g: -9 })).toEqual({ t: 0.7, g: 0.05 });
     expect(clampFadeHandle({ t: 0.4, g: 0.6 })).toEqual({ t: 0.4, g: 0.6 });
   });
 
