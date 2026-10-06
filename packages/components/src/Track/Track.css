@@ -202,6 +202,7 @@
    2026-10-01, "fade in and fade out, but quicker"). Keep the durations
    in step with HANDLE_LEAVE_MS. */
 .track-fade-handle,
+.track-fade-guideline,
 [data-crossfade-node] {
   transition: opacity 0.12s ease-out;
 }
@@ -209,6 +210,7 @@
 @starting-style {
   .track-fade-handle,
   .track-fade-shape-handle,
+  .track-fade-guideline,
   [data-crossfade-node] {
     opacity: 0;
   }
@@ -236,6 +238,7 @@
 @media (prefers-reduced-motion: reduce) {
   .track-fade-handle,
   .track-fade-shape-handle,
+  .track-fade-guideline,
   [data-crossfade-node],
   [data-fade-curve] [data-fade-line] {
     transition: none;

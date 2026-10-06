@@ -1342,7 +1342,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
     return { container, handle, onClipFadeChange, onFadeSnapGuideline };
   }
 
-  it('a LENGTH drag drops a dashed guideline from the boundary to the clip\'s bottom, and only for the drag (2026-10-01; still, not marching, since 2026-10-06)', () => {
+  it('a dashed guideline drops from the boundary to the clip\'s bottom: on hover for every fade with length, during a LENGTH drag for the fade in hand (2026-10-01; hover too since 2026-10-07)', () => {
     // The clip is 1s..5s at 100px/s and the track 114px tall; the line
     // stands where the curve meets the body (20px down) and runs to the
     // clip's bottom — not the canvas's. The clip is CONTROLLED here: the
@@ -1367,7 +1367,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
     const line = () => container.querySelector('[data-fade-guideline]') as HTMLElement | null;
     expect(line()).toBeNull(); // nothing at rest…
     hoverClip(container, 1);
-    expect(line()).toBeNull(); // …or on hover
+    expect(line()).toBeNull(); // …or on hover while the fades have no length
     fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 7 });
     // Snapped: project 2.37s → 2.5s, and the line is on the gridline
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 7 });
@@ -1383,7 +1383,15 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 7, shiftKey: true });
     expect(line()!.style.left).toBe(`${CLIP_CONTENT_OFFSET + 237}px`);
     fireEvent.pointerUp(handle('in'), { clientX: 237, clientY: 30, pointerId: 7 });
-    expect(line()).toBeNull(); // goes with the drag
+    // Back on the clip (jsdom cannot settle the hover from the release
+    // point): the fade now has length, so its line is up on hover, at
+    // the boundary
+    hoverClip(container, 1);
+    expect(line()).toBeTruthy();
+    expect(line()!.style.left).toBe(`${CLIP_CONTENT_OFFSET + 237}px`);
+    expect(container.querySelectorAll('[data-fade-guideline]')).toHaveLength(1); // the fade out has none
+    fireEvent.mouseLeave(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
+    expect(line()).toBeNull(); // goes with the hover
 
     // Fade out: the boundary is measured from the clip's END. A 1.1s
     // pull from the end (3.9s) snaps to 4.0s → a 1.0s fade, the line at

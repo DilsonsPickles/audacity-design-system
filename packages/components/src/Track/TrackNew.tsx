@@ -2471,21 +2471,29 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         own > 0 || windowLen * pixelsPerSecond >= NO_ROOM_PX;
       if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
       if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
-      // While a LENGTH handle is dragged, a marching-ants line drops
-      // from the fade's boundary — where the curve meets the body's
-      // top — to the clip's BOTTOM, so the boundary can be lined up
-      // against the waveform (the dev's lining-up aid, user decision
-      // 2026-10-01; "only down to the bottom of the clip" — it was
-      // canvas-deep). It follows the EFFECTIVE boundary, so a snapped
-      // drag's line sits on the gridline. The march is Track.css.
-      if (fadeDragClipId === clip.id && fadeDragSide) {
-        const boundaryX = fadeDragSide === 'in' ? boundaryInX : boundaryOutX;
+      // A dashed line drops from each fade's boundary — where the curve
+      // meets the body's top — to the clip's BOTTOM, so the boundary can
+      // be lined up against the waveform (the dev's lining-up aid, user
+      // decision 2026-10-01; "only down to the bottom of the clip" — it
+      // was canvas-deep). It showed for a LENGTH drag only; since
+      // 2026-10-07 ("on hover, please show the dashed line") it is up
+      // whenever the handles are — on HOVER, for every fade with length
+      // — and during a drag for the fade in hand alone. It follows the
+      // EFFECTIVE boundary, so a snapped drag's line sits on the
+      // gridline. The dash is Track.css; it fades with the handles.
+      const guidelineSides: Array<'in' | 'out'> = fadeDragClipId === clip.id && fadeDragSide
+        ? [fadeDragSide]
+        : (['in', 'out'] as const).filter((side) =>
+          (side === 'in' ? fadeInSec : fadeOutSec) > 0 && !crossfadedEdges.has(`${clip.id}:${side}`));
+      for (const side of guidelineSides) {
+        const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
         nodes.push(
           <div
-            key={`fade-guideline-${clip.id}`}
+            key={`fade-guideline-${clip.id}-${side}`}
             className="track-fade-guideline"
-            data-fade-guideline={fadeDragSide}
+            data-fade-guideline={side}
             data-fade-clip={clip.id}
+            data-leaving={leaving ? 'true' : undefined}
             style={{
               position: 'absolute',
               top: HEADER_H,
