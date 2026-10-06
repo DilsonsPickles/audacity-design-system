@@ -30,9 +30,12 @@ export function resolveSnapGuideline(
   stretch: SnapGuidelineInput,
   fade: SnapGuidelineInput = { time: null, kind: null },
   selection: SnapGuidelineInput = { time: null, kind: null },
+  /** The hover preview (2026-10-07): the clip edge the cursor would
+   *  snap to — last, so any drag's own target wins */
+  hover: SnapGuidelineInput = { time: null, kind: null },
 ): SnapGuideline {
   return {
-    time: drag.time ?? trim.time ?? stretch.time ?? fade.time ?? selection.time,
-    kind: drag.kind ?? trim.kind ?? stretch.kind ?? fade.kind ?? selection.kind,
+    time: drag.time ?? trim.time ?? stretch.time ?? fade.time ?? selection.time ?? hover.time,
+    kind: drag.kind ?? trim.kind ?? stretch.kind ?? fade.kind ?? selection.kind ?? hover.kind,
   };
 }

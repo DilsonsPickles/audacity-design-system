@@ -66,3 +66,11 @@ describe('resolveSnapGuideline', () => {
     expect(result).toEqual({ time: 0, kind: 'grid' });
   });
 });
+
+describe('the hover preview is the last input (2026-10-07)', () => {
+  it('shows when nothing is dragging, and yields to any drag', () => {
+    const none = { time: null, kind: null } as const;
+    expect(resolveSnapGuideline(none, none, none, none, none, { time: 2, kind: 'alignment' })).toEqual({ time: 2, kind: 'alignment' });
+    expect(resolveSnapGuideline(none, none, none, none, { time: 3, kind: 'grid' }, { time: 2, kind: 'alignment' })).toEqual({ time: 3, kind: 'grid' });
+  });
+});

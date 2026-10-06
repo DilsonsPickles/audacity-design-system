@@ -436,6 +436,11 @@ export function Canvas({
     [tracks, pixelsPerSecond],
   );
   const [selectionSnapGuideline, setSelectionSnapGuideline] = useState<{ time: number; kind: 'grid' | 'alignment' } | null>(null);
+  // The HOVER PREVIEW of that magnet (2026-10-07, "a line and a bit of
+  // snapping on hover"): while the pointer rests within reach of a clip
+  // edge, with no button down, the yellow guideline stands on the edge
+  // the click or drag would snap to
+  const [hoverSnapTime, setHoverSnapTime] = useState<number | null>(null);
   // The clip whose fade is in hand, on whichever track: TrackNew reports
   // it and every track gets it back, so a fade drag on one track hides
   // the other clips' handles on all of them (2026-10-01)
@@ -464,6 +469,7 @@ export function Canvas({
     { time: stretchSnapGuidelineTime, kind: stretchSnapGuidelineKind },
     { time: fadeSnapGuideline?.time ?? null, kind: fadeSnapGuideline?.kind ?? null },
     { time: selectionSnapGuideline?.time ?? null, kind: selectionSnapGuideline?.kind ?? null },
+    { time: hoverSnapTime, kind: hoverSnapTime !== null ? 'alignment' : null },
   );
   const snapGuidelineColor = snapGuidelineKind === 'grid' ? '#22D3EE' : '#FFD60A';
   const snapGuidelineShadow = snapGuidelineKind === 'grid'
@@ -784,6 +790,22 @@ export function Canvas({
     timeSelection,
   });
 
+  // The pointer handlers, with the hover preview folded into the
+  // canvas's own mouse move/leave (chained, never replaced)
+  const canvasHandlers = {
+    ...pointerHandlers,
+    onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => {
+      pointerHandlers.onMouseMove(e);
+      if (e.buttons !== 0) { setHoverSnapTime(null); return; }
+      const rect = e.currentTarget.getBoundingClientRect();
+      setHoverSnapTime(alignTime((e.clientX - rect.left - leftPadding) / pixelsPerSecond));
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
+      pointerHandlers.onMouseLeave(e);
+      setHoverSnapTime(null);
+    },
+  };
+
   return (
     <div className={`canvas-container${splitMode && splitHover ? ' canvas-container--split-mode' : ''}`} style={{ backgroundColor: bgColor, height: `${containerHeight}px`, minHeight: `${viewportHeight}px`, overflow: 'clip', overflowClipMargin: '2px', cursor: splitMode && splitHover ? `url(${splitCursorUrl}) 14 10, crosshair` : 'text' } as React.CSSProperties}>
       {/* Snap guideline — a 1px yellow vertical line at the snap target
@@ -818,7 +840,7 @@ export function Canvas({
       />
       <div
         ref={containerRef}
-        {...pointerHandlers}
+        {...canvasHandlers}
         // Extend the inner (event-attached) container all the way to
         // the bottom of the visible canvas — including the scroll
         // buffer below the last track and the viewport minHeight.
