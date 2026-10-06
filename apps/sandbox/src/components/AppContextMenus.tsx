@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipContextMenu, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@audacity-ui/components';
+import { ClipContextMenu, FadeMenuItems, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
@@ -81,6 +81,21 @@ export function AppContextMenus({
       ? selected
       : [{ trackIndex, clipId: clicked.id, duration: clicked.duration }];
     setFadeDialog({ side, targets, initialSeconds: side === 'in' ? clicked.fadeIn : clicked.fadeOut });
+  };
+  // The fade menu's two edits, shared by the clip menu's Fade ▸ submenus
+  // and the handle's right-click menu (one list, FadeMenuItems): every
+  // target by the fade rule (fadeTargets)
+  const setFadeShape = (trackIndex: number, clipId: number, side: 'in' | 'out', presetId: string) => {
+    const preset = FADE_SHAPE_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    for (const t of fadeTargets(tracks, trackIndex, clipId)) {
+      dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, shape: preset.shape } });
+    }
+  };
+  const removeFade = (trackIndex: number, clipId: number, side: 'in' | 'out') => {
+    for (const t of fadeTargets(tracks, trackIndex, clipId)) {
+      dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, seconds: 0 } });
+    }
   };
   const openFadeDialog = (side: 'in' | 'out') => {
     if (!clipContextMenu) return;
@@ -248,6 +263,11 @@ export function AppContextMenus({
             }}
             onFadeIn={() => openFadeDialog('in')}
             onFadeOut={() => openFadeDialog('out')}
+            fadePresets={FADE_SHAPE_PRESETS}
+            fadeInState={targetClip ? { presetId: fadeShapePresetOf(targetClip.fadeInShape), hasFade: (targetClip.fadeIn ?? 0) > 0 } : undefined}
+            fadeOutState={targetClip ? { presetId: fadeShapePresetOf(targetClip.fadeOutShape), hasFade: (targetClip.fadeOut ?? 0) > 0 } : undefined}
+            onFadeShape={(side, presetId) => { setFadeShape(clipContextMenu.trackIndex, clipContextMenu.clipId, side, presetId); setClipContextMenu(null); }}
+            onRemoveFade={(side) => { removeFade(clipContextMenu.trackIndex, clipContextMenu.clipId, side); setClipContextMenu(null); }}
             onExport={() => {
               setClipContextMenu(null);
             }}
@@ -590,41 +610,22 @@ export function AppContextMenus({
         const { trackIndex, clipId, side, x, y } = fadeContextMenu;
         const clip = tracks[trackIndex]?.clips.find((c: Clip) => c.id === clipId);
         if (!clip) return null;
-        const sideLabel = side === 'in' ? 'Fade in' : 'Fade out';
-        const current = fadeShapePresetOf(side === 'in' ? clip.fadeInShape : clip.fadeOutShape);
         const close = () => setFadeContextMenu(null);
-        const targets = fadeTargets(tracks, trackIndex, clipId);
+        // The same list as the clip menu's Fade ▸ Fade in/out ▸ — this is
+        // the shortcut to it
         return (
           <ContextMenu isOpen={fadeContextMenu.isOpen} x={x} y={y} onClose={close}>
-            {FADE_SHAPE_PRESETS.map((preset) => (
-              <ContextMenuItem
-                key={preset.id}
-                label={preset.label}
-                checked={current === preset.id}
-                onClick={() => {
-                  for (const t of targets) {
-                    dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, shape: preset.shape } });
-                  }
-                  close();
-                }}
-              />
-            ))}
-            <ContextMenuItem isDivider />
-            <ContextMenuItem
-              label={`${sideLabel} length…`}
-              onClick={() => {
-                openFadeDialogFor(trackIndex, clipId, side);
-                close();
+            <FadeMenuItems
+              side={side}
+              presets={FADE_SHAPE_PRESETS}
+              state={{
+                presetId: fadeShapePresetOf(side === 'in' ? clip.fadeInShape : clip.fadeOutShape),
+                hasFade: (side === 'in' ? clip.fadeIn ?? 0 : clip.fadeOut ?? 0) > 0,
               }}
-            />
-            <ContextMenuItem
-              label={`Remove ${sideLabel.toLowerCase()}`}
-              onClick={() => {
-                for (const t of targets) {
-                  dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, seconds: 0 } });
-                }
-                close();
-              }}
+              onShape={(s, presetId) => setFadeShape(trackIndex, clipId, s, presetId)}
+              onLength={(s) => openFadeDialogFor(trackIndex, clipId, s)}
+              onRemove={(s) => removeFade(trackIndex, clipId, s)}
+              onClose={close}
             />
           </ContextMenu>
         );

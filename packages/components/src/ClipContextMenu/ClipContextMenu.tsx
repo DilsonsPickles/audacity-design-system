@@ -1,6 +1,7 @@
 import React from 'react';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem/ContextMenuItem';
+import { FadeMenuItems, type FadeMenuPreset, type FadeMenuSideState, type FadeSide } from './FadeMenuItems';
 import type { ClipColor } from '../types/clip';
 
 /** The colours a clip can wear, in the palette's order */
@@ -72,12 +73,24 @@ export interface ClipContextMenuProps {
    *  this clip (user request 2026-10-02). The item shows only when wired. */
   onOpenProperties?: () => void;
 
-  /** "Fade in…" — the host opens a duration dialog and applies it to the
-   *  clicked clip, or to every selected clip when the clicked one is
-   *  part of the selection. */
+  /** "Fade in…" / "Fade in length…" — the host opens a duration dialog
+   *  and applies it to the clicked clip, or to every selected clip when
+   *  the clicked one is part of the selection. */
   onFadeIn?: () => void;
   /** "Fade out…" — as onFadeIn, for the clip's end. */
   onFadeOut?: () => void;
+  /** The fade shape presets. With these the Fade submenu holds a
+   *  Fade in ▸ and a Fade out ▸ submenu, each the handle menu's list
+   *  (presets, length…, remove) — the two menus are one (2026-10-06).
+   *  Without them it is the old pair of length items. */
+  fadePresets?: ReadonlyArray<FadeMenuPreset>;
+  /** The clicked clip's fade in: its preset and whether it has length */
+  fadeInState?: FadeMenuSideState;
+  fadeOutState?: FadeMenuSideState;
+  /** A preset picked for a side (every selected clip's, by the fade rule) */
+  onFadeShape?: (side: FadeSide, presetId: string) => void;
+  /** "Remove fade in/out" — length 0 */
+  onRemoveFade?: (side: FadeSide) => void;
 
   /**
    * Callback for export clip action
@@ -148,6 +161,11 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   onSplit,
   onFadeIn,
   onFadeOut,
+  fadePresets,
+  fadeInState,
+  fadeOutState,
+  onFadeShape,
+  onRemoveFade,
   onExport,
   stretchWithTempo = false,
   onToggleStretchWithTempo,
@@ -234,16 +252,46 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
       {/* Divider */}
       <div className="clip-context-menu-divider" />
 
-      {/* Fades — a submenu like Clip color: typed durations, for when the
-          handle is too coarse or several clips want the same fade.
-          Ellipsis: each opens a dialog. */}
+      {/* Fades — a submenu like Clip color. With presets wired it is
+          Fade in ▸ / Fade out ▸, each the SAME list the fade handle's
+          right-click opens (FadeMenuItems): the handle menu is the
+          shortcut, this is the long way round (2026-10-06). */}
       <ContextMenuItem
         label="Fade"
         hasSubmenu
         onClose={onClose}
       >
-        <ContextMenuItem label="Fade in…" onClick={() => { onFadeIn?.(); onClose(); }} />
-        <ContextMenuItem label="Fade out…" onClick={() => { onFadeOut?.(); onClose(); }} />
+        {fadePresets ? (
+          <>
+            <ContextMenuItem label="Fade in" hasSubmenu onClose={onClose}>
+              <FadeMenuItems
+                side="in"
+                presets={fadePresets}
+                state={fadeInState ?? { hasFade: false }}
+                onShape={onFadeShape}
+                onLength={() => onFadeIn?.()}
+                onRemove={onRemoveFade}
+                onClose={onClose}
+              />
+            </ContextMenuItem>
+            <ContextMenuItem label="Fade out" hasSubmenu onClose={onClose}>
+              <FadeMenuItems
+                side="out"
+                presets={fadePresets}
+                state={fadeOutState ?? { hasFade: false }}
+                onShape={onFadeShape}
+                onLength={() => onFadeOut?.()}
+                onRemove={onRemoveFade}
+                onClose={onClose}
+              />
+            </ContextMenuItem>
+          </>
+        ) : (
+          <>
+            <ContextMenuItem label="Fade in…" onClick={() => { onFadeIn?.(); onClose(); }} />
+            <ContextMenuItem label="Fade out…" onClick={() => { onFadeOut?.(); onClose(); }} />
+          </>
+        )}
       </ContextMenuItem>
 
       {/* Divider */}
