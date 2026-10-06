@@ -68,11 +68,17 @@ export interface UseTimeSelectionOptions extends TimeSelectionConfig {
    *  read live on each move, as a clip drag's or a fade handle's Shift
    *  does (user decision 2026-10-01): on → none, off → the grid. */
   snapTime?: (time: number) => number;
+  /** The clip-edge MAGNET (2026-10-07): the nearest clip start or end
+   *  within reach of a time, or null. Used for the edge in hand — and
+   *  the anchor — whenever the grid is not in play (snapping off, or
+   *  on-with-Shift's opposite), the clip drag's and fade handle's rule;
+   *  Shift with snapping ON is no snap at all. */
+  alignTime?: (time: number) => number | null;
   /** Whether snapping is on (the host's switch). */
   snapEnabled?: boolean;
   /** Where the moving edge snapped (project time), null when it did not
    *  or at release — for the host's one snap guideline. */
-  onSnapGuideline?: (time: number | null) => void;
+  onSnapGuideline?: (time: number | null, kind?: 'grid' | 'alignment') => void;
 }
 
 export interface UseTimeSelectionReturn {
@@ -115,6 +121,7 @@ export function useTimeSelection({
   clipHeaderHeight = 20,
   spectrogramMode = false,
   snapTime,
+  alignTime,
   snapEnabled = false,
   onSnapGuideline,
 }: UseTimeSelectionOptions): UseTimeSelectionReturn {
@@ -223,8 +230,21 @@ export function useTimeSelection({
       // Shift, read live on each move (2026-10-01). The guideline marks
       // where that edge snapped, and nothing while it did not.
       const snapNow = !!snapTime && (e.shiftKey ? !snapEnabled : snapEnabled);
-      const snapped = (t: number) => (snapNow && snapTime ? snapTime(t) : t);
-      const reportSnap = (edgeTime: number) => onSnapGuideline?.(snapNow ? edgeTime : null);
+      // Shift with snapping ON is no snap at all — not even the clip
+      // edges (the clip drag's rule); otherwise, with the grid out of
+      // play, the edge in hand meets a clip edge within reach
+      const noSnapAtAll = e.shiftKey && snapEnabled;
+      let lastKind: 'grid' | 'alignment' | null = null;
+      const snapped = (t: number) => {
+        lastKind = null;
+        if (snapNow && snapTime) { lastKind = 'grid'; return snapTime(t); }
+        if (!noSnapAtAll && alignTime) {
+          const edge = alignTime(t);
+          if (edge !== null) { lastKind = 'alignment'; return edge; }
+        }
+        return t;
+      };
+      const reportSnap = (edgeTime: number) => (lastKind ? onSnapGuideline?.(edgeTime, lastKind) : onSnapGuideline?.(null));
 
       if (mode === 'resize-start' && initialSelection) {
         // Resizing start edge - allow inverting by dragging past end edge

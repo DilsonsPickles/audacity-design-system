@@ -10,7 +10,7 @@ const tracks = [
   { id: 3, name: 'C', clips: [] },
 ] as unknown as Track[];
 
-function setup(timeSelection: TimeSelection | null, laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse', selectedTrackIndices: number[]) {
+function setup(timeSelection: TimeSelection | null, laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse', selectedTrackIndices: number[], alignTime?: (t: number) => number | null) {
   const container = document.createElement('div');
   Object.defineProperty(container, 'getBoundingClientRect', {
     value: () => ({ left: 0, top: 0, right: 1000, bottom: 1000, width: 1000, height: 1000, x: 0, y: 0, toJSON: () => ({}) }),
@@ -31,6 +31,7 @@ function setup(timeSelection: TimeSelection | null, laneClickBehavior: 'playhead
     setSelectionAnchor: () => {},
     timeSelection,
     laneClickBehavior,
+    alignTime,
   }));
   const click = (trackIndex: number, detail = 1) => result.current({
     clientX: 300, clientY: trackIndex * 100 + 50, metaKey: false, ctrlKey: false, shiftKey: false, detail,
@@ -77,5 +78,18 @@ describe('a plain lane click clears the time selection, wherever it lands (2026-
     const { click, types } = setup(null, 'select-and-collapse', []);
     click(0);
     expect(types()).not.toContain('SET_TIME_SELECTION');
+  });
+});
+
+describe('a plain lane click parks the playhead on a clip edge within reach (2026-10-07)', () => {
+  it('the magnet wins when it answers; the raw time otherwise', () => {
+    // x 300 at 100px/s past the 12px content offset = 2.88s; the edge at 2.9 is within reach
+    const near = setup(null, 'select-and-collapse', [], (t) => (Math.abs(t - 2.9) <= 0.06 ? 2.9 : null));
+    near.click(0);
+    expect(near.dispatch).toHaveBeenCalledWith({ type: 'SET_PLAYHEAD_POSITION', payload: 2.9 });
+    const far = setup(null, 'select-and-collapse', [], () => null);
+    far.click(0);
+    const call = far.dispatch.mock.calls.find(([a]) => a.type === 'SET_PLAYHEAD_POSITION')?.[0] as { payload: number };
+    expect(call.payload).toBeCloseTo(2.88, 5);
   });
 });

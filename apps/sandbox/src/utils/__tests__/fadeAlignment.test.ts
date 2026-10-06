@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nearestClipEdgeOnOtherTracks, FADE_ALIGN_THRESHOLD_PX } from '../fadeAlignment';
+import { nearestClipEdge, nearestClipEdgeOnOtherTracks, FADE_ALIGN_THRESHOLD_PX } from '../fadeAlignment';
 
 describe('nearestClipEdgeOnOtherTracks — a fade boundary\'s alignment targets (2026-10-01)', () => {
   const tracks = [
@@ -33,5 +33,18 @@ describe('nearestClipEdgeOnOtherTracks — a fade boundary\'s alignment targets 
 
   it('uses the clip drag\'s threshold', () => {
     expect(FADE_ALIGN_THRESHOLD_PX).toBe(6);
+  });
+});
+
+describe('nearestClipEdge — the cursor\'s magnet, every track (2026-10-07)', () => {
+  const tracks = [
+    { clips: [{ start: 1, duration: 2 }] },
+    { clips: [{ start: 5, duration: 1 }] },
+  ];
+  it('finds the nearest clip start or end on any track within reach, else null', () => {
+    expect(nearestClipEdge(tracks, 1.04, 0.06)).toBe(1);
+    expect(nearestClipEdge(tracks, 2.95, 0.06)).toBe(3);
+    expect(nearestClipEdge(tracks, 6.05, 0.06)).toBe(6);
+    expect(nearestClipEdge(tracks, 4, 0.06)).toBeNull();
   });
 });

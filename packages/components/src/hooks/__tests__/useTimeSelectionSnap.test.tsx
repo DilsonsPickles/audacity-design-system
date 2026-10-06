@@ -16,7 +16,7 @@ afterEach(cleanup);
 const snapTime = (t: number) => Math.round(t / 0.5) * 0.5; // a 0.5s grid
 const tracks = [{ id: 1, name: 'A', height: 114, clips: [] }];
 
-function Host({ snapEnabled, onChange, onGuideline }: { snapEnabled: boolean; onChange: (s: unknown) => void; onGuideline: (t: number | null) => void }) {
+function Host({ snapEnabled, onChange, onGuideline, alignTime }: { snapEnabled: boolean; onChange: (s: unknown) => void; onGuideline: (t: number | null, kind?: 'grid' | 'alignment') => void; alignTime?: (t: number) => number | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const { startDrag } = useTimeSelection({
     containerRef: ref,
@@ -32,6 +32,7 @@ function Host({ snapEnabled, onChange, onGuideline }: { snapEnabled: boolean; on
     onSelectedTracksChange: () => {},
     onFocusedTrackChange: () => {},
     snapTime,
+    alignTime,
     snapEnabled,
     onSnapGuideline: onGuideline,
   });
@@ -49,10 +50,10 @@ function Host({ snapEnabled, onChange, onGuideline }: { snapEnabled: boolean; on
   );
 }
 
-function renderHost(snapEnabled: boolean) {
+function renderHost(snapEnabled: boolean, alignTime?: (t: number) => number | null) {
   const onChange = vi.fn();
   const onGuideline = vi.fn();
-  const { container } = render(<Host snapEnabled={snapEnabled} onChange={onChange} onGuideline={onGuideline} />);
+  const { container } = render(<Host snapEnabled={snapEnabled} onChange={onChange} onGuideline={onGuideline} alignTime={alignTime} />);
   const canvas = container.querySelector('[data-canvas]') as HTMLElement;
   Object.defineProperty(canvas, 'getBoundingClientRect', {
     configurable: true,
@@ -69,7 +70,7 @@ describe('time-selection drag snapping (2026-10-01)', () => {
     fireEvent.mouseDown(canvas, { button: 0, clientX: x(1.2), clientY: 50 });
     fireEvent.mouseMove(document, { clientX: x(2.3), clientY: 50 });
     expect(last()).toMatchObject({ startTime: 1, endTime: 2.5 });
-    expect(onGuideline).toHaveBeenLastCalledWith(2.5);
+    expect(onGuideline).toHaveBeenLastCalledWith(2.5, 'grid');
     fireEvent.mouseUp(document, { clientX: x(2.3), clientY: 50 });
     expect(onGuideline).toHaveBeenLastCalledWith(null);
   });
@@ -83,7 +84,7 @@ describe('time-selection drag snapping (2026-10-01)', () => {
     expect(onGuideline).toHaveBeenLastCalledWith(null);
     fireEvent.mouseMove(document, { clientX: x(2.3), clientY: 50 });
     expect(last()).toMatchObject({ startTime: 1, endTime: 2.5 });
-    expect(onGuideline).toHaveBeenLastCalledWith(2.5);
+    expect(onGuideline).toHaveBeenLastCalledWith(2.5, 'grid');
     fireEvent.mouseUp(document, { clientX: x(2.3), clientY: 50 });
   });
 
@@ -96,8 +97,37 @@ describe('time-selection drag snapping (2026-10-01)', () => {
     expect(onGuideline).toHaveBeenLastCalledWith(null);
     fireEvent.mouseMove(document, { clientX: x(2.3), clientY: 50, shiftKey: true });
     expect(last()).toMatchObject({ startTime: 1, endTime: 2.5 });
-    expect(onGuideline).toHaveBeenLastCalledWith(2.5);
+    expect(onGuideline).toHaveBeenLastCalledWith(2.5, 'grid');
     fireEvent.mouseUp(document, { clientX: x(2.3), clientY: 50, shiftKey: true });
     expect(onGuideline).toHaveBeenLastCalledWith(null);
+  });
+});
+
+describe('time-selection drag — the clip-edge magnet (2026-10-07)', () => {
+  // A clip edge at 2.0s, reach 0.06s (6px at 100px/s)
+  const alignTime = (t: number) => (Math.abs(t - 2) <= 0.06 ? 2 : null);
+
+  it('snapping off: an edge within reach catches the moving edge — and the anchor — with a yellow guideline', () => {
+    const { canvas, last, onGuideline, x } = renderHost(false, alignTime);
+    fireEvent.mouseDown(canvas, { button: 0, clientX: x(1.97), clientY: 50 }); // the anchor, 3px off the edge
+    fireEvent.mouseMove(document, { clientX: x(3.3), clientY: 50 });
+    expect(last()).toMatchObject({ startTime: 2, endTime: 3.3 });
+    expect(onGuideline).toHaveBeenLastCalledWith(null); // the moving edge is on nothing
+    fireEvent.mouseMove(document, { clientX: x(2.04), clientY: 50 });
+    expect(last()).toMatchObject({ startTime: 2, endTime: 2 });
+    expect(onGuideline).toHaveBeenLastCalledWith(2, 'alignment');
+    fireEvent.mouseUp(document, { clientX: x(2.04), clientY: 50 });
+  });
+
+  it('snapping on: the grid wins over the edge; on + Shift is no snap at all, the edge not consulted', () => {
+    const { canvas, last, onGuideline, x } = renderHost(true, alignTime);
+    fireEvent.mouseDown(canvas, { button: 0, clientX: x(1), clientY: 50 });
+    fireEvent.mouseMove(document, { clientX: x(2.04), clientY: 50 });
+    expect(last()).toMatchObject({ endTime: 2 });
+    expect(onGuideline).toHaveBeenLastCalledWith(2, 'grid');
+    fireEvent.mouseMove(document, { clientX: x(2.04), clientY: 50, shiftKey: true });
+    expect(last().endTime).toBeCloseTo(2.04, 5);
+    expect(onGuideline).toHaveBeenLastCalledWith(null);
+    fireEvent.mouseUp(document, { clientX: x(2.04), clientY: 50 });
   });
 });

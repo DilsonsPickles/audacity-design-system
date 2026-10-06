@@ -22,6 +22,10 @@ interface ContainerClickConfig {
   /** Prototyping toggle (Developer Tools → Lane Click Behavior) for what
    *  a plain lane click does to track selection — see PreferencesContext. */
   laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse';
+  /** The clip-edge magnet (2026-10-07): a plain click within reach of
+   *  a clip's start or end parks the playhead ON it, so a selection or
+   *  a split can start exactly at the clip's edge */
+  alignTime?: (time: number) => number | null;
 }
 
 /**
@@ -48,6 +52,7 @@ export function useContainerClick({
   setSelectionAnchor,
   timeSelection,
   laneClickBehavior,
+  alignTime,
 }: ContainerClickConfig) {
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -174,8 +179,10 @@ export function useContainerClick({
     }
     // If clickedTrackIndex is null but y is within track bounds, do nothing - maintain current state
 
-    // Always move playhead on click (allow it to go to 0 - stalk can touch the gap)
-    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, time) });
+    // Always move playhead on click (allow it to go to 0 - stalk can touch
+    // the gap) — onto a clip edge within reach, when there is one
+    const placed = alignTime?.(time) ?? time;
+    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: Math.max(0, placed) });
   };
 
   return handleContainerClick;

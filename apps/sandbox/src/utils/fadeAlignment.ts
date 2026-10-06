@@ -48,3 +48,16 @@ export function nearestClipEdgeOnOtherTracks(
   }
   return best;
 }
+
+/** The nearest clip start or end on ANY track within `thresholdSec` of
+ *  `time`, or null — the cursor's magnet (2026-10-07, "snapping to the
+ *  edge of clips for the cursor so it's easy to select from the edge of
+ *  the clip"): a plain click and a selection drag's edges meet a clip
+ *  edge within the clip drag's 6px. */
+export function nearestClipEdge(
+  tracks: ReadonlyArray<AlignableTrack>,
+  time: number,
+  thresholdSec: number,
+): number | null {
+  return nearestClipEdgeOnOtherTracks(tracks, -1, time, thresholdSec);
+}

@@ -25,7 +25,7 @@ import { SplitPreviewLine } from './canvas/SplitPreviewLine';
 import { MarqueeRect } from './canvas/MarqueeRect';
 import { computeCanvasHeights } from '../utils/canvasLayout';
 import { resolveSnapGuideline } from '../utils/snapGuideline';
-import { nearestClipEdgeOnOtherTracks, FADE_ALIGN_THRESHOLD_PX } from '../utils/fadeAlignment';
+import { nearestClipEdgeOnOtherTracks, nearestClipEdge, FADE_ALIGN_THRESHOLD_PX } from '../utils/fadeAlignment';
 import { countSelectedClips } from '../utils/clipSelectionCount';
 import { snapToGrid } from '../utils/snapToGrid';
 import { deriveEnvelopePointSizes } from '../utils/envelopePointSizes';
@@ -428,7 +428,14 @@ export function Canvas({
     () => (time: number, trackIndex: number) => nearestClipEdgeOnOtherTracks(tracks, trackIndex, time, FADE_ALIGN_THRESHOLD_PX / pixelsPerSecond),
     [tracks, pixelsPerSecond],
   );
-  const [selectionSnapGuidelineTime, setSelectionSnapGuidelineTime] = useState<number | null>(null);
+  // The cursor's clip-edge magnet (2026-10-07): a plain click and a
+  // selection drag's edges meet the nearest clip start or end on any
+  // track within the clip drag's 6px
+  const alignTime = useMemo(
+    () => (time: number) => nearestClipEdge(tracks, time, FADE_ALIGN_THRESHOLD_PX / pixelsPerSecond),
+    [tracks, pixelsPerSecond],
+  );
+  const [selectionSnapGuideline, setSelectionSnapGuideline] = useState<{ time: number; kind: 'grid' | 'alignment' } | null>(null);
   // The clip whose fade is in hand, on whichever track: TrackNew reports
   // it and every track gets it back, so a fade drag on one track hides
   // the other clips' handles on all of them (2026-10-01)
@@ -456,7 +463,7 @@ export function Canvas({
     { time: trimSnapGuidelineTime, kind: trimSnapGuidelineKind },
     { time: stretchSnapGuidelineTime, kind: stretchSnapGuidelineKind },
     { time: fadeSnapGuideline?.time ?? null, kind: fadeSnapGuideline?.kind ?? null },
-    { time: selectionSnapGuidelineTime, kind: selectionSnapGuidelineTime !== null ? 'grid' : null },
+    { time: selectionSnapGuideline?.time ?? null, kind: selectionSnapGuideline?.kind ?? null },
   );
   const snapGuidelineColor = snapGuidelineKind === 'grid' ? '#22D3EE' : '#FFD60A';
   const snapGuidelineShadow = snapGuidelineKind === 'grid'
@@ -592,8 +599,9 @@ export function Canvas({
       // A selection drag snaps its moving edge when snapping is on;
       // Shift inverts, as everywhere else (2026-10-01)
       snapTime,
+      alignTime,
       snapEnabled,
-      onSnapGuideline: setSelectionSnapGuidelineTime,
+      onSnapGuideline: (time, kind) => setSelectionSnapGuideline(time === null ? null : { time, kind: kind ?? 'grid' }),
     },
     {
       onTimeSelectionChange: (sel) => {
@@ -710,6 +718,7 @@ export function Canvas({
     setSelectionAnchor,
     timeSelection,
     laneClickBehavior,
+    alignTime,
   });
 
   // Clip and label mouse down handler - extracted to custom hook

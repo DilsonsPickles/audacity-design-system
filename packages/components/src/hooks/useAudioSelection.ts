@@ -33,8 +33,10 @@ export interface UseAudioSelectionConfig extends TimeSelectionConfig {
    *  (passed through): the host's grid, its switch, and where the edge
    *  snapped for the host's guideline. Shift inverts the switch. */
   snapTime?: (time: number) => number;
+  /** The clip-edge magnet for the selection's edges (2026-10-07) */
+  alignTime?: (time: number) => number | null;
   snapEnabled?: boolean;
-  onSnapGuideline?: (time: number | null) => void;
+  onSnapGuideline?: (time: number | null, kind?: 'grid' | 'alignment') => void;
 }
 
 export interface UseAudioSelectionCallbacks {
