@@ -418,8 +418,8 @@ function ShapePicker({ side, shapes, current, own, onPick, disabled }: {
   );
 }
 
-const Row = ({ children, wrap }: { children: React.ReactNode; wrap?: boolean }) => (
-  <div className={`clip-properties__row${wrap ? ' clip-properties__row--wrap' : ''}`}>{children}</div>
+const Row = ({ children, three }: { children: React.ReactNode; three?: boolean }) => (
+  <div className={`clip-properties__row${three ? ' clip-properties__row--three' : ''}`}>{children}</div>
 );
 
 /** The clip's edge handles step by this much per arrow key, source seconds */
@@ -746,9 +746,8 @@ export function ClipPropertiesPanel({
           ) : clip && (
             <>
               {/* Start, length and end are one statement (start + length =
-                  end): one row where the width allows, wrapping where
-                  it does not */}
-              <Row wrap>
+                  end): one row, always */}
+              <Row three>
                 <NumberField testId="start" label="Start" glyph={<StartGlyph />} value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
                 <NumberField testId="length" label="Length" glyph={<LengthGlyph />} value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
                 <ReadField testId="end" label="End" glyph={<EndGlyph />}>{fmt(clip.start + clip.duration)} s</ReadField>

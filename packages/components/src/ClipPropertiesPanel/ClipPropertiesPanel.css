@@ -124,10 +124,20 @@
   margin-bottom: 6px;
 }
 
-/* A row that packs as many fields as fit at 84px (three in the bottom
-   drawer, two and one in a side dock): Start | Length | End */
-.clip-properties__row--wrap {
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+/* Three to a row, always (Start | Length | End — "can't they be on
+   the same row?", 2026-10-06): the glyph cell and the stepper's inset
+   give up a little so the digits keep their room in a side dock */
+.clip-properties__row--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.clip-properties__row--three .clip-properties__glyph-cell {
+  flex-basis: 20px;
+}
+.clip-properties__row--three .number-stepper__input {
+  padding-left: 0;
+}
+.clip-properties__row--three .clip-properties__value {
+  font-variant-numeric: tabular-nums;
 }
 
 /* The clip strip: the source as a lane, the clip as a block in it, its
