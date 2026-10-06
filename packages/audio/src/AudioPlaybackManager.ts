@@ -829,6 +829,64 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * The buffer a clip plays from, by loadClips's rule: `sourceClipId`
+   * (split right-segments point back at the owner), else the clip's
+   * own id, else a same-track sibling that shares the clip's waveform
+   * array (a split whose sourceClipId was never set).
+   */
+  private resolveClipBuffer(clip: any, siblings: any[]): AudioBuffer | undefined { // justified: the host's clip shape — pending audio-package sweep
+    const own = this.audioBuffers.get(String(clip.sourceClipId ?? clip.id));
+    if (own || !clip.waveform) return own;
+    for (const sibling of siblings) {
+      if (sibling === clip || sibling.waveform !== clip.waveform) continue;
+      const found = this.audioBuffers.get(String(sibling.sourceClipId ?? sibling.id));
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  /**
+   * Render ONE clip as it plays — its visible region (trimStart,
+   * duration), envelope and quick fades baked as live playback bakes
+   * them, pitch and speed through the same player (makePlayer) — to a
+   * WAV blob at the requested sample rate (2026-10-06, the Clip
+   * properties panel's Export). A lone clip has no crossfades, so
+   * computeClipGainSegments on it alone yields its quick fades only.
+   */
+  async exportClip(clip: any, options: { sampleRate?: number; siblings?: any[] } = {}): Promise<{ blob: Blob; duration: number; sampleRate: number }> { // justified: the host's clip shape — pending audio-package sweep
+    await Tone.start();
+    const audioBuffer = this.resolveClipBuffer(clip, options.siblings ?? []);
+    if (!audioBuffer) throw new Error('This clip has no audio to export');
+    const duration = Number(clip.duration);
+    if (!(duration > 0)) throw new Error('This clip has no length to export');
+
+    const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
+    const envelopePoints = (clip.envelopePoints ?? []) as EnvelopeGainPoint[];
+    const gainSegments = computeClipGainSegments([clip]).get(String(clip.id)) ?? [];
+    const channels: Float32Array[] = [];
+    for (let ch = 0; ch < numChannels; ch++) {
+      let channelData = envelopePoints.length > 0
+        ? applyEnvelopeToChannel(audioBuffer.getChannelData(ch), envelopePoints, audioBuffer.sampleRate, duration)
+        : audioBuffer.getChannelData(ch);
+      if (gainSegments.length > 0) {
+        channelData = applyGainSegmentsToChannel(channelData, gainSegments, audioBuffer.sampleRate);
+      }
+      channels.push(channelData);
+    }
+    const toneBuffer = Tone.ToneAudioBuffer.fromArray(channels);
+
+    const sampleRate = options.sampleRate ?? Tone.context.sampleRate;
+    const rendered = await Tone.Offline(() => {
+      // Inside Offline, Tone.getDestination() is the offline context's
+      const player = this.makePlayer(toneBuffer, clip, undefined);
+      player.start(0, clip.trimStart || 0, duration);
+    }, duration, numChannels, sampleRate);
+
+    const wavArrayBuffer = audioBufferToWav(rendered.get() as AudioBuffer);
+    return { blob: new Blob([wavArrayBuffer], { type: 'audio/wav' }), duration, sampleRate };
+  }
+
+  /**
    * Enable or disable looping
    */
   /**

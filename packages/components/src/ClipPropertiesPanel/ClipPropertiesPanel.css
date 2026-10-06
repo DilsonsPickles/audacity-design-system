@@ -74,14 +74,54 @@
 .clip-properties[data-layout="columns"] .clip-properties__group[data-group="clip"] { grid-column: 1; grid-row: 1; }
 .clip-properties[data-layout="columns"] .clip-properties__group[data-group="speed"] { grid-column: 1; grid-row: 2; }
 .clip-properties[data-layout="columns"] .clip-properties__group[data-group="position"] { grid-column: 2; grid-row: 1 / span 2; }
-.clip-properties[data-layout="columns"] .clip-properties__group[data-group="fades"] { grid-column: 3; grid-row: 1 / span 2; }
+.clip-properties[data-layout="columns"] .clip-properties__group[data-group="fades"] { grid-column: 3; grid-row: 1; }
+.clip-properties[data-layout="columns"] .clip-properties__group[data-group="export"] { grid-column: 3; grid-row: 2; }
 
 .clip-properties__section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 12px 0 6px;
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
   opacity: 0.7;
+}
+
+/* The section's right-hand action (Figma's "+" slot): a small text
+   button — Reset on Pitch & speed — dimmed when there is nothing to do */
+.clip-properties__section-action {
+  padding: 0 4px;
+  margin: -2px -4px -2px 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--accent, #4a5fd6);
+  cursor: pointer;
+}
+
+.clip-properties__section-action:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.clip-properties__section-action:disabled {
+  color: inherit;
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The Export block's button: wide, under the format and rate */
+.clip-properties__export {
+  display: flex;
+}
+
+.clip-properties__export .clip-properties__export-button {
+  flex: 1;
+  justify-content: center;
 }
 
 /* A row: two fields, equal; a lone wide field spans both */

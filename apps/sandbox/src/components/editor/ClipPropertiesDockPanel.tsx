@@ -13,10 +13,20 @@
  * STRETCH_CLIP — so the panel is one more way in, never a second rule.
  * In the selection state an edit applies to EVERY selected clip, each
  * clamped to its own room (the fade menu's rule made visible).
+ *
+ * Two actions (2026-10-06): RESET PITCH & SPEED puts every target back
+ * to 0 semitones and 100% (the same two actions the fields use), and
+ * EXPORT renders each target as it plays — envelope, quick fades, pitch
+ * and speed — through the audio manager's `exportClip` and hands the
+ * browser a WAV named after the clip. The format list is the export
+ * modal's short list; only WAV is encoded in the prototype, the others
+ * are rendered as WAV and say so.
  */
 import React from 'react';
-import { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, type ClipPropertiesClip, type ClipPropertiesOption, type ClipPropertiesShapeOption, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
+import { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, toast, type ClipPropertiesClip, type ClipPropertiesOption, type ClipPropertiesShapeOption, type ClipPropertiesExportSettings, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
 import { useTracks, type Clip, type TracksAction } from '../../contexts/TracksContext';
+import { usePlayback } from '../../contexts/PlaybackContext';
+import { downloadBlob, safeFileName } from '../../utils/downloadBlob';
 import { useClipProperties } from '../../contexts/ClipPropertiesContext';
 import { resolveClipPropertiesClip, singleSelectedClip } from '../../utils/clipPropertiesTarget';
 import { selectedClipEntries, mergeSelectedClips } from '../../utils/clipPropertiesSelection';
@@ -32,6 +42,20 @@ const CLIP_COLORS: ReadonlyArray<ClipPropertiesOption> = [
 const FADE_SHAPES: ReadonlyArray<ClipPropertiesShapeOption> = FADE_SHAPE_PRESETS.map((p) => ({ id: p.id, label: p.label, shape: p.shape }));
 
 const MIN_CLIP_SECONDS = 0.02;
+
+/** The Export block's choices: the export modal's common formats and
+ *  rates. The prototype encodes WAV; the rest render as WAV. */
+export const CLIP_EXPORT_FORMATS: ReadonlyArray<ClipPropertiesOption> = [
+  { id: 'wav', label: 'WAV' },
+  { id: 'mp3', label: 'MP3' },
+  { id: 'flac', label: 'FLAC' },
+  { id: 'ogg', label: 'Ogg Vorbis' },
+];
+export const CLIP_EXPORT_SAMPLE_RATES: ReadonlyArray<ClipPropertiesOption> = [
+  { id: '44100', label: '44.1 kHz' },
+  { id: '48000', label: '48 kHz' },
+  { id: '96000', label: '96 kHz' },
+];
 
 const stretchOf = (clip: Clip) => (clip as { stretchFactor?: number }).stretchFactor ?? 1;
 const trimStartOf = (clip: Clip) => clip.trimStart ?? 0;
@@ -50,6 +74,8 @@ export interface ClipPropertiesDockPanelProps {
 export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' }: ClipPropertiesDockPanelProps = {}) {
   const { state, dispatch } = useTracks();
   const { clipPropertiesTarget, setClipPropertiesTarget } = useClipProperties();
+  const { audioManagerRef } = usePlayback();
+  const [exporting, setExporting] = React.useState(false);
 
   // The panel FOLLOWS the selection: a single selected clip becomes the
   // clip it shows, and stays it when the selection is cleared — until
@@ -102,6 +128,34 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
   };
   const update = (updates: Partial<Clip>) => forEachTarget((t) => ({ type: 'UPDATE_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clip.id, updates } }));
 
+  const resetPitchSpeed = () => {
+    forEachTarget((t) => (t.clip.pitchSemitones ? { type: 'UPDATE_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clip.id, updates: { pitchSemitones: undefined } } } : null));
+    forEachTarget((t) => (stretchOf(t.clip) !== 1
+      ? { type: 'STRETCH_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clip.id, newDuration: t.clip.duration / stretchOf(t.clip), newStretchFactor: 1 } }
+      : null));
+  };
+
+  const exportTargets = async ({ format, sampleRate }: ClipPropertiesExportSettings) => {
+    if (targets.length === 0 || exporting) return;
+    setExporting(true);
+    const manager = audioManagerRef.current;
+    const names: string[] = [];
+    try {
+      for (const t of targets) {
+        const { blob } = await manager.exportClip(t.clip, { sampleRate: sampleRate || undefined, siblings: state.tracks[t.trackIndex]?.clips ?? [] });
+        const fileName = `${safeFileName(t.clip.name)}.wav`;
+        downloadBlob(blob, fileName);
+        names.push(fileName);
+      }
+      const asWav = format === 'wav' ? '' : ` ${format.toUpperCase()} encoding is not in the prototype; rendered as WAV.`;
+      toast.success(names.length === 1 ? 'Clip exported' : `${names.length} clips exported`, `${names.join(', ')}.${asWav}`);
+    } catch (err) {
+      toast.error('Export failed', err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <ClipPropertiesPanel
       clip={view}
@@ -144,6 +198,11 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
         const n = Math.max(-PITCH_LIMIT_SEMITONES, Math.min(PITCH_LIMIT_SEMITONES, semitones));
         update({ pitchSemitones: n === 0 ? undefined : n });
       }}
+      onResetPitchSpeed={resetPitchSpeed}
+      exportFormats={CLIP_EXPORT_FORMATS}
+      exportSampleRates={CLIP_EXPORT_SAMPLE_RATES}
+      onExport={(settings) => { void exportTargets(settings); }}
+      exporting={exporting}
       onSpeedChange={(percent) => {
         if (!(percent > 0)) return;
         // Speed is the inverse of the stretch: 200% plays twice as fast,

@@ -174,6 +174,60 @@ describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', ()
   });
 });
 
+describe('ClipPropertiesPanel › Reset and Export (2026-10-06)', () => {
+  const exportFormats = [{ id: 'wav', label: 'WAV' }, { id: 'mp3', label: 'MP3' }];
+  const exportSampleRates = [{ id: '44100', label: '44.1 kHz' }, { id: '48000', label: '48 kHz' }];
+
+  it('Pitch & speed carries a Reset in its heading, live only while something is to reset', () => {
+    const onResetPitchSpeed = vi.fn();
+    const { container, rerender } = renderPanel({ onResetPitchSpeed });
+    const reset = () => container.querySelector('[data-clip-properties-action="reset-pitch-speed"]') as HTMLButtonElement;
+    expect(reset().closest('.clip-properties__section')?.textContent).toContain('Pitch & speed');
+    expect(reset().disabled).toBe(true);
+    rerender(
+      <ThemeProvider>
+        <ClipPropertiesPanel clip={{ ...clip, pitchSemitones: 3 }} colors={colors} fadeShapes={fadeShapes} onResetPitchSpeed={onResetPitchSpeed} />
+      </ThemeProvider>,
+    );
+    expect(reset().disabled).toBe(false);
+    fireEvent.click(reset());
+    expect(onResetPitchSpeed).toHaveBeenCalledTimes(1);
+    rerender(
+      <ThemeProvider>
+        <ClipPropertiesPanel clip={{ ...clip, stretchFactor: 2 }} colors={colors} fadeShapes={fadeShapes} onResetPitchSpeed={onResetPitchSpeed} />
+      </ThemeProvider>,
+    );
+    expect(reset().disabled).toBe(false);
+  });
+
+  it('the Export block: format and sample rate side by side, a wide button that hands both over; absent without formats', () => {
+    const onExport = vi.fn();
+    const { container, field } = renderPanel({ exportFormats, exportSampleRates, onExport });
+    expect(container.querySelector('[data-group="export"]')).toBeTruthy();
+    expect(field('export-format').parentElement).toBe(field('export-rate').parentElement);
+    const button = container.querySelector('[data-clip-properties-action="export"] button') as HTMLButtonElement;
+    expect(button.textContent).toBe('Export clip');
+    fireEvent.click(button);
+    expect(onExport).toHaveBeenCalledWith({ format: 'wav', sampleRate: 44100 });
+    // Nothing offered, nothing shown
+    const bare = renderPanel();
+    expect(bare.container.querySelector('[data-group="export"]')).toBeNull();
+  });
+
+  it('while exporting the button waits; a selection exports every clip', () => {
+    const selection = {
+      count: 3, trackNames: ['Track 1'], start: 0, end: 9, color: 'blue', fadeIn: 0, fadeOut: 0,
+      fadeInShapeId: undefined, fadeOutShapeId: undefined, pitchSemitones: 0, stretchFactor: 1,
+    };
+    const { container } = renderPanel({ exportFormats, exportSampleRates, onExport: vi.fn(), exporting: true, selection });
+    const button = container.querySelector('[data-clip-properties-action="export"] button') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toBe('Exporting…');
+    const idle = renderPanel({ exportFormats, exportSampleRates, onExport: vi.fn(), selection });
+    expect((idle.container.querySelector('[data-clip-properties-action="export"] button') as HTMLButtonElement).textContent).toBe('Export 3 clips');
+  });
+});
+
 describe('ClipPropertiesPanel › several clips selected (2026-10-02)', () => {
   const selection = {
     count: 3, trackNames: ['Track 1', 'Track 2'], start: 0.5, end: 6.5,

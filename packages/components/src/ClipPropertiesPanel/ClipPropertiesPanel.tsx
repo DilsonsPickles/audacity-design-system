@@ -22,11 +22,19 @@
  * Numeric fields are STEPPERS: the arrows commit at once; a typed value
  * commits on Enter or blur — Escape puts the old value back — so a
  * half-typed number never reaches the reducer.
+ *
+ * Two actions join the fields (user request 2026-10-06): RESET on the
+ * Pitch & speed section (its header's right-hand action, Figma's "+"
+ * place; live only while something is to reset), and an EXPORT section
+ * in the manner of Figma's export-selection block — a format and a
+ * sample rate side by side, a wide "Export clip" button under them —
+ * which hands `{ format, sampleRate }` to the host.
  */
 import React from 'react';
 import { TextInput } from '../TextInput';
 import { NumberStepper } from '../NumberStepper';
 import { Dropdown, type DropdownOption } from '../Dropdown';
+import { Button } from '../Button';
 import { fadeCurvePath, type FadeShape } from '../utils/clipCrossfades';
 import './ClipPropertiesPanel.css';
 
@@ -113,6 +121,16 @@ export interface ClipPropertiesPanelProps {
   onPitchChange?: (semitones: number) => void;
   /** New speed, percent (100 = as recorded) */
   onSpeedChange?: (percent: number) => void;
+  /** Pitch back to 0 and speed back to 100 — the section's Reset */
+  onResetPitchSpeed?: () => void;
+  /** The export block's formats; none = no Export section */
+  exportFormats?: ReadonlyArray<ClipPropertiesOption>;
+  /** The export block's sample rates, Hz (ids are the numbers) */
+  exportSampleRates?: ReadonlyArray<ClipPropertiesOption>;
+  /** Export the clip (or every selected clip) with the chosen settings */
+  onExport?: (settings: ClipPropertiesExportSettings) => void;
+  /** An export is under way — the button waits */
+  exporting?: boolean;
   /** Where the panel sits in the app's reading order (docked left =
    *  before the tracks, right or bottom = after) */
   placement?: 'start' | 'end';
@@ -120,6 +138,14 @@ export interface ClipPropertiesPanelProps {
    *  bottom drawer: wide and short, the groups side by side in three
    *  columns — user decision 2026-10-02) */
   layout?: 'stack' | 'columns';
+}
+
+/** What the Export block asks for */
+export interface ClipPropertiesExportSettings {
+  /** The format's id in `exportFormats` */
+  format: string;
+  /** Hz */
+  sampleRate: number;
 }
 
 /** Pitch limits, semitones: two octaves either way */
@@ -159,6 +185,12 @@ const PitchGlyph = () => (
 );
 const SpeedGlyph = () => (
   <Glyph title="Speed"><circle cx="8" cy="9" r="5.2" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M8 6.5V9l2 1.5M6 2h4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
+);
+const ExportGlyph = () => (
+  <Glyph title="Format"><path d="M8 2v8M5 7l3 3 3-3M3 11v3h10v-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
+);
+const SampleRateGlyph = () => (
+  <Glyph title="Sample rate"><path d="M2 8h2l1.5-4 2 8 2-6 1.5 2H14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
 );
 const CountGlyph = () => (
   <Glyph title="Selected clips"><path d="M2 5h8v8H2zM5 2h9v9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></Glyph>
@@ -301,6 +333,52 @@ function ShapePicker({ side, shapes, current, onPick, disabled }: {
 
 const Row = ({ children }: { children: React.ReactNode }) => <div className="clip-properties__row">{children}</div>;
 
+/** A section's heading, with Figma's right-hand action slot: a small
+ *  text button (Reset), shown whenever the section has one */
+function SectionHeader({ children, action, actionId, onAction, actionDisabled }: {
+  children: React.ReactNode;
+  action?: string;
+  actionId?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
+}) {
+  return (
+    <h3 className="clip-properties__section">
+      <span>{children}</span>
+      {action && (
+        <button
+          type="button"
+          className="clip-properties__section-action"
+          data-clip-properties-action={actionId}
+          onClick={onAction}
+          disabled={actionDisabled || !onAction}
+        >
+          {action}
+        </button>
+      )}
+    </h3>
+  );
+}
+
+/** A glyph beside a dropdown, in the field look */
+function SelectField({ testId, label, glyph, options, value, onChange, disabled }: {
+  testId: string;
+  label: string;
+  glyph: React.ReactNode;
+  options: DropdownOption[];
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="clip-properties__field clip-properties__field--select" data-clip-properties-field={testId} title={label}>
+      <span className="clip-properties__glyph-cell">{glyph}</span>
+      <Dropdown options={options} value={value} onChange={onChange} disabled={disabled} width="100%" />
+      <span className="clip-properties__sr">{label}</span>
+    </div>
+  );
+}
+
 export function ClipPropertiesPanel({
   clip,
   selection = null,
@@ -314,6 +392,11 @@ export function ClipPropertiesPanel({
   onFadeShapeChange,
   onPitchChange,
   onSpeedChange,
+  onResetPitchSpeed,
+  exportFormats = [],
+  exportSampleRates = [],
+  onExport,
+  exporting = false,
   placement = 'start',
   layout = 'stack',
 }: ClipPropertiesPanelProps) {
@@ -329,6 +412,15 @@ export function ClipPropertiesPanel({
   };
 
   const colorOptions: DropdownOption[] = colors.map((c) => ({ value: c.id, label: c.label }));
+
+  // The Export block's choices live here (as Figma's do): the first
+  // format and sample rate until picked
+  const formatOptions: DropdownOption[] = exportFormats.map((f) => ({ value: f.id, label: f.label }));
+  const rateOptions: DropdownOption[] = exportSampleRates.map((r) => ({ value: r.id, label: r.label }));
+  const [formatPick, setFormatPick] = React.useState<string | null>(null);
+  const [ratePick, setRatePick] = React.useState<string | null>(null);
+  const format = formatPick ?? exportFormats[0]?.id ?? '';
+  const sampleRate = ratePick ?? exportSampleRates[0]?.id ?? '';
 
   // What the fields show: the one clip, or the selection's merge
   const multi = selection && selection.count >= 2 ? selection : null;
@@ -468,13 +560,43 @@ export function ClipPropertiesPanel({
           </div>
 
           <div className="clip-properties__group" data-group="speed">
-          <h3 className="clip-properties__section">Pitch &amp; speed</h3>
+          <SectionHeader
+            action="Reset"
+            actionId="reset-pitch-speed"
+            onAction={onResetPitchSpeed}
+            actionDisabled={pitch === 0 && speed === 100}
+          >
+            Pitch &amp; speed
+          </SectionHeader>
           <Row>
             <NumberField testId="pitch" label="Pitch (semitones)" glyph={<PitchGlyph />} value={pitch} onCommit={onPitchChange}
               step={1} min={-PITCH_LIMIT_SEMITONES} max={PITCH_LIMIT_SEMITONES} digits={2} />
             <NumberField testId="speed" label="Speed (%)" glyph={<SpeedGlyph />} value={speed} onCommit={onSpeedChange} step={5} min={1} digits={2} />
           </Row>
           </div>
+
+          {exportFormats.length > 0 && (
+            <div className="clip-properties__group" data-group="export">
+            <SectionHeader>Export</SectionHeader>
+            <Row>
+              <SelectField testId="export-format" label="Format" glyph={<ExportGlyph />} options={formatOptions} value={format} onChange={setFormatPick} disabled={exporting} />
+              <SelectField testId="export-rate" label="Sample rate" glyph={<SampleRateGlyph />} options={rateOptions} value={sampleRate} onChange={setRatePick} disabled={exporting} />
+            </Row>
+            <Row>
+              <div className="clip-properties__field--wide clip-properties__export" data-clip-properties-action="export">
+                <Button
+                  variant="secondary"
+                  size="default"
+                  className="clip-properties__export-button"
+                  disabled={!onExport || exporting}
+                  onClick={() => onExport?.({ format, sampleRate: Number(sampleRate) || 0 })}
+                >
+                  {exporting ? 'Exporting…' : multi ? `Export ${multi.count} clips` : 'Export clip'}
+                </Button>
+              </div>
+            </Row>
+            </div>
+          )}
         </div>
       )}
     </section>
