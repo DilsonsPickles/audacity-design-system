@@ -263,8 +263,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       // callback then parks the playhead back on the selection start).
       //
       // The selection binds playback only while the playhead sits inside it
-      // (inclusive edges — the same containment rule as
-      // playheadAfterSelectionFinalize). Moving the playhead OUT of the
+      // (inclusive edges). Moving the playhead OUT of the
       // selection is an explicit "play from here instead" gesture, so play
       // reverts to open-ended from the playhead.
       const sel = state.timeSelection;

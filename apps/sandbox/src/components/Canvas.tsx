@@ -18,7 +18,6 @@ import { useSplitTool } from '../hooks/useSplitTool';
 import { useCmdArrowMove } from '../hooks/useCmdArrowMove';
 import { useTrackKeyboardHandlers } from '../hooks/useTrackKeyboardHandlers';
 import { useCanvasPointerHandlers } from '../hooks/useCanvasPointerHandlers';
-import { playheadAfterSelectionFinalize } from '../utils/playheadAfterFinalize';
 import { CanvasTrackList } from './canvas/CanvasTrackList';
 import { GridOverlay } from './GridOverlay';
 import { SnapGuideline } from './canvas/SnapGuideline';
@@ -606,11 +605,11 @@ export function Canvas({
       },
       onTimeSelectionFinalized: (sel) => {
         if (sel) {
-          // Don't yank a playhead the user parked inside the range.
-          const nextPlayhead = playheadAfterSelectionFinalize(playheadPosition, sel);
-          if (nextPlayhead !== null) {
-            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: nextPlayhead });
-          }
+          // The playhead goes to the selection's start, always (2026-10-07;
+          // from 2026-07-09 a playhead parked inside the drawn range had
+          // stayed put — a spot the user can re-park with one click inside
+          // the selection's rows, so the exception bought nothing)
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
           // Park DOM focus on the focused track's .track container so
           // subsequent Tab / Shift+Tab / ArrowUp/Down presses hit that
           // track's own routing instead of starting from wherever the
@@ -680,12 +679,8 @@ export function Canvas({
         pendingSpectralSelectionRef.current = null;
 
         if (sel) {
-          // Same rule as time-selection finalize: an overlapped
-          // playhead stays put.
-          const nextPlayhead = playheadAfterSelectionFinalize(playheadPosition, sel);
-          if (nextPlayhead !== null) {
-            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: nextPlayhead });
-          }
+          // Same rule as time-selection finalize: to the start, always
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
         }
       },
       // Track selection is now decoupled from click gestures — a track

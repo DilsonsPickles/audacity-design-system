@@ -121,6 +121,8 @@ band.
 
 Design doc: `docs/superpowers/specs/2026-07-09-time-selection-scope-design.md`.
 
-Finalizing a selection drag moves the playhead to the selection start —
-unless the playhead already lies inside the drawn range (edges inclusive),
-in which case it stays put. Applies to spectral selections too.
+Finalizing a selection drag moves the playhead to the selection start,
+always (2026-10-07; from 2026-07-09 a playhead parked inside the drawn
+range had stayed put — a click inside the selection's rows re-parks it
+without collapsing the selection, so the exception was not needed).
+Applies to spectral selections too.

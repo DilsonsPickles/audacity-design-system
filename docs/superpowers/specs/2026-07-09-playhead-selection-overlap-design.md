@@ -1,3 +1,5 @@
+> **Superseded 2026-10-07:** the exception described here was removed — finalizing a selection always moves the playhead to the selection's start (user decision: "remove exception logic whereby it doesn't move if it's included in selection"). Kept for the record.
+
 # Design: Selection Drags Don't Move an Overlapped Playhead
 
 **Date:** 2026-07-09
