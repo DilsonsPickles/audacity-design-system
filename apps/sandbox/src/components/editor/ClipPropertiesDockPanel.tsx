@@ -1,10 +1,12 @@
 /**
  * ClipPropertiesDockPanel — sandbox wiring for the dockable
  * ClipPropertiesPanel (2026-10-02). Resolves what to show
- * (utils/clipPropertiesTarget.ts — the single selected clip first, so
- * selecting another clip switches the panel; else the clip it last
- * showed; or, with SEVERAL clips selected, their merge —
- * utils/clipPropertiesSelection.ts), maps it to the panel's view, and
+ * (utils/clipPropertiesTarget.ts — the FOCUSED clip first (2026-10-06),
+ * so arrowing or clicking to another clip switches the panel; else the
+ * clip it last showed; else the single selected clip; or, with SEVERAL
+ * clips selected and the focus among them or nowhere, their merge —
+ * utils/clipPropertiesSelection.ts; a focused clip OUTSIDE the
+ * selection is shown alone), maps it to the panel's view, and
  * turns each edit into the reducer action the rest of the app already
  * uses for it — rename and colour through UPDATE_CLIP, start through
  * MOVE_CLIP, length and both edge trims through TRIM_CLIP (clamped to
@@ -32,6 +34,7 @@ import { usePlayback } from '../../contexts/PlaybackContext';
 import { downloadBlob, safeFileName } from '../../utils/downloadBlob';
 import { useClipProperties } from '../../contexts/ClipPropertiesContext';
 import { resolveClipPropertiesClip, singleSelectedClip } from '../../utils/clipPropertiesTarget';
+import { useFocusedClip } from '../../hooks/useFocusedClip';
 import { selectedClipEntries, mergeSelectedClips } from '../../utils/clipPropertiesSelection';
 import { FADE_SHAPE_PRESETS, fadeShapePresetOf } from '../../utils/fadeShapePresets';
 
@@ -80,20 +83,28 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
   const { audioManagerRef } = usePlayback();
   const [exporting, setExporting] = React.useState(false);
 
-  // The panel FOLLOWS the selection: a single selected clip becomes the
-  // clip it shows, and stays it when the selection is cleared — until
-  // the next single selection (user decision 2026-10-02)
+  // The panel FOLLOWS THE FOCUSED CLIP (2026-10-06, "can it be the
+  // focused clip?"): the clip with DOM focus is what it shows, and it
+  // is recorded as the target so the panel STAYS on it when focus
+  // moves into the panel's own fields or elsewhere. With no clip
+  // focused, a single selected clip becomes the target as before
+  // (2026-10-02 — selection by menu or macro still switches the panel).
+  const focused = useFocusedClip();
   const single = singleSelectedClip(state.tracks);
+  const next = focused ?? (single ? { trackIndex: single.trackIndex, clipId: single.clip.id } : null);
   React.useEffect(() => {
-    if (!single) return;
-    if (clipPropertiesTarget?.trackIndex === single.trackIndex && clipPropertiesTarget.clipId === single.clip.id) return;
-    setClipPropertiesTarget({ trackIndex: single.trackIndex, clipId: single.clip.id });
-  }, [single?.trackIndex, single?.clip.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!next) return;
+    if (clipPropertiesTarget?.trackIndex === next.trackIndex && clipPropertiesTarget.clipId === next.clipId) return;
+    setClipPropertiesTarget(next);
+  }, [next?.trackIndex, next?.clipId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Several selected: the merged selection; one or none: the resolved clip
+  // Several selected, with the focus among them or on no clip: the
+  // merged selection. A focused clip outside the selection is shown
+  // alone — focus wins. One or none selected: the resolved clip.
   const selected = selectedClipEntries(state.tracks);
-  const selection = selected.length >= 2 ? mergeSelectedClips(selected, TRACK_COLOR) : null;
-  const resolved = selection ? null : resolveClipPropertiesClip(state.tracks, clipPropertiesTarget);
+  const focusedInSelection = !!focused && selected.some((e) => e.trackIndex === focused.trackIndex && e.clip.id === focused.clipId);
+  const selection = selected.length >= 2 && (!focused || focusedInSelection) ? mergeSelectedClips(selected, TRACK_COLOR) : null;
+  const resolved = selection ? null : resolveClipPropertiesClip(state.tracks, clipPropertiesTarget, focused);
   const track = resolved ? state.tracks[resolved.trackIndex] : null;
   const clip = resolved?.clip ?? null;
   const trackIndex = resolved?.trackIndex ?? -1;

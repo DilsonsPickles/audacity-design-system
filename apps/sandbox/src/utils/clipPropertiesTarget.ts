@@ -1,11 +1,13 @@
 /**
- * Which clip the Clip properties panel shows (2026-10-02): the ONE
- * selected audio clip when the selection is a single clip — so selecting
- * another clip switches the panel to it ("when I select a different
- * clip, change the panel") — otherwise the clip it last showed (its
- * target: the one it was opened on, or the last single selection the
- * dock panel recorded), while that clip still exists; otherwise none.
- * It never guesses between several selected clips.
+ * Which clip the Clip properties panel shows: the FOCUSED clip first
+ * (2026-10-06, "can it be the focused clip?" — the clip with DOM focus,
+ * from useFocusedClip; arrowing or tabbing between clips moves the
+ * panel with it), else the clip it last showed (its target: the one it
+ * was opened on, or the last clip that had focus or was the single
+ * selection, as the dock panel records them), else the ONE selected
+ * audio clip when the selection is a single clip — while that clip
+ * still exists; otherwise none. It never guesses between several
+ * selected clips.
  */
 export interface PropertiesClipLike {
   id: number;
@@ -20,14 +22,14 @@ export interface ResolvedClip<C> {
 export function resolveClipPropertiesClip<C extends PropertiesClipLike>(
   tracks: ReadonlyArray<{ clips: ReadonlyArray<C> }>,
   target: { trackIndex: number; clipId: number } | null,
+  focused: { trackIndex: number; clipId: number } | null = null,
 ): ResolvedClip<C> | null {
-  const single = singleSelectedClip(tracks);
-  if (single) return single;
-  if (target) {
-    const clip = tracks[target.trackIndex]?.clips.find((c) => c.id === target.clipId);
-    if (clip) return { trackIndex: target.trackIndex, clip };
-  }
-  return null;
+  const find = (ref: { trackIndex: number; clipId: number } | null): ResolvedClip<C> | null => {
+    if (!ref) return null;
+    const clip = tracks[ref.trackIndex]?.clips.find((c) => c.id === ref.clipId);
+    return clip ? { trackIndex: ref.trackIndex, clip } : null;
+  };
+  return find(focused) ?? find(target) ?? singleSelectedClip(tracks);
 }
 
 /** The one selected clip, when exactly one is */
