@@ -31,6 +31,7 @@ export function ShortcutsPage() {
     { id: '17', action: 'Change speed', shortcut: '' },
     { id: '18', action: 'Change tempo', shortcut: '' },
     { id: '19', action: 'Click removal', shortcut: '' },
+    { id: '19a', action: 'Clip properties', shortcut: '⌥⌘I' },
     { id: '20', action: 'Close project', shortcut: '⌘W' },
     { id: '21', action: 'Compressor', shortcut: '' },
     { id: '22', action: 'Copy', shortcut: '⌘C' },
