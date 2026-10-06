@@ -150,31 +150,32 @@ export const colors = {
  * Typography Tokens
  */
 /**
- * Dark-mode TINTS of every hue (2026-10-06, for the warning/info/error
- * banners — "I need the colour values for dark mode for all sets").
+ * DARK-MODE RAMPS for every hue (2026-10-06, "I want the ramps in
+ * full", after the banner tints).
  *
- * The ramps are anchored at the light end: step 900 is the most
- * SATURATED colour, not a dark one, so a dark fill cannot be a ramp
- * step. The recipe, matched to the hand-drawn dark error banner in the
- * Figma: the hue's 700 sunk into the dark panel surface (midnight-200)
- * — 25% for the FILL, 55% for the BORDER — and the hue's 400 for the
- * ICON and HEADING (body text stays slate-100). Light mode uses the
- * ramp directly: 200 fill, 500 border, 800 icon and heading.
+ * The light ramps are anchored at the light end: 100 is a near-white
+ * tint and 900 the most SATURATED colour, not a dark one — so a dark
+ * fill cannot be a light step. The dark ramp is built BY ROLE, so a
+ * component reads the same step in both modes: 200 is the subtle fill,
+ * 500 the border, 700 the solid colour, 800 the icon and heading.
+ * Steps 100–600 are the hue's 700 sunk into the dark panel surface
+ * (midnight-200) at a rising mix; 700 is the hue's 700 itself; 800 and
+ * 900 are the hue's 400 and 300, the light tints that read as text on
+ * a dark ground. The recipe was matched to the hand-drawn dark error
+ * banner in the Figma (fill = 25%, border = 55%).
+ *
+ * Chromatic hues only: slate and midnight are the light and dark
+ * NEUTRAL ramps already, used as they are in each mode.
  *
  * Derived from `colors` at module load, so a ramp change moves these.
- * In CSS the same thing is
- * `color-mix(in srgb, var(--<hue>-700) 25%, var(--midnight-200))`.
+ * In CSS a mixed step is
+ * `color-mix(in srgb, var(--<hue>-700) <mix>%, var(--midnight-200))`.
  */
-export interface DarkTint {
-  /** The banner's fill: hue 700 at 25% over midnight-200 */
-  fill: string;
-  /** The banner's border: hue 700 at 55% over midnight-200 */
-  border: string;
-  /** Icon and heading: the hue's 400 */
-  accent: string;
-}
-
-export type TintHue = Exclude<keyof typeof colors, 'shade'>;
+/** The chromatic hues — the neutrals are not re-derived: slate IS the
+ *  light neutral ramp and midnight the dark one */
+export type TintHue = Exclude<keyof typeof colors, 'shade' | 'slate' | 'midnight'>;
+export type RampStep = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
+export type Ramp = Record<RampStep, string>;
 
 /** Mix two hex colours: `t` of `a` over `1 − t` of `b` (sRGB, as color-mix) */
 export function mixHex(a: string, b: string, t: number): string {
@@ -185,34 +186,60 @@ export function mixHex(a: string, b: string, t: number): string {
   return `#${ch(ar, br)}${ch(ag, bg)}${ch(ab, bb)}`;
 }
 
-export const DARK_TINT_FILL_MIX = 0.25;
-export const DARK_TINT_BORDER_MIX = 0.55;
+/** How much of the hue's 700 each mixed dark step carries over midnight-200 */
+export const DARK_RAMP_MIX: Record<100 | 200 | 300 | 400 | 500 | 600, number> = {
+  100: 0.15,
+  200: 0.25, // the fill
+  300: 0.35,
+  400: 0.45,
+  500: 0.55, // the border
+  600: 0.75,
+};
 
-export const darkTints: Record<TintHue, DarkTint> = (() => {
-  const surface = colors.midnight[200];
-  const out = {} as Record<TintHue, DarkTint>;
-  for (const hue of Object.keys(colors) as Array<keyof typeof colors>) {
-    if (hue === 'shade') continue;
-    const ramp = colors[hue] as Record<number, string>;
-    out[hue] = {
-      fill: mixHex(ramp[700], surface, DARK_TINT_FILL_MIX),
-      border: mixHex(ramp[700], surface, DARK_TINT_BORDER_MIX),
-      accent: ramp[400],
-    };
-  }
-  return out;
-})();
+/** The dark surface the mixed steps sit on */
+export const DARK_RAMP_SURFACE = colors.midnight[200];
 
-/** The light-mode counterpart, straight off the ramp */
-export const lightTints: Record<TintHue, DarkTint> = (() => {
-  const out = {} as Record<TintHue, DarkTint>;
-  for (const hue of Object.keys(colors) as Array<keyof typeof colors>) {
-    if (hue === 'shade') continue;
-    const ramp = colors[hue] as Record<number, string>;
-    out[hue] = { fill: ramp[200], border: ramp[500], accent: ramp[800] };
-  }
-  return out;
-})();
+export function darkRampOf(ramp: Ramp): Ramp {
+  const mixed = (step: keyof typeof DARK_RAMP_MIX) => mixHex(ramp[700], DARK_RAMP_SURFACE, DARK_RAMP_MIX[step]);
+  return {
+    100: mixed(100),
+    200: mixed(200),
+    300: mixed(300),
+    400: mixed(400),
+    500: mixed(500),
+    600: mixed(600),
+    700: ramp[700],
+    800: ramp[400],
+    900: ramp[300],
+  };
+}
+
+const hues = Object.keys(colors).filter((h): h is TintHue => h !== 'shade' && h !== 'slate' && h !== 'midnight');
+
+/** Every hue's dark ramp, 100–900, by role (see above) */
+export const darkColors: Record<TintHue, Ramp> = Object.fromEntries(
+  hues.map((hue) => [hue, darkRampOf(colors[hue] as Ramp)]),
+) as Record<TintHue, Ramp>;
+
+/** The three banner roles of a hue: fill (200), border (500), accent
+ *  (800) — the same steps in both modes */
+export interface Tint {
+  fill: string;
+  border: string;
+  accent: string;
+}
+/** @deprecated the old name — `Tint` */
+export type DarkTint = Tint;
+
+const tintOf = (ramp: Ramp): Tint => ({ fill: ramp[200], border: ramp[500], accent: ramp[800] });
+
+export const darkTints: Record<TintHue, Tint> = Object.fromEntries(
+  hues.map((hue) => [hue, tintOf(darkColors[hue])]),
+) as Record<TintHue, Tint>;
+
+export const lightTints: Record<TintHue, Tint> = Object.fromEntries(
+  hues.map((hue) => [hue, tintOf(colors[hue] as Ramp)]),
+) as Record<TintHue, Tint>;
 
 export interface TypographyStyle {
   fontFamily: string;
