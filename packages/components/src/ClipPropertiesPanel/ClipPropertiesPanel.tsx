@@ -31,6 +31,15 @@
  * sample rate side by side, a wide "Export clip" button under them —
  * which hands `{ format, sampleRate }` to the host.
  *
+ * The CLIP STRIP (user request 2026-10-06, after Figma's padding box —
+ * "a diagram to represent the clip and its edges"): the SOURCE drawn as
+ * a lane, the clip as a block sitting in it where its trims put it,
+ * its fades as wedges on the block; the block's two edges are handles
+ * that drag the trims (source seconds, the same callbacks as the Trim
+ * start / Trim end steppers under it), with arrow keys for the
+ * keyboard. It replaces the read-only Source field: the strip IS the
+ * source.
+ *
  * EVERY control has a TOOLTIP on hover (user request 2026-10-06): the
  * design system's Tooltip, not the browser's title — one `data-tooltip`
  * per control, read by a single hover handler on the panel's root,
@@ -53,6 +62,9 @@ export interface ClipPropertiesClip {
   name: string;
   /** The colour's id in `colors` (undefined = the track's) */
   color?: string;
+  /** The track's own colour (a palette id), for the strip when the
+   *  clip wears it */
+  trackColor?: string;
   trackName: string;
   /** The track's id in `tracks` — the Track field moves the clip (2026-10-06) */
   trackId?: string;
@@ -208,9 +220,6 @@ const TrimStartGlyph = () => (
 );
 const TrimEndGlyph = () => (
   <Glyph title="Trim end"><path d="M3 2v12M13 2v12M13 8H8M10 5.5 7.5 8l2.5 2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 2h2M11 14h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
-);
-const SourceGlyph = () => (
-  <Glyph title="Source"><path d="M2 3h12v10H2zM5 3v10M11 3v10M2 6h3M2 10h3M11 6h3M11 10h3" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></Glyph>
 );
 const SpanGlyph = () => (
   <Glyph title="Span"><path d="M2 3v10M14 3v10M2 8h12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
@@ -409,7 +418,95 @@ function ShapePicker({ side, shapes, current, own, onPick, disabled }: {
   );
 }
 
-const Row = ({ children }: { children: React.ReactNode }) => <div className="clip-properties__row">{children}</div>;
+const Row = ({ children, wrap }: { children: React.ReactNode; wrap?: boolean }) => (
+  <div className={`clip-properties__row${wrap ? ' clip-properties__row--wrap' : ''}`}>{children}</div>
+);
+
+/** The clip's edge handles step by this much per arrow key, source seconds */
+const STRIP_KEY_STEP = 0.1;
+
+/** The clip strip: the source as a lane, the clip as a block in it,
+ *  fades as wedges, trims as the block's edge handles — drag or arrow
+ *  them. Lengths along the lane are SOURCE seconds; the clip's visible
+ *  length is its timeline length through the stretch. */
+function ClipStrip({ clip, onTrimStartChange, onTrimEndChange }: {
+  clip: ClipPropertiesClip;
+  onTrimStartChange?: (seconds: number) => void;
+  onTrimEndChange?: (seconds: number) => void;
+}) {
+  const laneRef = React.useRef<HTMLDivElement>(null);
+  const source = Math.max(clip.fullDuration, 0.001);
+  const shown = clip.duration / clip.stretchFactor;
+  const trimEnd = Math.max(0, source - clip.trimStart - shown);
+  const pct = (seconds: number) => `${Math.max(0, Math.min(100, (seconds / source) * 100))}%`;
+  // Fades are timeline seconds; on the lane they are source seconds
+  const fadeInPct = pct(clip.fadeIn / clip.stretchFactor);
+  const fadeOutPct = pct(clip.fadeOut / clip.stretchFactor);
+
+  // A drag from an edge: the pointer's travel along the lane, in
+  // source seconds, moves that trim from where it was at the press
+  const drag = React.useRef<{ side: 'start' | 'end'; x0: number; value0: number } | null>(null);
+  const secondsPerPx = () => {
+    const w = laneRef.current?.getBoundingClientRect().width ?? 0;
+    return w > 0 ? source / w : 0;
+  };
+  const onPointerDown = (side: 'start' | 'end') => (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    drag.current = { side, x0: e.clientX, value0: side === 'start' ? clip.trimStart : trimEnd };
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const travel = (e.clientX - d.x0) * secondsPerPx();
+    // The head grows as the pointer goes right; the tail as it goes left
+    if (d.side === 'start') onTrimStartChange?.(Math.max(0, d.value0 + travel));
+    else onTrimEndChange?.(Math.max(0, d.value0 - travel));
+  };
+  const onPointerUp = () => { drag.current = null; };
+  const onKeyDown = (side: 'start' | 'end') => (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const step = (e.shiftKey ? 10 : 1) * STRIP_KEY_STEP * (e.key === 'ArrowRight' ? 1 : -1);
+    // Right grows the head, shrinks the tail — the handle moves right
+    if (side === 'start') onTrimStartChange?.(Math.max(0, clip.trimStart + step));
+    else onTrimEndChange?.(Math.max(0, trimEnd - step));
+  };
+  const handle = (side: 'start' | 'end') => (
+    <button
+      type="button"
+      className={`clip-properties__strip-handle clip-properties__strip-handle--${side}`}
+      data-clip-properties-handle={`trim-${side}`}
+      data-tooltip={side === 'start' ? 'Trim start' : 'Trim end'}
+      aria-label={side === 'start' ? 'Trim start' : 'Trim end'}
+      disabled={side === 'start' ? !onTrimStartChange : !onTrimEndChange}
+      onPointerDown={onPointerDown(side)}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onKeyDown={onKeyDown(side)}
+    />
+  );
+  return (
+    <div className="clip-properties__strip" data-clip-properties-field="strip" data-tooltip="Clip in its source">
+      <div className="clip-properties__strip-lane" ref={laneRef}>
+        <div
+          className="clip-properties__strip-clip"
+          data-swatch={clip.color && clip.color !== 'track' ? clip.color : clip.trackColor ?? 'track'}
+          style={{ left: pct(clip.trimStart), width: pct(shown) }}
+        >
+          {clip.fadeIn > 0 && <span className="clip-properties__strip-fade clip-properties__strip-fade--in" style={{ width: fadeInPct }} />}
+          {clip.fadeOut > 0 && <span className="clip-properties__strip-fade clip-properties__strip-fade--out" style={{ width: fadeOutPct }} />}
+          {handle('start')}
+          {handle('end')}
+        </div>
+      </div>
+      <span className="clip-properties__sr">Clip in its source</span>
+    </div>
+  );
+}
 
 /** A section's heading, with Figma's right-hand action slot: a small
  *  text button (Reset), shown whenever the section has one */
@@ -648,20 +745,19 @@ export function ClipPropertiesPanel({
             </>
           ) : clip && (
             <>
-              <Row>
+              {/* Start, length and end are one statement (start + length =
+                  end): one row where the width allows, wrapping where
+                  it does not */}
+              <Row wrap>
                 <NumberField testId="start" label="Start" glyph={<StartGlyph />} value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
+                <NumberField testId="length" label="Length" glyph={<LengthGlyph />} value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
                 <ReadField testId="end" label="End" glyph={<EndGlyph />}>{fmt(clip.start + clip.duration)} s</ReadField>
               </Row>
+              <ClipStrip clip={clip} onTrimStartChange={onTrimStartChange} onTrimEndChange={onTrimEndChange} />
               <Row>
                 <NumberField testId="trim-start" label="Trim start" glyph={<TrimStartGlyph />} value={clip.trimStart} onCommit={onTrimStartChange} step={0.1} min={0} />
                 <NumberField testId="trim-end" label="Trim end" glyph={<TrimEndGlyph />}
                   value={Math.max(0, clip.fullDuration - clip.trimStart - clip.duration / clip.stretchFactor)} onCommit={onTrimEndChange} step={0.1} min={0} />
-              </Row>
-              <Row>
-                <NumberField testId="length" label="Length" glyph={<LengthGlyph />} value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
-                <ReadField testId="source" label="Source" glyph={<SourceGlyph />}>
-                  {fmt(clip.fullDuration)} s{clip.trimStart > 0 ? ` from ${fmt(clip.trimStart)}` : ''}
-                </ReadField>
               </Row>
             </>
           )}

@@ -124,6 +124,84 @@
   margin-bottom: 6px;
 }
 
+/* A row that packs as many fields as fit at 84px (three in the bottom
+   drawer, two and one in a side dock): Start | Length | End */
+.clip-properties__row--wrap {
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+}
+
+/* The clip strip: the source as a lane, the clip as a block in it, its
+   fades as wedges, its edges as handles — Figma's padding box, for a
+   clip. Lengths along the lane are the source's. */
+.clip-properties__strip {
+  position: relative;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 10px 8px;
+  margin-bottom: 6px;
+  border: 1px solid var(--field-border, #d0d2d6);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.clip-properties__strip-lane {
+  position: relative;
+  height: 100%;
+  border-radius: 2px;
+  background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 5px);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.clip-properties__strip-clip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--clip-strip-fill, #8a93a8);
+}
+.clip-properties__strip-clip[data-swatch="track"] { --clip-strip-fill: #8a93a8; }
+.clip-properties__strip-clip[data-swatch="cyan"] { --clip-strip-fill: var(--clip-cyan-header, #67d5e6); }
+.clip-properties__strip-clip[data-swatch="blue"] { --clip-strip-fill: var(--clip-blue-header, #6aa6f5); }
+.clip-properties__strip-clip[data-swatch="violet"] { --clip-strip-fill: var(--clip-violet-header, #a48ff0); }
+.clip-properties__strip-clip[data-swatch="magenta"] { --clip-strip-fill: var(--clip-magenta-header, #e685c8); }
+.clip-properties__strip-clip[data-swatch="red"] { --clip-strip-fill: var(--clip-red-header, #ef7a7a); }
+.clip-properties__strip-clip[data-swatch="orange"] { --clip-strip-fill: var(--clip-orange-header, #f2a05a); }
+.clip-properties__strip-clip[data-swatch="yellow"] { --clip-strip-fill: var(--clip-yellow-header, #e9cf4e); }
+.clip-properties__strip-clip[data-swatch="green"] { --clip-strip-fill: var(--clip-green-header, #7dd38a); }
+.clip-properties__strip-clip[data-swatch="teal"] { --clip-strip-fill: var(--clip-teal-header, #5fcdb8); }
+
+/* A fade: the dimmed area above its line, as on the canvas */
+.clip-properties__strip-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+.clip-properties__strip-fade--in { left: 0; clip-path: polygon(0 0, 100% 0, 0 100%); }
+.clip-properties__strip-fade--out { right: 0; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+
+/* The edges: a grab bar each, the whole height, with the trim cursor */
+.clip-properties__strip-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.clip-properties__strip-handle--start { left: 0; border-radius: 2px 0 0 2px; }
+.clip-properties__strip-handle--end { right: 0; border-radius: 0 2px 2px 0; }
+.clip-properties__strip-handle:hover:not(:disabled),
+.clip-properties__strip-handle:focus-visible { background: rgba(0, 0, 0, 0.6); outline: none; }
+.clip-properties__strip-handle:disabled { cursor: default; opacity: 0.4; }
+
 .clip-properties__field--wide {
   grid-column: 1 / -1;
 }

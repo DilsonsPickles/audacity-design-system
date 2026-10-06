@@ -107,6 +107,7 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
     id: clip.id,
     name: clip.name,
     color: clip.ownColor ?? TRACK_COLOR,
+    trackColor: track.color,
     trackName: track.name,
     trackId: String(track.id),
     start: clip.start,

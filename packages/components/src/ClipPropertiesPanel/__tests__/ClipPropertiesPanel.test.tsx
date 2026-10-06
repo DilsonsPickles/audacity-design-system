@@ -45,7 +45,6 @@ describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', ()
     expect(input('start').value).toBe('1.5');
     expect(input('length').value).toBe('4');
     expect(field('end').textContent).toContain('5.5 s');
-    expect(field('source').textContent).toContain('6 s from 0.25');
     expect(input('fade-in').value).toBe('0.5');
     expect(input('fade-out').value).toBe('0');
     expect(input('pitch').value).toBe('0');
@@ -56,8 +55,9 @@ describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', ()
     expect(field('pitch').querySelector('[data-glyph="Pitch"]')).toBeTruthy();
     expect(field('start').querySelector('.clip-properties__sr')?.textContent).toBe('Start');
     expect(container.querySelector('.clip-properties__label')).toBeNull();
-    // Start and End share a row; the name has a row to itself
+    // Start, Length and End share a row; the name has a row to itself
     expect(field('start').parentElement).toBe(field('end').parentElement);
+    expect(field('start').parentElement).toBe(field('length').parentElement);
     expect(field('name').classList.contains('clip-properties__field--wide')).toBe(true);
   });
 
@@ -200,6 +200,42 @@ describe('ClipPropertiesPanel › both edges trim (2026-10-06)', () => {
   });
 });
 
+describe('ClipPropertiesPanel › the clip strip (2026-10-06)', () => {
+  it('draws the clip in its source where the trims put it, fades as wedges; the edges drag the trims', () => {
+    const { field, onTrimStartChange, onTrimEndChange } = renderPanel();
+    const strip = field('strip');
+    const block = strip.querySelector('.clip-properties__strip-clip') as HTMLElement;
+    // Source 6 s: 0.25 hidden at the head, 4 shown → 4.1667% in, 66.667% wide
+    expect(parseFloat(block.style.left)).toBeCloseTo(4.1667, 2);
+    expect(parseFloat(block.style.width)).toBeCloseTo(66.667, 2);
+    expect(block.getAttribute('data-swatch')).toBe('blue');
+    expect(parseFloat((block.querySelector('.clip-properties__strip-fade--in') as HTMLElement).style.width)).toBeCloseTo(8.333, 2); // 0.5 of 6
+    expect(block.querySelector('.clip-properties__strip-fade--out')).toBeNull();
+
+    const lane = strip.querySelector('.clip-properties__strip-lane') as HTMLElement;
+    vi.spyOn(lane, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 300, top: 0, height: 24, right: 300, bottom: 24, x: 0, y: 0, toJSON: () => ({}) });
+    const start = strip.querySelector('[data-clip-properties-handle="trim-start"]') as HTMLElement;
+    fireEvent.pointerDown(start, { button: 0, clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(start, { clientX: 150, pointerId: 1 }); // 50px of 300 = 1 s of 6
+    expect(onTrimStartChange).toHaveBeenLastCalledWith(1.25);
+    fireEvent.pointerMove(start, { clientX: 40, pointerId: 1 }); // −60px = −1.2 s → clamped at 0
+    expect(onTrimStartChange).toHaveBeenLastCalledWith(0);
+    fireEvent.pointerUp(start, { pointerId: 1 });
+    fireEvent.pointerMove(start, { clientX: 200, pointerId: 1 }); // released: nothing
+    expect(onTrimStartChange).toHaveBeenCalledTimes(2);
+
+    const end = strip.querySelector('[data-clip-properties-handle="trim-end"]') as HTMLElement;
+    fireEvent.pointerDown(end, { button: 0, clientX: 200, pointerId: 2 });
+    fireEvent.pointerMove(end, { clientX: 170, pointerId: 2 }); // 30px left = 0.6 s more tail: 1.75 + 0.6
+    expect(onTrimEndChange).toHaveBeenLastCalledWith(2.35);
+    // Arrow keys step a tenth, Shift a whole second
+    fireEvent.keyDown(start, { key: 'ArrowRight' });
+    expect(onTrimStartChange).toHaveBeenLastCalledWith(0.35);
+    fireEvent.keyDown(end, { key: 'ArrowRight', shiftKey: true });
+    expect(onTrimEndChange).toHaveBeenLastCalledWith(0.75);
+  });
+});
+
 describe('ClipPropertiesPanel › the Track field (2026-10-06)', () => {
   const tracks = [{ id: 't1', label: 'Track 1' }, { id: 't2', label: 'Track 2' }];
 
@@ -288,7 +324,7 @@ describe('ClipPropertiesPanel › tooltips (2026-10-06)', () => {
     try {
       const { field, container } = renderPanel({ onResetPitchSpeed: vi.fn(), exportFormats: [{ id: 'wav', label: 'WAV' }], exportSampleRates: [{ id: '44100', label: '44.1 kHz' }], onExport: vi.fn() });
       const tooltip = () => document.body.querySelector('.tooltip');
-      const controls = ['name', 'color', 'start', 'end', 'trim-start', 'trim-end', 'length', 'source', 'fade-in', 'fade-out', 'shape-in', 'shape-out', 'pitch', 'speed', 'export-format', 'export-rate'];
+      const controls = ['name', 'color', 'start', 'end', 'trim-start', 'trim-end', 'length', 'strip', 'fade-in', 'fade-out', 'shape-in', 'shape-out', 'pitch', 'speed', 'export-format', 'export-rate'];
       for (const id of controls) expect(field(id).getAttribute('data-tooltip'), id).toBeTruthy();
       expect(container.querySelector('[data-clip-properties-action="reset-pitch-speed"]')?.getAttribute('data-tooltip')).toBeTruthy();
       expect(container.querySelector('[data-clip-properties-action="export"]')?.getAttribute('data-tooltip')).toBeTruthy();
