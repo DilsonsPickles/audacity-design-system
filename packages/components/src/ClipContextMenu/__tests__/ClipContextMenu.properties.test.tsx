@@ -7,7 +7,7 @@ import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 afterEach(cleanup);
 
 describe('ClipContextMenu › Clip properties… (2026-10-02)', () => {
-  it('shows the item first under the heading when wired, runs it and closes; hides it when not', () => {
+  it('shows the item first, with no heading over it, when wired, runs it and closes; hides it when not', () => {
     const onOpenProperties = vi.fn();
     const onClose = vi.fn();
     const { getByText, container } = render(
@@ -16,8 +16,7 @@ describe('ClipContextMenu › Clip properties… (2026-10-02)', () => {
       </ThemeProvider>,
     );
     const item = getByText('Clip properties…');
-    const heading = container.querySelector('.clip-context-menu-header')!;
-    expect(heading.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('.clip-context-menu-header')).toBeNull();
     expect(getByText('Rename clip').compareDocumentPosition(item) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
     fireEvent.click(item);
     expect(onOpenProperties).toHaveBeenCalledTimes(1);

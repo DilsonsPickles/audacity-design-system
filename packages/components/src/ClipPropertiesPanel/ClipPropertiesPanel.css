@@ -1,6 +1,6 @@
 /* ClipPropertiesPanel — the dockable "Clip properties" panel, in the
-   manner of Figma's properties panel (2026-10-06): a 40px header on the
-   dock background, then groups of ROWS of two bordered fields, each a
+   manner of Figma's properties panel (2026-10-06): a 40px header naming
+   the subject (the tab names the panel) on the dock background, then groups of ROWS of two bordered fields, each a
    glyph beside its value — no label column. The fades' glyphs are live
    curve thumbnails; their shape picker is a row of small curve glyphs. */
 
@@ -22,14 +22,6 @@
   justify-content: space-between;
   gap: 8px;
   flex-shrink: 0;
-}
-
-.clip-properties__title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-  white-space: nowrap;
 }
 
 .clip-properties__subtitle {

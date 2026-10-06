@@ -528,10 +528,14 @@ export function ClipPropertiesPanel({
       {...tooltipHandlers}
     >
       {tip && <Tooltip content={tip.text} x={tip.x} y={tip.y} />}
-      <header className="clip-properties__header">
-        <h2 className="clip-properties__title">Clip properties</h2>
-        {subject && <span className="clip-properties__subtitle">{subtitle}</span>}
-      </header>
+      {/* No title of its own: the dock tab or window already says
+          "Clip properties" (2026-10-06); the header is the subject —
+          the track, or the selection's count and tracks */}
+      {subject && (
+        <header className="clip-properties__header">
+          <span className="clip-properties__subtitle">{subtitle}</span>
+        </header>
+      )}
 
       {!subject ? (
         <p className="clip-properties__empty" data-clip-properties-empty>

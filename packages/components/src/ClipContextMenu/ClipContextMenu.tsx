@@ -163,17 +163,13 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   const { theme } = useTheme();
 
   const style = {
-    '--clip-context-menu-header-text': theme.foreground.text.secondary,
-    '--clip-context-menu-header-border': theme.border.divider,
     '--clip-context-menu-divider-bg': theme.border.divider,
   } as React.CSSProperties;
 
   return (
     <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="clip-context-menu" autoFocus={autoFocus} style={style}>
-      {/* Clip properties header */}
-      <div className="clip-context-menu-header">Clip properties</div>
-
-      {/* The panel — first under its own heading */}
+      {/* The panel — first; the menu has no heading of its own (2026-10-06:
+          it read "Clip properties" right above "Clip properties…") */}
       {onOpenProperties && (
         <ContextMenuItem
           label="Clip properties…"
