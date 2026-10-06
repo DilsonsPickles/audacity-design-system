@@ -1,7 +1,8 @@
-/* ClipPropertiesPanel — the dockable "Clip properties" panel. Same
-   chrome as the Macro manager: a 40px header on the dock background,
-   then the form on the dock's secondary well, scrolling when the dock
-   is short. Labels left, controls right, one field per row. */
+/* ClipPropertiesPanel — the dockable "Clip properties" panel, in the
+   manner of Figma's properties panel (2026-10-06): a 40px header on the
+   dock background, then groups of ROWS of two bordered fields, each a
+   glyph beside its value — no label column. The fades' glyphs are live
+   curve thumbnails; their shape picker is a row of small curve glyphs. */
 
 .clip-properties {
   display: flex;
@@ -57,11 +58,10 @@
   background: var(--dock-well, #ebedf0);
 }
 
-/* Three columns in the bottom drawer (data-layout="columns"; user
-   decision 2026-10-02, after two): wide and short, so the groups sit
-   side by side — Clip, then Position, then Fades, with Speed under Clip
-   — instead of scrolling a single column. In a side dock (`stack`) the
-   groups simply follow each other. */
+/* Three columns in the bottom drawer (data-layout="columns"): wide and
+   short, so the groups sit side by side — Clip over Speed, then
+   Position, then Fades. In a side dock (`stack`) the groups follow
+   each other. */
 .clip-properties[data-layout="columns"] .clip-properties__body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -76,65 +76,205 @@
 .clip-properties[data-layout="columns"] .clip-properties__group[data-group="position"] { grid-column: 2; grid-row: 1 / span 2; }
 .clip-properties[data-layout="columns"] .clip-properties__group[data-group="fades"] { grid-column: 3; grid-row: 1 / span 2; }
 
-.clip-properties[data-layout="columns"] .clip-properties__field {
-  grid-template-columns: 80px minmax(0, 1fr);
-}
-
 .clip-properties__section {
-  margin: 12px 0 4px;
+  margin: 12px 0 6px;
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
   opacity: 0.7;
 }
 
-.clip-properties__field {
+/* A row: two fields, equal; a lone wide field spans both */
+.clip-properties__row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.clip-properties__field--wide {
+  grid-column: 1 / -1;
+}
+
+/* The field: one bordered box, the glyph in a fixed cell on the left,
+   the control filling the rest. The stepper and the text input drop
+   their own border inside it so the box is the only one drawn. */
+.clip-properties__field {
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 2px 0;
+  min-width: 0;
+  height: 28px;
+  box-sizing: border-box;
+  border: 1px solid var(--field-border, #d0d2d6);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--text-primary, #14151a);
 }
 
-.clip-properties__label {
-  font-size: 12px;
-  line-height: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.clip-properties__field:hover,
+.clip-properties__field:focus-within {
+  border-color: var(--field-border-focus, #677ce4);
 }
 
-.clip-properties__control {
+.clip-properties__field--read {
+  background: transparent;
+  border-color: transparent;
+}
+
+.clip-properties__field--read:hover {
+  border-color: transparent;
+}
+
+.clip-properties__glyph-cell {
+  flex: 0 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.55;
+}
+
+.clip-properties__field:focus-within .clip-properties__glyph-cell {
+  opacity: 0.85;
+}
+
+.clip-properties__glyph {
   display: block;
+}
+
+.clip-properties__field .number-stepper {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  height: 26px;
+}
+
+.clip-properties__field .number-stepper__input {
+  padding-left: 0;
+}
+
+.clip-properties__field .clip-properties__input,
+.clip-properties__field .dropdown {
+  flex: 1;
   min-width: 0;
 }
 
-.clip-properties__number {
-  position: relative;
-  display: block;
+.clip-properties__field--text .clip-properties__input {
+  padding-left: 8px;
 }
 
-.clip-properties__number .clip-properties__input,
-.clip-properties__number .number-stepper {
-  width: 100%;
-  box-sizing: border-box;
+.clip-properties__field .clip-properties__input,
+.clip-properties__field .clip-properties__input input {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  height: 26px;
 }
 
-.clip-properties__readonly {
-  display: block;
+.clip-properties__field--select .dropdown > * {
+  border: none;
+  background: transparent;
+}
+
+.clip-properties__value {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
   line-height: 16px;
-  padding: 0 1px;
-  opacity: 0.85;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Screen readers get the field's name; sighted users the glyph + tooltip */
+.clip-properties__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* A MIXED field (several selected clips disagree): blank, "Mixed" as
    its placeholder, and no arrows — there is no one value to step from;
    a typed value applies to every selected clip. */
-.clip-properties__number[data-mixed] .number-stepper__arrows {
+.clip-properties__field[data-mixed] .number-stepper__arrows {
   display: none;
+}
+
+/* The colour swatch: the clip palette's header tones (ClipHeader.css) */
+.clip-properties__swatch {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: var(--clip-swatch, transparent);
+}
+.clip-properties__swatch[data-swatch="track"] { background: repeating-linear-gradient(135deg, #c8cacf 0 2px, transparent 2px 4px); }
+.clip-properties__swatch[data-swatch="mixed"] { background: conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444); }
+.clip-properties__swatch[data-swatch="cyan"] { background: var(--clip-cyan-header, #67d5e6); }
+.clip-properties__swatch[data-swatch="blue"] { background: var(--clip-blue-header, #6aa6f5); }
+.clip-properties__swatch[data-swatch="violet"] { background: var(--clip-violet-header, #a48ff0); }
+.clip-properties__swatch[data-swatch="magenta"] { background: var(--clip-magenta-header, #e685c8); }
+.clip-properties__swatch[data-swatch="red"] { background: var(--clip-red-header, #ef7a7a); }
+.clip-properties__swatch[data-swatch="orange"] { background: var(--clip-orange-header, #f2a05a); }
+.clip-properties__swatch[data-swatch="yellow"] { background: var(--clip-yellow-header, #e9cf4e); }
+.clip-properties__swatch[data-swatch="green"] { background: var(--clip-green-header, #7dd38a); }
+.clip-properties__swatch[data-swatch="teal"] { background: var(--clip-teal-header, #5fcdb8); }
+
+/* The shape picker: a segmented row of curve glyphs, the current one lit */
+.clip-properties__shapes {
+  display: flex;
+  height: 28px;
+  box-sizing: border-box;
+  border: 1px solid var(--field-border, #d0d2d6);
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.clip-properties__shape {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-right: 1px solid var(--field-border, #e4e6ea);
+  background: transparent;
+  color: var(--text-primary, #14151a);
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.clip-properties__shape:last-child {
+  border-right: 0;
+}
+
+.clip-properties__shape:hover:not(:disabled) {
+  opacity: 0.9;
+  background: var(--dock-bg, #f8f8f9);
+}
+
+.clip-properties__shape[aria-checked="true"] {
+  opacity: 1;
+  background: var(--field-selected, #e3e7fb);
+  color: var(--accent, #4a5fd6);
+}
+
+.clip-properties__shape:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.clip-properties__shapes[data-mixed] .clip-properties__shape {
+  opacity: 0.45;
 }

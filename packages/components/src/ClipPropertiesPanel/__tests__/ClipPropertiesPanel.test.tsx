@@ -1,17 +1,18 @@
-import { render, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { ClipPropertiesPanel, type ClipPropertiesClip } from '../ClipPropertiesPanel';
+import { fadeCurvePath } from '../../utils/clipCrossfades';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
 afterEach(cleanup);
 
 const colors = [{ id: 'blue', label: 'Blue' }, { id: 'red', label: 'Red' }];
-const fadeShapes = [{ id: 'default', label: 'S-curve' }, { id: 'linear', label: 'Linear' }];
+const fadeShapes = [{ id: 'default', label: 'S-curve', shape: 2 }, { id: 'linear', label: 'Linear', shape: 'linear' as const }];
 const clip: ClipPropertiesClip = {
   id: 7, name: 'Vocal', color: 'blue', trackName: 'Track 2',
   start: 1.5, duration: 4, trimStart: 0.25, fullDuration: 6, stretchFactor: 1, pitchSemitones: 0,
-  fadeIn: 0.5, fadeOut: 0, fadeInShapeId: 'default',
+  fadeIn: 0.5, fadeOut: 0, fadeInShapeId: 'default', fadeInShape: { t: 0.5, g: 0.6 },
 };
 
 function renderPanel(props: Partial<React.ComponentProps<typeof ClipPropertiesPanel>> = {}) {
@@ -24,31 +25,60 @@ function renderPanel(props: Partial<React.ComponentProps<typeof ClipPropertiesPa
       <ClipPropertiesPanel clip={clip} colors={colors} fadeShapes={fadeShapes} {...handlers} {...props} />
     </ThemeProvider>,
   );
-  const field = (label: string) => {
-    const el = [...utils.container.querySelectorAll('.clip-properties__field')]
-      .find((f) => f.querySelector('.clip-properties__label')?.textContent === label) as HTMLElement;
-    expect(el, label).toBeTruthy();
+  const field = (id: string) => {
+    const el = utils.container.querySelector(`[data-clip-properties-field="${id}"]`) as HTMLElement;
+    expect(el, id).toBeTruthy();
     return el;
   };
-  const input = (label: string) => within(field(label)).getByRole('textbox') as HTMLInputElement;
-  const arrow = (label: string, dir: 'up' | 'down') => field(label).querySelector(`.number-stepper__arrow--${dir}`) as HTMLButtonElement;
+  const input = (id: string) => field(id).querySelector('input') as HTMLInputElement;
+  const arrow = (id: string, dir: 'up' | 'down') => field(id).querySelector(`.number-stepper__arrow--${dir}`) as HTMLButtonElement;
   return { ...utils, ...handlers, field, input, arrow };
 }
 
-describe('ClipPropertiesPanel (2026-10-02)', () => {
-  it('shows the clip: name, track, position, source, fades, pitch and speed', () => {
+describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', () => {
+  it('shows the clip: name, track, position, source, fades, pitch and speed — two glyph fields to a row', () => {
     const { container, input, field } = renderPanel();
     expect(container.querySelector('[data-clip-properties-clip="7"]')).toBeTruthy();
     expect(container.querySelector('.clip-properties__subtitle')?.textContent).toBe('Track 2');
-    expect(input('Name').value).toBe('Vocal');
-    expect(input('Start (s)').value).toBe('1.5');
-    expect(input('Length (s)').value).toBe('4');
-    expect(field('End').textContent).toContain('5.5 s');
-    expect(field('Source').textContent).toContain('6 s, from 0.25 s');
-    expect(input('Fade in (s)').value).toBe('0.5');
-    expect(input('Fade out (s)').value).toBe('0');
-    expect(input('Pitch (st)').value).toBe('0');
-    expect(input('Speed (%)').value).toBe('100');
+    expect(input('name').value).toBe('Vocal');
+    expect(input('start').value).toBe('1.5');
+    expect(input('length').value).toBe('4');
+    expect(field('end').textContent).toContain('5.5 s');
+    expect(field('source').textContent).toContain('6 s from 0.25');
+    expect(input('fade-in').value).toBe('0.5');
+    expect(input('fade-out').value).toBe('0');
+    expect(input('pitch').value).toBe('0');
+    expect(input('speed').value).toBe('100');
+    // Glyphs, not labels: each field carries its name as a title and for screen readers
+    expect(field('start').getAttribute('title')).toBe('Start (s)');
+    expect(field('start').querySelector('[data-glyph="Start"]')).toBeTruthy();
+    expect(field('pitch').querySelector('[data-glyph="Pitch"]')).toBeTruthy();
+    expect(field('start').querySelector('.clip-properties__sr')?.textContent).toBe('Start (s)');
+    expect(container.querySelector('.clip-properties__label')).toBeNull();
+    // Start and End share a row; the name has a row to itself
+    expect(field('start').parentElement).toBe(field('end').parentElement);
+    expect(field('name').classList.contains('clip-properties__field--wide')).toBe(true);
+  });
+
+  it('the fade fields\' glyphs are the clip\'s OWN curves, drawn with the canvas\'s path', () => {
+    const { field } = renderPanel();
+    const inGlyph = field('fade-in').querySelector('[data-glyph="Fade in"] path:last-child')!;
+    expect(inGlyph.getAttribute('d')).toBe(fadeCurvePath('in', 32, { t: 0.5, g: 0.6 })); // the dragged handle's curve
+    const outGlyph = field('fade-out').querySelector('[data-glyph="Fade out"] path:last-child')!;
+    expect(outGlyph.getAttribute('d')).toBe(fadeCurvePath('out', 32, 2)); // no stored shape = the default S-curve
+  });
+
+  it('the shape picker is a row of curve glyphs, the current preset lit; a pick reports its side', () => {
+    const { field, onFadeShapeChange } = renderPanel();
+    const picker = field('shape-in');
+    const radios = [...picker.querySelectorAll('[role="radio"]')];
+    expect(radios.map((r) => r.getAttribute('data-shape'))).toEqual(['default', 'linear']);
+    expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+    expect(radios[1].querySelector('path:last-child')?.getAttribute('d')).toBe(fadeCurvePath('in', 32, 'linear'));
+    fireEvent.click(radios[1]);
+    expect(onFadeShapeChange).toHaveBeenCalledWith('in', 'linear');
+    // The fade-out picker is disabled while its fade is zero
+    expect([...field('shape-out').querySelectorAll('[role="radio"]')].every((r) => (r as HTMLButtonElement).disabled)).toBe(true);
   });
 
   it('lays its groups out in one column by default and in columns in the bottom drawer', () => {
@@ -70,7 +100,7 @@ describe('ClipPropertiesPanel (2026-10-02)', () => {
 
   it('a typed number commits on Enter or blur when it parses, and only when it changed; Escape reverts', () => {
     const { input, onStartChange, onDurationChange } = renderPanel();
-    const start = input('Start (s)');
+    const start = input('start');
     start.focus();
     fireEvent.change(start, { target: { value: '2.25' } });
     expect(onStartChange).not.toHaveBeenCalled(); // not while typing
@@ -78,7 +108,7 @@ describe('ClipPropertiesPanel (2026-10-02)', () => {
     expect(onStartChange).toHaveBeenCalledWith(2.25);
     expect(onStartChange).toHaveBeenCalledTimes(1); // Enter blurs too — one commit, not two
 
-    const length = input('Length (s)');
+    const length = input('length');
     length.focus();
     fireEvent.change(length, { target: { value: 'abc' } });
     fireEvent.blur(length);
@@ -97,19 +127,19 @@ describe('ClipPropertiesPanel (2026-10-02)', () => {
 
   it('the stepper arrows commit at once, by the field\'s step, within its limits', () => {
     const { arrow, onStartChange, onPitchChange, onFadeChange, onSpeedChange } = renderPanel();
-    fireEvent.click(arrow('Start (s)', 'up'));
+    fireEvent.click(arrow('start', 'up'));
     expect(onStartChange).toHaveBeenCalledWith(1.6); // 0.1 s steps
-    fireEvent.click(arrow('Pitch (st)', 'down'));
+    fireEvent.click(arrow('pitch', 'down'));
     expect(onPitchChange).toHaveBeenCalledWith(-1); // whole semitones
-    fireEvent.click(arrow('Fade out (s)', 'down'));
+    fireEvent.click(arrow('fade-out', 'down'));
     expect(onFadeChange).not.toHaveBeenCalled(); // already at 0: nothing to commit
-    fireEvent.click(arrow('Speed (%)', 'up'));
+    fireEvent.click(arrow('speed', 'up'));
     expect(onSpeedChange).toHaveBeenCalledWith(105); // 5% steps
   });
 
   it('the name commits the same way, trimmed, never empty', () => {
     const { input, onRename } = renderPanel();
-    const name = input('Name');
+    const name = input('name');
     fireEvent.change(name, { target: { value: '  Lead vocal ' } });
     fireEvent.blur(name);
     expect(onRename).toHaveBeenCalledWith('Lead vocal');
@@ -118,25 +148,25 @@ describe('ClipPropertiesPanel (2026-10-02)', () => {
     expect(onRename).toHaveBeenCalledTimes(1);
   });
 
-  it('fades report their side; a shape dropdown is disabled while its fade is zero', () => {
+  it('fades report their side; the colour swatch shows the clip\'s colour', () => {
     const { input, field, onFadeChange } = renderPanel();
-    const out = input('Fade out (s)');
+    const out = input('fade-out');
     out.focus();
     fireEvent.change(out, { target: { value: '0.75' } });
     fireEvent.keyDown(out, { key: 'Enter' });
     expect(onFadeChange).toHaveBeenCalledWith('out', 0.75);
-    expect(field('Out shape').querySelector('[aria-disabled="true"], [disabled], .dropdown--disabled, .disabled')).toBeTruthy();
+    expect(field('color').querySelector('.clip-properties__swatch')?.getAttribute('data-swatch')).toBe('blue');
   });
 
   it('pitch is clamped to two octaves; speed is shown as percent of the recorded speed', () => {
     const { input, onPitchChange, onSpeedChange } = renderPanel({ clip: { ...clip, stretchFactor: 2 } });
-    const pitch = input('Pitch (st)');
+    const pitch = input('pitch');
     pitch.focus();
     fireEvent.change(pitch, { target: { value: '40' } });
     fireEvent.keyDown(pitch, { key: 'Enter' });
     expect(onPitchChange).toHaveBeenCalledWith(24);
-    expect(input('Speed (%)').value).toBe('50'); // stretched to twice the length = half speed
-    const speed = input('Speed (%)');
+    expect(input('speed').value).toBe('50'); // stretched to twice the length = half speed
+    const speed = input('speed');
     speed.focus();
     fireEvent.change(speed, { target: { value: '200' } });
     fireEvent.keyDown(speed, { key: 'Enter' });
@@ -151,29 +181,30 @@ describe('ClipPropertiesPanel › several clips selected (2026-10-02)', () => {
     fadeInShapeId: 'default', fadeOutShapeId: 'mixed' as const,
   };
 
-  it('shows the count and tracks, the span, shared values, and Mixed where they differ — arrows gone on a mixed field', () => {
-    const { container, field, input, arrow } = renderPanel({ selection });
+  it('shows the count and tracks, the span, shared values, and Mixed where they differ — arrows gone, no preset lit', () => {
+    const { container, field, input } = renderPanel({ selection });
     const panel = container.querySelector('[data-clip-properties-panel]')!;
     expect(panel.getAttribute('data-selection')).toBe('3');
     expect(container.querySelector('.clip-properties__subtitle')?.textContent).toBe('3 clips · Track 1, Track 2');
-    expect(field('Selected').textContent).toContain('3 clips');
-    expect(field('First start').textContent).toContain('0.5 s');
-    expect(field('Last end').textContent).toContain('6.5 s');
-    expect(field('Span').textContent).toContain('6 s');
+    expect(field('count').textContent).toContain('3 clips');
+    expect(field('first-start').textContent).toContain('0.5 s');
+    expect(field('last-end').textContent).toContain('6.5 s');
+    expect(field('span').textContent).toContain('6 s');
     expect(container.querySelector('[data-clip-properties-field="start"]')).toBeNull(); // no per-clip position
-    expect(input('Fade in (s)').value).toBe('0.5'); // shared
-    expect(input('Pitch (st)').value).toBe('2');
-    const out = input('Fade out (s)');
+    expect(input('fade-in').value).toBe('0.5'); // shared
+    expect(input('pitch').value).toBe('2');
+    const out = input('fade-out');
     expect(out.value).toBe(''); // mixed
     expect(out.placeholder).toBe('Mixed');
-    expect(arrow('Fade out (s)', 'up')).toBeTruthy(); // in the DOM (hidden by CSS)…
-    expect(container.querySelector('[data-clip-properties-field="fade-out"]')?.getAttribute('data-mixed')).toBe('true');
-    expect(arrow('Fade in (s)', 'up')).toBeTruthy();
+    expect(field('fade-out').getAttribute('data-mixed')).toBe('true');
+    expect(field('shape-out').getAttribute('data-mixed')).toBe('true');
+    expect([...field('shape-out').querySelectorAll('[role="radio"]')].every((r) => r.getAttribute('aria-checked') === 'false')).toBe(true);
+    expect(field('color').querySelector('.clip-properties__swatch')?.getAttribute('data-swatch')).toBe('mixed');
   });
 
   it('typing into a mixed field commits — there is no old value to equal; the single clip is ignored while a selection shows', () => {
     const { input, onFadeChange, container } = renderPanel({ selection });
-    const out = input('Fade out (s)');
+    const out = input('fade-out');
     out.focus();
     fireEvent.change(out, { target: { value: '0.25' } });
     fireEvent.keyDown(out, { key: 'Enter' });

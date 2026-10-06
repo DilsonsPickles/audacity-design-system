@@ -4,26 +4,30 @@
  * presentational panel here, the placement model — docked left / right /
  * bottom, or an OS window — and the data wiring in the host).
  *
- * Shows ONE clip: its name and colour, where it sits (start, length,
- * end, source length), its quick fades (length and shape, each side),
- * its pitch and its speed — or a SELECTION of several (`selection`,
- * user request the same day): the count and tracks in the header, the
- * selection's earliest start / latest end / span, and every per-clip
- * field MERGED — the value when every selected clip agrees, "Mixed"
- * when they do not. An edit in that state applies to every selected
- * clip (the host's rule for edits on a selection); a mixed stepper
- * hides its arrows, since there is no one value to step from.
+ * The LOOK is Figma's properties panel (user request 2026-10-06): two
+ * fields to a row, each with a GLYPH where a label would be — ⇤ start,
+ * ⇥ end, ↔ length, ♪ pitch, speed — so the eye reads the glyph and the
+ * number at once; and the fades draw THEMSELVES: each fade field's glyph
+ * is a live thumbnail of the clip's own curve (`fadeCurvePath`, the
+ * same geometry the canvas draws), and the shape picker is a row of
+ * tiny curve glyphs, one per preset, the current one lit — Figma's
+ * corner-radius row, for fades. Glyphs carry the field's name as its
+ * accessible label and tooltip.
  *
- * Every field is a small controlled form: the host passes the clip (or
- * selection) and gets a callback per edit. Numeric fields are STEPPERS
- * in seconds, semitones or percent: the arrows commit at once (a
- * deliberate edit); a typed value commits on Enter or blur — Escape puts
- * the old value back — so a half-typed number never reaches the reducer.
+ * Shows ONE clip, or a SELECTION of several (`selection`): the count
+ * and tracks in the header, the selection's earliest start / latest
+ * end / span, and every per-clip field MERGED — the value when all
+ * agree, "Mixed" when not; an edit then applies to every selected clip.
+ *
+ * Numeric fields are STEPPERS: the arrows commit at once; a typed value
+ * commits on Enter or blur — Escape puts the old value back — so a
+ * half-typed number never reaches the reducer.
  */
 import React from 'react';
 import { TextInput } from '../TextInput';
 import { NumberStepper } from '../NumberStepper';
 import { Dropdown, type DropdownOption } from '../Dropdown';
+import { fadeCurvePath, type FadeShape } from '../utils/clipCrossfades';
 import './ClipPropertiesPanel.css';
 
 export interface ClipPropertiesClip {
@@ -49,6 +53,10 @@ export interface ClipPropertiesClip {
    *  is none of them (dragged somewhere between) */
   fadeInShapeId?: string;
   fadeOutShapeId?: string;
+  /** The fades' actual curves, for the live thumbnails (absent = the
+   *  quick fade's default S-curve) */
+  fadeInShape?: FadeShape;
+  fadeOutShape?: FadeShape;
   groupId?: string;
 }
 
@@ -79,6 +87,11 @@ export interface ClipPropertiesOption {
   label: string;
 }
 
+/** A fade shape preset: its id and label, and the curve to draw for it */
+export interface ClipPropertiesShapeOption extends ClipPropertiesOption {
+  shape: FadeShape;
+}
+
 export interface ClipPropertiesPanelProps {
   /** The clip shown, or null for the empty state */
   clip: ClipPropertiesClip | null;
@@ -86,8 +99,8 @@ export interface ClipPropertiesPanelProps {
   selection?: ClipPropertiesSelection | null;
   /** The colours a clip can wear */
   colors: ReadonlyArray<ClipPropertiesOption>;
-  /** The fade shape presets */
-  fadeShapes: ReadonlyArray<ClipPropertiesOption>;
+  /** The fade shape presets, with their curves */
+  fadeShapes: ReadonlyArray<ClipPropertiesShapeOption>;
   onRename?: (name: string) => void;
   onColorChange?: (colorId: string) => void;
   /** New start, seconds of project time (the host clamps) */
@@ -116,11 +129,61 @@ const fmt = (n: number, digits = 3) => (Math.round(n * 10 ** digits) / 10 ** dig
 const clamp = (n: number, min?: number, max?: number) => Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n));
 const speedOf = (stretchFactor: number) => Math.round(100 / stretchFactor * 100) / 100;
 
-/** A number in a stepper: shows the value; the arrows commit at once;
- *  typing holds a draft that commits on Enter or blur when it parses,
- *  and Escape reverts. The field itself never holds a bad number. A
+// ── Glyphs ────────────────────────────────────────────────────────────
+// 16×16, drawn in currentColor; the field's name travels as the title
+
+const Glyph = ({ children, title }: { children: React.ReactNode; title: string }) => (
+  <svg className="clip-properties__glyph" viewBox="0 0 16 16" width={16} height={16} aria-hidden="true" data-glyph={title}>
+    <title>{title}</title>
+    {children}
+  </svg>
+);
+
+const StartGlyph = () => (
+  <Glyph title="Start"><path d="M3 2v12M13 8H6M9 5 6 8l3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
+);
+const EndGlyph = () => (
+  <Glyph title="End"><path d="M13 2v12M3 8h7M7 5l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
+);
+const LengthGlyph = () => (
+  <Glyph title="Length"><path d="M2 8h12M5 5 2 8l3 3M11 5l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
+);
+const SourceGlyph = () => (
+  <Glyph title="Source"><path d="M2 3h12v10H2zM5 3v10M11 3v10M2 6h3M2 10h3M11 6h3M11 10h3" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></Glyph>
+);
+const SpanGlyph = () => (
+  <Glyph title="Span"><path d="M2 3v10M14 3v10M2 8h12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
+);
+const PitchGlyph = () => (
+  <Glyph title="Pitch"><path d="M9.5 2.5v8.2a2.3 2.3 0 1 1-1.5-2.2V4l4-1v2.2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
+);
+const SpeedGlyph = () => (
+  <Glyph title="Speed"><circle cx="8" cy="9" r="5.2" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M8 6.5V9l2 1.5M6 2h4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
+);
+const CountGlyph = () => (
+  <Glyph title="Selected clips"><path d="M2 5h8v8H2zM5 2h9v9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></Glyph>
+);
+
+/** A fade's curve, drawn small — the thumbnail by its field and the
+ *  picker's preset glyphs. The curve path is the canvas's own. */
+function FadeGlyph({ side, shape, title, dim }: { side: 'in' | 'out'; shape: FadeShape | undefined; title: string; dim?: boolean }) {
+  const resolved: FadeShape = shape ?? 2; // the quick fade's default S-curve
+  return (
+    <svg className="clip-properties__glyph clip-properties__glyph--fade" viewBox="0 0 100 100" preserveAspectRatio="none" width={22} height={14} aria-hidden="true" data-glyph={title} data-side={side}>
+      <title>{title}</title>
+      <path d={`${fadeCurvePath(side, 32, resolved)} L ${side === 'in' ? '100,100' : '0,100'} Z`} fill="currentColor" opacity={dim ? 0.12 : 0.22} stroke="none" />
+      <path d={fadeCurvePath(side, 32, resolved)} fill="none" stroke="currentColor" strokeWidth={10} vectorEffect="non-scaling-stroke" style={{ strokeWidth: 1.5 }} />
+    </svg>
+  );
+}
+
+// ── Fields ────────────────────────────────────────────────────────────
+
+/** A glyph beside a stepper, in one bordered field. The arrows commit
+ *  at once; typing holds a draft that commits on Enter or blur when it
+ *  parses, and Escape reverts — the field never holds a bad number. A
  *  MIXED value shows blank with "Mixed" and no arrows. */
-function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3, testId }: {
+function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3, testId, label, glyph }: {
   value: number | Mixed;
   onCommit?: (n: number) => void;
   disabled?: boolean;
@@ -129,6 +192,8 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
   max?: number;
   digits?: number;
   testId: string;
+  label: string;
+  glyph: React.ReactNode;
 }) {
   const [draft, setDraftState] = React.useState<string | null>(null);
   // Mirrored in a ref: Enter and Escape call blur(), and the blur
@@ -154,15 +219,17 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
   };
   return (
     <div
-      className="clip-properties__number"
+      className="clip-properties__field clip-properties__field--number"
       data-clip-properties-field={testId}
       data-mixed={mixed ? 'true' : undefined}
+      title={label}
       onKeyDown={(e) => {
         if (e.key === 'Enter') { commitDraft(); inputRef.current?.blur(); }
         if (e.key === 'Escape') { setDraft(null); inputRef.current?.blur(); e.stopPropagation(); }
       }}
       onBlur={(e) => { if (e.target === inputRef.current) commitDraft(); }}
     >
+      <span className="clip-properties__glyph-cell">{glyph}</span>
       <NumberStepper
         ref={inputRef}
         value={shown}
@@ -171,7 +238,6 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
         min={min}
         max={max}
         disabled={disabled || !onCommit}
-        width="100%"
         onChange={(v) => {
           // The arrows change the value with the input UNFOCUSED: a
           // deliberate edit, committed at once. Typing is a draft.
@@ -179,22 +245,61 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
           else setDraft(v);
         }}
       />
+      <span className="clip-properties__sr" >{label}</span>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** A glyph beside a value that cannot be edited, in the same field look */
+function ReadField({ testId, label, glyph, children }: { testId: string; label: string; glyph: React.ReactNode; children: React.ReactNode }) {
   return (
-    <label className="clip-properties__field">
-      <span className="clip-properties__label">{label}</span>
-      <span className="clip-properties__control">{children}</span>
-    </label>
+    <div className="clip-properties__field clip-properties__field--read" data-clip-properties-field={testId} title={label}>
+      <span className="clip-properties__glyph-cell">{glyph}</span>
+      <span className="clip-properties__value">{children}</span>
+      <span className="clip-properties__sr">{label}</span>
+    </div>
   );
 }
 
-function ReadOnly({ children }: { children: React.ReactNode }) {
-  return <span className="clip-properties__readonly">{children}</span>;
+/** The shape picker: one small curve per preset, the current one lit.
+ *  A shape between presets lights none; a mixed selection lights none
+ *  and says so. */
+function ShapePicker({ side, shapes, current, onPick, disabled }: {
+  side: 'in' | 'out';
+  shapes: ReadonlyArray<ClipPropertiesShapeOption>;
+  current: string | Mixed | undefined;
+  onPick?: (id: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      className="clip-properties__shapes"
+      role="radiogroup"
+      aria-label={side === 'in' ? 'Fade in shape' : 'Fade out shape'}
+      data-clip-properties-field={`shape-${side}`}
+      data-mixed={current === MIXED ? 'true' : undefined}
+    >
+      {shapes.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          role="radio"
+          aria-checked={current === s.id}
+          aria-label={s.label}
+          title={current === MIXED ? `${s.label} (mixed)` : s.label}
+          className="clip-properties__shape"
+          data-shape={s.id}
+          disabled={disabled || !onPick}
+          onClick={() => onPick?.(s.id)}
+        >
+          <FadeGlyph side={side} shape={s.shape} title={s.label} dim />
+        </button>
+      ))}
+    </div>
+  );
 }
+
+const Row = ({ children }: { children: React.ReactNode }) => <div className="clip-properties__row">{children}</div>;
 
 export function ClipPropertiesPanel({
   clip,
@@ -224,10 +329,6 @@ export function ClipPropertiesPanel({
   };
 
   const colorOptions: DropdownOption[] = colors.map((c) => ({ value: c.id, label: c.label }));
-  const shapeOptions = (current: string | undefined): DropdownOption[] => [
-    ...fadeShapes.map((s) => ({ value: s.id, label: s.label })),
-    ...(current === undefined ? [{ value: 'custom', label: 'Custom', disabled: true }] : []),
-  ];
 
   // What the fields show: the one clip, or the selection's merge
   const multi = selection && selection.count >= 2 ? selection : null;
@@ -237,6 +338,12 @@ export function ClipPropertiesPanel({
   const fadeOut = multi ? multi.fadeOut : clip?.fadeOut ?? 0;
   const fadeInShapeId = multi ? multi.fadeInShapeId : clip?.fadeInShapeId;
   const fadeOutShapeId = multi ? multi.fadeOutShapeId : clip?.fadeOutShapeId;
+  // The live thumbnails draw the clip's own curve; a selection draws
+  // the shared preset's, or the default when mixed
+  const shapeOf = (id: string | Mixed | undefined, own: FadeShape | undefined): FadeShape | undefined =>
+    multi ? (id === MIXED || id === undefined ? undefined : fadeShapes.find((s) => s.id === id)?.shape) : own;
+  const inCurve = shapeOf(fadeInShapeId, clip?.fadeInShape);
+  const outCurve = shapeOf(fadeOutShapeId, clip?.fadeOutShape);
   const pitch = multi ? multi.pitchSemitones : clip?.pitchSemitones ?? 0;
   const speed: number | Mixed = multi
     ? (multi.stretchFactor === MIXED ? MIXED : speedOf(multi.stretchFactor))
@@ -244,10 +351,7 @@ export function ClipPropertiesPanel({
   const subtitle = multi
     ? `${multi.count} clips · ${multi.trackNames.join(', ')}`
     : clip?.trackName;
-  // A shape dropdown: its preset, 'custom' for a shape between presets,
-  // or blank with "Mixed"
-  const shapeValue = (id: string | Mixed | undefined) => (id === MIXED ? '' : id ?? 'custom');
-  const shapeOptionsFor = (id: string | Mixed | undefined) => shapeOptions(id === MIXED ? 'mixed' : id);
+  const swatch = color && color !== MIXED && color !== 'track' ? color : undefined;
 
   return (
     <section
@@ -272,11 +376,15 @@ export function ClipPropertiesPanel({
           <div className="clip-properties__group" data-group="clip">
           <h3 className="clip-properties__section">{multi ? 'Clips' : 'Clip'}</h3>
           {multi ? (
-            <Field label="Selected"><ReadOnly>{multi.count} clips</ReadOnly></Field>
+            <Row>
+              <ReadField testId="count" label="Selected clips" glyph={<CountGlyph />}>{multi.count} clips</ReadField>
+            </Row>
           ) : clip && (
-            <Field label="Name">
+            <Row>
               <div
-                className="clip-properties__number"
+                className="clip-properties__field clip-properties__field--text clip-properties__field--wide"
+                data-clip-properties-field="name"
+                title="Name"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { commitName(); (e.target as HTMLElement).blur(); }
                   if (e.key === 'Escape') { setNameDraft(null); (e.target as HTMLElement).blur(); e.stopPropagation(); }
@@ -290,21 +398,30 @@ export function ClipPropertiesPanel({
                   className="clip-properties__input"
                   tabIndex={0}
                 />
+                <span className="clip-properties__sr">Name</span>
               </div>
-            </Field>
+            </Row>
           )}
-          <Field label="Color">
-            <Dropdown
-              options={colorOptions}
-              value={color === MIXED ? '' : color ?? ''}
-              placeholder={color === MIXED ? 'Mixed' : 'Track color'}
-              onChange={(v) => onColorChange?.(v)}
-              disabled={!onColorChange}
-              width="100%"
-            />
-          </Field>
+          <Row>
+            <div className="clip-properties__field clip-properties__field--select clip-properties__field--wide" data-clip-properties-field="color" title="Color">
+              <span className="clip-properties__glyph-cell">
+                <span className="clip-properties__swatch" data-swatch={swatch ?? (color === MIXED ? 'mixed' : 'track')} aria-hidden="true" />
+              </span>
+              <Dropdown
+                options={colorOptions}
+                value={color === MIXED ? '' : color ?? ''}
+                placeholder={color === MIXED ? 'Mixed' : 'Track color'}
+                onChange={(v) => onColorChange?.(v)}
+                disabled={!onColorChange}
+                width="100%"
+              />
+              <span className="clip-properties__sr">Color</span>
+            </div>
+          </Row>
           {!multi && clip?.groupId && (
-            <Field label="Group"><ReadOnly>{clip.groupId}</ReadOnly></Field>
+            <Row>
+              <ReadField testId="group" label="Group" glyph={<CountGlyph />}>{clip.groupId}</ReadField>
+            </Row>
           )}
           </div>
 
@@ -312,74 +429,51 @@ export function ClipPropertiesPanel({
           <h3 className="clip-properties__section">Position</h3>
           {multi ? (
             <>
-              <Field label="First start"><ReadOnly>{fmt(multi.start)} s</ReadOnly></Field>
-              <Field label="Last end"><ReadOnly>{fmt(multi.end)} s</ReadOnly></Field>
-              <Field label="Span"><ReadOnly>{fmt(multi.end - multi.start)} s</ReadOnly></Field>
+              <Row>
+                <ReadField testId="first-start" label="First start" glyph={<StartGlyph />}>{fmt(multi.start)} s</ReadField>
+                <ReadField testId="last-end" label="Last end" glyph={<EndGlyph />}>{fmt(multi.end)} s</ReadField>
+              </Row>
+              <Row>
+                <ReadField testId="span" label="Span" glyph={<SpanGlyph />}>{fmt(multi.end - multi.start)} s</ReadField>
+              </Row>
             </>
           ) : clip && (
             <>
-              <Field label="Start (s)">
-                <NumberField testId="start" value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
-              </Field>
-              <Field label="Length (s)">
-                <NumberField testId="length" value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
-              </Field>
-              <Field label="End"><ReadOnly>{fmt(clip.start + clip.duration)} s</ReadOnly></Field>
-              <Field label="Source">
-                <ReadOnly>
-                  {fmt(clip.fullDuration)} s{clip.trimStart > 0 ? `, from ${fmt(clip.trimStart)} s` : ''}
-                </ReadOnly>
-              </Field>
+              <Row>
+                <NumberField testId="start" label="Start (s)" glyph={<StartGlyph />} value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
+                <ReadField testId="end" label="End" glyph={<EndGlyph />}>{fmt(clip.start + clip.duration)} s</ReadField>
+              </Row>
+              <Row>
+                <NumberField testId="length" label="Length (s)" glyph={<LengthGlyph />} value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
+                <ReadField testId="source" label="Source length" glyph={<SourceGlyph />}>
+                  {fmt(clip.fullDuration)} s{clip.trimStart > 0 ? ` from ${fmt(clip.trimStart)}` : ''}
+                </ReadField>
+              </Row>
             </>
           )}
           </div>
 
           <div className="clip-properties__group" data-group="fades">
           <h3 className="clip-properties__section">Fades</h3>
-          <Field label="Fade in (s)">
-            <NumberField testId="fade-in" value={fadeIn} onCommit={onFadeChange && ((n) => onFadeChange('in', n))} step={0.1} min={0} />
-          </Field>
-          <Field label="In shape">
-            <Dropdown
-              options={shapeOptionsFor(fadeInShapeId)}
-              value={shapeValue(fadeInShapeId)}
-              placeholder={fadeInShapeId === MIXED ? 'Mixed' : undefined}
-              onChange={(v) => onFadeShapeChange?.('in', v)}
-              disabled={!onFadeShapeChange || fadeIn === 0}
-              width="100%"
-            />
-          </Field>
-          <Field label="Fade out (s)">
-            <NumberField testId="fade-out" value={fadeOut} onCommit={onFadeChange && ((n) => onFadeChange('out', n))} step={0.1} min={0} />
-          </Field>
-          <Field label="Out shape">
-            <Dropdown
-              options={shapeOptionsFor(fadeOutShapeId)}
-              value={shapeValue(fadeOutShapeId)}
-              placeholder={fadeOutShapeId === MIXED ? 'Mixed' : undefined}
-              onChange={(v) => onFadeShapeChange?.('out', v)}
-              disabled={!onFadeShapeChange || fadeOut === 0}
-              width="100%"
-            />
-          </Field>
+          <Row>
+            <NumberField testId="fade-in" label="Fade in (s)" glyph={<FadeGlyph side="in" shape={inCurve} title="Fade in" />}
+              value={fadeIn} onCommit={onFadeChange && ((n) => onFadeChange('in', n))} step={0.1} min={0} />
+            <NumberField testId="fade-out" label="Fade out (s)" glyph={<FadeGlyph side="out" shape={outCurve} title="Fade out" />}
+              value={fadeOut} onCommit={onFadeChange && ((n) => onFadeChange('out', n))} step={0.1} min={0} />
+          </Row>
+          <Row>
+            <ShapePicker side="in" shapes={fadeShapes} current={fadeInShapeId} onPick={onFadeShapeChange && ((id) => onFadeShapeChange('in', id))} disabled={fadeIn === 0} />
+            <ShapePicker side="out" shapes={fadeShapes} current={fadeOutShapeId} onPick={onFadeShapeChange && ((id) => onFadeShapeChange('out', id))} disabled={fadeOut === 0} />
+          </Row>
           </div>
 
           <div className="clip-properties__group" data-group="speed">
           <h3 className="clip-properties__section">Pitch &amp; speed</h3>
-          <Field label="Pitch (st)">
-            <NumberField
-              testId="pitch"
-              value={pitch}
-              onCommit={onPitchChange}
-              step={1}
-              min={-PITCH_LIMIT_SEMITONES}
-              max={PITCH_LIMIT_SEMITONES}
-              digits={2}
-            />
-          </Field>
-          <Field label="Speed (%)">
-            <NumberField testId="speed" value={speed} onCommit={onSpeedChange} step={5} min={1} digits={2} />
-          </Field>
+          <Row>
+            <NumberField testId="pitch" label="Pitch (semitones)" glyph={<PitchGlyph />} value={pitch} onCommit={onPitchChange}
+              step={1} min={-PITCH_LIMIT_SEMITONES} max={PITCH_LIMIT_SEMITONES} digits={2} />
+            <NumberField testId="speed" label="Speed (%)" glyph={<SpeedGlyph />} value={speed} onCommit={onSpeedChange} step={5} min={1} digits={2} />
+          </Row>
           </div>
         </div>
       )}

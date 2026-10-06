@@ -15,7 +15,7 @@
  * clamped to its own room (the fade menu's rule made visible).
  */
 import React from 'react';
-import { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, type ClipPropertiesClip, type ClipPropertiesOption, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
+import { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, type ClipPropertiesClip, type ClipPropertiesOption, type ClipPropertiesShapeOption, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
 import { useTracks, type Clip, type TracksAction } from '../../contexts/TracksContext';
 import { useClipProperties } from '../../contexts/ClipPropertiesContext';
 import { resolveClipPropertiesClip, singleSelectedClip } from '../../utils/clipPropertiesTarget';
@@ -29,7 +29,7 @@ const CLIP_COLORS: ReadonlyArray<ClipPropertiesOption> = [
   ...CLIP_COLOR_ITEMS.map(([id, label]) => ({ id, label })),
 ];
 
-const FADE_SHAPES: ReadonlyArray<ClipPropertiesOption> = FADE_SHAPE_PRESETS.map((p) => ({ id: p.id, label: p.label }));
+const FADE_SHAPES: ReadonlyArray<ClipPropertiesShapeOption> = FADE_SHAPE_PRESETS.map((p) => ({ id: p.id, label: p.label, shape: p.shape }));
 
 const MIN_CLIP_SECONDS = 0.02;
 
@@ -84,6 +84,8 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
     fadeOut: clip.fadeOut ?? 0,
     fadeInShapeId: fadeShapePresetOf(clip.fadeInShape),
     fadeOutShapeId: fadeShapePresetOf(clip.fadeOutShape),
+    fadeInShape: clip.fadeInShape,
+    fadeOutShape: clip.fadeOutShape,
     groupId: clip.groupId,
   } : null;
 
