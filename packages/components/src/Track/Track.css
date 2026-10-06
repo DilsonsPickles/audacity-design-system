@@ -82,11 +82,12 @@
    walking DOWN the line one period every 0.5s. The pattern is a
    background on a 1px-wide element, so the march is a
    background-position change — no layout, nothing painted but the line. */
-/* A still dash: 4px white / 4px black. It marched (0.5s down) from
-   2026-10-01 until 2026-10-06 — "I'm not sure the marching ants line
-   actually needs to be marching"; it doesn't. */
+/* A still black dash: 4px on / 4px off. It was white-and-black and
+   marched (0.5s down) from 2026-10-01 until 2026-10-06 — "I'm not sure
+   the marching ants line actually needs to be marching", then "just a
+   black dashed line"; a plain dash reads as a guide, not a selection. */
 .track-fade-guideline {
-  background-image: repeating-linear-gradient(to bottom, #ffffff 0 4px, #000000 4px 8px);
+  background-image: repeating-linear-gradient(to bottom, #000000 0 4px, transparent 4px 8px);
   background-size: 1px 8px;
 }
 
