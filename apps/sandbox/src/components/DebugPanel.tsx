@@ -757,7 +757,7 @@ export function DebugPanel({
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
-                <strong>Playhead only</strong> — a plain click on a track's lane parks the playhead and moves focus; track selection is untouched.
+                <strong>Playhead only</strong> — a plain click on a track's lane parks the playhead, moves focus and clears any time selection; track selection is untouched.
               </span>
             </label>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
@@ -769,7 +769,7 @@ export function DebugPanel({
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
-                <strong>Select clicked track</strong> — the click also selects that track exclusively. Any time selection survives, so its highlighted rows can diverge from the track selection.
+                <strong>Select clicked track</strong> — the click also selects that track exclusively (and clears any time selection, as every plain lane click does since 2026-10-07).
               </span>
             </label>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
@@ -781,7 +781,7 @@ export function DebugPanel({
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
               <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
-                <strong>Select + collapse</strong> (default) — clicking a lane inside the time selection's rows just parks the playhead; clicking outside them selects that track and collapses the time selection (Audacity 3 feel).
+                <strong>Select + collapse</strong> (default) — the click selects that track and collapses the time selection, wherever it lands — inside the selection's rows too (Audacity 3 feel; until 2026-10-07 a click inside the rows kept the range).
               </span>
             </label>
           </div>

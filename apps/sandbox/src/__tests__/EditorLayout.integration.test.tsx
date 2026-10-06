@@ -694,7 +694,7 @@ describe('Selection playback', () => {
     expect(start).toBeGreaterThanOrEqual(0);
   });
 
-  it('plain canvas click keeps the selection (persistent), moves the playhead; Escape clears', async () => {
+  it('a plain canvas click clears the selection wherever it lands (2026-10-07) and moves the playhead; Escape clears too', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;
     await gotoProject(rendered);
@@ -718,10 +718,19 @@ describe('Selection playback', () => {
     fireEvent.mouseUp(document, { clientX: 300, clientY: 50 });
     await new Promise((r) => setTimeout(r, 60));
 
-    // Plain click INSIDE the selection: playhead moves, selection survives.
+    // The selection is there: transport play is bounded to the 2 s range.
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const boundedCall = audioSpies.play.mock.calls.at(-1) as [number, number];
+    expect(boundedCall[1] - boundedCall[0]).toBeCloseTo(2, 5);
+    fireEvent.keyDown(document.body, { key: ' ' }); // stop
+
+    // Plain click INSIDE the selection: playhead moves, and the selection
+    // goes (it used to survive a click inside its rows).
     fireEvent.mouseDown(pointerContainer, { clientX: 250, clientY: 50, button: 0 });
     fireEvent.mouseUp(document, { clientX: 250, clientY: 50 });
-    fireEvent.click(pointerContainer, { clientX: 250, clientY: 50 });
+    fireEvent.click(pointerContainer, { clientX: 250, clientY: 50, detail: 1 });
 
     // Playhead followed the click (ruler cursor: 12px offset + t*100).
     const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
@@ -729,15 +738,16 @@ describe('Selection playback', () => {
       expect((ruler.querySelector('.playhead-cursor') as HTMLElement).style.left).toBe('250px');
     });
 
-    // Selection survived: transport play is still bounded to the 2 s range.
+    // Selection gone: play is open-ended from the playhead.
     audioSpies.play.mockClear();
     fireEvent.keyDown(document.body, { key: ' ' });
     await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
-    const boundedCall = audioSpies.play.mock.calls.at(-1) as [number, number];
-    expect(boundedCall[1] - boundedCall[0]).toBeCloseTo(2, 5);
+    const insideClearedCall = audioSpies.play.mock.calls.at(-1) as unknown[];
+    expect(insideClearedCall[1]).toBeUndefined();
+    fireEvent.keyDown(document.body, { key: ' ' }); // stop
 
-    // Clicking empty space BELOW all tracks is the click-away target:
-    // it clears the selection (like Escape) — play reverts to open-ended.
+    // Clicking empty space BELOW all tracks clears as well — play stays
+    // open-ended.
     fireEvent.mouseDown(pointerContainer, { clientX: 500, clientY: 1500, button: 0 });
     fireEvent.mouseUp(document, { clientX: 500, clientY: 1500 });
     fireEvent.click(pointerContainer, { clientX: 500, clientY: 1500 });

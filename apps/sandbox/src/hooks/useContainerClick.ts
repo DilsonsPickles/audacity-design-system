@@ -149,31 +149,23 @@ export function useContainerClick({
         } else {
           dispatch({ type: 'SET_SELECTED_TRACKS', payload: newSelection });
         }
-      } else if (laneClickBehavior !== 'playhead-only') {
-        // Prototyping toggle (Developer Tools): a plain lane click also
-        // drives track selection. In 'select-and-collapse', clicking a
-        // lane INSIDE the current time selection's scope is "acting
-        // within the selection" — playhead only; clicking OUTSIDE it
-        // selects the clicked track and collapses the range.
-        if (laneClickBehavior === 'select-track') {
-          // Option A: always select what you clicked; any time
-          // selection survives untouched (its scope may now diverge
-          // from the track selection — deliberately visible here).
+      } else {
+        // A PLAIN LANE CLICK CLEARS THE TIME SELECTION, wherever it
+        // lands (2026-10-07, "remove the preserving selection area
+        // logic, just remove it if the user clicks away"; until then a
+        // click inside the selection's rows kept the range and only
+        // parked the playhead — Audacity 3 collapses on any click). A
+        // SINGLE click: the later clicks of a double or triple click
+        // (detail 2, 3) arrive around the dblclick that SELECTS a clip
+        // or a gap, and must not undo it.
+        if (timeSelection && e.detail <= 1) {
+          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+        }
+        // Prototyping toggle (Developer Tools): whether the click also
+        // selects the clicked track. ('select-track' and
+        // 'select-and-collapse' now agree; the latter is the default.)
+        if (laneClickBehavior !== 'playhead-only') {
           dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
-        } else {
-          // Option B ('select-and-collapse'): clicking inside the
-          // range's scope only parks the playhead; outside it, the
-          // click selects the track and collapses the range.
-          const tsScope = timeSelection
-            ? (timeSelection.tracks ?? selectedTrackIndices)
-            : null;
-          const insideScope = tsScope !== null && tsScope.includes(clickedTrackIndex);
-          if (!insideScope) {
-            if (timeSelection) {
-              dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-            }
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: [clickedTrackIndex] });
-          }
         }
       }
 
