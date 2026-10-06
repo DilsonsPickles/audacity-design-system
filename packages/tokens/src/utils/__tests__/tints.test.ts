@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { colors, darkColors, darkTints, lightTints, mixHex, DARK_RAMP_MIX } from '../../index';
+import { colors, darkColors, darkRampOf, darkTints, lightTints, mixHex, DARK_RAMP_MIX, type Ramp } from '../../index';
 
 describe('dark-mode ramps (2026-10-06) — every hue, derived from its light ramp by role', () => {
   it('mixHex mixes in sRGB like color-mix, rounding half up', () => {
@@ -22,6 +22,12 @@ describe('dark-mode ramps (2026-10-06) — every hue, derived from its light ram
     for (const hue of Object.keys(darkTints) as Array<keyof typeof darkTints>) {
       expect(darkTints[hue]).toEqual({ fill: darkColors[hue][200], border: darkColors[hue][500], accent: darkColors[hue][800] });
       expect(lightTints[hue]).toEqual({ fill: colors[hue][200], border: colors[hue][500], accent: colors[hue][800] });
+    }
+  });
+
+  it('the written-out dark ramps ARE the recipe applied to the light ramps — a light ramp change must be carried over by hand', () => {
+    for (const hue of Object.keys(darkColors) as Array<keyof typeof darkColors>) {
+      expect(darkColors[hue], hue).toEqual(darkRampOf(colors[hue] as Ramp));
     }
   });
 

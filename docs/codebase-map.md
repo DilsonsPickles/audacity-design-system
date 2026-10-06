@@ -231,4 +231,4 @@ These are not-yet-decomposed monoliths. They work but are prime targets for futu
 | `debugging-protocol.md` | Debugging workflow and conventions |
 | `playback-tracking.md` | Playhead and playback position tracking |
 
-- `packages/tokens/src/index.ts` — `darkColors` (2026-10-06): a DARK RAMP 100–900 for every chromatic hue, by ROLE (200 fill, 500 border, 700 solid, 800 icon/heading in both modes): 100–600 the hue's 700 mixed into midnight-200 at `DARK_RAMP_MIX`, 700 itself, 800/900 the hue's 400/300; `darkTints` / `lightTints` are the 200/500/800 of each. Derived from `colors` with `mixHex`; slate and midnight are the neutral ramps as they are.
+- `packages/tokens/src/index.ts` — `darkColors` (2026-10-06): a DARK RAMP 100–900 for every chromatic hue, by ROLE (200 fill, 500 border, 700 solid, 800 icon/heading in both modes): 100–600 the hue's 700 mixed into midnight-200 at `DARK_RAMP_MIX`, 700 itself, 800/900 the hue's 400/300; `darkTints` / `lightTints` are the 200/500/800 of each. Written out as literals; `darkRampOf` is the recipe and the tokens test pins them to it. Slate and midnight are the neutral ramps as they are.

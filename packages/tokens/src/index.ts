@@ -167,8 +167,8 @@ export const colors = {
  * Chromatic hues only: slate and midnight are the light and dark
  * NEUTRAL ramps already, used as they are in each mode.
  *
- * Derived from `colors` at module load, so a ramp change moves these.
- * In CSS a mixed step is
+ * The values are written out below (`darkColors`); `darkRampOf` is
+ * the recipe, and a test pins the two together. In CSS a mixed step is
  * `color-mix(in srgb, var(--<hue>-700) <mix>%, var(--midnight-200))`.
  */
 /** The chromatic hues — the neutrals are not re-derived: slate IS the
@@ -216,10 +216,115 @@ export function darkRampOf(ramp: Ramp): Ramp {
 
 const hues = Object.keys(colors).filter((h): h is TintHue => h !== 'shade' && h !== 'slate' && h !== 'midnight');
 
-/** Every hue's dark ramp, 100–900, by role (see above) */
-export const darkColors: Record<TintHue, Ramp> = Object.fromEntries(
-  hues.map((hue) => [hue, darkRampOf(colors[hue] as Ramp)]),
-) as Record<TintHue, Ramp>;
+/**
+ * Every hue's dark ramp, 100–900, by role (see above). WRITTEN OUT
+ * (2026-10-06, "I think I want the hard coded hex values") so the
+ * numbers are readable here like the light palette's; `darkRampOf`
+ * is the recipe they came from, and the tokens test holds the two
+ * together — change a light ramp and the test says which dark values
+ * to rewrite.
+ */
+export const darkColors: Record<TintHue, Ramp> = {
+  blue: {
+    100: '#2B364D',
+    200: '#2F3F5F',
+    300: '#334771',
+    400: '#365083',
+    500: '#3A5895',
+    600: '#416AB9',
+    700: '#4A7FE6',
+    800: '#A2C7FF',
+    900: '#C0D9FF',
+  },
+  violet: {
+    100: '#33354D',
+    200: '#3C3E5F',
+    300: '#454671',
+    400: '#4E4E83',
+    500: '#565695',
+    600: '#6867B9',
+    700: '#7E7BE6',
+    800: '#C1BFFE',
+    900: '#D5D3FE',
+  },
+  magenta: {
+    100: '#3E3245',
+    200: '#4F3852',
+    300: '#5F3E5F',
+    400: '#6F446C',
+    500: '#7F4B79',
+    600: '#A05793',
+    700: '#C866B3',
+    800: '#E8BAE0',
+    900: '#EFD1EA',
+  },
+  red: {
+    100: '#433138',
+    200: '#57363C',
+    300: '#6A3B40',
+    400: '#7D4044',
+    500: '#914549',
+    600: '#B84F51',
+    700: '#E85B5B',
+    800: '#F6B2B2',
+    900: '#F9CBCB',
+  },
+  orange: {
+    100: '#433534',
+    200: '#563D35',
+    300: '#694536',
+    400: '#7C4D37',
+    500: '#905638',
+    600: '#B6663A',
+    700: '#E67A3D',
+    800: '#FFC4A1',
+    900: '#FFD7BF',
+  },
+  yellow: {
+    100: '#403C32',
+    200: '#524932',
+    300: '#635531',
+    400: '#746231',
+    500: '#866F31',
+    600: '#A98831',
+    700: '#D4A830',
+    800: '#F0D896',
+    900: '#F4E4B9',
+  },
+  green: {
+    100: '#2E3B33',
+    200: '#334734',
+    300: '#385334',
+    400: '#3D5F35',
+    500: '#436A35',
+    600: '#4D8237',
+    700: '#5AA038',
+    800: '#AAD89B',
+    900: '#C5E5BC',
+  },
+  teal: {
+    100: '#25393D',
+    200: '#244444',
+    300: '#234E4B',
+    400: '#225952',
+    500: '#226359',
+    600: '#207967',
+    700: '#1E9378',
+    800: '#84D2BE',
+    900: '#ACE1D3',
+  },
+  cyan: {
+    100: '#273A46',
+    200: '#274654',
+    300: '#275161',
+    400: '#285C6E',
+    500: '#28687C',
+    600: '#297F97',
+    700: '#2A9BB8',
+    800: '#90D8E1',
+    900: '#B4E5EA',
+  },
+};
 
 /** The three banner roles of a hue: fill (200), border (500), accent
  *  (800) — the same steps in both modes */
