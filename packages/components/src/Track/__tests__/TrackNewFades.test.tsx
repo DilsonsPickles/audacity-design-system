@@ -1342,7 +1342,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
     return { container, handle, onClipFadeChange, onFadeSnapGuideline };
   }
 
-  it('a LENGTH drag drops a marching-ants guideline from the boundary to the clip\'s bottom, and only for the drag (2026-10-01)', () => {
+  it('a LENGTH drag drops a dashed guideline from the boundary to the clip\'s bottom, and only for the drag (2026-10-01; still, not marching, since 2026-10-06)', () => {
     // The clip is 1s..5s at 100px/s and the track 114px tall; the line
     // stands where the curve meets the body (20px down) and runs to the
     // clip's bottom — not the canvas's. The clip is CONTROLLED here: the
@@ -1373,7 +1373,7 @@ describe('fade handle grid snap (2026-09-30)', () => {
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 7 });
     let l = line()!;
     expect(l.getAttribute('data-fade-guideline')).toBe('in');
-    expect(l.className).toBe('track-fade-guideline'); // the march lives in Track.css
+    expect(l.className).toBe('track-fade-guideline'); // the dash lives in Track.css
     expect(l.style.left).toBe(`${CLIP_CONTENT_OFFSET + 250}px`);
     expect(l.style.top).toBe('20px');
     expect(l.style.height).toBe('94px');
