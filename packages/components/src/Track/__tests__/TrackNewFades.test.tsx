@@ -89,7 +89,7 @@ describe('clip fades', () => {
     );
     const whites = () => Array.from(container.querySelectorAll('[data-fade-line-underside]'));
     const lineStrokes = () => Array.from(container.querySelectorAll('[data-fade-line]')).map((el) => el.getAttribute('stroke'));
-    const DARK = 'rgba(0, 0, 0, 0.55)';
+    const DARK = 'rgba(0, 0, 0, 0.35)'; // the idle line, quieter since 2026-10-06
     const allDark = [DARK, DARK, DARK];
 
     // Selected: no white

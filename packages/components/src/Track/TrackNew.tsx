@@ -1329,7 +1329,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // opacity. The white veils that used to say "shared" here are
     // gone: two waveforms say it better. (ClipBody's TODO: a stereo
     // under clip ghosts its left channel.)
-    const FADE_DIM_FILL = 'rgba(0, 0, 0, 0.14)';
+    // The dim above a curve and the line itself, both quieter since
+    // 2026-10-06 ("the idle curve a little less bold… the curve just
+    // stops abruptly" where it met the clip's top): the dim went from
+    // 14% to 20% so the faded region reads as quieter audio, the line
+    // from 55% to 35% so its end at the clip's edge is not a hard stop
+    const FADE_DIM_FILL = 'rgba(0, 0, 0, 0.2)';
+    const FADE_LINE_STROKE = 'rgba(0, 0, 0, 0.35)';
     // TWO passes: every ghost first (449), every curve above them (450)
     const ghosts = crossfadeNodes.map((n) => {
       const outClip = clips.find((c) => c.id === n.outgoingClipId);
@@ -1444,7 +1450,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               data-fade-line={region.side}
               d={curvePath}
               fill="none"
-              stroke="rgba(0, 0, 0, 0.55)"
+              stroke={FADE_LINE_STROKE}
               strokeWidth={1.5}
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
