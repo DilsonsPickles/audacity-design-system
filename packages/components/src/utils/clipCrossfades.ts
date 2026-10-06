@@ -246,11 +246,19 @@ export function isFadeHandle(shape: FadeShape | undefined): shape is FadeHandle 
 
 /**
  * How far a quick fade's handle can go (user decision 2026-09-29): a
- * box, 15%..85% along the fade and 27.5%..72.5% in gain. Inside it the
- * curve stays an S — at the corners it is a steep rise with a short
- * ease at one end and a long one at the other, never a hard corner.
+ * box in (position along the fade, gain). Since 2026-10-06 ("can the
+ * handle be dragged up higher? and lower") the GAIN runs 10%..90% —
+ * it was 27.5%..72.5%, measured off the reference images, and read as
+ * a short leash — and the box is 25%..75% ALONG the fade (was
+ * 15%..85%): at 90% gain a handle nearer the start than 25% would
+ * start the curve steeper than a straight line, a hard corner, and
+ * the drag has been vertical-only since 2026-10-01 (the position is
+ * held at the middle; only a stored project puts it elsewhere), so
+ * nothing is lost. Inside the box the curve stays an S — at the
+ * corners a steep rise with a short ease at one end and a long one at
+ * the other, never a hard corner (the test checks every corner).
  */
-export const FADE_HANDLE_LIMITS = { tMin: 0.15, tMax: 0.85, gMin: 0.275, gMax: 0.725 } as const;
+export const FADE_HANDLE_LIMITS = { tMin: 0.25, tMax: 0.75, gMin: 0.1, gMax: 0.9 } as const;
 
 export function clampFadeHandle(h: FadeHandle): FadeHandle {
   const { tMin, tMax, gMin, gMax } = FADE_HANDLE_LIMITS;

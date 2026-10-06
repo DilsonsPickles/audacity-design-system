@@ -1144,10 +1144,10 @@ describe('clip fades', () => {
     // Far past every limit, toward each corner in turn: only the gain
     // limit bites, and the handle never leaves the middle
     const corners: Array<[number, number, FadeHandle]> = [
-      [-400, -400, { t: 0.5, g: 0.725 }],
-      [400, -400, { t: 0.5, g: 0.725 }],
-      [400, 400, { t: 0.5, g: 0.275 }],
-      [-400, 400, { t: 0.5, g: 0.275 }],
+      [-400, -400, { t: 0.5, g: 0.9 }],
+      [400, -400, { t: 0.5, g: 0.9 }],
+      [400, 400, { t: 0.5, g: 0.1 }],
+      [-400, 400, { t: 0.5, g: 0.1 }],
     ];
     corners.forEach(([dx, dy, corner], i) => {
       drag(20 + i, dx, dy);
