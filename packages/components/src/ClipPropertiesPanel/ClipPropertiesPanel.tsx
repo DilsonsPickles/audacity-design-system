@@ -9,9 +9,10 @@
  * ⇥ end, ↔ length, ♪ pitch, speed — so the eye reads the glyph and the
  * number at once; and the fades draw THEMSELVES: each fade field's glyph
  * is a live thumbnail of the clip's own curve (`fadeCurvePath`, the
- * same geometry the canvas draws), and the shape picker is a row of
- * tiny curve glyphs, one per preset, the current one lit — Figma's
- * corner-radius row, for fades. Glyphs carry the field's name as its
+ * same geometry the canvas draws), and the shape picker is a dropdown
+ * of the presets with the current one's curve as its glyph (a row of
+ * tiny curve glyphs was tried first the same day — "can be a dropdown
+ * rather than showing all of them at once"). Glyphs carry the field's name as its
  * accessible label and tooltip.
  *
  * Shows ONE clip, or a SELECTION of several (`selection`): the count
@@ -29,12 +30,20 @@
  * in the manner of Figma's export-selection block — a format and a
  * sample rate side by side, a wide "Export clip" button under them —
  * which hands `{ format, sampleRate }` to the host.
+ *
+ * EVERY control has a TOOLTIP on hover (user request 2026-10-06): the
+ * design system's Tooltip, not the browser's title — one `data-tooltip`
+ * per control, read by a single hover handler on the panel's root,
+ * shown above the control's middle after `TOOLTIP_DELAY_MS`, hidden on
+ * leave, press or wheel. The text says what the field is and what it
+ * takes ("Pitch shift, semitones, ±24"), not just its name.
  */
 import React from 'react';
 import { TextInput } from '../TextInput';
 import { NumberStepper } from '../NumberStepper';
 import { Dropdown, type DropdownOption } from '../Dropdown';
 import { Button } from '../Button';
+import { Tooltip } from '../Tooltip';
 import { fadeCurvePath, type FadeShape } from '../utils/clipCrossfades';
 import './ClipPropertiesPanel.css';
 
@@ -97,6 +106,8 @@ export interface ClipPropertiesOption {
 
 /** A fade shape preset: its id and label, and the curve to draw for it */
 export interface ClipPropertiesShapeOption extends ClipPropertiesOption {
+  /** A word on the curve for its tooltip ("even from start to end") */
+  tip?: string;
   shape: FadeShape;
 }
 
@@ -148,6 +159,9 @@ export interface ClipPropertiesExportSettings {
   sampleRate: number;
 }
 
+/** How long the pointer rests on a control before its tooltip shows */
+export const TOOLTIP_DELAY_MS = 350;
+
 /** Pitch limits, semitones: two octaves either way */
 export const PITCH_LIMIT_SEMITONES = 24;
 
@@ -156,11 +170,12 @@ const clamp = (n: number, min?: number, max?: number) => Math.min(max ?? Infinit
 const speedOf = (stretchFactor: number) => Math.round(100 / stretchFactor * 100) / 100;
 
 // ── Glyphs ────────────────────────────────────────────────────────────
-// 16×16, drawn in currentColor; the field's name travels as the title
+// 16×16, drawn in currentColor; the glyph's name is its data-glyph (the
+// field's tooltip and visually-hidden label carry the words — an svg
+// <title> would add the browser's own tooltip on top)
 
 const Glyph = ({ children, title }: { children: React.ReactNode; title: string }) => (
   <svg className="clip-properties__glyph" viewBox="0 0 16 16" width={16} height={16} aria-hidden="true" data-glyph={title}>
-    <title>{title}</title>
     {children}
   </svg>
 );
@@ -202,11 +217,49 @@ function FadeGlyph({ side, shape, title, dim }: { side: 'in' | 'out'; shape: Fad
   const resolved: FadeShape = shape ?? 2; // the quick fade's default S-curve
   return (
     <svg className="clip-properties__glyph clip-properties__glyph--fade" viewBox="0 0 100 100" preserveAspectRatio="none" width={22} height={14} aria-hidden="true" data-glyph={title} data-side={side}>
-      <title>{title}</title>
       <path d={`${fadeCurvePath(side, 32, resolved)} L ${side === 'in' ? '100,100' : '0,100'} Z`} fill="currentColor" opacity={dim ? 0.12 : 0.22} stroke="none" />
       <path d={fadeCurvePath(side, 32, resolved)} fill="none" stroke="currentColor" strokeWidth={10} vectorEffect="non-scaling-stroke" style={{ strokeWidth: 1.5 }} />
     </svg>
   );
+}
+
+// ── Tooltips ──────────────────────────────────────────────────────────
+
+/** One tooltip for the whole panel: the root's hover handlers find the
+ *  nearest `data-tooltip` ancestor of whatever the pointer is over, arm
+ *  a timer for it (re-crossing its own children does not re-arm), and
+ *  show the design system's Tooltip above its middle; leaving it,
+ *  pressing, or scrolling hides it. */
+function usePanelTooltip() {
+  const [tip, setTip] = React.useState<{ text: string; x: number; y: number } | null>(null);
+  const timer = React.useRef<number | null>(null);
+  const armed = React.useRef<HTMLElement | null>(null);
+  const clear = () => {
+    if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
+  };
+  const hide = () => { clear(); armed.current = null; setTip(null); };
+  React.useEffect(() => clear, []);
+  const onMouseOver = (e: React.MouseEvent) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tooltip]');
+    const text = el?.dataset.tooltip;
+    if (!el || !text) { hide(); return; }
+    if (el === armed.current) return;
+    clear();
+    armed.current = el;
+    setTip(null);
+    timer.current = window.setTimeout(() => {
+      timer.current = null;
+      const r = el.getBoundingClientRect();
+      setTip({ text, x: r.left + r.width / 2, y: r.top });
+    }, TOOLTIP_DELAY_MS);
+  };
+  const onMouseOut = (e: React.MouseEvent) => {
+    const from = (e.target as HTMLElement).closest<HTMLElement>('[data-tooltip]');
+    const to = e.relatedTarget instanceof Node ? e.relatedTarget : null;
+    if (from && to && from.contains(to)) return; // still inside the same control
+    hide();
+  };
+  return { tip, handlers: { onMouseOver, onMouseOut, onMouseDown: hide, onWheel: hide } };
 }
 
 // ── Fields ────────────────────────────────────────────────────────────
@@ -215,7 +268,7 @@ function FadeGlyph({ side, shape, title, dim }: { side: 'in' | 'out'; shape: Fad
  *  at once; typing holds a draft that commits on Enter or blur when it
  *  parses, and Escape reverts — the field never holds a bad number. A
  *  MIXED value shows blank with "Mixed" and no arrows. */
-function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3, testId, label, glyph }: {
+function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3, testId, label, tip, glyph }: {
   value: number | Mixed;
   onCommit?: (n: number) => void;
   disabled?: boolean;
@@ -225,6 +278,8 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
   digits?: number;
   testId: string;
   label: string;
+  /** The tooltip; the label when not given */
+  tip?: string;
   glyph: React.ReactNode;
 }) {
   const [draft, setDraftState] = React.useState<string | null>(null);
@@ -254,7 +309,7 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
       className="clip-properties__field clip-properties__field--number"
       data-clip-properties-field={testId}
       data-mixed={mixed ? 'true' : undefined}
-      title={label}
+      data-tooltip={mixed ? `${tip ?? label} — mixed across the selection; a value applies to every clip` : tip ?? label}
       onKeyDown={(e) => {
         if (e.key === 'Enter') { commitDraft(); inputRef.current?.blur(); }
         if (e.key === 'Escape') { setDraft(null); inputRef.current?.blur(); e.stopPropagation(); }
@@ -283,9 +338,9 @@ function NumberField({ value, onCommit, disabled, step = 1, min, max, digits = 3
 }
 
 /** A glyph beside a value that cannot be edited, in the same field look */
-function ReadField({ testId, label, glyph, children }: { testId: string; label: string; glyph: React.ReactNode; children: React.ReactNode }) {
+function ReadField({ testId, label, tip, glyph, children }: { testId: string; label: string; tip?: string; glyph: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="clip-properties__field clip-properties__field--read" data-clip-properties-field={testId} title={label}>
+    <div className="clip-properties__field clip-properties__field--read" data-clip-properties-field={testId} data-tooltip={tip ?? label}>
       <span className="clip-properties__glyph-cell">{glyph}</span>
       <span className="clip-properties__value">{children}</span>
       <span className="clip-properties__sr">{label}</span>
@@ -293,40 +348,47 @@ function ReadField({ testId, label, glyph, children }: { testId: string; label: 
   );
 }
 
-/** The shape picker: one small curve per preset, the current one lit.
- *  A shape between presets lights none; a mixed selection lights none
- *  and says so. */
-function ShapePicker({ side, shapes, current, onPick, disabled }: {
+/** The shape picker: a dropdown of the presets by name (user decision
+ *  2026-10-06, replacing the segmented row of curves), the current
+ *  preset's curve as the field's glyph. A shape between presets reads
+ *  "Custom" with the clip's own curve; a mixed selection reads "Mixed". */
+function ShapePicker({ side, shapes, current, own, onPick, disabled }: {
   side: 'in' | 'out';
   shapes: ReadonlyArray<ClipPropertiesShapeOption>;
   current: string | Mixed | undefined;
+  /** The clip's own curve, drawn when no preset matches */
+  own: FadeShape | undefined;
   onPick?: (id: string) => void;
   disabled?: boolean;
 }) {
+  const label = side === 'in' ? 'Fade in shape' : 'Fade out shape';
+  const preset = current === MIXED ? undefined : shapes.find((s) => s.id === current);
+  const options: DropdownOption[] = shapes.map((s) => ({ value: s.id, label: s.label }));
+  const tip = current === MIXED
+    ? `${label} — the selection's fades differ; a pick sets them all`
+    : preset
+      ? `${label} — ${preset.label}${preset.tip ? `: ${preset.tip}` : ''}`
+      : `${label} — custom, dragged off a preset; a pick replaces it`;
   return (
     <div
-      className="clip-properties__shapes"
-      role="radiogroup"
-      aria-label={side === 'in' ? 'Fade in shape' : 'Fade out shape'}
+      className="clip-properties__field clip-properties__field--select clip-properties__field--shape"
       data-clip-properties-field={`shape-${side}`}
+      data-shape={preset?.id}
       data-mixed={current === MIXED ? 'true' : undefined}
+      data-tooltip={tip}
     >
-      {shapes.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          role="radio"
-          aria-checked={current === s.id}
-          aria-label={s.label}
-          title={current === MIXED ? `${s.label} (mixed)` : s.label}
-          className="clip-properties__shape"
-          data-shape={s.id}
-          disabled={disabled || !onPick}
-          onClick={() => onPick?.(s.id)}
-        >
-          <FadeGlyph side={side} shape={s.shape} title={s.label} dim />
-        </button>
-      ))}
+      <span className="clip-properties__glyph-cell">
+        <FadeGlyph side={side} shape={preset ? preset.shape : own} title={preset?.label ?? (current === MIXED ? 'Mixed' : 'Custom')} dim={!preset} />
+      </span>
+      <Dropdown
+        options={options}
+        value={preset?.id ?? ''}
+        placeholder={current === MIXED ? 'Mixed' : 'Custom'}
+        onChange={(v) => onPick?.(v)}
+        disabled={disabled || !onPick}
+        width="100%"
+      />
+      <span className="clip-properties__sr">{label}</span>
     </div>
   );
 }
@@ -335,10 +397,11 @@ const Row = ({ children }: { children: React.ReactNode }) => <div className="cli
 
 /** A section's heading, with Figma's right-hand action slot: a small
  *  text button (Reset), shown whenever the section has one */
-function SectionHeader({ children, action, actionId, onAction, actionDisabled }: {
+function SectionHeader({ children, action, actionId, actionTip, onAction, actionDisabled }: {
   children: React.ReactNode;
   action?: string;
   actionId?: string;
+  actionTip?: string;
   onAction?: () => void;
   actionDisabled?: boolean;
 }) {
@@ -350,6 +413,7 @@ function SectionHeader({ children, action, actionId, onAction, actionDisabled }:
           type="button"
           className="clip-properties__section-action"
           data-clip-properties-action={actionId}
+          data-tooltip={actionTip}
           onClick={onAction}
           disabled={actionDisabled || !onAction}
         >
@@ -361,9 +425,10 @@ function SectionHeader({ children, action, actionId, onAction, actionDisabled }:
 }
 
 /** A glyph beside a dropdown, in the field look */
-function SelectField({ testId, label, glyph, options, value, onChange, disabled }: {
+function SelectField({ testId, label, tip, glyph, options, value, onChange, disabled }: {
   testId: string;
   label: string;
+  tip?: string;
   glyph: React.ReactNode;
   options: DropdownOption[];
   value: string;
@@ -371,7 +436,7 @@ function SelectField({ testId, label, glyph, options, value, onChange, disabled 
   disabled?: boolean;
 }) {
   return (
-    <div className="clip-properties__field clip-properties__field--select" data-clip-properties-field={testId} title={label}>
+    <div className="clip-properties__field clip-properties__field--select" data-clip-properties-field={testId} data-tooltip={tip ?? label}>
       <span className="clip-properties__glyph-cell">{glyph}</span>
       <Dropdown options={options} value={value} onChange={onChange} disabled={disabled} width="100%" />
       <span className="clip-properties__sr">{label}</span>
@@ -444,6 +509,7 @@ export function ClipPropertiesPanel({
     ? `${multi.count} clips · ${multi.trackNames.join(', ')}`
     : clip?.trackName;
   const swatch = color && color !== MIXED && color !== 'track' ? color : undefined;
+  const { tip, handlers: tooltipHandlers } = usePanelTooltip();
 
   return (
     <section
@@ -453,10 +519,12 @@ export function ClipPropertiesPanel({
       data-layout={layout}
       data-selection={multi ? multi.count : undefined}
       aria-label="Clip properties"
+      {...tooltipHandlers}
     >
+      {tip && <Tooltip content={tip.text} x={tip.x} y={tip.y} />}
       <header className="clip-properties__header">
         <h2 className="clip-properties__title">Clip properties</h2>
-        {subject && <span className="clip-properties__subtitle" title={subtitle}>{subtitle}</span>}
+        {subject && <span className="clip-properties__subtitle" data-tooltip={multi ? 'The selected clips and their tracks' : 'The track this clip is on'}>{subtitle}</span>}
       </header>
 
       {!subject ? (
@@ -469,14 +537,14 @@ export function ClipPropertiesPanel({
           <h3 className="clip-properties__section">{multi ? 'Clips' : 'Clip'}</h3>
           {multi ? (
             <Row>
-              <ReadField testId="count" label="Selected clips" glyph={<CountGlyph />}>{multi.count} clips</ReadField>
+              <ReadField testId="count" label="Selected clips" tip="How many clips are selected — every edit below applies to all of them" glyph={<CountGlyph />}>{multi.count} clips</ReadField>
             </Row>
           ) : clip && (
             <Row>
               <div
                 className="clip-properties__field clip-properties__field--text clip-properties__field--wide"
                 data-clip-properties-field="name"
-                title="Name"
+                data-tooltip="Clip name — Enter or click away to rename"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { commitName(); (e.target as HTMLElement).blur(); }
                   if (e.key === 'Escape') { setNameDraft(null); (e.target as HTMLElement).blur(); e.stopPropagation(); }
@@ -495,7 +563,7 @@ export function ClipPropertiesPanel({
             </Row>
           )}
           <Row>
-            <div className="clip-properties__field clip-properties__field--select clip-properties__field--wide" data-clip-properties-field="color" title="Color">
+            <div className="clip-properties__field clip-properties__field--select clip-properties__field--wide" data-clip-properties-field="color" data-tooltip={multi ? 'Clip color — the selected clips differ; a pick colors them all' : "Clip color — the track's unless one is chosen here"}>
               <span className="clip-properties__glyph-cell">
                 <span className="clip-properties__swatch" data-swatch={swatch ?? (color === MIXED ? 'mixed' : 'track')} aria-hidden="true" />
               </span>
@@ -512,7 +580,7 @@ export function ClipPropertiesPanel({
           </Row>
           {!multi && clip?.groupId && (
             <Row>
-              <ReadField testId="group" label="Group" glyph={<CountGlyph />}>{clip.groupId}</ReadField>
+              <ReadField testId="group" label="Group" tip="The clip group this clip moves and edits with" glyph={<CountGlyph />}>{clip.groupId}</ReadField>
             </Row>
           )}
           </div>
@@ -522,22 +590,22 @@ export function ClipPropertiesPanel({
           {multi ? (
             <>
               <Row>
-                <ReadField testId="first-start" label="First start" glyph={<StartGlyph />}>{fmt(multi.start)} s</ReadField>
-                <ReadField testId="last-end" label="Last end" glyph={<EndGlyph />}>{fmt(multi.end)} s</ReadField>
+                <ReadField testId="first-start" label="First start" tip="Where the earliest selected clip begins, seconds" glyph={<StartGlyph />}>{fmt(multi.start)} s</ReadField>
+                <ReadField testId="last-end" label="Last end" tip="Where the latest selected clip ends, seconds" glyph={<EndGlyph />}>{fmt(multi.end)} s</ReadField>
               </Row>
               <Row>
-                <ReadField testId="span" label="Span" glyph={<SpanGlyph />}>{fmt(multi.end - multi.start)} s</ReadField>
+                <ReadField testId="span" label="Span" tip="From the first start to the last end, seconds" glyph={<SpanGlyph />}>{fmt(multi.end - multi.start)} s</ReadField>
               </Row>
             </>
           ) : clip && (
             <>
               <Row>
-                <NumberField testId="start" label="Start (s)" glyph={<StartGlyph />} value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
-                <ReadField testId="end" label="End" glyph={<EndGlyph />}>{fmt(clip.start + clip.duration)} s</ReadField>
+                <NumberField testId="start" label="Start (s)" tip="Start — where the clip begins on the timeline, seconds; moves the clip" glyph={<StartGlyph />} value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
+                <ReadField testId="end" label="End" tip="End — start plus length, seconds" glyph={<EndGlyph />}>{fmt(clip.start + clip.duration)} s</ReadField>
               </Row>
               <Row>
-                <NumberField testId="length" label="Length (s)" glyph={<LengthGlyph />} value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
-                <ReadField testId="source" label="Source length" glyph={<SourceGlyph />}>
+                <NumberField testId="length" label="Length (s)" tip="Length — seconds; trims the end, up to what the source has left" glyph={<LengthGlyph />} value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />
+                <ReadField testId="source" label="Source length" tip="Source — the whole recording's length, and where in it this clip starts" glyph={<SourceGlyph />}>
                   {fmt(clip.fullDuration)} s{clip.trimStart > 0 ? ` from ${fmt(clip.trimStart)}` : ''}
                 </ReadField>
               </Row>
@@ -548,14 +616,14 @@ export function ClipPropertiesPanel({
           <div className="clip-properties__group" data-group="fades">
           <h3 className="clip-properties__section">Fades</h3>
           <Row>
-            <NumberField testId="fade-in" label="Fade in (s)" glyph={<FadeGlyph side="in" shape={inCurve} title="Fade in" />}
+            <NumberField testId="fade-in" label="Fade in (s)" tip="Fade in — length in seconds; the curve is the clip's own" glyph={<FadeGlyph side="in" shape={inCurve} title="Fade in" />}
               value={fadeIn} onCommit={onFadeChange && ((n) => onFadeChange('in', n))} step={0.1} min={0} />
-            <NumberField testId="fade-out" label="Fade out (s)" glyph={<FadeGlyph side="out" shape={outCurve} title="Fade out" />}
+            <NumberField testId="fade-out" label="Fade out (s)" tip="Fade out — length in seconds; the curve is the clip's own" glyph={<FadeGlyph side="out" shape={outCurve} title="Fade out" />}
               value={fadeOut} onCommit={onFadeChange && ((n) => onFadeChange('out', n))} step={0.1} min={0} />
           </Row>
           <Row>
-            <ShapePicker side="in" shapes={fadeShapes} current={fadeInShapeId} onPick={onFadeShapeChange && ((id) => onFadeShapeChange('in', id))} disabled={fadeIn === 0} />
-            <ShapePicker side="out" shapes={fadeShapes} current={fadeOutShapeId} onPick={onFadeShapeChange && ((id) => onFadeShapeChange('out', id))} disabled={fadeOut === 0} />
+            <ShapePicker side="in" shapes={fadeShapes} current={fadeInShapeId} own={clip?.fadeInShape} onPick={onFadeShapeChange && ((id) => onFadeShapeChange('in', id))} disabled={fadeIn === 0} />
+            <ShapePicker side="out" shapes={fadeShapes} current={fadeOutShapeId} own={clip?.fadeOutShape} onPick={onFadeShapeChange && ((id) => onFadeShapeChange('out', id))} disabled={fadeOut === 0} />
           </Row>
           </div>
 
@@ -563,15 +631,16 @@ export function ClipPropertiesPanel({
           <SectionHeader
             action="Reset"
             actionId="reset-pitch-speed"
+            actionTip={pitch === 0 && speed === 100 ? 'Pitch and speed are as recorded' : 'Put pitch back to 0 and speed back to 100%'}
             onAction={onResetPitchSpeed}
             actionDisabled={pitch === 0 && speed === 100}
           >
             Pitch &amp; speed
           </SectionHeader>
           <Row>
-            <NumberField testId="pitch" label="Pitch (semitones)" glyph={<PitchGlyph />} value={pitch} onCommit={onPitchChange}
+            <NumberField testId="pitch" label="Pitch (semitones)" tip="Pitch shift in semitones, two octaves either way; the length holds" glyph={<PitchGlyph />} value={pitch} onCommit={onPitchChange}
               step={1} min={-PITCH_LIMIT_SEMITONES} max={PITCH_LIMIT_SEMITONES} digits={2} />
-            <NumberField testId="speed" label="Speed (%)" glyph={<SpeedGlyph />} value={speed} onCommit={onSpeedChange} step={5} min={1} digits={2} />
+            <NumberField testId="speed" label="Speed (%)" tip="Speed as a percentage of the recording — 200% plays twice as fast and halves the length; the pitch holds" glyph={<SpeedGlyph />} value={speed} onCommit={onSpeedChange} step={5} min={1} digits={2} />
           </Row>
           </div>
 
@@ -579,11 +648,15 @@ export function ClipPropertiesPanel({
             <div className="clip-properties__group" data-group="export">
             <SectionHeader>Export</SectionHeader>
             <Row>
-              <SelectField testId="export-format" label="Format" glyph={<ExportGlyph />} options={formatOptions} value={format} onChange={setFormatPick} disabled={exporting} />
-              <SelectField testId="export-rate" label="Sample rate" glyph={<SampleRateGlyph />} options={rateOptions} value={sampleRate} onChange={setRatePick} disabled={exporting} />
+              <SelectField testId="export-format" label="Format" tip="File format for the export" glyph={<ExportGlyph />} options={formatOptions} value={format} onChange={setFormatPick} disabled={exporting} />
+              <SelectField testId="export-rate" label="Sample rate" tip="Sample rate of the exported file" glyph={<SampleRateGlyph />} options={rateOptions} value={sampleRate} onChange={setRatePick} disabled={exporting} />
             </Row>
             <Row>
-              <div className="clip-properties__field--wide clip-properties__export" data-clip-properties-action="export">
+              <div
+                className="clip-properties__field--wide clip-properties__export"
+                data-clip-properties-action="export"
+                data-tooltip={multi ? `Export the ${multi.count} selected clips as audio, one file each — as they play, with fades, pitch and speed` : 'Export this clip as audio — as it plays, with its fades, pitch and speed'}
+              >
                 <Button
                   variant="secondary"
                   size="default"

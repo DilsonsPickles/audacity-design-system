@@ -1,4 +1,4 @@
-import { render, fireEvent, cleanup } from '@testing-library/react';
+import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { ClipPropertiesPanel, type ClipPropertiesClip } from '../ClipPropertiesPanel';
@@ -49,8 +49,8 @@ describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', ()
     expect(input('fade-out').value).toBe('0');
     expect(input('pitch').value).toBe('0');
     expect(input('speed').value).toBe('100');
-    // Glyphs, not labels: each field carries its name as a title and for screen readers
-    expect(field('start').getAttribute('title')).toBe('Start (s)');
+    // Glyphs, not labels: each field carries its name as a tooltip and for screen readers
+    expect(field('start').getAttribute('data-tooltip')).toContain('Start');
     expect(field('start').querySelector('[data-glyph="Start"]')).toBeTruthy();
     expect(field('pitch').querySelector('[data-glyph="Pitch"]')).toBeTruthy();
     expect(field('start').querySelector('.clip-properties__sr')?.textContent).toBe('Start (s)');
@@ -68,17 +68,25 @@ describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', ()
     expect(outGlyph.getAttribute('d')).toBe(fadeCurvePath('out', 32, 2)); // no stored shape = the default S-curve
   });
 
-  it('the shape picker is a row of curve glyphs, the current preset lit; a pick reports its side', () => {
+  it('the shape picker is a dropdown of the presets, the current one\'s curve as its glyph; a pick reports its side', () => {
     const { field, onFadeShapeChange } = renderPanel();
     const picker = field('shape-in');
-    const radios = [...picker.querySelectorAll('[role="radio"]')];
-    expect(radios.map((r) => r.getAttribute('data-shape'))).toEqual(['default', 'linear']);
-    expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false']);
-    expect(radios[1].querySelector('path:last-child')?.getAttribute('d')).toBe(fadeCurvePath('in', 32, 'linear'));
-    fireEvent.click(radios[1]);
+    expect(picker.getAttribute('data-shape')).toBe('default');
+    expect(picker.querySelector('.dropdown__text')?.textContent).toBe('S-curve');
+    // The glyph is the PRESET's curve (the fade field above draws the clip's own)
+    expect(picker.querySelector('[data-glyph="S-curve"] path:last-child')?.getAttribute('d')).toBe(fadeCurvePath('in', 32, 2));
+    fireEvent.click(picker.querySelector('.dropdown__trigger') as HTMLElement);
+    // The menu portals to the body
+    const linear = [...document.body.querySelectorAll('.dropdown__option')].find((o) => o.textContent === 'Linear') as HTMLElement;
+    fireEvent.click(linear);
     expect(onFadeShapeChange).toHaveBeenCalledWith('in', 'linear');
     // The fade-out picker is disabled while its fade is zero
-    expect([...field('shape-out').querySelectorAll('[role="radio"]')].every((r) => (r as HTMLButtonElement).disabled)).toBe(true);
+    expect(field('shape-out').querySelector('.dropdown__trigger')?.getAttribute('aria-disabled') ?? (field('shape-out').querySelector('.dropdown__trigger') as HTMLButtonElement).disabled).toBeTruthy();
+    // Off every preset: Custom, with the clip's own curve
+    const custom = renderPanel({ clip: { ...clip, fadeInShapeId: undefined, fadeInShape: { t: 0.5, g: 0.3 } } });
+    expect(custom.field('shape-in').getAttribute('data-shape')).toBeNull();
+    expect(custom.field('shape-in').querySelector('.dropdown__text')?.textContent).toBe('Custom');
+    expect(custom.field('shape-in').querySelector('[data-glyph="Custom"] path:last-child')?.getAttribute('d')).toBe(fadeCurvePath('in', 32, { t: 0.5, g: 0.3 }));
   });
 
   it('lays its groups out in one column by default and in columns in the bottom drawer', () => {
@@ -228,6 +236,39 @@ describe('ClipPropertiesPanel › Reset and Export (2026-10-06)', () => {
   });
 });
 
+describe('ClipPropertiesPanel › tooltips (2026-10-06)', () => {
+  it('every control shows the design system\'s tooltip after a beat on hover, above its middle; leaving hides it', () => {
+    vi.useFakeTimers();
+    try {
+      const { field, container } = renderPanel({ onResetPitchSpeed: vi.fn(), exportFormats: [{ id: 'wav', label: 'WAV' }], exportSampleRates: [{ id: '44100', label: '44.1 kHz' }], onExport: vi.fn() });
+      const tooltip = () => document.body.querySelector('.tooltip');
+      const controls = ['name', 'color', 'start', 'end', 'length', 'source', 'fade-in', 'fade-out', 'shape-in', 'shape-out', 'pitch', 'speed', 'export-format', 'export-rate'];
+      for (const id of controls) expect(field(id).getAttribute('data-tooltip'), id).toBeTruthy();
+      expect(container.querySelector('[data-clip-properties-action="reset-pitch-speed"]')?.getAttribute('data-tooltip')).toBeTruthy();
+      expect(container.querySelector('[data-clip-properties-action="export"]')?.getAttribute('data-tooltip')).toBeTruthy();
+      // No browser titles doubling them
+      expect(container.querySelector('[title]')).toBeNull();
+      expect(container.querySelector('svg title')).toBeNull();
+
+      const pitch = field('pitch');
+      fireEvent.mouseOver(pitch.querySelector('input') as HTMLElement);
+      expect(tooltip()).toBeNull(); // not yet
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(tooltip()?.textContent).toContain('semitones');
+      fireEvent.mouseOut(pitch, { relatedTarget: field('speed') });
+      expect(tooltip()).toBeNull();
+      // Pressing a control hides its tooltip too
+      fireEvent.mouseOver(field('speed'));
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(tooltip()?.textContent).toContain('Speed');
+      fireEvent.mouseDown(field('speed'));
+      expect(tooltip()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('ClipPropertiesPanel › several clips selected (2026-10-02)', () => {
   const selection = {
     count: 3, trackNames: ['Track 1', 'Track 2'], start: 0.5, end: 6.5,
@@ -252,7 +293,8 @@ describe('ClipPropertiesPanel › several clips selected (2026-10-02)', () => {
     expect(out.placeholder).toBe('Mixed');
     expect(field('fade-out').getAttribute('data-mixed')).toBe('true');
     expect(field('shape-out').getAttribute('data-mixed')).toBe('true');
-    expect([...field('shape-out').querySelectorAll('[role="radio"]')].every((r) => r.getAttribute('aria-checked') === 'false')).toBe(true);
+    expect(field('shape-out').getAttribute('data-shape')).toBeNull();
+    expect(field('shape-out').querySelector('.dropdown__text')?.textContent).toBe('Mixed');
     expect(field('color').querySelector('.clip-properties__swatch')?.getAttribute('data-swatch')).toBe('mixed');
   });
 

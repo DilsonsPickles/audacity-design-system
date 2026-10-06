@@ -267,54 +267,7 @@
 .clip-properties__swatch[data-swatch="green"] { background: var(--clip-green-header, #7dd38a); }
 .clip-properties__swatch[data-swatch="teal"] { background: var(--clip-teal-header, #5fcdb8); }
 
-/* The shape picker: a segmented row of curve glyphs, the current one lit */
-.clip-properties__shapes {
-  display: flex;
-  height: 28px;
-  box-sizing: border-box;
-  border: 1px solid var(--field-border, #d0d2d6);
-  border-radius: 4px;
-  background: #fff;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.clip-properties__shape {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  border-right: 1px solid var(--field-border, #e4e6ea);
-  background: transparent;
-  color: var(--text-primary, #14151a);
-  cursor: pointer;
-  opacity: 0.55;
-}
-
-.clip-properties__shape:last-child {
-  border-right: 0;
-}
-
-.clip-properties__shape:hover:not(:disabled) {
-  opacity: 0.9;
-  background: var(--dock-bg, #f8f8f9);
-}
-
-.clip-properties__shape[aria-checked="true"] {
-  opacity: 1;
-  background: var(--field-selected, #e3e7fb);
-  color: var(--accent, #4a5fd6);
-}
-
-.clip-properties__shape:disabled {
-  cursor: default;
-  opacity: 0.3;
-}
-
-.clip-properties__shapes[data-mixed] .clip-properties__shape {
-  opacity: 0.45;
+/* The shape picker's glyph is the fade thumbnail, a touch wider */
+.clip-properties__field--shape .clip-properties__glyph-cell {
+  flex-basis: 30px;
 }
