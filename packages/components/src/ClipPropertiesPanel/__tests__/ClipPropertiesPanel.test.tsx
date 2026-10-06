@@ -19,6 +19,7 @@ function renderPanel(props: Partial<React.ComponentProps<typeof ClipPropertiesPa
   const handlers = {
     onRename: vi.fn(), onColorChange: vi.fn(), onStartChange: vi.fn(), onDurationChange: vi.fn(),
     onFadeChange: vi.fn(), onFadeShapeChange: vi.fn(), onPitchChange: vi.fn(), onSpeedChange: vi.fn(),
+    onTrimStartChange: vi.fn(), onTrimEndChange: vi.fn(),
   };
   const utils = render(
     <ThemeProvider>
@@ -182,6 +183,23 @@ describe('ClipPropertiesPanel (2026-10-02; the Figma-style rows 2026-10-06)', ()
   });
 });
 
+describe('ClipPropertiesPanel › both edges trim (2026-10-06)', () => {
+  it('Trim start and Trim end show what the source hides at each edge, in source seconds, and each edits its own edge', () => {
+    // Source 6 s, 0.25 hidden at the head, 4 shown → 1.75 hidden at the tail
+    const { input, field, arrow, onTrimStartChange, onTrimEndChange } = renderPanel();
+    expect(field('trim-start').parentElement).toBe(field('trim-end').parentElement);
+    expect(input('trim-start').value).toBe('0.25');
+    expect(input('trim-end').value).toBe('1.75');
+    fireEvent.click(arrow('trim-start', 'up'));
+    expect(onTrimStartChange).toHaveBeenCalledWith(0.35);
+    fireEvent.click(arrow('trim-end', 'down'));
+    expect(onTrimEndChange).toHaveBeenCalledWith(1.65);
+    // At half speed (stretch 2) the 4 s shown are 2 s of source: 6 − 0.25 − 2
+    const slow = renderPanel({ clip: { ...clip, stretchFactor: 2 } });
+    expect(slow.input('trim-end').value).toBe('3.75');
+  });
+});
+
 describe('ClipPropertiesPanel › Reset and Export (2026-10-06)', () => {
   const exportFormats = [{ id: 'wav', label: 'WAV' }, { id: 'mp3', label: 'MP3' }];
   const exportSampleRates = [{ id: '44100', label: '44.1 kHz' }, { id: '48000', label: '48 kHz' }];
@@ -242,7 +260,7 @@ describe('ClipPropertiesPanel › tooltips (2026-10-06)', () => {
     try {
       const { field, container } = renderPanel({ onResetPitchSpeed: vi.fn(), exportFormats: [{ id: 'wav', label: 'WAV' }], exportSampleRates: [{ id: '44100', label: '44.1 kHz' }], onExport: vi.fn() });
       const tooltip = () => document.body.querySelector('.tooltip');
-      const controls = ['name', 'color', 'start', 'end', 'length', 'source', 'fade-in', 'fade-out', 'shape-in', 'shape-out', 'pitch', 'speed', 'export-format', 'export-rate'];
+      const controls = ['name', 'color', 'start', 'end', 'trim-start', 'trim-end', 'length', 'source', 'fade-in', 'fade-out', 'shape-in', 'shape-out', 'pitch', 'speed', 'export-format', 'export-rate'];
       for (const id of controls) expect(field(id).getAttribute('data-tooltip'), id).toBeTruthy();
       expect(container.querySelector('[data-clip-properties-action="reset-pitch-speed"]')?.getAttribute('data-tooltip')).toBeTruthy();
       expect(container.querySelector('[data-clip-properties-action="export"]')?.getAttribute('data-tooltip')).toBeTruthy();

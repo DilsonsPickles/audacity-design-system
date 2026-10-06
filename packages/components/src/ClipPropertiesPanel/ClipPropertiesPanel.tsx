@@ -125,6 +125,13 @@ export interface ClipPropertiesPanelProps {
   onStartChange?: (seconds: number) => void;
   /** New visible length, seconds (the host clamps to the source) */
   onDurationChange?: (seconds: number) => void;
+  /** Trim the LEFT edge: how much of the source to hide at the head,
+   *  seconds of source; the clip's content stays where it is (user
+   *  request 2026-10-06 — until then only the right edge trimmed here) */
+  onTrimStartChange?: (seconds: number) => void;
+  /** Trim the RIGHT edge: how much of the source to hide at the tail,
+   *  seconds of source */
+  onTrimEndChange?: (seconds: number) => void;
   onFadeChange?: (side: 'in' | 'out', seconds: number) => void;
   onFadeShapeChange?: (side: 'in' | 'out', shapeId: string) => void;
   /** New pitch shift, semitones */
@@ -187,6 +194,12 @@ const EndGlyph = () => (
 );
 const LengthGlyph = () => (
   <Glyph title="Length"><path d="M2 8h12M5 5 2 8l3 3M11 5l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
+);
+const TrimStartGlyph = () => (
+  <Glyph title="Trim start"><path d="M3 2v12M13 2v12M3 8h5M6 5.5 8.5 8 6 10.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /><path d="M3 2h2M3 14h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
+);
+const TrimEndGlyph = () => (
+  <Glyph title="Trim end"><path d="M3 2v12M13 2v12M13 8H8M10 5.5 7.5 8l2.5 2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /><path d="M11 2h2M11 14h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
 );
 const SourceGlyph = () => (
   <Glyph title="Source"><path d="M2 3h12v10H2zM5 3v10M11 3v10M2 6h3M2 10h3M11 6h3M11 10h3" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></Glyph>
@@ -444,6 +457,8 @@ export function ClipPropertiesPanel({
   onColorChange,
   onStartChange,
   onDurationChange,
+  onTrimStartChange,
+  onTrimEndChange,
   onFadeChange,
   onFadeShapeChange,
   onPitchChange,
@@ -535,7 +550,7 @@ export function ClipPropertiesPanel({
               <div
                 className="clip-properties__field clip-properties__field--text clip-properties__field--wide"
                 data-clip-properties-field="name"
-                data-tooltip="Name"
+                data-tooltip="Clip name"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { commitName(); (e.target as HTMLElement).blur(); }
                   if (e.key === 'Escape') { setNameDraft(null); (e.target as HTMLElement).blur(); e.stopPropagation(); }
@@ -549,12 +564,12 @@ export function ClipPropertiesPanel({
                   className="clip-properties__input"
                   tabIndex={0}
                 />
-                <span className="clip-properties__sr">Name</span>
+                <span className="clip-properties__sr">Clip name</span>
               </div>
             </Row>
           )}
           <Row>
-            <div className="clip-properties__field clip-properties__field--select clip-properties__field--wide" data-clip-properties-field="color" data-tooltip="Color">
+            <div className="clip-properties__field clip-properties__field--select clip-properties__field--wide" data-clip-properties-field="color" data-tooltip="Clip color">
               <span className="clip-properties__glyph-cell">
                 <span className="clip-properties__swatch" data-swatch={swatch ?? (color === MIXED ? 'mixed' : 'track')} aria-hidden="true" />
               </span>
@@ -566,7 +581,7 @@ export function ClipPropertiesPanel({
                 disabled={!onColorChange}
                 width="100%"
               />
-              <span className="clip-properties__sr">Color</span>
+              <span className="clip-properties__sr">Clip color</span>
             </div>
           </Row>
           {!multi && clip?.groupId && (
@@ -593,6 +608,11 @@ export function ClipPropertiesPanel({
               <Row>
                 <NumberField testId="start" label="Start" glyph={<StartGlyph />} value={clip.start} onCommit={onStartChange} step={0.1} min={0} />
                 <ReadField testId="end" label="End" glyph={<EndGlyph />}>{fmt(clip.start + clip.duration)} s</ReadField>
+              </Row>
+              <Row>
+                <NumberField testId="trim-start" label="Trim start" glyph={<TrimStartGlyph />} value={clip.trimStart} onCommit={onTrimStartChange} step={0.1} min={0} />
+                <NumberField testId="trim-end" label="Trim end" glyph={<TrimEndGlyph />}
+                  value={Math.max(0, clip.fullDuration - clip.trimStart - clip.duration / clip.stretchFactor)} onCommit={onTrimEndChange} step={0.1} min={0} />
               </Row>
               <Row>
                 <NumberField testId="length" label="Length" glyph={<LengthGlyph />} value={clip.duration} onCommit={onDurationChange} step={0.1} min={0.02} />

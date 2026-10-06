@@ -7,7 +7,8 @@
  * utils/clipPropertiesSelection.ts), maps it to the panel's view, and
  * turns each edit into the reducer action the rest of the app already
  * uses for it — rename and colour through UPDATE_CLIP, start through
- * MOVE_CLIP, length through TRIM_CLIP (clamped to the source), fades
+ * MOVE_CLIP, length and both edge trims through TRIM_CLIP (clamped to
+ * the source; the left trim moves the start as the mouse's does), fades
  * through SET_CLIP_FADE / SET_CLIP_FADE_SHAPE (the fade menu's presets),
  * pitch through UPDATE_CLIP (pitchSemitones), speed through
  * STRETCH_CLIP — so the panel is one more way in, never a second rule.
@@ -184,6 +185,32 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
         const maxSeconds = (fullDurationOf(clip) - trimStartOf(clip)) * stretchOf(clip);
         const newDuration = Math.max(MIN_CLIP_SECONDS, Math.min(maxSeconds, seconds));
         dispatch({ type: 'TRIM_CLIP', payload: { trackIndex, clipId: clip.id, newTrimStart: trimStartOf(clip), newDuration } });
+      }}
+      onTrimStartChange={selection ? undefined : (seconds) => {
+        if (!clip) return;
+        // Hide this much of the source at the head, the content staying
+        // put: the start moves by the change (in timeline seconds, so
+        // through the stretch) and the length gives it up — the mouse's
+        // left-edge trim (useClipTrimming), with the same clamps: never
+        // before the source, never past the clip's own end, never before
+        // the project's start
+        const stretch = stretchOf(clip);
+        const current = trimStartOf(clip);
+        const latest = current + (clip.duration - MIN_CLIP_SECONDS) / stretch;
+        const earliest = Math.max(0, current - clip.start / stretch);
+        const newTrimStart = Math.max(earliest, Math.min(latest, seconds));
+        const delta = (newTrimStart - current) * stretch;
+        if (delta === 0) return;
+        dispatch({ type: 'TRIM_CLIP', payload: { trackIndex, clipId: clip.id, newTrimStart, newDuration: clip.duration - delta, newStart: clip.start + delta } });
+      }}
+      onTrimEndChange={selection ? undefined : (seconds) => {
+        if (!clip) return;
+        // Hide this much of the source at the tail: the right-edge trim
+        // said from the other side (Length is the same edit as a length)
+        const stretch = stretchOf(clip);
+        const room = fullDurationOf(clip) - trimStartOf(clip);
+        const newTrimEnd = Math.max(0, Math.min(room - MIN_CLIP_SECONDS / stretch, seconds));
+        dispatch({ type: 'TRIM_CLIP', payload: { trackIndex, clipId: clip.id, newTrimStart: trimStartOf(clip), newDuration: (room - newTrimEnd) * stretch } });
       }}
       onFadeChange={(side, seconds) => forEachTarget((t) => ({
         type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clip.id, side, seconds: Math.max(0, seconds) },
