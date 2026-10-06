@@ -54,6 +54,8 @@ export interface ClipPropertiesClip {
   /** The colour's id in `colors` (undefined = the track's) */
   color?: string;
   trackName: string;
+  /** The track's id in `tracks` — the Track field moves the clip (2026-10-06) */
+  trackId?: string;
   /** Seconds, in project time */
   start: number;
   duration: number;
@@ -88,6 +90,8 @@ export interface ClipPropertiesSelection {
   count: number;
   /** The distinct tracks they are on, in track order */
   trackNames: string[];
+  /** The one track they share, or MIXED */
+  trackId?: string | Mixed;
   /** The earliest start and the latest end, seconds of project time */
   start: number;
   end: number;
@@ -117,6 +121,10 @@ export interface ClipPropertiesPanelProps {
   selection?: ClipPropertiesSelection | null;
   /** The colours a clip can wear */
   colors: ReadonlyArray<ClipPropertiesOption>;
+  /** The tracks a clip can be moved to (none = no Track field) */
+  tracks?: ReadonlyArray<ClipPropertiesOption>;
+  /** Move the clip (or every selected clip) to this track, start held */
+  onTrackChange?: (trackId: string) => void;
   /** The fade shape presets, with their curves */
   fadeShapes: ReadonlyArray<ClipPropertiesShapeOption>;
   onRename?: (name: string) => void;
@@ -218,6 +226,9 @@ const ExportGlyph = () => (
 );
 const SampleRateGlyph = () => (
   <Glyph title="Sample rate"><path d="M2 8h2l1.5-4 2 8 2-6 1.5 2H14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
+);
+const TrackGlyph = () => (
+  <Glyph title="Track"><path d="M2 4h12M2 8h12M2 12h12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M5 6.5v3M8 5.5v5M11 6.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
 );
 const CountGlyph = () => (
   <Glyph title="Selected clips"><path d="M2 5h8v8H2zM5 2h9v9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></Glyph>
@@ -452,6 +463,8 @@ export function ClipPropertiesPanel({
   clip,
   selection = null,
   colors,
+  tracks = [],
+  onTrackChange,
   fadeShapes,
   onRename,
   onColorChange,
@@ -483,6 +496,7 @@ export function ClipPropertiesPanel({
   };
 
   const colorOptions: DropdownOption[] = colors.map((c) => ({ value: c.id, label: c.label }));
+  const trackOptions: DropdownOption[] = tracks.map((t) => ({ value: t.id, label: t.label }));
 
   // The Export block's choices live here (as Figma's do): the first
   // format and sample rate until picked
@@ -511,9 +525,13 @@ export function ClipPropertiesPanel({
   const speed: number | Mixed = multi
     ? (multi.stretchFactor === MIXED ? MIXED : speedOf(multi.stretchFactor))
     : speedOf(clip?.stretchFactor ?? 1);
+  const trackId = multi ? multi.trackId : clip?.trackId;
+  // The header names the subject only where a field does not: a
+  // selection's count and tracks (a single clip's track is its Track
+  // field — or, with no tracks offered, the header)
   const subtitle = multi
     ? `${multi.count} clips · ${multi.trackNames.join(', ')}`
-    : clip?.trackName;
+    : tracks.length > 0 ? undefined : clip?.trackName;
   const swatch = color && color !== MIXED && color !== 'track' ? color : undefined;
   const { tip, handlers: tooltipHandlers } = usePanelTooltip();
 
@@ -531,7 +549,7 @@ export function ClipPropertiesPanel({
       {/* No title of its own: the dock tab or window already says
           "Clip properties" (2026-10-06); the header is the subject —
           the track, or the selection's count and tracks */}
-      {subject && (
+      {subject && subtitle && (
         <header className="clip-properties__header">
           <span className="clip-properties__subtitle">{subtitle}</span>
         </header>
@@ -569,6 +587,27 @@ export function ClipPropertiesPanel({
                   tabIndex={0}
                 />
                 <span className="clip-properties__sr">Clip name</span>
+              </div>
+            </Row>
+          )}
+          {tracks.length > 0 && (
+            <Row>
+              <div
+                className="clip-properties__field clip-properties__field--select clip-properties__field--wide"
+                data-clip-properties-field="track"
+                data-mixed={trackId === MIXED ? 'true' : undefined}
+                data-tooltip="Track"
+              >
+                <span className="clip-properties__glyph-cell"><TrackGlyph /></span>
+                <Dropdown
+                  options={trackOptions}
+                  value={trackId === MIXED ? '' : trackId ?? ''}
+                  placeholder={trackId === MIXED ? 'Mixed' : undefined}
+                  onChange={(v) => { if (v !== trackId) onTrackChange?.(v); }}
+                  disabled={!onTrackChange}
+                  width="100%"
+                />
+                <span className="clip-properties__sr">Track</span>
               </div>
             </Row>
           )}

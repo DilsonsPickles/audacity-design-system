@@ -1,7 +1,7 @@
 import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { ClipPropertiesPanel, type ClipPropertiesClip } from '../ClipPropertiesPanel';
+import { ClipPropertiesPanel, MIXED, type ClipPropertiesClip } from '../ClipPropertiesPanel';
 import { fadeCurvePath } from '../../utils/clipCrossfades';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
@@ -10,7 +10,7 @@ afterEach(cleanup);
 const colors = [{ id: 'blue', label: 'Blue' }, { id: 'red', label: 'Red' }];
 const fadeShapes = [{ id: 'default', label: 'S-curve', shape: 2 }, { id: 'linear', label: 'Linear', shape: 'linear' as const }];
 const clip: ClipPropertiesClip = {
-  id: 7, name: 'Vocal', color: 'blue', trackName: 'Track 2',
+  id: 7, name: 'Vocal', color: 'blue', trackName: 'Track 2', trackId: 't2',
   start: 1.5, duration: 4, trimStart: 0.25, fullDuration: 6, stretchFactor: 1, pitchSemitones: 0,
   fadeIn: 0.5, fadeOut: 0, fadeInShapeId: 'default', fadeInShape: { t: 0.5, g: 0.6 },
 };
@@ -197,6 +197,34 @@ describe('ClipPropertiesPanel › both edges trim (2026-10-06)', () => {
     // At half speed (stretch 2) the 4 s shown are 2 s of source: 6 − 0.25 − 2
     const slow = renderPanel({ clip: { ...clip, stretchFactor: 2 } });
     expect(slow.input('trim-end').value).toBe('3.75');
+  });
+});
+
+describe('ClipPropertiesPanel › the Track field (2026-10-06)', () => {
+  const tracks = [{ id: 't1', label: 'Track 1' }, { id: 't2', label: 'Track 2' }];
+
+  it('shows the clip\'s track among the tracks offered and reports a pick; the header then has nothing to say', () => {
+    const onTrackChange = vi.fn();
+    const { field, container } = renderPanel({ tracks, onTrackChange });
+    expect(field('track').querySelector('.dropdown__text')?.textContent).toBe('Track 2');
+    expect(container.querySelector('.clip-properties__header')).toBeNull();
+    fireEvent.click(field('track').querySelector('.dropdown__trigger') as HTMLElement);
+    fireEvent.click([...document.body.querySelectorAll('.dropdown__option')].find((o) => o.textContent === 'Track 1') as HTMLElement);
+    expect(onTrackChange).toHaveBeenCalledWith('t1');
+    // Without tracks offered there is no field, and the header names the track
+    const bare = renderPanel();
+    expect(bare.container.querySelector('[data-clip-properties-field="track"]')).toBeNull();
+    expect(bare.container.querySelector('.clip-properties__header')?.textContent).toBe('Track 2');
+  });
+
+  it('a selection across tracks reads Mixed', () => {
+    const selection = {
+      count: 2, trackNames: ['Track 1', 'Track 2'], trackId: MIXED, start: 0, end: 9, color: 'blue', fadeIn: 0, fadeOut: 0,
+      pitchSemitones: 0, stretchFactor: 1,
+    };
+    const { field } = renderPanel({ tracks, onTrackChange: vi.fn(), selection });
+    expect(field('track').getAttribute('data-mixed')).toBe('true');
+    expect(field('track').querySelector('.dropdown__text')?.textContent).toBe('Mixed');
   });
 });
 

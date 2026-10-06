@@ -12,14 +12,16 @@ import { fadeShapePresetOf } from './fadeShapePresets';
 export interface SelectedClipEntry {
   trackIndex: number;
   trackName: string;
+  /** The track's id, as the panel's Track field knows it */
+  trackId: string;
   clip: Clip;
 }
 
 /** The selected audio clips, in track order */
-export function selectedClipEntries(tracks: ReadonlyArray<{ name: string; clips: ReadonlyArray<Clip> }>): SelectedClipEntry[] {
+export function selectedClipEntries(tracks: ReadonlyArray<{ id: number | string; name: string; clips: ReadonlyArray<Clip> }>): SelectedClipEntry[] {
   const out: SelectedClipEntry[] = [];
   tracks.forEach((t, trackIndex) => {
-    for (const clip of t.clips) if (clip.selected) out.push({ trackIndex, trackName: t.name, clip });
+    for (const clip of t.clips) if (clip.selected) out.push({ trackIndex, trackName: t.name, trackId: String(t.id), clip });
   });
   return out;
 }
@@ -36,6 +38,7 @@ export function mergeSelectedClips(entries: readonly SelectedClipEntry[], trackC
   return {
     count: clips.length,
     trackNames,
+    trackId: merge(entries.map((e) => e.trackId)),
     start: Math.min(...clips.map((c) => c.start)),
     end: Math.max(...clips.map((c) => c.start + c.duration)),
     color: merge(clips.map((c) => c.ownColor ?? trackColorId)),

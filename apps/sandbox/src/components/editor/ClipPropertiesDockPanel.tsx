@@ -11,7 +11,9 @@
  * the source; the left trim moves the start as the mouse's does), fades
  * through SET_CLIP_FADE / SET_CLIP_FADE_SHAPE (the fade menu's presets),
  * pitch through UPDATE_CLIP (pitchSemitones), speed through
- * STRETCH_CLIP — so the panel is one more way in, never a second rule.
+ * STRETCH_CLIP, the track through MOVE_CLIP with the start held
+ * (2026-10-06, "perhaps parent track can be changed too") — so the
+ * panel is one more way in, never a second rule.
  * In the selection state an edit applies to EVERY selected clip, each
  * clamped to its own room (the fade menu's rule made visible).
  *
@@ -96,11 +98,17 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
   const clip = resolved?.clip ?? null;
   const trackIndex = resolved?.trackIndex ?? -1;
 
+  // The tracks a clip can live on: the audio tracks, by id
+  const trackOptions: ClipPropertiesOption[] = state.tracks
+    .filter((t) => !t.type || t.type === 'audio')
+    .map((t) => ({ id: String(t.id), label: t.name }));
+
   const view: ClipPropertiesClip | null = clip && track ? {
     id: clip.id,
     name: clip.name,
     color: clip.ownColor ?? TRACK_COLOR,
     trackName: track.name,
+    trackId: String(track.id),
     start: clip.start,
     duration: clip.duration,
     trimStart: trimStartOf(clip),
@@ -162,6 +170,19 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
       clip={view}
       selection={selection}
       colors={CLIP_COLORS}
+      tracks={trackOptions}
+      onTrackChange={(trackId) => {
+        const toTrackIndex = state.tracks.findIndex((t) => String(t.id) === trackId);
+        if (toTrackIndex < 0) return;
+        // Every target moves to that track, its start held; the moved
+        // clip keeps its selection, so the panel follows it there — and
+        // a clip shown without a selection is pointed at by hand
+        forEachTarget((t) => (t.trackIndex === toTrackIndex ? null : {
+          type: 'MOVE_CLIP',
+          payload: { clipId: t.clip.id, fromTrackIndex: t.trackIndex, toTrackIndex, newStartTime: t.clip.start },
+        }));
+        if (!selection && clip && trackIndex !== toTrackIndex) setClipPropertiesTarget({ trackIndex: toTrackIndex, clipId: clip.id });
+      }}
       fadeShapes={FADE_SHAPES}
       placement={placement}
       layout={layout}
