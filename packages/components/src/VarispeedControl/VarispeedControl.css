@@ -1,16 +1,65 @@
-/* VarispeedControl — a speed chip in the transport group; the popover
-   under it holds the slider and the presets */
+/* VarispeedControl — a split speed chip in the transport group: the value
+   half toggles varispeed, the caret half opens the popover with the slider
+   and the presets. Off it wears the secondary button tones; on, the
+   primary (the ToggleToolButton's on state), so a speed left on is seen. */
 .varispeed {
   display: inline-flex;
+  align-items: center;
+  height: 28px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.varispeed__chip,
+.varispeed__caret {
+  height: 28px;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--varispeed-off-bg);
+  color: var(--varispeed-off-text);
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
 }
 
 .varispeed__chip {
-  min-width: 56px;
+  min-width: 52px;
+  padding: 0 6px;
+  font: 600 12px/28px Inter, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
+.varispeed__caret {
+  width: 16px;
+  margin-left: 1px;
+}
+
+.varispeed__chip:hover,
+.varispeed__caret:hover {
+  background: var(--varispeed-off-hover-bg);
+}
+
+.varispeed__chip:active,
+.varispeed__caret:active {
+  background: var(--varispeed-off-pressed-bg);
+}
+
 .varispeed[data-varispeed-active] .varispeed__chip {
-  color: var(--accent, #4a5fd6);
+  background: var(--varispeed-on-bg);
+  color: var(--varispeed-on-text);
+}
+
+.varispeed[data-varispeed-active] .varispeed__chip:hover {
+  background: var(--varispeed-on-hover-bg);
+}
+
+.varispeed__chip:focus-visible,
+.varispeed__caret:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: -2px;
 }
 
 .context-menu.varispeed__menu {
@@ -58,6 +107,6 @@
 .varispeed__preset:hover { background: var(--dock-bg, #f8f8f9); }
 .varispeed__preset[aria-pressed="true"] {
   background: var(--field-selected, #e3e7fb);
-  border-color: var(--accent, #4a5fd6);
-  color: var(--accent, #4a5fd6);
+  border-color: var(--varispeed-on-bg, #4a5fd6);
+  color: var(--varispeed-on-bg, #4a5fd6);
 }

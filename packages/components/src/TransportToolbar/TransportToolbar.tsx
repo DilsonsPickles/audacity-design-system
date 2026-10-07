@@ -40,9 +40,14 @@ export interface TransportToolbarProps {
   hiddenTools?: ReadonlyArray<string>;
   /** A row of the cog's popover was pressed: show or hide that tool */
   onToggleToolVisibility?: (id: string) => void;
-  /** Playback speed, 1 = as recorded (the Varispeed chip, 2026-10-07) */
+  /** The remembered varispeed, what the chip reads (2026-10-07) */
   varispeed?: number;
+  /** Whether varispeed is on — the chip's toggle; the timecode tints while it is */
+  varispeedOn?: boolean;
+  /** A speed set in the chip's popover; the host stores it and switches on */
   onVarispeedChange?: (speed: number) => void;
+  /** The chip's press and the 1× preset */
+  onVarispeedToggle?: (on: boolean) => void;
 
   // Playback
   isPlaying: boolean;
@@ -213,7 +218,7 @@ function SplitRecordButton({
 export function TransportToolbar({
   activeMenuItem, workspace,
   hiddenTools = [], onToggleToolVisibility,
-  varispeed = 1, onVarispeedChange,
+  varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedToggle,
   isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
@@ -430,8 +435,8 @@ export function TransportToolbar({
               onClick={handleToggleLoop}
             />
             )}
-            {show('varispeed') && onVarispeedChange && (
-              <VarispeedControl speed={varispeed} onChange={onVarispeedChange} />
+            {show('varispeed') && onVarispeedChange && onVarispeedToggle && (
+              <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onEnabledChange={onVarispeedToggle} />
             )}
           </ToolbarButtonGroup>
 
@@ -593,6 +598,7 @@ export function TransportToolbar({
               format={timeCodeFormat}
               onChange={onTimeCodeChange}
               onFormatChange={onTimeCodeFormatChange}
+              accent={varispeedOn}
             />
           </ToolbarButtonGroup>
           )}

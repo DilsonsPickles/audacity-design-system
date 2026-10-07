@@ -80,6 +80,12 @@ export interface TimeCodeProps {
    * Optional className for custom styling
    */
   className?: string;
+  /**
+   * Tint the display in the toolbar's "on" colour — the transport is
+   * running at a varispeed (2026-10-07), Logic's orange LCD: a speed
+   * left on must be seen where the time is read, not only on its chip
+   */
+  accent?: boolean;
 }
 
 interface TimeCodeSegment {
@@ -106,6 +112,7 @@ export function TimeCode({
   disabled = false,
   variant = 'dark',
   className = '',
+  accent = false,
 }: TimeCodeProps) {
   const { theme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
@@ -358,13 +365,13 @@ export function TimeCode({
     // Dark-variant chip background is theme-aware: #212433 in the light app
     // theme (unchanged) and #171F25 in dark. The light variant (label editor)
     // stays white.
-    '--timecode-bg': variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
+    '--timecode-bg': accent ? theme.background.control.button.primary.idle : variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
     '--timecode-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
-    '--timecode-hover': variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
+    '--timecode-hover': accent ? theme.background.control.button.primary.hover : variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
     '--timecode-border': variant === 'light' ? '#D4D5D9' : 'transparent',
-    '--timecode-unit-bg': variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
+    '--timecode-unit-bg': accent ? theme.background.control.button.primary.idle : variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
     '--timecode-unit-text': variant === 'light' ? theme.foreground.text.primary : '#c5c6cd',
-    '--timecode-unit-hover-bg': variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
+    '--timecode-unit-hover-bg': accent ? theme.background.control.button.primary.hover : variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
     '--timecode-unit-hover-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
   } as React.CSSProperties;
 
@@ -405,6 +412,7 @@ export function TimeCode({
       ref={containerRef}
       className={`timecode timecode--${variant} ${disabled ? 'timecode--disabled' : ''} ${className}`}
       style={style}
+      data-accent={accent ? 'true' : undefined}
       role="group"
       aria-label="Time code"
       tabIndex={0}

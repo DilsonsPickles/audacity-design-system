@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { effectiveTrackMuted } from '../utils/trackFolders';
 import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audio';
+import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX } from '@audacity-ui/components';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { RecordingManager } from '../utils/RecordingManager';
 
@@ -50,9 +51,16 @@ export interface UsePlaybackControlsReturn {
    *  playback off returns the playhead here (Audacity behavior). */
   playbackStartTime: number | null;
   setPlaybackStartTime: React.Dispatch<React.SetStateAction<number | null>>;
-  /** Varispeed (2026-10-07): playback speed, pitch following; 1 = as recorded */
+  /** Varispeed (2026-10-07): the remembered playback speed, pitch
+   *  following — the chip reads it and switches on to it */
   varispeed: number;
+  /** Whether varispeed is on; off, the transport runs at 1× whatever
+   *  `varispeed` remembers (the chip toggle, 2026-10-07) */
+  varispeedOn: boolean;
+  /** Store a speed AND switch varispeed on (the popover's slider and presets) */
   setVarispeed: (speed: number) => void;
+  /** Switch varispeed on or off, keeping the remembered speed */
+  setVarispeedOn: (on: boolean) => void;
 }
 
 /**
@@ -85,11 +93,22 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // on the canvas; toggling playback off (Space / play button) returns the
   // playhead here and clears it.
   const [playbackStartTime, setPlaybackStartTime] = useState<number | null>(null);
-  const [varispeed, setVarispeedState] = useState(1);
-  const setVarispeed = useCallback((speed: number) => {
-    audioManagerRef.current.setVarispeed(speed);
-    setVarispeedState(audioManagerRef.current.getVarispeed());
+  // Varispeed is two pieces of state — the remembered speed and the
+  // switch — and the engine hears their product: the speed while on, 1×
+  // while off. The chip toggles the switch; the popover sets the speed
+  // (and switches on). A speed set while off is not lost on the way.
+  const [varispeed, setVarispeedState] = useState(VARISPEED_DEFAULT_SPEED);
+  const [varispeedOn, setVarispeedOnState] = useState(false);
+  const varispeedRef = useRef(varispeed);
+  useEffect(() => { varispeedRef.current = varispeed; }, [varispeed]);
+  const applyVarispeed = useCallback((speed: number, on: boolean) => {
+    audioManagerRef.current.setVarispeed(on ? speed : 1);
+    setVarispeedOnState(on);
+    if (on) setVarispeedState(audioManagerRef.current.getVarispeed());
+    else setVarispeedState(Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, speed)));
   }, []);
+  const setVarispeed = useCallback((speed: number) => applyVarispeed(speed, true), [applyVarispeed]);
+  const setVarispeedOn = useCallback((on: boolean) => applyVarispeed(varispeedRef.current, on), [applyVarispeed]);
 
   // Ref-mirror (see CLAUDE.md): the playback-complete callback below is
   // registered once in the init effect but must read the live time
@@ -386,7 +405,9 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     masterMeterLevel,
     playbackStartTime,
     varispeed,
+    varispeedOn,
     setVarispeed,
+    setVarispeedOn,
     setPlaybackStartTime,
   };
 }
