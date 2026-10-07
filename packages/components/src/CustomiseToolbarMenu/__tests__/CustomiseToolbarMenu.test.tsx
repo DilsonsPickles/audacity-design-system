@@ -33,6 +33,25 @@ describe('CustomiseToolbarMenu — the cog\'s popover (2026-10-07)', () => {
     expect(document.body.querySelector('.customise-toolbar__triangle')).toBeTruthy();
   });
 
+  it('Escape closes it, and so does a press outside', async () => {
+    vi.useFakeTimers();
+    try {
+      const onClose = vi.fn();
+      render(
+        <ThemeProvider>
+          <CustomiseToolbarMenu isOpen onClose={onClose} anchor={{ left: 900, right: 928, bottom: 100 }} hiddenTools={[]} onToggleTool={vi.fn()} />
+        </ThemeProvider>,
+      );
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(1); // the outside-click listener arms after a tick
+      fireEvent.mouseDown(document.body);
+      expect(onClose).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('closed, nothing is rendered', () => {
     render(
       <ThemeProvider>

@@ -242,6 +242,11 @@ export function TransportToolbar({
   const [customiseAnchor, setCustomiseAnchor] = React.useState<{ left: number; right: number; bottom: number } | null>(null);
   const hiddenSet = React.useMemo(() => new Set(hiddenTools), [hiddenTools]);
   const show = (id: string) => !hiddenSet.has(id);
+  // STABLE: the toolbar re-renders with every meter tick, and a fresh
+  // onClose each render made ContextMenu tear down and re-add its
+  // outside-click listener (after a timeout) on every one of them —
+  // clicks fell in the gaps
+  const closeCustomise = React.useCallback(() => setCustomiseOpen(false), []);
   // Uncontrolled fallback so the menu still works if the consumer hasn't
   // wired up `meterOrientation` / `onMeterOrientationChange` yet.
   const [internalOrientation, setInternalOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
@@ -305,7 +310,7 @@ export function TransportToolbar({
       </span>
       <CustomiseToolbarMenu
         isOpen={customiseOpen}
-        onClose={() => setCustomiseOpen(false)}
+        onClose={closeCustomise}
         anchor={customiseAnchor}
         hiddenTools={hiddenTools}
         onToggleTool={(id) => onToggleToolVisibility?.(id)}

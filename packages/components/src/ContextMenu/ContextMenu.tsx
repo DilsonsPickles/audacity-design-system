@@ -124,6 +124,23 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!menuRef.current) return;
 
+      // Escape closes ANY open menu — before the item walk below, which
+      // a menu without direct menuitem children (the Customise toolbar
+      // popover's rows are nested checkboxes) would otherwise bail out
+      // of (2026-10-07)
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        onClose();
+        if (triggerElementRef.current) {
+          const trigger = triggerElementRef.current;
+          triggerElementRef.current = null;
+          setTimeout(() => trigger.focus(), 0);
+        }
+        return;
+      }
+
       // Only select direct children menu items, not nested submenu items
       // This ensures submenu navigation is isolated
       const items = Array.from(
