@@ -16,6 +16,7 @@ export type TransportToolbarContainerTransport = Pick<TransportToolbarProps,
   | 'envelopeMode' | 'spectrogramMode' | 'splitMode' | 'onToggleEnvelope' | 'onToggleSpectrogram' | 'onToggleSplit'
   | 'onZoomIn' | 'onZoomOut' | 'onZoomToSelection' | 'onZoomToFitProject' | 'onZoomToggle'
   | 'onShareClick' | 'onExportAudioClick' | 'onExportLoopRegionClick'
+  | 'varispeed' | 'onVarispeedChange'
 >;
 
 export type TransportToolbarContainerSnap = Pick<TransportToolbarProps,

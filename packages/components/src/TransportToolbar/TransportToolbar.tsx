@@ -10,6 +10,7 @@ import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { CustomiseToolbarMenu } from '../CustomiseToolbarMenu';
+import { VarispeedControl } from '../VarispeedControl';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { Checkbox } from '../Checkbox';
 import { MasterMeter } from '../MasterMeter';
@@ -39,6 +40,9 @@ export interface TransportToolbarProps {
   hiddenTools?: ReadonlyArray<string>;
   /** A row of the cog's popover was pressed: show or hide that tool */
   onToggleToolVisibility?: (id: string) => void;
+  /** Playback speed, 1 = as recorded (the Varispeed chip, 2026-10-07) */
+  varispeed?: number;
+  onVarispeedChange?: (speed: number) => void;
 
   // Playback
   isPlaying: boolean;
@@ -209,6 +213,7 @@ function SplitRecordButton({
 export function TransportToolbar({
   activeMenuItem, workspace,
   hiddenTools = [], onToggleToolVisibility,
+  varispeed = 1, onVarispeedChange,
   isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
@@ -424,6 +429,9 @@ export function TransportToolbar({
               active={loopRegionEnabled}
               onClick={handleToggleLoop}
             />
+            )}
+            {show('varispeed') && onVarispeedChange && (
+              <VarispeedControl speed={varispeed} onChange={onVarispeedChange} />
             )}
           </ToolbarButtonGroup>
 

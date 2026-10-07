@@ -45,6 +45,57 @@ export class AudioPlaybackManager {
   /** Mirrored copies of sources, for REVERSED clips (2026-10-07), by buffer key */
   private reversedBuffers = new Map<string, AudioBuffer>();
 
+  /**
+   * VARISPEED (2026-10-07): playback speed with the pitch following,
+   * tape-style — 1 = as recorded. Implemented as TEMPO: the transport's
+   * bpm is BASE_BPM × speed, so every scheduled start, stop and loop
+   * point (held in TICKS — see songToTicks) arrives speed× sooner, and
+   * every player's rate is its own × speed (a GrainPlayer also detunes
+   * by the matching cents, so its pitch follows like a Player's). The
+   * song position is read from ticks at BASE_BPM, never from
+   * Transport.seconds (which is wall-clock elapsed), so the playhead
+   * runs speed× faster and lands where the audio is.
+   */
+  private varispeed = 1;
+  private static readonly BASE_BPM = 120;
+  /** Each player's own rate and detune, before varispeed */
+  private playerBase = new WeakMap<Tone.Player | Tone.GrainPlayer, { rate: number; detune: number }>();
+
+  /** Song seconds → transport ticks at BASE_BPM: the tempo-independent
+   *  address of a moment, so a schedule made at one speed is right at
+   *  every other */
+  private songToTicks(seconds: number): number {
+    return Math.round(seconds * Tone.getTransport().PPQ * (AudioPlaybackManager.BASE_BPM / 60));
+  }
+  private ticksToSong(ticks: number): number {
+    return ticks / Tone.getTransport().PPQ / (AudioPlaybackManager.BASE_BPM / 60);
+  }
+  /** A moment as a Tone Time string in ticks ("480i") */
+  private atTicks(seconds: number): string {
+    return `${this.songToTicks(seconds)}i`;
+  }
+
+  getVarispeed(): number {
+    return this.varispeed;
+  }
+
+  /** Set the playback speed, 0.25–4; takes effect at once, mid-play too */
+  setVarispeed(speed: number): void {
+    const next = Math.max(0.25, Math.min(4, Number.isFinite(speed) && speed > 0 ? speed : 1));
+    this.varispeed = next;
+    Tone.getTransport().bpm.value = AudioPlaybackManager.BASE_BPM * next;
+    this.players.forEach((player) => this.applyVarispeed(player));
+  }
+
+  private applyVarispeed(player: Tone.Player | Tone.GrainPlayer): void {
+    const base = this.playerBase.get(player) ?? { rate: 1, detune: 0 };
+    player.playbackRate = base.rate * this.varispeed;
+    if (player instanceof Tone.GrainPlayer) {
+      // The pitch follows the speed, as a plain Player's does
+      player.detune = base.detune + 1200 * Math.log2(this.varispeed);
+    }
+  }
+
   /** The buffer a clip reads: the source, or — for a reversed clip —
    *  its mirror, built once per source and dropped when the source
    *  changes. The host keeps trimStart on the mirror, so offsets apply
@@ -270,7 +321,12 @@ export class AudioPlaybackManager {
     const stretch = typeof clip.stretchFactor === 'number' && clip.stretchFactor > 0 ? clip.stretchFactor : 1;
     const semitones = typeof clip.pitchSemitones === 'number' && Number.isFinite(clip.pitchSemitones) ? clip.pitchSemitones : 0;
     const destination = trackGain || Tone.getDestination();
-    if (stretch === 1 && semitones === 0) return new Tone.Player(toneBuffer).connect(destination);
+    if (stretch === 1 && semitones === 0) {
+      const player = new Tone.Player(toneBuffer).connect(destination);
+      this.playerBase.set(player, { rate: 1, detune: 0 });
+      this.applyVarispeed(player);
+      return player;
+    }
     const grain = new Tone.GrainPlayer({
       url: toneBuffer,
       grainSize: 0.1,
@@ -278,6 +334,8 @@ export class AudioPlaybackManager {
       playbackRate: 1 / stretch,
       detune: semitones * 100,
     });
+    this.playerBase.set(grain, { rate: 1 / stretch, detune: semitones * 100 });
+    this.applyVarispeed(grain);
     return grain.connect(destination);
   }
 
@@ -418,7 +476,7 @@ export class AudioPlaybackManager {
             // is required so split segments only play their own slice —
             // otherwise the player runs to the end of the source buffer
             // and you hear the whole original clip even after a split.
-            player.sync().start(clip.start, trimStart, clip.duration);
+            player.sync().start(this.atTicks(clip.start), trimStart, this.atTicks(clip.duration));
 
             this.players.set(String(clip.id), player);
           } else {
@@ -439,7 +497,7 @@ export class AudioPlaybackManager {
 
               // Sync player to transport
               // The .sync() mechanism automatically handles the Transport position offset
-              player.sync().start(timelineStart, bufferOffset, segment.duration);
+              player.sync().start(this.atTicks(timelineStart), bufferOffset, this.atTicks(segment.duration));
 
               this.players.set(`${clip.id}_segment_${segmentIndex}`, player);
             });
@@ -481,7 +539,7 @@ export class AudioPlaybackManager {
           const velocity = note.velocity / 127;
           const eventId = Tone.getTransport().schedule((time: number) => {
             synth.triggerAttackRelease(freq, note.duration, time, velocity);
-          }, absTime);
+          }, this.atTicks(absTime));
           this.scheduledMidiEvents.push(eventId);
         });
       });
@@ -559,13 +617,13 @@ export class AudioPlaybackManager {
 
     // If start time is provided, seek to that position first
     if (startTime !== undefined) {
-      Tone.getTransport().seconds = startTime;
+      Tone.getTransport().ticks = this.songToTicks(startTime);
       this.playbackPosition = startTime;
     }
 
-    // Start Tone.js transport from the current position
-    // Using start('+0', startTime) tells Transport to start immediately at the specified time
-    Tone.getTransport().start('+0', startTime);
+    // Start Tone.js transport from the current position (set above in
+    // ticks, so it is right at any varispeed)
+    Tone.getTransport().start('+0');
 
     // Start animation loop for position updates
     this.startPositionTracking();
@@ -645,7 +703,7 @@ export class AudioPlaybackManager {
    */
   seek(timeInSeconds: number): void {
     this.playbackPosition = timeInSeconds;
-    Tone.getTransport().seconds = timeInSeconds;
+    Tone.getTransport().ticks = this.songToTicks(timeInSeconds);
 
     // Update paused position if we're paused
     if (this.isPaused) {
@@ -713,7 +771,7 @@ export class AudioPlaybackManager {
    * Get current playback position in seconds
    */
   getCurrentPosition(): number {
-    return Tone.getTransport().seconds;
+    return this.ticksToSong(Tone.getTransport().ticks);
   }
 
   /**
@@ -744,7 +802,7 @@ export class AudioPlaybackManager {
     const updatePosition = () => {
       if (!this.isPlaying) return;
 
-      const currentTime = Tone.getTransport().seconds;
+      const currentTime = this.ticksToSong(Tone.getTransport().ticks);
       this.playbackPosition = currentTime;
 
       // Selection playback: stop at the end bound (loop region wins if the
@@ -851,8 +909,9 @@ export class AudioPlaybackManager {
     const transport = Tone.getTransport();
 
     if (start !== null && end !== null) {
-      transport.loopStart = start;
-      transport.loopEnd = end;
+      // In ticks, so the loop points hold at any varispeed
+      transport.loopStart = this.atTicks(start);
+      transport.loopEnd = this.atTicks(end);
     }
   }
 

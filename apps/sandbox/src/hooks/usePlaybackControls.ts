@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { effectiveTrackMuted } from '../utils/trackFolders';
 import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audio';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
@@ -50,6 +50,9 @@ export interface UsePlaybackControlsReturn {
    *  playback off returns the playhead here (Audacity behavior). */
   playbackStartTime: number | null;
   setPlaybackStartTime: React.Dispatch<React.SetStateAction<number | null>>;
+  /** Varispeed (2026-10-07): playback speed, pitch following; 1 = as recorded */
+  varispeed: number;
+  setVarispeed: (speed: number) => void;
 }
 
 /**
@@ -82,6 +85,11 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // on the canvas; toggling playback off (Space / play button) returns the
   // playhead here and clears it.
   const [playbackStartTime, setPlaybackStartTime] = useState<number | null>(null);
+  const [varispeed, setVarispeedState] = useState(1);
+  const setVarispeed = useCallback((speed: number) => {
+    audioManagerRef.current.setVarispeed(speed);
+    setVarispeedState(audioManagerRef.current.getVarispeed());
+  }, []);
 
   // Ref-mirror (see CLAUDE.md): the playback-complete callback below is
   // registered once in the init effect but must read the live time
@@ -377,6 +385,8 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     setTrackMeterLevels,
     masterMeterLevel,
     playbackStartTime,
+    varispeed,
+    setVarispeed,
     setPlaybackStartTime,
   };
 }

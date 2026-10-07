@@ -39,6 +39,7 @@ export const CUSTOMISE_TOOLBAR_ENTRIES: ReadonlyArray<CustomiseToolbarEntry> = [
   tool('step-back', 'Step backwards', ''),
   tool('step-forward', 'Step forwards', ''),
   tool('loop', 'Loop', ''),
+  tool('varispeed', 'Varispeed', '\uEF55'),
   DIVIDER,
   tool('automation', 'Automation', ''),
   DIVIDER,

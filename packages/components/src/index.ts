@@ -40,6 +40,7 @@ export * from './TrackControlPanel';
 export * from './TransportButton';
 export * from './ContextMenu';
 export * from './CustomiseToolbarMenu';
+export * from './VarispeedControl';
 export * from './ContextMenuItem';
 export * from './AddTrackFlyout';
 export * from './Flyout';

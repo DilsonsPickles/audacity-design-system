@@ -766,6 +766,8 @@ function CanvasDemoContent() {
     transport: {
       activeMenuItem,
       workspace,
+      varispeed: playback.varispeed,
+      onVarispeedChange: playback.setVarispeed,
       isPlaying,
       isRecording: state.isRecording,
       onPlay: handlePlay,

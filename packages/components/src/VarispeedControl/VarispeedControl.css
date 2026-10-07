@@ -1,0 +1,63 @@
+/* VarispeedControl — a speed chip in the transport group; the popover
+   under it holds the slider and the presets */
+.varispeed {
+  display: inline-flex;
+}
+
+.varispeed__chip {
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+}
+
+.varispeed[data-varispeed-active] .varispeed__chip {
+  color: var(--accent, #4a5fd6);
+}
+
+.context-menu.varispeed__menu {
+  width: 220px;
+  min-width: 220px;
+  padding: 10px 12px 12px;
+  border-radius: 4px;
+}
+
+.varispeed__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font: 12px/16px Inter, system-ui, sans-serif;
+  color: var(--context-menu-text, #14151a);
+}
+
+.varispeed__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.varispeed__title { font-weight: 600; }
+.varispeed__value { font-variant-numeric: tabular-nums; opacity: 0.8; }
+
+.varispeed__slider { padding: 2px 0; }
+
+.varispeed__presets {
+  display: flex;
+  gap: 4px;
+}
+
+.varispeed__preset {
+  flex: 1;
+  height: 24px;
+  border: 1px solid var(--field-border, #d0d2d6);
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.varispeed__preset:hover { background: var(--dock-bg, #f8f8f9); }
+.varispeed__preset[aria-pressed="true"] {
+  background: var(--field-selected, #e3e7fb);
+  border-color: var(--accent, #4a5fd6);
+  color: var(--accent, #4a5fd6);
+}
