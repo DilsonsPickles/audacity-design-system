@@ -14,8 +14,13 @@
  * and every player's rate). A WHEEL on the value half steps the speed
  * ("what if we scroll on the button?", the same day): one notch is a
  * SEMITONE of pitch, up = faster, on the semitone grid — so twelve
- * notches from ½× land exactly on 1× — and it switches varispeed on,
- * as the slider does. Session state, not a preference.
+ * notches from ½× land exactly on 1× — and it turns the DIAL ONLY: it
+ * never switches varispeed on ("you think scrolling should turn it
+ * on?", the same day — a wheel is not deliberate the way opening the
+ * popover is: trackpad inertia or a scroll meant for the canvas would
+ * silently engage a playback mode, the trap the toggle closes); the dim
+ * chip reads where the dial went, and the press plays it. Session
+ * state, not a preference.
  */
 import React from 'react';
 import { ContextMenu } from '../ContextMenu';
@@ -56,22 +61,25 @@ export interface VarispeedControlProps {
   speed: number;
   /** Whether varispeed is on; off, playback runs at 1× whatever `speed` is */
   enabled: boolean;
-  /** A speed set in the popover (slider, preset) or by the wheel; the
-   *  host stores it and switches varispeed on */
+  /** A speed set in the popover (slider, preset); the host stores it
+   *  and switches varispeed on */
   onChange: (speed: number) => void;
+  /** A speed turned to by the wheel; the host stores it and leaves the
+   *  switch where it is (live while on, remembered while off) */
+  onDial: (speed: number) => void;
   /** The chip's press (toggle) */
   onEnabledChange: (enabled: boolean) => void;
 }
 
-export function VarispeedControl({ speed, enabled, onChange, onEnabledChange }: VarispeedControlProps) {
+export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledChange }: VarispeedControlProps) {
   const { theme } = useTheme();
   const chipRef = React.useRef<HTMLButtonElement>(null);
   const caretRef = React.useRef<HTMLButtonElement>(null);
   // Ref-mirror (see CLAUDE.md): the wheel listener is native — React's
   // onWheel is passive and cannot preventDefault — bound once, reading
   // the live speed and handler through refs.
-  const liveRef = React.useRef({ speed, onChange });
-  React.useEffect(() => { liveRef.current = { speed, onChange }; }, [speed, onChange]);
+  const liveRef = React.useRef({ speed, onDial });
+  React.useEffect(() => { liveRef.current = { speed, onDial }; }, [speed, onDial]);
   React.useEffect(() => {
     const chip = chipRef.current;
     if (!chip) return;
@@ -84,7 +92,7 @@ export function VarispeedControl({ speed, enabled, onChange, onEnabledChange }: 
       if (notches === 0) return;
       travel -= notches * WHEEL_NOTCH_PX;
       // Wheel up (negative deltaY) = faster
-      liveRef.current.onChange(stepVarispeed(liveRef.current.speed, -notches));
+      liveRef.current.onDial(stepVarispeed(liveRef.current.speed, -notches));
     };
     chip.addEventListener('wheel', onWheel, { passive: false });
     return () => chip.removeEventListener('wheel', onWheel);

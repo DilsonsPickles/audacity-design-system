@@ -769,6 +769,7 @@ function CanvasDemoContent() {
       varispeed: playback.varispeed,
       varispeedOn: playback.varispeedOn,
       onVarispeedChange: playback.setVarispeed,
+      onVarispeedDial: playback.dialVarispeed,
       onVarispeedToggle: playback.setVarispeedOn,
       isPlaying,
       isRecording: state.isRecording,

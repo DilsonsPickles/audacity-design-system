@@ -59,6 +59,9 @@ export interface UsePlaybackControlsReturn {
   varispeedOn: boolean;
   /** Store a speed AND switch varispeed on (the popover's slider and presets) */
   setVarispeed: (speed: number) => void;
+  /** Store a speed and leave the switch where it is (the chip's wheel):
+   *  live while on, remembered while off */
+  dialVarispeed: (speed: number) => void;
   /** Switch varispeed on or off, keeping the remembered speed */
   setVarispeedOn: (on: boolean) => void;
 }
@@ -108,6 +111,9 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     else setVarispeedState(Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, speed)));
   }, []);
   const setVarispeed = useCallback((speed: number) => applyVarispeed(speed, true), [applyVarispeed]);
+  const varispeedOnRef = useRef(varispeedOn);
+  useEffect(() => { varispeedOnRef.current = varispeedOn; }, [varispeedOn]);
+  const dialVarispeed = useCallback((speed: number) => applyVarispeed(speed, varispeedOnRef.current), [applyVarispeed]);
   const setVarispeedOn = useCallback((on: boolean) => applyVarispeed(varispeedRef.current, on), [applyVarispeed]);
 
   // Ref-mirror (see CLAUDE.md): the playback-complete callback below is
@@ -407,6 +413,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     varispeed,
     varispeedOn,
     setVarispeed,
+    dialVarispeed,
     setVarispeedOn,
     setPlaybackStartTime,
   };

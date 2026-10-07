@@ -8,15 +8,16 @@ afterEach(cleanup);
 
 function mount(props: Partial<React.ComponentProps<typeof VarispeedControl>> = {}) {
   const onChange = vi.fn();
+  const onDial = vi.fn();
   const onEnabledChange = vi.fn();
   const utils = render(
     <ThemeProvider>
-      <VarispeedControl speed={0.5} enabled={false} onChange={onChange} onEnabledChange={onEnabledChange} {...props} />
+      <VarispeedControl speed={0.5} enabled={false} onChange={onChange} onDial={onDial} onEnabledChange={onEnabledChange} {...props} />
     </ThemeProvider>,
   );
   const chip = utils.container.querySelector('.varispeed__chip') as HTMLButtonElement;
   const caret = utils.container.querySelector('.varispeed__caret') as HTMLButtonElement;
-  return { ...utils, chip, caret, onChange, onEnabledChange };
+  return { ...utils, chip, caret, onChange, onDial, onEnabledChange };
 }
 
 describe('VarispeedControl (2026-10-07)', () => {
@@ -78,21 +79,22 @@ describe('VarispeedControl (2026-10-07)', () => {
     expect(panel.querySelector('[data-varispeed-preset="1"]')?.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('a wheel notch on the chip steps the speed a semitone — up = faster — on the semitone grid, and reports it as a set speed', () => {
+  it('a wheel notch on the chip steps the speed a semitone — up = faster — on the semitone grid, as a DIAL turn: never a set speed, never the switch', () => {
     expect(stepVarispeed(0.5, 12)).toBeCloseTo(1, 9);
     expect(stepVarispeed(1, -12)).toBeCloseTo(0.5, 9);
     expect(stepVarispeed(0.53, 1)).toBeCloseTo(2 ** (-10 / 12), 9); // 0.53 ≈ a semitone over ½× (−11), so one up is −10
     expect(stepVarispeed(4, 1)).toBe(4);
     expect(stepVarispeed(0.25, -1)).toBe(0.25);
-    const { chip, onChange, onEnabledChange } = mount({ speed: 0.5, enabled: false });
+    const { chip, onChange, onDial, onEnabledChange } = mount({ speed: 0.5, enabled: false });
     fireEvent.wheel(chip, { deltaY: -100 });
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (4 / 12), 9)); // 100px = four 24px notches
+    expect(onDial).toHaveBeenCalledTimes(1);
+    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (4 / 12), 9)); // 100px = four 24px notches
     fireEvent.wheel(chip, { deltaY: 10 }); // −100 left −4 of travel; 10 brings it to 6
-    expect(onChange).toHaveBeenCalledTimes(1); // under a notch: accumulates
+    expect(onDial).toHaveBeenCalledTimes(1); // under a notch: accumulates
     fireEvent.wheel(chip, { deltaY: 18 }); // 24 = one notch down
-    expect(onChange).toHaveBeenCalledTimes(2);
-    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (-1 / 12), 9));
-    expect(onEnabledChange).not.toHaveBeenCalled(); // switching on is the host's rule for a set speed
+    expect(onDial).toHaveBeenCalledTimes(2);
+    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (-1 / 12), 9));
+    expect(onChange).not.toHaveBeenCalled(); // the dial is not a set speed — it does not switch on
+    expect(onEnabledChange).not.toHaveBeenCalled();
   });
 });

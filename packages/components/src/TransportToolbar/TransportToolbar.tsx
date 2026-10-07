@@ -46,6 +46,8 @@ export interface TransportToolbarProps {
   varispeedOn?: boolean;
   /** A speed set in the chip's popover; the host stores it and switches on */
   onVarispeedChange?: (speed: number) => void;
+  /** A speed turned to by the wheel on the chip; stored, the switch untouched */
+  onVarispeedDial?: (speed: number) => void;
   /** The chip's press and the 1× preset */
   onVarispeedToggle?: (on: boolean) => void;
 
@@ -218,7 +220,7 @@ function SplitRecordButton({
 export function TransportToolbar({
   activeMenuItem, workspace,
   hiddenTools = [], onToggleToolVisibility,
-  varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedToggle,
+  varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedDial, onVarispeedToggle,
   isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
@@ -436,7 +438,7 @@ export function TransportToolbar({
             />
             )}
             {show('varispeed') && onVarispeedChange && onVarispeedToggle && (
-              <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onEnabledChange={onVarispeedToggle} />
+              <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} onEnabledChange={onVarispeedToggle} />
             )}
           </ToolbarButtonGroup>
 
