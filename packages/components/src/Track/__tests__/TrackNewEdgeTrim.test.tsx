@@ -189,12 +189,14 @@ describe('trimming an unselected clip by its edge', () => {
     };
     // Left edge: the zone ends EXACTLY where the fade handle's box
     // begins (6px in — the trim box's inside reach too), and the box
-    // runs to 36
+    // runs to 30 (at rest it is clipped from 0..30 to the 6px line —
+    // the body rests 10px in since 2026-10-07, so that with a fade the
+    // box starts on the fade's boundary)
     expect(zoneLeft.right).toBe(fade('in').left);
-    expect(fade('in').right - fade('in').left).toBe(30);
+    expect(fade('in').right - fade('in').left).toBe(24);
     // Right edge: the fade handle's box ends where the zone begins
     expect(fade('out').right).toBe(zoneRight.left);
-    expect(fade('out').right - fade('out').left).toBe(30);
+    expect(fade('out').right - fade('out').left).toBe(24);
     // …and the fade controls are stacked above the zones regardless
     expect(fade('in').z).toBeGreaterThan(zoneZ);
   });

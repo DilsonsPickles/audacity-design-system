@@ -586,12 +586,13 @@ describe('clip fades', () => {
       return parseInt(handle().style.left, 10) + parseInt(glyph.style.left, 10) + 18 - clipLeft;
     };
     const curve = () => container.querySelector('[data-fade-curve="in"]') as HTMLElement | null;
-    // At rest the body sits 16..26px into the clip (2026-10-06); press on its middle
-    expect(bodyCentre()).toBe(21);
-    const pressX = 21;
+    // At rest the body sits 10..20px into the clip (2026-10-07, so that
+    // with a fade the box starts ON the boundary); press on its middle
+    expect(bodyCentre()).toBe(15);
+    const pressX = 15;
     act(() => { fireEvent.pointerDown(handle(), { button: 0, clientX: pressX, clientY: 30, pointerId: 11 }); });
-    // At rest the box is clipped to 30 by the trim box's reach
-    expect(handle().style.width).toBe('30px');
+    // At rest the box (0..30 around the body) is clipped to 6..30 by the trim box's reach
+    expect(handle().style.width).toBe('24px');
     // Out by 100px: a 1s fade, and the handle has come along under the pointer
     act(() => { fireEvent.pointerMove(handle(), { clientX: pressX + 100, clientY: 30, pointerId: 11 }); });
     expect(curve()).toBeTruthy();
@@ -606,7 +607,7 @@ describe('clip fades', () => {
     // Back where it was pressed: the fade is gone — no overshoot needed
     act(() => { fireEvent.pointerMove(handle(), { clientX: pressX, clientY: 30, pointerId: 11 }); });
     expect(curve()).toBeNull();
-    expect(bodyCentre()).toBe(21);
+    expect(bodyCentre()).toBe(15);
     act(() => { fireEvent.pointerUp(handle(), { clientX: pressX, clientY: 30, pointerId: 11 }); });
   });
 
@@ -1071,21 +1072,22 @@ describe('clip fades', () => {
         height: parseInt(el.style.height, 10),
       };
     };
-    // The box is 30 × 32, centred on the body, from the trim box's 6px
-    // inside reach to 36 (Clip.css: trim 30 wide at −24) — and that
-    // shape wherever the handle goes (2026-10-06)
-    expect(box('in').width).toBe(30);
+    // The box is 30 × 32 centred on the body, which rests 10px in (so
+    // that with a fade the box starts ON the boundary, 2026-10-07): at
+    // rest it would run 0..30 and is clipped to the trim box's 6px
+    // inside reach (Clip.css: trim 30 wide at −24) — 6..30, 24 wide
+    expect(box('in').width).toBe(24);
     expect(box('in').height).toBe(32);
     expect(box('in').left - clipLeft).toBe(6);
-    expect(clipRight - (box('out').left + 30)).toBe(6);
-    // The body is 16px in from the edge — the middle of the box: the
-    // glyph is 36 wide with the body at [13, 23], centred on the body,
-    // so it overflows the 30px box by 3 each side
+    expect(clipRight - (box('out').left + 24)).toBe(6);
+    // The body is 10px in from the edge: the glyph is 36 wide with the
+    // body at [13, 23], centred on the body, so it overflows the
+    // clipped box — 9 on the clipped side, 3 on the other
     const glyphLeft = (side: 'in' | 'out') => parseInt((container.querySelector(`[data-fade-handle="${side}"] .track-fade-handle__glyph`) as HTMLElement).style.left, 10);
-    expect(glyphLeft('in')).toBe(-3);
-    expect(box('in').left + glyphLeft('in') + 13 - clipLeft).toBe(16);
+    expect(glyphLeft('in')).toBe(-9);
+    expect(box('in').left + glyphLeft('in') + 13 - clipLeft).toBe(10);
     expect(glyphLeft('out')).toBe(-3);
-    expect(clipRight - (box('out').left + glyphLeft('out') + 23)).toBe(16);
+    expect(clipRight - (box('out').left + glyphLeft('out') + 23)).toBe(10);
     // The row is the trim box's: top 20 (the header's bottom), 32 tall,
     // so the body's middle (16px down the box) is on the trim and
     // stretch icons' middle, 36px below the clip's top

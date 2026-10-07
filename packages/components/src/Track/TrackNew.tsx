@@ -68,10 +68,11 @@ const FADE_HANDLE_BOX = { width: 36, height: 32 } as const;
  *  length — never filling out to 36 as it comes away from the edge
  *  (user decisions 2026-10-06, "can we try it not scaling up?" and
  *  "can the icon stay in the centre?", replacing 2026-09-30's
- *  fill-out). At rest the box runs from the 6px line (what owns the
- *  edge) to 36, which puts the body's centre at 21 — 16px in. The
- *  glyph svg stays FADE_HANDLE_BOX wide, centred on the body, and
- *  overflows the box 3px each side harmlessly. */
+ *  fill-out). With a fade the box runs from the fade's BOUNDARY — the
+ *  guideline's line — 30px in, the body's centre 15 past it; at rest
+ *  it is clipped to the 6px line (what owns the edge). The glyph svg
+ *  stays FADE_HANDLE_BOX wide, centred on the body, and overflows the
+ *  box 3px each side harmlessly. */
 const FADE_HIT_REACH = 15;
 const FADE_GLYPH_BODY = {
   x: (FADE_HANDLE_BOX.width - 10) / 2,
@@ -84,13 +85,18 @@ const FADE_GLYPH_BODY = {
  *  it was 12 — Clip.css: 30 wide at −24), so it is one line whatever
  *  the clip's state. */
 const FADE_HANDLE_BOX_INSET: number = EDGE_HIT_INSIDE_PX;
-/** Where the fade handle's BODY rests, in from the clip's edge: 16px
- *  since 2026-10-06 — the 6px line plus half the 30px box, so the box
- *  is centred on the body and still starts where the edge's owner
- *  ends (it was the spec's 13, the Figma "hit zones" frame's 12 plus
- *  the outline's pixel, from 2026-09-30). The same distance past a
- *  fade's boundary once there is a fade. */
-const FADE_HANDLE_BODY_INSET = FADE_HANDLE_BOX_INSET + FADE_HIT_REACH - 5;
+/** Where the fade handle's BODY rests, in from the clip's edge — and
+ *  the same distance past a fade's boundary once there is a fade: 10px
+ *  since 2026-10-07, half the 30px box less half the body, so the HIT
+ *  BOX's near edge sits EXACTLY ON THE FADE'S BOUNDARY, where the
+ *  dashed guideline is ("make the dashed line align with the edge of
+ *  the hit area" — the box had started 6px inside the line). At rest
+ *  (no fade) the box would run 0..30 and is clipped to the 6px line
+ *  by the edge's owner, so it is 6..30 there with the body at 10..20.
+ *  (It was 16 from 2026-10-06 — the 6px line plus half the box, the
+ *  box centred and starting at the line — and the spec's 13 before
+ *  that, the Figma "hit zones" frame's 12 plus the outline's pixel.) */
+const FADE_HANDLE_BODY_INSET = FADE_HIT_REACH - 5;
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
   const clipId = React.useId();
   const { x, y, size } = FADE_GLYPH_BODY;
@@ -2268,12 +2274,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (isMidiTrack || !onClipFadeChange) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
-    // The handle's BODY rests 13px inside the clip's edge (spec
-    // 2026-09-30). Its box is centred on it and clipped at the edge's
-    // owner's reach (6px), so at rest the box is the 30px from 6 to
-    // 36; the row is the trim box's (top = the header's bottom), so the
-    // boxes at an edge share one row and the body's middle is on the
-    // trim and stretch icons' middle.
+    // The handle's BODY rests FADE_HANDLE_BODY_INSET inside the clip's
+    // edge (10px since 2026-10-07; see the constant). Its box is centred
+    // on it and clipped at the edge's owner's reach (6px), so at rest
+    // the box is 6 to 30; the row is the trim box's (top = the header's
+    // bottom), so the boxes at an edge share one row and the body's
+    // middle is on the trim and stretch icons' middle.
     const FADE_HANDLE_EDGE_INSET = FADE_HANDLE_BODY_INSET;
     const FADE_HANDLE_TOP = 0;
     const HALF_BOX = FADE_HANDLE_BOX.width / 2;
@@ -2330,12 +2336,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const bodyLeft = Math.round(Math.max(FADE_HANDLE_EDGE_INSET, Math.min(clipWidth - FADE_HANDLE_EDGE_INSET - size, rawBodyLeft)));
         const bodyCentre = bodyLeft + HALF_BODY;
         // The HIT BOX: 30 wide, FADE_HIT_REACH either side of the body,
-        // the body in its middle — at rest the 30px from the 6px line
-        // (what owns the edge: the selected clip's trim box or the
-        // unselected clip's edge zone, both reach 6 in) to 36, and the
-        // same shape as the handle comes away from the edge
-        // (2026-10-06; it filled out to the trim box's 36 before).
-        // Still clamped to the 6px lines.
+        // the body in its middle — with a fade it starts ON the fade's
+        // boundary (the guideline's line, 2026-10-07) and keeps that
+        // shape as the handle comes away from the edge (2026-10-06; it
+        // filled out to the trim box's 36 before). Clamped to the 6px
+        // lines (what owns the edge: the selected clip's trim box or
+        // the unselected clip's edge zone, both reach 6 in), so at rest
+        // it is 6 to 30.
         const boxLeft = Math.max(FADE_HANDLE_BOX_INSET, bodyCentre - FADE_HIT_REACH);
         const boxRight = Math.min(clipWidth - FADE_HANDLE_BOX_INSET, bodyCentre + FADE_HIT_REACH);
         const left = xBase + boxLeft;
