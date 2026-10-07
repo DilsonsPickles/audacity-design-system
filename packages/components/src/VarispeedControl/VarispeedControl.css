@@ -26,7 +26,7 @@
 }
 
 .varispeed__chip {
-  min-width: 52px;
+  min-width: 58px;
   padding: 0 6px;
   font: 600 12px/28px Inter, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
@@ -86,7 +86,27 @@
 .varispeed__title { font-weight: 600; }
 .varispeed__value { font-variant-numeric: tabular-nums; opacity: 0.8; }
 
-.varispeed__slider { padding: 2px 0; }
+.varispeed__slider {
+  position: relative;
+  padding: 2px 0;
+}
+
+/* The 1× mark on the track (AU3's slider is linear, 0.01–3, so 1× sits a
+   third of the way along), placed by the Slider thumb's own formula
+   (--varispeed-unity, set in the TSX) so it sits under the thumb at 1× */
+.varispeed__unity {
+  position: absolute;
+  top: 50%;
+  left: var(--varispeed-unity);
+  width: 1px;
+  height: 10px;
+  margin-left: -0.5px;
+  transform: translateY(-50%);
+  background: var(--context-menu-text, #14151a);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
 
 .varispeed__presets {
   display: flex;

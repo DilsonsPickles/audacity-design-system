@@ -133,11 +133,18 @@ export function ProjectToolbar({
   // resize rather than measuring the toolbar so the breakpoints stay
   // intuitive ("the window is narrower than X") regardless of any
   // surrounding layout.
-  const [viewportWidth, setViewportWidth] = useState(
-    typeof window !== 'undefined' ? window.innerWidth : 1920,
-  );
+  //
+  // The initial state is the SSR default on the client too, NOT
+  // window.innerWidth: under hydration (Astro islands on the website)
+  // the first client render must produce the same tree the server did,
+  // and reading the real width during that render made narrow windows
+  // hydrate the compact variant against the server's full one — React
+  // #418/#423, and the whole island re-rendered from scratch. The real
+  // width lands one effect-tick later, which is invisible.
+  const [viewportWidth, setViewportWidth] = useState(1920);
   useEffect(() => {
     const onResize = () => setViewportWidth(window.innerWidth);
+    onResize();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);

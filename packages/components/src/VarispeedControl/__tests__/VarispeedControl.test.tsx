@@ -1,7 +1,10 @@
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { VarispeedControl, sliderToSpeed, speedToSlider, formatVarispeed, stepVarispeed, stepVarispeedFine } from '../VarispeedControl';
+import {
+  VarispeedControl, sliderToSpeed, speedToSlider, formatVarispeed, stepVarispeed, stepVarispeedFine,
+  VARISPEED_MIN, VARISPEED_MAX, VARISPEED_UNITY_FRACTION,
+} from '../VarispeedControl';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
 afterEach(cleanup);
@@ -21,19 +24,23 @@ function mount(props: Partial<React.ComponentProps<typeof VarispeedControl>> = {
 }
 
 describe('VarispeedControl (2026-10-07)', () => {
-  it('the slider is log-scaled: ¼× at 0, 1× at 50, 4× at 100, an octave per quarter', () => {
-    expect(sliderToSpeed(0)).toBeCloseTo(0.25, 6);
-    expect(sliderToSpeed(50)).toBeCloseTo(1, 6);
-    expect(sliderToSpeed(75)).toBeCloseTo(2, 6);
-    expect(sliderToSpeed(100)).toBeCloseTo(4, 6);
-    expect(speedToSlider(1)).toBe(50);
-    expect(speedToSlider(0.5)).toBe(25);
-    expect(formatVarispeed(1)).toBe('1.00×');
+  it("the slider is Audacity 3's: linear 0.01×–3.0× in hundredths, the readout to three decimals, 1× marked a third of the way", () => {
+    expect(VARISPEED_MIN).toBe(0.01);
+    expect(VARISPEED_MAX).toBe(3);
+    expect(sliderToSpeed(1)).toBeCloseTo(0.01, 9);
+    expect(sliderToSpeed(100)).toBeCloseTo(1, 9);
+    expect(sliderToSpeed(300)).toBeCloseTo(3, 9);
+    expect(speedToSlider(1)).toBe(100);
+    expect(speedToSlider(0.5)).toBe(50);
+    expect(speedToSlider(9)).toBe(300); // clamped
+    expect(formatVarispeed(1)).toBe('1.000×');
+    expect(formatVarispeed(0.5)).toBe('0.500×');
+    expect(VARISPEED_UNITY_FRACTION).toBeCloseTo(0.99 / 2.99, 9);
   });
 
   it('the chip reads the remembered speed and its press TOGGLES varispeed (the chip toggle)', () => {
     const { container, chip, onEnabledChange, onChange } = mount();
-    expect(chip.textContent).toBe('0.50×');
+    expect(chip.textContent).toBe('0.500×');
     expect(chip.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-varispeed-active]')).toBeNull();
     fireEvent.click(chip);
@@ -46,7 +53,7 @@ describe('VarispeedControl (2026-10-07)', () => {
   it('on, the chip is lit and reads the speed; its press switches off', () => {
     const { container, chip, onEnabledChange } = mount({ speed: 2, enabled: true });
     expect(container.querySelector('[data-varispeed-active]')).toBeTruthy();
-    expect(chip.textContent).toBe('2.00×');
+    expect(chip.textContent).toBe('2.000×');
     expect(chip.getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(chip);
     expect(onEnabledChange).toHaveBeenCalledWith(false);
@@ -57,14 +64,18 @@ describe('VarispeedControl (2026-10-07)', () => {
     fireEvent.click(caret);
     const panel = document.body.querySelector('[data-varispeed-panel]') as HTMLElement;
     expect(panel).toBeTruthy();
-    expect(panel.querySelector('[data-varispeed-value]')?.textContent).toBe('0.50×');
+    expect(panel.querySelector('[data-varispeed-value]')?.textContent).toBe('0.500×');
+    expect(panel.querySelector('[data-varispeed-unity]')).toBeTruthy();
     expect(panel.querySelector('[data-varispeed-preset="0.5"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(panel.querySelector('[data-varispeed-preset="1"]')?.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(panel.querySelector('[data-varispeed-preset="2"]') as HTMLElement);
     expect(onChange).toHaveBeenCalledWith(2);
     const slider = panel.querySelector('input[type="range"]') as HTMLInputElement;
-    fireEvent.change(slider, { target: { value: '100' } });
-    expect(onChange).toHaveBeenLastCalledWith(4);
+    expect(slider.min).toBe('1');
+    expect(slider.max).toBe('300');
+    expect(slider.value).toBe('50');
+    fireEvent.change(slider, { target: { value: '275' } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(2.75, 9));
     fireEvent.click(panel.querySelector('[data-varispeed-preset="1"]') as HTMLElement);
     expect(onChange).toHaveBeenLastCalledWith(1);
     expect(onEnabledChange).not.toHaveBeenCalled();
@@ -74,27 +85,27 @@ describe('VarispeedControl (2026-10-07)', () => {
     const { caret } = mount({ speed: 0.5, enabled: false });
     fireEvent.click(caret);
     const panel = document.body.querySelector('[data-varispeed-panel]') as HTMLElement;
-    expect(panel.querySelector('[data-varispeed-value]')?.textContent).toBe('0.50×');
+    expect(panel.querySelector('[data-varispeed-value]')?.textContent).toBe('0.500×');
     expect(panel.querySelector('[data-varispeed-preset="0.5"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(panel.querySelector('[data-varispeed-preset="1"]')?.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('a wheel notch on the chip steps the speed a semitone — the up gesture = faster — on the semitone grid, as a DIAL turn: never a set speed, never the switch', () => {
-    expect(stepVarispeed(0.5, 12)).toBeCloseTo(1, 9);
-    expect(stepVarispeed(1, -12)).toBeCloseTo(0.5, 9);
-    expect(stepVarispeed(0.53, 1)).toBeCloseTo(2 ** (-10 / 12), 9); // 0.53 ≈ a semitone over ½× (−11), so one up is −10
-    expect(stepVarispeed(4, 1)).toBe(4);
-    expect(stepVarispeed(0.25, -1)).toBe(0.25);
+  it('a wheel notch on the chip steps the speed a tenth — the up gesture = faster — on the tenths grid, as a DIAL turn: never a set speed, never the switch', () => {
+    expect(stepVarispeed(0.5, 5)).toBeCloseTo(1, 9);
+    expect(stepVarispeed(1, -5)).toBeCloseTo(0.5, 9);
+    expect(stepVarispeed(0.53, 1)).toBeCloseTo(0.6, 9); // snaps to the grid first
+    expect(stepVarispeed(3, 1)).toBe(3);
+    expect(stepVarispeed(0.01, -1)).toBe(0.01);
     const { chip, onChange, onDial, onEnabledChange } = mount({ speed: 0.5, enabled: false });
     // Positive deltaY is the UP gesture under macOS natural scrolling (the default) = faster
     fireEvent.wheel(chip, { deltaY: 100 });
     expect(onDial).toHaveBeenCalledTimes(1);
-    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (4 / 12), 9)); // 100px = four 24px notches
+    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.9, 9)); // 100px = four 24px notches
     fireEvent.wheel(chip, { deltaY: -10 }); // 100 left 4 of travel; −10 brings it to −6
     expect(onDial).toHaveBeenCalledTimes(1); // under a notch: accumulates
     fireEvent.wheel(chip, { deltaY: -18 }); // −24 = one notch down = slower
     expect(onDial).toHaveBeenCalledTimes(2);
-    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (-1 / 12), 9));
+    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.4, 9));
     expect(onChange).not.toHaveBeenCalled(); // the dial is not a set speed — it does not switch on
     expect(onEnabledChange).not.toHaveBeenCalled();
   });
@@ -102,8 +113,8 @@ describe('VarispeedControl (2026-10-07)', () => {
   it('Shift+wheel is the fine step: a hundredth of a speed per notch on the hundredths grid, read from either axis', () => {
     expect(stepVarispeedFine(0.5, 1)).toBeCloseTo(0.51, 9);
     expect(stepVarispeedFine(0.504, -1)).toBeCloseTo(0.49, 9); // snaps to the grid first
-    expect(stepVarispeedFine(4, 1)).toBe(4);
-    expect(stepVarispeedFine(0.25, -1)).toBe(0.25);
+    expect(stepVarispeedFine(3, 1)).toBe(3);
+    expect(stepVarispeedFine(0.01, -1)).toBe(0.01);
     const { chip, onDial } = mount({ speed: 0.5, enabled: false });
     fireEvent.wheel(chip, { deltaY: 24, shiftKey: true });
     expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.51, 9));

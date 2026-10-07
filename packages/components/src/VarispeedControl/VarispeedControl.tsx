@@ -3,20 +3,28 @@
  * 2026-10-07, "a varispeed playback option"; the chip became a TOGGLE the
  * same day, "try the chip toggle" — Logic's Varispeed button, not AU3's
  * second play button): a split chip reading the remembered speed
- * ("0.50×") whose VALUE half switches varispeed on and off, and whose
- * CARET half opens a popover with a slider from ¼× to 4× (log, 1× in
- * the middle), the value, and ½× / 1× / 2× presets. Off, playback runs
- * at 1× whatever the chip reads; on, the chip is lit. Setting a speed in
- * the popover switches it on; the presets are speeds, nothing more — 1×
- * is a speed like the others, the CHIP is the only switch ("there's some
- * weird logic where 1× turns it off", the same day). Varispeed is
- * tape-style: the pitch follows the speed (the engine scales its tempo
- * and every player's rate). A WHEEL on the value half steps the speed
- * ("what if we scroll on the button?", the same day): one notch is a
- * SEMITONE of pitch, the up gesture = faster, on the semitone grid — so twelve
- * notches from ½× land exactly on 1× — SHIFT makes it FINE, a hundredth
- * of a speed per notch (the readout's last digit) — and it turns the
- * DIAL ONLY: it
+ * ("0.500×") whose VALUE half switches varispeed on and off, and whose
+ * CARET half opens a popover with the slider, the value, and ½× / 1× / 2×
+ * presets. Off, playback runs at 1× whatever the chip reads; on, the chip
+ * is lit. Setting a speed in the popover switches it on; the presets are
+ * speeds, nothing more — 1× is a speed like the others, the CHIP is the
+ * only switch ("there's some weird logic where 1× turns it off", the same
+ * day).
+ *
+ * THE SLIDER IS AUDACITY 3'S ("in terms of scale being linear or w/e we
+ * just stick to Audacity 3", the same day — AU3's SPEED_SLIDER in
+ * ASlider.cpp): LINEAR from 0.01× to 3.0×, continuous, the readout to
+ * three decimals ("1.000×", AU3's "%.3fx"), 1× marked on the track (a
+ * log ¼×–4× scale with 1× in the middle came first and was dropped for
+ * it). Varispeed is tape-style, as AU3's: the pitch follows the speed
+ * (the engine scales its tempo and every player's rate); no preserve-
+ * pitch (AU3 has none — that is an AU4 pull request, 2026-09-23).
+ *
+ * A WHEEL on the value half steps the speed ("what if we scroll on the
+ * button?", the same day): a TENTH of a speed per notch on the tenths
+ * grid (AU4's Play-at-Speed step; AU3's wheel is a tenth of the RANGE,
+ * ~0.3×, too coarse for a chip), SHIFT makes it FINE — a hundredth per
+ * notch ("a fine tune precise change") — and it turns the DIAL ONLY: it
  * never switches varispeed on ("you think scrolling should turn it
  * on?", the same day — a wheel is not deliberate the way opening the
  * popover is: trackpad inertia or a scroll meant for the canvas would
@@ -31,8 +39,9 @@ import { Slider } from '../Slider';
 import { useTheme } from '../ThemeProvider';
 import './VarispeedControl.css';
 
-export const VARISPEED_MIN = 0.25;
-export const VARISPEED_MAX = 4;
+/** AU3's range: SPEED_SLIDER 0.01..3.0 */
+export const VARISPEED_MIN = 0.01;
+export const VARISPEED_MAX = 3;
 /** What the chip switches on to before the user has set a speed — the
  *  transcriber's half speed, so the first press does something useful */
 export const VARISPEED_DEFAULT_SPEED = 0.5;
@@ -42,25 +51,20 @@ export const VARISPEED_PRESETS: ReadonlyArray<{ label: string; speed: number }> 
   { label: '2×', speed: 2 },
 ];
 
-/** Slider position (0–100) ↔ speed, log-scaled so 1× sits at 50 and each
- *  quarter of the travel is an octave of speed */
-export const sliderToSpeed = (v: number) => VARISPEED_MIN * 2 ** (Math.max(0, Math.min(100, v)) / 25);
-export const speedToSlider = (speed: number) => Math.round(Math.log2(Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, speed)) / VARISPEED_MIN) * 25);
-export const formatVarispeed = (speed: number) => `${speed.toFixed(2)}×`;
+const clampSpeed = (speed: number) => Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, speed));
+/** The slider is linear in hundredths of a speed (1–300), so a slider
+ *  step is the fine step and the thumb sits where the speed is */
+export const speedToSlider = (speed: number) => Math.round(clampSpeed(speed) * 100);
+export const sliderToSpeed = (v: number) => clampSpeed(v / 100);
+/** Where 1× sits along the track, as a fraction — the marker's place */
+export const VARISPEED_UNITY_FRACTION = (1 - VARISPEED_MIN) / (VARISPEED_MAX - VARISPEED_MIN);
+export const formatVarispeed = (speed: number) => `${speed.toFixed(3)}×`;
 
-/** The speed one wheel notch away: a semitone (a twelfth of an octave)
- *  up or down, snapped to the semitone grid from 1× and clamped */
-export const stepVarispeed = (speed: number, notches: number) => {
-  const semitones = Math.round(12 * Math.log2(speed)) + notches;
-  return Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, 2 ** (semitones / 12)));
-};
+/** The speed one wheel notch away: a tenth of a speed, on the tenths grid */
+export const stepVarispeed = (speed: number, notches: number) => clampSpeed((Math.round(speed * 10) + notches) / 10);
 /** The fine step (Shift+wheel, "a fine tune precise change", 2026-10-07):
- *  a hundredth of a speed per notch — the chip reads to two decimals, so
- *  each notch moves its last digit — on the hundredths grid, clamped */
-export const stepVarispeedFine = (speed: number, notches: number) => {
-  const hundredths = Math.round(speed * 100) + notches;
-  return Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, hundredths / 100));
-};
+ *  a hundredth of a speed per notch, on the hundredths grid */
+export const stepVarispeedFine = (speed: number, notches: number) => clampSpeed((Math.round(speed * 100) + notches) / 100);
 /** Wheel travel per notch — trackpads deliver many small deltas, mice one
  *  large one; both accumulate to steps of this many pixels */
 const WHEEL_NOTCH_PX = 24;
@@ -84,6 +88,9 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
   const { theme } = useTheme();
   const chipRef = React.useRef<HTMLButtonElement>(null);
   const caretRef = React.useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const [pos, setPos] = React.useState({ x: 0, y: 0 });
+  const close = React.useCallback(() => setOpen(false), []);
   // Ref-mirror (see CLAUDE.md): the wheel listener is native — React's
   // onWheel is passive and cannot preventDefault — bound once, reading
   // the live speed and handler through refs.
@@ -116,9 +123,6 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
     chip.addEventListener('wheel', onWheel, { passive: false });
     return () => chip.removeEventListener('wheel', onWheel);
   }, []);
-  const [open, setOpen] = React.useState(false);
-  const [pos, setPos] = React.useState({ x: 0, y: 0 });
-  const close = React.useCallback(() => setOpen(false), []);
   const style = {
     '--varispeed-off-bg': theme.background.control.button.secondary.idle,
     '--varispeed-off-hover-bg': theme.background.control.button.secondary.hover,
@@ -127,8 +131,12 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
     '--varispeed-on-bg': theme.background.control.button.primary.idle,
     '--varispeed-on-hover-bg': theme.background.control.button.primary.hover,
     '--varispeed-on-text': '#FFFFFF',
+    // The Slider keeps its 16px thumb inside the track (centre at
+    // f·(W−16)+8, not f·W), so the mark takes the thumb's formula and
+    // sits under it at exactly 1×
+    '--varispeed-unity': `calc(${VARISPEED_UNITY_FRACTION * 100}% - ${VARISPEED_UNITY_FRACTION * 16 - 8}px)`,
   } as React.CSSProperties;
-  const presetPressed = (preset: number) => Math.abs(speed - preset) < 0.005;
+  const presetPressed = (preset: number) => Math.abs(speed - preset) < 0.0005;
   return (
     <span
       className="varispeed"
@@ -168,7 +176,8 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
             <span className="varispeed__value" data-varispeed-value>{formatVarispeed(speed)}</span>
           </div>
           <div className="varispeed__slider">
-            <Slider value={speedToSlider(speed)} min={0} max={100} onChange={(v) => onChange(sliderToSpeed(v))} />
+            <Slider value={speedToSlider(speed)} min={1} max={300} ariaLabel="Playback speed" onChange={(v) => onChange(sliderToSpeed(v))} />
+            <span className="varispeed__unity" data-varispeed-unity aria-hidden="true" />
           </div>
           <div className="varispeed__presets">
             {VARISPEED_PRESETS.map((p) => (

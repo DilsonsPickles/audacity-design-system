@@ -79,9 +79,10 @@ export class AudioPlaybackManager {
     return this.varispeed;
   }
 
-  /** Set the playback speed, 0.25–4; takes effect at once, mid-play too */
+  /** Set the playback speed, 0.01–3 (AU3's SPEED_SLIDER range); takes
+   *  effect at once, mid-play too */
   setVarispeed(speed: number): void {
-    const next = Math.max(0.25, Math.min(4, Number.isFinite(speed) && speed > 0 ? speed : 1));
+    const next = Math.max(0.01, Math.min(3, Number.isFinite(speed) && speed > 0 ? speed : 1));
     this.varispeed = next;
     Tone.getTransport().bpm.value = AudioPlaybackManager.BASE_BPM * next;
     this.players.forEach((player) => this.applyVarispeed(player));
