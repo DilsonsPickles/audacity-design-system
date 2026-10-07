@@ -2312,11 +2312,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // side of its boundary (the natural spot) until the two would
       // collide — then both retreat INSIDE their own fade regions, so at
       // a mid-clip meeting each handle stays on its own curve instead of
-      // swapping sides. The boxes (centred on bodies GAP past the
-      // boundary) would overlap below 2 × (GAP + 5 + 18); 8px of
-      // breathing room.
+      // swapping sides. Each HIT BOX runs from its boundary FADE_HIT_REACH
+      // past the body's centre (GAP + HALF_BODY in), so the two boxes
+      // touch when the boundaries are 2 × (GAP + HALF_BODY + FADE_HIT_REACH)
+      // apart — 60px — and retreat with RETREAT_GAP of clearance left:
+      // NONE (2026-10-07, "let's do 0px", after a 4px trial the same
+      // minute; it was 8 on top of the 36px glyph's half, 14 in
+      // practice) — they retreat only once the boxes would overlap.
       const GAP = FADE_HANDLE_EDGE_INSET;
-      const handlesRetreat = boundaryOutX - boundaryInX < 2 * (GAP + HALF_BODY + HALF_BOX) + 8;
+      const RETREAT_GAP = 0;
+      const handlesRetreat = boundaryOutX - boundaryInX < 2 * (GAP + HALF_BODY + FADE_HIT_REACH) + RETREAT_GAP;
       const handle = (side: 'in' | 'out') => {
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
         const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
