@@ -13,7 +13,7 @@
  * tape-style: the pitch follows the speed (the engine scales its tempo
  * and every player's rate). A WHEEL on the value half steps the speed
  * ("what if we scroll on the button?", the same day): one notch is a
- * SEMITONE of pitch, up = faster, on the semitone grid — so twelve
+ * SEMITONE of pitch, the up gesture = faster, on the semitone grid — so twelve
  * notches from ½× land exactly on 1× — and it turns the DIAL ONLY: it
  * never switches varispeed on ("you think scrolling should turn it
  * on?", the same day — a wheel is not deliberate the way opening the
@@ -91,8 +91,13 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
       const notches = Math.trunc(travel / WHEEL_NOTCH_PX);
       if (notches === 0) return;
       travel -= notches * WHEEL_NOTCH_PX;
-      // Wheel up (negative deltaY) = faster
-      liveRef.current.onDial(stepVarispeed(liveRef.current.speed, -notches));
+      // The UP gesture = faster. On macOS with natural scrolling (the
+      // default, trackpad and mouse alike) fingers or wheel moving up
+      // deliver a POSITIVE deltaY — the browser cannot tell the setting,
+      // so the Mac default wins; a non-natural wheel reads the other way
+      // ("you'd think scrolling up would make it faster", 2026-10-07,
+      // after the negative-delta mapping went the wrong way on his Mac).
+      liveRef.current.onDial(stepVarispeed(liveRef.current.speed, notches));
     };
     chip.addEventListener('wheel', onWheel, { passive: false });
     return () => chip.removeEventListener('wheel', onWheel);
