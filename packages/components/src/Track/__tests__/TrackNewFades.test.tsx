@@ -1782,4 +1782,33 @@ describe('the fade length handles are HOVER-ONLY — focus and selection show no
     fireEvent.mouseMove(clip, { clientX: 200, clientY: 60, buttons: 0 });
     expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]').length).toBeGreaterThan(0);
   });
+
+  it('a COLLAPSED clip (44px and under) shows its edge handles only: no fade length handles, guidelines or shape dots (2026-10-07)', () => {
+    const mount = (height: number) => render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, fadeIn: 1, fadeOut: 0.5 }]}
+          width={800}
+          height={height}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const tall = mount(114);
+    hoverClip(tall.container, 1);
+    expect(tall.container.querySelectorAll('[data-fade-handle]').length).toBe(2);
+    expect(tall.container.querySelectorAll('[data-quickfade-node]').length).toBe(2);
+    expect(tall.container.querySelectorAll('[data-fade-guideline]').length).toBe(2);
+    cleanup();
+    const collapsed = mount(44);
+    hoverClip(collapsed.container, 1);
+    expect(collapsed.container.querySelector('[data-fade-handle]')).toBeNull();
+    expect(collapsed.container.querySelector('[data-quickfade-node]')).toBeNull();
+    expect(collapsed.container.querySelector('[data-fade-guideline]')).toBeNull();
+    // The fade itself is still drawn — the dim says there is one
+    expect(collapsed.container.querySelector('[data-fade-curve="in"]')).toBeTruthy();
+  });
 });

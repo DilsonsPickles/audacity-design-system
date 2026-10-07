@@ -978,6 +978,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // one clip the pair it sits between is not that clip's business
     // (xNodeActive is empty then; a leaving node still fades out)
     if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
+    // A COLLAPSED clip shows its edge handles only (2026-10-07, below)
+    if (clipHandleRows(height).collapsed) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
@@ -1159,6 +1161,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // pinned — length is the corner handle's job.
   const renderQuickFadeNodes = () => {
     if (!onClipFadeShapeChange) return null;
+    // A COLLAPSED clip shows its edge handles only (2026-10-07, below)
+    if (clipHandleRows(height).collapsed) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
@@ -2276,6 +2280,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // (A clip drag empties fadeHandleActive via hidesHandlesOf; the
     // leaving ones still get their fade out)
     if (isMidiTrack || !onClipFadeChange) return null;
+    // A COLLAPSED clip (header hidden, 44px and under) shows its EDGE
+    // handles only (user decision 2026-10-07, "hide the fade handles
+    // when they get too small"): the trim and stretch rows take its
+    // whole height there, and the length handle, its guideline, the
+    // shape dot and the crossfade node would make four controls in
+    // 44px. The fade stays visible as the dim above its curve, and
+    // editable from the Fade-in / Fade-out menus and the properties
+    // panel. One threshold with the header's, not a second number.
+    if (clipHandleRows(height).collapsed) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
     // The handle's BODY rests FADE_HANDLE_BODY_INSET inside the clip's
