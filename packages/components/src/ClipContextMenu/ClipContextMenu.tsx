@@ -79,8 +79,8 @@ export interface ClipContextMenuProps {
   onFadeIn?: () => void;
   /** "Fade out…" — as onFadeIn, for the clip's end. */
   onFadeOut?: () => void;
-  /** The fade shape presets. With these the Fade submenu holds a
-   *  Fade in ▸ and a Fade out ▸ submenu, each the handle menu's list
+  /** The fade shape presets. With these the menu holds a Fade-in ▸
+   *  and a Fade-out ▸ parent, each the handle menu's list
    *  (presets, length…, remove) — the two menus are one (2026-10-06).
    *  Without them it is the old pair of length items. */
   fadePresets?: ReadonlyArray<FadeMenuPreset>;
@@ -252,47 +252,44 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
       {/* Divider */}
       <div className="clip-context-menu-divider" />
 
-      {/* Fades — a submenu like Clip color. With presets wired it is
-          Fade in ▸ / Fade out ▸, each the SAME list the fade handle's
-          right-click opens (FadeMenuItems): the handle menu is the
-          shortcut, this is the long way round (2026-10-06). */}
-      <ContextMenuItem
-        label="Fade"
-        hasSubmenu
-        onClose={onClose}
-      >
-        {fadePresets ? (
-          <>
-            <ContextMenuItem label="Fade in" hasSubmenu onClose={onClose}>
-              <FadeMenuItems
-                side="in"
-                presets={fadePresets}
-                state={fadeInState ?? { hasFade: false }}
-                onShape={onFadeShape}
-                onLength={() => onFadeIn?.()}
-                onRemove={onRemoveFade}
-                onClose={onClose}
-              />
-            </ContextMenuItem>
-            <ContextMenuItem label="Fade out" hasSubmenu onClose={onClose}>
-              <FadeMenuItems
-                side="out"
-                presets={fadePresets}
-                state={fadeOutState ?? { hasFade: false }}
-                onShape={onFadeShape}
-                onLength={() => onFadeOut?.()}
-                onRemove={onRemoveFade}
-                onClose={onClose}
-              />
-            </ContextMenuItem>
-          </>
-        ) : (
-          <>
-            <ContextMenuItem label="Fade in…" onClick={() => { onFadeIn?.(); onClose(); }} />
-            <ContextMenuItem label="Fade out…" onClick={() => { onFadeOut?.(); onClose(); }} />
-          </>
-        )}
-      </ContextMenuItem>
+      {/* Fades — with presets wired, TWO PARENTS at this level, Fade-in ▸
+          and Fade-out ▸ (2026-10-07, "parent options for Fade-in and
+          Fade-out" — the nouns; until then one Fade ▸ parent held them a
+          level down), each the SAME list the fade handle's right-click
+          opens (FadeMenuItems): the handle menu is the shortcut, this is
+          the long way round (2026-10-06). A host with no presets gets the
+          two verbs, "Fade in…" / "Fade out…", as plain items. */}
+      {fadePresets ? (
+        <>
+          <ContextMenuItem label="Fade-in" hasSubmenu onClose={onClose}>
+            <FadeMenuItems
+              side="in"
+              presets={fadePresets}
+              state={fadeInState ?? { hasFade: false }}
+              onShape={onFadeShape}
+              onLength={() => onFadeIn?.()}
+              onRemove={onRemoveFade}
+              onClose={onClose}
+            />
+          </ContextMenuItem>
+          <ContextMenuItem label="Fade-out" hasSubmenu onClose={onClose}>
+            <FadeMenuItems
+              side="out"
+              presets={fadePresets}
+              state={fadeOutState ?? { hasFade: false }}
+              onShape={onFadeShape}
+              onLength={() => onFadeOut?.()}
+              onRemove={onRemoveFade}
+              onClose={onClose}
+            />
+          </ContextMenuItem>
+        </>
+      ) : (
+        <>
+          <ContextMenuItem label="Fade in…" onClick={() => { onFadeIn?.(); onClose(); }} />
+          <ContextMenuItem label="Fade out…" onClick={() => { onFadeOut?.(); onClose(); }} />
+        </>
+      )}
 
       {/* Divider */}
       <div className="clip-context-menu-divider" />

@@ -2,10 +2,16 @@
  * FadeMenuItems — ONE fade's menu, for one side of a clip (2026-10-06,
  * "unify the fade options in the clip context menu and the right-click
  * handle menu"): the shape presets, the current one checked; a divider;
- * "Fade in length…" (the duration dialog); "Remove fade in" (dimmed
+ * "Fade-in length…" (the duration dialog); "Remove fade-in" (dimmed
  * while there is no fade). The handle's right-click menu IS this list,
- * and the clip context menu's Fade ▸ Fade in ▸ / Fade out ▸ submenus
- * are the same list — the handle menu is the shortcut to it.
+ * and the clip context menu's Fade-in ▸ / Fade-out ▸ parents hold the
+ * same list — the handle menu is the shortcut to it.
+ *
+ * WORDS (user decision 2026-10-07): "Fade-in" and "Fade-out", hyphenated,
+ * are the NOUNS — the thing on the clip's edge — and name the parents
+ * and the items about it ("Fade-in length…", "Remove fade-in"); "fade
+ * in" and "fade out", two words, are the VERBS, kept for an action that
+ * performs one ("Fade in…" on a host with no presets).
  */
 import React from 'react';
 import { ContextMenuItem } from '../ContextMenuItem/ContextMenuItem';
@@ -34,7 +40,8 @@ export interface FadeMenuItemsProps {
   onClose?: () => void;
 }
 
-export const fadeSideLabel = (side: FadeSide) => (side === 'in' ? 'Fade in' : 'Fade out');
+/** The noun: the fade on that edge */
+export const fadeSideLabel = (side: FadeSide) => (side === 'in' ? 'Fade-in' : 'Fade-out');
 
 export function FadeMenuItems({ side, presets, state, onShape, onLength, onRemove, onClose }: FadeMenuItemsProps) {
   const label = fadeSideLabel(side);
