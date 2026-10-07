@@ -71,7 +71,7 @@ describe('trimming an unselected clip by its edge', () => {
     }
   });
 
-  it('it covers the TRIM BOX\'S ROW — the 32px under the header — so selecting the clip never moves the grabbable edge', () => {
+  it('it covers the TRIM BOX\'S ROW — under the header, 32px on a full-height clip — so selecting the clip never moves the grabbable edge', () => {
     const vertical = (height: number) => {
       const { zone } = renderTrack({ height });
       const el = zone(2, 'left')!;
@@ -94,10 +94,12 @@ describe('trimming an unselected clip by its edge', () => {
       expect(v.top).toBe(20);
       expect(v.top + v.height).toBeLessThanOrEqual(20 + (height - 20) / 2);
     }
-    // A short clip with a header keeps the row; a COLLAPSED clip (too
-    // short for its header, 44px and under) gives the zone half of
-    // itself instead, from its top — as the app does
-    expect(vertical(60)).toEqual({ top: 20, height: 32 });
+    // The row follows the clip's height by the app's rule (2026-10-07,
+    // utils/clipHandleRows.ts): half the room under the header, clamped
+    // 22–32 — a 60px clip's row is 22; a COLLAPSED clip (too short for
+    // its header, 44px and under) takes the row from its top, never
+    // past half of itself — as the app's zone does
+    expect(vertical(60)).toEqual({ top: 20, height: 22 });
     expect(vertical(44)).toEqual({ top: 0, height: 22 });
     expect(vertical(34)).toEqual({ top: 0, height: 17 });
   });

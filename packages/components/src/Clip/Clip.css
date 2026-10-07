@@ -117,7 +117,10 @@
   position: absolute;
   box-sizing: border-box;
   width: 30px;
-  height: 32px;
+  /* The row's height follows the clip's height — half the room, 22–32
+     (utils/clipHandleRows.ts, the real app's rule; Clip sets the
+     variables on its root) */
+  height: var(--clip-handle-row, 32px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -185,15 +188,17 @@
 }
 
 /* Vertical positioning — the trim row is directly under the clip header
-   (HEADER_HEIGHT = 20px), the stretch row directly under the trim row. */
+   (HEADER_HEIGHT = 20px; at the clip's top when the clip is collapsed
+   and the header hidden), the stretch row directly under the trim row.
+   Both from utils/clipHandleRows.ts via the variables Clip sets. */
 .clip-display__handle--trim-left,
 .clip-display__handle--trim-right {
-  top: 20px;
+  top: var(--clip-handle-top, 20px);
 }
 
 .clip-display__handle--stretch-left,
 .clip-display__handle--stretch-right {
-  top: 52px;
+  top: calc(var(--clip-handle-top, 20px) + var(--clip-handle-row, 32px));
 }
 
 /* Horizontal positioning — the box straddles the edge, 24 out and 6

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { MidiNote } from '@audacity-ui/core';
-import { Clip, MIN_CLIP_HEIGHT, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
+import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
+import { clipHandleRows } from '../utils/clipHandleRows';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
@@ -2101,13 +2102,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (!onClipTrimEdge || edgeTrimZones.length === 0 || clipDragInProgress) return null;
     const shownZones = edgeTrimZones.filter((zone) => !hidesHandlesOf(zone.clipId));
     if (shownZones.length === 0) return null;
-    // The trim box's row (Clip.css: top 20, 32 tall), or half of a
-    // collapsed clip (Clip hides the header at MIN_CLIP_HEIGHT and below)
-    const CLIP_HEADER_H = 20;
-    const TRIM_BOX_H = 32;
-    const collapsed = height <= MIN_CLIP_HEIGHT;
-    const zoneTop = collapsed ? 0 : CLIP_HEADER_H;
-    const zoneHeight = collapsed ? Math.round(height / 2) : Math.min(TRIM_BOX_H, height - CLIP_HEADER_H);
+    // The trim box's row — the real app's rows (utils/clipHandleRows.ts:
+    // from the top of a collapsed clip, under the header otherwise, half
+    // the room clamped 22–32) — and never past HALF of a collapsed clip
+    // (the app's own zone there), so the time selection keeps the
+    // lower half of a tiny clip's edge
+    const rows = clipHandleRows(height);
+    const zoneTop = rows.trimTop;
+    const zoneHeight = Math.min(rows.rowHeight, rows.collapsed ? Math.round(height / 2) : height - rows.trimTop);
     if (zoneHeight <= 0) return null;
     return shownZones.map((zone) => (
       <div
@@ -2167,6 +2169,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // re-rendered here at track level, above the stack — the originals
   // inside the Clip are covered. Visible edges keep only the originals.
   const renderBuriedEdgeHandles = () => {
+    // The same rows as the clip's own handles (utils/clipHandleRows.ts)
+    const rows = clipHandleRows(height);
     if (isMidiTrack || (!onClipTrimEdge && !onClipStretchEdge)) return null;
     const nodes: React.ReactNode[] = [];
     for (const clip of clips) {
@@ -2224,7 +2228,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               className={`clip-display__handle clip-display__handle--trim-${edge}`}
               aria-label={`Trim ${edge} edge`}
               onMouseDown={startDrag('trim')}
-              style={{ position: 'absolute', left: xLeft, right: 'auto', top: 20, zIndex: 455 }}
+              style={{ position: 'absolute', left: xLeft, right: 'auto', top: rows.trimTop, height: rows.rowHeight, zIndex: 455 }}
             >
               {edge === 'left' ? <TrimLeftIcon /> : <TrimRightIcon />}
             </button>,
@@ -2243,7 +2247,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             className={`clip-display__handle clip-display__handle--stretch-${edge}`}
             aria-label={`Stretch ${edge} edge`}
             onMouseDown={startDrag('stretch')}
-            style={{ position: 'absolute', left: xLeft, right: 'auto', top: 52, zIndex: 455 }}
+            style={{ position: 'absolute', left: xLeft, right: 'auto', top: rows.stretchTop, height: rows.rowHeight, zIndex: 455 }}
           >
             <StretchIcon />
           </button>,
@@ -2281,7 +2285,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // bottom), so the boxes at an edge share one row and the body's
     // middle is on the trim and stretch icons' middle.
     const FADE_HANDLE_EDGE_INSET = FADE_HANDLE_BODY_INSET;
-    const FADE_HANDLE_TOP = 0;
+    // The box sits in the TRIM ROW, whose place and height follow the
+    // clip's height (utils/clipHandleRows.ts); the 36×32 glyph is
+    // centred in the row, so on a shorter row it overflows top and
+    // bottom harmlessly (pointer-events: none)
+    const rows = clipHandleRows(height);
+    const FADE_HANDLE_TOP = rows.trimTop;
+    const FADE_ROW_H = rows.rowHeight;
+    const GLYPH_TOP = Math.round((FADE_ROW_H - FADE_HANDLE_BOX.height) / 2);
     const HALF_BOX = FADE_HANDLE_BOX.width / 2;
     const HALF_BODY = FADE_GLYPH_BODY.size / 2;
     // Below this rendered width the two corner boxes, at rest, would
@@ -2458,10 +2469,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             }}
             style={{
               position: 'absolute',
-              top: HEADER_H + FADE_HANDLE_TOP,
+              top: FADE_HANDLE_TOP,
               left: `${left}px`,
               width: boxRight - boxLeft,
-              height: FADE_HANDLE_BOX.height,
+              height: FADE_ROW_H,
               cursor: 'ew-resize',
               // Above the fade veils (450), beside the shape dots (460)
               zIndex: 455,
@@ -2475,7 +2486,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               className="track-fade-handle__glyph"
               style={{
                 position: 'absolute',
-                top: 0,
+                top: GLYPH_TOP,
                 left: glyphLeft,
                 width: FADE_HANDLE_BOX.width,
                 height: FADE_HANDLE_BOX.height,

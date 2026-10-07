@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CLIP_COLLAPSE_HEIGHT, clipHandleRows } from '../utils/clipHandleRows';
 import type { LocalFadeRegion } from '../utils/clipCrossfades';
 import type { MidiNote } from '@audacity-ui/core';
 import type { ClipColor } from '../types/clip';
@@ -36,7 +37,7 @@ export type ClipState = 'default' | 'headerHover';
 // Minimum height before the header is hidden — the clip is COLLAPSED
 // below it. Exported for TrackNew's edge trim zones, which (as the app's)
 // take half of a collapsed clip and a third of one with its header.
-export const MIN_CLIP_HEIGHT = 44;
+export const MIN_CLIP_HEIGHT: number = CLIP_COLLAPSE_HEIGHT;
 const HEADER_HEIGHT = 20;
 
 export interface ClipProps {
@@ -245,6 +246,9 @@ const ClipComponent: React.FC<ClipProps> = ({
   }, [shakeEdge, shakeToken]);
 
   const isTruncated = height <= MIN_CLIP_HEIGHT;
+  // The trim and stretch rows follow the clip's height by the real
+  // app's rule (utils/clipHandleRows.ts); Clip.css reads these
+  const handleRows = clipHandleRows(height);
   const showHeader = !isTruncated || isHovering;
 
   const className = [
@@ -350,7 +354,13 @@ const ClipComponent: React.FC<ClipProps> = ({
     <div
       ref={outerRef}
       className={className}
-      style={{ width: `${width}px`, height: `${height}px`, position: 'relative' }}
+      style={{
+        width: `${width}px`,
+        height: `${height}px`,
+        position: 'relative',
+        '--clip-handle-top': `${handleRows.trimTop}px`,
+        '--clip-handle-row': `${handleRows.rowHeight}px`,
+      } as React.CSSProperties}
       data-color={color}
       data-state={state}
       data-selected={selected}
