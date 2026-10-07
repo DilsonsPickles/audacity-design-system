@@ -1,7 +1,7 @@
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { VarispeedControl, sliderToSpeed, speedToSlider, formatVarispeed, stepVarispeed } from '../VarispeedControl';
+import { VarispeedControl, sliderToSpeed, speedToSlider, formatVarispeed, stepVarispeed, stepVarispeedFine } from '../VarispeedControl';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
 afterEach(cleanup);
@@ -97,5 +97,21 @@ describe('VarispeedControl (2026-10-07)', () => {
     expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (-1 / 12), 9));
     expect(onChange).not.toHaveBeenCalled(); // the dial is not a set speed — it does not switch on
     expect(onEnabledChange).not.toHaveBeenCalled();
+  });
+
+  it('Shift+wheel is the fine step: a hundredth of a speed per notch on the hundredths grid, read from either axis', () => {
+    expect(stepVarispeedFine(0.5, 1)).toBeCloseTo(0.51, 9);
+    expect(stepVarispeedFine(0.504, -1)).toBeCloseTo(0.49, 9); // snaps to the grid first
+    expect(stepVarispeedFine(4, 1)).toBe(4);
+    expect(stepVarispeedFine(0.25, -1)).toBe(0.25);
+    const { chip, onDial } = mount({ speed: 0.5, enabled: false });
+    fireEvent.wheel(chip, { deltaY: 24, shiftKey: true });
+    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.51, 9));
+    // Chromium turns a Shift+wheel's vertical delta horizontal: the X axis counts too
+    fireEvent.wheel(chip, { deltaY: 0, deltaX: 48, shiftKey: true });
+    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.52, 9));
+    // Without Shift, a horizontal delta is not a notch
+    fireEvent.wheel(chip, { deltaY: 0, deltaX: 48 });
+    expect(onDial).toHaveBeenCalledTimes(2);
   });
 });

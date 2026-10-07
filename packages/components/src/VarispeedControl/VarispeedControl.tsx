@@ -14,7 +14,9 @@
  * and every player's rate). A WHEEL on the value half steps the speed
  * ("what if we scroll on the button?", the same day): one notch is a
  * SEMITONE of pitch, the up gesture = faster, on the semitone grid — so twelve
- * notches from ½× land exactly on 1× — and it turns the DIAL ONLY: it
+ * notches from ½× land exactly on 1× — SHIFT makes it FINE, a hundredth
+ * of a speed per notch (the readout's last digit) — and it turns the
+ * DIAL ONLY: it
  * never switches varispeed on ("you think scrolling should turn it
  * on?", the same day — a wheel is not deliberate the way opening the
  * popover is: trackpad inertia or a scroll meant for the canvas would
@@ -52,6 +54,13 @@ export const stepVarispeed = (speed: number, notches: number) => {
   const semitones = Math.round(12 * Math.log2(speed)) + notches;
   return Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, 2 ** (semitones / 12)));
 };
+/** The fine step (Shift+wheel, "a fine tune precise change", 2026-10-07):
+ *  a hundredth of a speed per notch — the chip reads to two decimals, so
+ *  each notch moves its last digit — on the hundredths grid, clamped */
+export const stepVarispeedFine = (speed: number, notches: number) => {
+  const hundredths = Math.round(speed * 100) + notches;
+  return Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, hundredths / 100));
+};
 /** Wheel travel per notch — trackpads deliver many small deltas, mice one
  *  large one; both accumulate to steps of this many pixels */
 const WHEEL_NOTCH_PX = 24;
@@ -86,18 +95,23 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
     let travel = 0;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      // Shift turns a mouse wheel's vertical delta horizontal (Chromium,
+      // macOS); read whichever axis carries it
+      const delta = e.deltaY !== 0 ? e.deltaY : e.shiftKey ? e.deltaX : 0;
       // deltaMode 1 = lines (Firefox mice): a line is a notch
-      travel += e.deltaMode === 1 ? e.deltaY * WHEEL_NOTCH_PX : e.deltaY;
+      travel += e.deltaMode === 1 ? delta * WHEEL_NOTCH_PX : delta;
       const notches = Math.trunc(travel / WHEEL_NOTCH_PX);
       if (notches === 0) return;
       travel -= notches * WHEEL_NOTCH_PX;
+      // Shift = the fine step, a hundredth per notch
+      const step = e.shiftKey ? stepVarispeedFine : stepVarispeed;
       // The UP gesture = faster. On macOS with natural scrolling (the
       // default, trackpad and mouse alike) fingers or wheel moving up
       // deliver a POSITIVE deltaY — the browser cannot tell the setting,
       // so the Mac default wins; a non-natural wheel reads the other way
       // ("you'd think scrolling up would make it faster", 2026-10-07,
       // after the negative-delta mapping went the wrong way on his Mac).
-      liveRef.current.onDial(stepVarispeed(liveRef.current.speed, notches));
+      liveRef.current.onDial(step(liveRef.current.speed, notches));
     };
     chip.addEventListener('wheel', onWheel, { passive: false });
     return () => chip.removeEventListener('wheel', onWheel);
