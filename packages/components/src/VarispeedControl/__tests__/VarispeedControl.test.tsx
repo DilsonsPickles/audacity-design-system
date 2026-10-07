@@ -1,7 +1,7 @@
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { VarispeedControl, sliderToSpeed, speedToSlider, formatVarispeed } from '../VarispeedControl';
+import { VarispeedControl, sliderToSpeed, speedToSlider, formatVarispeed, stepVarispeed } from '../VarispeedControl';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
 afterEach(cleanup);
@@ -51,7 +51,7 @@ describe('VarispeedControl (2026-10-07)', () => {
     expect(onEnabledChange).toHaveBeenCalledWith(false);
   });
 
-  it('the caret opens the popover; the slider and the ½× / 2× presets report a speed, 1× switches off', () => {
+  it('the caret opens the popover; the slider and every preset report a speed — 1× too, the chip is the only switch', () => {
     const { caret, onChange, onEnabledChange } = mount({ speed: 0.5, enabled: true });
     fireEvent.click(caret);
     const panel = document.body.querySelector('[data-varispeed-panel]') as HTMLElement;
@@ -65,16 +65,34 @@ describe('VarispeedControl (2026-10-07)', () => {
     fireEvent.change(slider, { target: { value: '100' } });
     expect(onChange).toHaveBeenLastCalledWith(4);
     fireEvent.click(panel.querySelector('[data-varispeed-preset="1"]') as HTMLElement);
-    expect(onEnabledChange).toHaveBeenCalledWith(false);
-    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith(1);
+    expect(onEnabledChange).not.toHaveBeenCalled();
   });
 
-  it('off, the popover reads Off and the 1× preset wears the check whatever speed is remembered', () => {
+  it('off, the popover still reads the remembered speed and checks its preset — the chip says on or off', () => {
     const { caret } = mount({ speed: 0.5, enabled: false });
     fireEvent.click(caret);
     const panel = document.body.querySelector('[data-varispeed-panel]') as HTMLElement;
-    expect(panel.querySelector('[data-varispeed-value]')?.textContent).toBe('Off');
-    expect(panel.querySelector('[data-varispeed-preset="1"]')?.getAttribute('aria-pressed')).toBe('true');
-    expect(panel.querySelector('[data-varispeed-preset="0.5"]')?.getAttribute('aria-pressed')).toBe('false');
+    expect(panel.querySelector('[data-varispeed-value]')?.textContent).toBe('0.50×');
+    expect(panel.querySelector('[data-varispeed-preset="0.5"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(panel.querySelector('[data-varispeed-preset="1"]')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('a wheel notch on the chip steps the speed a semitone — up = faster — on the semitone grid, and reports it as a set speed', () => {
+    expect(stepVarispeed(0.5, 12)).toBeCloseTo(1, 9);
+    expect(stepVarispeed(1, -12)).toBeCloseTo(0.5, 9);
+    expect(stepVarispeed(0.53, 1)).toBeCloseTo(2 ** (-10 / 12), 9); // 0.53 ≈ a semitone over ½× (−11), so one up is −10
+    expect(stepVarispeed(4, 1)).toBe(4);
+    expect(stepVarispeed(0.25, -1)).toBe(0.25);
+    const { chip, onChange, onEnabledChange } = mount({ speed: 0.5, enabled: false });
+    fireEvent.wheel(chip, { deltaY: -100 });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (4 / 12), 9)); // 100px = four 24px notches
+    fireEvent.wheel(chip, { deltaY: 10 }); // −100 left −4 of travel; 10 brings it to 6
+    expect(onChange).toHaveBeenCalledTimes(1); // under a notch: accumulates
+    fireEvent.wheel(chip, { deltaY: 18 }); // 24 = one notch down
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.5 * 2 ** (-1 / 12), 9));
+    expect(onEnabledChange).not.toHaveBeenCalled(); // switching on is the host's rule for a set speed
   });
 });
