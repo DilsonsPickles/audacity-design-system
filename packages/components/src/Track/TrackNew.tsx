@@ -1359,7 +1359,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // from 55% to 35% — and, later the same day, the line HIDES at
     // rest altogether (data-fade-line-visible, Track.css)
     const FADE_DIM_FILL = 'rgba(0, 0, 0, 0.2)';
-    const FADE_LINE_STROKE = 'rgba(0, 0, 0, 0.35)';
+    const FADE_LINE_STROKE = 'rgba(0, 0, 0, 0.45)'; // 45% since 2026-10-07 ("a bit darker"); was 35, and 55 before 2026-10-06
     // TWO passes: every ghost first (449), every curve above them (450)
     const ghosts = crossfadeNodes.map((n) => {
       const outClip = clips.find((c) => c.id === n.outgoingClipId);
