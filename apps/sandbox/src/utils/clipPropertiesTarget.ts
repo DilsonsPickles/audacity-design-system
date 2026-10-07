@@ -2,12 +2,12 @@
  * Which clip the Clip properties panel shows: the FOCUSED clip first
  * (2026-10-06, "can it be the focused clip?" — the clip with DOM focus,
  * from useFocusedClip; arrowing or tabbing between clips moves the
- * panel with it), else the clip it last showed (its target: the one it
- * was opened on, or the last clip that had focus or was the single
- * selection, as the dock panel records them), else the ONE selected
- * audio clip when the selection is a single clip — while that clip
- * still exists; otherwise none. It never guesses between several
- * selected clips.
+ * panel with it), else the ONE selected audio clip when the selection
+ * is a single clip (selection by menu or macro still switches the
+ * panel) — and otherwise NOTHING: the empty state (2026-10-07, "if no
+ * clip is selected, or focused, show empty state"; until then the
+ * panel kept showing the last clip it had shown). It never guesses
+ * between several selected clips — the dock panel shows their merge.
  */
 export interface PropertiesClipLike {
   id: number;
@@ -21,15 +21,13 @@ export interface ResolvedClip<C> {
 
 export function resolveClipPropertiesClip<C extends PropertiesClipLike>(
   tracks: ReadonlyArray<{ clips: ReadonlyArray<C> }>,
-  target: { trackIndex: number; clipId: number } | null,
   focused: { trackIndex: number; clipId: number } | null = null,
 ): ResolvedClip<C> | null {
-  const find = (ref: { trackIndex: number; clipId: number } | null): ResolvedClip<C> | null => {
-    if (!ref) return null;
-    const clip = tracks[ref.trackIndex]?.clips.find((c) => c.id === ref.clipId);
-    return clip ? { trackIndex: ref.trackIndex, clip } : null;
-  };
-  return find(focused) ?? find(target) ?? singleSelectedClip(tracks);
+  if (focused) {
+    const clip = tracks[focused.trackIndex]?.clips.find((c) => c.id === focused.clipId);
+    if (clip) return { trackIndex: focused.trackIndex, clip };
+  }
+  return singleSelectedClip(tracks);
 }
 
 /** The one selected clip, when exactly one is */

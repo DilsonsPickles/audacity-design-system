@@ -3,9 +3,9 @@
  * ClipPropertiesPanel (2026-10-02). Resolves what to show
  * (utils/clipPropertiesTarget.ts — the FOCUSED clip first (2026-10-06),
  * so arrowing or clicking to another clip switches the panel; else the
- * clip it last showed; else the single selected clip; or, with SEVERAL
- * clips selected and the focus among them or nowhere, their merge —
- * utils/clipPropertiesSelection.ts; a focused clip OUTSIDE the
+ * single selected clip; else the EMPTY state (2026-10-07); or, with
+ * SEVERAL clips selected and the focus among them or nowhere, their
+ * merge — utils/clipPropertiesSelection.ts; a focused clip OUTSIDE the
  * selection is shown alone), maps it to the panel's view, and
  * turns each edit into the reducer action the rest of the app already
  * uses for it — rename and colour through UPDATE_CLIP, start through
@@ -84,11 +84,11 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
   const [exporting, setExporting] = React.useState(false);
 
   // The panel FOLLOWS THE FOCUSED CLIP (2026-10-06, "can it be the
-  // focused clip?"): the clip with DOM focus is what it shows, and it
-  // is recorded as the target so the panel STAYS on it when focus
-  // moves into the panel's own fields or elsewhere. With no clip
-  // focused, a single selected clip becomes the target as before
-  // (2026-10-02 — selection by menu or macro still switches the panel).
+  // focused clip?"): the clip with DOM focus is what it shows; else a
+  // single selected clip (selection by menu or macro still switches
+  // the panel). The target is RECORDED for the ⌥⌘I hotkey's focus
+  // return and the menu's open — not for display: with no focus and no
+  // single selection the panel is EMPTY (2026-10-07).
   const focused = useFocusedClip();
   const single = singleSelectedClip(state.tracks);
   const next = focused ?? (single ? { trackIndex: single.trackIndex, clipId: single.clip.id } : null);
@@ -104,7 +104,10 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
   const selected = selectedClipEntries(state.tracks);
   const focusedInSelection = !!focused && selected.some((e) => e.trackIndex === focused.trackIndex && e.clip.id === focused.clipId);
   const selection = selected.length >= 2 && (!focused || focusedInSelection) ? mergeSelectedClips(selected, TRACK_COLOR) : null;
-  const resolved = selection ? null : resolveClipPropertiesClip(state.tracks, clipPropertiesTarget, focused);
+  // (The recorded target is for the hotkey's focus return, not for
+  // display: with no focus and no single selection the panel is EMPTY,
+  // 2026-10-07 — it used to keep the last clip it showed)
+  const resolved = selection ? null : resolveClipPropertiesClip(state.tracks, focused);
   const track = resolved ? state.tracks[resolved.trackIndex] : null;
   const clip = resolved?.clip ?? null;
   const trackIndex = resolved?.trackIndex ?? -1;
