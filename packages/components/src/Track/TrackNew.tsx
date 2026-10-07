@@ -157,6 +157,10 @@ export interface TrackClip {
   /** Pitch shift in semitones (the Clip properties panel's Pitch field,
    *  2026-10-02); absent = none */
   pitchSemitones?: number;
+  /** Draws (and, in the host's engine, plays) BACKWARDS: the waveform
+   *  arrays are mirrored for the body and the ghost; the host keeps
+   *  trimStart on the mirrored source (2026-10-07) */
+  reversed?: boolean;
   selected?: boolean;
   waveform?: number[];
   waveformRms?: number[];
@@ -1496,20 +1500,31 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // crossfade ghost must draw the SAME array the clip's body does).
   // Full-duration arrays: a trimmed clip's hidden material is in here.
   const clipWaveforms = React.useMemo(() => {
-    const map = new Map<string | number, { mono?: number[]; left?: number[]; right?: number[] }>();
+    const map = new Map<string | number, { mono?: number[]; left?: number[]; right?: number[]; monoRms?: number[]; leftRms?: number[]; rightRms?: number[] }>();
     for (const clip of clips) {
       const isStereo = Boolean(clip.waveformLeft || clip.waveformRight);
       const trimStart = (clip as any).trimStart || 0; // justified: trimStart not on Clip type — pending components sweep
       const fullDuration = (clip as any).fullDuration || (trimStart + clip.duration); // justified: fullDuration not on Clip type — pending components sweep
-      const entry: { mono?: number[]; left?: number[]; right?: number[] } = {
+      const entry: { mono?: number[]; left?: number[]; right?: number[]; monoRms?: number[]; leftRms?: number[]; rightRms?: number[] } = {
         mono: clip.waveform,
         left: clip.waveformLeft,
         right: clip.waveformRight,
+        monoRms: clip.waveformRms,
+        leftRms: clip.waveformLeftRms,
+        rightRms: clip.waveformRightRms,
       };
       if (!entry.mono && !isStereo) entry.mono = generateSpeechWaveform(fullDuration, 1800);
       if (isStereo && (!entry.left || !entry.right)) {
         entry.left = generateSpeechWaveform(fullDuration, 1800);
         entry.right = generateSpeechWaveform(fullDuration, 1800);
+      }
+      // A REVERSED clip draws its arrays mirrored (2026-10-07) — body
+      // and ghost alike, since both read this entry
+      if (clip.reversed) {
+        for (const k of ['mono', 'left', 'right', 'monoRms', 'leftRms', 'rightRms'] as const) {
+          const arr = entry[k];
+          if (arr) entry[k] = [...arr].reverse();
+        }
       }
       map.set(clip.id, entry);
     }
@@ -1936,11 +1951,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             variant={variant}
             channelMode={channelMode}
             waveformData={waveformData}
-            waveformDataRms={clip.waveformRms}
+            waveformDataRms={wf?.monoRms}
             waveformLeft={waveformLeft}
             waveformRight={waveformRight}
-            waveformLeftRms={clip.waveformLeftRms}
-            waveformRightRms={clip.waveformRightRms}
+            waveformLeftRms={wf?.leftRms}
+            waveformRightRms={wf?.rightRms}
             channelSplitRatio={channelSplitRatio}
             envelope={clip.envelopePoints}
             showEnvelope={envelopeMode}

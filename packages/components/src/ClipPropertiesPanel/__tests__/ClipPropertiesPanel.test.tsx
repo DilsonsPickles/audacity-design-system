@@ -264,6 +264,31 @@ describe('ClipPropertiesPanel › the Track field (2026-10-06)', () => {
   });
 });
 
+describe('ClipPropertiesPanel › Reverse (2026-10-07)', () => {
+  it('a switch in the field look: off reports on, on reports off; a mixed selection reads mixed and a press sets every clip on', () => {
+    const onReverseChange = vi.fn();
+    const { field } = renderPanel({ onReverseChange });
+    const sw = field('reverse') as HTMLButtonElement;
+    expect(sw.getAttribute('role')).toBe('switch');
+    expect(sw.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(sw);
+    expect(onReverseChange).toHaveBeenCalledWith(true);
+    const onChangeWhenOn = vi.fn();
+    const on = renderPanel({ clip: { ...clip, reversed: true }, onReverseChange: onChangeWhenOn });
+    expect(on.field('reverse').getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(on.field('reverse'));
+    expect(onChangeWhenOn).toHaveBeenCalledWith(false);
+    const mixedChange = vi.fn();
+    const mixed = renderPanel({ onReverseChange: mixedChange, selection: {
+      count: 2, trackNames: ['Track 1'], start: 0, end: 9, color: 'blue', fadeIn: 0, fadeOut: 0,
+      pitchSemitones: 0, stretchFactor: 1, reversed: MIXED,
+    } });
+    expect(mixed.field('reverse').getAttribute('aria-checked')).toBe('mixed');
+    fireEvent.click(mixed.field('reverse'));
+    expect(mixedChange).toHaveBeenCalledWith(true);
+  });
+});
+
 describe('ClipPropertiesPanel › Reset and Export (2026-10-06)', () => {
   const exportFormats = [{ id: 'wav', label: 'WAV' }, { id: 'mp3', label: 'MP3' }];
   const exportSampleRates = [{ id: '44100', label: '44.1 kHz' }, { id: '48000', label: '48 kHz' }];

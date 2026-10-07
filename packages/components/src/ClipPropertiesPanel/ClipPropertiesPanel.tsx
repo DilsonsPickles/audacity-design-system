@@ -89,6 +89,8 @@ export interface ClipPropertiesClip {
    *  quick fade's default S-curve) */
   fadeInShape?: FadeShape;
   fadeOutShape?: FadeShape;
+  /** Plays and draws backwards (2026-10-07) */
+  reversed?: boolean;
   groupId?: string;
 }
 
@@ -114,6 +116,7 @@ export interface ClipPropertiesSelection {
   fadeOut: number | Mixed;
   fadeInShapeId?: string | Mixed;
   fadeOutShapeId?: string | Mixed;
+  reversed?: boolean | Mixed;
 }
 
 export interface ClipPropertiesOption {
@@ -158,6 +161,8 @@ export interface ClipPropertiesPanelProps {
   onPitchChange?: (semitones: number) => void;
   /** New speed, percent (100 = as recorded) */
   onSpeedChange?: (percent: number) => void;
+  /** Reverse on or off (every selected clip's, in the selection state) */
+  onReverseChange?: (reversed: boolean) => void;
   /** Pitch back to 0 and speed back to 100 — the section's Reset */
   onResetPitchSpeed?: () => void;
   /** The export block's formats; none = no Export section */
@@ -238,6 +243,9 @@ const SampleRateGlyph = () => (
 );
 const TrackGlyph = () => (
   <Glyph title="Track"><path d="M2 4h12M2 8h12M2 12h12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M5 6.5v3M8 5.5v5M11 6.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></Glyph>
+);
+const ReverseGlyph = () => (
+  <Glyph title="Reverse"><path d="M13 5H5M8 2 5 5l3 3M3 11h8M8 8l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></Glyph>
 );
 const CountGlyph = () => (
   <Glyph title="Selected clips"><path d="M2 5h8v8H2zM5 2h9v9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></Glyph>
@@ -573,6 +581,7 @@ export function ClipPropertiesPanel({
   onFadeShapeChange,
   onPitchChange,
   onSpeedChange,
+  onReverseChange,
   onResetPitchSpeed,
   exportFormats = [],
   exportSampleRates = [],
@@ -619,6 +628,7 @@ export function ClipPropertiesPanel({
   const inCurve = shapeOf(fadeInShapeId, clip?.fadeInShape);
   const outCurve = shapeOf(fadeOutShapeId, clip?.fadeOutShape);
   const pitch = multi ? multi.pitchSemitones : clip?.pitchSemitones ?? 0;
+  const reversed: boolean | Mixed = multi ? (multi.reversed ?? false) : (clip?.reversed ?? false);
   const speed: number | Mixed = multi
     ? (multi.stretchFactor === MIXED ? MIXED : speedOf(multi.stretchFactor))
     : speedOf(clip?.stretchFactor ?? 1);
@@ -790,6 +800,25 @@ export function ClipPropertiesPanel({
             <NumberField testId="pitch" label="Pitch" glyph={<PitchGlyph />} value={pitch} onCommit={onPitchChange}
               step={1} min={-PITCH_LIMIT_SEMITONES} max={PITCH_LIMIT_SEMITONES} digits={2} />
             <NumberField testId="speed" label="Speed" glyph={<SpeedGlyph />} value={speed} onCommit={onSpeedChange} step={5} min={1} digits={2} />
+          </Row>
+          {/* Reverse (2026-10-07): a switch in the field look; mixed
+              reads as neither, and a press sets every clip the same way */}
+          <Row>
+            <button
+              type="button"
+              className="clip-properties__field clip-properties__field--toggle clip-properties__field--wide"
+              data-clip-properties-field="reverse"
+              data-mixed={reversed === MIXED ? 'true' : undefined}
+              data-tooltip="Reverse"
+              role="switch"
+              aria-checked={reversed === MIXED ? 'mixed' : reversed}
+              disabled={!onReverseChange}
+              onClick={() => onReverseChange?.(reversed === MIXED ? true : !reversed)}
+            >
+              <span className="clip-properties__glyph-cell"><ReverseGlyph /></span>
+              <span className="clip-properties__value">Reverse</span>
+              <span className="clip-properties__switch" aria-hidden="true" />
+            </button>
           </Row>
           </div>
 

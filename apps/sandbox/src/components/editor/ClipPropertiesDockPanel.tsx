@@ -136,6 +136,7 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
     fadeOutShapeId: fadeShapePresetOf(clip.fadeOutShape),
     fadeInShape: clip.fadeInShape,
     fadeOutShape: clip.fadeOutShape,
+    reversed: clip.reversed ?? false,
     groupId: clip.groupId,
   } : null;
 
@@ -262,6 +263,9 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
         update({ pitchSemitones: n === 0 ? undefined : n });
       }}
       onResetPitchSpeed={resetPitchSpeed}
+      onReverseChange={(reversed) => forEachTarget((t) => ((t.clip.reversed ?? false) === reversed ? null : {
+        type: 'REVERSE_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clip.id },
+      }))}
       exportFormats={CLIP_EXPORT_FORMATS}
       exportSampleRates={CLIP_EXPORT_SAMPLE_RATES}
       onExport={(settings) => { void exportTargets(settings); }}

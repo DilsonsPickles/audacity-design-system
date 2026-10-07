@@ -451,6 +451,30 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       return { ...state, tracks: newTracks, clipDurationIndicator: newClipDurationIndicator, timeSelection: newTimeSelection };
     }
 
+    case 'REVERSE_CLIP': {
+      // Toggle the clip backwards (2026-10-07). The source audio and
+      // waveform are untouched; `reversed` makes the renderer and the
+      // engine read them MIRRORED, so trimStart is remapped onto the
+      // mirror: what was hidden at the head is now hidden at the tail.
+      const { trackIndex, clipId } = action.payload;
+      const track = state.tracks[trackIndex];
+      if (!track) return state;
+      const newTracks = [...state.tracks];
+      newTracks[trackIndex] = {
+        ...track,
+        clips: track.clips.map(clip => {
+          if (clip.id !== clipId) return clip;
+          const stretch = (clip as { stretchFactor?: number }).stretchFactor ?? 1;
+          const trimStart = clip.trimStart ?? 0;
+          const windowLen = clip.duration / stretch;
+          const fullDuration = clip.fullDuration ?? trimStart + windowLen;
+          const mirrored = Math.max(0, fullDuration - trimStart - windowLen);
+          return { ...clip, reversed: !clip.reversed || undefined, trimStart: mirrored, fullDuration };
+        }),
+      };
+      return { ...state, tracks: newTracks };
+    }
+
     case 'STRETCH_CLIP': {
       // Visual-only time-stretch: changes the clip's visible duration while
       // keeping its trimStart fixed and recording a `stretchFactor` so the

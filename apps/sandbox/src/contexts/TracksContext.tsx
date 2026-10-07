@@ -62,6 +62,11 @@ export interface Clip {
    *  absent = none. Audible: the audio engine plays a pitched or
    *  stretched clip through a GrainPlayer. */
   pitchSemitones?: number;
+  /** The clip plays and draws BACKWARDS (the Clip properties panel's
+   *  Reverse, 2026-10-07). The source is left as it is: `trimStart` is
+   *  then measured on the MIRRORED source (REVERSE_CLIP remaps it), so
+   *  the waveform, the audio and the trims all agree. */
+  reversed?: boolean;
   groupId?: string;
   /** Clip fade lengths in seconds (equal-power; same curves as the
    *  overlap crossfade). Absent/0 = no fade. Baked into playback and
@@ -347,6 +352,7 @@ export type TracksAction =
   | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'TRIM_CLIP'; payload: { trackIndex: number; clipId: number; newTrimStart: number; newDuration: number; newStart?: number } }
   | { type: 'STRETCH_CLIP'; payload: { trackIndex: number; clipId: number; newDuration: number; newStretchFactor: number; newStart?: number } }
+  | { type: 'REVERSE_CLIP'; payload: { trackIndex: number; clipId: number } }
   | { type: 'DELETE_TIME_RANGE'; payload: { startTime: number; endTime: number } }
   | { type: 'ADD_LABEL'; payload: { trackIndex: number; label: Label } }
   | { type: 'UPDATE_LABEL'; payload: { trackIndex: number; labelId: number; label: Partial<Label> }  }
@@ -473,6 +479,7 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'MOVE_CLIP',
   'TRIM_CLIP',
   'STRETCH_CLIP',
+  'REVERSE_CLIP',
   'SET_CLIP_FADE',
   'ROLL_CROSSFADE',
   'SET_CROSSFADE_SHAPE',

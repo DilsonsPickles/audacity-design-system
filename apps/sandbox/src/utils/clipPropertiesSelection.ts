@@ -44,6 +44,7 @@ export function mergeSelectedClips(entries: readonly SelectedClipEntry[], trackC
     color: merge(clips.map((c) => c.ownColor ?? trackColorId)),
     stretchFactor: merge(clips.map((c) => (c as { stretchFactor?: number }).stretchFactor ?? 1)),
     pitchSemitones: merge(clips.map((c) => c.pitchSemitones ?? 0)),
+    reversed: merge(clips.map((c) => c.reversed ?? false)),
     fadeIn: merge(clips.map((c) => c.fadeIn ?? 0)),
     fadeOut: merge(clips.map((c) => c.fadeOut ?? 0)),
     fadeInShapeId: merge(clips.map((c) => fadeShapePresetOf(c.fadeInShape))),

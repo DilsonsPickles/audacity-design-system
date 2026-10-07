@@ -42,6 +42,28 @@ export class AudioPlaybackManager {
    *  deleted clips linger like audioBuffers entries do — same retention
    *  model, same magnitude. */
   private toneBufferCache = new Map<string, { sig: string; toneBuffer: Tone.ToneAudioBuffer }>();
+  /** Mirrored copies of sources, for REVERSED clips (2026-10-07), by buffer key */
+  private reversedBuffers = new Map<string, AudioBuffer>();
+
+  /** The buffer a clip reads: the source, or — for a reversed clip —
+   *  its mirror, built once per source and dropped when the source
+   *  changes. The host keeps trimStart on the mirror, so offsets apply
+   *  unchanged. */
+  private playableBuffer(clip: any, buffer: AudioBuffer, bufferKey: string): { buffer: AudioBuffer; key: string } { // justified: the host's clip shape — pending audio-package sweep
+    if (!clip.reversed) return { buffer, key: bufferKey };
+    const key = `${bufferKey}:rev`;
+    let mirrored = this.reversedBuffers.get(bufferKey);
+    if (!mirrored || mirrored.length !== buffer.length || mirrored.numberOfChannels !== buffer.numberOfChannels) {
+      mirrored = new AudioBuffer({ numberOfChannels: buffer.numberOfChannels, length: buffer.length, sampleRate: buffer.sampleRate });
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+        const data = Float32Array.from(buffer.getChannelData(ch));
+        data.reverse();
+        mirrored.copyToChannel(data, ch);
+      }
+      this.reversedBuffers.set(bufferKey, mirrored);
+    }
+    return { buffer: mirrored, key };
+  }
 
   /** When set, playback auto-stops as the transport reaches this time —
    *  used to play only a time selection. Cleared by pause()/stop().
@@ -163,7 +185,9 @@ export class AudioPlaybackManager {
     // A new/replaced source invalidates any cached ToneAudioBuffers built
     // from the previous content under this id.
     this.toneBufferCache.delete(`src:${String(clipId)}`);
+    this.toneBufferCache.delete(`src:${String(clipId)}:rev`);
     this.toneBufferCache.delete(`clip:${String(clipId)}`);
+    this.reversedBuffers.delete(String(clipId));
     this.audioBuffers.set(String(clipId), buffer);
   }
 
@@ -347,6 +371,10 @@ export class AudioPlaybackManager {
           }
         }
         if (buffer) {
+          // A reversed clip reads the source's mirror (2026-10-07)
+          const playable = this.playableBuffer(clip, buffer, bufferKey);
+          buffer = playable.buffer;
+          bufferKey = playable.key;
           const trimStart = clip.trimStart || 0;
           const deletedRegions = clip.deletedRegions || [];
 
@@ -855,8 +883,9 @@ export class AudioPlaybackManager {
    */
   async exportClip(clip: any, options: { sampleRate?: number; siblings?: any[] } = {}): Promise<{ blob: Blob; duration: number; sampleRate: number }> { // justified: the host's clip shape — pending audio-package sweep
     await Tone.start();
-    const audioBuffer = this.resolveClipBuffer(clip, options.siblings ?? []);
-    if (!audioBuffer) throw new Error('This clip has no audio to export');
+    const source = this.resolveClipBuffer(clip, options.siblings ?? []);
+    if (!source) throw new Error('This clip has no audio to export');
+    const audioBuffer = this.playableBuffer(clip, source, String(clip.sourceClipId ?? clip.id)).buffer;
     const duration = Number(clip.duration);
     if (!(duration > 0)) throw new Error('This clip has no length to export');
 
@@ -914,8 +943,9 @@ export class AudioPlaybackManager {
       // Same crossfade/occlusion gains live playback bakes (crossfadeGain.ts)
       const trackGainSegments = computeClipGainSegments(track.clips ?? []);
       for (const clip of track.clips ?? []) {
-        const audioBuffer = this.audioBuffers.get(String(clip.id));
-        if (!audioBuffer) continue;
+        const sourceBuffer = this.audioBuffers.get(String(clip.id));
+        if (!sourceBuffer) continue;
+        const audioBuffer = this.playableBuffer(clip, sourceBuffer, String(clip.id)).buffer;
 
         const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
         const offlineBuffer = offlineCtx.createBuffer(numChannels, audioBuffer.length, audioBuffer.sampleRate);
