@@ -1316,10 +1316,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 data-quickfade-dot
                 cx={BOX / 2}
                 cy={BOX / 2}
-                r={NODE_R - 0.75}
+                r={NODE_R - 0.5}
                 fill="#FFFFFF"
                 stroke="rgba(0, 0, 0, 0.6)"
-                strokeWidth={1.5}
+                strokeWidth={1}
               />
             </svg>
           </div>,
