@@ -1,0 +1,100 @@
+/* CustomiseToolbarMenu — Figma CustomiseToolbar/Right: 256 wide, radius
+   4, 1px stroke, Elevation_03 (0 10px 30px rgba(20,21,26,.3)), a 32px
+   sticky header, 32px rows in an 8px-padded list, 8px dividers. The
+   ContextMenu surface is overridden here; the triangle is the design's
+   own asset, overlapping the top border by 1px. */
+.context-menu.customise-toolbar {
+  width: 256px;
+  min-width: 256px;
+  padding: 0;
+  border-radius: 4px;
+  overflow: visible;
+  box-shadow: 0 10px 30px rgba(20, 21, 26, 0.3);
+}
+
+.customise-toolbar__triangle {
+  position: absolute;
+  top: -8px;
+  display: block;
+  pointer-events: none;
+}
+
+.customise-toolbar__main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden auto;
+  border-radius: 4px;
+}
+
+.customise-toolbar__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  font: 600 12px/16px Inter, system-ui, sans-serif;
+  color: var(--context-menu-text, #14151a);
+  background: var(--context-menu-bg, #f8f8f9);
+}
+
+.customise-toolbar__list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 8px 8px;
+}
+
+.customise-toolbar__item {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0 8px 0 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--context-menu-text, #14151a);
+  font: 400 12px/16px Inter, system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.customise-toolbar__item:hover,
+.customise-toolbar__item:focus-visible {
+  background: var(--context-menu-item-hover-bg, rgba(20, 21, 26, 0.06));
+  outline: none;
+}
+
+.customise-toolbar__eye,
+.customise-toolbar__icon {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.customise-toolbar__item[aria-checked="false"] .customise-toolbar__icon,
+.customise-toolbar__item[aria-checked="false"] .customise-toolbar__label {
+  opacity: 0.5;
+}
+
+.customise-toolbar__label {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customise-toolbar__divider {
+  display: block;
+  width: 100%;
+  height: 8px;
+  flex-shrink: 0;
+}

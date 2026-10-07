@@ -73,6 +73,9 @@ export interface PreferencesState {
    *    selection's scope only parks the playhead; clicking OUTSIDE it
    *    selects the clicked track and collapses the time selection. */
   laneClickBehavior: 'playhead-only' | 'select-track' | 'select-and-collapse';
+  /** Tools hidden from the transport toolbar, by the cog's Customise
+   *  toolbar popover (CustomiseToolbarMenu ids; 2026-10-07) */
+  toolbarHiddenTools: string[];
 
   // Spectral Display
   enableSpectralSelection: boolean;
@@ -140,6 +143,7 @@ const defaultPreferences: PreferencesState = {
   // ("one selection: every gesture works inside it or replaces it").
   // The other options stay available in Developer Tools.
   laneClickBehavior: 'select-and-collapse',
+  toolbarHiddenTools: [],
 
   // Spectral Display
   enableSpectralSelection: true,

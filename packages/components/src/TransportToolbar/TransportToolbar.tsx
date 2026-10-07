@@ -9,6 +9,7 @@ import { TimeSignatureSelector, type TimeSignature } from '../TimeSignatureSelec
 import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
+import { CustomiseToolbarMenu } from '../CustomiseToolbarMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { Checkbox } from '../Checkbox';
 import { MasterMeter } from '../MasterMeter';
@@ -33,6 +34,11 @@ export type Workspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
 export interface TransportToolbarProps {
   activeMenuItem: 'home' | 'project' | 'export' | 'debug';
   workspace: Workspace;
+  /** Tools hidden from the toolbar (CustomiseToolbarMenu ids — the
+   *  cog's popover, 2026-10-07); absent = every tool shows */
+  hiddenTools?: ReadonlyArray<string>;
+  /** A row of the cog's popover was pressed: show or hide that tool */
+  onToggleToolVisibility?: (id: string) => void;
 
   // Playback
   isPlaying: boolean;
@@ -202,6 +208,7 @@ function SplitRecordButton({
 
 export function TransportToolbar({
   activeMenuItem, workspace,
+  hiddenTools = [], onToggleToolVisibility,
   isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
@@ -228,6 +235,13 @@ export function TransportToolbar({
   const [volumeMenuOpen, setVolumeMenuOpen] = React.useState(false);
   const [volumeMenuPos, setVolumeMenuPos] = React.useState({ x: 0, y: 0 });
   const volumeButtonRef = React.useRef<HTMLDivElement>(null);
+  // The cog's Customise toolbar popover (2026-10-07) — hooks ABOVE the
+  // Home-tab early return, with the rest
+  const cogRef = React.useRef<HTMLSpanElement>(null);
+  const [customiseOpen, setCustomiseOpen] = React.useState(false);
+  const [customiseAnchor, setCustomiseAnchor] = React.useState<{ left: number; right: number; bottom: number } | null>(null);
+  const hiddenSet = React.useMemo(() => new Set(hiddenTools), [hiddenTools]);
+  const show = (id: string) => !hiddenSet.has(id);
   // Uncontrolled fallback so the menu still works if the consumer hasn't
   // wired up `meterOrientation` / `onMeterOrientationChange` yet.
   const [internalOrientation, setInternalOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
@@ -274,9 +288,28 @@ export function TransportToolbar({
 
   if (activeMenuItem === 'home') return null;
 
+  // The cog opens the Customise toolbar popover, hung under it;
+  // `show(id)` gates each tool on the hidden list
   const settingsCog = (
     <ToolbarButtonGroup gap={2}>
-      <ToolButton icon="cog" ariaLabel="Settings" onClick={() => {}} />
+      <span ref={cogRef} style={{ display: 'inline-flex' }} data-customise-toolbar-cog>
+        <ToolButton
+          icon="cog"
+          ariaLabel="Customise toolbar"
+          onClick={() => {
+            const r = cogRef.current?.getBoundingClientRect();
+            setCustomiseAnchor(r ? { left: r.left, right: r.right, bottom: r.bottom } : null);
+            setCustomiseOpen((open) => !open);
+          }}
+        />
+      </span>
+      <CustomiseToolbarMenu
+        isOpen={customiseOpen}
+        onClose={() => setCustomiseOpen(false)}
+        anchor={customiseAnchor}
+        hiddenTools={hiddenTools}
+        onToggleTool={(id) => onToggleToolVisibility?.(id)}
+      />
     </ToolbarButtonGroup>
   );
 
@@ -292,14 +325,16 @@ export function TransportToolbar({
       {activeMenuItem === 'export' ? (
         <>
           <ToolbarButtonGroup gap={2}>
-            <TransportButton icon={isPlaying ? "pause" : "play"} iconColor="#74BE59" ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />
-            <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />
+            {show('play') && <TransportButton icon={isPlaying ? "pause" : "play"} iconColor="#74BE59" ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />}
+            {show('stop') && <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />}
+            {show('loop') && (
             <TransportButton
               icon="loop"
               ariaLabel="Loop"
               active={loopRegionEnabled}
               onClick={handleToggleLoop}
             />
+            )}
           </ToolbarButtonGroup>
 
 
@@ -337,9 +372,9 @@ export function TransportToolbar({
       ) : (
         <>
           <ToolbarButtonGroup gap={2}>
-            <TransportButton icon={isPlaying ? "pause" : "play"} iconColor="#74BE59" ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />
-            <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />
-            {useSplitRecordButton ? (
+            {show('play') && <TransportButton icon={isPlaying ? "pause" : "play"} iconColor="#74BE59" ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />}
+            {show('stop') && <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />}
+            {show('record') && (useSplitRecordButton ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 3, overflow: 'hidden' }}>
                 <SplitRecordButton
                   isRecording={isRecording}
@@ -374,70 +409,84 @@ export function TransportToolbar({
                 disabled={isPlaying}
                 onClick={onRecord}
               />
-            )}
-            <TransportButton icon="skip-back" ariaLabel="Skip to start" disabled={isPlaying} onClick={onSkipToStart} />
-            <TransportButton icon="skip-forward" ariaLabel="Skip to end" disabled={isPlaying} onClick={onSkipToEnd} />
+            ))}
+            {show('step-back') && <TransportButton icon="skip-back" ariaLabel="Skip to start" disabled={isPlaying} onClick={onSkipToStart} />}
+            {show('step-forward') && <TransportButton icon="skip-forward" ariaLabel="Skip to end" disabled={isPlaying} onClick={onSkipToEnd} />}
+            {show('loop') && (
             <TransportButton
               icon="loop"
               ariaLabel="Loop"
               active={loopRegionEnabled}
               onClick={handleToggleLoop}
             />
+            )}
           </ToolbarButtonGroup>
 
           {workspace === 'classic' && (
             <>
 
               <ToolbarButtonGroup gap={2}>
+                {show('automation') && (
                 <ToggleToolButton
                   icon="automation"
                   ariaLabel="Clip envelope"
                   isActive={envelopeMode}
                   onClick={onToggleEnvelope}
                 />
+                )}
+                {show('cut') && (
                 <ToggleToolButton
                   icon="split"
                   ariaLabel="Cut / Split"
                   isActive={splitMode}
                   onClick={onToggleSplit}
                 />
+                )}
+                {show('spectral-editing') && (
                 <ToggleToolButton
                   icon="spectrogram"
                   ariaLabel="Spectral view"
                   isActive={spectrogramMode}
                   onClick={onToggleSpectrogram}
                 />
+                )}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
-                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
-                <ToolButton icon="zoom-to-selection" ariaLabel="Fit selection" onClick={onZoomToSelection} />
-                <ToolButton icon="zoom-to-fit" ariaLabel="Fit project" onClick={onZoomToFitProject} />
-                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
+                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
+                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
+                {show('fit-selection') && <ToolButton icon="zoom-to-selection" ariaLabel="Fit selection" onClick={onZoomToSelection} />}
+                {show('fit-project') && <ToolButton icon="zoom-to-fit" ariaLabel="Fit project" onClick={onZoomToFitProject} />}
+                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
+                {show('cut') && (
                 <ToolButton
                   icon="cut"
                   ariaLabel="Cut"
                   onClick={() => {}}
                 />
+                )}
+                {show('copy') && (
                 <ToolButton
                   icon="copy"
                   ariaLabel="Copy"
                   onClick={() => {}}
                 />
+                )}
+                {show('paste') && (
                 <ToolButton
                   icon="paste"
                   ariaLabel="Paste"
                   onClick={() => {}}
                 />
+                )}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="trim" ariaLabel="Trim" />
-                <ToolButton icon="silence" ariaLabel="Silence" />
+                {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}
+                {show('silence') && <ToolButton icon="silence" ariaLabel="Silence" />}
               </ToolbarButtonGroup>
             </>
           )}
@@ -445,9 +494,9 @@ export function TransportToolbar({
           {workspace === 'spectral-editing' && (
             <>
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
-                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
-                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
+                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
+                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
+                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
@@ -464,30 +513,34 @@ export function TransportToolbar({
           {workspace === 'modern' && (
             <>
               <ToolbarButtonGroup gap={2}>
+                {show('automation') && (
                 <ToggleToolButton
                   icon="automation"
                   ariaLabel="Clip envelope"
                   isActive={envelopeMode}
                   onClick={onToggleEnvelope}
                 />
-                <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} />
+                )}
+                {show('cut') && <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} />}
+                {show('spectral-editing') && (
                 <ToggleToolButton
                   icon="spectrogram"
                   ariaLabel="Spectral view"
                   isActive={spectrogramMode}
                   onClick={onToggleSpectrogram}
                 />
+                )}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
-                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
-                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
+                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
+                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
+                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="trim" ariaLabel="Trim" />
-                <ToolButton icon="silence" ariaLabel="Silence" />
+                {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}
+                {show('silence') && <ToolButton icon="silence" ariaLabel="Silence" />}
               </ToolbarButtonGroup>
             </>
           )}
@@ -495,29 +548,32 @@ export function TransportToolbar({
           {workspace === 'music' && (
             <>
               <ToolbarButtonGroup gap={2}>
+                {show('automation') && (
                 <ToggleToolButton
                   icon="automation"
                   ariaLabel="Clip envelope"
                   isActive={envelopeMode}
                   onClick={onToggleEnvelope}
                 />
-                <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} />
+                )}
+                {show('cut') && <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} />}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />
-                <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />
-                <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />
+                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
+                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
+                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
               <ToolbarButtonGroup gap={2}>
-                <ToolButton icon="trim" ariaLabel="Trim" />
-                <ToolButton icon="silence" ariaLabel="Silence" />
+                {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}
+                {show('silence') && <ToolButton icon="silence" ariaLabel="Silence" />}
               </ToolbarButtonGroup>
             </>
           )}
 
 
+          {show('timecode') && (
           <ToolbarButtonGroup gap={2}>
             <TimeCode
               value={currentTime}
@@ -526,9 +582,11 @@ export function TransportToolbar({
               onFormatChange={onTimeCodeFormatChange}
             />
           </ToolbarButtonGroup>
+          )}
 
           {workspace === 'music' && (
             <>
+              {show('bpm') && (
               <ToolbarButtonGroup gap={2}>
                 <BpmStepper
                   value={bpm}
@@ -537,17 +595,21 @@ export function TransportToolbar({
                   max={300}
                 />
               </ToolbarButtonGroup>
+              )}
 
+              {show('time-signature') && (
               <ToolbarButtonGroup gap={2}>
                 <TimeSignatureSelector
                   value={{ numerator: beatsPerMeasure, denominator: noteValue }}
                   onChange={(next) => onTimeSignatureChange?.(next)}
                 />
               </ToolbarButtonGroup>
+              )}
             </>
           )}
 
 
+          {show('snapping') && (
           <ToolbarButtonGroup gap={8}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: theme.foreground.text.primary, whiteSpace: 'nowrap', userSelect: 'none' }}>
               Snap
@@ -649,15 +711,17 @@ export function TransportToolbar({
               </ContextMenuItem>
             </ContextMenu>
           </ToolbarButtonGroup>
+          )}
 
 
           <ToolbarButtonGroup gap={2}>
-            <ToolButton icon="microphone" ariaLabel="Microphone settings" onClick={() => {}} />
+            {show('microphone-levels') && <ToolButton icon="microphone" ariaLabel="Microphone settings" onClick={() => {}} />}
           </ToolbarButtonGroup>
 
           {/* Playback meter cluster: the volume settings button hosts the
               meter's controls, so it must stay glued to the meter — they
               wrap together as a single unit. */}
+          {show('playback-meter') && (
           <ToolbarButtonGroup gap={6}>
             <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
               <ToolButton
@@ -679,6 +743,7 @@ export function TransportToolbar({
               />
             )}
           </ToolbarButtonGroup>
+          )}
 
           <ContextMenu
             isOpen={volumeMenuOpen}
