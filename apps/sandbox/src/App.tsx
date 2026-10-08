@@ -520,17 +520,22 @@ function CanvasDemoContent() {
   // Collapse / expand the SELECTED tracks (2026-10-08, "collapse just the
   // selected track" — AU3's per-track minimise button, as a command):
   // the selected tracks, or with none selected the track I'm on.
+  // THE FOCUSED TRACK, not the selection (2026-10-08, "it should be the
+  // focused track that gets resized"): the track you are on — the clip or
+  // header with DOM focus, then the focused track — and the selection only
+  // when nothing is focused (`resolveTracksImOn`'s order). One rule for
+  // collapse, expand and fit.
   const setSelectedTrackHeights = React.useCallback((height: number) => {
-    const targets = state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices : resolveTracksImOn();
+    const targets = resolveTracksImOn();
     targets.forEach((index) => {
       if ((state.tracks[index]?.height || 114) !== height) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height } });
     });
-  }, [state.tracks, state.selectedTrackIndices, resolveTracksImOn, dispatch]);
+  }, [state.tracks, resolveTracksImOn, dispatch]);
   const handleCollapseSelectedTracks = React.useCallback(() => setSelectedTrackHeights(44), [setSelectedTrackHeights]);
   const handleExpandSelectedTracks = React.useCallback(() => setSelectedTrackHeights(114), [setSelectedTrackHeights]);
   // Option+Cmd+F (2026-10-08, "cmd + opt + F on a single track to get it
-  // to fill all available VH space"): the selected tracks — or the
-  // track I'm on — share the viewport's height between them; the others
+  // to fill all available VH space"): the track I'm on (focus first, as
+  // above) takes what the other rows leave of the viewport; the others
   // keep theirs. The one-track form of Fit to height.
   // The tracks the last Option+Cmd+F sized, by id, at the height it gave
   // them. SUCCESSIVE FITS SHARE THE ROOM (2026-10-08, "if I press cmd +
@@ -543,7 +548,7 @@ function CanvasDemoContent() {
   // its fitted height and drops out on its own.
   const fittedHeightsRef = React.useRef<Map<number, number>>(new Map());
   const handleFitSelectedTracksToHeight = React.useCallback(() => {
-    const pressed = state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices : resolveTracksImOn();
+    const pressed = resolveTracksImOn();
     const targetSet = new Set(pressed);
     state.tracks.forEach((t, i) => {
       if (fittedHeightsRef.current.get(t.id) === (t.height || DEFAULT_TRACK_HEIGHT)) targetSet.add(i);
@@ -561,7 +566,7 @@ function CanvasDemoContent() {
     targets.forEach((index) => {
       if ((state.tracks[index]?.height || DEFAULT_TRACK_HEIGHT) !== per) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: per } });
     });
-  }, [state.tracks, state.selectedTrackIndices, resolveTracksImOn, dispatch]);
+  }, [state.tracks, resolveTracksImOn, dispatch]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
