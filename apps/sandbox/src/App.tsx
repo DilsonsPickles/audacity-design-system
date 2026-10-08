@@ -489,6 +489,18 @@ function CanvasDemoContent() {
 
   const handleExpandAllTracks = React.useCallback(() => setAllTrackHeights(114), [setAllTrackHeights]);
   const handleCollapseAllTracks = React.useCallback(() => setAllTrackHeights(44), [setAllTrackHeights]);
+  // Option+Cmd+Up/Down (+Shift: every track): the wheel's steps from the
+  // keyboard (2026-10-08). The focused track, or nothing without one.
+  const handleTrackHeightStep = React.useCallback((delta: number, scope: 'focused' | 'all') => {
+    const targets = scope === 'all'
+      ? state.tracks.map((_, i) => i)
+      : state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined ? [state.focusedTrackIndex] : [];
+    targets.forEach((index) => {
+      const t = state.tracks[index];
+      if (!t) return;
+      dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: Math.max(44, (t.height || 114) + delta) } });
+    });
+  }, [state.tracks, state.focusedTrackIndex, dispatch]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -504,6 +516,7 @@ function CanvasDemoContent() {
     onFitTracksToHeight: handleFitTracksToHeight,
     onExpandAllTracks: handleExpandAllTracks,
     onCollapseAllTracks: handleCollapseAllTracks,
+    onTrackHeightStep: handleTrackHeightStep,
   });
 
   // Hold Cmd (Ctrl on Windows/Linux) to grab-pan the canvas. The

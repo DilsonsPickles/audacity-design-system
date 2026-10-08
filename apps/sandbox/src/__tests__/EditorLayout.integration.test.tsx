@@ -1068,6 +1068,34 @@ describe('Selection playback', () => {
     });
   });
 
+  it('Option+Cmd+Up/Down steps the focused track by 24px; with Shift every track (2026-10-08, the wheel on the keyboard)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+    // Focus track 1
+    const panel1 = container.querySelectorAll('[aria-label*="track controls"]')[1] as HTMLElement;
+    act(() => { panel1.focus(); });
+
+    fireEvent.keyDown(document.body, { key: 'ArrowUp', metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect((panels()[1] as HTMLElement).style.height).toBe('138px');
+    });
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+
+    fireEvent.keyDown(document.body, { key: 'ArrowDown', metaKey: true, altKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+      expect((panels()[0] as HTMLElement).style.height).toBe('90px');
+    });
+  });
+
   it('Cmd+wheel on one header resizes THAT track; Cmd+Shift+wheel resizes ALL together by the same step (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

@@ -60,12 +60,20 @@ export interface UseKeyboardShortcutsOptions {
   onExpandAllTracks?: () => void;
   /** Cmd/Ctrl+Shift+C collapses every track to the minimum height. */
   onCollapseAllTracks?: () => void;
+  /** Option+Cmd/Ctrl+Up/Down: the focused track taller / shorter by one
+   *  step; with Shift, every track (2026-10-08 — the wheel's two forms
+   *  on the keyboard; the real app has no incremental height command) */
+  onTrackHeightStep?: (delta: number, scope: 'focused' | 'all') => void;
 }
 
 /**
  * Hook that manages global keyboard shortcuts for the application.
  * Routes key events to domain-specific handler modules.
  */
+/** One keyboard step of track height — the wheel's per-event cap, so a
+ *  press is one firm notch */
+export const TRACK_HEIGHT_KEY_STEP = 24;
+
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
   const { trackSelectionMode } = useEditingBehaviorPrefs();
   const {
@@ -89,6 +97,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onFitTracksToHeight,
     onExpandAllTracks,
     onCollapseAllTracks,
+    onTrackHeightStep,
   } = options;
 
   // Track whether the user is navigating via keyboard or mouse.
@@ -118,6 +127,28 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       // project — the arrows were moving the playhead from the Edit
       // macro window's Close button.
       if (dialogOwnsKeyboard(e.target, document)) return;
+
+      // --- Option+Cmd/Ctrl+Up/Down: track height steps (2026-10-08) ---
+      // The wheel's two forms on the keyboard: the FOCUSED track by one
+      // step, with Shift EVERY track by the same step. Option is in the
+      // chord because Cmd+Up/Down moves a clip between tracks and
+      // Shift+Up/Down extends the track selection. Placed ABOVE the
+      // "skip if in an input field" guard: the Volume knob is a range
+      // input, and the chord means nothing to any input — only a text
+      // field keeps its arrows.
+      if ((e.metaKey || e.ctrlKey) && e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && onTrackHeightStep) {
+        const target = e.target as HTMLElement;
+        // Text fields keep their arrows; a slider (the Volume knob is a
+        // range input) does not — the chord works from anywhere else
+        const isTextField = target.tagName === 'TEXTAREA'
+          || (target.tagName === 'INPUT' && ['text', 'search', 'url', 'email', 'tel', 'password', 'number'].includes((target as HTMLInputElement).type))
+          || target.isContentEditable;
+        if (!isTextField) {
+          e.preventDefault();
+          onTrackHeightStep(e.key === 'ArrowUp' ? TRACK_HEIGHT_KEY_STEP : -TRACK_HEIGHT_KEY_STEP, e.shiftKey ? 'all' : 'focused');
+          return;
+        }
+      }
 
       // Navigation keys indicate keyboard navigation mode
       const navKeys = ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Home', 'End'];
