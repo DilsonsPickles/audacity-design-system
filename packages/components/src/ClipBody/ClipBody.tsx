@@ -205,15 +205,14 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
   // Throttle the height used by the (expensive) canvas redraw so it
-  // lags a little behind during a track-height drag or wheel. CSS
-  // inline styles below use the live `height` so the canvas element
-  // visibly fills its parent even while the pixel buffer is at the
-  // previous height (the browser stretches the existing pixels); the
+  // lags a little behind during a track-height drag or wheel; the
   // redraw catches up every DRAW_THROTTLE_MS and lands on the final
-  // height when the gesture rests. It was React's useDeferredValue
-  // until 2026-10-08: under a continuous wheel React never found the
-  // idle moment to commit, so the bitmap stayed at the starting height
-  // and stretched 2× before snapping back — see useThrottledValue.
+  // height when the gesture rests. The canvas element is sized to
+  // THIS height too (see the JSX), never stretched to the live one.
+  // It was React's useDeferredValue until 2026-10-08: under a
+  // continuous wheel React never found the idle moment to commit, so
+  // the bitmap stayed at the starting height and stretched 2× before
+  // snapping back — see useThrottledValue.
   const drawHeight = useThrottledValue(height, DRAW_THROTTLE_MS);
 
   // Draw waveform or spectrogram on canvas
@@ -586,13 +585,16 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
       data-selected={selected}
     >
       {/* Canvas-based rendering (waveform or spectrogram).
-          CSS width/height come from props (live) so the canvas always
-          fills its parent. The pixel buffer (canvas.width/height attrs)
-          is sized in the useEffect against a deferred height, so the
-          expensive redraw can lag behind a fast resize drag without
-          blocking the cursor. The browser scales the existing pixels
-          to the live CSS size — small visual stretch during the drag,
-          crisp redraw when the value commits. */}
+          The pixel buffer (canvas.width/height attrs) is sized in the
+          useEffect against the THROTTLED height, so the expensive
+          redraw can lag a step behind a fast resize without blocking
+          the cursor. The CSS height is that same drawn height — NEVER
+          the live one (2026-10-08): stretching the old pixels to the
+          live size blurred every 1px column into a fatter one, so the
+          waveforms "got wider when they should only get taller". Until
+          the redraw lands the canvas keeps its drawn size and sits
+          CENTRED in the body (the zero line holds its place), then
+          grows crisply. */}
       {(waveformData || (waveformLeft && waveformRight)) && (
         <canvas
           ref={canvasRef}
@@ -601,7 +603,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             display: 'block',
             background: 'transparent',
             width: width ? `${width}px` : undefined,
-            height: `${height}px`,
+            height: `${drawHeight}px`,
+            transform: drawHeight !== height ? `translateY(${(height - drawHeight) / 2}px)` : undefined,
           }}
         />
       )}
