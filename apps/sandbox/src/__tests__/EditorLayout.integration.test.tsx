@@ -1182,7 +1182,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Option+Cmd+Up/Down steps the focused track by 24px; with Shift every track (2026-10-08, the wheel on the keyboard)', async () => {
+  it('Option+Cmd+Down/Up steps the focused track taller/shorter by 24px (Down = taller, the bottom edge moving down); with Shift every track (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1197,13 +1197,13 @@ describe('Selection playback', () => {
     const panel1 = container.querySelectorAll('[aria-label*="track controls"]')[1] as HTMLElement;
     act(() => { panel1.focus(); });
 
-    fireEvent.keyDown(document.body, { key: 'ArrowUp', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: 'ArrowDown', metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('138px');
     });
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
 
-    fireEvent.keyDown(document.body, { key: 'ArrowDown', metaKey: true, altKey: true, shiftKey: true });
+    fireEvent.keyDown(document.body, { key: 'ArrowUp', metaKey: true, altKey: true, shiftKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('114px');
       expect((panels()[0] as HTMLElement).style.height).toBe('90px');

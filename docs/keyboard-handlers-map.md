@@ -19,7 +19,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **Shift+F10** or **ContextMenu key** - Open clip context menu (standard keyboard shortcuts)
 - **Cmd+Left/Right** - Move clip horizontally by 0.1s
 - **Cmd+Up/Down** - Move clip to adjacent track
-- **Option+Cmd+Up/Down** - Focused track taller / shorter by 24px; **+Shift** every track (`useKeyboardShortcuts` → `onTrackHeightStep`, 2026-10-08)
+- **Option+Cmd+Down/Up** - Focused track taller / shorter by 24px (Down = taller, the bottom edge moving down); **+Shift** every track (`useKeyboardShortcuts` → `onTrackHeightStep`, 2026-10-08)
 - **Option+Cmd+C / X / F** - Collapse / expand / fit-to-viewport the selected tracks (or the track you are on), matched on `e.code`; **+Shift** every track, alongside Audacity 3's Cmd+Shift+C / X / F (`onCollapseSelectedTracks` / `onExpandSelectedTracks` / `onFitSelectedTracksToHeight` / the all forms, 2026-10-08)
 - **Shift+Left/Right** - Extend clip edges (move left edge left / right edge right)
 - **Cmd+Shift+Left/Right** - Reduce clip edges (move right edge left / left edge right)

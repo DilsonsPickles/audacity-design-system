@@ -155,7 +155,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           || target.isContentEditable;
         if (!isTextField) {
           e.preventDefault();
-          onTrackHeightStep(e.key === 'ArrowUp' ? TRACK_HEIGHT_KEY_STEP : -TRACK_HEIGHT_KEY_STEP, e.shiftKey ? 'all' : 'focused');
+          // DOWN = TALLER (2026-10-08, "swapping the arrow keys… it's a
+          // visual thing"): the track's bottom edge moves down as it
+          // grows, as it does under a drag; it was Up = taller at first
+          onTrackHeightStep(e.key === 'ArrowDown' ? TRACK_HEIGHT_KEY_STEP : -TRACK_HEIGHT_KEY_STEP, e.shiftKey ? 'all' : 'focused');
           return;
         }
       }
