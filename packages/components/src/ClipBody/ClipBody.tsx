@@ -95,6 +95,9 @@ function drawChannel(
   }
 }
 
+/** The canvas backing store's height granularity, px — see the draw effect */
+const BACKING_BUCKET = 64;
+
 export type { SpectrogramScale };
 
 export type ClipBodyVariant = 'waveform' | 'spectrogram' | 'midi';
@@ -265,17 +268,26 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     const canvasWidth = width || canvas.offsetWidth;
     const canvasHeight = drawHeight;
 
-    // Set canvas pixel-buffer dimensions for high DPI displays. CSS
-    // sizing is handled via inline style in the JSX below so the canvas
-    // element visibly fills the parent live; we only touch the pixel
-    // buffer here (which clears + redraws and is the expensive bit).
+    // The pixel buffer. Its HEIGHT is bucketed (2026-10-08, "on my big
+    // monitor vertically resizing is causing black flickering"): every
+    // assignment to canvas.width/height — even of the same value —
+    // reallocates the backing store, and on a large display a reallocation
+    // per wheel step for every clip can leave Chromium painting an
+    // unfilled GPU texture for a frame. So the buffer is sized to the
+    // next BACKING_BUCKET above the drawn height and touched only when
+    // the bucket changes (or the width or DPR does); a resize inside a
+    // bucket is a clearRect and a redraw. The element is CSS-sized to the
+    // same bucket (never stretched); .clip-body's overflow:hidden clips
+    // the unused rows below the drawn height.
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = canvasWidth * dpr;
-    canvas.height = canvasHeight * dpr;
-    ctx.scale(dpr, dpr);
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    const backingHeight = Math.ceil(canvasHeight / BACKING_BUCKET) * BACKING_BUCKET;
+    const bufferW = Math.round(canvasWidth * dpr);
+    const bufferH = Math.round(backingHeight * dpr);
+    if (canvas.width !== bufferW) canvas.width = bufferW;
+    if (canvas.height !== bufferH) canvas.height = bufferH;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, bufferW, bufferH);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Render time selection background overlay FIRST (vibrant background colors - drawn underneath waveform)
     if (inTimeSelection && timeSelectionRange) {
@@ -630,7 +642,8 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             display: 'block',
             background: 'transparent',
             width: width ? `${width}px` : undefined,
-            height: `${drawHeight}px`,
+            // The backing bucket, not the drawn height — see the effect
+            height: `${Math.ceil(drawHeight / BACKING_BUCKET) * BACKING_BUCKET}px`,
           }}
         />
       )}
