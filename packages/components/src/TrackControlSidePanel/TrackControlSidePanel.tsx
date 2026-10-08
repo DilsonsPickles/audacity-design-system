@@ -1,6 +1,6 @@
 import React, { ReactElement, cloneElement, useState } from 'react';
 import { SidePanel } from '../SidePanel';
-import { ResizablePanel } from '../ResizablePanel';
+import { ResizablePanel, type ResizeSource } from '../ResizablePanel';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
@@ -106,7 +106,9 @@ export interface TrackControlSidePanelProps {
   /**
    * Called when a track is resized
    */
-  onTrackResize?: (trackIndex: number, height: number) => void;
+  /** A track's height changed — by the drag on its edge or the
+   *  Cmd/Ctrl+wheel over it (`source`; a resize end reports 'drag') */
+  onTrackResize?: (trackIndex: number, height: number, source: ResizeSource) => void;
 
   /**
    * Called when "Add new" button is clicked (deprecated - use onAddTrackType)
@@ -685,8 +687,8 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               underlay={groupUnderlay(index)}
               isFirstPanel={displayPos === 0}
               wheelResize
-              onHeightChange={(newHeight) => onTrackResize?.(index, newHeight)}
-              onResizeEnd={(finalHeight) => onTrackResize?.(index, finalHeight)}
+              onHeightChange={(newHeight, source) => onTrackResize?.(index, newHeight, source)}
+              onResizeEnd={(finalHeight) => onTrackResize?.(index, finalHeight, 'drag')}
             >
               {cloneElement(child, {
                 ...child.props,

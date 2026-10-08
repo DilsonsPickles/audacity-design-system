@@ -15,6 +15,8 @@ import './ResizablePanel.css';
 // release, and the wheel passes through.
 const SOFT_SNAP_PX = 4;
 
+export type ResizeSource = 'drag' | 'wheel';
+
 export interface ResizablePanelProps {
   /**
    * Content to be rendered inside the resizable panel
@@ -40,10 +42,10 @@ export interface ResizablePanelProps {
    * Size of the resize zone in pixels (distance from edge)
    */
   resizeThreshold?: number;
-  /**
-   * Callback fired when height changes during resize
-   */
-  onHeightChange?: (height: number) => void;
+  /** How a height change was made: the drag on the panel's edge, or the
+   *  Cmd/Ctrl+wheel over it. The consumer scopes them differently (a
+   *  track's wheel resize applies to EVERY track, 2026-10-08). */
+  onHeightChange?: (height: number, source: ResizeSource) => void;
   /**
    * Callback fired when resize starts
    */
@@ -166,7 +168,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if (rounded === current) return;
       latestHeightRef.current = rounded;
       setHeight(rounded);
-      emit?.(rounded);
+      emit?.(rounded, 'wheel');
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
@@ -215,7 +217,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         // where it is let go (no snap points — see the module top)
         latestHeightRef.current = newHeight;
         setHeight(newHeight);
-        liveDepsRef.current.onHeightChange?.(newHeight);
+        liveDepsRef.current.onHeightChange?.(newHeight, 'drag');
       }
     };
 

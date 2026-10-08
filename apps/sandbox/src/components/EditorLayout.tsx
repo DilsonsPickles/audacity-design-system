@@ -815,13 +815,16 @@ export function EditorLayout(props: EditorLayoutProps) {
           scrollRef={trackHeaderScrollRef}
           onScroll={onTrackHeaderScroll}
           bufferSpace={scrollBuffer}
-          onTrackResize={(trackIndex, height) => {
-            // Group resize: Alt/Option held (Ableton-style) applies the
-            // height to ALL tracks; otherwise dragging (or Cmd-scrolling)
-            // the edge of a SELECTED track applies it to every selected
-            // track — panels follow live via ResizablePanel's
-            // external-height sync. An unselected track resizes alone.
-            const targets = altHeldRef.current
+          onTrackResize={(trackIndex, height, source) => {
+            // CMD/CTRL+WHEEL RESIZES EVERY TRACK TOGETHER (user decision
+            // 2026-10-08, "if I do the cmd+scroll shortcut, all tracks
+            // get bigger together") — they all take the wheeled track's
+            // new height; Alt/Option held (Ableton-style) does the same
+            // for a DRAG. Otherwise dragging the edge of a SELECTED track
+            // applies it to every selected track — panels follow live via
+            // ResizablePanel's external-height sync — and an unselected
+            // track resizes alone.
+            const targets = source === 'wheel' || altHeldRef.current
               ? state.tracks.map((_, i) => i)
               : state.selectedTrackIndices.includes(trackIndex)
                 ? state.selectedTrackIndices

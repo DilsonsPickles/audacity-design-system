@@ -19,7 +19,7 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     // Resistance: 0.5 sensitivity, capped at 24px per event — deltaY -50
     // would be +25, capped to +24.
     fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(138);
+    expect(onHeightChange).toHaveBeenLastCalledWith(138, 'wheel');
     expect(getRoot(container).style.height).toBe('138px');
   });
 
@@ -35,7 +35,7 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     for (let i = 0; i < 4; i++) {
       fireEvent.wheel(getRoot(container), { deltaY: -1, metaKey: true });
     }
-    expect(onHeightChange).toHaveBeenLastCalledWith(116);
+    expect(onHeightChange).toHaveBeenLastCalledWith(116, 'wheel');
   });
 
   it('scroll without Cmd/Ctrl does nothing (list scrolling stays untouched)', () => {
@@ -73,9 +73,9 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     // Shrinking from 114 by 10 (20 × 0.5) lands at 104 — and stays there
     // (it used to step over a 71–112 "forbidden" band to 71)
     fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(104);
+    expect(onHeightChange).toHaveBeenLastCalledWith(104, 'wheel');
     fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(94);
+    expect(onHeightChange).toHaveBeenLastCalledWith(94, 'wheel');
   });
 
   it('clamps at minHeight', () => {
@@ -88,11 +88,11 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     // Per-event cap is 24px: 71 → 47 → clamped at 44, and further scrolls
     // stay pinned there.
     fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(47);
+    expect(onHeightChange).toHaveBeenLastCalledWith(47, 'wheel');
     fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(44);
+    expect(onHeightChange).toHaveBeenLastCalledWith(44, 'wheel');
     fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(44);
+    expect(onHeightChange).toHaveBeenLastCalledWith(44, 'wheel');
   });
 
   it('adopts an external height change (Fit to Height) outside a gesture', () => {

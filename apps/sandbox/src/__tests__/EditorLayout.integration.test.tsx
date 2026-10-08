@@ -1067,7 +1067,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Alt held while resizing one header resizes ALL tracks (Ableton-style)', async () => {
+  it('Cmd+wheel on one header resizes ALL tracks together (2026-10-08) — Alt or not', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1080,7 +1080,7 @@ describe('Selection playback', () => {
     const panels = () => container.querySelectorAll('.track-control-side-panel__track');
 
     // Hold Alt, then Cmd+scroll on track 1's header only — with no track
-    // selection involving track 0, BOTH tracks still take the new height.
+    // selection involving track 0, BOTH tracks take the new height.
     fireEvent.keyDown(document.body, { key: 'Alt' });
     fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true, altKey: true });
     await waitFor(() => {
@@ -1089,12 +1089,14 @@ describe('Selection playback', () => {
     });
     fireEvent.keyUp(document.body, { key: 'Alt' });
 
-    // Alt released: the same gesture on track 1 resizes only track 1.
+    // Alt released: the WHEEL still resizes every track ("if I do the
+    // cmd+scroll shortcut, all tracks get bigger together"); Alt only
+    // matters to a DRAG now.
     fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('162px');
+      expect((panels()[0] as HTMLElement).style.height).toBe('162px');
     });
-    expect((panels()[0] as HTMLElement).style.height).toBe('138px');
   });
 
   it('label track: Add new -> Label, then Add label renders build-palette chrome', async () => {
