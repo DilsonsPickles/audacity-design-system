@@ -8,7 +8,12 @@ import './ResizablePanel.css';
 // visible but the Effects button without room), the release sprang back
 // to 71, 112 or the mount height within 18px, and Cmd+wheel stepped over
 // the band. The panel's content lays itself out for whatever height it
-// gets.
+// gets. ONE exception, the same day: "some very soft snapping when the
+// track header passes its default size of 114px" — a magnet DURING THE
+// DRAG only: within SOFT_SNAP_PX of `snapHeight` the height sticks to
+// it, outside that it follows the cursor exactly; nothing happens on
+// release, and the wheel passes through.
+const SOFT_SNAP_PX = 4;
 
 export interface ResizablePanelProps {
   /**
@@ -69,6 +74,9 @@ export interface ResizablePanelProps {
   wheelResize?: boolean;
   /** Right-click on the panel (the row's context menu) */
   onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** The height a DRAG softly sticks to within SOFT_SNAP_PX (the track's
+   *  default, 114); null for none */
+  snapHeight?: number | null;
   /** Painted BEHIND the content, as a sibling of it: decoration that
    *  belongs to the row but must not be part of the resizable content
    *  (a track group's level boxes — TrackControlSidePanel). */
@@ -90,6 +98,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   style: externalStyle,
   wheelResize = false,
   onContextMenu,
+  snapHeight = 114,
   underlay,
 }) => {
   const [height, setHeight] = useState(initialHeight);
@@ -114,10 +123,10 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   // tore down and re-bound the document listeners. A mouseup landing in
   // that window was dropped, `isResizing` stayed true, and the track
   // kept following the cursor after the button was released.
-  const liveDepsRef = useRef({ minHeight, maxHeight, onHeightChange, onResizeEnd });
+  const liveDepsRef = useRef({ minHeight, maxHeight, onHeightChange, onResizeEnd, snapHeight });
   useEffect(() => {
-    liveDepsRef.current = { minHeight, maxHeight, onHeightChange, onResizeEnd };
-  }, [minHeight, maxHeight, onHeightChange, onResizeEnd]);
+    liveDepsRef.current = { minHeight, maxHeight, onHeightChange, onResizeEnd, snapHeight };
+  }, [minHeight, maxHeight, onHeightChange, onResizeEnd, snapHeight]);
 
   // Sub-pixel remainder between wheel events, so gentle trackpad deltas
   // (well under 1px after the resistance factor) accumulate instead of
@@ -191,14 +200,19 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           : resizeStartRef.current.height + deltaY;
 
         // Apply constraints (live values, read through the mirror)
-        const { minHeight: min, maxHeight: max } = liveDepsRef.current;
+        const { minHeight: min, maxHeight: max, snapHeight: snap } = liveDepsRef.current;
         newHeight = Math.max(min, newHeight);
         if (max !== undefined) {
           newHeight = Math.min(max, newHeight);
         }
+        // The soft magnet at the default height (see the module top):
+        // passing it, the track sticks for SOFT_SNAP_PX either side
+        if (snap != null && Math.abs(newHeight - snap) <= SOFT_SNAP_PX) {
+          newHeight = snap;
+        }
 
-        // The track follows the cursor freely, and stays where it is
-        // let go (no snap points — see the module top)
+        // Otherwise the track follows the cursor freely, and stays
+        // where it is let go (no snap points — see the module top)
         latestHeightRef.current = newHeight;
         setHeight(newHeight);
         liveDepsRef.current.onHeightChange?.(newHeight);

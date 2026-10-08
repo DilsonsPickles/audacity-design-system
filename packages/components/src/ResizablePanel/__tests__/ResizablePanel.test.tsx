@@ -135,15 +135,55 @@ describe('ResizablePanel drag resize — a track stays where it is let go', () =
     fireEvent.mouseUp(document, { clientY: 113 - 24 });
     expect(onResizeEnd).toHaveBeenCalledWith(90);
     expect(getRoot(container).style.height).toBe('90px');
-    // And near the mount height: 110 stays 110 (it used to spring home to 114)
+    // And near the mount height: 108 stays 108 (it used to spring home to
+    // 114 from within 18px; the soft magnet reaches only 4 — see below)
     content.getBoundingClientRect = () => ({
       top: 0, left: 0, bottom: 90, right: 268, width: 268, height: 90, x: 0, y: 0, toJSON: () => ({}),
     });
     fireEvent.mouseDown(content, { clientY: 89 });
-    fireEvent.mouseMove(document, { clientY: 89 + 20 });
-    fireEvent.mouseUp(document, { clientY: 89 + 20 });
-    expect(onResizeEnd).toHaveBeenLastCalledWith(110);
-    expect(getRoot(container).style.height).toBe('110px');
+    fireEvent.mouseMove(document, { clientY: 89 + 18 });
+    fireEvent.mouseUp(document, { clientY: 89 + 18 });
+    expect(onResizeEnd).toHaveBeenLastCalledWith(108);
+    expect(getRoot(container).style.height).toBe('108px');
+  });
+});
+
+describe('ResizablePanel drag resize — the soft magnet at the default height', () => {
+  const drag = (snapHeight?: number | null) => {
+    const heights: number[] = [];
+    const { container } = render(
+      <ResizablePanel initialHeight={130} minHeight={44} snapHeight={snapHeight} onHeightChange={(h) => heights.push(h)}>
+        <div>content</div>
+      </ResizablePanel>,
+    );
+    const content = container.querySelector('.resizable-panel__content') as HTMLElement;
+    content.getBoundingClientRect = () => ({
+      top: 0, left: 0, bottom: 130, right: 268, width: 268, height: 130, x: 0, y: 0, toJSON: () => ({}),
+    });
+    fireEvent.mouseDown(content, { clientY: 129 });
+    const at = (h: number) => { fireEvent.mouseMove(document, { clientY: 129 + (h - 130) }); return heights[heights.length - 1]; };
+    return { at, end: () => fireEvent.mouseUp(document, { clientY: 0 }) };
+  };
+
+  it('within 4px of 114 the drag sticks to 114; outside it follows the cursor exactly (2026-10-08, "very soft snapping… passes its default size")', () => {
+    const { at, end } = drag();
+    expect(at(120)).toBe(120);
+    expect(at(118)).toBe(114); // 4 away: caught
+    expect(at(116)).toBe(114);
+    expect(at(114)).toBe(114);
+    expect(at(111)).toBe(114);
+    expect(at(110)).toBe(114); // 4 away: still caught
+    expect(at(109)).toBe(109); // 5 away: free
+    expect(at(90)).toBe(90);
+    expect(at(112)).toBe(114); // and on the way back
+    end();
+  });
+
+  it('snapHeight null: no magnet at all', () => {
+    const { at, end } = drag(null);
+    expect(at(116)).toBe(116);
+    expect(at(113)).toBe(113);
+    end();
   });
 });
 
