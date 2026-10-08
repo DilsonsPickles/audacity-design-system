@@ -1,4 +1,10 @@
-import React, { useDeferredValue, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useThrottledValue } from '../hooks/useThrottledValue';
+
+/** How often the waveform redraws while its height is changing — a few
+ *  pixels of CSS stretch between redraws is invisible; ~16 redraws/s of
+ *  every visible clip is affordable. */
+const DRAW_THROTTLE_MS = 60;
 import { fadeGainAt, type LocalFadeRegion } from '../utils/clipCrossfades';
 import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
@@ -198,14 +204,17 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
-  // Defer the height used by the (expensive) canvas redraw so it can
-  // lag behind during a track-height drag. CSS inline styles below use
-  // the live `height` so the canvas element visibly fills its parent
-  // even while the pixel buffer is still at the previous height (the
-  // browser stretches the existing pixels). When the drag pauses or
-  // settles, React commits the deferred height and the canvas redraws
-  // at the correct resolution.
-  const drawHeight = useDeferredValue(height);
+  // Throttle the height used by the (expensive) canvas redraw so it
+  // lags a little behind during a track-height drag or wheel. CSS
+  // inline styles below use the live `height` so the canvas element
+  // visibly fills its parent even while the pixel buffer is at the
+  // previous height (the browser stretches the existing pixels); the
+  // redraw catches up every DRAW_THROTTLE_MS and lands on the final
+  // height when the gesture rests. It was React's useDeferredValue
+  // until 2026-10-08: under a continuous wheel React never found the
+  // idle moment to commit, so the bitmap stayed at the starting height
+  // and stretched 2× before snapping back — see useThrottledValue.
+  const drawHeight = useThrottledValue(height, DRAW_THROTTLE_MS);
 
   // Draw waveform or spectrogram on canvas
   useEffect(() => {
