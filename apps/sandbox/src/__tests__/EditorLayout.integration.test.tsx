@@ -1028,7 +1028,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Cmd+wheel on a selected header resizes that track alone (the wheel ignores the selection, 2026-10-08); Cmd+Shift+X/C expand and collapse all', async () => {
+  it('Cmd+Option+wheel on a selected header resizes that track alone (the wheel ignores the selection, 2026-10-08); Cmd+Shift+X/C expand and collapse all', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1047,7 +1047,7 @@ describe('Selection playback', () => {
     // alone takes the new height (114 + capped 24px step = 138); the
     // selection rule belongs to the DRAG
     const panels = () => container.querySelectorAll('.track-control-side-panel__track');
-    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true });
+    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('138px');
     });
@@ -1210,7 +1210,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Cmd+wheel on one header resizes THAT track; Cmd+Shift+wheel resizes ALL together by the same step (2026-10-08)', async () => {
+  it('Cmd+Option+wheel on one header resizes THAT track; Cmd+Shift+wheel resizes ALL together by the same step (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1223,7 +1223,7 @@ describe('Selection playback', () => {
     const panels = () => container.querySelectorAll('.track-control-side-panel__track');
 
     // Cmd+scroll on track 1's header only: track 1 alone
-    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true });
+    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('138px');
     });

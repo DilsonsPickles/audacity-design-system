@@ -35,12 +35,12 @@ describe("TrackControlSidePanel — the wheel's target is locked for the gesture
     const { panels, onTrackResize } = mount();
     expect(panels().length).toBe(2);
     // Start on track 1
-    fireEvent.wheel(panels()[1], { deltaY: 50, metaKey: true });
+    fireEvent.wheel(panels()[1], { deltaY: 50, metaKey: true, altKey: true });
     expect(onTrackResize).toHaveBeenLastCalledWith(1, 90, 'wheel');
     // The header shrank and track 0's header is now under the still
     // pointer: the next wheel lands on panel 0 — and still resizes track 1
     // (a second step in the same frame is coalesced to the next frame)
-    fireEvent.wheel(panels()[0], { deltaY: 50, metaKey: true });
+    fireEvent.wheel(panels()[0], { deltaY: 50, metaKey: true, altKey: true });
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
     expect(onTrackResize).toHaveBeenLastCalledWith(1, 66, 'wheel');
     expect(onTrackResize.mock.calls.every(([index]) => index === 1)).toBe(true);
@@ -48,9 +48,9 @@ describe("TrackControlSidePanel — the wheel's target is locked for the gesture
 
   it('the pointer moving releases the lock: the next wheel goes to the header under it', () => {
     const { panels, onTrackResize } = mount();
-    fireEvent.wheel(panels()[1], { deltaY: 50, metaKey: true });
+    fireEvent.wheel(panels()[1], { deltaY: 50, metaKey: true, altKey: true });
     fireEvent.mouseMove(panels()[0], { clientX: 10, clientY: 10 });
-    fireEvent.wheel(panels()[0], { deltaY: 50, metaKey: true });
+    fireEvent.wheel(panels()[0], { deltaY: 50, metaKey: true, altKey: true });
     expect(onTrackResize).toHaveBeenLastCalledWith(0, 90, 'wheel');
   });
 
@@ -58,9 +58,9 @@ describe("TrackControlSidePanel — the wheel's target is locked for the gesture
     vi.useFakeTimers();
     try {
       const { panels, onTrackResize } = mount();
-      fireEvent.wheel(panels()[1], { deltaY: 50, metaKey: true });
+      fireEvent.wheel(panels()[1], { deltaY: 50, metaKey: true, altKey: true });
       vi.advanceTimersByTime(500);
-      fireEvent.wheel(panels()[0], { deltaY: 50, metaKey: true });
+      fireEvent.wheel(panels()[0], { deltaY: 50, metaKey: true, altKey: true });
       expect(onTrackResize).toHaveBeenLastCalledWith(0, 90, 'wheel');
     } finally {
       vi.useRealTimers();

@@ -12,8 +12,8 @@ const getRoot = (container: HTMLElement) =>
  *  animation frame (2026-10-08); tests that fire several wait for it */
 const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
-  it('Cmd+scroll up grows the panel and reports the height', () => {
+describe('ResizablePanel wheel resize (Cmd/Ctrl+Option+scroll)', () => {
+  it('Cmd+Option+scroll up grows the panel and reports the height', () => {
     const onHeightChange = vi.fn();
     const { container } = render(
       <ResizablePanel initialHeight={114} wheelResize onHeightChange={onHeightChange}>
@@ -22,7 +22,7 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     );
     // Resistance: 0.5 sensitivity, capped at 24px per event — deltaY -50
     // would be +25, capped to +24.
-    fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true, altKey: true });
     expect(onHeightChange).toHaveBeenLastCalledWith(138, 'wheel');
     expect(getRoot(container).style.height).toBe('138px');
   });
@@ -38,14 +38,14 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     // then the remainder carries through the coalesced frame so four
     // events land at +2 total.
     for (let i = 0; i < 4; i++) {
-      fireEvent.wheel(getRoot(container), { deltaY: -1, metaKey: true });
+      fireEvent.wheel(getRoot(container), { deltaY: -1, metaKey: true, altKey: true });
     }
     expect(onHeightChange).toHaveBeenLastCalledWith(115, 'wheel');
     await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(116, 'wheel');
   });
 
-  it('scroll without Cmd/Ctrl does nothing (list scrolling stays untouched)', () => {
+  it('scroll without Cmd/Ctrl does nothing (list scrolling stays untouched), and a PLAIN Cmd/Ctrl+wheel is not a resize either (2026-10-08, the one-track chord is Cmd/Ctrl+Option everywhere)', () => {
     const onHeightChange = vi.fn();
     const { container } = render(
       <ResizablePanel initialHeight={114} wheelResize onHeightChange={onHeightChange}>
@@ -55,6 +55,8 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     fireEvent.wheel(getRoot(container), { deltaY: -50 });
     fireEvent.wheel(getRoot(container), { deltaY: -50, altKey: true });
     fireEvent.wheel(getRoot(container), { deltaY: -50, shiftKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: -50, ctrlKey: true });
     expect(onHeightChange).not.toHaveBeenCalled();
     expect(getRoot(container).style.height).toBe('114px');
   });
@@ -80,7 +82,7 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
         <div>content</div>
       </ResizablePanel>,
     );
-    fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true, altKey: true });
     expect(onHeightChange).not.toHaveBeenCalled();
   });
 
@@ -93,9 +95,9 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     );
     // Shrinking from 114 by 10 (20 × 0.5) lands at 104 — and stays there
     // (it used to step over a 71–112 "forbidden" band to 71)
-    fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true, altKey: true });
     expect(onHeightChange).toHaveBeenLastCalledWith(104, 'wheel');
-    fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true, altKey: true });
     await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(94, 'wheel');
   });
@@ -109,13 +111,13 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     );
     // Per-event cap is 24px: 71 → 47 → clamped at 44, and further scrolls
     // stay pinned there.
-    fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true, altKey: true });
     expect(onHeightChange).toHaveBeenLastCalledWith(47, 'wheel');
-    fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true, altKey: true });
     await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(44, 'wheel');
     await frame();
-    fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true, altKey: true });
     await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(44, 'wheel');
     expect(getRoot(container).style.height).toBe('44px');

@@ -104,8 +104,9 @@ export interface ResizablePanelProps {
    */
   resizeThreshold?: number;
   /** How a height change was made: the drag on the panel's edge, or the
-   *  Cmd/Ctrl+wheel over it. The consumer scopes them differently (a
-   *  track's wheel resize applies to EVERY track, 2026-10-08). */
+   *  Cmd/Ctrl+Option+wheel over it ('wheel'; 'wheel-shift' is the
+   *  Cmd/Ctrl+Shift+wheel, which the consumer applies to EVERY track,
+   *  2026-10-08). */
   onHeightChange?: (height: number, source: ResizeSource) => void;
   /**
    * Callback fired when resize starts
@@ -131,10 +132,15 @@ export interface ResizablePanelProps {
    */
   style?: React.CSSProperties;
   /**
-   * Cmd/Ctrl + scroll wheel over the panel resizes it (scroll/swipe up =
-   * taller) — the same modifier as canvas zoom, so it reads as "zoom the
-   * track"; with Shift too it reports 'wheel-shift', which the track
-   * host applies to every track. Uses the same height plumbing as drag.
+   * Cmd/Ctrl+OPTION + scroll wheel over the panel resizes it (scroll/swipe
+   * up = taller) — the canvas's one-track chord, so the gesture is the
+   * same over a header and over the lane (2026-10-08, "perhaps we just
+   * want cmd + option + scroll only?": until then a plain Cmd/Ctrl+wheel
+   * over the header resized too, which contradicted the canvas, where
+   * Cmd/Ctrl+wheel is the horizontal zoom); Cmd/Ctrl+SHIFT+wheel reports
+   * 'wheel-shift', which the track host applies to every track. A plain
+   * Cmd/Ctrl+wheel passes through untouched. Uses the same height
+   * plumbing as drag.
    */
   wheelResize?: boolean;
   /** Right-click on the panel (the row's context menu) */
@@ -222,10 +228,11 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       emit?.(rounded, source);
     });
     const handleWheel = (e: WheelEvent) => {
-      // Cmd/Ctrl+wheel; Shift with it is the "every track" form (the
-      // host's business — reported as the source). Alt is allowed
-      // through for the host's Alt rule.
+      // Cmd/Ctrl+Option = this track; Cmd/Ctrl+Shift = every track (the
+      // host's business — reported as the source). A plain Cmd/Ctrl+wheel
+      // is not a resize (it is the canvas's zoom chord), so it passes.
       if (!e.metaKey && !e.ctrlKey) return;
+      if (!e.altKey && !e.shiftKey) return;
       if (resizeStartRef.current) return; // an active drag owns the height
       e.preventDefault();
       coalescer.push(wheelHeightStep(e), e.shiftKey ? 'wheel-shift' : 'wheel');

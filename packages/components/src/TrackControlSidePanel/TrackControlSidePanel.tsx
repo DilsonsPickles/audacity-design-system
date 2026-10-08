@@ -306,10 +306,13 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       (target instanceof Element ? target.closest<HTMLElement>('.track-control-side-panel__track') : null);
     const onWheelCapture = (e: WheelEvent) => {
       if (!e.metaKey && !e.ctrlKey) return;
-      // Suppress the list's own scrolling for every zoom-modifier wheel,
-      // over the panels and the gaps alike (Shift too: Cmd/Ctrl+Shift+
-      // wheel is the every-track resize)
+      // Suppress the list's own scrolling (and Electron's page zoom) for
+      // every zoom-modifier wheel, over the panels and the gaps alike —
+      // but only the RESIZE chords lock and redirect: Cmd/Ctrl+Option
+      // (this track) and Cmd/Ctrl+Shift (every track); a plain
+      // Cmd/Ctrl+wheel resizes nothing here (2026-10-08)
       e.preventDefault();
+      if (!e.altKey && !e.shiftKey) return;
       if ((e as WheelEvent & { __redirected?: boolean }).__redirected) return;
       const now = Date.now();
       const lock = wheelLockRef.current;
