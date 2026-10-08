@@ -7,9 +7,9 @@
  * otherwise — clamped between 22 and 32px; the trim row is on top (at
  * the clip's top when collapsed, under the 20px header otherwise) and
  * the stretch row directly beneath it. So a 44px collapsed clip gets two
- * 22px rows that split it exactly, a 72px clip two 26px rows under its
- * header, and from 84px up the 32px rows the Figma "hit zones" frame
- * specifies. Before this the rows were FIXED at 20–52 and 52–84, so on
+ * 22px rows that split it exactly, a 60px collapsed clip two 30px rows,
+ * a 72px clip two 26px rows under its header, and from 84px up the 32px
+ * rows the Figma "hit zones" frame specifies. Before this the rows were FIXED at 20–52 and 52–84, so on
  * any clip under 84px the stretch row hung off the bottom and on a
  * collapsed clip both rows were off it.
  *
@@ -21,10 +21,16 @@
 
 /** The clip header's height; the trim row starts under it */
 export const CLIP_HEADER_HEIGHT = 20;
-/** At and under this height a clip is COLLAPSED: Clip hides its header
- *  until hovered (Clip's MIN_CLIP_HEIGHT is this number). The real app
- *  collapses a TRACK under 72px; its clips keep the header above that. */
-export const CLIP_COLLAPSE_HEIGHT = 44;
+/** UNDER this height a clip is COLLAPSED — its header hidden until
+ *  hovered, the handle rows from its top, no fade controls. The real
+ *  app's TRACK_COLLAPSE_HEIGHT (projectviewstate.cpp), adopted
+ *  2026-10-08 after a 46px track showed the problem with 44: between 45
+ *  and 63px a clip kept its header but had no room for two 22px rows
+ *  under it, so the stretch row hung below the clip and the fade
+ *  handles crowded in ("responsive issue here"). From 72 up, (h − 20)/2
+ *  is at least 26, and two rows always fit under the header. */
+export const CLIP_COLLAPSE_HEIGHT = 72;
+export const isClipCollapsed = (clipHeight: number) => clipHeight < CLIP_COLLAPSE_HEIGHT;
 /** The rows' clamp — the real app's handleMinH / handleMaxH */
 export const HANDLE_ROW_MIN = 22;
 export const HANDLE_ROW_MAX = 32;
@@ -41,7 +47,7 @@ export interface ClipHandleRows {
 }
 
 export function clipHandleRows(clipHeight: number): ClipHandleRows {
-  const collapsed = clipHeight <= CLIP_COLLAPSE_HEIGHT;
+  const collapsed = isClipCollapsed(clipHeight);
   const room = collapsed ? clipHeight / 2 : (clipHeight - CLIP_HEADER_HEIGHT) / 2;
   const rowHeight = Math.min(HANDLE_ROW_MAX, Math.max(HANDLE_ROW_MIN, Math.round(room)));
   const trimTop = collapsed ? 0 : CLIP_HEADER_HEIGHT;

@@ -96,10 +96,11 @@ describe('trimming an unselected clip by its edge', () => {
     }
     // The row follows the clip's height by the app's rule (2026-10-07,
     // utils/clipHandleRows.ts): half the room under the header, clamped
-    // 22–32 — a 60px clip's row is 22; a COLLAPSED clip (too short for
-    // its header, 44px and under) takes the row from its top, never
-    // past half of itself — as the app's zone does
-    expect(vertical(60)).toEqual({ top: 20, height: 22 });
+    // 22–32; a COLLAPSED clip (under 72px since 2026-10-08, the app's
+    // track threshold — header hidden) takes the row from its top,
+    // never past half of itself — as the app's zone does
+    expect(vertical(72)).toEqual({ top: 20, height: 26 });
+    expect(vertical(60)).toEqual({ top: 0, height: 30 });
     expect(vertical(44)).toEqual({ top: 0, height: 22 });
     expect(vertical(34)).toEqual({ top: 0, height: 17 });
   });

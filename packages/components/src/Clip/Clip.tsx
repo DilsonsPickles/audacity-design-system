@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CLIP_COLLAPSE_HEIGHT, clipHandleRows } from '../utils/clipHandleRows';
+import { isClipCollapsed, clipHandleRows } from '../utils/clipHandleRows';
 import type { LocalFadeRegion } from '../utils/clipCrossfades';
 import type { MidiNote } from '@audacity-ui/core';
 import type { ClipColor } from '../types/clip';
@@ -37,7 +37,11 @@ export type ClipState = 'default' | 'headerHover';
 // Minimum height before the header is hidden — the clip is COLLAPSED
 // below it. Exported for TrackNew's edge trim zones, which (as the app's)
 // take half of a collapsed clip and a third of one with its header.
-export const MIN_CLIP_HEIGHT: number = CLIP_COLLAPSE_HEIGHT;
+/** The smallest a track (so a clip) gets — ResizablePanel's floor and
+ *  Collapse all's height. NOT the collapse point: a clip collapses
+ *  (header hidden until hovered) under CLIP_COLLAPSE_HEIGHT, 72, the
+ *  real app's threshold — see utils/clipHandleRows.ts. */
+export const MIN_CLIP_HEIGHT = 44;
 const HEADER_HEIGHT = 20;
 
 export interface ClipProps {
@@ -245,7 +249,7 @@ const ClipComponent: React.FC<ClipProps> = ({
     return () => cancelAnimationFrame(rafId);
   }, [shakeEdge, shakeToken]);
 
-  const isTruncated = height <= MIN_CLIP_HEIGHT;
+  const isTruncated = isClipCollapsed(height);
   // The trim and stretch rows follow the clip's height by the real
   // app's rule (utils/clipHandleRows.ts); Clip.css reads these
   const handleRows = clipHandleRows(height);
