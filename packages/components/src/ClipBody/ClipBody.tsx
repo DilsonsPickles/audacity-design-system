@@ -1,10 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { useThrottledValue } from '../hooks/useThrottledValue';
-
-/** How often the waveform redraws while its height is changing — a few
- *  pixels of CSS stretch between redraws is invisible; ~16 redraws/s of
- *  every visible clip is affordable. */
-const DRAW_THROTTLE_MS = 60;
 import { fadeGainAt, type LocalFadeRegion } from '../utils/clipCrossfades';
 import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
@@ -204,16 +198,18 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
-  // Throttle the height used by the (expensive) canvas redraw so it
-  // lags a little behind during a track-height drag or wheel; the
-  // redraw catches up every DRAW_THROTTLE_MS and lands on the final
-  // height when the gesture rests. The canvas element is sized to
-  // THIS height too (see the JSX), never stretched to the live one.
-  // It was React's useDeferredValue until 2026-10-08: under a
-  // continuous wheel React never found the idle moment to commit, so
-  // the bitmap stayed at the starting height and stretched 2× before
-  // snapping back — see useThrottledValue.
-  const drawHeight = useThrottledValue(height, DRAW_THROTTLE_MS);
+  // The canvas redraws IN THE SAME COMMIT as a height change — no lag
+  // (settled 2026-10-08 in three rounds): React's useDeferredValue
+  // never committed under a continuous Cmd+wheel resize, so the bitmap
+  // stayed at the starting height and CSS-stretched 2× ("the waveforms
+  // zoom then reset"); a 60ms throttle fixed the stretch but grew the
+  // waveform in visible steps against the smoothly growing body ("they
+  // still tremor"); a per-frame hop still landed a frame or two behind
+  // the paint. Wheel events arrive about once a frame anyway, so a
+  // redraw per change costs what a per-frame redraw would, with the
+  // waveform exactly in step with the body. Only drawing the visible
+  // span is the lever if large projects ever make this too much.
+  const drawHeight = height;
 
   // Draw waveform or spectrogram on canvas
   useEffect(() => {
@@ -586,15 +582,11 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     >
       {/* Canvas-based rendering (waveform or spectrogram).
           The pixel buffer (canvas.width/height attrs) is sized in the
-          useEffect against the THROTTLED height, so the expensive
-          redraw can lag a step behind a fast resize without blocking
-          the cursor. The CSS height is that same drawn height — NEVER
-          the live one (2026-10-08): stretching the old pixels to the
-          live size blurred every 1px column into a fatter one, so the
-          waveforms "got wider when they should only get taller". Until
-          the redraw lands the canvas keeps its drawn size and sits
-          CENTRED in the body (the zero line holds its place), then
-          grows crisply. */}
+          useEffect to the live height, in the same commit — see
+          drawHeight above. The CSS height is that same drawn height,
+          never a stretch of older pixels (2026-10-08: stretching
+          blurred every 1px column into a fatter one, so the waveforms
+          "got wider when they should only get taller"). */}
       {(waveformData || (waveformLeft && waveformRight)) && (
         <canvas
           ref={canvasRef}
@@ -604,7 +596,6 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
             background: 'transparent',
             width: width ? `${width}px` : undefined,
             height: `${drawHeight}px`,
-            transform: drawHeight !== height ? `translateY(${(height - drawHeight) / 2}px)` : undefined,
           }}
         />
       )}
