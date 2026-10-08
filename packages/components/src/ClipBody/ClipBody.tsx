@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { fadeGainAt, type LocalFadeRegion } from '../utils/clipCrossfades';
 import type { ClipColor } from '../types/clip';
 import type { TimeSelection } from '@audacity-ui/core';
@@ -211,8 +211,14 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
   // span is the lever if large projects ever make this too much.
   const drawHeight = height;
 
-  // Draw waveform or spectrogram on canvas
-  useEffect(() => {
+  // Draw waveform or spectrogram on canvas — in a LAYOUT effect, before
+  // the browser paints the commit (2026-10-08, "whole screen glitches"):
+  // a passive effect ran after the paint, so every height change
+  // painted one frame with the element at its new size and the old
+  // bitmap stretched into it, then a crisp frame — a flash across every
+  // clip on every wheel event. Drawing before paint means each frame
+  // shows the new size with its own pixels.
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
