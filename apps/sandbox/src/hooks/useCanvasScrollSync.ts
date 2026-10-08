@@ -1,5 +1,5 @@
 import React from 'react';
-import { wheelHeightStep } from '@audacity-ui/components';
+import { wheelHeightStep, createFrameCoalescer } from '@audacity-ui/components';
 import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 
 /**
@@ -116,6 +116,14 @@ export function useCanvasScrollSync({
     const el = scrollContainerRef.current;
     if (!el) return;
 
+    // One height update per frame however fast the wheel streams (the
+    // headers' ResizablePanel does the same)
+    const heightCoalescer = createFrameCoalescer<null>((step) => {
+      const acc = heightWheelAccRef.current + step;
+      const whole = Math.round(acc);
+      heightWheelAccRef.current = acc - whole;
+      if (whole !== 0) onTrackHeightWheelRef.current?.(whole);
+    });
     const handleWheel = (e: WheelEvent) => {
       // Cmd/Ctrl+SHIFT+wheel: every track's height together (user
       // decision 2026-10-08, "we need to be able to do this in the
@@ -123,10 +131,7 @@ export function useCanvasScrollSync({
       // the headers and the canvas feel the same
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && onTrackHeightWheelRef.current) {
         e.preventDefault();
-        const acc = heightWheelAccRef.current + wheelHeightStep(e);
-        const whole = Math.round(acc);
-        heightWheelAccRef.current = acc - whole;
-        if (whole !== 0) onTrackHeightWheelRef.current(whole);
+        heightCoalescer.push(wheelHeightStep(e), null);
         return;
       }
       if (e.metaKey || e.ctrlKey) {
@@ -191,7 +196,7 @@ export function useCanvasScrollSync({
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
+    return () => { el.removeEventListener('wheel', handleWheel); heightCoalescer.cancel(); };
   }, [activeMenuItem]);
 
   // Mirror the canvas's wheel handler on the side panel: scroll both

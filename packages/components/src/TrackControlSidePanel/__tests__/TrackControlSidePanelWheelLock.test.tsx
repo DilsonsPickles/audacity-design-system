@@ -31,7 +31,7 @@ describe("TrackControlSidePanel — the wheel's target is locked for the gesture
     return { container, panels, onTrackResize };
   };
 
-  it('a wheel aimed at another header while the pointer has not moved goes to the header that started the gesture', () => {
+  it('a wheel aimed at another header while the pointer has not moved goes to the header that started the gesture', async () => {
     const { panels, onTrackResize } = mount();
     expect(panels().length).toBe(2);
     // Start on track 1
@@ -39,7 +39,9 @@ describe("TrackControlSidePanel — the wheel's target is locked for the gesture
     expect(onTrackResize).toHaveBeenLastCalledWith(1, 90, 'wheel');
     // The header shrank and track 0's header is now under the still
     // pointer: the next wheel lands on panel 0 — and still resizes track 1
+    // (a second step in the same frame is coalesced to the next frame)
     fireEvent.wheel(panels()[0], { deltaY: 50, metaKey: true });
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     expect(onTrackResize).toHaveBeenLastCalledWith(1, 66, 'wheel');
     expect(onTrackResize.mock.calls.every(([index]) => index === 1)).toBe(true);
   });

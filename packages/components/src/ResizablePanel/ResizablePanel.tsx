@@ -24,6 +24,47 @@ export type ResizeSource = 'drag' | 'wheel' | 'wheel-shift';
 export const WHEEL_SENSITIVITY = 0.5;
 export const WHEEL_MAX_STEP = 24;
 
+/** Coalesce a stream of wheel steps to ONE application per animation
+ *  frame (2026-10-08, the trackpad judder: events arrive at up to 120 a
+ *  second and each applied one cost a full render, so the main thread
+ *  fell behind the frames). The first step after a rest applies AT
+ *  ONCE (leading edge, so a single notch is instant and a lone event in
+ *  a test is synchronous); steps arriving while a frame is pending
+ *  accumulate and apply together when it fires; a stream keeps that
+ *  one-per-frame cadence until a frame finds nothing waiting. Where
+ *  there is no requestAnimationFrame, every step applies at once. */
+export function createFrameCoalescer<M>(apply: (step: number, meta: M) => void) {
+  let pending = 0;
+  let pendingMeta: M | undefined;
+  let frame: number | null = null;
+  const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null;
+  const onFrame = () => {
+    frame = null;
+    if (pending === 0) return;
+    const step = pending;
+    const meta = pendingMeta as M;
+    pending = 0;
+    frame = raf!(onFrame);
+    apply(step, meta);
+  };
+  return {
+    push(step: number, meta: M) {
+      if (!raf || frame === null) {
+        apply(step, meta);
+        if (raf) frame = raf(onFrame);
+        return;
+      }
+      pending += step;
+      pendingMeta = meta;
+    },
+    cancel() {
+      if (frame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+      frame = null;
+      pending = 0;
+    },
+  };
+}
+
 /** One wheel event's contribution to a height, in px, positive = taller
  *  (wheel/swipe up): the dominant axis — Shift turns a vertical wheel
  *  horizontal on macOS — in pixels (lines and pages normalised), through
@@ -158,16 +199,11 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     const el = rootRef.current;
     if (!el) return;
 
-    const handleWheel = (e: WheelEvent) => {
-      // Cmd/Ctrl+wheel; Shift with it is the "every track" form (the
-      // host's business — reported as the source). Alt is allowed
-      // through for the host's Alt rule.
-      if (!e.metaKey && !e.ctrlKey) return;
-      if (resizeStartRef.current) return; // an active drag owns the height
-      e.preventDefault();
+    // One height update per frame however fast the wheel streams
+    const coalescer = createFrameCoalescer<ResizeSource>((step, source) => {
       const { minHeight: min, maxHeight: max, onHeightChange: emit } = liveDepsRef.current;
       const current = latestHeightRef.current;
-      const acc = wheelAccRef.current + wheelHeightStep(e);
+      const acc = wheelAccRef.current + step;
       const whole = Math.round(acc);
       wheelAccRef.current = acc - whole;
       if (whole === 0) return;
@@ -179,11 +215,20 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if (rounded === current) return;
       latestHeightRef.current = rounded;
       setHeight(rounded);
-      emit?.(rounded, e.shiftKey ? 'wheel-shift' : 'wheel');
+      emit?.(rounded, source);
+    });
+    const handleWheel = (e: WheelEvent) => {
+      // Cmd/Ctrl+wheel; Shift with it is the "every track" form (the
+      // host's business — reported as the source). Alt is allowed
+      // through for the host's Alt rule.
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (resizeStartRef.current) return; // an active drag owns the height
+      e.preventDefault();
+      coalescer.push(wheelHeightStep(e), e.shiftKey ? 'wheel-shift' : 'wheel');
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
+    return () => { el.removeEventListener('wheel', handleWheel); coalescer.cancel(); };
   }, [wheelResize]);
 
   // Adopt EXTERNAL height changes (e.g. the Fit-to-height menu command

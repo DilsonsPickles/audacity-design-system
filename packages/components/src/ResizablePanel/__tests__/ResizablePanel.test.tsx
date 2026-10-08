@@ -8,6 +8,10 @@ afterEach(cleanup);
 const getRoot = (container: HTMLElement) =>
   container.querySelector('.resizable-panel') as HTMLElement;
 
+/** Wheel steps after the first in a frame are coalesced to the next
+ *  animation frame (2026-10-08); tests that fire several wait for it */
+const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+
 describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
   it('Cmd+scroll up grows the panel and reports the height', () => {
     const onHeightChange = vi.fn();
@@ -23,18 +27,21 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     expect(getRoot(container).style.height).toBe('138px');
   });
 
-  it('accumulates sub-pixel deltas across gentle trackpad events', () => {
+  it('accumulates sub-pixel deltas across gentle trackpad events', async () => {
     const onHeightChange = vi.fn();
     const { container } = render(
       <ResizablePanel initialHeight={114} wheelResize onHeightChange={onHeightChange}>
         <div>content</div>
       </ResizablePanel>,
     );
-    // Each event contributes 0.5px — the first rounds to +1, then the
-    // remainder carries so four events land at +2 total.
+    // Each event contributes 0.5px — the first rounds to +1 at once,
+    // then the remainder carries through the coalesced frame so four
+    // events land at +2 total.
     for (let i = 0; i < 4; i++) {
       fireEvent.wheel(getRoot(container), { deltaY: -1, metaKey: true });
     }
+    expect(onHeightChange).toHaveBeenLastCalledWith(115, 'wheel');
+    await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(116, 'wheel');
   });
 
@@ -52,7 +59,7 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     expect(getRoot(container).style.height).toBe('114px');
   });
 
-  it("Cmd/Ctrl+SHIFT+wheel resizes too and reports 'wheel-shift' (the every-track form, 2026-10-08) — from the X axis as well, since Shift turns a wheel horizontal", () => {
+  it("Cmd/Ctrl+SHIFT+wheel resizes too and reports 'wheel-shift' (the every-track form, 2026-10-08) — from the X axis as well, since Shift turns a wheel horizontal", async () => {
     const onHeightChange = vi.fn();
     const { container } = render(
       <ResizablePanel initialHeight={114} wheelResize onHeightChange={onHeightChange}>
@@ -62,6 +69,7 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true, shiftKey: true });
     expect(onHeightChange).toHaveBeenLastCalledWith(138, 'wheel-shift');
     fireEvent.wheel(getRoot(container), { deltaY: 0, deltaX: -20, ctrlKey: true, shiftKey: true });
+    await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(148, 'wheel-shift');
   });
 
@@ -76,7 +84,7 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     expect(onHeightChange).not.toHaveBeenCalled();
   });
 
-  it('no detent: every height between the limits is reachable (2026-10-08, the snap points are gone)', () => {
+  it('no detent: every height between the limits is reachable (2026-10-08, the snap points are gone)', async () => {
     const onHeightChange = vi.fn();
     const { container } = render(
       <ResizablePanel initialHeight={114} wheelResize onHeightChange={onHeightChange}>
@@ -88,10 +96,11 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
     expect(onHeightChange).toHaveBeenLastCalledWith(104, 'wheel');
     fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
+    await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(94, 'wheel');
   });
 
-  it('clamps at minHeight', () => {
+  it('clamps at minHeight', async () => {
     const onHeightChange = vi.fn();
     const { container } = render(
       <ResizablePanel initialHeight={71} minHeight={44} wheelResize onHeightChange={onHeightChange}>
@@ -103,9 +112,13 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
     expect(onHeightChange).toHaveBeenLastCalledWith(47, 'wheel');
     fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
+    await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(44, 'wheel');
+    await frame();
     fireEvent.wheel(getRoot(container), { deltaY: 500, metaKey: true });
+    await frame();
     expect(onHeightChange).toHaveBeenLastCalledWith(44, 'wheel');
+    expect(getRoot(container).style.height).toBe('44px');
   });
 
   it('adopts an external height change (Fit to Height) outside a gesture', () => {
@@ -328,5 +341,26 @@ describe('ResizablePanel — the resize edge claims the press', () => {
     stubRect(container, 114);
     fireEvent.mouseDown(getByTestId('child'), { clientY: 57 });
     expect(childMouseDown).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createFrameCoalescer (2026-10-08, the trackpad judder)', () => {
+  it('applies the first step at once, folds the rest of the frame into one, and keeps one-per-frame through a stream', async () => {
+    const { createFrameCoalescer } = await import('../ResizablePanel');
+    const applied: Array<[number, string]> = [];
+    const c = createFrameCoalescer<string>((step, meta) => applied.push([step, meta]));
+    c.push(1, 'a');
+    c.push(2, 'b');
+    c.push(3, 'c');
+    expect(applied).toEqual([[1, 'a']]); // leading edge
+    await frame();
+    expect(applied).toEqual([[1, 'a'], [5, 'c']]); // the rest, together, with the latest meta
+    c.push(4, 'd'); // a frame is still pending after a non-empty flush: coalesced again
+    await frame();
+    expect(applied[applied.length - 1]).toEqual([4, 'd']);
+    await frame(); // an empty frame ends the stream
+    c.push(7, 'e');
+    expect(applied[applied.length - 1]).toEqual([7, 'e']); // leading again
+    c.cancel();
   });
 });
