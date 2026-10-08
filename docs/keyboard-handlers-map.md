@@ -20,6 +20,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **Cmd+Left/Right** - Move clip horizontally by 0.1s
 - **Cmd+Up/Down** - Move clip to adjacent track
 - **Option+Cmd+Up/Down** - Focused track taller / shorter by 24px; **+Shift** every track (`useKeyboardShortcuts` → `onTrackHeightStep`, 2026-10-08)
+- **Option+Cmd+C / X** - Collapse / expand the selected tracks (or the track you are on), matched on `e.code` (`onCollapseSelectedTracks` / `onExpandSelectedTracks`, 2026-10-08)
 - **Shift+Left/Right** - Extend clip edges (move left edge left / right edge right)
 - **Cmd+Shift+Left/Right** - Reduce clip edges (move right edge left / left edge right)
 - **ArrowUp/Down** (no modifiers) - Navigate to first clip on adjacent track (`onClipNavigateVertical`)

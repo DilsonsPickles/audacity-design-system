@@ -496,25 +496,36 @@ function CanvasDemoContent() {
   // wrong track with a clip focused, and nothing at all in a project
   // with no track focus: "I promise it doesn't work, expand all does"),
   // then the focused track, then the selected tracks, then every track.
-  const handleTrackHeightStep = React.useCallback((delta: number, scope: 'focused' | 'all') => {
+  const resolveTracksImOn = React.useCallback((): number[] => {
     const all = state.tracks.map((_, i) => i);
-    const resolveFocused = (): number[] => {
-      const active = document.activeElement as HTMLElement | null;
-      const fromClip = active?.closest<HTMLElement>('[data-track-index]')?.getAttribute('data-track-index');
-      const fromPanel = active?.closest<HTMLElement>('[data-track-panel-index]')?.getAttribute('data-track-panel-index');
-      const fromDom = fromClip ?? fromPanel;
-      if (fromDom !== null && fromDom !== undefined && state.tracks[Number(fromDom)]) return [Number(fromDom)];
-      if (state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined && state.tracks[state.focusedTrackIndex]) return [state.focusedTrackIndex];
-      if (state.selectedTrackIndices.length > 0) return state.selectedTrackIndices;
-      return all;
-    };
-    const targets = scope === 'all' ? all : resolveFocused();
+    const active = document.activeElement as HTMLElement | null;
+    const fromClip = active?.closest<HTMLElement>('[data-track-index]')?.getAttribute('data-track-index');
+    const fromPanel = active?.closest<HTMLElement>('[data-track-panel-index]')?.getAttribute('data-track-panel-index');
+    const fromDom = fromClip ?? fromPanel;
+    if (fromDom !== null && fromDom !== undefined && state.tracks[Number(fromDom)]) return [Number(fromDom)];
+    if (state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined && state.tracks[state.focusedTrackIndex]) return [state.focusedTrackIndex];
+    if (state.selectedTrackIndices.length > 0) return state.selectedTrackIndices;
+    return all;
+  }, [state.tracks, state.focusedTrackIndex, state.selectedTrackIndices]);
+  const handleTrackHeightStep = React.useCallback((delta: number, scope: 'focused' | 'all') => {
+    const targets = scope === 'all' ? state.tracks.map((_, i) => i) : resolveTracksImOn();
     targets.forEach((index) => {
       const t = state.tracks[index];
       if (!t) return;
       dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: Math.max(44, (t.height || 114) + delta) } });
     });
-  }, [state.tracks, state.focusedTrackIndex, state.selectedTrackIndices, dispatch]);
+  }, [state.tracks, resolveTracksImOn, dispatch]);
+  // Collapse / expand the SELECTED tracks (2026-10-08, "collapse just the
+  // selected track" — AU3's per-track minimise button, as a command):
+  // the selected tracks, or with none selected the track I'm on.
+  const setSelectedTrackHeights = React.useCallback((height: number) => {
+    const targets = state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices : resolveTracksImOn();
+    targets.forEach((index) => {
+      if ((state.tracks[index]?.height || 114) !== height) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height } });
+    });
+  }, [state.tracks, state.selectedTrackIndices, resolveTracksImOn, dispatch]);
+  const handleCollapseSelectedTracks = React.useCallback(() => setSelectedTrackHeights(44), [setSelectedTrackHeights]);
+  const handleExpandSelectedTracks = React.useCallback(() => setSelectedTrackHeights(114), [setSelectedTrackHeights]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -531,6 +542,8 @@ function CanvasDemoContent() {
     onExpandAllTracks: handleExpandAllTracks,
     onCollapseAllTracks: handleCollapseAllTracks,
     onTrackHeightStep: handleTrackHeightStep,
+    onCollapseSelectedTracks: handleCollapseSelectedTracks,
+    onExpandSelectedTracks: handleExpandSelectedTracks,
   });
 
   // Hold Cmd (Ctrl on Windows/Linux) to grab-pan the canvas. The
@@ -786,6 +799,8 @@ function CanvasDemoContent() {
     onFitTracksToHeight: handleFitTracksToHeight,
     onExpandAllTracks: handleExpandAllTracks,
     onCollapseAllTracks: handleCollapseAllTracks,
+    onCollapseSelectedTracks: handleCollapseSelectedTracks,
+    onExpandSelectedTracks: handleExpandSelectedTracks,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu

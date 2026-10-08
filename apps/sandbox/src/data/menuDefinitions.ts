@@ -30,6 +30,8 @@ export interface MenuDefinitionDeps {
   onFitTracksToHeight: () => void;
   onExpandAllTracks: () => void;
   onCollapseAllTracks: () => void;
+  onCollapseSelectedTracks: () => void;
+  onExpandSelectedTracks: () => void;
 
   // Effect menu deps
   onOpenPluginManager: () => void;
@@ -125,6 +127,18 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Collapse all tracks',
       shortcut: 'Ctrl+Shift+C',
       onClick: deps.onCollapseAllTracks,
+    },
+    {
+      // The one-track forms (2026-10-08, "collapse just the selected
+      // track"): the selected tracks, or the track you are on
+      label: 'Expand selected tracks',
+      shortcut: 'Ctrl+Alt+X',
+      onClick: deps.onExpandSelectedTracks,
+    },
+    {
+      label: 'Collapse selected tracks',
+      shortcut: 'Ctrl+Alt+C',
+      onClick: deps.onCollapseSelectedTracks,
     },
   ];
 

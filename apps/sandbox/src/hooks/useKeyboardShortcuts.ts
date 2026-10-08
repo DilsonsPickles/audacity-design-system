@@ -64,6 +64,10 @@ export interface UseKeyboardShortcutsOptions {
    *  step; with Shift, every track (2026-10-08 — the wheel's two forms
    *  on the keyboard; the real app has no incremental height command) */
   onTrackHeightStep?: (delta: number, scope: 'focused' | 'all') => void;
+  /** Option+Cmd/Ctrl+C / X: collapse / expand the SELECTED tracks (or
+   *  the track I'm on) — the one-track forms of ⌘⇧C / ⌘⇧X (2026-10-08) */
+  onCollapseSelectedTracks?: () => void;
+  onExpandSelectedTracks?: () => void;
 }
 
 /**
@@ -98,6 +102,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onExpandAllTracks,
     onCollapseAllTracks,
     onTrackHeightStep,
+    onCollapseSelectedTracks,
+    onExpandSelectedTracks,
   } = options;
 
   // Track whether the user is navigating via keyboard or mouse.
@@ -265,6 +271,23 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (key === 'c' && onCollapseAllTracks) {
           e.preventDefault();
           onCollapseAllTracks();
+          return;
+        }
+      }
+
+      // --- Option+Cmd/Ctrl+C / X: collapse / expand the SELECTED tracks ---
+      // The one-track forms of ⌘⇧C / ⌘⇧X (2026-10-08, "collapse just
+      // the selected track"). Matched on e.code: Option+C types "ç" and
+      // Option+X "≈" on macOS, so e.key is useless here (the ⌥⌘I rule).
+      // (A synthetic event with no code — the browser pane's key tool —
+      // falls back to the key letter.)
+      const letter = e.code === 'KeyC' || (!e.code && e.key.toLowerCase() === 'c') ? 'c'
+        : e.code === 'KeyX' || (!e.code && e.key.toLowerCase() === 'x') ? 'x' : null;
+      if ((e.metaKey || e.ctrlKey) && e.altKey && !e.shiftKey && letter) {
+        const cb = letter === 'c' ? onCollapseSelectedTracks : onExpandSelectedTracks;
+        if (cb) {
+          e.preventDefault();
+          cb();
           return;
         }
       }

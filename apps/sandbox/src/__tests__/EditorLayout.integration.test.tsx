@@ -1068,6 +1068,35 @@ describe('Selection playback', () => {
     });
   });
 
+  it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+    // Focus (and so select) track 1 only
+    const panel1 = container.querySelectorAll('[aria-label*="track controls"]')[1] as HTMLElement;
+    act(() => { panel1.focus(); });
+
+    // Matched on e.code: Option+C types "ç" on macOS
+    fireEvent.keyDown(document.body, { key: 'ç', code: 'KeyC', metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect((panels()[1] as HTMLElement).style.height).toBe('44px');
+    });
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+
+    fireEvent.keyDown(document.body, { key: '≈', code: 'KeyX', metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+    });
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+  });
+
   it('Option+Cmd+Up/Down steps the focused track by 24px; with Shift every track (2026-10-08, the wheel on the keyboard)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

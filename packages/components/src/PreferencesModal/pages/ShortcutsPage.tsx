@@ -55,6 +55,8 @@ export function ShortcutsPage() {
     { id: '38b', action: 'Track shorter', shortcut: '⌥⌘↓' },
     { id: '38c', action: 'All tracks taller', shortcut: '⌥⌘⇧↑' },
     { id: '38d', action: 'All tracks shorter', shortcut: '⌥⌘⇧↓' },
+    { id: '38e', action: 'Collapse selected tracks', shortcut: '⌥⌘C' },
+    { id: '38f', action: 'Expand selected tracks', shortcut: '⌥⌘X' },
     { id: '39', action: 'Fit to width', shortcut: '' },
     { id: '40', action: 'Generate', shortcut: '' },
     { id: '41', action: 'Generate silence', shortcut: '⌘L' },
