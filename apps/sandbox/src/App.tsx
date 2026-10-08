@@ -36,6 +36,7 @@ const OAuthCallback = React.lazy(() =>
 );
 import { RecordingManager } from './utils/RecordingManager';
 import { computeFitTrackHeight } from './utils/trackManagement';
+import { effectiveTrackStride } from './utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from './contexts/AdieuContext';
@@ -531,13 +532,34 @@ function CanvasDemoContent() {
   // to fill all available VH space"): the selected tracks — or the
   // track I'm on — share the viewport's height between them; the others
   // keep theirs. The one-track form of Fit to height.
+  // The tracks the last Option+Cmd+F sized, by id, at the height it gave
+  // them. SUCCESSIVE FITS SHARE THE ROOM (2026-10-08, "if I press cmd +
+  // alt + F on another track, it'll share the available height with the
+  // other track that I just did that on"): a track the fit sized, and
+  // which is STILL at that height, joins the next fit's targets instead of
+  // being counted as occupied space — otherwise the second press would
+  // find no room left and land on the floor. A track resized since by any
+  // other means (drag, wheel, collapse, expand, fit all) is no longer at
+  // its fitted height and drops out on its own.
+  const fittedHeightsRef = React.useRef<Map<number, number>>(new Map());
   const handleFitSelectedTracksToHeight = React.useCallback(() => {
-    const targets = state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices : resolveTracksImOn();
+    const pressed = state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices : resolveTracksImOn();
+    const targetSet = new Set(pressed);
+    state.tracks.forEach((t, i) => {
+      if (fittedHeightsRef.current.get(t.id) === (t.height || DEFAULT_TRACK_HEIGHT)) targetSet.add(i);
+    });
+    const targets = [...targetSet].sort((a, b) => a - b);
     const viewport = scrollContainerRef.current?.clientHeight ?? 0;
-    const per = computeFitTrackHeight(viewport, targets.length, TOP_GAP, TRACK_GAP);
+    // The targets take what the OTHER rows leave (a hidden child of a
+    // collapsed group contributes nothing, as in every y-walk)
+    const occupied = state.tracks.reduce((sum, _t, i) => (
+      targetSet.has(i) ? sum : sum + effectiveTrackStride(state.tracks, i, DEFAULT_TRACK_HEIGHT, TRACK_GAP)
+    ), 0);
+    const per = computeFitTrackHeight(viewport, targets.length, TOP_GAP, TRACK_GAP, occupied);
     if (per === null) return;
+    fittedHeightsRef.current = new Map(targets.map((index) => [state.tracks[index].id, per]));
     targets.forEach((index) => {
-      if ((state.tracks[index]?.height || 114) !== per) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: per } });
+      if ((state.tracks[index]?.height || DEFAULT_TRACK_HEIGHT) !== per) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: per } });
     });
   }, [state.tracks, state.selectedTrackIndices, resolveTracksImOn, dispatch]);
 

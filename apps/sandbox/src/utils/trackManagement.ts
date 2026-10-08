@@ -139,18 +139,23 @@ export function buildDuplicatedTracks(
  * Fit-to-height (View > Fit tracks to height, AU3 heritage): the uniform
  * track height that makes `trackCount` tracks exactly fill the canvas
  * viewport. Canvas layout is TOP_GAP + per-track (height + TRACK_GAP) —
- * see calculateTrackYOffset. Clamped to the 44px control-panel minimum,
- * and heights inside the forbidden control-panel band (71-112, where the
- * volume slider has no valid layout) snap to the nearer edge.
+ * see calculateTrackYOffset. Clamped to the 44px control-panel minimum.
+ *
+ * `occupied` is the height the OTHER rows already take (their heights and
+ * gaps): Option+Cmd+F fits the track you are on into WHAT IS LEFT of the
+ * viewport beside the others, not the whole viewport ("I meant the rest
+ * of the available vertical canvas space, it's overshooting", 2026-10-08).
+ * Zero (the default) is the whole-project fit, where every row is a target.
  */
 export function computeFitTrackHeight(
   viewportHeight: number,
   trackCount: number,
   topGap: number,
   trackGap: number,
+  occupied = 0,
 ): number | null {
   if (viewportHeight <= 0 || trackCount <= 0) return null;
-  const available = viewportHeight - topGap - trackCount * trackGap;
+  const available = viewportHeight - topGap - occupied - trackCount * trackGap;
   let per = Math.floor(available / trackCount);
   if (per < 44) per = 44;
   // (The 71–112 "forbidden band" snap that lived here went with the

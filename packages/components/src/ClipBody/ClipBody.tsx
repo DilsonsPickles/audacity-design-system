@@ -259,7 +259,21 @@ const ClipBodyComponent: React.FC<ClipBodyProps> = ({
     const hasMono = waveformData && waveformData.length > 0;
     if (!isStereo && !hasMono) return;
 
-    const ctx = canvas.getContext('2d', { alpha: true });
+    // A SOFTWARE canvas, on purpose (2026-10-08, "still flickering so
+    // badly" on the big monitor after the bucketed backing store): the
+    // Electron shell's log read "tile_manager.cc: tile memory limits
+    // exceeded, some content may not draw" on every resize — the black
+    // flashes are tiles the compositor DROPPED. A GPU-accelerated canvas
+    // is its own compositor layer, and Chromium then promotes everything
+    // painted over it (headers, fade curves, handles, overlays) into
+    // further layers; dozens of clips on a 5K display at 2× put the
+    // tiled area far past the budget. `willReadFrequently` is the only
+    // web-exposed way to ask for a CPU-backed canvas, which paints into
+    // the page's own layer like an image — no layer per clip, no
+    // promotion of what sits above it. The waveform is 1px columns, which
+    // Skia's CPU raster draws as fast as the GPU path did (the draw was
+    // measured at ~0ms of a ~14ms resize commit either way).
+    const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
     if (!ctx) return;
 
     // Get computed styles once at the top for reuse throughout rendering

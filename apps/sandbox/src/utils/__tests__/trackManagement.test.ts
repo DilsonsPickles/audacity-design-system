@@ -215,6 +215,13 @@ describe('computeFitTrackHeight', () => {
     expect(computeFitTrackHeight(100, 4, 2, 2)).toBe(44);
   });
 
+  it('fits into what the other rows leave when `occupied` is given (Option+Cmd+F, 2026-10-08)', () => {
+    // 500 - topGap 2 - two 114px rows with their gaps (232) - 1 gap = 264
+    expect(computeFitTrackHeight(500, 1, 2, 2, 232)).toBe(264);
+    // nothing left: the floor
+    expect(computeFitTrackHeight(300, 1, 2, 2, 290)).toBe(44);
+  });
+
   it('returns null for an empty project or unmeasured viewport', () => {
     expect(computeFitTrackHeight(0, 3, 2, 2)).toBeNull();
     expect(computeFitTrackHeight(500, 0, 2, 2)).toBeNull();
