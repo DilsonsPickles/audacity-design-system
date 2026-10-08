@@ -1,4 +1,5 @@
 import React from 'react';
+import { wheelHeightStep } from '@audacity-ui/components';
 import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 
 /**
@@ -33,6 +34,10 @@ export interface UseCanvasScrollSyncOptions {
   activeMenuItem: string;
   setScrollX: (v: number) => void;
   setScrollY: (v: number) => void;
+  /** Cmd/Ctrl+SHIFT+wheel over the canvas: every track's height by
+   *  `delta` px (positive = taller) — the same gesture as on the headers
+   *  (2026-10-08); the plain Cmd/Ctrl+wheel stays the horizontal zoom */
+  onTrackHeightWheel?: (delta: number) => void;
 }
 
 export interface UseCanvasScrollSyncReturn {
@@ -62,12 +67,18 @@ export function useCanvasScrollSync({
   activeMenuItem,
   setScrollX,
   setScrollY,
+  onTrackHeightWheel,
 }: UseCanvasScrollSyncOptions): UseCanvasScrollSyncReturn {
   const scrollRafRef = React.useRef<number | null>(null);
   const pendingScrollRef = React.useRef<{ x: number; y: number } | null>(null);
 
   // Wheel-to-zoom: Cmd/Ctrl + scroll zooms toward cursor (like piano roll)
   const ppsRef = React.useRef(pixelsPerSecond);
+  // Ref-mirror (see CLAUDE.md): the wheel listener binds once
+  const onTrackHeightWheelRef = React.useRef(onTrackHeightWheel);
+  React.useEffect(() => { onTrackHeightWheelRef.current = onTrackHeightWheel; }, [onTrackHeightWheel]);
+  // Sub-pixel remainder of the height wheel, as ResizablePanel keeps
+  const heightWheelAccRef = React.useRef(0);
   const maxPpsRef = React.useRef(maxPixelsPerSecond);
   const minPpsRef = React.useRef(minPixelsPerSecond);
   const setPixelsPerSecondRef = React.useRef(setPixelsPerSecond);
@@ -106,6 +117,18 @@ export function useCanvasScrollSync({
     if (!el) return;
 
     const handleWheel = (e: WheelEvent) => {
+      // Cmd/Ctrl+SHIFT+wheel: every track's height together (user
+      // decision 2026-10-08, "we need to be able to do this in the
+      // canvas area too") — ResizablePanel's step and resistance, so
+      // the headers and the canvas feel the same
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && onTrackHeightWheelRef.current) {
+        e.preventDefault();
+        const acc = heightWheelAccRef.current + wheelHeightStep(e);
+        const whole = Math.round(acc);
+        heightWheelAccRef.current = acc - whole;
+        if (whole !== 0) onTrackHeightWheelRef.current(whole);
+        return;
+      }
       if (e.metaKey || e.ctrlKey) {
         e.preventDefault();
         const rect = el.getBoundingClientRect();

@@ -47,9 +47,22 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     );
     fireEvent.wheel(getRoot(container), { deltaY: -50 });
     fireEvent.wheel(getRoot(container), { deltaY: -50, altKey: true });
-    fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true, shiftKey: true });
+    fireEvent.wheel(getRoot(container), { deltaY: -50, shiftKey: true });
     expect(onHeightChange).not.toHaveBeenCalled();
     expect(getRoot(container).style.height).toBe('114px');
+  });
+
+  it("Cmd/Ctrl+SHIFT+wheel resizes too and reports 'wheel-shift' (the every-track form, 2026-10-08) — from the X axis as well, since Shift turns a wheel horizontal", () => {
+    const onHeightChange = vi.fn();
+    const { container } = render(
+      <ResizablePanel initialHeight={114} wheelResize onHeightChange={onHeightChange}>
+        <div>content</div>
+      </ResizablePanel>,
+    );
+    fireEvent.wheel(getRoot(container), { deltaY: -50, metaKey: true, shiftKey: true });
+    expect(onHeightChange).toHaveBeenLastCalledWith(138, 'wheel-shift');
+    fireEvent.wheel(getRoot(container), { deltaY: 0, deltaX: -20, ctrlKey: true, shiftKey: true });
+    expect(onHeightChange).toHaveBeenLastCalledWith(148, 'wheel-shift');
   });
 
   it('without wheelResize the wheel is ignored entirely', () => {

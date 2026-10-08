@@ -106,8 +106,9 @@ export interface TrackControlSidePanelProps {
   /**
    * Called when a track is resized
    */
-  /** A track's height changed — by the drag on its edge or the
-   *  Cmd/Ctrl+wheel over it (`source`; a resize end reports 'drag') */
+  /** A track's height changed — by the drag on its edge, the Cmd/Ctrl+
+   *  wheel over it or the Cmd/Ctrl+Shift+wheel (`source`; a resize end
+   *  reports 'drag') */
   onTrackResize?: (trackIndex: number, height: number, source: ResizeSource) => void;
 
   /**
@@ -286,16 +287,56 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
     }
   };
+  // THE WHEEL'S TARGET IS LOCKED FOR THE GESTURE (user decision
+  // 2026-10-08, "if I'm scrolling to make the track header smaller and
+  // it causes my cursor to be over another track header, the original
+  // track header should scroll — if the cursor doesn't move, don't
+  // change the target"): the first Cmd/Ctrl+wheel locks onto the panel
+  // under it, and every further wheel event goes to THAT panel until the
+  // pointer actually moves (a mousemove — content shifting under a still
+  // pointer fires none) or the wheel rests for WHEEL_LOCK_REST_MS. A
+  // locked event aimed at another panel is stopped here, in the capture
+  // phase above the panels, and re-dispatched on the locked one.
+  const wheelLockRef = React.useRef<{ el: HTMLElement; at: number } | null>(null);
   React.useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const suppressZoomScroll = (e: WheelEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
-        e.preventDefault();
-      }
+    const WHEEL_LOCK_REST_MS = 300;
+    const panelOf = (target: EventTarget | null) =>
+      (target instanceof Element ? target.closest<HTMLElement>('.track-control-side-panel__track') : null);
+    const onWheelCapture = (e: WheelEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      // Suppress the list's own scrolling for every zoom-modifier wheel,
+      // over the panels and the gaps alike (Shift too: Cmd/Ctrl+Shift+
+      // wheel is the every-track resize)
+      e.preventDefault();
+      if ((e as WheelEvent & { __redirected?: boolean }).__redirected) return;
+      const now = Date.now();
+      const lock = wheelLockRef.current;
+      const live = lock && lock.el.isConnected && now - lock.at <= WHEEL_LOCK_REST_MS ? lock : null;
+      const under = panelOf(e.target);
+      const target = live ? live.el : under;
+      if (!target) return;
+      wheelLockRef.current = { el: target, at: now };
+      if (target === under || (under && target.contains(under))) return; // the panel under it handles it
+      e.stopPropagation();
+      const copy = new WheelEvent('wheel', {
+        deltaX: e.deltaX, deltaY: e.deltaY, deltaZ: e.deltaZ, deltaMode: e.deltaMode,
+        clientX: e.clientX, clientY: e.clientY,
+        ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey, altKey: e.altKey,
+        bubbles: true, cancelable: true,
+      }) as WheelEvent & { __redirected?: boolean };
+      copy.__redirected = true;
+      target.dispatchEvent(copy);
     };
-    el.addEventListener('wheel', suppressZoomScroll, { passive: false });
-    return () => el.removeEventListener('wheel', suppressZoomScroll);
+    // The pointer moving — for real — releases the lock
+    const onMouseMove = () => { wheelLockRef.current = null; };
+    el.addEventListener('wheel', onWheelCapture, { passive: false, capture: true });
+    el.addEventListener('mousemove', onMouseMove);
+    return () => {
+      el.removeEventListener('wheel', onWheelCapture, { capture: true });
+      el.removeEventListener('mousemove', onMouseMove);
+    };
   }, []);
   // Captures the panel's menu button that opened the side-panel
   // context menu so focus can return there when the menu closes —

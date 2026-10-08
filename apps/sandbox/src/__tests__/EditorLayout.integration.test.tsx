@@ -1028,7 +1028,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('resizing a selected header resizes all selected tracks; Cmd+Shift+X/C expand and collapse all', async () => {
+  it('Cmd+wheel on a selected header resizes that track alone (the wheel ignores the selection, 2026-10-08); Cmd+Shift+X/C expand and collapse all', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1043,14 +1043,15 @@ describe('Selection playback', () => {
     act(() => { panel0.focus(); });
     fireEvent.keyDown(panel0, { key: 'ArrowDown', shiftKey: true });
 
-    // Cmd+scroll on track 1's header (part of the selection) → both
-    // headers take the new height (114 + capped 24px step = 138).
+    // Cmd+scroll on track 1's header (part of the selection) → track 1
+    // alone takes the new height (114 + capped 24px step = 138); the
+    // selection rule belongs to the DRAG
     const panels = () => container.querySelectorAll('.track-control-side-panel__track');
     fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true });
     await waitFor(() => {
-      expect((panels()[0] as HTMLElement).style.height).toBe('138px');
       expect((panels()[1] as HTMLElement).style.height).toBe('138px');
     });
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
 
     // Collapse all → 44px minimum everywhere.
     fireEvent.keyDown(document.body, { key: 'C', metaKey: true, shiftKey: true });
@@ -1067,7 +1068,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Cmd+wheel on one header resizes ALL tracks together (2026-10-08) — Alt or not', async () => {
+  it('Cmd+wheel on one header resizes THAT track; Cmd+Shift+wheel resizes ALL together by the same step (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1079,23 +1080,20 @@ describe('Selection playback', () => {
 
     const panels = () => container.querySelectorAll('.track-control-side-panel__track');
 
-    // Hold Alt, then Cmd+scroll on track 1's header only — with no track
-    // selection involving track 0, BOTH tracks take the new height.
-    fireEvent.keyDown(document.body, { key: 'Alt' });
-    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true, altKey: true });
-    await waitFor(() => {
-      expect((panels()[0] as HTMLElement).style.height).toBe('138px');
-      expect((panels()[1] as HTMLElement).style.height).toBe('138px');
-    });
-    fireEvent.keyUp(document.body, { key: 'Alt' });
-
-    // Alt released: the WHEEL still resizes every track ("if I do the
-    // cmd+scroll shortcut, all tracks get bigger together"); Alt only
-    // matters to a DRAG now.
+    // Cmd+scroll on track 1's header only: track 1 alone
     fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true });
     await waitFor(() => {
+      expect((panels()[1] as HTMLElement).style.height).toBe('138px');
+    });
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+
+    // Cmd+SHIFT+scroll on track 1: every track, by the same +24 — so
+    // the two keep their 24px difference ("all tracks get bigger
+    // together", and "cmd + shift + scroll do all of them")
+    fireEvent.wheel(panels()[1], { deltaY: -50, metaKey: true, shiftKey: true });
+    await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('162px');
-      expect((panels()[0] as HTMLElement).style.height).toBe('162px');
+      expect((panels()[0] as HTMLElement).style.height).toBe('138px');
     });
   });
 

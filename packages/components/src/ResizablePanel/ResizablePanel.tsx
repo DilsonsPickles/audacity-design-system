@@ -15,7 +15,24 @@ import './ResizablePanel.css';
 // release, and the wheel passes through.
 const SOFT_SNAP_PX = 4;
 
-export type ResizeSource = 'drag' | 'wheel';
+/** 'wheel' is Cmd/Ctrl+wheel, 'wheel-shift' Cmd/Ctrl+Shift+wheel — the
+ *  consumer scopes them (one track / every track, 2026-10-08) */
+export type ResizeSource = 'drag' | 'wheel' | 'wheel-shift';
+
+/** The wheel resize's resistance: half the raw delta, capped per event
+ *  so momentum flicks ramp instead of teleporting. Tuned by feel. */
+export const WHEEL_SENSITIVITY = 0.5;
+export const WHEEL_MAX_STEP = 24;
+
+/** One wheel event's contribution to a height, in px, positive = taller
+ *  (wheel/swipe up): the dominant axis — Shift turns a vertical wheel
+ *  horizontal on macOS — in pixels (lines and pages normalised), through
+ *  the resistance and cap. Shared with the canvas's Cmd+Shift+wheel. */
+export function wheelHeightStep(e: { deltaX: number; deltaY: number; deltaMode: number }): number {
+  const dominant = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+  const raw = dominant * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+  return -Math.max(-WHEEL_MAX_STEP, Math.min(WHEEL_MAX_STEP, raw * WHEEL_SENSITIVITY));
+}
 
 export interface ResizablePanelProps {
   /**
@@ -71,7 +88,8 @@ export interface ResizablePanelProps {
   /**
    * Cmd/Ctrl + scroll wheel over the panel resizes it (scroll/swipe up =
    * taller) — the same modifier as canvas zoom, so it reads as "zoom the
-   * track". Uses the same height plumbing as drag resize.
+   * track"; with Shift too it reports 'wheel-shift', which the track
+   * host applies to every track. Uses the same height plumbing as drag.
    */
   wheelResize?: boolean;
   /** Right-click on the panel (the row's context menu) */
@@ -140,23 +158,16 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     const el = rootRef.current;
     if (!el) return;
 
-    // Resistance: half the raw wheel delta, capped per event so momentum
-    // flicks ramp instead of teleporting. Tuned by feel.
-    const WHEEL_SENSITIVITY = 0.5;
-    const WHEEL_MAX_STEP = 24;
-
     const handleWheel = (e: WheelEvent) => {
-      // Alt is allowed through: the consumer treats Alt-modified resizes
-      // as "apply to all tracks" (Ableton-style) — see EditorLayout.
-      if ((!e.metaKey && !e.ctrlKey) || e.shiftKey) return;
+      // Cmd/Ctrl+wheel; Shift with it is the "every track" form (the
+      // host's business — reported as the source). Alt is allowed
+      // through for the host's Alt rule.
+      if (!e.metaKey && !e.ctrlKey) return;
       if (resizeStartRef.current) return; // an active drag owns the height
       e.preventDefault();
       const { minHeight: min, maxHeight: max, onHeightChange: emit } = liveDepsRef.current;
       const current = latestHeightRef.current;
-      // deltaMode 1/2 are line/page deltas (non-pixel mice) — normalize.
-      const raw = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
-      const step = Math.max(-WHEEL_MAX_STEP, Math.min(WHEEL_MAX_STEP, raw * WHEEL_SENSITIVITY));
-      const acc = wheelAccRef.current - step; // wheel/swipe up = taller
+      const acc = wheelAccRef.current + wheelHeightStep(e);
       const whole = Math.round(acc);
       wheelAccRef.current = acc - whole;
       if (whole === 0) return;
@@ -168,7 +179,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if (rounded === current) return;
       latestHeightRef.current = rounded;
       setHeight(rounded);
-      emit?.(rounded, 'wheel');
+      emit?.(rounded, e.shiftKey ? 'wheel-shift' : 'wheel');
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });

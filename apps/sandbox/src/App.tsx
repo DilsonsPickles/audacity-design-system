@@ -566,6 +566,11 @@ function CanvasDemoContent() {
   // Wheel-zoom + two-pane (canvas / track-header) scroll sync. Must be
   // called after useZoomControls — it consumes pixelsPerSecond,
   // maxPixelsPerSecond, and _setPixelsPerSecond from that hook.
+  const handleTrackHeightWheel = React.useCallback((delta: number) => {
+    state.tracks.forEach((t, index) => {
+      dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: Math.max(44, (t.height || 114) + delta) } });
+    });
+  }, [state.tracks, dispatch]);
   const { handleScroll, handleTrackHeaderScroll } = useCanvasScrollSync({
     scrollContainerRef,
     trackHeaderScrollRef,
@@ -577,6 +582,9 @@ function CanvasDemoContent() {
     activeMenuItem,
     setScrollX,
     setScrollY,
+    // Cmd/Ctrl+Shift+wheel over the canvas: every track by the same
+    // step, as the headers' Cmd+Shift+wheel does (2026-10-08)
+    onTrackHeightWheel: handleTrackHeightWheel,
   });
 
   const handleToggleEnvelope = () => {
