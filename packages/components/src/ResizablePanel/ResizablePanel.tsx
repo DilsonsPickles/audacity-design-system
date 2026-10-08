@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './ResizablePanel.css';
 
-// 71 (slider just fits) and 112 (effect button has breathing room) bracket
-// a forbidden range — there's no valid layout between them, because the
-// slider would be visible without the effect button having any space.
-// Enforced by the mouseup snap (bounce back) and the wheel resize (detent).
-const FORBIDDEN_LOW = 71;
-const FORBIDDEN_HIGH = 112;
+// A track resizes FREELY between minHeight and maxHeight (user decision
+// 2026-10-08, "remove all the resizing snap point logic from the track
+// headers"): no snap points, no release spring, no wheel detent. Until
+// then 71 and 112 bracketed a "forbidden" band of heights (the slider
+// visible but the Effects button without room), the release sprang back
+// to 71, 112 or the mount height within 18px, and Cmd+wheel stepped over
+// the band. The panel's content lays itself out for whatever height it
+// gets.
 
 export interface ResizablePanelProps {
   /**
@@ -95,23 +97,14 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   const [resizeCursor, setResizeCursor] = useState(false);
   const resizeStartRef = useRef<{ y: number; height: number; edge: 'top' | 'bottom' } | null>(null);
   // Mirror of `height` for handlers that need the latest value without
-  // re-subscribing. Updated synchronously inside the drag and spring
+  // re-subscribing. Updated synchronously inside the drag and wheel
   // handlers (event-handler writes to refs are safe), so the mouseup
-  // listener never picks up a stale value when it evaluates snaps.
+  // listener never picks up a stale value.
   const latestHeightRef = useRef(height);
-  // Frozen "home" height — captured on first mount. The parent passes
-  // a live track height as `initialHeight` (because the panel is
-  // re-rendered as state.tracks[i].height changes), but for the snap
-  // target we want the original default, otherwise the home snap is
-  // always equal to the released value and the spring never fires.
-  const homeHeightRef = useRef(initialHeight);
-  // Tracks a running release-spring animation so a new resize gesture
-  // cancels it cleanly.
-  const snapAnimationRef = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   // ONE ref-mirror of the live props for every long-lived handler here
-  // — the wheel listener, the drag listeners and the release spring.
+  // — the wheel listener and the drag listeners.
   // See CLAUDE.md: document-level listeners bind once and read changing
   // props through a ref, never through effect deps.
   //
@@ -128,7 +121,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
   // Sub-pixel remainder between wheel events, so gentle trackpad deltas
   // (well under 1px after the resistance factor) accumulate instead of
-  // being rounded away. Dropped whenever a clamp or the detent fires.
+  // being rounded away. Dropped whenever a clamp fires.
   const wheelAccRef = useRef(0);
 
   useEffect(() => {
@@ -147,10 +140,6 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if ((!e.metaKey && !e.ctrlKey) || e.shiftKey) return;
       if (resizeStartRef.current) return; // an active drag owns the height
       e.preventDefault();
-      if (snapAnimationRef.current !== null) {
-        cancelAnimationFrame(snapAnimationRef.current);
-        snapAnimationRef.current = null;
-      }
       const { minHeight: min, maxHeight: max, onHeightChange: emit } = liveDepsRef.current;
       const current = latestHeightRef.current;
       // deltaMode 1/2 are line/page deltas (non-pixel mice) — normalize.
@@ -161,15 +150,10 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       wheelAccRef.current = acc - whole;
       if (whole === 0) return;
       let next = current + whole;
-      // Step over the forbidden layout band in the direction of travel —
-      // a detent, so every intermediate height is a valid layout.
-      if (next > FORBIDDEN_LOW && next < FORBIDDEN_HIGH) {
-        next = whole > 0 ? FORBIDDEN_HIGH : FORBIDDEN_LOW;
-      }
       next = Math.max(min, next);
       if (max !== undefined) next = Math.min(max, next);
       const rounded = Math.round(next);
-      if (rounded !== current + whole) wheelAccRef.current = 0; // clamped/detented
+      if (rounded !== current + whole) wheelAccRef.current = 0; // clamped
       if (rounded === current) return;
       latestHeightRef.current = rounded;
       setHeight(rounded);
@@ -182,10 +166,10 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
   // Adopt EXTERNAL height changes (e.g. the Fit-to-height menu command
   // dispatching new track heights) — but never mid-gesture: internal state
-  // stays authoritative while a drag or release-spring is running, and
-  // self-initiated changes echo back as an equal initialHeight (no-op).
+  // stays authoritative while a drag is running, and self-initiated
+  // changes echo back as an equal initialHeight (no-op).
   useEffect(() => {
-    if (isResizing || snapAnimationRef.current !== null) return;
+    if (isResizing) return;
     const target = Math.round(initialHeight);
     if (target !== latestHeightRef.current) {
       latestHeightRef.current = target;
@@ -193,74 +177,6 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
       setHeight(target);
     }
   }, [initialHeight, isResizing]);
-
-  useEffect(() => {
-    return () => {
-      if (snapAnimationRef.current !== null) {
-        cancelAnimationFrame(snapAnimationRef.current);
-      }
-    };
-  }, []);
-
-  /** Two-phase spring from `from` to `target`.
-   *
-   *  The natural overshoot of a damped sinusoid scales with the
-   *  distance travelled, so a 4-pixel snap (e.g. 75 → 71) ends up
-   *  with sub-pixel overshoot that's effectively invisible. Instead
-   *  we drive the height in two cubic ease-out phases:
-   *
-   *    Phase 1 (35% of duration): from → target + sign · overshootPx
-   *    Phase 2 (65% of duration): overshoot peak → target
-   *
-   *  `overshootPx` is clamped to [3, 8] px so every snap, large or
-   *  small, gets a visible bounce without huge springs looking
-   *  rubbery. Heights are quantised to whole pixels so the layout
-   *  never thrashes on sub-pixel values, and consecutive frames with
-   *  the same rounded value skip the React state update. */
-  const springToTarget = (from: number, target: number) => {
-    const SPRING_DURATION_MS = 260;
-    const PHASE_1_PORTION = 0.35;
-    const distance = target - from;
-    const direction = Math.sign(distance) || 1;
-    const overshootPx = Math.min(8, Math.max(3, Math.abs(distance) * 0.15));
-    const overshootPeak = target + direction * overshootPx;
-    const startTime = performance.now();
-    let lastEmitted = Math.round(from);
-
-    const easeOutCubic = (p: number) => 1 - Math.pow(1 - p, 3);
-
-    const tick = (now: number) => {
-      const t = Math.min((now - startTime) / SPRING_DURATION_MS, 1);
-      let raw: number;
-      if (t < PHASE_1_PORTION) {
-        const p = t / PHASE_1_PORTION;
-        raw = from + (overshootPeak - from) * easeOutCubic(p);
-      } else if (t < 1) {
-        const p = (t - PHASE_1_PORTION) / (1 - PHASE_1_PORTION);
-        raw = overshootPeak + (target - overshootPeak) * easeOutCubic(p);
-      } else {
-        raw = target;
-      }
-      const rounded = Math.round(raw);
-
-      if (t < 1) {
-        if (rounded !== lastEmitted) {
-          lastEmitted = rounded;
-          latestHeightRef.current = rounded;
-          setHeight(rounded);
-          liveDepsRef.current.onHeightChange?.(rounded);
-        }
-        snapAnimationRef.current = requestAnimationFrame(tick);
-      } else {
-        latestHeightRef.current = target;
-        setHeight(target);
-        liveDepsRef.current.onHeightChange?.(target);
-        liveDepsRef.current.onResizeEnd?.(target);
-        snapAnimationRef.current = null;
-      }
-    };
-    snapAnimationRef.current = requestAnimationFrame(tick);
-  };
 
   // Add document-level event listeners for dragging beyond component bounds
   useEffect(() => {
@@ -281,9 +197,8 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
           newHeight = Math.min(max, newHeight);
         }
 
-        // No snap-pull during the drag — the track follows the cursor
-        // freely. Snap is deferred to mouseup and animated as a spring
-        // (see handleDocumentMouseUp) for a "bounce home" feel.
+        // The track follows the cursor freely, and stays where it is
+        // let go (no snap points — see the module top)
         latestHeightRef.current = newHeight;
         setHeight(newHeight);
         liveDepsRef.current.onHeightChange?.(newHeight);
@@ -292,60 +207,8 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
     const handleDocumentMouseUp = () => {
       setIsResizing(false);
-      // Read the height the drag started from BEFORE clearing the ref,
-      // so the anchor-bounce-back logic below can tell which side of
-      // the forbidden range the user came from.
-      const dragStartHeight = resizeStartRef.current?.height;
       resizeStartRef.current = null;
-      const released = latestHeightRef.current;
-
-      // FORBIDDEN_LOW/HIGH (see module top) bracket the invalid band.
-      //
-      // Inside the forbidden range, we bounce back to whichever side
-      // the drag *started* from — not the midpoint. So a small tug
-      // up from 71 settles back at 71; the user has to actually drag
-      // close to 112 (i.e. out of the forbidden range) to commit to
-      // the larger height.
-      //
-      // Outside the forbidden range, the regular closest-within-window
-      // logic applies for 71, 112, and the home (initialHeight at mount).
-      const SNAP_CATCH_WINDOW = 18;
-      let nearest: number | null = null;
-
-      if (released > FORBIDDEN_LOW && released < FORBIDDEN_HIGH) {
-        // Anchor = whichever boundary the drag started closer to.
-        // Fall back to midpoint rule if we somehow don't have a start
-        // height (shouldn't happen but be safe).
-        if (dragStartHeight !== undefined) {
-          nearest =
-            Math.abs(dragStartHeight - FORBIDDEN_LOW)
-              <= Math.abs(dragStartHeight - FORBIDDEN_HIGH)
-              ? FORBIDDEN_LOW
-              : FORBIDDEN_HIGH;
-        } else {
-          nearest =
-            released - FORBIDDEN_LOW <= FORBIDDEN_HIGH - released
-              ? FORBIDDEN_LOW
-              : FORBIDDEN_HIGH;
-        }
-      } else {
-        let nearestDist = SNAP_CATCH_WINDOW;
-        // Home is last so it wins ties against 112 — releasing right
-        // next to the default height should rest at home, not at 112.
-        for (const target of [FORBIDDEN_LOW, FORBIDDEN_HIGH, homeHeightRef.current]) {
-          const dist = Math.abs(released - target);
-          if (dist <= nearestDist) {
-            nearest = target;
-            nearestDist = dist;
-          }
-        }
-      }
-
-      if (nearest !== null && nearest !== released) {
-        springToTarget(released, nearest);
-      } else {
-        liveDepsRef.current.onResizeEnd?.(released);
-      }
+      liveDepsRef.current.onResizeEnd?.(latestHeightRef.current);
     };
 
     document.addEventListener('mousemove', handleDocumentMouseMove);
@@ -403,12 +266,6 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     if (activeEdge) {
       e.preventDefault();
       e.stopPropagation();
-      // If a release-spring is still animating from a previous drag,
-      // cancel it so the new drag starts from the current value.
-      if (snapAnimationRef.current !== null) {
-        cancelAnimationFrame(snapAnimationRef.current);
-        snapAnimationRef.current = null;
-      }
       setIsResizing(true);
       resizeStartRef.current = { y: e.clientY, height, edge: activeEdge };
       onResizeStart?.();

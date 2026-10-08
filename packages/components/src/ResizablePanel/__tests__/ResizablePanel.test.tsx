@@ -63,19 +63,19 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
     expect(onHeightChange).not.toHaveBeenCalled();
   });
 
-  it('steps over the forbidden 71-112 band like a detent, both directions', () => {
+  it('no detent: every height between the limits is reachable (2026-10-08, the snap points are gone)', () => {
     const onHeightChange = vi.fn();
     const { container } = render(
       <ResizablePanel initialHeight={114} wheelResize onHeightChange={onHeightChange}>
         <div>content</div>
       </ResizablePanel>,
     );
-    // Shrinking from 114 by 10 (20 × 0.5) lands at 104 — in the band → 71.
+    // Shrinking from 114 by 10 (20 × 0.5) lands at 104 — and stays there
+    // (it used to step over a 71–112 "forbidden" band to 71)
     fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(71);
-    // Growing from 71 by 5 (10 × 0.5) lands at 76 — in the band → 112.
-    fireEvent.wheel(getRoot(container), { deltaY: -10, ctrlKey: true });
-    expect(onHeightChange).toHaveBeenLastCalledWith(112);
+    expect(onHeightChange).toHaveBeenLastCalledWith(104);
+    fireEvent.wheel(getRoot(container), { deltaY: 20, ctrlKey: true });
+    expect(onHeightChange).toHaveBeenLastCalledWith(94);
   });
 
   it('clamps at minHeight', () => {
@@ -108,6 +108,42 @@ describe('ResizablePanel wheel resize (Cmd/Ctrl+scroll)', () => {
       </ResizablePanel>,
     );
     expect(getRoot(container).style.height).toBe('200px');
+  });
+});
+
+describe('ResizablePanel drag resize — a track stays where it is let go', () => {
+  it('releasing inside the old 71–112 band, or near the mount height, commits the released height — no spring, no snap (2026-10-08)', () => {
+    const onResizeEnd = vi.fn();
+    // As the app does: the released height is dispatched and comes back
+    // as the live initialHeight (the panel re-adopts the prop after a
+    // gesture, so a host that never updated it would pull it back)
+    function Host() {
+      const [h, setH] = React.useState(114);
+      return (
+        <ResizablePanel initialHeight={h} minHeight={44} onResizeEnd={(next) => { onResizeEnd(next); setH(next); }}>
+          <div>content</div>
+        </ResizablePanel>
+      );
+    }
+    const { container } = render(<Host />);
+    const content = container.querySelector('.resizable-panel__content') as HTMLElement;
+    content.getBoundingClientRect = () => ({
+      top: 0, left: 0, bottom: 114, right: 268, width: 268, height: 114, x: 0, y: 0, toJSON: () => ({}),
+    });
+    fireEvent.mouseDown(content, { clientY: 113 });
+    fireEvent.mouseMove(document, { clientY: 113 - 24 }); // 90: inside the old band
+    fireEvent.mouseUp(document, { clientY: 113 - 24 });
+    expect(onResizeEnd).toHaveBeenCalledWith(90);
+    expect(getRoot(container).style.height).toBe('90px');
+    // And near the mount height: 110 stays 110 (it used to spring home to 114)
+    content.getBoundingClientRect = () => ({
+      top: 0, left: 0, bottom: 90, right: 268, width: 268, height: 90, x: 0, y: 0, toJSON: () => ({}),
+    });
+    fireEvent.mouseDown(content, { clientY: 89 });
+    fireEvent.mouseMove(document, { clientY: 89 + 20 });
+    fireEvent.mouseUp(document, { clientY: 89 + 20 });
+    expect(onResizeEnd).toHaveBeenLastCalledWith(110);
+    expect(getRoot(container).style.height).toBe('110px');
   });
 });
 
