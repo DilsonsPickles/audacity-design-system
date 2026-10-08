@@ -567,6 +567,11 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
 
     // Arrow keys on the panel itself or on a child with invisible focus — navigate between tracks
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && (isPanelFocused || focusFromMouseRef.current)) {
+      // Option+Cmd/Ctrl+Up/Down is the app's track-height step
+      // (2026-10-08): not a navigation, not a reorder — leave it to
+      // bubble untouched, or the header would move focus as a side
+      // effect of every resize
+      if (e.altKey && (e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return;
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
         // Cmd/Ctrl+Arrow reorders THIS track's row instead of just

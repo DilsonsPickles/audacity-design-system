@@ -2805,12 +2805,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.preventDefault();
               e.stopPropagation();
               onTrackReorder?.(e.key === 'ArrowDown' ? 1 : -1, isContainerFocused);
-            } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.altKey && !e.metaKey && !e.ctrlKey) {
               // Plain / Shift+Arrow: navigate between tracks.
               //   Plain → follows-focus moves selection with focus
               //   Shift → extend range
               // (Peek mode via Alt is gone — Alt is now reserved for
               // clip-land navigation, not a focus-decouple modifier.)
+              // Any OTHER modified arrow — Option+Cmd+Up/Down, the
+              // track-height step (2026-10-08) — is left to bubble to
+              // the app's shortcuts: this branch used to catch every
+              // arrow and stop it, so the chord did nothing from a
+              // focused track ("I promise it doesn't work").
               e.preventDefault();
               e.stopPropagation();
               onTrackNavigateVertical?.(

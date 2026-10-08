@@ -490,17 +490,31 @@ function CanvasDemoContent() {
   const handleExpandAllTracks = React.useCallback(() => setAllTrackHeights(114), [setAllTrackHeights]);
   const handleCollapseAllTracks = React.useCallback(() => setAllTrackHeights(44), [setAllTrackHeights]);
   // Option+Cmd+Up/Down (+Shift: every track): the wheel's steps from the
-  // keyboard (2026-10-08). The focused track, or nothing without one.
+  // keyboard (2026-10-08). "The track I'm on" is resolved in order: the
+  // track of the clip or header with DOM FOCUS (clip focus and track
+  // focus are separate state — reading only focusedTrackIndex grew the
+  // wrong track with a clip focused, and nothing at all in a project
+  // with no track focus: "I promise it doesn't work, expand all does"),
+  // then the focused track, then the selected tracks, then every track.
   const handleTrackHeightStep = React.useCallback((delta: number, scope: 'focused' | 'all') => {
-    const targets = scope === 'all'
-      ? state.tracks.map((_, i) => i)
-      : state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined ? [state.focusedTrackIndex] : [];
+    const all = state.tracks.map((_, i) => i);
+    const resolveFocused = (): number[] => {
+      const active = document.activeElement as HTMLElement | null;
+      const fromClip = active?.closest<HTMLElement>('[data-track-index]')?.getAttribute('data-track-index');
+      const fromPanel = active?.closest<HTMLElement>('[data-track-panel-index]')?.getAttribute('data-track-panel-index');
+      const fromDom = fromClip ?? fromPanel;
+      if (fromDom !== null && fromDom !== undefined && state.tracks[Number(fromDom)]) return [Number(fromDom)];
+      if (state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined && state.tracks[state.focusedTrackIndex]) return [state.focusedTrackIndex];
+      if (state.selectedTrackIndices.length > 0) return state.selectedTrackIndices;
+      return all;
+    };
+    const targets = scope === 'all' ? all : resolveFocused();
     targets.forEach((index) => {
       const t = state.tracks[index];
       if (!t) return;
       dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: Math.max(44, (t.height || 114) + delta) } });
     });
-  }, [state.tracks, state.focusedTrackIndex, dispatch]);
+  }, [state.tracks, state.focusedTrackIndex, state.selectedTrackIndices, dispatch]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
