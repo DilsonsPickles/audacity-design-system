@@ -18,6 +18,42 @@ const EMPTY_ENVELOPE_ARRAY: EnvelopePointData[] = [];
  * Draws a waveform or RMS channel onto a canvas context.
  * Consolidates the shared pixel-loop logic used across all rendering modes.
  */
+/** The per-column peaks of a channel at one zoom and trim — the part
+ *  of a redraw that does not depend on the clip's HEIGHT. Cached per
+ *  data array (2026-10-08, the track-resize judder): a height change
+ *  redraws every clip, and recomputing each column's min/max from the
+ *  raw samples — 50k samples a second, a Math.min/max pair each — was
+ *  the cost that dropped frames. With the peaks cached, a height-only
+ *  redraw does width-proportional work. One entry per array (the
+ *  latest geometry), so a zoom or trim recomputes once and a resize
+ *  never does. */
+interface ColumnPeaks { key: string; min: Float32Array; max: Float32Array }
+const columnPeaksCache = new WeakMap<number[], ColumnPeaks>();
+function columnPeaks(data: number[], canvasWidth: number, trimStartSample: number, samplesPerPixel: number): ColumnPeaks {
+  const key = `${canvasWidth}:${trimStartSample}:${samplesPerPixel}`;
+  const cached = columnPeaksCache.get(data);
+  if (cached && cached.key === key) return cached;
+  const min = new Float32Array(canvasWidth);
+  const max = new Float32Array(canvasWidth);
+  const len = data.length;
+  for (let px = 0; px < canvasWidth; px++) {
+    const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
+    const sampleEnd = Math.min(len, trimStartSample + Math.floor((px + 1) * samplesPerPixel));
+    let lo = data[sampleStart] || 0;
+    let hi = lo;
+    for (let i = sampleStart + 1; i < sampleEnd; i++) {
+      const v = data[i];
+      if (v < lo) lo = v;
+      else if (v > hi) hi = v;
+    }
+    min[px] = lo;
+    max[px] = hi;
+  }
+  const peaks = { key, min, max };
+  columnPeaksCache.set(data, peaks);
+  return peaks;
+}
+
 function drawChannel(
   ctx: CanvasRenderingContext2D,
   data: number[],
@@ -34,17 +70,10 @@ function drawChannel(
   getColor?: (px: number) => string,
   fadeRegions?: readonly LocalFadeRegion[],
 ) {
+  const peaks = columnPeaks(data, canvasWidth, trimStartSample, samplesPerPixel);
   for (let px = 0; px < canvasWidth; px++) {
-    const sampleStart = trimStartSample + Math.floor(px * samplesPerPixel);
-    const sampleEnd = trimStartSample + Math.floor((px + 1) * samplesPerPixel);
-
-    let min = data[sampleStart] || 0;
-    let max = data[sampleStart] || 0;
-    for (let i = sampleStart; i < sampleEnd && i < data.length; i++) {
-      const sample = data[i];
-      min = Math.min(min, sample);
-      max = Math.max(max, sample);
-    }
+    let min = peaks.min[px];
+    let max = peaks.max[px];
 
     const pixelTime = clipTrimStart + (px / pixelsPerSecond);
     const envelopeGain = envelope ? getEnvelopeGainAtTime(pixelTime, envelope, clipDuration) : 1.0;
