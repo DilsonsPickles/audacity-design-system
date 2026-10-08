@@ -38,6 +38,10 @@ export interface UseCanvasScrollSyncOptions {
    *  `delta` px (positive = taller) — the same gesture as on the headers
    *  (2026-10-08); the plain Cmd/Ctrl+wheel stays the horizontal zoom */
   onTrackHeightWheel?: (delta: number) => void;
+  /** Cmd/Ctrl+OPTION+wheel over the canvas: the track UNDER THE POINTER
+   *  by `delta` px — `contentY` is the pointer's y in canvas content
+   *  coordinates (scroll included) for the host to resolve (2026-10-08) */
+  onTrackHeightWheelAt?: (delta: number, contentY: number) => void;
 }
 
 export interface UseCanvasScrollSyncReturn {
@@ -68,6 +72,7 @@ export function useCanvasScrollSync({
   setScrollX,
   setScrollY,
   onTrackHeightWheel,
+  onTrackHeightWheelAt,
 }: UseCanvasScrollSyncOptions): UseCanvasScrollSyncReturn {
   const scrollRafRef = React.useRef<number | null>(null);
   const pendingScrollRef = React.useRef<{ x: number; y: number } | null>(null);
@@ -77,6 +82,9 @@ export function useCanvasScrollSync({
   // Ref-mirror (see CLAUDE.md): the wheel listener binds once
   const onTrackHeightWheelRef = React.useRef(onTrackHeightWheel);
   React.useEffect(() => { onTrackHeightWheelRef.current = onTrackHeightWheel; }, [onTrackHeightWheel]);
+  const onTrackHeightWheelAtRef = React.useRef(onTrackHeightWheelAt);
+  React.useEffect(() => { onTrackHeightWheelAtRef.current = onTrackHeightWheelAt; }, [onTrackHeightWheelAt]);
+  const heightAtWheelAccRef = React.useRef(0);
   // Sub-pixel remainder of the height wheel, as ResizablePanel keeps
   const heightWheelAccRef = React.useRef(0);
   const maxPpsRef = React.useRef(maxPixelsPerSecond);
@@ -124,6 +132,14 @@ export function useCanvasScrollSync({
       heightWheelAccRef.current = acc - whole;
       if (whole !== 0) onTrackHeightWheelRef.current?.(whole);
     });
+    // Cmd/Ctrl+OPTION+wheel: the track under the pointer, by the same
+    // step — the latest pointer y rides along as the frame's meta
+    const heightAtCoalescer = createFrameCoalescer<number>((step, contentY) => {
+      const acc = heightAtWheelAccRef.current + step;
+      const whole = Math.round(acc);
+      heightAtWheelAccRef.current = acc - whole;
+      if (whole !== 0) onTrackHeightWheelAtRef.current?.(whole, contentY);
+    });
     const handleWheel = (e: WheelEvent) => {
       // Cmd/Ctrl+SHIFT+wheel: every track's height together (user
       // decision 2026-10-08, "we need to be able to do this in the
@@ -132,6 +148,14 @@ export function useCanvasScrollSync({
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && onTrackHeightWheelRef.current) {
         e.preventDefault();
         heightCoalescer.push(wheelHeightStep(e), null);
+        return;
+      }
+      // Cmd/Ctrl+OPTION+wheel: the track under the pointer (2026-10-08,
+      // "feels weird not having it" — plain Cmd+wheel here is the zoom)
+      if ((e.metaKey || e.ctrlKey) && e.altKey && onTrackHeightWheelAtRef.current) {
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        heightAtCoalescer.push(wheelHeightStep(e), e.clientY - rect.top + el.scrollTop);
         return;
       }
       if (e.metaKey || e.ctrlKey) {
@@ -196,7 +220,7 @@ export function useCanvasScrollSync({
     };
 
     el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => { el.removeEventListener('wheel', handleWheel); heightCoalescer.cancel(); };
+    return () => { el.removeEventListener('wheel', handleWheel); heightCoalescer.cancel(); heightAtCoalescer.cancel(); };
   }, [activeMenuItem]);
 
   // Mirror the canvas's wheel handler on the side panel: scroll both

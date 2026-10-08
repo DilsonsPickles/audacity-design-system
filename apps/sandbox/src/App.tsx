@@ -3,7 +3,8 @@ import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
-import { type EnvelopePointStyleKey } from '@audacity-ui/core';
+import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
+import { createWheelTargetLock } from './utils/canvasWheelTarget';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
@@ -35,7 +36,7 @@ const OAuthCallback = React.lazy(() =>
 );
 import { RecordingManager } from './utils/RecordingManager';
 import { computeFitTrackHeight } from './utils/trackManagement';
-import { TOP_GAP, TRACK_GAP } from './constants/canvas';
+import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from './contexts/AdieuContext';
 import { MuseIdProvider, useMuseId } from './contexts/MuseIdContext';
@@ -611,6 +612,16 @@ function CanvasDemoContent() {
       dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: Math.max(44, (t.height || 114) + delta) } });
     });
   }, [state.tracks, dispatch]);
+  // Cmd/Ctrl+Option+wheel over the canvas: the track under the pointer
+  // (2026-10-08), its target locked for the gesture as the headers' is
+  const canvasWheelLockRef = React.useRef(createWheelTargetLock());
+  const handleTrackHeightWheelAt = React.useCallback((delta: number, contentY: number) => {
+    const index = canvasWheelLockRef.current.target(contentY, () =>
+      yToTrackIndex(contentY, state.tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT));
+    const t = state.tracks[index];
+    if (!t) return;
+    dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: Math.max(44, (t.height || 114) + delta) } });
+  }, [state.tracks, dispatch]);
   const { handleScroll, handleTrackHeaderScroll } = useCanvasScrollSync({
     scrollContainerRef,
     trackHeaderScrollRef,
@@ -625,6 +636,7 @@ function CanvasDemoContent() {
     // Cmd/Ctrl+Shift+wheel over the canvas: every track by the same
     // step, as the headers' Cmd+Shift+wheel does (2026-10-08)
     onTrackHeightWheel: handleTrackHeightWheel,
+    onTrackHeightWheelAt: handleTrackHeightWheelAt,
   });
 
   const handleToggleEnvelope = () => {
