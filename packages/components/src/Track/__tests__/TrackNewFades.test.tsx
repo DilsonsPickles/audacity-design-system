@@ -1817,5 +1817,10 @@ describe('the fade length handles are HOVER-ONLY — focus and selection show no
     hoverClip(sixty.container, 1);
     expect(sixty.container.querySelectorAll('[data-fade-handle]').length).toBe(2);
     expect(sixty.container.querySelectorAll('[data-quickfade-node]').length).toBe(2);
+    // …and BELOW the header that shows on hover, not under it: the box
+    // starts at the header's bottom (20) and takes the 30px row
+    const box = sixty.container.querySelector('[data-fade-handle="in"]') as HTMLElement;
+    expect(box.style.top).toBe('20px');
+    expect(box.style.height).toBe('30px');
   });
 });

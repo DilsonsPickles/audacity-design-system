@@ -2309,13 +2309,20 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // bottom), so the boxes at an edge share one row and the body's
     // middle is on the trim and stretch icons' middle.
     const FADE_HANDLE_EDGE_INSET = FADE_HANDLE_BODY_INSET;
-    // The box sits in the TRIM ROW, whose place and height follow the
-    // clip's height (utils/clipHandleRows.ts); the 36×32 glyph is
-    // centred in the row, so on a shorter row it overflows top and
-    // bottom harmlessly (pointer-events: none)
+    // The box sits in the TRIM ROW, whose height follows the clip's
+    // (utils/clipHandleRows.ts) — but ALWAYS BELOW THE HEADER (2026-10-08,
+    // "when clips are smaller, we need to render fade handles beneath
+    // the clip header, right now they are overlapping"): on a collapsed
+    // clip the trim row starts at the clip's top, under the header that
+    // shows on hover, and the fade handles are hover-only too, so the
+    // two always met. The box starts at the header's bottom whatever
+    // the clip, and keeps the row's height or what is left under the
+    // header, whichever is less. The 36×32 glyph is centred in the box,
+    // so on a shorter one it overflows top and bottom harmlessly
+    // (pointer-events: none).
     const rows = clipHandleRows(height);
-    const FADE_HANDLE_TOP = rows.trimTop;
-    const FADE_ROW_H = rows.rowHeight;
+    const FADE_HANDLE_TOP = HEADER_H;
+    const FADE_ROW_H = Math.max(0, Math.min(rows.rowHeight, height - HEADER_H));
     const GLYPH_TOP = Math.round((FADE_ROW_H - FADE_HANDLE_BOX.height) / 2);
     const HALF_BOX = FADE_HANDLE_BOX.width / 2;
     const HALF_BODY = FADE_GLYPH_BODY.size / 2;
