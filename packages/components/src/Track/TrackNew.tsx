@@ -75,6 +75,11 @@ const FADE_HANDLE_BOX = { width: 36, height: 32 } as const;
  *  stays FADE_HANDLE_BOX wide, centred on the body, and overflows the
  *  box 3px each side harmlessly. */
 const FADE_HIT_REACH = 15;
+/** Under and at this clip height the fade controls (length handles,
+ *  guidelines, shape dots, crossfade node) do not render — the 44px
+ *  floor, where the edge handle rows take the whole clip. Not the
+ *  collapse point (72): a collapsed 60px clip still has room. */
+const FADE_CONTROLS_MIN_CLIP_HEIGHT = 44;
 const FADE_GLYPH_BODY = {
   x: (FADE_HANDLE_BOX.width - 10) / 2,
   y: (FADE_HANDLE_BOX.height - 10) / 2,
@@ -978,8 +983,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // one clip the pair it sits between is not that clip's business
     // (xNodeActive is empty then; a leaving node still fades out)
     if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
-    // A COLLAPSED clip shows its edge handles only (2026-10-07, below)
-    if (clipHandleRows(height).collapsed) return null;
+    // A clip at the FLOOR shows its edge handles only (2026-10-07, below)
+    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
@@ -1161,8 +1166,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // pinned — length is the corner handle's job.
   const renderQuickFadeNodes = () => {
     if (!onClipFadeShapeChange) return null;
-    // A COLLAPSED clip shows its edge handles only (2026-10-07, below)
-    if (clipHandleRows(height).collapsed) return null;
+    // A clip at the FLOOR shows its edge handles only (2026-10-07, below)
+    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
     const CLIP_HEADER_H = 20;
     const bodyTop = CLIP_HEADER_H + 1;
     const bodyHeight = Math.max(0, height - bodyTop - 1);
@@ -1736,8 +1741,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
-            // Move clip to different track with Cmd+Arrow Up/Down
-            if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey) {
+            // Move clip to different track with Cmd+Arrow Up/Down. NOT
+            // with Option: Option+Cmd+Up/Down is the app's track-height
+            // step (2026-10-08, "we've got shortcuts fighting" — with a
+            // clip focused the chord moved the clip AND resized the track)
+            if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey && !e.altKey) {
               e.preventDefault();
               const direction = e.key === 'ArrowDown' ? 1 : -1;
               onClipMoveToTrack?.(clip.id, direction);
@@ -2280,15 +2288,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // (A clip drag empties fadeHandleActive via hidesHandlesOf; the
     // leaving ones still get their fade out)
     if (isMidiTrack || !onClipFadeChange) return null;
-    // A COLLAPSED clip (header hidden, 44px and under) shows its EDGE
-    // handles only (user decision 2026-10-07, "hide the fade handles
-    // when they get too small"): the trim and stretch rows take its
-    // whole height there, and the length handle, its guideline, the
+    // A clip at the FLOOR (44px, FADE_CONTROLS_MIN_CLIP_HEIGHT) shows
+    // its EDGE handles only (user decision 2026-10-07, "hide the fade
+    // handles when they get too small"): the trim and stretch rows take
+    // its whole height there, and the length handle, its guideline, the
     // shape dot and the crossfade node would make four controls in
     // 44px. The fade stays visible as the dim above its curve, and
     // editable from the Fade-in / Fade-out menus and the properties
-    // panel. One threshold with the header's, not a second number.
-    if (clipHandleRows(height).collapsed) return null;
+    // panel. It was "collapsed" until 2026-10-08; when the collapse
+    // point moved to the real app's 72 the fades went with it, and that
+    // was "culling the fade handles too early" — a 60px collapsed clip
+    // has room for them. So the cut is its own number, the floor.
+    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
     // The handle's BODY rests FADE_HANDLE_BODY_INSET inside the clip's

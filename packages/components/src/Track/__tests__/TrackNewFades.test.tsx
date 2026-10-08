@@ -1783,7 +1783,7 @@ describe('the fade length handles are HOVER-ONLY — focus and selection show no
     expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]').length).toBeGreaterThan(0);
   });
 
-  it('a COLLAPSED clip (44px and under) shows its edge handles only: no fade length handles, guidelines or shape dots (2026-10-07)', () => {
+  it('a clip at the 44px FLOOR shows its edge handles only: no fade length handles, guidelines or shape dots (2026-10-07); a collapsed 60px clip keeps them (2026-10-08)', () => {
     const mount = (height: number) => render(
       <Providers>
         <TrackNew
@@ -1810,5 +1810,12 @@ describe('the fade length handles are HOVER-ONLY — focus and selection show no
     expect(collapsed.container.querySelector('[data-fade-guideline]')).toBeNull();
     // The fade itself is still drawn — the dim says there is one
     expect(collapsed.container.querySelector('[data-fade-curve="in"]')).toBeTruthy();
+    cleanup();
+    // Collapsed (under 72) but not at the floor: the fade controls stay
+    // ("we're culling the fade handles too early")
+    const sixty = mount(60);
+    hoverClip(sixty.container, 1);
+    expect(sixty.container.querySelectorAll('[data-fade-handle]').length).toBe(2);
+    expect(sixty.container.querySelectorAll('[data-quickfade-node]').length).toBe(2);
   });
 });
