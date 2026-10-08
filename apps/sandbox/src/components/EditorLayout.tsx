@@ -697,24 +697,6 @@ export function EditorLayout(props: EditorLayoutProps) {
     }
   }, [showVerticalRulers, state.tracks, trackSelectionMode, dispatch, setSelectionAnchor]);
 
-  // Ableton-style Alt+resize: while Alt/Option is held, resizing ANY track
-  // header (edge drag or Cmd+scroll) applies the height to ALL tracks.
-  // Tracked globally because ResizablePanel's resize callbacks don't carry
-  // modifier state; blur resets so a Cmd+Tab away can't strand it held.
-  const altHeldRef = React.useRef(false);
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => { if (e.key === 'Alt') altHeldRef.current = true; };
-    const up = (e: KeyboardEvent) => { if (e.key === 'Alt') altHeldRef.current = false; };
-    const reset = () => { altHeldRef.current = false; };
-    document.addEventListener('keydown', down);
-    document.addEventListener('keyup', up);
-    window.addEventListener('blur', reset);
-    return () => {
-      document.removeEventListener('keydown', down);
-      document.removeEventListener('keyup', up);
-      window.removeEventListener('blur', reset);
-    };
-  }, []);
 
   // Buffer zone below tracks so user can scroll content further up the screen
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
@@ -816,17 +798,17 @@ export function EditorLayout(props: EditorLayoutProps) {
           onScroll={onTrackHeaderScroll}
           bufferSpace={scrollBuffer}
           onTrackResize={(trackIndex, height, source) => {
-            // THE WHEEL (user decision 2026-10-08): CMD/CTRL+WHEEL on a
-            // header resizes THAT track alone; CMD/CTRL+SHIFT+WHEEL
-            // resizes EVERY track TOGETHER — each by the same step, so
-            // tracks of different heights keep their differences (the
-            // canvas takes the same Cmd+Shift gesture; its plain
-            // Cmd+wheel is the horizontal zoom). A DRAG keeps its rule:
-            // Alt/Option held (Ableton-style) applies the dragged height
-            // to ALL tracks; the edge of a SELECTED track applies it to
-            // every selected track — panels follow live via
-            // ResizablePanel's external-height sync; an unselected track
-            // resizes alone.
+            // SHIFT IS "EVERY TRACK" IN EVERY FAMILY (user decision
+            // 2026-10-08, "Shift is a great perform-this-to-all
+            // modifier"): CMD/CTRL+SHIFT+WHEEL resizes every track by the
+            // SAME STEP, so tracks of different heights keep their
+            // differences (the canvas takes the same gesture; its plain
+            // Cmd+wheel is the horizontal zoom); SHIFT+DRAG on an edge
+            // sets every track to the dragged height (it was Alt,
+            // Ableton-style, until then). Without Shift: the wheel is
+            // THAT track alone; a drag is the edge's track, or every
+            // selected track when that track is selected — panels follow
+            // live via ResizablePanel's external-height sync.
             if (source === 'wheel-shift') {
               const delta = height - (state.tracks[trackIndex]?.height || 114);
               state.tracks.forEach((t, index) => {
@@ -837,7 +819,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             }
             const targets = source === 'wheel'
               ? [trackIndex]
-              : altHeldRef.current
+              : source === 'drag-shift'
                 ? state.tracks.map((_, i) => i)
                 : state.selectedTrackIndices.includes(trackIndex)
                   ? state.selectedTrackIndices

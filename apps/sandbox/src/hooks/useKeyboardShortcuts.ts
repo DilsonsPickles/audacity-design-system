@@ -276,15 +276,20 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       }
 
       // --- Option+Cmd/Ctrl+C / X: collapse / expand the SELECTED tracks ---
-      // The one-track forms of ⌘⇧C / ⌘⇧X (2026-10-08, "collapse just
-      // the selected track"). Matched on e.code: Option+C types "ç" and
+      // and with SHIFT every track (2026-10-08, "collapse just the
+      // selected track", then "Shift is a great perform-this-to-all
+      // modifier"): one family, base chord = the track you are on, Shift
+      // = all. ⌘⇧C / ⌘⇧X above stay as Audacity 3's chords for the same
+      // "all" commands. Matched on e.code: Option+C types "ç" and
       // Option+X "≈" on macOS, so e.key is useless here (the ⌥⌘I rule).
       // (A synthetic event with no code — the browser pane's key tool —
       // falls back to the key letter.)
       const letter = e.code === 'KeyC' || (!e.code && e.key.toLowerCase() === 'c') ? 'c'
         : e.code === 'KeyX' || (!e.code && e.key.toLowerCase() === 'x') ? 'x' : null;
-      if ((e.metaKey || e.ctrlKey) && e.altKey && !e.shiftKey && letter) {
-        const cb = letter === 'c' ? onCollapseSelectedTracks : onExpandSelectedTracks;
+      if ((e.metaKey || e.ctrlKey) && e.altKey && letter) {
+        const cb = letter === 'c'
+          ? (e.shiftKey ? onCollapseAllTracks : onCollapseSelectedTracks)
+          : (e.shiftKey ? onExpandAllTracks : onExpandSelectedTracks);
         if (cb) {
           e.preventDefault();
           cb();

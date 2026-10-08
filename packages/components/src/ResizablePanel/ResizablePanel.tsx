@@ -15,9 +15,12 @@ import './ResizablePanel.css';
 // release, and the wheel passes through.
 const SOFT_SNAP_PX = 4;
 
-/** 'wheel' is Cmd/Ctrl+wheel, 'wheel-shift' Cmd/Ctrl+Shift+wheel — the
- *  consumer scopes them (one track / every track, 2026-10-08) */
-export type ResizeSource = 'drag' | 'wheel' | 'wheel-shift';
+/** How a height change was made, with SHIFT folded in: 'drag' is the
+ *  edge drag, 'drag-shift' the same with Shift held (read live on each
+ *  move); 'wheel' is Cmd/Ctrl+wheel, 'wheel-shift' with Shift. The
+ *  consumer scopes them — Shift is "every track" in every family
+ *  (2026-10-08; the drag's "all" was Alt, Ableton-style, until then). */
+export type ResizeSource = 'drag' | 'drag-shift' | 'wheel' | 'wheel-shift';
 
 /** The wheel resize's resistance: half the raw delta, capped per event
  *  so momentum flicks ramp instead of teleporting. Tuned by feel. */
@@ -111,9 +114,10 @@ export interface ResizablePanelProps {
   /**
    * Callback fired when resize ends. Receives the final committed
    * height so consumers can dispatch the global state update once per
-   * gesture instead of on every mousemove.
+   * gesture instead of on every mousemove, and the drag's source
+   * ('drag' / 'drag-shift' as of the release).
    */
-  onResizeEnd?: (finalHeight: number) => void;
+  onResizeEnd?: (finalHeight: number, source: ResizeSource) => void;
   /**
    * Additional CSS class names
    */
@@ -273,14 +277,14 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         // where it is let go (no snap points — see the module top)
         latestHeightRef.current = newHeight;
         setHeight(newHeight);
-        liveDepsRef.current.onHeightChange?.(newHeight, 'drag');
+        liveDepsRef.current.onHeightChange?.(newHeight, e.shiftKey ? 'drag-shift' : 'drag');
       }
     };
 
-    const handleDocumentMouseUp = () => {
+    const handleDocumentMouseUp = (e: MouseEvent) => {
       setIsResizing(false);
       resizeStartRef.current = null;
-      liveDepsRef.current.onResizeEnd?.(latestHeightRef.current);
+      liveDepsRef.current.onResizeEnd?.(latestHeightRef.current, e.shiftKey ? 'drag-shift' : 'drag');
     };
 
     document.addEventListener('mousemove', handleDocumentMouseMove);

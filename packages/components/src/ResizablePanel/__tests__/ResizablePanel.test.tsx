@@ -174,6 +174,28 @@ describe('ResizablePanel drag resize — a track stays where it is let go', () =
   });
 });
 
+describe('ResizablePanel drag resize — Shift is reported as the source (2026-10-08)', () => {
+  it("reports 'drag-shift' on moves and the release while Shift is held, 'drag' otherwise", () => {
+    const sources: string[] = [];
+    const ends: string[] = [];
+    const { container } = render(
+      <ResizablePanel initialHeight={114} minHeight={44} onHeightChange={(_, s) => sources.push(s)} onResizeEnd={(_, s) => ends.push(s)}>
+        <div>content</div>
+      </ResizablePanel>,
+    );
+    const content = container.querySelector('.resizable-panel__content') as HTMLElement;
+    content.getBoundingClientRect = () => ({
+      top: 0, left: 0, bottom: 114, right: 268, width: 268, height: 114, x: 0, y: 0, toJSON: () => ({}),
+    });
+    fireEvent.mouseDown(content, { clientY: 113 });
+    fireEvent.mouseMove(document, { clientY: 140 });
+    fireEvent.mouseMove(document, { clientY: 150, shiftKey: true });
+    fireEvent.mouseUp(document, { clientY: 150, shiftKey: true });
+    expect(sources).toEqual(['drag', 'drag-shift']);
+    expect(ends).toEqual(['drag-shift']);
+  });
+});
+
 describe('ResizablePanel drag resize — the soft magnet at the default height', () => {
   const drag = (snapHeight?: number | null) => {
     const heights: number[] = [];

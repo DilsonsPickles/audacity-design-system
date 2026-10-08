@@ -1095,6 +1095,19 @@ describe('Selection playback', () => {
       expect((panels()[1] as HTMLElement).style.height).toBe('114px');
     });
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+
+    // With SHIFT the same family is "every track" (and ⌘⇧C stays as
+    // Audacity 3's chord for it)
+    fireEvent.keyDown(document.body, { key: 'Ç', code: 'KeyC', metaKey: true, altKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('44px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('44px');
+    });
+    fireEvent.keyDown(document.body, { key: '˛', code: 'KeyX', metaKey: true, altKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+    });
   });
 
   it('Option+Cmd+Up/Down steps the focused track by 24px; with Shift every track (2026-10-08, the wheel on the keyboard)', async () => {
