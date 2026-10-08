@@ -138,6 +138,7 @@ export const availableCommands: Command[] = [
   { id: 'expand-all-tracks', name: 'Expand all tracks', category: 'Tracks' },
   { id: 'collapse-selected-tracks', name: 'Collapse selected tracks', category: 'Tracks' },
   { id: 'expand-selected-tracks', name: 'Expand selected tracks', category: 'Tracks' },
+  { id: 'fit-selected-tracks-to-height', name: 'Fit selected tracks to height', category: 'Tracks' },
   { id: 'align-end-to-end', name: 'Align end to end', category: 'Tracks' },
   { id: 'align-together', name: 'Align together', category: 'Tracks' },
   { id: 'align-start-to-zero', name: 'Align start to zero', category: 'Tracks' },

@@ -68,6 +68,9 @@ export interface UseKeyboardShortcutsOptions {
    *  the track I'm on) — the one-track forms of ⌘⇧C / ⌘⇧X (2026-10-08) */
   onCollapseSelectedTracks?: () => void;
   onExpandSelectedTracks?: () => void;
+  /** Option+Cmd/Ctrl+F: the selected tracks (or the track I'm on) share
+   *  the viewport's height — the one-track form of ⌘⇧F (2026-10-08) */
+  onFitSelectedTracksToHeight?: () => void;
 }
 
 /**
@@ -104,6 +107,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onTrackHeightStep,
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
+    onFitSelectedTracksToHeight,
   } = options;
 
   // Track whether the user is navigating via keyboard or mouse.
@@ -285,11 +289,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       // (A synthetic event with no code — the browser pane's key tool —
       // falls back to the key letter.)
       const letter = e.code === 'KeyC' || (!e.code && e.key.toLowerCase() === 'c') ? 'c'
-        : e.code === 'KeyX' || (!e.code && e.key.toLowerCase() === 'x') ? 'x' : null;
+        : e.code === 'KeyX' || (!e.code && e.key.toLowerCase() === 'x') ? 'x'
+        : e.code === 'KeyF' || (!e.code && e.key.toLowerCase() === 'f') ? 'f' : null;
       if ((e.metaKey || e.ctrlKey) && e.altKey && letter) {
+        // F too (Option+F types "ƒ"): fit the track I'm on, Shift = all
         const cb = letter === 'c'
           ? (e.shiftKey ? onCollapseAllTracks : onCollapseSelectedTracks)
-          : (e.shiftKey ? onExpandAllTracks : onExpandSelectedTracks);
+          : letter === 'x'
+            ? (e.shiftKey ? onExpandAllTracks : onExpandSelectedTracks)
+            : (e.shiftKey ? onFitTracksToHeight : onFitSelectedTracksToHeight);
         if (cb) {
           e.preventDefault();
           cb();

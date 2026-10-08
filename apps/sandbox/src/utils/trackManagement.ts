@@ -153,6 +153,7 @@ export function computeFitTrackHeight(
   const available = viewportHeight - topGap - trackCount * trackGap;
   let per = Math.floor(available / trackCount);
   if (per < 44) per = 44;
-  if (per > 71 && per < 112) per = per - 71 <= 112 - per ? 71 : 112;
+  // (The 71–112 "forbidden band" snap that lived here went with the
+  // track-resize snap points, 2026-10-08: a track is any height.)
   return per;
 }

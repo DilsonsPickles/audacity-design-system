@@ -1068,6 +1068,37 @@ describe('Selection playback', () => {
     });
   });
 
+  it('Option+Cmd+F fits the SELECTED track to the viewport, the others untouched; with Shift every track (2026-10-08)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+
+    const scrollEl = container.querySelector('.canvas-scroll-container') as HTMLElement;
+    Object.defineProperty(scrollEl, 'clientHeight', { value: 500, configurable: true });
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+    const panel1 = container.querySelectorAll('[aria-label*="track controls"]')[1] as HTMLElement;
+    act(() => { panel1.focus(); });
+
+    // (500 - TOP_GAP 2 - 1 × TRACK_GAP 2) = 496 for the one track
+    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
+    await waitFor(() => {
+      expect((panels()[1] as HTMLElement).style.height).toBe('496px');
+    });
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+
+    // Shift: all, 247 each as ⌘⇧F gives
+    fireEvent.keyDown(document.body, { key: 'Ï', code: 'KeyF', metaKey: true, altKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('247px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('247px');
+    });
+  });
+
   it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

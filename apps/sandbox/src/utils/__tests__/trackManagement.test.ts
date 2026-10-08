@@ -204,11 +204,11 @@ describe('computeFitTrackHeight', () => {
     expect(computeFitTrackHeight(500, 3, 2, 2)).toBe(164);
   });
 
-  it('snaps heights inside the forbidden 71-112 band to the nearer edge', () => {
-    // (300 - 2 - 6) / 3 = 97.33 -> 97, closer to 112 than 71
-    expect(computeFitTrackHeight(300, 3, 2, 2)).toBe(112);
-    // (240 - 2 - 6) / 3 = 77.33 -> 77, closer to 71
-    expect(computeFitTrackHeight(240, 3, 2, 2)).toBe(71);
+  it('no forbidden band any more (2026-10-08): a fit lands on the exact height', () => {
+    // (300 - 2 - 6) / 3 = 97.33 -> 97 (it used to snap to 112)
+    expect(computeFitTrackHeight(300, 3, 2, 2)).toBe(97);
+    // (240 - 2 - 6) / 3 = 77.33 -> 77 (it used to snap to 71)
+    expect(computeFitTrackHeight(240, 3, 2, 2)).toBe(77);
   });
 
   it('clamps to the 44px control-panel minimum', () => {

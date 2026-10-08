@@ -39,6 +39,7 @@ export interface UseMenuDefinitionsOptions {
   /** View > Collapse / Expand selected tracks (2026-10-08) */
   onCollapseSelectedTracks: () => void;
   onExpandSelectedTracks: () => void;
+  onFitSelectedTracksToHeight: () => void;
 }
 
 /**
@@ -75,6 +76,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onCollapseAllTracks,
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
+    onFitSelectedTracksToHeight,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -164,6 +166,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onCollapseAllTracks,
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
+    onFitSelectedTracksToHeight,
   });
 
   return menuDefinitions;

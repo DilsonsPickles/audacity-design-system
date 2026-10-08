@@ -527,6 +527,19 @@ function CanvasDemoContent() {
   }, [state.tracks, state.selectedTrackIndices, resolveTracksImOn, dispatch]);
   const handleCollapseSelectedTracks = React.useCallback(() => setSelectedTrackHeights(44), [setSelectedTrackHeights]);
   const handleExpandSelectedTracks = React.useCallback(() => setSelectedTrackHeights(114), [setSelectedTrackHeights]);
+  // Option+Cmd+F (2026-10-08, "cmd + opt + F on a single track to get it
+  // to fill all available VH space"): the selected tracks — or the
+  // track I'm on — share the viewport's height between them; the others
+  // keep theirs. The one-track form of Fit to height.
+  const handleFitSelectedTracksToHeight = React.useCallback(() => {
+    const targets = state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices : resolveTracksImOn();
+    const viewport = scrollContainerRef.current?.clientHeight ?? 0;
+    const per = computeFitTrackHeight(viewport, targets.length, TOP_GAP, TRACK_GAP);
+    if (per === null) return;
+    targets.forEach((index) => {
+      if ((state.tracks[index]?.height || 114) !== per) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: per } });
+    });
+  }, [state.tracks, state.selectedTrackIndices, resolveTracksImOn, dispatch]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -545,6 +558,7 @@ function CanvasDemoContent() {
     onTrackHeightStep: handleTrackHeightStep,
     onCollapseSelectedTracks: handleCollapseSelectedTracks,
     onExpandSelectedTracks: handleExpandSelectedTracks,
+    onFitSelectedTracksToHeight: handleFitSelectedTracksToHeight,
   });
 
   // Hold Cmd (Ctrl on Windows/Linux) to grab-pan the canvas. The
@@ -813,6 +827,7 @@ function CanvasDemoContent() {
     onCollapseAllTracks: handleCollapseAllTracks,
     onCollapseSelectedTracks: handleCollapseSelectedTracks,
     onExpandSelectedTracks: handleExpandSelectedTracks,
+    onFitSelectedTracksToHeight: handleFitSelectedTracksToHeight,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
