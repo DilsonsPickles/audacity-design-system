@@ -14,9 +14,12 @@ export interface FocusedClip {
 }
 
 export function clipOfElement(el: Element | null): FocusedClip | null {
-  const wrapper = el?.closest<HTMLElement>('[data-clip-id][data-track-index]') ?? null;
+  // The clip wrapper — or one of its fade handles, which sit at track
+  // level carrying the clip's id as data-fade-clip (keyboard-focusable
+  // since 2026-10-12): focus on a handle is focus on the clip
+  const wrapper = el?.closest<HTMLElement>('[data-clip-id][data-track-index], [data-fade-clip][data-track-index]') ?? null;
   if (!wrapper) return null;
-  const clipId = Number(wrapper.dataset.clipId);
+  const clipId = Number(wrapper.dataset.clipId ?? wrapper.dataset.fadeClip);
   const trackIndex = Number(wrapper.dataset.trackIndex);
   return Number.isFinite(clipId) && Number.isFinite(trackIndex) ? { trackIndex, clipId } : null;
 }

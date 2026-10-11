@@ -16,6 +16,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 
 **Handlers:**
 - **Enter** - Toggle clip selection
+- **F / Shift+F** - Focus the clip's fade-in / fade-out handle (`fadeKeyFocus` in TrackNew, 2026-10-12); on a focused handle: **F** next (in → out → clip), **Shift+F** back, **Esc** the clip, **←/→** length ±0.1 s (Shift 1 s), **↑/↓** curve ±5% (Shift 20%), **1–5** shape presets (`onFadeShapePreset`), **0** reset, **Enter** boundary to the playhead (`onFadeToPlayhead`), **Delete** remove — the arrows never navigate between handles
 - **Shift+F10** or **ContextMenu key** - Open clip context menu (standard keyboard shortcuts)
 - **Cmd+Left/Right** - Move clip horizontally by 0.1s
 - **Cmd+Up/Down** - Move clip to adjacent track

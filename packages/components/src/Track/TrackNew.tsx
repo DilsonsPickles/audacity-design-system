@@ -60,7 +60,9 @@ export type ClipHandleHint =
   | 'fade-length'
   | 'fade-shape'
   | 'crossfade'
-  | 'crossfade-roll';
+  | 'crossfade-roll'
+  /** A fade handle has KEYBOARD focus (F on the clip) — the legend */
+  | 'fade-keys';
 
 const FADE_GLYPH_RADIUS = 2.5;
 const FADE_HANDLE_BOX = { width: 36, height: 32 } as const;
@@ -103,6 +105,15 @@ const FADE_HANDLE_BOX_INSET: number = EDGE_HIT_INSIDE_PX;
  *  box centred and starting at the line — and the spec's 13 before
  *  that, the Figma "hit zones" frame's 12 plus the outline's pixel.) */
 const FADE_HANDLE_BODY_INSET = FADE_HIT_REACH - 5;
+/** Below this rendered clip width the two corner boxes, at rest, would
+ *  overlap each other — no fade handles, zoom in to edit fades */
+const FADE_HANDLE_MIN_CLIP_PX = 2 * (FADE_HANDLE_BODY_INSET + FADE_GLYPH_BODY.size / 2 + FADE_HANDLE_BOX.width / 2);
+/** What a screen reader hears for a quick fade's curve */
+function quickFadeShapeName(side: 'in' | 'out', shape: FadeShape): string {
+  if (shape === 'linear') return 'linear';
+  if (typeof shape === 'number') return shape === 1 ? 'equal power' : shape === DEFAULT_QUICK_FADE_SHAPE ? 'S-curve' : `exponent ${shape}`;
+  return `${Math.round(fadeHandleOf(side, shape).g * 100)}% level`;
+}
 const FadeHandleGlyph: React.FC<{ mirrored?: boolean }> = ({ mirrored }) => {
   const clipId = React.useId();
   const { x, y, size } = FADE_GLYPH_BODY;
@@ -361,6 +372,13 @@ export interface TrackProps {
    *  in client space (user decision 2026-10-01, the "dive deeper" door
    *  beside the direct gestures). */
   onFadeContextMenu?: (clipId: string | number, side: 'in' | 'out', x: number, y: number) => void;
+  /** A number key on a KEYBOARD-FOCUSED fade handle (F on the clip,
+   *  2026-10-12): the host's shape preset at `index` (its menu's order,
+   *  0 = the first). */
+  onFadeShapePreset?: (clipId: string | number, side: 'in' | 'out', index: number) => void;
+  /** Enter on a keyboard-focused fade handle: the host sets the fade's
+   *  boundary to the playhead (it knows where that is) */
+  onFadeToPlayhead?: (clipId: string | number, side: 'in' | 'out') => void;
   /** Right-click on the crossfade's intersection node: the host opens
    *  the crossfade's menu — its shape presets — at (x, y). */
   onCrossfadeContextMenu?: (outgoingClipId: string | number, incomingClipId: string | number, x: number, y: number) => void;
@@ -621,6 +639,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onFadeDragChange,
   singleSelection = false,
   onHandleHint,
+  onFadeShapePreset,
+  onFadeToPlayhead,
   onFadeContextMenu,
   onCrossfadeContextMenu,
   onCrossfadeRoll,
@@ -767,6 +787,26 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const [fadeDragClipId, setFadeDragClipId] = React.useState<string | number | null>(null);
   // …and which of its two handles — that one wears the pressed look
   const [fadeDragSide, setFadeDragSide] = React.useState<'in' | 'out' | null>(null);
+  // THE FADE HANDLES TAKE KEYBOARD FOCUS (user decision 2026-10-12,
+  // "I don't mind F moving to the fade handles" — the arrows stay the
+  // cursor's on a focused clip; the old tab-to-clip-then-arrow-between-
+  // handles model is gone and not wanted back): F on a focused clip
+  // focuses its fade-in handle, F again the fade-out, F again the clip
+  // (Shift+F backwards, Escape the clip). The focused handle is kept
+  // MOUNTED whatever the pointer does (fadeHandleActive below) and, on
+  // it, the arrows are the handle's: ← → the boundary, ↑ ↓ the curve;
+  // 1–5 the presets, 0 reset, Enter to the playhead, Delete removes.
+  const [fadeKeyFocus, setFadeKeyFocus] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
+  React.useEffect(() => {
+    if (!fadeKeyFocus) return;
+    const el = trackRef.current?.querySelector<HTMLElement>(
+      `[data-fade-handle="${fadeKeyFocus.side}"][data-fade-clip="${fadeKeyFocus.clipId}"]`,
+    );
+    // Nothing to focus (no handles here: a MIDI track, the floor, a
+    // clip too narrow) — the press was a no-op, keep the clip's focus
+    if (!el) { setFadeKeyFocus(null); return; }
+    if (document.activeElement !== el) el.focus();
+  }, [fadeKeyFocus]);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
   // Crossfade node being dragged (`out-in`) — kept visible off-hover
@@ -853,7 +893,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // crossfade node), and the host hears only CHANGES — never a null on
   // mount, which would wipe another track's hint.
   const [hintHover, setHintHover] = React.useState<'trim' | 'stretch' | 'edge' | 'fade-length' | 'fade-shape' | 'crossfade' | null>(null);
-  const resolvedHint: ClipHandleHint | null = hintHover === 'edge'
+  const resolvedHint: ClipHandleHint | null = fadeKeyFocus ? 'fade-keys' : hintHover === 'edge'
     ? (altHeld && onClipStretchEdge ? 'edge-stretch' : 'edge-trim')
     : hintHover === 'crossfade'
       ? (altHeld && onCrossfadeRoll ? 'crossfade-roll' : 'crossfade')
@@ -1192,7 +1232,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         // HOVER ONLY (user decision 2026-09-29): selection alone does
         // not show the shape handle — it would sit on every selected
         // clip's fades. (The corner handles joined it on 2026-10-01.)
-        if (!leaving && fadeHoverClipId !== clip.id && shapeDrag !== dragKey) continue;
+        if (!leaving && fadeHoverClipId !== clip.id && shapeDrag !== dragKey && fadeKeyFocus?.clipId !== clip.id) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
         const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
         // Position and gain are read off the drawn curve, never the
@@ -1730,6 +1770,22 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
+            // F FOCUSES THE FADE HANDLES (2026-10-12): the fade-in handle,
+            // Shift+F the fade-out; from there F cycles on (see the
+            // handle's onKeyDown). Only where the handles exist — a MIDI
+            // track, a clip at the floor or one too narrow for them
+            // leaves the press alone. Matched on the code too (a layout
+            // may put another letter on the key).
+            if ((e.code === 'KeyF' || e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+              if (!isMidiTrack && onClipFadeChange && height > FADE_CONTROLS_MIN_CLIP_HEIGHT
+                && clip.duration * pixelsPerSecond >= FADE_HANDLE_MIN_CLIP_PX) {
+                e.preventDefault();
+                e.stopPropagation();
+                setFadeKeyFocus({ clipId: clip.id, side: e.shiftKey ? 'out' : 'in' });
+                return;
+              }
+            }
+
             // Move clip horizontally with Cmd+Arrow Left/Right.
             // Alt acts as the speed modifier — same convention as the
             // playhead nudge: plain = 0.1s, Alt = 1s.
@@ -2091,7 +2147,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // draw active ∪ leaving. (Clip's in-clip trim/stretch pair does the
   // same for itself.)
   const fadeHandleActive = clips
-    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
+    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id || fadeKeyFocus?.clipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   const leavingFadeHandles = useLeavingKeys(fadeHandleActive);
   const buriedActive = clips
@@ -2099,7 +2155,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     .map((c) => String(c.id));
   const leavingBuried = useLeavingKeys(buriedActive);
   const shapeActive = clips
-    .filter((c) => !hidesHandlesOf(c.id) && (fadeHoverClipId === c.id || (shapeDrag != null && shapeDrag.startsWith(`${c.id}:`))))
+    .filter((c) => !hidesHandlesOf(c.id) && (fadeHoverClipId === c.id || fadeKeyFocus?.clipId === c.id || (shapeDrag != null && shapeDrag.startsWith(`${c.id}:`))))
     .map((c) => String(c.id));
   const leavingShape = useLeavingKeys(shapeActive);
   const xNodeActive = (clipDragInProgress || fadeDragInHand != null)
@@ -2328,7 +2384,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const HALF_BODY = FADE_GLYPH_BODY.size / 2;
     // Below this rendered width the two corner boxes, at rest, would
     // overlap each other — zoom in to edit fades on a narrow clip
-    const FADE_HANDLE_MIN_CLIP_PX = 2 * (FADE_HANDLE_EDGE_INSET + HALF_BODY + HALF_BOX);
     for (const clip of clips) {
       // Handles show on the SELECTED clip and on the clip UNDER THE
       // POINTER (2026-09-29, widening the 2026-09-21 selected-only
@@ -2401,7 +2456,80 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             key={`fade-handle-${clip.id}-${side}`}
             data-fade-handle={side}
             data-fade-clip={clip.id}
+            data-track-index={trackIndex}
             data-leaving={leaving ? 'true' : undefined}
+            // Keyboard-focusable (F on the clip, 2026-10-12), never in
+            // the tab order: the clip is the tab stop, F is the way in
+            tabIndex={-1}
+            onFocus={() => setFadeKeyFocus((prev) => (prev?.clipId === clip.id && prev.side === side ? prev : { clipId: clip.id, side }))}
+            onBlur={(e) => {
+              // To the clip's other fade handle: still in hand
+              const to = e.relatedTarget;
+              if (to instanceof Element && to.closest(`[data-fade-clip="${clip.id}"]`)) return;
+              setFadeKeyFocus((prev) => (prev?.clipId === clip.id ? null : prev));
+            }}
+            onKeyDown={(e) => {
+              // The app's chords (Cmd+…, Option+…) pass through untouched
+              if (e.metaKey || e.ctrlKey || e.altKey) return;
+              const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
+              const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
+              const focusClip = () => {
+                setFadeKeyFocus(null);
+                trackRef.current?.querySelector<HTMLElement>(`[data-clip-id="${clip.id}"]`)?.focus();
+              };
+              const stop = () => { e.preventDefault(); e.stopPropagation(); };
+              if (e.key === 'Escape') { stop(); focusClip(); return; }
+              // F cycles: in → out → clip; Shift+F the other way
+              if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+                stop();
+                if (!e.shiftKey && side === 'in') setFadeKeyFocus({ clipId: clip.id, side: 'out' });
+                else if (e.shiftKey && side === 'out') setFadeKeyFocus({ clipId: clip.id, side: 'in' });
+                else focusClip();
+                return;
+              }
+              // ← → move the fade's BOUNDARY (→ = later), a tenth of a
+              // second, Shift a second — the panel's clip strip's steps.
+              // Clamped to the free window as the drag is; a sliver
+              // under 0.02 s clears.
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                stop();
+                const step = e.shiftKey ? 1 : 0.1;
+                const later = e.key === 'ArrowRight';
+                const delta = (side === 'in') === later ? step : -step;
+                let seconds = Math.max(0, Math.min(windowLen, ownFade + delta));
+                if (seconds < 0.02) seconds = 0;
+                if (seconds !== ownFade) onClipFadeChange?.(clip.id, side, seconds);
+                return;
+              }
+              // ↑ ↓ bend the curve: the shape handle's gain, 5% a step
+              // (Shift 20%), inside its limits — the vertical drag
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                stop();
+                if (!onClipFadeShapeChange || ownFade <= 0) return;
+                const { t, g } = fadeHandleOf(side, shape);
+                const step = e.shiftKey ? 0.2 : 0.05;
+                onClipFadeShapeChange(clip.id, side, clampFadeHandle({ t, g: g + (e.key === 'ArrowUp' ? step : -step) }));
+                return;
+              }
+              // 1–5 the host's presets in its menu's order; 0 the default
+              const digit = /^Digit([0-9])$/.exec(e.code)?.[1] ?? (/^[0-9]$/.test(e.key) ? e.key : null);
+              if (digit !== null) {
+                const n = Number(digit);
+                if (n > 5) return;
+                stop();
+                if (n === 0) onClipFadeShapeChange?.(clip.id, side, DEFAULT_QUICK_FADE_SHAPE);
+                else onFadeShapePreset?.(clip.id, side, n - 1);
+                return;
+              }
+              // Enter: the boundary to the playhead (the host knows it)
+              if (e.key === 'Enter') { stop(); onFadeToPlayhead?.(clip.id, side); return; }
+              // Delete removes the fade — and must not reach the app's
+              // delete, which would take the clip
+              if (e.key === 'Delete' || e.key === 'Backspace') {
+                stop();
+                if (ownFade > 0) onClipFadeChange?.(clip.id, side, 0);
+              }
+            }}
             // Hover and press answer the way the trim and stretch
             // handles do (Track.css mirrors Clip.css's numbers)
             className="track-fade-handle"
@@ -2416,6 +2544,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               onFadeContextMenu(clip.id, side, e.clientX, e.clientY);
             }}
             aria-valuenow={side === 'in' ? fadeInSec : fadeOutSec}
+            aria-valuemin={0}
+            aria-valuemax={Math.round(windowLen * 100) / 100}
+            aria-valuetext={`${(Math.round((side === 'in' ? fadeInSec : fadeOutSec) * 100) / 100)} seconds, ${quickFadeShapeName(side, (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE)}`}
             // The clip body is the time-selection surface — a fade drag
             // must not bubble into it (mirrors the trim handles)
             onMouseDown={(e) => e.stopPropagation()}
