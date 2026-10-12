@@ -137,7 +137,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **Shift+Home** - Extend/create time selection from playhead to time 0
 - **Shift+End** - Extend/create time selection from playhead to end of project
 - **L** - Toggle loop region on/off
-- **ArrowUp/Down** - Move track focus outline (only when focus is NOT inside a tab group)
+- **ArrowUp/Down** - Move track focus outline (only when focus is NOT inside a tab group, and never inside an open `[role="menu"]` — the menu walks its own items, 2026-10-12)
 - **Shift+ArrowUp/Down** - Extend track range selection (only when focus is NOT inside a tab group)
 - **ArrowLeft/Right** - Move playhead / manipulate time selection (also works when timeline ruler is focused)
 - **[ / ]** - Set the time selection's left / right boundary at the playhead (AU3's Selection: Set Left/Right Boundary). Bare keys only; row scope untouched; edges swap if they'd cross; with no selection, creates a zero-width range at the playhead seeded from the track selection

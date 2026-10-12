@@ -575,7 +575,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
             || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
             || target.getAttribute('role') === 'slider'
             || target.getAttribute('contenteditable') === 'true'
-            || target.closest('.track-control-panel');
+            || target.closest('.track-control-panel')
+            // An open MENU owns its arrows — the ContextMenu walks its
+            // items in the capture phase, and this fallback then moved
+            // the TRACK focus out from under it (2026-10-12, "when we
+            // opened the context menu and pressed down, it moved track
+            // focus down instead of moving to the next menu item")
+            || target.closest('[role="menu"], [role="menuitem"]');
           if (!ownsArrows) {
             let selectedClipTrack: number | null = null;
             outer: for (let ti = 0; ti < state.tracks.length; ti++) {

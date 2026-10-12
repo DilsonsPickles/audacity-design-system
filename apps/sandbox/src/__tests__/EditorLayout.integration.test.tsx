@@ -543,6 +543,65 @@ describe('Bottom drawer', () => {
     await waitFor(() => expect(widthPx()).toBeGreaterThanOrEqual(start - 0.01));
   });
 
+  it('arrows inside a keyboard-opened context menu walk its items and never move the track focus (2026-10-12)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    // A track ABOVE the clip's, so the arrow fallback has somewhere to
+    // step to: Mono 1 first, then the MIDI track (index 1, and focused,
+    // being the last added)
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'MIDI');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('MIDI 1'));
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+    // On the MIDI row: TOP_GAP 2 + Mono's 114 + TRACK_GAP 2, then 50 in
+    const y = 2 + 114 + 2 + 50;
+    fireEvent.mouseDown(pointerContainer, { clientX: 100, clientY: y, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: y });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: y });
+    fireEvent.mouseDown(pointerContainer, { clientX: 200, clientY: y, button: 2 });
+    fireEvent.contextMenu(pointerContainer, { clientX: 200, clientY: y });
+    await clickWhenReady(() => menuItem(container, 'Create Empty MIDI Clip'));
+    const clip = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('[data-clip-id]');
+      if (!el) throw new Error('clip not created');
+      return el;
+    });
+    // Select it (its track is then the "selected clip's track" the arrow
+    // fallback steps from) and open its menu by keyboard
+    fireEvent.click(clipHeaderEl(container, Number(clip.getAttribute('data-clip-id'))));
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: 'F10', shiftKey: true });
+    const items = await waitFor(() => {
+      const list = Array.from(container.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]:not([aria-disabled="true"])'));
+      if (list.length < 2 || document.activeElement !== list[0]) throw new Error('menu not open on its first item yet');
+      return list;
+    });
+    const focusedPanel = () => Array.from(container.querySelectorAll('.track-control-side-panel__track'))
+      .findIndex((p) => p.classList.contains('track-control-side-panel__track--focused'));
+    // Whichever track is focused, press the arrow that has a track to
+    // step to — without the guard that press moved the track focus
+    const before = focusedPanel();
+    expect(before).toBeGreaterThanOrEqual(0);
+    const toward = before === 0 ? 'ArrowDown' : 'ArrowUp';
+    fireEvent.keyDown(document.activeElement!, { key: toward });
+    // the menu walked (down to the second item, or up wrapping to the last)
+    expect(document.activeElement).toBe(toward === 'ArrowDown' ? items[1] : items[items.length - 1]);
+    // …and the TRACK focus stayed put
+    expect(focusedPanel()).toBe(before);
+    fireEvent.keyDown(document.activeElement!, { key: toward });
+    expect(focusedPanel()).toBe(before);
+    expect(document.activeElement?.getAttribute('role')).toBe('menuitem');
+  });
+
   it('adding a note to a selected (empty) MIDI clip renders it in the grid', async () => {
     // PianoRollPanel.tsx only mounts NoteGrid when a clip is selected
     // (`{clip ? <NoteGrid /> : <div>Select a MIDI clip to edit</div>}`) —
