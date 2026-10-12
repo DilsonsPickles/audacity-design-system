@@ -88,15 +88,15 @@ describe('T and S focus the trim and stretch handles (2026-10-12)', () => {
     expect(document.activeElement).toBe(handle('stretch', 'right'));
   });
 
-  it('on an UNSELECTED clip only the handle in hand is mounted (2026-10-12); a selected single clip keeps its set', () => {
+  it('on an UNSELECTED clip only the PAIR in hand is mounted (2026-10-12, "we can show both sides at the same time"); a selected single clip keeps its set', () => {
     const { clip, container } = setup();
     fireEvent.keyDown(clip, { key: 't', code: 'KeyT' });
     const mounted = () => [...container.querySelectorAll('[data-clip-id="1"] [data-handle-kind]')].map((h) => `${h.getAttribute('data-handle-kind')}-${h.getAttribute('data-handle-edge')}`);
-    expect(mounted()).toEqual(['trim-left']);
+    expect(mounted()).toEqual(['trim-left', 'trim-right']);
     fireEvent.keyDown(document.activeElement!, { key: 't', code: 'KeyT' });
-    expect(mounted()).toEqual(['trim-right']);
+    expect(mounted()).toEqual(['trim-left', 'trim-right']);
     fireEvent.keyDown(document.activeElement!, { key: 's', code: 'KeyS' });
-    expect(mounted()).toEqual(['stretch-right']);
+    expect(mounted()).toEqual(['stretch-left', 'stretch-right']);
     cleanup();
     const sel = setup({ selected: true }, { singleSelection: true });
     fireEvent.keyDown(sel.clip, { key: 't', code: 'KeyT' });

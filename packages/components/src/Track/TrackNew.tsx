@@ -1309,8 +1309,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         // not show the shape handle — it would sit on every selected
         // clip's fades. (The corner handles joined it on 2026-10-01.)
         if (!leaving && fadeHoverClipId !== clip.id && shapeDrag !== dragKey && fadeKeyFocus?.clipId !== clip.id) continue;
-        // Keyboard-held: the shape dot of the side in hand only
-        if (!leaving && fadeHoverClipId !== clip.id && shapeDrag !== dragKey && fadeKeyFocus?.clipId === clip.id && fadeKeyFocus.side !== side) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
         const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
         // Position and gain are read off the drawn curve, never the
@@ -2870,12 +2868,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const NO_ROOM_PX = 24;
       const roomFor = (own: number) =>
         own > 0 || windowLen * pixelsPerSecond >= NO_ROOM_PX;
-      // Held by the KEYBOARD alone (F, no pointer on the clip): only the
-      // side in hand (2026-10-12, "only show the control the user pressed")
-      const keyOnly = fadeKeyFocus?.clipId === clip.id && fadeHoverClipId !== clip.id && fadeDragClipId !== clip.id;
-      const wanted = (side: 'in' | 'out') => !keyOnly || fadeKeyFocus?.side === side;
-      if (wanted('in') && !crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
-      if (wanted('out') && !crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
+      // Held by the KEYBOARD alone (F, no pointer on the clip): BOTH fade
+      // handles, as the pair of trim handles for T (2026-10-12, "we can
+      // show both sides at the same time")
+      if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
+      if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
       // A dashed line drops from each fade's boundary — where the curve
       // meets the body's top — to the clip's BOTTOM, so the boundary can
       // be lined up against the waveform (the dev's lining-up aid, user

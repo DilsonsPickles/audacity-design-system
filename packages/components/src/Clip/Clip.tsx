@@ -246,21 +246,23 @@ const ClipComponent: React.FC<ClipProps> = ({
   // The POINTER's rule for the pair of pairs…
   const pointerHandles = !handlesHidden && ((handlesVisible ?? selected) || trimEdge !== null || stretchEdge !== null);
   // …or holding KEYBOARD focus (T / S), whatever the pointer does — and
-  // then ONLY THE HANDLE IN HAND when the pointer rule shows none (user
-  // decision 2026-10-12, "when the clip isn't selected perhaps we only
-  // show the control the user pressed?": four handles on an unselected
-  // clip is the furniture the pointer rule avoids)
+  // then ONLY THE PAIR IN HAND when the pointer rule shows none (user
+  // decisions 2026-10-12: "when the clip isn't selected perhaps we only
+  // show the control the user pressed?", then "we can show both sides at
+  // the same time" — the two trim handles for T, the two stretch handles
+  // for S; four on an unselected clip is the furniture the pointer rule
+  // avoids)
   const handlesShown = pointerHandles || keyboardHandle !== null;
   // Which set is up, remembered so the leave tail (useLeaveDelay) fades
-  // out the SAME set: the pointer's four, or the one keyboard handle —
-  // never the other three appearing just to fade
-  const shownSetRef = useRef<'all' | string | null>(null);
+  // out the SAME set: the pointer's four, or the keyboard's pair — never
+  // the other pair appearing just to fade
+  const shownSetRef = useRef<'all' | 'trim' | 'stretch' | null>(null);
   if (pointerHandles) shownSetRef.current = 'all';
-  else if (keyboardHandle) shownSetRef.current = `${keyboardHandle.kind}-${keyboardHandle.edge}`;
-  const showHandle = (kind: 'trim' | 'stretch', edge: 'left' | 'right') => {
+  else if (keyboardHandle) shownSetRef.current = keyboardHandle.kind;
+  const showHandle = (kind: 'trim' | 'stretch') => {
     if (pointerHandles) return true;
-    if (keyboardHandle?.kind === kind && keyboardHandle?.edge === edge) return true;
-    if (handlesLeaving) return shownSetRef.current === 'all' || shownSetRef.current === `${kind}-${edge}`;
+    if (keyboardHandle?.kind === kind) return true;
+    if (handlesLeaving) return shownSetRef.current === 'all' || shownSetRef.current === kind;
     return false;
   };
   const { mounted: handlesMounted, leaving: handlesLeaving } = useLeaveDelay(handlesShown);
@@ -532,7 +534,7 @@ const ClipComponent: React.FC<ClipProps> = ({
               they linger a moment with data-leaving, fading (Clip.css). */}
           {!handlesHiddenAt?.left && (
             <>
-              {onTrimEdge && showHandle('trim', 'left') && (
+              {onTrimEdge && showHandle('trim') && (
                 <button
                   type="button"
                   tabIndex={-1}
@@ -547,7 +549,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   <TrimLeftIcon />
                 </button>
               )}
-              {showHandle('stretch', 'left') && (
+              {showHandle('stretch') && (
               <button
                 type="button"
                 tabIndex={-1}
@@ -566,7 +568,7 @@ const ClipComponent: React.FC<ClipProps> = ({
           )}
           {!handlesHiddenAt?.right && (
             <>
-              {onTrimEdge && showHandle('trim', 'right') && (
+              {onTrimEdge && showHandle('trim') && (
                 <button
                   type="button"
                   tabIndex={-1}
@@ -581,7 +583,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   <TrimRightIcon />
                 </button>
               )}
-              {showHandle('stretch', 'right') && (
+              {showHandle('stretch') && (
               <button
                 type="button"
                 tabIndex={-1}
