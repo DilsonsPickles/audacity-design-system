@@ -192,6 +192,19 @@ describe('handleF6 — next / previous section, every profile, the selection bar
     unmount();
   });
 
+  it('a stop that cannot take focus (present but hidden) is walked past, not stuck on', () => {
+    const { stops, unmount } = mount();
+    // the menu bar is there but refuses focus, as a hidden one does
+    const menuButton = stops[0]!;
+    const realFocus = menuButton.focus;
+    menuButton.focus = () => {};
+    stops[stops.length - 1]!.focus(); // on the selection bar; next wraps to the menu bar…
+    press();
+    expect(document.activeElement).toBe(stops[1]); // …which is skipped for Home
+    menuButton.focus = realFocus;
+    unmount();
+  });
+
   it('from nowhere, lands on the first section', () => {
     const { stops, unmount } = mount();
     (document.activeElement as HTMLElement | null)?.blur();

@@ -130,7 +130,13 @@ export function handleF6(e: KeyboardEvent, _deps: NavigationHandlerDeps): void {
     const idx = (currentBlockIndex + step * n + majorBlocks.length * n) % majorBlocks.length;
     const next = majorBlocks[idx]();
     const target = next && focusTargetOf(next);
-    if (target) { target.focus(); return; }
+    if (!target) continue;
+    target.focus();
+    // A stop that is in the DOM but cannot take focus (hidden — the
+    // in-app menu bar under Electron's native one, say) is no stop
+    // either: the focus did not move, so walk on (2026-10-12, "F6 is
+    // skipping Home" — it was stuck on the menu bar before Home)
+    if (document.activeElement === target || target.contains(document.activeElement)) return;
   }
 }
 
