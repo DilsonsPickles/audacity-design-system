@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { useTheme } from '../ThemeProvider';
 import './ContextMenu.css';
 
@@ -83,6 +83,44 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     }
   }, [isOpen]);
 
+  // FOCUS RETURNS TO THE TRIGGER WHEN THE MENU CLOSES — the global rule
+  // (user decision 2026-10-12, "once I've escaped from a context menu or
+  // actioned an item, focus should go back to the trigger"): Escape did
+  // it below; an actioned item, or a host unmounting the menu, left the
+  // focus on a removed element (the body). This cleanup runs on BOTH
+  // isOpen → false and unmount (hosts render menus conditionally) and
+  // returns the focus when it was still IN the menu, or already gone to
+  // the body — never when the user put it somewhere deliberately: an
+  // outside click (closedByPointerRef) or a dialog an item opened, which
+  // takes the focus after this and keeps it. A trigger that has left the
+  // document gets nothing (the fade handle stays mounted for this).
+  const focusWithinRef = useRef(false);
+  const closedByPointerRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    closedByPointerRef.current = false;
+    const doc = ownerDoc();
+    const track = () => { focusWithinRef.current = !!menuRef.current && menuRef.current.contains(doc.activeElement); };
+    doc.addEventListener('focusin', track);
+    doc.addEventListener('focusout', track);
+    return () => {
+      doc.removeEventListener('focusin', track);
+      doc.removeEventListener('focusout', track);
+      const trigger = triggerElementRef.current;
+      const active = doc.activeElement;
+      const focusLost = !active || active === doc.body || (!!menuRef.current && menuRef.current.contains(active));
+      if (!closedByPointerRef.current && trigger && trigger.isConnected && (focusWithinRef.current || focusLost)) {
+        // After the host's commit, so a dialog the item opened can take
+        // the focus from us instead of the other way round
+        setTimeout(() => {
+          const now = doc.activeElement;
+          if (!now || now === doc.body) trigger.focus();
+        }, 0);
+      }
+      focusWithinRef.current = false;
+    };
+  }, [isOpen]);
+
   // Auto-focus first menu item when opened via keyboard
   useEffect(() => {
     if (!isOpen || !autoFocus || !menuRef.current) return;
@@ -103,6 +141,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        closedByPointerRef.current = true; // the pointer put the focus where it wanted
         onClose();
       }
     };

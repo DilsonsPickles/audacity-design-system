@@ -172,6 +172,32 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(onFadeContextMenu).toHaveBeenCalledTimes(2);
   });
 
+  it('the handle stays mounted while its menu has the focus, and lets go once the focus settles elsewhere (2026-10-12)', () => {
+    const { container, clip, handle } = setup();
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    const inHandle = handle('in')!;
+    // a menu, as Shift+F10 would open one, takes the focus
+    const menu = document.createElement('div');
+    menu.setAttribute('role', 'menu');
+    const item = document.createElement('div');
+    item.setAttribute('role', 'menuitem');
+    item.tabIndex = 0;
+    menu.appendChild(item);
+    container.appendChild(menu);
+    act(() => { item.focus(); });
+    expect(document.activeElement).toBe(item);
+    expect(handle('in')).toBe(inHandle); // still mounted, the trigger the menu can return to
+    // the menu returns the focus: the handle is back in hand
+    act(() => { inHandle.focus(); });
+    expect(document.activeElement).toBe(inHandle);
+    // the focus settling somewhere else lets the handle go
+    const other = document.createElement('button');
+    container.appendChild(other);
+    act(() => { other.focus(); });
+    expect(handle('in')).toBeNull();
+  });
+
   it('the focused handle reads back as a slider with its length and curve', () => {
     const { clip, handle } = setup({ fadeOutShape: 'linear' });
     act(() => { clip.focus(); });

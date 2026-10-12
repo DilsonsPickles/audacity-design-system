@@ -832,6 +832,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // clip too narrow) — the press was a no-op, keep the clip's focus
     if (!el) { setFadeKeyFocus(null); return; }
     if (document.activeElement !== el) el.focus();
+    // While the handle is held through a menu, the focus settling
+    // anywhere that is not this clip's handles or a menu lets it go
+    const onFocusIn = (ev: FocusEvent) => {
+      const t = ev.target instanceof Element ? ev.target : null;
+      if (t && (t.closest(`[data-fade-clip="${fadeKeyFocus.clipId}"]`) || t.closest('[role="menu"]'))) return;
+      setFadeKeyFocus((prev) => (prev?.clipId === fadeKeyFocus.clipId ? null : prev));
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
   }, [fadeKeyFocus]);
   // Quick-fade shape node being dragged (kept visible off-selection)
   const [shapeDrag, setShapeDrag] = React.useState<string | null>(null);
@@ -2452,9 +2461,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             tabIndex={-1}
             onFocus={() => setFadeKeyFocus((prev) => (prev?.clipId === clip.id && prev.side === side ? prev : { clipId: clip.id, side }))}
             onBlur={(e) => {
-              // To the clip's other fade handle: still in hand
+              // To the clip's other fade handle: still in hand. Into a
+              // MENU (Shift+F10's): still in hand too — the handle stays
+              // mounted so the menu can return the focus to it (the
+              // global rule, 2026-10-12); the focusin watch below lets go
+              // when the focus settles anywhere else
               const to = e.relatedTarget;
-              if (to instanceof Element && to.closest(`[data-fade-clip="${clip.id}"]`)) return;
+              if (to instanceof Element && (to.closest(`[data-fade-clip="${clip.id}"]`) || to.closest('[role="menu"]'))) return;
               setFadeKeyFocus((prev) => (prev?.clipId === clip.id ? null : prev));
             }}
             onKeyDown={(e) => {
