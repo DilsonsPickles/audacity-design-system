@@ -258,6 +258,63 @@ describe('clip fades', () => {
     expect(new Set(clipIds).size).toBe(2);
   });
 
+  it('a fade drag that ends without a pointerup — a pointercancel, or the capture lost — releases its state (2026-10-12)', () => {
+    // Until then only pointerup ended a fade drag: a drag cut short any
+    // other way left the handle pressed and hid every other clip's fade
+    // handles, on every track, until a pointerup landed on that handle
+    const onFadeDragChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 4, selected: true, fadeOut: 1 },
+            { id: 2, name: 'B', start: 5, duration: 4 },
+          ]}
+          width={1000}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+          onFadeDragChange={onFadeDragChange}
+        />
+      </Providers>,
+    );
+    const handle = (clipId: number, side: 'in' | 'out') =>
+      container.querySelector(`[data-fade-handle="${side}"][data-fade-clip="${clipId}"]`) as HTMLElement | null;
+    // The LENGTH handle, ended by a pointercancel
+    hoverClip(container, 1);
+    fireEvent.pointerDown(handle(1, 'out')!, { button: 0, clientX: 0, clientY: 0, pointerId: 91 });
+    expect(handle(1, 'out')!.getAttribute('data-pressed')).toBe('true');
+    expect(onFadeDragChange).toHaveBeenLastCalledWith(1);
+    // While the drag is in hand B shows nothing on hover — the rule
+    hoverClip(container, 2);
+    expect(handle(2, 'in')).toBeNull();
+    fireEvent.pointerCancel(handle(1, 'out')!, { pointerId: 91 });
+    expect(container.querySelector('[data-fade-handle][data-pressed]')).toBeNull();
+    expect(onFadeDragChange).toHaveBeenLastCalledWith(null);
+    // …and B's handles are back on the next hover
+    hoverClip(container, 2);
+    expect(handle(2, 'in')).not.toBeNull();
+    // The SHAPE dot, ended by a lost capture
+    hoverClip(container, 1);
+    const dot = container.querySelector('[data-quickfade-node="out"][data-clip-ref="1"]') as HTMLElement;
+    fireEvent.pointerDown(dot, { button: 0, clientX: 0, clientY: 0, pointerId: 92 });
+    expect(onFadeDragChange).toHaveBeenLastCalledWith(1);
+    hoverClip(container, 2);
+    expect(handle(2, 'in')).toBeNull();
+    fireEvent.lostPointerCapture(dot, { pointerId: 92 });
+    expect(onFadeDragChange).toHaveBeenLastCalledWith(null);
+    hoverClip(container, 2);
+    expect(handle(2, 'in')).not.toBeNull();
+    // A pointerup followed by its lostpointercapture ends the drag once
+    onFadeDragChange.mockClear();
+    hoverClip(container, 1);
+    fireEvent.pointerDown(handle(1, 'out')!, { button: 0, clientX: 0, clientY: 0, pointerId: 93 });
+    fireEvent.pointerUp(handle(1, 'out')!, { clientX: 0, clientY: 0, pointerId: 93 });
+    fireEvent.lostPointerCapture(handle(1, 'out')!, { pointerId: 93 });
+    expect(onFadeDragChange.mock.calls).toEqual([[1], [null]]);
+  });
+
   it('the fade handle wears the pressed look for the whole drag, and only the one in hand', () => {
     const { container } = render(
       <Providers>

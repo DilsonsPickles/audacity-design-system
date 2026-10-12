@@ -85,6 +85,38 @@ const FADE_HIT_REACH = 15;
  *  floor, where the edge handle rows take the whole clip. Not the
  *  collapse point (72): a collapsed 60px clip still has room. */
 const FADE_CONTROLS_MIN_CLIP_HEIGHT = 44;
+
+// A pointer-captured drag ENDS on pointerup — or on `pointercancel`
+// (the browser took the pointer back: the window losing focus
+// mid-press, the OS claiming the gesture) or `lostpointercapture`
+// (the element went away under the capture). Until 2026-10-12 the fade
+// drags heard pointerup alone, and a drag that ended any other way left
+// its state set: the handle stayed pressed and, through hidesHandlesOf
+// and onFadeDragChange, every OTHER clip on every track hid its fade
+// handles until a pointerup landed on that one handle again ("fade
+// handles didn't show up on selected clip"). The end runs ONCE,
+// whichever event brings it (a pointerup is followed by a
+// lostpointercapture), and takes the listeners with it.
+const bindCapturedDrag = (
+  el: HTMLElement,
+  onMove: (ev: PointerEvent) => void,
+  onEnd: (ev: PointerEvent) => void,
+) => {
+  let ended = false;
+  const end = (ev: PointerEvent) => {
+    if (ended) return;
+    ended = true;
+    el.removeEventListener('pointermove', onMove);
+    el.removeEventListener('pointerup', end);
+    el.removeEventListener('pointercancel', end);
+    el.removeEventListener('lostpointercapture', end);
+    onEnd(ev);
+  };
+  el.addEventListener('pointermove', onMove);
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', end);
+};
 const FADE_GLYPH_BODY = {
   x: (FADE_HANDLE_BOX.width - 10) / 2,
   y: (FADE_HANDLE_BOX.height - 10) / 2,
@@ -1196,15 +1228,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 onCrossfadeShapeChange(n.outgoingClipId, n.incomingClipId, outShape, inShape);
               }
             };
-            const onUp = (ev: PointerEvent) => {
-              nodeEl.removeEventListener('pointermove', onMove);
-              nodeEl.removeEventListener('pointerup', onUp);
+            bindCapturedDrag(nodeEl, onMove, (ev) => {
               setCrossfadeDrag(null);
               settleFadeHover(n.incomingClipId, ev, nodeEl);
               settleHint(nodeEl, ev);
-            };
-            nodeEl.addEventListener('pointermove', onMove);
-            nodeEl.addEventListener('pointerup', onUp);
+            });
           }}
           // The same two clicks as the quick fade's shape handle (user
           // decision 2026-10-01, replacing the 2026-09-24 double-click
@@ -1406,16 +1434,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 });
                 onClipFadeShapeChange(clip.id, side, next);
               };
-              const onUp = (ev: PointerEvent) => {
-                nodeEl.removeEventListener('pointermove', onMove);
-                nodeEl.removeEventListener('pointerup', onUp);
+              bindCapturedDrag(nodeEl, onMove, (ev) => {
                 setShapeDrag(null);
                 onFadeDragChange?.(null);
                 settleFadeHover(clip.id, ev, nodeEl);
                 settleHint(nodeEl, ev);
-              };
-              nodeEl.addEventListener('pointermove', onMove);
-              nodeEl.addEventListener('pointerup', onUp);
+              });
             }}
             style={{
               position: 'absolute',
@@ -2721,18 +2745,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 onClipFadeChange?.(clip.id, side, seconds);
                 if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(snappedTo, snappedKind);
               };
-              const onUp = (ev: PointerEvent) => {
-                handleEl.removeEventListener('pointermove', onMove);
-                handleEl.removeEventListener('pointerup', onUp);
+              bindCapturedDrag(handleEl, onMove, (ev) => {
                 setFadeDragClipId(null);
                 setFadeDragSide(null);
                 onFadeDragChange?.(null);
                 settleHint(handleEl, ev);
                 settleFadeHover(clip.id, ev, handleEl);
                 if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(null, null);
-              };
-              handleEl.addEventListener('pointermove', onMove);
-              handleEl.addEventListener('pointerup', onUp);
+              });
             }}
             style={{
               position: 'absolute',
