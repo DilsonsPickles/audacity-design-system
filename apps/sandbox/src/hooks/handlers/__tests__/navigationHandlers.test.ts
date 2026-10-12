@@ -157,12 +157,12 @@ describe('handleF6 — next / previous section, every profile, the selection bar
     const mainMenu = make('<div aria-label="Main menu" role="group"><button tabindex="0">Home</button><button tabindex="-1">Project</button></div>');
     const play = make('<button aria-label="Play" tabindex="0">▶</button>');
     // the real markup: the name is on a WRAPPER div, the button inside it
-    const addGroup = make('<div aria-label="Add track" class="track-control-side-panel__add-group"><button>+</button></div>');
-    const add = addGroup.firstElementChild as HTMLElement;
-    const header = withTracks ? make('<div class="track-control-side-panel"><div aria-label="Track 1 track controls" tabindex="0"></div></div>') : null;
+    // …and the add group and the headers share the side panel landmark
+    const sidePanel = make(`<div class="track-control-side-panel"><div aria-label="Add track" class="track-control-side-panel__add-group"><button>+</button></div>${withTracks ? '<div aria-label="Track 1 track controls" tabindex="0"></div>' : ''}</div>`);
+    const add = sidePanel.querySelector('button') as HTMLElement;
     const bar = make('<div class="selection-toolbar"><div aria-label="Selection start" tabindex="0"></div></div>');
-    const stops = [menubar.firstElementChild, mainMenu.firstElementChild, play, add, header?.firstElementChild ?? null, bar.firstElementChild] as (HTMLElement | null)[];
-    return { stops, unmount: () => [menubar, mainMenu, play, addGroup, header, bar].forEach((el) => el?.remove()) };
+    const stops = [menubar.firstElementChild, mainMenu.firstElementChild, play, add, withTracks ? sidePanel.querySelector('[aria-label*="track controls"]') : null, bar.firstElementChild] as (HTMLElement | null)[];
+    return { stops, unmount: () => [menubar, mainMenu, play, sidePanel, bar].forEach((el) => el?.remove()) };
   };
   const press = (shiftKey = false) => handleF6(keyEvent({ key: 'F6', shiftKey }), makeDeps(makeState()));
 

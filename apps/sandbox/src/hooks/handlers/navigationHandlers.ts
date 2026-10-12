@@ -111,14 +111,16 @@ export function handleF6(e: KeyboardEvent, _deps: NavigationHandlerDeps): void {
   // Which section holds the focus: the section's element, or anything
   // inside the same landmark (its toolbar / list / bar)
   const sectionOf = (el: HTMLElement | null) => el?.closest<HTMLElement>('[role="menubar"], [aria-label="Main menu"], .transport-toolbar, .track-control-side-panel, .selection-toolbar') ?? null;
+  // The stop itself (or something inside it) first; only then the
+  // landmark — two stops can share one (Add track and the headers both
+  // live in the side panel), and the exact match must win
   let currentBlockIndex = -1;
-  for (let i = 0; i < majorBlocks.length; i++) {
-    const blockElement = majorBlocks[i]();
-    if (!blockElement || !currentElement) continue;
-    if (blockElement === currentElement || blockElement.contains(currentElement)
-      || (sectionOf(blockElement) !== null && sectionOf(blockElement) === sectionOf(currentElement))) {
-      currentBlockIndex = i;
-      break;
+  const resolved = majorBlocks.map((b) => b());
+  if (currentElement) {
+    currentBlockIndex = resolved.findIndex((el) => !!el && (el === currentElement || el.contains(currentElement)));
+    if (currentBlockIndex === -1) {
+      const landmark = sectionOf(currentElement);
+      if (landmark) currentBlockIndex = resolved.findIndex((el) => !!el && sectionOf(el) === landmark);
     }
   }
   // Step to the next section THAT EXISTS (a project with no tracks has
