@@ -51,7 +51,7 @@ export function ShortcutsPage() {
     { id: '35a', action: 'Fade handles (focus; F again: fade-out, then back)', shortcut: 'F · ⇧F' },
     { id: '35b', action: 'Fade handle: length / curve', shortcut: '← → / ↑ ↓' },
     { id: '35c', action: 'Fade handle: shape preset / reset', shortcut: '1–5 / 0' },
-    { id: '35d', action: 'Fade handle: to playhead / remove / back', shortcut: '↩ / ⌫ / Esc' },
+    { id: '35d', action: 'Fade handle: remove / back to the clip', shortcut: '⌫ / Esc' },
     { id: '36', action: 'Find clipping', shortcut: '' },
     { id: '37', action: 'Fit project', shortcut: '⌘F' },
     { id: '38', action: 'Fit all tracks to height', shortcut: '⌥⌘⇧F · ⌘⇧F' },

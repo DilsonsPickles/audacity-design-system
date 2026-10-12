@@ -376,9 +376,6 @@ export interface TrackProps {
    *  2026-10-12): the host's shape preset at `index` (its menu's order,
    *  0 = the first). */
   onFadeShapePreset?: (clipId: string | number, side: 'in' | 'out', index: number) => void;
-  /** Enter on a keyboard-focused fade handle: the host sets the fade's
-   *  boundary to the playhead (it knows where that is) */
-  onFadeToPlayhead?: (clipId: string | number, side: 'in' | 'out') => void;
   /** Right-click on the crossfade's intersection node: the host opens
    *  the crossfade's menu — its shape presets — at (x, y). */
   onCrossfadeContextMenu?: (outgoingClipId: string | number, incomingClipId: string | number, x: number, y: number) => void;
@@ -640,7 +637,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   singleSelection = false,
   onHandleHint,
   onFadeShapePreset,
-  onFadeToPlayhead,
   onFadeContextMenu,
   onCrossfadeContextMenu,
   onCrossfadeRoll,
@@ -795,7 +791,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // (Shift+F backwards, Escape the clip). The focused handle is kept
   // MOUNTED whatever the pointer does (fadeHandleActive below) and, on
   // it, the arrows are the handle's: ← → the boundary, ↑ ↓ the curve;
-  // 1–5 the presets, 0 reset, Enter to the playhead, Delete removes.
+  // 1–5 the presets, 0 reset, Delete removes.
   const [fadeKeyFocus, setFadeKeyFocus] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
   React.useEffect(() => {
     if (!fadeKeyFocus) return;
@@ -2521,8 +2517,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 else onFadeShapePreset?.(clip.id, side, n - 1);
                 return;
               }
-              // Enter: the boundary to the playhead (the host knows it)
-              if (e.key === 'Enter') { stop(); onFadeToPlayhead?.(clip.id, side); return; }
               // Delete removes the fade — and must not reach the app's
               // delete, which would take the clip
               if (e.key === 'Delete' || e.key === 'Backspace') {

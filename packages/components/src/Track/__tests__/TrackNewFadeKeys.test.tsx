@@ -22,7 +22,6 @@ function setup(overrides: Record<string, unknown> = {}) {
   const onClipFadeChange = vi.fn();
   const onClipFadeShapeChange = vi.fn();
   const onFadeShapePreset = vi.fn();
-  const onFadeToPlayhead = vi.fn();
   const onHandleHint = vi.fn();
   const utils = render(
     <Providers>
@@ -34,14 +33,13 @@ function setup(overrides: Record<string, unknown> = {}) {
         onClipFadeChange={onClipFadeChange}
         onClipFadeShapeChange={onClipFadeShapeChange}
         onFadeShapePreset={onFadeShapePreset}
-        onFadeToPlayhead={onFadeToPlayhead}
         onHandleHint={onHandleHint}
       />
     </Providers>,
   );
   const clip = utils.container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
   const handle = (side: 'in' | 'out') => utils.container.querySelector<HTMLElement>(`[data-fade-handle="${side}"][data-fade-clip="1"]`);
-  return { ...utils, clip, handle, onClipFadeChange, onClipFadeShapeChange, onFadeShapePreset, onFadeToPlayhead, onHandleHint };
+  return { ...utils, clip, handle, onClipFadeChange, onClipFadeShapeChange, onFadeShapePreset, onHandleHint };
 }
 
 describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () => {
@@ -87,8 +85,8 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(document.activeElement).toBe(outHandle);
   });
 
-  it('↑ ↓ bend the curve through the shape handle (5%, Shift 20%); 1–5 are the presets, 0 the reset; Enter the playhead; Delete removes', () => {
-    const { clip, handle, onClipFadeShapeChange, onFadeShapePreset, onFadeToPlayhead, onClipFadeChange } = setup();
+  it('↑ ↓ bend the curve through the shape handle (5%, Shift 20%); 1–5 are the presets, 0 the reset; Delete removes', () => {
+    const { clip, handle, onClipFadeShapeChange, onFadeShapePreset, onClipFadeChange } = setup();
     act(() => { clip.focus(); });
     fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
     const inHandle = handle('in')!;
@@ -104,8 +102,6 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(onFadeShapePreset).toHaveBeenLastCalledWith(1, 'in', 1);
     fireEvent.keyDown(inHandle, { key: '0', code: 'Digit0' });
     expect(onClipFadeShapeChange).toHaveBeenLastCalledWith(1, 'in', DEFAULT_QUICK_FADE_SHAPE);
-    fireEvent.keyDown(inHandle, { key: 'Enter' });
-    expect(onFadeToPlayhead).toHaveBeenLastCalledWith(1, 'in');
 
     const onDocumentDelete = vi.fn();
     document.addEventListener('keydown', onDocumentDelete);

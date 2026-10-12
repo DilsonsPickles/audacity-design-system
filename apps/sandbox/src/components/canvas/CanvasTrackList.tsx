@@ -79,9 +79,6 @@ export interface CanvasTrackListProps {
   singleSelection: boolean;
   /** The clip handle under the pointer, for the status bar */
   onHandleHint: (hint: ClipHandleHint | null) => void;
-  /** The playhead, read at the moment a keyboard-focused fade handle
-   *  takes Enter (a ref, so playback ticks never re-render the list) */
-  playheadRef: { readonly current: number };
   /** Right-click on a quick fade's handle: open the fade menu */
   onFadeContextMenu?: (clipId: number, trackIndex: number, side: 'in' | 'out', x: number, y: number) => void;
   /** Right-click on a crossfade's node: open the crossfade menu */
@@ -434,7 +431,6 @@ const CanvasTrack = React.memo(function CanvasTrack({
   singleSelection,
   onHandleHint,
   onFadeContextMenu,
-  playheadRef,
   onCrossfadeContextMenu,
   draggingClipIds,
   raisedClipIds,
@@ -979,29 +975,13 @@ const CanvasTrack = React.memo(function CanvasTrack({
           ? (clipId, side, x, y) => onFadeContextMenu(clipId as number, trackIndex, side, x, y)
           : undefined}
         // THE FADE HANDLES' KEYS (2026-10-12): a number key is the fade
-        // menu's preset at that place, Enter the boundary to the
-        // playhead — both by the fade-edit rule (a selected clip's fade
-        // is every selected clip's)
+        // menu's preset at that place, by the fade-edit rule (a selected
+        // clip's fade is every selected clip's)
         onFadeShapePreset={showQuickFadeHandles ? (clipId, side, index) => {
           const preset = FADE_SHAPE_PRESETS[index];
           if (!preset) return;
           for (const target of fadeTargets(tracksRef.current, trackIndex, clipId as number)) {
             dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: target.trackIndex, clipId: target.clipId, side, shape: preset.shape } });
-          }
-        } : undefined}
-        onFadeToPlayhead={showQuickFadeHandles ? (clipId, side) => {
-          const clip = tracksRef.current[trackIndex]?.clips.find((c) => c.id === clipId);
-          if (!clip) return;
-          const playhead = playheadRef.current;
-          const seconds = side === 'in' ? playhead - clip.start : clip.start + clip.duration - playhead;
-          // The playhead outside the clip is no fade
-          if (seconds < 0 || seconds > clip.duration) return;
-          for (const target of fadeTargets(tracksRef.current, trackIndex, clipId as number)) {
-            const own = target.trackIndex === trackIndex && target.clipId === clipId;
-            dispatch({
-              type: 'SET_CLIP_FADE',
-              payload: { trackIndex: target.trackIndex, clipId: target.clipId, side, seconds: own ? seconds : clampFadeSeconds(tracksRef.current, target, side, seconds) },
-            });
           }
         } : undefined}
         onCrossfadeContextMenu={onCrossfadeContextMenu
