@@ -76,6 +76,7 @@ export function ShortcutsPage() {
     { id: '43', action: 'Import audio', shortcut: '⌘⇧I' },
     { id: '44', action: 'Invert', shortcut: '' },
     { id: '45', action: 'Join', shortcut: '⌘J' },
+    { id: '45a', action: 'Trim clip start / end to playhead (focused clip)', shortcut: '⌥[ / ⌥]' },
     { id: '46', action: 'Labels to selections', shortcut: '' },
     { id: '47', action: 'Leveller', shortcut: '' },
     { id: '48', action: 'Limiter', shortcut: '' },

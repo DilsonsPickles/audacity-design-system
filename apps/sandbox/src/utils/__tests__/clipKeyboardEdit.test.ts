@@ -3,6 +3,7 @@ import {
   computeKeyboardTrim,
   computeKeyboardTrimAnnouncement,
   computeKeyboardTrimBatch,
+  computeKeyboardTrimToTimeBatch,
   computeKeyboardStretch,
   computeKeyboardStretchAnnouncement,
   type KeyboardTrimTarget,
@@ -190,5 +191,60 @@ describe('computeKeyboardStretch', () => {
 describe('computeKeyboardStretchAnnouncement', () => {
   it('announces the resulting duration from the raw delta', () => {
     expect(computeKeyboardStretchAnnouncement({ duration: 4 }, 1)).toBe('Clip stretched to 3 seconds');
+  });
+});
+
+describe('computeKeyboardTrimToTimeBatch — Option+[ / ] take the edge to the playhead (2026-10-12)', () => {
+  // a clip from 2 s to 6 s whose source hides 1 s before it and 1 s after
+  const clip = () => makeClip({ id: 1, start: 2, duration: 4, trimStart: 1, fullDuration: 6 });
+  const target = (c = clip()): KeyboardTrimTarget => ({ trackIndex: 0, clip: c });
+
+  it('the START goes to a playhead inside the clip', () => {
+    const { updates } = computeKeyboardTrimToTimeBatch([target()], 'left', 3.5);
+    expect(updates).toHaveLength(1);
+    expect(updates[0].newStart).toBeCloseTo(3.5);
+    expect(updates[0].newDuration).toBeCloseTo(2.5);
+    expect(updates[0].newTrimStart).toBeCloseTo(2.5);
+  });
+
+  it('the END goes to a playhead inside the clip', () => {
+    const { updates } = computeKeyboardTrimToTimeBatch([target()], 'right', 3.5);
+    expect(updates).toHaveLength(1);
+    expect(updates[0].newDuration).toBeCloseTo(1.5);
+    expect(updates[0].newStart).toBeUndefined();
+  });
+
+  it('a playhead before the start EXTENDS the start, no further than the source hides', () => {
+    // 1 s hidden before: a playhead at 0 reaches only 1 s
+    const { updates } = computeKeyboardTrimToTimeBatch([target()], 'left', 0);
+    expect(updates[0].newStart).toBeCloseTo(1);
+    expect(updates[0].newTrimStart).toBeCloseTo(0);
+    expect(updates[0].newDuration).toBeCloseTo(5);
+  });
+
+  it('a playhead past the end EXTENDS the end to what the source has', () => {
+    const { updates } = computeKeyboardTrimToTimeBatch([target()], 'right', 10);
+    expect(updates[0].newDuration).toBeCloseTo(5);
+  });
+
+  it('a playhead on the WRONG side of the other edge is refused, never clamped to the minimum', () => {
+    // end to a playhead before the start: refused (the clamp would have left a 0.1 s clip)
+    expect(computeKeyboardTrimToTimeBatch([target()], 'right', 1).updates).toHaveLength(0);
+    expect(computeKeyboardTrimToTimeBatch([target()], 'right', 2).updates).toHaveLength(0);
+    // start to a playhead past the end: refused
+    expect(computeKeyboardTrimToTimeBatch([target()], 'left', 6).updates).toHaveLength(0);
+    expect(computeKeyboardTrimToTimeBatch([target()], 'left', 9).updates).toHaveLength(0);
+  });
+
+  it('an edge already at the playhead gives no update', () => {
+    expect(computeKeyboardTrimToTimeBatch([target()], 'left', 2).updates).toHaveLength(0);
+    expect(computeKeyboardTrimToTimeBatch([target()], 'right', 6).updates).toHaveLength(0);
+  });
+
+  it('every target goes to the SAME time, each by its own delta', () => {
+    const a = makeClip({ id: 1, start: 0, duration: 4, trimStart: 0, fullDuration: 4 });
+    const b = makeClip({ id: 2, start: 2, duration: 4, trimStart: 0, fullDuration: 4 });
+    const { updates } = computeKeyboardTrimToTimeBatch([{ trackIndex: 0, clip: a }, { trackIndex: 1, clip: b }], 'left', 3);
+    expect(updates.map((u) => u.newStart)).toEqual([3, 3]);
   });
 });

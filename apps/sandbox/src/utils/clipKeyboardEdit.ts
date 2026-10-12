@@ -120,6 +120,11 @@ export function computeKeyboardTrimAnnouncement(clip: { duration: number }, delt
   return `Clip is now ${formatTimeForA11y(finalDuration)} long`;
 }
 
+/** Screen-reader text after a trim to the playhead: the clip's new length */
+export function computeKeyboardTrimToTimeAnnouncement(newDuration: number): string {
+  return `Clip is now ${formatTimeForA11y(newDuration)} long`;
+}
+
 export interface KeyboardTrimTarget {
   trackIndex: number;
   clip: KeyboardEditableClip;
@@ -156,6 +161,36 @@ export function computeKeyboardTrimBatch(
     updates.push({ trackIndex, clipId: clip.id, ...result });
   }
 
+  return { updates };
+}
+
+/**
+ * TRIM TO THE PLAYHEAD (Option+[ / Option+], 2026-10-12 — Pro Tools' A / S
+ * on the brackets the app already trims by): each target's edge goes TO
+ * `time`, each clip by its own delta — the start to the playhead for the
+ * left edge, the end for the right — through computeKeyboardTrim, so the
+ * clamps are the nudge's: an extension reveals no more than the source
+ * hides, and a clip whose edge is already there (or that has nothing to
+ * reveal) contributes no update. A playhead on the WRONG SIDE of the other
+ * edge — before the start for the END, past the end for the START — is
+ * refused outright (no update), not clamped: the nudge's clamp would have
+ * shrunk the clip to its 0.1 s minimum from one keypress (seen live,
+ * 2026-10-12), and Pro Tools refuses such a trim too.
+ */
+export function computeKeyboardTrimToTimeBatch(
+  targets: KeyboardTrimTarget[],
+  edge: 'left' | 'right',
+  time: number,
+): KeyboardTrimBatchResult {
+  const updates: KeyboardTrimUpdate[] = [];
+  for (const { trackIndex, clip } of targets) {
+    const end = clip.start + clip.duration;
+    if (edge === 'left' ? time >= end : time <= clip.start) continue;
+    const deltaSeconds = edge === 'left' ? time - clip.start : end - time;
+    const result = computeKeyboardTrim({ clip, edge, deltaSeconds });
+    if (!result) continue;
+    updates.push({ trackIndex, clipId: clip.id, ...result });
+  }
   return { updates };
 }
 

@@ -5,6 +5,7 @@ import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '..
 import { buildTrimParticipants } from '../../utils/trimParticipants';
 import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
+import { computeKeyboardTrimToTimeBatch, computeKeyboardTrimToTimeAnnouncement } from '../../utils/clipKeyboardEdit';
 import { FADE_SHAPE_PRESETS } from '../../utils/fadeShapePresets';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
 import type { ClipTrimState } from '../../hooks/useClipTrimming';
@@ -50,6 +51,9 @@ export interface CanvasTrackListProps {
   focusedTrackIndex: number | null;
   /** The track whose row or header holds keyboard focus (2026-10-12) */
   containerFocusedTrack: number | null;
+  /** The playhead, read at the keypress (a ref — playback ticks must not
+   *  re-render the list): Option+[ / ] trim the focused clip to it */
+  playheadRef: { readonly current: number };
   selectedLabelIds: string[];
   width: number;
   pixelsPerSecond: number;
@@ -413,6 +417,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   selectedTrackIndices,
   focusedTrackIndex,
   containerFocusedTrack,
+  playheadRef,
   selectedLabelIds,
   width,
   pixelsPerSecond,
@@ -789,6 +794,29 @@ const CanvasTrack = React.memo(function CanvasTrack({
           if (focused) {
             announce(computeKeyboardTrimAnnouncement(focused.clip, deltaSeconds));
           }
+        }}
+        onClipTrimToPlayhead={(clipId, edge) => {
+          // TRIM TO THE PLAYHEAD (Option+[ / ], 2026-10-12): the trim's
+          // targets (utils/keyboardEditTargets.ts — the focused clip with
+          // every selected clip if it is selected, alone if not), each
+          // edge to the SAME playhead by its own delta, the nudge's clamps
+          const uniqueTargets = keyboardEditTargets(tracksRef.current, trackIndex, clipId);
+          const { updates } = computeKeyboardTrimToTimeBatch(uniqueTargets, edge, playheadRef.current);
+          for (const update of updates) {
+            dispatch({
+              type: 'TRIM_CLIP',
+              payload: {
+                trackIndex: update.trackIndex,
+                clipId: update.clipId,
+                newTrimStart: update.newTrimStart,
+                newDuration: update.newDuration,
+                newStart: update.newStart,
+              },
+            });
+          }
+          const own = updates.find((u) => u.trackIndex === trackIndex && u.clipId === clipId);
+          if (own) announce(computeKeyboardTrimToTimeAnnouncement(own.newDuration));
+          return updates.length > 0;
         }}
         onClipStretch={(clipId, edge, deltaSeconds) => {
           // Keyboard time-stretch (Cmd+[ ]). Sign convention

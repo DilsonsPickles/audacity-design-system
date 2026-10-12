@@ -23,6 +23,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **Option+Cmd+Down/Up** - Focused track taller / shorter by 24px (Down = taller, the bottom edge moving down); **+Shift** every track (`useKeyboardShortcuts` → `onTrackHeightStep`, 2026-10-08)
 - **Cmd+= / Cmd+-** - Horizontal zoom in / out (`onZoomIn` / `onZoomOut`, the real app's Ctrl+= / Ctrl+-; '+' and the numpad keys too; the Electron View menu shows but does not register the accelerator, 2026-10-12)
 - **Option+Cmd+C / X / F** - Collapse / expand / fit-to-viewport the selected tracks (or the track you are on), matched on `e.code`; **+Shift** every track, alongside Audacity 3's Cmd+Shift+C / X / F (`onCollapseSelectedTracks` / `onExpandSelectedTracks` / `onFitSelectedTracksToHeight` / the all forms, 2026-10-08)
+- **Option+[ / Option+]** - Trim the focused clip's START / END to the playhead (`onClipTrimToPlayhead` → `computeKeyboardTrimToTimeBatch`; the trim's targets, the nudge's clamps; the edge shakes when nothing moves; 2026-10-12)
 - **Shift+Left/Right** - Extend clip edges (move left edge left / right edge right)
 - **Cmd+Shift+Left/Right** - Reduce clip edges (move right edge left / left edge right)
 - **ArrowUp/Down** (no modifiers) - Navigate to first clip on adjacent track (`onClipNavigateVertical`)

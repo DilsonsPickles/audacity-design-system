@@ -232,6 +232,10 @@ export function Canvas({
   const { trackSelectionMode, laneClickBehavior } = useEditingBehaviorPrefs();
   const { clipStyle } = useAppearancePrefs();
   const { tracks, selectedTrackIndices, selectedLabelIds, timeSelection, spectrogramMode, envelopeMode, focusedTrackIndex, splitMode, playheadPosition } = useTracksState();
+  // The playhead for the track list's keyboard trim-to-playhead, as a
+  // ref: the list is memoised against playback ticks
+  const playheadRef = React.useRef(playheadPosition);
+  playheadRef.current = playheadPosition;
   const { spectralSelection, setSpectralSelection } = useSpectralSelection();
   const dispatch = useTracksDispatch();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -860,6 +864,7 @@ export function Canvas({
           selectedTrackIndices={selectedTrackIndices}
           focusedTrackIndex={focusedTrackIndex}
           containerFocusedTrack={containerFocusedTrack}
+          playheadRef={playheadRef}
           selectedLabelIds={selectedLabelIds}
           width={width}
           pixelsPerSecond={pixelsPerSecond}

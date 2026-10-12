@@ -216,3 +216,45 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(document.activeElement).toBe(clip);
   });
 });
+
+describe('Option+[ / Option+] trim the focused clip to the playhead (2026-10-12)', () => {
+  function mountClip(onClipTrimToPlayhead: (clipId: string | number, edge: 'left' | 'right') => boolean | void) {
+    const utils = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4 }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipTrim={vi.fn()}
+          onClipTrimToPlayhead={onClipTrimToPlayhead}
+        />
+      </Providers>,
+    );
+    const clip = utils.container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
+    act(() => { clip.focus(); });
+    return { ...utils, clip };
+  }
+
+  it('Option+[ asks for the START, Option+] for the END — matched on the key code', () => {
+    const onClipTrimToPlayhead = vi.fn(() => true);
+    const { clip } = mountClip(onClipTrimToPlayhead);
+    fireEvent.keyDown(clip, { key: '“', code: 'BracketLeft', altKey: true }); // what Option+[ types on macOS
+    expect(onClipTrimToPlayhead).toHaveBeenLastCalledWith(1, 'left');
+    fireEvent.keyDown(clip, { key: '‘', code: 'BracketRight', altKey: true });
+    expect(onClipTrimToPlayhead).toHaveBeenLastCalledWith(1, 'right');
+  });
+
+  it('when nothing moved the edge shakes, as a blocked nudge does', () => {
+    const { clip, container } = mountClip(() => false);
+    fireEvent.keyDown(clip, { key: ']', code: 'BracketRight', altKey: true });
+    expect(container.querySelector('[data-shake-edge="right"]')).not.toBeNull();
+  });
+
+  it('the plain and Cmd brackets are untouched: a plain ] still nudges', () => {
+    const onClipTrimToPlayhead = vi.fn();
+    const { clip } = mountClip(onClipTrimToPlayhead);
+    fireEvent.keyDown(clip, { key: ']', code: 'BracketRight' });
+    expect(onClipTrimToPlayhead).not.toHaveBeenCalled();
+  });
+});

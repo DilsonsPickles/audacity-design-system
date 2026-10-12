@@ -433,6 +433,16 @@ export interface TrackProps {
   onClipStretch?: (clipId: string | number, edge: 'left' | 'right', deltaSeconds: number) => void;
 
   /**
+   * TRIM TO THE PLAYHEAD (Option+[ / Option+], 2026-10-12 — Pro Tools' A /
+   * S on the brackets the clip already trims by): the clip's START
+   * (`[`) or END (`]`) goes to the playhead. The host knows the playhead
+   * and the clamps; it returns false when nothing moved (the edge was
+   * there already, or there is no source to reveal) and the edge shakes
+   * as a blocked nudge does.
+   */
+  onClipTrimToPlayhead?: (clipId: string | number, edge: 'left' | 'right') => boolean | void;
+
+  /**
    * Callback when a clip should be moved to a different track (Cmd+Arrow Up/Down)
    */
   onClipMoveToTrack?: (clipId: string | number, direction: 1 | -1) => void;
@@ -651,6 +661,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onFocusChange,
   onClipMove,
   onClipTrim,
+  onClipTrimToPlayhead,
   onClipStretch,
   onClipMoveToTrack,
   onClipNavigateVertical,
@@ -1887,6 +1898,33 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             const isBracketRight = e.code === 'BracketRight'
               || e.key === ']' || e.key === '}'
               || (e as any).keyCode === 221; // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
+            // OPTION+[ / OPTION+]: the START / END to the playhead. Matched
+            // on the code — Option+[ types a quotation mark on macOS.
+            if ((isBracketLeft || isBracketRight) && e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              const edge: 'left' | 'right' = isBracketLeft ? 'left' : 'right';
+              const moved = onClipTrimToPlayhead?.(clip.id, edge);
+              if (moved === false) {
+                // Bump the shake state so React remounts the shake
+                // element (each token change → fresh DOM node → fresh
+                // animation). Clear after the animation completes.
+                setShakeState((prev) => ({
+                  clipId: clip.id,
+                  edge,
+                  token: (prev?.token ?? 0) + 1,
+                }));
+                if (shakeTimeoutRef.current !== null) {
+                  window.clearTimeout(shakeTimeoutRef.current);
+                }
+                shakeTimeoutRef.current = window.setTimeout(() => {
+                  setShakeState(null);
+                  shakeTimeoutRef.current = null;
+                }, 180);
+              }
+              return;
+            }
+
             if ((isBracketLeft || isBracketRight) && !e.altKey) {
               e.preventDefault();
               e.stopPropagation();
