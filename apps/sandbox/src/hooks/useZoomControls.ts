@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback, RefObject } from 'react';
+import { useState, useMemo, useCallback, useRef, useLayoutEffect, RefObject } from 'react';
 import type { Track } from '../contexts/TracksContext';
 import type { TimeSelection } from '@audacity-ui/core';
+import { CLIP_CONTENT_OFFSET } from '@audacity-ui/components';
 
 // Constants for timeline layout
 const LEFT_PADDING = 12; // pixels
@@ -19,6 +20,8 @@ export interface UseZoomControlsOptions {
   state: {
     tracks: Track[];
     timeSelection: TimeSelection | null;
+    /** The playhead, the anchor of zoom in / out (2026-10-12) */
+    playheadPosition?: number;
   };
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   zoomToggleLevel1: string;
@@ -45,6 +48,25 @@ export interface UseZoomControlsReturn {
  * Handles zoom in/out, zoom to selection, zoom to fit, and zoom toggle,
  * as well as computing timeline dimensions from project content.
  */
+/**
+ * Where a zoom in / out holds still (user decision 2026-10-12, "make the
+ * zoom centered on the playhead cursor"): the PLAYHEAD. On screen, it
+ * stays exactly where it is — the time under it keeps its pixel, the
+ * wheel zoom's rule with the playhead for the pointer; off screen, it is
+ * brought to the viewport's middle. Returns the anchor as the time and
+ * the screen x to hold it at.
+ */
+export function zoomAnchorOnPlayhead(
+  playheadPosition: number,
+  pps: number,
+  scrollLeft: number,
+  clientWidth: number,
+): { time: number; x: number } {
+  const x = CLIP_CONTENT_OFFSET + playheadPosition * pps - scrollLeft;
+  const visible = x >= 0 && x <= clientWidth;
+  return { time: playheadPosition, x: visible ? x : clientWidth / 2 };
+}
+
 export function useZoomControls(options: UseZoomControlsOptions): UseZoomControlsReturn {
   const {
     state,
@@ -55,6 +77,42 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
 
   // Zoom state
   const [pixelsPerSecond, setPixelsPerSecond] = useState(DEFAULT_ZOOM);
+  // Live mirrors for the anchored zoom (read at the keypress, not from a
+  // closure that may predate the last playhead tick)
+  const ppsRef = useRef(pixelsPerSecond);
+  ppsRef.current = pixelsPerSecond;
+  const playheadRef = useRef(state.playheadPosition ?? 0);
+  playheadRef.current = state.playheadPosition ?? 0;
+  // ZOOM IN / OUT ARE ANCHORED ON THE PLAYHEAD (2026-10-12): the scroll
+  // correction is DEFERRED to a layout effect after the new widths commit
+  // (the wheel zoom's rule in useCanvasScrollSync — written at the
+  // keypress it painted a frame of old widths at the new scroll). The
+  // pending record is the anchor to hold.
+  const pendingAnchorRef = useRef<{ time: number; x: number } | null>(null);
+  useLayoutEffect(() => {
+    const pending = pendingAnchorRef.current;
+    if (!pending) return;
+    pendingAnchorRef.current = null;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollLeft = Math.max(0, CLIP_CONTENT_OFFSET + pending.time * pixelsPerSecond - pending.x);
+  }, [pixelsPerSecond, scrollContainerRef]);
+  const zoomAnchored = useCallback((compute: (prev: number) => number) => {
+    // The anchor is the playhead's screen pixel BEFORE this batch of
+    // steps (several in one frame all share it — the view has not
+    // moved in between), read from the live mirrors
+    const el = scrollContainerRef.current;
+    const anchor = el ? zoomAnchorOnPlayhead(playheadRef.current, ppsRef.current, el.scrollLeft, el.clientWidth) : null;
+    // Functional, so steps chain within one render; the pending anchor is
+    // recorded only when the value actually changes, or a stale anchor
+    // would wait for the next unrelated zoom and jump the view (setting a
+    // ref inside the updater is idempotent under StrictMode's double call)
+    setPixelsPerSecond((prev) => {
+      const next = compute(prev);
+      if (next !== prev && anchor) pendingAnchorRef.current = anchor;
+      return next;
+    });
+  }, [scrollContainerRef]);
 
   // Calculate project length (end of last clip across all tracks)
   const projectLength = useMemo(() => {
@@ -137,12 +195,12 @@ export function useZoomControls(options: UseZoomControlsOptions): UseZoomControl
 
   // Zoom functions
   const zoomIn = useCallback(() => {
-    setPixelsPerSecond(prev => Math.min(prev * ZOOM_FACTOR, maxPixelsPerSecond));
-  }, [maxPixelsPerSecond]);
+    zoomAnchored((prev) => Math.min(prev * ZOOM_FACTOR, maxPixelsPerSecond));
+  }, [maxPixelsPerSecond, zoomAnchored]);
 
   const zoomOut = useCallback(() => {
-    setPixelsPerSecond(prev => Math.max(prev / ZOOM_FACTOR, minPixelsPerSecond));
-  }, [minPixelsPerSecond]);
+    zoomAnchored((prev) => Math.max(prev / ZOOM_FACTOR, minPixelsPerSecond));
+  }, [minPixelsPerSecond, zoomAnchored]);
 
   const zoomToggle = useCallback(() => {
     // Toggle between the two predefined zoom levels

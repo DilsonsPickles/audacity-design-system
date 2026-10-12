@@ -416,7 +416,7 @@ function CanvasDemoContent() {
     zoomIn, zoomOut, zoomToSelection, zoomToFitProject, zoomToggle,
     timelineWidth, timelineDuration, maxPixelsPerSecond, minPixelsPerSecond,
   } = useZoomControls({
-    state: { tracks: state.tracks, timeSelection: state.timeSelection },
+    state: { tracks: state.tracks, timeSelection: state.timeSelection, playheadPosition: state.playheadPosition },
     scrollContainerRef,
     zoomToggleLevel1,
     zoomToggleLevel2,
