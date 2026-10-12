@@ -139,6 +139,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **Shift+Home** - Extend/create time selection from playhead to time 0
 - **Shift+End** - Extend/create time selection from playhead to end of project
 - **L** - Toggle loop region on/off
+- **C** - Toggle the split tool (was S until 2026-10-12, 'C for cut'; S is reserved for the stretch handles beside F and T)
 - **ArrowUp/Down** - Move track focus outline (only when focus is NOT inside a tab group, and never inside an open `[role="menu"]` — the menu walks its own items, 2026-10-12)
 - **Shift+ArrowUp/Down** - Extend track range selection (only when focus is NOT inside a tab group)
 - **ArrowLeft/Right** - Move playhead / manipulate time selection (also works when timeline ruler is focused)

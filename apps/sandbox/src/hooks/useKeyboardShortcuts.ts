@@ -449,8 +449,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // --- S: Toggle split tool (bare key, no modifiers) ---
-      if ((e.key === 's' || e.key === 'S') && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      // --- C: Toggle the split tool (bare key, no modifiers) ---
+      // "C for cut" (2026-10-12): it was S, the real build's split-tool
+      // key, moved so S can focus a clip's STRETCH handles beside F (fade)
+      // and T (trim). Shift+S stays Solo.
+      if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
         const target = e.target as HTMLElement;
         const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
           target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';

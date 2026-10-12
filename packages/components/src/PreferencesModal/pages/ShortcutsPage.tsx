@@ -36,6 +36,7 @@ export function ShortcutsPage() {
     { id: '21', action: 'Compressor', shortcut: '' },
     { id: '22', action: 'Copy', shortcut: '⌘C' },
     { id: '23', action: 'Cut', shortcut: '⌘X' },
+    { id: '23a', action: 'Split tool (cut) on / off', shortcut: 'C' },
     { id: '24', action: 'Delete', shortcut: '⌫' },
     { id: '25', action: 'Distortion', shortcut: '' },
     { id: '26', action: 'Duplicate', shortcut: '⌘D' },
