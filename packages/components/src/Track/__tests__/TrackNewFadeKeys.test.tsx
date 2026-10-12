@@ -146,6 +146,32 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(onEnterPanel).toHaveBeenCalled();
   });
 
+  it('Shift+F10 and the Menu key on a focused handle open the fade menu under it (2026-10-12)', () => {
+    const onFadeContextMenu = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, fadeOut: 0.5 }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onFadeContextMenu={onFadeContextMenu}
+        />
+      </Providers>,
+    );
+    const clip = container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true });
+    const out = container.querySelector<HTMLElement>('[data-fade-handle="out"][data-fade-clip="1"]')!;
+    expect(document.activeElement).toBe(out);
+    fireEvent.keyDown(out, { key: 'F10', shiftKey: true });
+    expect(onFadeContextMenu).toHaveBeenCalledTimes(1);
+    expect(onFadeContextMenu.mock.calls[0].slice(0, 2)).toEqual([1, 'out']);
+    fireEvent.keyDown(out, { key: 'ContextMenu' });
+    expect(onFadeContextMenu).toHaveBeenCalledTimes(2);
+  });
+
   it('the focused handle reads back as a slider with its length and curve', () => {
     const { clip, handle } = setup({ fadeOutShape: 'linear' });
     act(() => { clip.focus(); });

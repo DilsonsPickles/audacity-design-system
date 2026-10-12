@@ -821,7 +821,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // (Shift+F backwards, Escape the clip). The focused handle is kept
   // MOUNTED whatever the pointer does (fadeHandleActive below) and, on
   // it, the arrows are the handle's: ← → the boundary, ↑ ↓ the curve;
-  // 1–5 the presets, 0 reset, Delete removes.
+  // 1–5 the presets, 0 reset, Delete removes, Shift+F10 the fade's menu.
   const [fadeKeyFocus, setFadeKeyFocus] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
   React.useEffect(() => {
     if (!fadeKeyFocus) return;
@@ -2468,6 +2468,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               };
               const stop = () => { e.preventDefault(); e.stopPropagation(); };
               if (e.key === 'Escape') { stop(); focusClip(); return; }
+              // Shift+F10 / the Menu key: the fade's menu (the right-click
+              // on the handle), hung under the handle
+              if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+                stop();
+                if (!onFadeContextMenu) return;
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                onFadeContextMenu(clip.id, side, r.left + r.width / 2, r.bottom);
+                return;
+              }
               // Tab is the CLIP's Tab: the next or previous clip, or out
               // of the track — never the next track by DOM order
               if (e.key === 'Tab') {

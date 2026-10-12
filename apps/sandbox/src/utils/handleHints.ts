@@ -34,7 +34,7 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, op
       return join('Drag up or down to shape the crossfade', `${alt}-drag to roll`, `${cmd}-click to toggle linear`, 'Double-click to reset');
     case 'fade-keys':
       // The legend for a KEYBOARD-focused fade handle (F on the clip)
-      return join('← → length', '↑ ↓ curve', '1–5 shape', '0 reset', 'Delete removes', 'F next', 'Esc back');
+      return join('← → length', '↑ ↓ curve', '1–5 shape', '0 reset', 'Delete removes', 'Shift+F10 menu', 'F next', 'Esc back');
     case 'crossfade-roll':
       // The roll is a content edit: it can only go as far as the clips
       // have audio beyond their edges, so a fresh overlap of untrimmed
