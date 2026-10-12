@@ -35,6 +35,11 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, op
     case 'fade-keys':
       // The legend for a KEYBOARD-focused fade handle (F on the clip)
       return join('← → length', '↑ ↓ curve', '1–5 shape', '0 reset', 'Delete removes', 'Shift+F10 menu', 'F next', 'Esc back');
+    case 'trim-keys':
+      // The legend for a KEYBOARD-focused trim handle (T on the clip)
+      return join('← → move edge (Shift 1 s)', 'T next', 'S stretch', 'F fades', 'Shift+F10 menu', 'Esc back');
+    case 'stretch-keys':
+      return join('← → stretch edge (Shift 1 s)', 'S next', 'T trim', 'F fades', 'Shift+F10 menu', 'Esc back');
     case 'crossfade-roll':
       // The roll is a content edit: it can only go as far as the clips
       // have audio beyond their edges, so a fresh overlap of untrimmed

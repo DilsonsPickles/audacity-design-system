@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { handleHintText } from '../handleHints';
 import type { ClipHandleHint } from '@audacity-ui/components';
 
-const ALL: ClipHandleHint[] = ['trim', 'stretch', 'edge-trim', 'edge-stretch', 'fade-length', 'fade-shape', 'crossfade', 'crossfade-roll', 'fade-keys'];
+const ALL: ClipHandleHint[] = ['trim', 'stretch', 'edge-trim', 'edge-stretch', 'fade-length', 'fade-shape', 'crossfade', 'crossfade-roll', 'fade-keys', 'trim-keys', 'stretch-keys'];
 
 describe('handleHintText — what the status bar says for the handle under the pointer', () => {
   it('every handle has a line, and none of them is the time-selection default', () => {

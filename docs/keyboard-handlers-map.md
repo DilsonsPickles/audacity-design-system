@@ -16,6 +16,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 
 **Handlers:**
 - **Enter** - Toggle clip selection
+- **T / Shift+T** - Focus the clip's left / right TRIM handle; **S** the left STRETCH handle (`handleKeyFocus` in TrackNew, Clip's `keyboardHandle`, 2026-10-12). On a handle: the same letter cycles left → right → clip (Shift back), the other letter switches kind at the same edge, **F** goes to the fades, **←/→** move that edge ±0.1 s (Shift 1 s) through `onClipTrim` / `onClipStretch`, **Esc** the clip, **Tab** the clip's Tab, **Shift+F10** the clip's menu
 - **F / Shift+F** - Focus the clip's fade-in / fade-out handle (`fadeKeyFocus` in TrackNew, 2026-10-12); on a focused handle: **F** next (in → out → clip), **Shift+F** back, **Esc** the clip, **←/→** length ±0.1 s (Shift 1 s), **↑/↓** curve ±5% (Shift 20%), **1–5** shape presets (`onFadeShapePreset`), **0** reset, **Delete** remove, **Tab / Shift+Tab** the clip's own Tab (next / previous clip, `tabFromClip`), **Shift+F10 / Menu key** the fade's menu (`onFadeContextMenu` under the handle) — the arrows never navigate between handles
 - **Shift+F10** or **ContextMenu key** - Open clip context menu (standard keyboard shortcuts)
 - **Cmd+Left/Right** - Move clip horizontally by 0.1s

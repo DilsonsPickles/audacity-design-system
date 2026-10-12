@@ -62,7 +62,10 @@ export type ClipHandleHint =
   | 'crossfade'
   | 'crossfade-roll'
   /** A fade handle has KEYBOARD focus (F on the clip) — the legend */
-  | 'fade-keys';
+  | 'fade-keys'
+  /** A trim / stretch handle has KEYBOARD focus (T / S on the clip) */
+  | 'trim-keys'
+  | 'stretch-keys';
 
 const FADE_GLYPH_RADIUS = 2.5;
 const FADE_HANDLE_BOX = { width: 36, height: 32 } as const;
@@ -839,6 +842,28 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // it, the arrows are the handle's: ← → the boundary, ↑ ↓ the curve;
   // 1–5 the presets, 0 reset, Delete removes, Shift+F10 the fade's menu.
   const [fadeKeyFocus, setFadeKeyFocus] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
+  // THE TRIM AND STRETCH HANDLES TAKE KEYBOARD FOCUS TOO (2026-10-12, "F for
+  // fade, T for trim, S for stretch" — the split tool moved to C for it):
+  // T on a focused clip focuses its LEFT trim handle, Shift+T the right;
+  // S the left stretch handle. On a handle: T / S cycle left → right →
+  // clip (Shift back), the other letter switches kind at the same edge,
+  // F goes to the fades; ← → move the edge by 0.1 s (Shift 1 s) through
+  // the nudge's callbacks and clamps; Escape the clip; Tab the clip's Tab;
+  // Shift+F10 the clip's menu. The Clip keeps the handles mounted and
+  // focused while this is set (`keyboardHandle`).
+  const [handleKeyFocus, setHandleKeyFocus] = React.useState<{ clipId: string | number; kind: 'trim' | 'stretch'; edge: 'left' | 'right' } | null>(null);
+  React.useEffect(() => {
+    if (!handleKeyFocus) return;
+    // The focus settling anywhere that is not this clip's handles or a
+    // menu lets the handle go (the fade handles' rule)
+    const onFocusIn = (ev: FocusEvent) => {
+      const t = ev.target instanceof Element ? ev.target : null;
+      if (t && (t.closest(`[data-clip-id="${handleKeyFocus.clipId}"] [data-handle-kind]`) || t.closest('[role="menu"]'))) return;
+      setHandleKeyFocus((prev) => (prev?.clipId === handleKeyFocus.clipId ? null : prev));
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, [handleKeyFocus]);
   React.useEffect(() => {
     if (!fadeKeyFocus) return;
     const el = trackRef.current?.querySelector<HTMLElement>(
@@ -944,7 +969,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // crossfade node), and the host hears only CHANGES — never a null on
   // mount, which would wipe another track's hint.
   const [hintHover, setHintHover] = React.useState<'trim' | 'stretch' | 'edge' | 'fade-length' | 'fade-shape' | 'crossfade' | null>(null);
-  const resolvedHint: ClipHandleHint | null = fadeKeyFocus ? 'fade-keys' : hintHover === 'edge'
+  const resolvedHint: ClipHandleHint | null = handleKeyFocus ? (handleKeyFocus.kind === 'trim' ? 'trim-keys' : 'stretch-keys') : fadeKeyFocus ? 'fade-keys' : hintHover === 'edge'
     ? (altHeld && onClipStretchEdge ? 'edge-stretch' : 'edge-trim')
     : hintHover === 'crossfade'
       ? (altHeld && onCrossfadeRoll ? 'crossfade-roll' : 'crossfade')
@@ -1639,6 +1664,80 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   }, [clips]);
 
   const renderClips = () => {
+    // A key on a trim / stretch handle holding keyboard focus (T / S)
+    const handleKeyOnHandle = (clip: TrackClip, clipIndex: number, kind: 'trim' | 'stretch', edge: 'left' | 'right', e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return; // the app's chords pass
+      const stop = () => { e.preventDefault(); e.stopPropagation(); };
+      const clipEl = () => trackRef.current?.querySelector<HTMLElement>(`[data-clip-id="${clip.id}"]`);
+      const focusClip = () => { setHandleKeyFocus(null); clipEl()?.focus(); };
+      if (e.key === 'Escape') { stop(); focusClip(); return; }
+      if (e.key === 'Tab') {
+        setHandleKeyFocus(null);
+        const el = clipEl();
+        if (el && tabFromClip(el, clipIndex, e.shiftKey)) { stop(); return; }
+        el?.focus({ preventScroll: true });
+        return;
+      }
+      if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+        stop();
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        onClipMenuClick?.(clip.id, r.left + r.width / 2, r.bottom, true);
+        return;
+      }
+      const isT = e.code === 'KeyT' || e.key === 't' || e.key === 'T';
+      const isS = e.code === 'KeyS' || e.key === 's' || e.key === 'S';
+      const isF = e.code === 'KeyF' || e.key === 'f' || e.key === 'F';
+      // The same letter cycles: left → right → clip (Shift the other way);
+      // the other letter switches kind at the same edge; F goes to the fades
+      if ((isT && kind === 'trim') || (isS && kind === 'stretch')) {
+        stop();
+        if (!e.shiftKey && edge === 'left') setHandleKeyFocus({ clipId: clip.id, kind, edge: 'right' });
+        else if (e.shiftKey && edge === 'right') setHandleKeyFocus({ clipId: clip.id, kind, edge: 'left' });
+        else focusClip();
+        return;
+      }
+      if (isT && onClipTrimEdge) { stop(); setHandleKeyFocus({ clipId: clip.id, kind: 'trim', edge }); return; }
+      if (isS && !isMidiTrack && onClipStretchEdge) { stop(); setHandleKeyFocus({ clipId: clip.id, kind: 'stretch', edge }); return; }
+      if (isF && onClipFadeChange) { stop(); setHandleKeyFocus(null); setFadeKeyFocus({ clipId: clip.id, side: edge === 'left' ? 'in' : 'out' }); return; }
+      // ← → move THIS edge: a tenth of a second, Shift a second, through
+      // the nudge's callback (positive = shrink from the edge, negative =
+      // grow — the bracket keys' convention and clamps). Growing an edge
+      // with no source to reveal shakes it, as the brackets do.
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        stop();
+        const step = e.shiftKey ? 1 : 0.1;
+        const outward = (edge === 'left') === (e.key === 'ArrowLeft');
+        const delta = outward ? -step : step;
+        if (kind === 'trim' && outward) {
+          const BOUNDARY_EPS = 0.0005;
+          const stretch = (clip as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip type — pending components sweep
+          const trimStart = (clip as any).trimStart ?? 0; // justified: trimStart not on Clip type — pending components sweep
+          const fullDuration = (clip as any).fullDuration ?? (trimStart + clip.duration / stretch); // justified: fullDuration not on Clip type — pending components sweep
+          const available = edge === 'left' ? trimStart * stretch : (fullDuration - trimStart) * stretch - clip.duration;
+          if (available <= BOUNDARY_EPS) {
+          // Bump the shake state so React remounts the shake
+          // element (each token change → fresh DOM node → fresh
+          // animation). Clear after the animation completes.
+          setShakeState((prev) => ({
+            clipId: clip.id,
+            edge,
+            token: (prev?.token ?? 0) + 1,
+          }));
+          if (shakeTimeoutRef.current !== null) {
+            window.clearTimeout(shakeTimeoutRef.current);
+          }
+          shakeTimeoutRef.current = window.setTimeout(() => {
+            setShakeState(null);
+            shakeTimeoutRef.current = null;
+          }, 180);
+            return;
+          }
+        }
+        if (kind === 'trim') onClipTrim?.(clip.id, edge, delta);
+        else onClipStretch?.(clip.id, edge, delta);
+      }
+    };
+
     return sortedClips.map((clip, clipIndex) => {
       const clipX = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       const clipWidth = clip.duration * pixelsPerSecond;
@@ -1818,6 +1917,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               const rect = clipElement.getBoundingClientRect();
               // Open menu at top-right corner of clip (where menu button is)
               onClipMenuClick?.(clip.id, rect.right - 20, rect.top + 10, true);
+              return;
+            }
+
+            // T / S FOCUS THE TRIM / STRETCH HANDLES (2026-10-12): T the left
+            // trim handle (Shift+T the right), S the left stretch handle
+            // (Shift+S is Solo, app-wide — not taken here). Where a handle
+            // can exist: trim needs the host's edge trim, stretch an audio
+            // track. Matched on the code too.
+            if ((e.code === 'KeyT' || e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !e.altKey && onClipTrimEdge) {
+              e.preventDefault();
+              e.stopPropagation();
+              setHandleKeyFocus({ clipId: clip.id, kind: 'trim', edge: e.shiftKey ? 'right' : 'left' });
+              return;
+            }
+            if ((e.code === 'KeyS' || e.key === 's') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !isMidiTrack && onClipStretchEdge) {
+              e.preventDefault();
+              e.stopPropagation();
+              setHandleKeyFocus({ clipId: clip.id, kind: 'stretch', edge: 'left' });
               return;
             }
 
@@ -2091,6 +2208,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             handlesVisible={handlesFollow(clip)}
             handlesHiddenAt={{ left: isCrossfadedEdge(clip.id, 'left'), right: isCrossfadedEdge(clip.id, 'right') }}
             onHandleHover={setHintHover}
+            keyboardHandle={handleKeyFocus?.clipId === clip.id ? { kind: handleKeyFocus.kind, edge: handleKeyFocus.edge } : null}
+            onHandleKeyDown={(kind, edge, e) => handleKeyOnHandle(clip, clipIndex, kind, edge, e)}
+            onHandleFocus={(kind, edge) => setHandleKeyFocus((prev) => (prev?.clipId === clip.id && prev.kind === kind && prev.edge === edge ? prev : { clipId: clip.id, kind, edge }))}
+            onHandleBlur={(kind, edge, to) => {
+              if (to && (to.closest(`[data-clip-id="${clip.id}"] [data-handle-kind]`) || to.closest('[role="menu"]'))) return;
+              setHandleKeyFocus((prev) => (prev?.clipId === clip.id ? null : prev));
+            }}
             midiNotes={clip.midiNotes}
             forceHeaderHover={isClipHovered}
             onHeaderClick={(shiftKey, metaKey) => onClipClick?.(clip.id, shiftKey, metaKey)}
@@ -2163,9 +2287,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // show handles on hover"). The fade handles are a separate rule:
   // hover-only, selected or not.
   const handlesFollow = React.useCallback(
-    (clip: TrackClip) => !!clip.selected
-      && (handleHoverClipId === clip.id || edgeDragClipId === clip.id || fadeDragClipId === clip.id || singleSelection),
-    [handleHoverClipId, edgeDragClipId, fadeDragClipId, singleSelection],
+    (clip: TrackClip) => (!!clip.selected
+      && (handleHoverClipId === clip.id || edgeDragClipId === clip.id || fadeDragClipId === clip.id || singleSelection))
+      // …or a handle of this clip holds KEYBOARD focus (T / S, 2026-10-12)
+      || handleKeyFocus?.clipId === clip.id,
+    [handleHoverClipId, edgeDragClipId, fadeDragClipId, singleSelection, handleKeyFocus],
   );
   // The clip with its handles up has no zones (the handles ARE its
   // edges, with the zone's inside reach); every other clip trims by its

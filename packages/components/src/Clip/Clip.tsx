@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { isClipCollapsed, clipHandleRows } from '../utils/clipHandleRows';
 import type { LocalFadeRegion } from '../utils/clipCrossfades';
 import type { MidiNote } from '@audacity-ui/core';
@@ -149,6 +149,16 @@ export interface ClipProps {
   /** The pointer has entered (kind) or left (null) a trim or stretch
    *  handle — for the host's status-bar hint. */
   onHandleHover?: (kind: 'trim' | 'stretch' | null) => void;
+  /** KEYBOARD (T / S on the focused clip, 2026-10-12): the handle to hold
+   *  the focus on. Set, the handles are mounted whatever the pointer does
+   *  and this one takes the focus; null = none. */
+  keyboardHandle?: { kind: 'trim' | 'stretch'; edge: 'left' | 'right' } | null;
+  /** A key on a handle holding keyboard focus — the host runs the gesture */
+  onHandleKeyDown?: (kind: 'trim' | 'stretch', edge: 'left' | 'right', e: React.KeyboardEvent<HTMLButtonElement>) => void;
+  /** A handle took the focus */
+  onHandleFocus?: (kind: 'trim' | 'stretch', edge: 'left' | 'right') => void;
+  /** A handle gave the focus up — to `to` (null when nowhere) */
+  onHandleBlur?: (kind: 'trim' | 'stretch', edge: 'left' | 'right', to: Element | null) => void;
   /** Frequency scale for spectrogram rendering */
   spectrogramScale?: SpectrogramScale;
   /** MIDI notes for midi variant */
@@ -216,6 +226,10 @@ const ClipComponent: React.FC<ClipProps> = ({
   handlesHidden = false,
   handlesVisible,
   handlesHiddenAt,
+  keyboardHandle = null,
+  onHandleKeyDown,
+  onHandleFocus,
+  onHandleBlur,
   onHandleHover,
   spectrogramScale,
   midiNotes,
@@ -229,9 +243,26 @@ const ClipComponent: React.FC<ClipProps> = ({
   const [stretchEdge, setStretchEdge] = useState<'left' | 'right' | null>(null);
   // The handles' tenure: shown while the host says so or one is in
   // hand, and kept a moment after that, fading (useLeaveDelay)
-  const handlesShown = !handlesHidden && ((handlesVisible ?? selected) || trimEdge !== null || stretchEdge !== null);
+  // …or holding KEYBOARD focus (T / S), whatever the pointer does
+  const handlesShown = !handlesHidden && ((handlesVisible ?? selected) || trimEdge !== null || stretchEdge !== null || keyboardHandle !== null);
   const { mounted: handlesMounted, leaving: handlesLeaving } = useLeaveDelay(handlesShown);
   const leavingAttr = handlesLeaving ? 'true' : undefined;
+  // The handle buttons by kind and edge, for the keyboard focus
+  const handleRefs = useRef(new Map<string, HTMLButtonElement | null>());
+  const handleRef = (kind: 'trim' | 'stretch', edge: 'left' | 'right') => (el: HTMLButtonElement | null) => { handleRefs.current.set(`${kind}-${edge}`, el); };
+  useEffect(() => {
+    if (!keyboardHandle) return;
+    const el = handleRefs.current.get(`${keyboardHandle.kind}-${keyboardHandle.edge}`);
+    if (el && document.activeElement !== el) el.focus();
+  }, [keyboardHandle, handlesMounted]);
+  const handleKeyboardProps = (kind: 'trim' | 'stretch', edge: 'left' | 'right') => ({
+    ref: handleRef(kind, edge),
+    'data-handle-kind': kind,
+    'data-handle-edge': edge,
+    onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => onHandleKeyDown?.(kind, edge, e),
+    onFocus: () => onHandleFocus?.(kind, edge),
+    onBlur: (e: React.FocusEvent<HTMLButtonElement>) => onHandleBlur?.(kind, edge, e.relatedTarget instanceof Element ? e.relatedTarget : null),
+  });
   const outerRef = React.useRef<HTMLDivElement>(null);
 
   // Restart the source-boundary shake animation on every trigger.
@@ -489,6 +520,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   tabIndex={-1}
                   className="clip-display__handle clip-display__handle--trim-left"
                   aria-label="Trim left edge"
+                  {...handleKeyboardProps('trim', 'left')}
                   data-leaving={leavingAttr}
                   onMouseDown={handleVisibleTrimMouseDown('left')}
                   onMouseEnter={() => onHandleHover?.('trim')}
@@ -502,6 +534,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                 tabIndex={-1}
                 className="clip-display__handle clip-display__handle--stretch-left"
                 aria-label="Stretch left edge"
+                {...handleKeyboardProps('stretch', 'left')}
                 data-leaving={leavingAttr}
                 onMouseDown={handleStretchMouseDown('left')}
                 onMouseEnter={() => onHandleHover?.('stretch')}
@@ -519,6 +552,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   tabIndex={-1}
                   className="clip-display__handle clip-display__handle--trim-right"
                   aria-label="Trim right edge"
+                  {...handleKeyboardProps('trim', 'right')}
                   data-leaving={leavingAttr}
                   onMouseDown={handleVisibleTrimMouseDown('right')}
                   onMouseEnter={() => onHandleHover?.('trim')}
@@ -532,6 +566,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                 tabIndex={-1}
                 className="clip-display__handle clip-display__handle--stretch-right"
                 aria-label="Stretch right edge"
+                {...handleKeyboardProps('stretch', 'right')}
                 data-leaving={leavingAttr}
                 onMouseDown={handleStretchMouseDown('right')}
                 onMouseEnter={() => onHandleHover?.('stretch')}
