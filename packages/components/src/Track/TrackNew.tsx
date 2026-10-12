@@ -1309,6 +1309,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         // not show the shape handle — it would sit on every selected
         // clip's fades. (The corner handles joined it on 2026-10-01.)
         if (!leaving && fadeHoverClipId !== clip.id && shapeDrag !== dragKey && fadeKeyFocus?.clipId !== clip.id) continue;
+        // Keyboard-held: the shape dot of the side in hand only
+        if (!leaving && fadeHoverClipId !== clip.id && shapeDrag !== dragKey && fadeKeyFocus?.clipId === clip.id && fadeKeyFocus.side !== side) continue;
         const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;
         const regionStart = side === 'in' ? clip.start : clip.start + clip.duration - fade;
         // Position and gain are read off the drawn curve, never the
@@ -2287,12 +2289,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // show handles on hover"). The fade handles are a separate rule:
   // hover-only, selected or not.
   const handlesFollow = React.useCallback(
-    (clip: TrackClip) => (!!clip.selected
-      && (handleHoverClipId === clip.id || edgeDragClipId === clip.id || fadeDragClipId === clip.id || singleSelection))
-      // …or a handle of this clip holds KEYBOARD focus (T / S, 2026-10-12)
-      || handleKeyFocus?.clipId === clip.id,
-    [handleHoverClipId, edgeDragClipId, fadeDragClipId, singleSelection, handleKeyFocus],
+    (clip: TrackClip) => !!clip.selected
+      && (handleHoverClipId === clip.id || edgeDragClipId === clip.id || fadeDragClipId === clip.id || singleSelection),
+    [handleHoverClipId, edgeDragClipId, fadeDragClipId, singleSelection],
   );
+  // (A handle holding KEYBOARD focus is mounted by Clip's `keyboardHandle`
+  // on its own — ONLY that one on a clip the pointer rule shows none for.)
   // The clip with its handles up has no zones (the handles ARE its
   // edges, with the zone's inside reach); every other clip trims by its
   // zones, selected or not (2026-10-01 — it was selected = handles).
@@ -2868,8 +2870,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const NO_ROOM_PX = 24;
       const roomFor = (own: number) =>
         own > 0 || windowLen * pixelsPerSecond >= NO_ROOM_PX;
-      if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
-      if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
+      // Held by the KEYBOARD alone (F, no pointer on the clip): only the
+      // side in hand (2026-10-12, "only show the control the user pressed")
+      const keyOnly = fadeKeyFocus?.clipId === clip.id && fadeHoverClipId !== clip.id && fadeDragClipId !== clip.id;
+      const wanted = (side: 'in' | 'out') => !keyOnly || fadeKeyFocus?.side === side;
+      if (wanted('in') && !crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
+      if (wanted('out') && !crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
       // A dashed line drops from each fade's boundary — where the curve
       // meets the body's top — to the clip's BOTTOM, so the boundary can
       // be lined up against the waveform (the dev's lining-up aid, user

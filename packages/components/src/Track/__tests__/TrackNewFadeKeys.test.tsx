@@ -198,6 +198,16 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(handle('in')).toBeNull();
   });
 
+  it('held by the keyboard alone, only the fade handle in hand is mounted (2026-10-12)', () => {
+    const { clip, handle } = setup();
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    expect(handle('in')).not.toBeNull();
+    expect(handle('out')).toBeNull();
+    fireEvent.keyDown(handle('in')!, { key: 'f', code: 'KeyF' });
+    expect(handle('out')).not.toBeNull();
+    expect(handle('in')).toBeNull();
+  });
+
   it('the focused handle reads back as a slider with its length and curve', () => {
     const { clip, handle } = setup({ fadeOutShape: 'linear' });
     act(() => { clip.focus(); });
