@@ -76,6 +76,18 @@ describe('T and S focus the trim and stretch handles (2026-10-12)', () => {
     expect(document.activeElement?.getAttribute('data-fade-handle')).toBe('out');
   });
 
+  it('T and S on a FADE handle swap to the trim / stretch handle at that edge, and F swaps back', () => {
+    const { clip, handle } = setup();
+    fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true }); // the fade-out handle
+    expect(document.activeElement?.getAttribute('data-fade-handle')).toBe('out');
+    fireEvent.keyDown(document.activeElement!, { key: 't', code: 'KeyT' });
+    expect(document.activeElement).toBe(handle('trim', 'right'));
+    fireEvent.keyDown(document.activeElement!, { key: 'f', code: 'KeyF' });
+    expect(document.activeElement?.getAttribute('data-fade-handle')).toBe('out');
+    fireEvent.keyDown(document.activeElement!, { key: 's', code: 'KeyS' });
+    expect(document.activeElement).toBe(handle('stretch', 'right'));
+  });
+
   it('Shift+S on the clip is NOT taken (Solo is app-wide)', () => {
     const { clip, handle } = setup();
     fireEvent.keyDown(clip, { key: 'S', code: 'KeyS', shiftKey: true });

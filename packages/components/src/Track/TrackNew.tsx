@@ -2678,6 +2678,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 else focusClip();
                 return;
               }
+              // T / S swap to the TRIM / STRETCH handle at this edge (the
+              // way back from them is their F; "let me swap between F and
+              // T", 2026-10-12)
+              const toEdge: 'left' | 'right' = side === 'in' ? 'left' : 'right';
+              if ((e.code === 'KeyT' || e.key === 't' || e.key === 'T') && !e.shiftKey && onClipTrimEdge) {
+                stop(); setFadeKeyFocus(null); setHandleKeyFocus({ clipId: clip.id, kind: 'trim', edge: toEdge }); return;
+              }
+              if ((e.code === 'KeyS' || e.key === 's') && !e.shiftKey && !isMidiTrack && onClipStretchEdge) {
+                stop(); setFadeKeyFocus(null); setHandleKeyFocus({ clipId: clip.id, kind: 'stretch', edge: toEdge }); return;
+              }
               // ← → move the fade's BOUNDARY (→ = later), a tenth of a
               // second, Shift a second — the panel's clip strip's steps.
               // Clamped to the free window as the drag is; a sliver
