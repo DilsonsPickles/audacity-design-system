@@ -534,8 +534,15 @@ describe('Cmd+ArrowDown reorder — overlap is legal (2026-09-21)', () => {
 // characterization of computeKeyboardTrim's right-edge shrink math.
 // ---------------------------------------------------------------------------
 
-describe('Keyboard trim', () => {
-  it('[ shrinks the focused clip by the 0.1s step', () => {
+describe('Keyboard trim — the T handle with the arrows (the bare brackets were freed, 2026-10-12)', () => {
+  /** T twice = the RIGHT trim handle; ← shrinks that edge by the 0.1 s step */
+  const shrinkRightEdge = (clip: HTMLElement) => {
+    fireEvent.keyDown(clip, { key: 't', code: 'KeyT' });
+    fireEvent.keyDown(document.activeElement!, { key: 't', code: 'KeyT' });
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' });
+  };
+
+  it('← on the right trim handle shrinks the focused clip by the 0.1s step', () => {
     const tracks: Track[] = [
       {
         id: 1,
@@ -546,19 +553,14 @@ describe('Keyboard trim', () => {
       },
     ];
     const { container } = renderCanvas(tracks);
-
     const clip = clipEl(container, 1);
     expect(clip.style.width).toBe('200px');
-
     act(() => { clip.focus(); });
-    fireEvent.keyDown(clip, { key: '[' });
-
+    shrinkRightEdge(clip);
     expect(clip.style.width).toBe('190px');
   });
 
-  it('[ on an UNSELECTED focused clip trims that clip alone and leaves the selection as it was (bug 2026-10-01)', () => {
-    // Clip 1 selected, focus on clip 2: [ used to trim BOTH, then select
-    // clip 2 (so the next press trimmed only it)
+  it('on an UNSELECTED focused clip the handle trims that clip alone and leaves the selection as it was (bug 2026-10-01)', () => {
     const tracks: Track[] = [
       {
         id: 1,
@@ -572,23 +574,19 @@ describe('Keyboard trim', () => {
     const { container } = renderCanvas(tracks);
     const clip1 = clipEl(container, 1);
     const clip2 = clipEl(container, 2);
-
     act(() => { clip2.focus(); });
-    fireEvent.keyDown(clip2, { key: '[' });
-
+    shrinkRightEdge(clip2);
     expect(clip2.style.width).toBe('190px'); // the focused clip
     expect(clip1.style.width).toBe('200px'); // the selected one is untouched…
-    // …and still the selection (Clip marks it data-selected); the
-    // focused clip is not selected by the press
     expect(clip1.querySelector('[data-selected="true"]')).toBeTruthy();
     expect(clip2.querySelector('[data-selected="true"]')).toBeNull();
-    fireEvent.keyDown(clip2, { key: '[' });
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' });
     expect(clip2.style.width).toBe('180px');
     expect(clip1.style.width).toBe('200px');
     expect(clip1.querySelector('[data-selected="true"]')).toBeTruthy();
   });
 
-  it('[ on a SELECTED focused clip trims every selected clip with it', () => {
+  it('on a SELECTED focused clip the handle trims every selected clip with it', () => {
     const tracks: Track[] = [
       {
         id: 1,
@@ -602,10 +600,22 @@ describe('Keyboard trim', () => {
     ];
     const { container } = renderCanvas(tracks);
     act(() => { clipEl(container, 1).focus(); });
-    fireEvent.keyDown(clipEl(container, 1), { key: '[' });
+    shrinkRightEdge(clipEl(container, 1));
     expect(clipEl(container, 1).style.width).toBe('190px');
     expect(clipEl(container, 2).style.width).toBe('190px');
     expect(clipEl(container, 3).style.width).toBe('200px');
+  });
+
+  it('the bare bracket does nothing on a focused clip any more', () => {
+    const tracks: Track[] = [
+      { id: 1, name: 'Track 1', clips: [{ id: 1, name: 'Clip 1', start: 0, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 }] },
+    ];
+    const { container } = renderCanvas(tracks);
+    const clip = clipEl(container, 1);
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: '[' });
+    fireEvent.keyDown(clip, { key: ']', metaKey: true });
+    expect(clip.style.width).toBe('200px');
   });
 });
 

@@ -259,10 +259,20 @@ describe('Option+[ / Option+] trim the focused clip to the playhead (2026-10-12)
     expect(container.querySelector('[data-shake-edge="right"]')).not.toBeNull();
   });
 
-  it('the plain and Cmd brackets are untouched: a plain ] still nudges', () => {
+  it('a plain ] does nothing now — the bare brackets were freed (2026-10-12)', () => {
     const onClipTrimToPlayhead = vi.fn();
-    const { clip } = mountClip(onClipTrimToPlayhead);
+    const onClipTrim = vi.fn();
+    const utils = render(
+      <Providers>
+        <TrackNew clips={[{ id: 1, name: 'A', start: 0, duration: 4 }]} width={800} trackIndex={0} pixelsPerSecond={100} onClipTrim={onClipTrim} onClipTrimToPlayhead={onClipTrimToPlayhead} />
+      </Providers>,
+    );
+    const clip = utils.container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
+    act(() => { clip.focus(); });
     fireEvent.keyDown(clip, { key: ']', code: 'BracketRight' });
+    fireEvent.keyDown(clip, { key: '[', code: 'BracketLeft', shiftKey: true });
+    fireEvent.keyDown(clip, { key: ']', code: 'BracketRight', metaKey: true });
     expect(onClipTrimToPlayhead).not.toHaveBeenCalled();
+    expect(onClipTrim).not.toHaveBeenCalled();
   });
 });

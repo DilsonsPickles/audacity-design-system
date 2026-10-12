@@ -1976,39 +1976,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
-            // Time-stretch with Alt layered onto the trim shortcuts. Alt is
-            // the "stretch instead of trim" modifier; otherwise the combo
-            // matches the trim shortcuts exactly so direction semantics are
-            // identical:
-            //   Alt+Shift+ArrowLeft        → left edge moves left   (lengthen)
-            //   Alt+Shift+ArrowRight       → right edge moves right (lengthen)
-            //   Cmd+Alt+Shift+ArrowLeft    → right edge moves left  (shorten)
-            //   Cmd+Alt+Shift+ArrowRight   → left edge moves right  (shorten)
-            // Sign convention matches onClipTrim: positive delta shrinks,
-            // negative delta grows.
-            if (e.altKey && e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-              e.preventDefault();
-              const stretchAmount = 0.1;
-              const isCompressing = e.metaKey || e.ctrlKey;
-              const edge = isCompressing
-                ? (e.key === 'ArrowLeft' ? 'right' : 'left')
-                : (e.key === 'ArrowLeft' ? 'left' : 'right');
-              const delta = isCompressing ? stretchAmount : -stretchAmount;
-              onClipStretch?.(clip.id, edge, delta);
-              return;
-            }
-
-            // Clip-edge editor on the bracket keys. Shift picks the
-            // edge; the specific bracket picks the direction:
-            //   [        → RIGHT edge moves LEFT   (contract)
-            //   ]        → RIGHT edge moves RIGHT  (extend)
-            //   Shift+[  → LEFT edge moves LEFT    (extend)
-            //   Shift+]  → LEFT edge moves RIGHT   (contract)
-            // Sign convention matches onClipTrim: positive delta
-            // shrinks, negative delta grows.
-            //
-            // Match against e.code, e.key, AND e.keyCode so keyboard
-            // layout quirks don't stop the shortcut from firing.
+            // The bracket keys: Option+[ / Option+] only (2026-10-12). The
+            // bare brackets' nudge (Shift the left edge) and the Cmd
+            // brackets' stretch, and Alt+Shift+arrows' stretch, are gone —
+            // the T / S handles with the arrows do that, and announce it
+            // ("it frees up [ and ]"). Match against e.code, e.key, AND
+            // e.keyCode so keyboard layout quirks don't stop it firing.
             const isBracketLeft = e.code === 'BracketLeft'
               || e.key === '[' || e.key === '{'
               || (e as any).keyCode === 219; // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
@@ -2042,73 +2015,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               return;
             }
 
-            if ((isBracketLeft || isBracketRight) && !e.altKey) {
-              e.preventDefault();
-              e.stopPropagation();
-              const editAmount = 0.1;
-              // Shift → LEFT edge, plain → RIGHT edge.
-              const edge: 'left' | 'right' = e.shiftKey ? 'left' : 'right';
-              // On the RIGHT edge: [ contracts (shrink), ] extends.
-              // On the LEFT  edge: [ extends,  ] contracts.
-              const isExtending = edge === 'right' ? isBracketRight : isBracketLeft;
-              const delta = isExtending ? -editAmount : editAmount;
-
-              // Cmd/Ctrl modifier switches trim → stretch. Same edge
-              // and direction convention, so muscle memory carries
-              // between the two operations:
-              //   Cmd+[         → RIGHT edge stretch-in (compress)
-              //   Cmd+]         → RIGHT edge stretch-out
-              //   Cmd+Shift+[   → LEFT  edge stretch-out
-              //   Cmd+Shift+]   → LEFT  edge stretch-in (compress)
-              if (e.metaKey || e.ctrlKey) {
-                onClipStretch?.(clip.id, edge, delta);
-                return;
-              }
-
-              // Boundary check: if the user is trying to EXTEND (not
-              // shrink) and there's no more source audio to reveal
-              // on that side, don't dispatch the trim — fire the
-              // shake animation so the shortcut isn't silent.
-              // Mirrors the "cap the delta to available" logic in
-              // Canvas.onClipTrim: `available` is measured in canvas
-              // seconds, matching how the delta is applied.
-              const BOUNDARY_EPS = 0.0005;
-              const stretch = (clip as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip type — pending components sweep
-              const trimStart = (clip as any).trimStart ?? 0; // justified: trimStart not on Clip type — pending components sweep
-              const fullDuration = (clip as any).fullDuration // justified: fullDuration not on Clip type — pending components sweep
-                ?? (trimStart + clip.duration / stretch);
-              const availableLeft = trimStart * stretch;
-              const availableRight = (fullDuration - trimStart) * stretch - clip.duration;
-              const blocked = isExtending && (
-                (edge === 'left' && availableLeft <= BOUNDARY_EPS)
-                || (edge === 'right' && availableRight <= BOUNDARY_EPS)
-              );
-
-              if (blocked) {
-                // Bump the shake state so React remounts the shake
-                // element (each token change → fresh DOM node → fresh
-                // animation). Clear after the animation completes.
-                setShakeState((prev) => ({
-                  clipId: clip.id,
-                  edge,
-                  token: (prev?.token ?? 0) + 1,
-                }));
-                if (shakeTimeoutRef.current !== null) {
-                  window.clearTimeout(shakeTimeoutRef.current);
-                }
-                shakeTimeoutRef.current = window.setTimeout(() => {
-                  setShakeState(null);
-                  shakeTimeoutRef.current = null;
-                }, 180);
-              }
-
-              // Fire onClipTrim regardless of the blocked-shake state
-              // so Canvas can select the focused clip. Canvas has its
-              // own boundary check and will skip the actual TRIM_CLIP
-              // dispatch when there's nothing to reveal.
-              onClipTrim?.(clip.id, edge, delta);
-              return;
-            }
 
             // Tab / Shift+Tab: track-scoped clip navigation.
             //   Track flow (both directions):

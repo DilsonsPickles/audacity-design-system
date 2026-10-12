@@ -25,8 +25,6 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **Cmd+= / Cmd+-** - Horizontal zoom in / out (`onZoomIn` / `onZoomOut`, the real app's Ctrl+= / Ctrl+-; '+' and the numpad keys too; the Electron View menu shows but does not register the accelerator, 2026-10-12)
 - **Option+Cmd+C / X / F** - Collapse / expand / fit-to-viewport the selected tracks (or the track you are on), matched on `e.code`; **+Shift** every track, alongside Audacity 3's Cmd+Shift+C / X / F (`onCollapseSelectedTracks` / `onExpandSelectedTracks` / `onFitSelectedTracksToHeight` / the all forms, 2026-10-08)
 - **Option+[ / Option+]** - Trim the focused clip's START / END to the playhead (`onClipTrimToPlayhead` → `computeKeyboardTrimToTimeBatch`; the trim's targets, the nudge's clamps; the edge shakes when nothing moves; 2026-10-12)
-- **Shift+Left/Right** - Extend clip edges (move left edge left / right edge right)
-- **Cmd+Shift+Left/Right** - Reduce clip edges (move right edge left / left edge right)
 - **ArrowUp/Down** (no modifiers) - Navigate to first clip on adjacent track (`onClipNavigateVertical`)
 - **ArrowLeft/Right** (no modifiers) - Handled by `useContainerTabGroup` on the track container (cycles through clips)
 
@@ -144,7 +142,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **ArrowUp/Down** - Move track focus outline (only when focus is NOT inside a tab group, and never inside an open `[role="menu"]` — the menu walks its own items, 2026-10-12)
 - **Shift+ArrowUp/Down** - Extend track range selection (only when focus is NOT inside a tab group)
 - **ArrowLeft/Right** - Move playhead / manipulate time selection (also works when timeline ruler is focused)
-- ~~[ / ]~~ - Removed 2026-10-12 (set the time selection's boundary at the playhead; 'pretty much useless'). The focused clip's bracket trim / stretch keys remain. Row scope untouched; edges swap if they'd cross; with no selection, creates a zero-width range at the playhead seeded from the track selection
+- ~~[ / ]~~ - Removed 2026-10-12 (set the time selection's boundary at the playhead; 'pretty much useless'). The focused clip's bare bracket nudge, Cmd bracket stretch and Alt+Shift+arrow stretch went later the same day ('it frees up [ and ]'); Option+[ / ] trim to the playhead, and the T / S handles nudge. Row scope untouched; edges swap if they'd cross; with no selection, creates a zero-width range at the playhead seeded from the track selection
 - **Delete/Backspace** - Delete focused clip (reads `data-clip-id` from `document.activeElement`)
 
 **Tab group guard:** The global ArrowUp/Down handler checks `target.closest('[role="toolbar"], [role="group"], [role="menubar"]')` and exits early if focus is inside any tab group. This prevents the track focus outline from moving when the user is navigating within a toolbar, menubar, or track header panel.
