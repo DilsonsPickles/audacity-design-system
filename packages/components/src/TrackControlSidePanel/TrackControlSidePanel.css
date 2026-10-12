@@ -95,12 +95,11 @@
 }
 
 /* Whole track focus state - outline sits at container edge */
-/* No frame AROUND the focused header (2026-10-12, "in the build we put
-   the focus around the track header, I don't like that"): the track's
-   black-and-white bars above and below (TrackControlPanel.css) are its
-   focus. */
+/* The focused row's frame stays BLUE: the track focus is UI state, not a
+   keyboard focus ring (2026-10-12) */
 .track-control-side-panel__track--focused .track-control-panel {
-  outline: none;
+  outline: 2px solid var(--tcsp-focus-outline);
+  outline-offset: 0px;
 }
 
 /* Ensure TrackControlPanel fills the ResizablePanel container */

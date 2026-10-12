@@ -4,13 +4,10 @@
 }
 
 /* Focus borders - top and bottom only, outside the track (focused track
-   indicator). BLACK AND WHITE (2026-10-12, third round that day: blue →
-   black-and-white → blue again ("that's actually part of the UI") → and
-   back, because Tab onto a track then showed no black-and-white focus at
-   all, and the real build's frame around the header is not wanted: "can
-   we try changing the track focus to black/white instead?"): the app's
-   focus frame as bars — 1px white against the track, 1px black beyond,
-   2px combined like every other frame. */
+   indicator). THE TRACK FOCUS STAYS BLUE (2026-10-12, "all focus APART
+   from the track focus because that's actually part of the UI" — the
+   black-and-white frame of styles/focusFrame.css is for keyboard focus
+   rings; the track's bars say which track is current, a UI state). */
 .track-wrapper--focused::before,
 .track-wrapper--focused::after {
   content: '';
@@ -18,17 +15,16 @@
   left: 0;
   right: 0;
   height: 2px;
+  background-color: var(--focus-color);
   pointer-events: none;
 }
 
 .track-wrapper--focused::before {
   top: -2px;
-  background: linear-gradient(to bottom, #000 0 1px, #fff 1px 2px);
 }
 
 .track-wrapper--focused::after {
   bottom: -2px;
-  background: linear-gradient(to bottom, #fff 0 1px, #000 1px 2px);
 }
 
 /* Container-focused visual (black/white bars) intentionally removed —

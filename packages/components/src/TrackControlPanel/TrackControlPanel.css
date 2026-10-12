@@ -34,34 +34,27 @@
   position: relative;
 }
 
-/* Focus state - bars above and below when the whole track is focused
-   (via click or keyboard). Uses state-based focus (isFocused prop)
-   instead of DOM focus, so it persists when the window loses focus.
-   BLACK AND WHITE (2026-10-12, "can we try changing the track focus to
-   black/white instead?" — the app's focus frame as bars): 1px white
-   against the panel, 1px black beyond; the top bar on ::before, the
-   bottom on ::after (it was a box-shadow copy of the box, which cannot
-   be two-tone). No frame AROUND the header — the real build's, and not
-   wanted ("I don't like that"). */
-.track-control-panel--focused::before,
-.track-control-panel--focused::after {
+/* Focus state - blue border when whole track is focused (via click or keyboard) */
+/* Uses state-based focus (isFocused prop) instead of DOM focus, so it persists when window loses focus */
+/* Using ::before for top bar and box-shadow for bottom bar (to free up ::after for DOM focus) */
+/* THE TRACK FOCUS STAYS BLUE (2026-10-12, "all focus APART from the track
+   focus because that's actually part of the UI"): the app's black-and-white
+   frame is for keyboard focus rings; these bars say which track is current */
+.track-control-panel--focused::before {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
+  top: -2px;
   height: 2px;
+  background-color: var(--tcp-focus-color);
   pointer-events: none;
   z-index: 1000;
 }
 
-.track-control-panel--focused::before {
-  top: -2px;
-  background: linear-gradient(to bottom, #000 0 1px, #fff 1px 2px);
-}
-
-.track-control-panel--focused::after {
-  bottom: -2px;
-  background: linear-gradient(to bottom, #fff 0 1px, #000 1px 2px);
+.track-control-panel--focused {
+  /* Bottom bar using box-shadow instead of ::after */
+  box-shadow: 0 calc(100% + 2px) 0 0 var(--tcp-focus-color);
 }
 
 /* Container-focused visual (black/white double border) intentionally
