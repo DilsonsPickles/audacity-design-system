@@ -54,6 +54,8 @@ export function ShortcutsPage() {
     { id: '35d', action: 'Fade handle: remove / back to the clip', shortcut: '⌫ / Esc' },
     { id: '36', action: 'Find clipping', shortcut: '' },
     { id: '37', action: 'Fit project', shortcut: '⌘F' },
+    { id: '37a', action: 'Zoom in', shortcut: '⌘=' },
+    { id: '37b', action: 'Zoom out', shortcut: '⌘−' },
     { id: '38', action: 'Fit all tracks to height', shortcut: '⌥⌘⇧F · ⌘⇧F' },
     { id: '38i', action: 'Fit track to height', shortcut: '⌥⌘F' },
     { id: '38a', action: 'Track taller', shortcut: '⌥⌘↓' },

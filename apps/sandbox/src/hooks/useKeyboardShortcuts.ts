@@ -71,6 +71,10 @@ export interface UseKeyboardShortcutsOptions {
   /** Option+Cmd/Ctrl+F: the selected tracks (or the track I'm on) share
    *  the viewport's height — the one-track form of ⌘⇧F (2026-10-08) */
   onFitSelectedTracksToHeight?: () => void;
+  /** Cmd/Ctrl+= and Cmd/Ctrl+-: horizontal zoom in / out (2026-10-12 —
+   *  the real app's Ctrl+= / Ctrl+-; Cmd+1 / Cmd+3 were Audacity 3's) */
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
 }
 
 /**
@@ -108,6 +112,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,
+    onZoomIn,
+    onZoomOut,
   } = options;
 
   // Track whether the user is navigating via keyboard or mouse.
@@ -255,6 +261,25 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (onOpenPreferences) {
           e.preventDefault();
           onOpenPreferences();
+          return;
+        }
+      }
+
+      // --- Cmd/Ctrl+= / Cmd/Ctrl+- : zoom in / out (2026-10-12) ---
+      // The real app's Ctrl+= / Ctrl+-. '+' is what Shift+= types, so a
+      // "Cmd++" press zooms in too; the numpad's + and - join their keys.
+      // Matched before the Shift block below so Cmd+Shift+= is not lost.
+      if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+        const zoomInKey = e.key === '=' || e.key === '+' || e.code === 'Equal' || e.code === 'NumpadAdd';
+        const zoomOutKey = e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract';
+        if (zoomInKey && onZoomIn) {
+          e.preventDefault();
+          onZoomIn();
+          return;
+        }
+        if (zoomOutKey && onZoomOut) {
+          e.preventDefault();
+          onZoomOut();
           return;
         }
       }

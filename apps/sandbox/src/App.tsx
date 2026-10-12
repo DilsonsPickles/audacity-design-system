@@ -586,6 +586,8 @@ function CanvasDemoContent() {
     onCollapseSelectedTracks: handleCollapseSelectedTracks,
     onExpandSelectedTracks: handleExpandSelectedTracks,
     onFitSelectedTracksToHeight: handleFitSelectedTracksToHeight,
+    onZoomIn: zoomIn,
+    onZoomOut: zoomOut,
   });
 
   // Hold Cmd (Ctrl on Windows/Linux) to grab-pan the canvas. The
@@ -855,6 +857,8 @@ function CanvasDemoContent() {
     onCollapseSelectedTracks: handleCollapseSelectedTracks,
     onExpandSelectedTracks: handleExpandSelectedTracks,
     onFitSelectedTracksToHeight: handleFitSelectedTracksToHeight,
+    onZoomIn: zoomIn,
+    onZoomOut: zoomOut,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu

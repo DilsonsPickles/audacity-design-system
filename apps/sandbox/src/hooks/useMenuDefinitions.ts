@@ -40,6 +40,8 @@ export interface UseMenuDefinitionsOptions {
   onCollapseSelectedTracks: () => void;
   onExpandSelectedTracks: () => void;
   onFitSelectedTracksToHeight: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
 }
 
 /**
@@ -77,6 +79,8 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,
+    onZoomIn,
+    onZoomOut,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -167,6 +171,8 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,
+    onZoomIn,
+    onZoomOut,
   });
 
   return menuDefinitions;

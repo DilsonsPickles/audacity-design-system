@@ -499,6 +499,50 @@ describe('Bottom drawer', () => {
     expect(drawer.style.height).toBe('326px');
   });
 
+  it('Cmd+= zooms in and Cmd+- zooms out (2026-10-12, the real app\'s Ctrl+= / Ctrl+-): a clip grows and shrinks on screen', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'MIDI');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('MIDI 1'));
+    // A clip to measure: the time-selection → "Create Empty MIDI Clip"
+    // path the piano-roll test below uses
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+    fireEvent.mouseDown(pointerContainer, { clientX: 100, clientY: 50, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 50 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 50 });
+    fireEvent.mouseDown(pointerContainer, { clientX: 200, clientY: 50, button: 2 });
+    fireEvent.contextMenu(pointerContainer, { clientX: 200, clientY: 50 });
+    await clickWhenReady(() => menuItem(container, 'Create Empty MIDI Clip'));
+    const clip = await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('[data-clip-id]');
+      if (!el) throw new Error('clip not created');
+      return el;
+    });
+    const widthPx = () => parseFloat(clip.style.width);
+    const start = widthPx();
+    expect(start).toBeGreaterThan(0);
+
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal', metaKey: true });
+    await waitFor(() => expect(widthPx()).toBeGreaterThan(start));
+    const zoomedIn = widthPx();
+
+    fireEvent.keyDown(document.body, { key: '-', code: 'Minus', metaKey: true });
+    await waitFor(() => expect(widthPx()).toBeLessThan(zoomedIn));
+    fireEvent.keyDown(document.body, { key: '-', code: 'Minus', metaKey: true });
+    await waitFor(() => expect(widthPx()).toBeLessThan(start));
+    // '+' is what Shift+= types: it zooms in too
+    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', metaKey: true, shiftKey: true });
+    await waitFor(() => expect(widthPx()).toBeGreaterThanOrEqual(start - 0.01));
+  });
+
   it('adding a note to a selected (empty) MIDI clip renders it in the grid', async () => {
     // PianoRollPanel.tsx only mounts NoteGrid when a clip is selected
     // (`{clip ? <NoteGrid /> : <div>Select a MIDI clip to edit</div>}`) —

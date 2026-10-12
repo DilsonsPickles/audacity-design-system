@@ -38,6 +38,8 @@ export function useElectronMenuBridge(options: UseElectronMenuBridgeOptions): vo
     'view:toggle-quick-fade-handles': () => menuByLabel.get('Show quick fade handles')?.(),
     'tracks:group-selected': () => menuByLabel.get('Group selected tracks')?.(),
     'view:toggle-piano-roll': () => menuByLabel.get('Show piano roll')?.(),
+    'view:zoom-in': () => menuByLabel.get('Zoom in')?.(),
+    'view:zoom-out': () => menuByLabel.get('Zoom out')?.(),
     'record:toggle-lead-in': () => menuByLabel.get('Enable lead in time')?.(),
     'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),
     'generate:tone': () => menuByLabel.get('Tone...')?.(),

@@ -287,9 +287,12 @@ function setApplicationMenu() {
         { role: 'forceReload' },
         { role: 'toggleDevTools' },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        // The app's horizontal zoom, not Chromium's page zoom (2026-10-12):
+        // the shortcut is shown but NOT registered here, so the keypress
+        // reaches the renderer's one handler (useKeyboardShortcuts) and
+        // nothing fires twice — a menu click goes through the bridge.
+        { label: 'Zoom In', accelerator: 'CmdOrCtrl+=', registerAccelerator: false, click: send('view:zoom-in') },
+        { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', registerAccelerator: false, click: send('view:zoom-out') },
         { type: 'separator' },
         { role: 'togglefullscreen' },
       ],

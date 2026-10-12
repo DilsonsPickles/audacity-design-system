@@ -33,6 +33,8 @@ export interface MenuDefinitionDeps {
   onCollapseSelectedTracks: () => void;
   onExpandSelectedTracks: () => void;
   onFitSelectedTracksToHeight: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
 
   // Effect menu deps
   onOpenPluginManager: () => void;
@@ -145,6 +147,17 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Fit selected tracks to height',
       shortcut: 'Ctrl+Alt+F',
       onClick: deps.onFitSelectedTracksToHeight,
+    },
+    // Horizontal zoom (2026-10-12): the real app's Ctrl+= / Ctrl+-
+    {
+      label: 'Zoom in',
+      shortcut: 'Ctrl+=',
+      onClick: deps.onZoomIn,
+    },
+    {
+      label: 'Zoom out',
+      shortcut: 'Ctrl+-',
+      onClick: deps.onZoomOut,
     },
   ];
 
