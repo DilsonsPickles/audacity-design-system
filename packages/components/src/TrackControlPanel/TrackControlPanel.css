@@ -34,24 +34,32 @@
   position: relative;
 }
 
-/* Focus state - blue border when whole track is focused (via click or keyboard) */
-/* Uses state-based focus (isFocused prop) instead of DOM focus, so it persists when window loses focus */
-/* Using ::before for top bar and box-shadow for bottom bar (to free up ::after for DOM focus) */
-.track-control-panel--focused::before {
+/* Focus state - bars above and below when the whole track is focused
+   (via click or keyboard). Uses state-based focus (isFocused prop)
+   instead of DOM focus, so it persists when the window loses focus.
+   BLACK AND WHITE since 2026-10-12 ("ALL focus state frames should be
+   black and white outline"): 1px white against the panel, 2px black
+   beyond — the top bar on ::before, the bottom on ::after (the bottom
+   was a box-shadow copy of the box; a two-tone bar needs an element). */
+.track-control-panel--focused::before,
+.track-control-panel--focused::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  top: -2px;
-  height: 2px;
-  background-color: var(--tcp-focus-color);
+  height: 3px;
   pointer-events: none;
   z-index: 1000;
 }
 
-.track-control-panel--focused {
-  /* Bottom bar using box-shadow instead of ::after */
-  box-shadow: 0 calc(100% + 2px) 0 0 var(--tcp-focus-color);
+.track-control-panel--focused::before {
+  top: -3px;
+  background: linear-gradient(to bottom, #000 0 2px, #fff 2px 3px);
+}
+
+.track-control-panel--focused::after {
+  bottom: -3px;
+  background: linear-gradient(to bottom, #fff 0 1px, #000 1px 3px);
 }
 
 /* Container-focused visual (black/white double border) intentionally
@@ -132,7 +140,7 @@
   border-radius: 2px;
 }
 
-.track-control-panel__track-name-text:focus {
+.track-control-panel__track-name-text:focus-visible {
   outline: 2px solid var(--tcp-focus-color);
   outline-offset: 2px;
 }
@@ -185,7 +193,7 @@
   outline: none;
 }
 
-.track-control-panel__icon-button:focus {
+.track-control-panel__icon-button:focus-visible {
   outline: 2px solid var(--tcp-focus-color);
   outline-offset: 2px;
 }
@@ -348,7 +356,7 @@
    controls). Once the user presses Enter, focus moves into the inner
    knob/slider and this ring drops in favour of the inner control's
    own focus indicator. */
-.track-control-panel__slot:focus {
+.track-control-panel__slot:focus-visible {
   outline: 2px solid var(--tcp-focus-color);
   outline-offset: 1px;
 }

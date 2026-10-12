@@ -51,7 +51,7 @@
 }
 
 /* Remove default button styles */
-.toggle-tool-button:focus {
+.toggle-tool-button:focus-visible {
   outline: none;
 }
 

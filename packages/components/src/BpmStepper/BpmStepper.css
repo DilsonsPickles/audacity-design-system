@@ -15,7 +15,7 @@
   overflow: hidden;
 }
 
-.bpm-stepper:focus {
+.bpm-stepper:focus-visible {
   outline: 3px solid var(--focus-color);
   outline-offset: 2px;
 }

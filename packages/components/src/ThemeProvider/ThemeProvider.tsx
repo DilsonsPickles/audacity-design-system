@@ -4,6 +4,8 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { ThemeTokens, lightTheme } from '@audacity-ui/tokens';
+// The one black-and-white focus frame, app-wide (styles/focusFrame.css)
+import '../styles/focusFrame.css';
 
 interface ThemeContextValue {
   theme: ThemeTokens;

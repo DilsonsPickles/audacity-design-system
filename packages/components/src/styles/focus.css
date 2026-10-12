@@ -19,17 +19,14 @@
  * Standard focus ring
  * Apply this class to elements that need focus indication
  */
-.focus-ring:focus {
-  outline: none;
-  border-color: var(--focus-border-color);
-  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
+.focus-ring:focus-visible {
+  /* the app's black-and-white frame (styles/focusFrame.css draws the
+     same for every keyboard focus; this keeps the class meaningful) */
+  outline: 2px solid #fff;
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px #000;
 }
 
 /**
  * Focus ring for elements that should maintain focus styling when active
  */
-.focus-ring:focus-visible {
-  outline: none;
-  border-color: var(--focus-border-color);
-  box-shadow: 0 0 0 var(--focus-ring-size) var(--focus-ring-color);
-}

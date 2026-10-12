@@ -119,7 +119,7 @@
 }
 
 .audio-file-thumbnail:hover .audio-file-thumbnail__context-btn,
-.audio-file-thumbnail__context-btn:focus,
+.audio-file-thumbnail__context-btn:focus-visible,
 .audio-file-thumbnail__context-btn:active {
   opacity: 1;
 }

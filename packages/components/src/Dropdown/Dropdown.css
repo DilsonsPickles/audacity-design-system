@@ -31,7 +31,7 @@
 
 /* Clicks shouldn't trigger the focus ring — only keyboard nav. Use
    :focus-visible so mouse interaction stays clean. */
-.dropdown__trigger:focus {
+.dropdown__trigger:focus-visible {
   outline: none;
 }
 
@@ -92,7 +92,7 @@
   padding: 4px 0;
 }
 
-.dropdown__menu:focus {
+.dropdown__menu:focus-visible {
   outline: none;
 }
 

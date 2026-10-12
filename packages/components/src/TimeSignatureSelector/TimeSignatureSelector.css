@@ -14,7 +14,7 @@
   overflow: hidden;
 }
 
-.time-signature-selector:focus {
+.time-signature-selector:focus-visible {
   outline: 3px solid var(--focus-color);
   outline-offset: 2px;
 }

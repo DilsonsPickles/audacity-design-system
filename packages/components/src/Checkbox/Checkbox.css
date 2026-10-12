@@ -62,7 +62,7 @@
 }
 
 /* Focus state - only show focus ring for keyboard navigation */
-.checkbox:focus {
+.checkbox:focus-visible {
   outline: none;
 }
 

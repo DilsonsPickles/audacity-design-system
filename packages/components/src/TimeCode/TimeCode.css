@@ -19,7 +19,7 @@
   height: 28px;
 }
 
-.timecode:focus {
+.timecode:focus-visible {
   outline: 3px solid var(--focus-color);
   outline-offset: 2px;
 }

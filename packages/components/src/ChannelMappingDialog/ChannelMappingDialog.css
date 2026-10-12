@@ -158,7 +158,7 @@
   cursor: pointer;
 }
 
-.channel-mapping-dialog__grid-cell:focus {
+.channel-mapping-dialog__grid-cell:focus-visible {
   outline: 2px solid var(--focus-color);
   outline-offset: -2px;
   background: var(--table-item-selected, rgba(0, 120, 212, 0.1));

@@ -79,7 +79,7 @@
 }
 
 /* Focus shows the way hover does: the splitter IS its line */
-.macro-builder__splitter:focus {
+.macro-builder__splitter:focus-visible {
   outline: none;
 }
 

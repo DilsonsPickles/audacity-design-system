@@ -62,7 +62,7 @@
   cursor: not-allowed;
 }
 
-.dialog-header__macos-button:focus {
+.dialog-header__macos-button:focus-visible {
   outline: none;
 }
 
@@ -72,7 +72,7 @@
 }
 
 /* Hide focus outline when auto-focused (programmatically focused on dialog open) */
-.dialog-header__macos-button[data-focus-method="auto"]:focus,
+.dialog-header__macos-button[data-focus-method="auto"]:focus-visible,
 .dialog-header__macos-button[data-focus-method="auto"]:focus-visible {
   outline: none;
 }
@@ -146,7 +146,7 @@
   color: #ffffff;
 }
 
-.dialog-header__windows-control:focus {
+.dialog-header__windows-control:focus-visible {
   outline: none;
 }
 
@@ -156,7 +156,7 @@
 }
 
 /* Hide focus outline when auto-focused (programmatically focused on dialog open) */
-.dialog-header__windows-control[data-focus-method="auto"]:focus,
+.dialog-header__windows-control[data-focus-method="auto"]:focus-visible,
 .dialog-header__windows-control[data-focus-method="auto"]:focus-visible {
   outline: none;
 }

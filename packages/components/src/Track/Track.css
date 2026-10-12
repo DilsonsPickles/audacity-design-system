@@ -3,24 +3,28 @@
   position: relative;
 }
 
-/* Focus borders - top and bottom only, outside the track (focused track indicator) */
+/* Focus borders - top and bottom only, outside the track (focused track
+   indicator). BLACK AND WHITE since 2026-10-12 ("ALL focus state frames
+   should be black and white outline"): a 1px white line against the
+   track, 2px black beyond it — the app's focus frame, as bars. */
 .track-wrapper--focused::before,
 .track-wrapper--focused::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  height: 2px;
-  background-color: var(--focus-color);
+  height: 3px;
   pointer-events: none;
 }
 
 .track-wrapper--focused::before {
-  top: -2px;
+  top: -3px;
+  background: linear-gradient(to bottom, #000 0 2px, #fff 2px 3px);
 }
 
 .track-wrapper--focused::after {
-  bottom: -2px;
+  bottom: -3px;
+  background: linear-gradient(to bottom, #fff 0 1px, #000 1px 3px);
 }
 
 /* Container-focused visual (black/white bars) intentionally removed —
@@ -58,11 +62,10 @@
   transform: scale(1.18);
 }
 
-/* Keyboard focus on a fade handle (F on the clip, 2026-10-12): the
-   app's focus ring on the hit box, the glyph grown as under the pointer */
+/* Keyboard focus on a fade handle (F on the clip, 2026-10-12): the app's
+   black-and-white frame (styles/focusFrame.css) on the hit box, the glyph
+   grown as under the pointer */
 .track-fade-handle:focus-visible {
-  outline: 2px solid var(--focus-color, #677ce4);
-  outline-offset: -2px;
   border-radius: 3px;
 }
 
