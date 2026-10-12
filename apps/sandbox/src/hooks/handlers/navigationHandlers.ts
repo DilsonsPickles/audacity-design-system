@@ -127,8 +127,18 @@ export function handleF6(e: KeyboardEvent, _deps: NavigationHandlerDeps): void {
   for (let n = 1; n <= majorBlocks.length; n++) {
     const idx = (currentBlockIndex + step * n + majorBlocks.length * n) % majorBlocks.length;
     const next = majorBlocks[idx]();
-    if (next) { next.focus(); return; }
+    const target = next && focusTargetOf(next);
+    if (target) { target.focus(); return; }
   }
+}
+
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+/** The element itself when it can take focus, else its first control —
+ *  a section may be named on a wrapper (the Add track group is a div
+ *  around its button; a div with no tabindex cannot be focused) */
+function focusTargetOf(el: HTMLElement): HTMLElement | null {
+  if (el.matches(FOCUSABLE)) return el;
+  return el.querySelector<HTMLElement>(FOCUSABLE);
 }
 
 /** ArrowUp/Down: move track focus with optional Shift for range selection */
