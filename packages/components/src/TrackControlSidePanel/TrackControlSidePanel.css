@@ -95,11 +95,17 @@
 }
 
 /* Whole track focus state - outline sits at container edge */
-/* The focused row's frame stays BLUE: the track focus is UI state, not a
-   keyboard focus ring (2026-10-12) */
+/* The focused row's frame: BLUE as the current-track state; BLACK AND
+   WHITE while the track holds keyboard focus (2026-10-12, "blue until
+   it's focused from keyboard tabbing") */
 .track-control-side-panel__track--focused .track-control-panel {
   outline: 2px solid var(--tcsp-focus-outline);
   outline-offset: 0px;
+}
+
+.track-control-side-panel__track--focused .track-control-panel.track-control-panel--container-focused {
+  outline: 1px solid #fff;
+  box-shadow: 0 0 0 2px #000;
 }
 
 /* Ensure TrackControlPanel fills the ResizablePanel container */

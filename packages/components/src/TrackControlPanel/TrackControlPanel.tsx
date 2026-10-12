@@ -1,3 +1,4 @@
+import { getInputMode } from '../utils/inputMode';
 import React, { useState } from 'react';
 import { groupLabelIndent } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
@@ -80,6 +81,9 @@ export interface TrackControlPanelProps {
   trackHeight?: number; // Actual pixel height for fine-grained responsive behavior
   tabIndex?: number;
   onFocusChange?: (hasFocus: boolean) => void;
+  /** The panel ITSELF took keyboard focus (Tab onto the header), or
+   *  gave it up — the host mirrors it to both columns' bars (2026-10-12) */
+  onContainerFocusChange?: (hasFocus: boolean) => void;
   onNavigateVertical?: (direction: 'up' | 'down', shiftKey?: boolean) => void;
   /** Cmd/Ctrl+ArrowUp/Down on the focused header — reorders this
    *  track's row in the track list rather than moving focus. Wired
@@ -155,6 +159,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   trackHeight,
   tabIndex,
   onFocusChange,
+  onContainerFocusChange,
   onNavigateVertical,
   onReorderVertical,
   onDragReorderDrop,
@@ -404,6 +409,11 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   const handleFocus = (e: React.FocusEvent) => {
     // Focus entered somewhere within the panel (could be panel itself or a child)
     onFocusChange?.(true);
+    // The panel ITSELF, by keyboard (Tab onto the header): the track is
+    // keyboard-focused and its bars turn black-and-white (2026-10-12,
+    // "blue until it's focused from keyboard tabbing"). A child taking
+    // the focus, or a mouse press, is not that.
+    onContainerFocusChange?.(e.target === e.currentTarget && getInputMode() === 'keyboard');
   };
 
   const handleBlur = (e: React.FocusEvent) => {
@@ -413,6 +423,10 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     // Only notify blur if focus is moving completely outside the panel
     if (!relatedTarget || !panelElement.contains(relatedTarget)) {
       onFocusChange?.(false);
+      onContainerFocusChange?.(false);
+    } else if (e.target === panelElement) {
+      // To one of its own controls: the panel is no longer the focus
+      onContainerFocusChange?.(false);
     }
   };
 

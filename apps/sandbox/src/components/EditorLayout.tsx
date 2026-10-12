@@ -952,6 +952,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 })()}
                 isFocused={state.focusedTrackIndex === index}
                 containerFocused={containerFocusedTrack === index}
+                onContainerFocusChange={(hasFocus) => handleTrackContainerFocusChange(index, hasFocus)}
                 meterLevel={
                   state.isRecording && state.recordingTrackIndex === index
                     ? state.recordingMeterLevel
@@ -1217,6 +1218,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     }}
                     onTrackFocusChange={handleTrackFocusChange}
                     onTrackContainerFocusChange={handleTrackContainerFocusChange}
+                containerFocusedTrack={containerFocusedTrack}
                     onEnterTrackPanel={handleEnterTrackPanel}
                     onContainerEnter={handleContainerEnter}
                     onShiftTabFromTrack={handleShiftTabFromTrack}

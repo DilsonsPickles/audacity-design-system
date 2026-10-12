@@ -27,11 +27,19 @@
   bottom: -2px;
 }
 
-/* Container-focused visual (black/white bars) intentionally removed —
-   both Tab-focus and arrow-focus now use the same blue bars painted
-   by .track-wrapper--focused above. The container-focused state is
-   still tracked in JS in case we want to reintroduce a distinct
-   Tab-focus visual later. */
+/* KEYBOARD-FOCUSED: the bars turn BLACK AND WHITE (2026-10-12, "I want
+   it blue until it's focused from keyboard tabbing") — the app's focus
+   frame as bars, 1px white against the track and 1px black beyond, 2px
+   combined. Container focus = the row itself (or its header, mirrored
+   by the host) took the focus by keyboard; arrow navigation and clicks
+   keep the blue. */
+.track-wrapper--focused.track-wrapper--container-focused::before {
+  background: linear-gradient(to bottom, #000 0 1px, #fff 1px 2px);
+}
+
+.track-wrapper--focused.track-wrapper--container-focused::after {
+  background: linear-gradient(to bottom, #fff 0 1px, #000 1px 2px);
+}
 
 /* Suppress browser default focus outline — wrapper bars serve as focus indicator */
 .track {

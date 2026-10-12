@@ -79,6 +79,9 @@ export interface CanvasProps {
    * Callback when the track container itself gains/loses keyboard focus
    */
   onTrackContainerFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
+  /** The track whose row or header holds KEYBOARD focus (App state), so
+   *  both columns show the black-and-white bars together (2026-10-12) */
+  containerFocusedTrack?: number | null;
   /**
    * Callback when canvas height changes
    */
@@ -201,6 +204,7 @@ export function Canvas({
   onTimeSelectionMenuClick,
   onTrackFocusChange,
   onTrackContainerFocusChange,
+  containerFocusedTrack = null,
   showRmsInWaveform = true,
   showQuickFadeHandles = true,
   trackDragPreview = null,
@@ -855,6 +859,7 @@ export function Canvas({
           tracks={tracks}
           selectedTrackIndices={selectedTrackIndices}
           focusedTrackIndex={focusedTrackIndex}
+          containerFocusedTrack={containerFocusedTrack}
           selectedLabelIds={selectedLabelIds}
           width={width}
           pixelsPerSecond={pixelsPerSecond}

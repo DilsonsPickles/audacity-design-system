@@ -255,6 +255,10 @@ export interface TrackProps {
    * Whether the track has focus
    */
   isFocused?: boolean;
+  /** The track is keyboard-focused by the HOST's reckoning (Tab landed on
+   *  its header, say) — the bars turn black-and-white as for the row's
+   *  own container focus (2026-10-12) */
+  containerFocused?: boolean;
 
   /**
    * Whether the track is muted
@@ -613,6 +617,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   envelopeMode = false,
   isSelected = false,
   isFocused = false,
+  containerFocused = false,
   isMuted = false,
   isLabelTrack = false,
   isMidiTrack = false,
@@ -2924,7 +2929,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   };
 
   return (
-    <div className={`${className}${isContainerFocused ? ' track-wrapper--container-focused' : ''}`} data-track-index={trackIndex}>
+    <div className={`${className}${(isContainerFocused || containerFocused) ? ' track-wrapper--container-focused' : ''}`} data-track-index={trackIndex}>
       <div
         ref={trackRef}
         className={`track ${isSelected ? 'track--selected' : ''} ${isMuted ? 'track--muted' : ''}`}

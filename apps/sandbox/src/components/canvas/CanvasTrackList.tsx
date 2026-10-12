@@ -48,6 +48,8 @@ export interface CanvasTrackListProps {
   tracks: Track[];
   selectedTrackIndices: number[];
   focusedTrackIndex: number | null;
+  /** The track whose row or header holds keyboard focus (2026-10-12) */
+  containerFocusedTrack: number | null;
   selectedLabelIds: string[];
   width: number;
   pixelsPerSecond: number;
@@ -410,6 +412,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   collapseStyle,
   selectedTrackIndices,
   focusedTrackIndex,
+  containerFocusedTrack,
   selectedLabelIds,
   width,
   pixelsPerSecond,
@@ -584,6 +587,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         envelopeMode={envelopeMode}
         isSelected={isSelected}
         isFocused={isFocused}
+        containerFocused={containerFocusedTrack === trackIndex}
         isMuted={effectivelyMuted}
         isLabelTrack={track.type === 'label'}
         isMidiTrack={track.type === 'midi'}

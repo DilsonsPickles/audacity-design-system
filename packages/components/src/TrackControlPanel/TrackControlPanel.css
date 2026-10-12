@@ -57,11 +57,29 @@
   box-shadow: 0 calc(100% + 2px) 0 0 var(--tcp-focus-color);
 }
 
-/* Container-focused visual (black/white double border) intentionally
-   removed — Tab-focus and arrow-focus share the blue bottom bar
-   painted by .track-control-panel--focused above. State is still
-   plumbed in JS so we can reintroduce a distinct Tab-focus visual
-   later if we change our minds. */
+/* KEYBOARD-FOCUSED: the bars turn BLACK AND WHITE (2026-10-12, "I want
+   it blue until it's focused from keyboard tabbing"): 1px white against
+   the panel, 1px black beyond. The bottom bar moves from the box-shadow
+   (one colour) to ::after for this state. */
+.track-control-panel--focused.track-control-panel--container-focused::before {
+  background: linear-gradient(to bottom, #000 0 1px, #fff 1px 2px);
+}
+
+.track-control-panel--focused.track-control-panel--container-focused {
+  box-shadow: none;
+}
+
+.track-control-panel--focused.track-control-panel--container-focused::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: linear-gradient(to bottom, #fff 0 1px, #000 1px 2px);
+  pointer-events: none;
+  z-index: 1000;
+}
 
 /* Panel container is not a tab stop — suppress any focus outline */
 .track-control-panel:focus-visible {
