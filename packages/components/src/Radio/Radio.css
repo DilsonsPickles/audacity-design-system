@@ -39,9 +39,9 @@
 /* Focus state: the app's black-and-white frame, on the indicator (the
    input is visually hidden, so styles/focusFrame.css cannot reach it) */
 .radio__input:focus-visible + .radio__indicator {
-  outline: 2px solid #fff;
+  outline: 1px solid #fff;
   outline-offset: 0;
-  box-shadow: 0 0 0 4px #000;
+  box-shadow: 0 0 0 2px #000;
 }
 
 .radio__pip {

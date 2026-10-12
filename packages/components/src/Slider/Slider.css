@@ -69,5 +69,5 @@
 /* Focus state - the app's black-and-white frame around the handle (the
    input is the focusable, so styles/focusFrame.css cannot reach it) */
 .slider__input:focus-visible + .slider__track + .slider__handle {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+  box-shadow: 0 0 0 1px #fff, 0 0 0 2px #000;
 }

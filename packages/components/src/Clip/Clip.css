@@ -43,15 +43,15 @@
 
 /* Keyboard focus outline for clips: the app's BLACK AND WHITE frame
    (2026-10-12, "ALL focus state frames should be black and white
-   outline" — it was a focus-blue ring with a thin dark edge): a 2px
-   white stroke at the clip's edge, 2px black outside it. z-index lifts
+   outline" — it was a focus-blue ring with a thin dark edge): a 1px
+   white stroke at the clip's edge, 1px black outside it (2px combined). z-index lifts
    the focused clip above siblings on the same track so the ring isn't
    clipped. (Its own rule, not styles/focusFrame.css: the clip
    suppresses the ring for mouse focus by hand, below.) */
 [data-clip-id]:focus {
-  outline: 2px solid #fff;
+  outline: 1px solid #fff;
   outline-offset: 0;
-  box-shadow: 0 0 0 4px #000;
+  box-shadow: 0 0 0 2px #000;
   border-radius: 4px;
   z-index: 5;
 }
