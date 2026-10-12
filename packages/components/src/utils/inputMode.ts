@@ -27,7 +27,10 @@ const ensureInstalled = () => {
     mode = 'mouse';
   }, true);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
+    // Tab — and F6 / Shift+F6, the section walk (2026-10-12: a track
+    // reached by F6 is keyboard-focused as much as one reached by Tab,
+    // and its bars turn black-and-white the same way)
+    if (e.key === 'Tab' || e.key === 'F6') {
       mode = 'keyboard';
     } else if (e.key === 'Escape') {
       mode = 'mouse';

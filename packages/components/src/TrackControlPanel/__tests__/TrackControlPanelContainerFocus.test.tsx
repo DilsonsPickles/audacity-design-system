@@ -40,6 +40,21 @@ describe('TrackControlPanel — reports its own keyboard focus (2026-10-12, the 
     expect(onContainerFocusChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('an F6 press counts as keyboard, like Tab (2026-10-12, "we did that for tab, why not f6?")', () => {
+    const onContainerFocusChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackControlPanel trackName="Track 1" isFocused tabIndex={0} onContainerFocusChange={onContainerFocusChange} />
+      </Providers>,
+    );
+    const panel = container.querySelector<HTMLElement>('.track-control-panel')!;
+    fireEvent.mouseDown(document); // the last input was a click…
+    fireEvent.keyDown(document, { key: 'F6' }); // …then the section walk
+    act(() => { panel.focus(); });
+    expect(onContainerFocusChange).toHaveBeenLastCalledWith(true);
+    fireEvent.keyDown(document, { key: 'Tab' });
+  });
+
   it('a mouse press before the focus is not keyboard focus', () => {
     const onContainerFocusChange = vi.fn();
     const { container } = render(
