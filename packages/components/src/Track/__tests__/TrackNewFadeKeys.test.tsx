@@ -111,6 +111,41 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(onDocumentDelete).not.toHaveBeenCalled(); // the app's delete never sees it
   });
 
+  it('Tab on a focused handle is the CLIP\'s Tab: the next clip, never the next track by DOM order; Shift+Tab from the first clip\'s handle enters the panel (2026-10-12)', () => {
+    const onEnterPanel = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1 },
+            { id: 2, name: 'B', start: 5, duration: 4, fadeIn: 1 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onEnterPanel={onEnterPanel}
+        />
+      </Providers>,
+    );
+    const clipA = container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
+    const clipB = container.querySelector<HTMLElement>('[data-clip-id="2"]')!;
+    act(() => { clipA.focus(); });
+    fireEvent.keyDown(clipA, { key: 'f', code: 'KeyF' });
+    const handleA = container.querySelector<HTMLElement>('[data-fade-handle="in"][data-fade-clip="1"]')!;
+    expect(document.activeElement).toBe(handleA);
+    fireEvent.keyDown(handleA, { key: 'Tab' });
+    expect(document.activeElement).toBe(clipB);
+    // and back: Shift+Tab from B's handle lands on A; from A's handle, the panel
+    fireEvent.keyDown(clipB, { key: 'f', code: 'KeyF' });
+    const handleB = container.querySelector<HTMLElement>('[data-fade-handle="in"][data-fade-clip="2"]')!;
+    fireEvent.keyDown(handleB, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(clipA);
+    fireEvent.keyDown(clipA, { key: 'f', code: 'KeyF' });
+    fireEvent.keyDown(container.querySelector<HTMLElement>('[data-fade-handle="in"][data-fade-clip="1"]')!, { key: 'Tab', shiftKey: true });
+    expect(onEnterPanel).toHaveBeenCalled();
+  });
+
   it('the focused handle reads back as a slider with its length and curve', () => {
     const { clip, handle } = setup({ fadeOutShape: 'linear' });
     act(() => { clip.focus(); });

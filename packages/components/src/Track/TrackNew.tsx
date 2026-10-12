@@ -777,6 +777,36 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     clips.forEach((c, i) => z.set(c.id, 2 + i));
     return z;
   }, [clips]);
+  // Tab from a clip (and, since 2026-10-12, from one of its fade
+  // handles — "if I have F in focus and then I hit tab, it's jumping
+  // to the next track"): the previous / next clip in DOM order, the
+  // panel before the track's first clip, the host's `onTabFromLastClip`
+  // after its last. Returns true when it moved the focus; false leaves
+  // the browser's own Tab to run (no more clips that way).
+  const tabFromClip = (clipEl: HTMLElement, clipIndex: number, shift: boolean): boolean => {
+    const isFirstOnTrack = clipIndex === 0;
+    const isLastOnTrack = clipIndex === sortedClips.length - 1;
+    if (shift && isFirstOnTrack) {
+      onEnterPanel?.();
+      return true;
+    }
+    if (!shift && isLastOnTrack && onTabFromLastClip) {
+      onTabFromLastClip();
+      return true;
+    }
+    const allClips = Array.from(document.querySelectorAll<HTMLElement>('[data-clip-id]'));
+    const currentIdx = allClips.indexOf(clipEl);
+    if (currentIdx === -1) return false;
+    const target = allClips[shift ? currentIdx - 1 : currentIdx + 1];
+    if (!target) return false;
+    // preventScroll: the browser's default focus-scroll is instant and
+    // races the smooth scroll our onFocus handler queues via
+    // scrollIntoViewIfNeeded — worse, it lands the clip in view so the
+    // "already visible" check short-circuits and no smooth scroll
+    // happens at all. Skipping the default lets our smooth pan run.
+    target.focus({ preventScroll: true });
+    return true;
+  };
 
   // Which clip's fade handle is being dragged (keeps the handles
   // visible while the pointer is captured, even off-hover)
@@ -1920,46 +1950,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             //   Arrow keys stay reserved for matrix nav (playhead +
             //   track focus).
             if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-              const currentEl = e.currentTarget as HTMLElement;
-              const isFirstOnTrack = clipIndex === 0;
-              const isLastOnTrack = clipIndex === sortedClips.length - 1;
-
-              if (e.shiftKey && isFirstOnTrack) {
+              if (tabFromClip(e.currentTarget as HTMLElement, clipIndex, e.shiftKey)) {
                 e.preventDefault();
                 e.stopPropagation();
-                onEnterPanel?.();
-                return;
-              }
-
-              if (!e.shiftKey && isLastOnTrack && onTabFromLastClip) {
-                e.preventDefault();
-                e.stopPropagation();
-                onTabFromLastClip();
-                return;
-              }
-
-              const allClips = Array.from(
-                document.querySelectorAll<HTMLElement>('[data-clip-id]'),
-              );
-              const currentIdx = allClips.indexOf(currentEl);
-              if (currentIdx !== -1) {
-                const targetIdx = e.shiftKey ? currentIdx - 1 : currentIdx + 1;
-                const target = allClips[targetIdx];
-                if (target) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // preventScroll: the browser's default focus-scroll is
-                  // instant and races the smooth scroll our onFocus
-                  // handler queues via scrollIntoViewIfNeeded — worse,
-                  // it lands the clip in view so the "already visible"
-                  // check short-circuits and no smooth scroll happens at
-                  // all. Skipping the default lets our smooth pan run.
-                  target.focus({ preventScroll: true });
-                  return;
-                }
-                // No more clips in this direction — let the browser
-                // move focus to the next tabbable element (ruler,
-                // side panel button, etc.).
               }
               return;
             }
@@ -2475,6 +2468,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               };
               const stop = () => { e.preventDefault(); e.stopPropagation(); };
               if (e.key === 'Escape') { stop(); focusClip(); return; }
+              // Tab is the CLIP's Tab: the next or previous clip, or out
+              // of the track — never the next track by DOM order
+              if (e.key === 'Tab') {
+                setFadeKeyFocus(null);
+                const clipEl = trackRef.current?.querySelector<HTMLElement>(`[data-clip-id="${clip.id}"]`);
+                const idx = sortedClips.findIndex((c) => c.id === clip.id);
+                if (clipEl && tabFromClip(clipEl, idx, e.shiftKey)) { stop(); return; }
+                // No clip that way: the browser's Tab runs on from the clip
+                clipEl?.focus({ preventScroll: true });
+                return;
+              }
               // F cycles: in → out → clip; Shift+F the other way
               if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
                 stop();
