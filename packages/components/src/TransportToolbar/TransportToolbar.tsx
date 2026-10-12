@@ -599,6 +599,7 @@ export function TransportToolbar({
               value={currentTime}
               format={timeCodeFormat}
               onChange={onTimeCodeChange}
+              ariaLabel="Playhead position"
               onFormatChange={onTimeCodeFormatChange}
               accent={varispeedOn}
             />

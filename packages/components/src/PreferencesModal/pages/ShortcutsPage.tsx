@@ -54,6 +54,8 @@ export function ShortcutsPage() {
     { id: '35d', action: 'Fade handle: remove / menu / back to the clip', shortcut: '⌫ / ⇧F10 / Esc' },
     { id: '36', action: 'Find clipping', shortcut: '' },
     { id: '36a', action: 'Context menu (focused clip, track or handle)', shortcut: '⇧F10 · Menu key' },
+    { id: '36b', action: 'Next section (menu, Home, transport, tracks, selection bar)', shortcut: 'F6' },
+    { id: '36c', action: 'Previous section', shortcut: '⇧F6' },
     { id: '37', action: 'Fit project', shortcut: '⌘F' },
     { id: '37a', action: 'Zoom in', shortcut: '⌘=' },
     { id: '37b', action: 'Zoom out', shortcut: '⌘−' },

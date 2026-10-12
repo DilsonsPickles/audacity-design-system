@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { computeProjectEnd, handleHomeEnd, handleTrackFocus } from '../navigationHandlers';
+import { computeProjectEnd, handleHomeEnd, handleTrackFocus, handleF6, F6_SECTIONS } from '../navigationHandlers';
 import { initialState, type TracksState } from '../../../contexts/TracksContext';
 
 const makeState = (o: Partial<TracksState> = {}): TracksState =>
@@ -145,5 +145,38 @@ describe('handleTrackFocus — folder headers are never a focus stop', () => {
     const deps = makeDeps(makeState({ tracks, focusedTrackIndex: null }));
     handleTrackFocus(keyEvent({ key: 'ArrowDown', shiftKey: false }), deps);
     expect(focusPayloads(deps.dispatch as ReturnType<typeof vi.fn>)).toEqual([1]);
+  });
+});
+
+describe('handleF6 — next / previous section, every profile, the selection bar a stop (2026-10-12)', () => {
+  const labels = ['File', 'Home', 'Play', 'Add Track', 'Track 1 track controls', 'Selection start'];
+  const mount = () => {
+    const els = labels.map((label) => {
+      const el = document.createElement('div');
+      el.setAttribute('aria-label', label);
+      el.tabIndex = 0;
+      document.body.appendChild(el);
+      return el;
+    });
+    return { els, unmount: () => els.forEach((el) => el.remove()) };
+  };
+  const press = (shiftKey = false) => handleF6(keyEvent({ key: 'F6', shiftKey }), makeDeps(makeState()));
+
+  it('walks the sections in reading order and wraps, Shift the other way; the selection bar is the last stop', () => {
+    const { els, unmount } = mount();
+    expect(F6_SECTIONS).toHaveLength(labels.length);
+    els[0].focus();
+    for (let i = 1; i < els.length; i++) { press(); expect(document.activeElement).toBe(els[i]); }
+    press(); expect(document.activeElement).toBe(els[0]); // wrap
+    press(true); expect(document.activeElement).toBe(els[els.length - 1]); // Shift: back round to the selection bar
+    unmount();
+  });
+
+  it('from nowhere, lands on the first section', () => {
+    const { els, unmount } = mount();
+    (document.activeElement as HTMLElement | null)?.blur();
+    press();
+    expect(document.activeElement).toBe(els[0]);
+    unmount();
   });
 });

@@ -190,6 +190,7 @@ export function SelectionToolbar({
             frameRate={frameRate}
             onChange={onSelectionStartChange}
             showFormatSelector={false}
+            ariaLabel="Selection start"
           />
           <TimeCode
             value={endValue}
@@ -199,6 +200,7 @@ export function SelectionToolbar({
             onChange={onSelectionEndChange}
             onFormatChange={onFormatChange}
             showFormatSelector={true}
+            ariaLabel="Selection end"
           />
         </div>
 
@@ -213,6 +215,7 @@ export function SelectionToolbar({
                 frameRate={frameRate}
                 showFormatSelector={true}
                 onFormatChange={onDurationFormatChange}
+                ariaLabel="Selection duration"
               />
             </div>
           </>

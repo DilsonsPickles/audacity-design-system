@@ -169,6 +169,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
       }
 
+      // --- F6 / Shift+F6: next / previous section (every profile,
+      // 2026-10-12; the real build's nav-next-section). ABOVE the input
+      // guard: section navigation works from inside a text field too.
+      if (e.key === 'F6' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        handleF6(e, navDeps);
+        return;
+      }
+
       // Navigation keys indicate keyboard navigation mode
       const navKeys = ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Home', 'End'];
       if (navKeys.includes(e.key)) {
@@ -520,13 +529,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           handleLoopToggle(transportDeps);
           return;
         }
-      }
-
-      // --- F6: Block navigation ---
-      if (e.key === 'F6' && isFlatNavigation) {
-        e.preventDefault();
-        handleF6(e, navDeps);
-        return;
       }
 
       // --- ArrowUp/Down: Track focus ---

@@ -64,6 +64,9 @@ export interface TimeCodeProps {
    * @default true
    */
   showFormatSelector?: boolean;
+  /** The group's accessible name — which time this is ("Selection
+   *  start", "Playhead position"); "Time code" when unsaid */
+  ariaLabel?: string;
   /**
    * Disabled state
    * @default false
@@ -109,6 +112,7 @@ export function TimeCode({
   onChange,
   onFormatChange,
   showFormatSelector = true,
+  ariaLabel = 'Time code',
   disabled = false,
   variant = 'dark',
   className = '',
@@ -414,7 +418,7 @@ export function TimeCode({
       style={style}
       data-accent={accent ? 'true' : undefined}
       role="group"
-      aria-label="Time code"
+      aria-label={ariaLabel}
       tabIndex={0}
       onKeyDown={handleContainerKeyDown}
     >

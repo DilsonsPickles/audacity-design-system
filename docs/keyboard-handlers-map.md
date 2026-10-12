@@ -132,6 +132,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 **Location:** `apps/sandbox/src/hooks/useKeyboardShortcuts.ts`
 
 **Handlers:**
+- **F6 / Shift+F6** - Next / previous section: menu bar, Home tab, transport, Add Track, first track header, the selection bar's Start timecode (`handleF6`, `F6_SECTIONS`; every profile since 2026-10-12, above the input guard)
 - **Home** - Jump playhead to time 0, clear time selection
 - **End** - Jump playhead to end of project (max clip end across all tracks)
 - **Shift+Home** - Extend/create time selection from playhead to time 0

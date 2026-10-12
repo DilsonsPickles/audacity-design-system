@@ -88,15 +88,23 @@ export function handleHomeEnd(e: KeyboardEvent, deps: NavigationHandlerDeps): vo
   scrollPlayheadIntoView();
 }
 
-/** F6: jump between major UI blocks (flat navigation mode) */
+/** F6 / Shift+F6: the next / previous SECTION of the window — the real
+ *  build's nav-next-section / nav-prev-section (MuseScore's). Every
+ *  profile since 2026-10-12 (it was the flat profile's alone), and the
+ *  bottom selection bar is a stop: that is where a keyboard user types a
+ *  selection's edges to the sample ("couldn't they use the bottom bar
+ *  selection timecode?"). Reading order, top to bottom; wraps. */
+export const F6_SECTIONS: ReadonlyArray<() => HTMLElement | null> = [
+  () => document.querySelector<HTMLElement>('[aria-label="File"]'),
+  () => document.querySelector<HTMLElement>('[aria-label="Home"]'),
+  () => document.querySelector<HTMLElement>('[aria-label="Play"]'),
+  () => document.querySelector<HTMLElement>('[aria-label="Add Track"]'),
+  () => document.querySelector<HTMLElement>('[aria-label*="track controls"]'),
+  () => document.querySelector<HTMLElement>('[aria-label="Selection start"]'),
+];
+
 export function handleF6(e: KeyboardEvent, _deps: NavigationHandlerDeps): void {
-  const majorBlocks = [
-    () => document.querySelector('[aria-label="File"]') as HTMLElement,
-    () => document.querySelector('[aria-label="Home"]') as HTMLElement,
-    () => document.querySelector('[aria-label="Play"]') as HTMLElement,
-    () => document.querySelector('[aria-label="Add Track"]') as HTMLElement,
-    () => document.querySelector('[aria-label*="track controls"]') as HTMLElement,
-  ];
+  const majorBlocks = F6_SECTIONS;
 
   const currentElement = document.activeElement as HTMLElement;
   let currentBlockIndex = -1;
