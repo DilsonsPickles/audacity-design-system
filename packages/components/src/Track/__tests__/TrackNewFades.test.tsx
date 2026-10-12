@@ -315,6 +315,53 @@ describe('clip fades', () => {
     expect(onFadeDragChange.mock.calls).toEqual([[1], [null]]);
   });
 
+  it('on a COLLAPSED clip the fade curve, the shape dot and the crossfade node start under the border, not the hidden header (2026-10-12)', () => {
+    const renderAt = (height: number) => render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1 },
+            { id: 2, name: 'B', start: 3, duration: 4 },
+          ]}
+          width={1000}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          height={height}
+          onClipFadeChange={vi.fn()}
+          onClipFadeShapeChange={vi.fn()}
+          onCrossfadeShapeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const measure = (container: HTMLElement) => {
+      hoverClip(container, 1);
+      const curve = container.querySelector<HTMLElement>('[data-fade-curve="in"][data-fade-authored="true"]')!;
+      const dot = container.querySelector<HTMLElement>('[data-quickfade-node="in"]')!;
+      const node = container.querySelector<HTMLElement>('[data-crossfade-node]')!;
+      const ghost = container.querySelector<HTMLElement>('[data-crossfade-ghost]');
+      return { curveTop: curve.style.top, curveHeight: curve.style.height, dotTop: dot.style.top, nodeTop: node.style.top, ghostTop: ghost?.style.top };
+    };
+    // Full height: under the 20px header and the 1px border
+    const full = renderAt(114);
+    const f = measure(full.container);
+    expect(f.curveTop).toBe('21px');
+    expect(f.curveHeight).toBe('92px');
+    cleanup();
+    // Collapsed (under 72): the body takes the whole clip, so the curve
+    // closes the gap — from the border — and the dots move with it
+    const collapsed = renderAt(60);
+    const c = measure(collapsed.container);
+    expect(c.curveTop).toBe('1px');
+    expect(c.curveHeight).toBe('58px');
+    // The S-curve's default handle sits at half gain: the dot's centre at
+    // bodyTop + bodyHeight / 2, drawn NODE_R + 3 = 8 above it
+    expect(c.dotTop).toBe(`${Math.round(1 + 58 / 2 - 8)}px`);
+    expect(f.dotTop).toBe(`${Math.round(21 + 92 / 2 - 8)}px`);
+    // The crossfade node and ghost share the geometry
+    expect(parseFloat(c.nodeTop)).toBeLessThan(parseFloat(f.nodeTop));
+    if (c.ghostTop !== undefined) expect(c.ghostTop).toBe('1px');
+  });
+
   it('the fade handle wears the pressed look for the whole drag, and only the one in hand', () => {
     const { container } = render(
       <Providers>

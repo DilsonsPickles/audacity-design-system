@@ -1,7 +1,7 @@
 import React from 'react';
 import type { MidiNote } from '@audacity-ui/core';
 import { Clip, StretchIcon, TrimLeftIcon, TrimRightIcon } from '../Clip/Clip';
-import { clipHandleRows } from '../utils/clipHandleRows';
+import { isClipCollapsed, clipHandleRows } from '../utils/clipHandleRows';
 import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
@@ -85,6 +85,24 @@ const FADE_HIT_REACH = 15;
  *  floor, where the edge handle rows take the whole clip. Not the
  *  collapse point (72): a collapsed 60px clip still has room. */
 const FADE_CONTROLS_MIN_CLIP_HEIGHT = 44;
+
+// The clip BODY's top and height inside the wrapper: under the 20px
+// header and the 1px border — or, on a COLLAPSED clip (under
+// CLIP_COLLAPSE_HEIGHT, where Clip hides the header until hovered and
+// the body takes the whole height), from the border alone (user
+// decision 2026-10-12, "when the clip header gets hidden, the fade curve
+// needs to close the gap left by the header"). Everything drawn ON the
+// body at track level — the fade curves and their dims, the shape dots,
+// the crossfade node, the crossfade ghost — takes this one geometry, so
+// the dots stay on the curves. The hovered header of a collapsed clip
+// overlays the body's top; the curve keeps its place under it. (The fade
+// LENGTH handles are not body drawing: they keep their row under the
+// 20px header whatever the clip, 2026-10-08.)
+const CLIP_HEADER_H = 20;
+const clipBodyGeometry = (height: number) => {
+  const bodyTop = (isClipCollapsed(height) ? 0 : CLIP_HEADER_H) + 1;
+  return { bodyTop, bodyHeight: Math.max(0, height - bodyTop - 1) };
+};
 
 // A pointer-captured drag ENDS on pointerup — or on `pointercancel`
 // (the browser took the pointer back: the window losing focus
@@ -1133,9 +1151,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
     // A clip at the FLOOR shows its edge handles only (2026-10-07, below)
     if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
-    const CLIP_HEADER_H = 20;
-    const bodyTop = CLIP_HEADER_H + 1;
-    const bodyHeight = Math.max(0, height - bodyTop - 1);
+    const { bodyTop, bodyHeight } = clipBodyGeometry(height);
     const NODE_R = 5;
     return crossfadeNodes.map((n) => {
       // Shown under the SAME rules as the quick-fade shape handle (user
@@ -1312,9 +1328,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (!onClipFadeShapeChange) return null;
     // A clip at the FLOOR shows its edge handles only (2026-10-07, below)
     if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
-    const CLIP_HEADER_H = 20;
-    const bodyTop = CLIP_HEADER_H + 1;
-    const bodyHeight = Math.max(0, height - bodyTop - 1);
+    const { bodyTop, bodyHeight } = clipBodyGeometry(height);
     const NODE_R = 5;
     // Under the pointer or mid-drag the handle ENLARGES, subtly, and
     // nothing else (user decision 2026-09-29, replacing the envelope
@@ -1481,11 +1495,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
 
   const renderFadeCurveOverlays = () => {
     if (fadeCurves.length === 0) return null;
-    const CLIP_HEADER_H = 20;
     // The clip draws with a 1px border, so the header's true bottom is
-    // wrapper-top + 21 — the overlay starts exactly there.
-    const bodyTop = CLIP_HEADER_H + 1;
-    const bodyHeight = Math.max(0, height - bodyTop - 1);
+    // wrapper-top + 21 — the overlay starts exactly there; on a collapsed
+    // clip, at wrapper-top + 1 (clipBodyGeometry)
+    const { bodyTop, bodyHeight } = clipBodyGeometry(height);
     const geometry = (region: (typeof fadeCurves)[number]) => ({
       left: Math.round(CLIP_CONTENT_OFFSET + region.start * pixelsPerSecond),
       width: Math.max(1, Math.round((region.end - region.start) * pixelsPerSecond)),
