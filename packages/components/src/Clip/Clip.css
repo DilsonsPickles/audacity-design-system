@@ -258,6 +258,18 @@
   }
 }
 
+/* DIMMED: the kind the keyboard is not holding, on a clip the pointer
+   rule shows none for (user decision 2026-10-12, "show the other
+   handles, but disabled transparent") — the whole set in view, one pair
+   live. No pointer: the pointer falls through to the clip. A disabled
+   button would swallow the pointer instead of passing it, so the state
+   is an attribute, not `disabled`. Track.css dims the fade handle to
+   the same strength; keep them in step. */
+.clip-display__handle[data-disabled] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .clip-display__handle[data-leaving] {
   opacity: 0;
   pointer-events: none;

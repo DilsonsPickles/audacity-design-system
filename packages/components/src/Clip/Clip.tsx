@@ -153,6 +153,11 @@ export interface ClipProps {
    *  the focus on. Set, the handles are mounted whatever the pointer does
    *  and this one takes the focus; null = none. */
   keyboardHandle?: { kind: 'trim' | 'stretch'; edge: 'left' | 'right' } | null;
+  /** A keyboard handle of ANOTHER family (a fade handle, F) is held on
+   *  this clip: mount the four trim / stretch handles DIMMED and
+   *  non-interactive where the pointer rule shows none, so the whole set
+   *  is in view while the keyboard works one of it (2026-10-12). */
+  ghostHandles?: boolean;
   /** A key on a handle holding keyboard focus — the host runs the gesture */
   onHandleKeyDown?: (kind: 'trim' | 'stretch', edge: 'left' | 'right', e: React.KeyboardEvent<HTMLButtonElement>) => void;
   /** A handle took the focus */
@@ -227,6 +232,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   handlesVisible,
   handlesHiddenAt,
   keyboardHandle = null,
+  ghostHandles = false,
   onHandleKeyDown,
   onHandleFocus,
   onHandleBlur,
@@ -245,27 +251,27 @@ const ClipComponent: React.FC<ClipProps> = ({
   // hand, and kept a moment after that, fading (useLeaveDelay)
   // The POINTER's rule for the pair of pairs…
   const pointerHandles = !handlesHidden && ((handlesVisible ?? selected) || trimEdge !== null || stretchEdge !== null);
-  // …or holding KEYBOARD focus (T / S), whatever the pointer does — and
-  // then ONLY THE PAIR IN HAND when the pointer rule shows none (user
-  // decisions 2026-10-12: "when the clip isn't selected perhaps we only
-  // show the control the user pressed?", then "we can show both sides at
-  // the same time" — the two trim handles for T, the two stretch handles
-  // for S; four on an unselected clip is the furniture the pointer rule
-  // avoids)
-  const handlesShown = pointerHandles || keyboardHandle !== null;
-  // Which set is up, remembered so the leave tail (useLeaveDelay) fades
-  // out the SAME set: the pointer's four, or the keyboard's pair — never
-  // the other pair appearing just to fade
-  const shownSetRef = useRef<'all' | 'trim' | 'stretch' | null>(null);
-  if (pointerHandles) shownSetRef.current = 'all';
-  else if (keyboardHandle) shownSetRef.current = keyboardHandle.kind;
-  const showHandle = (kind: 'trim' | 'stretch') => {
-    if (pointerHandles) return true;
-    if (keyboardHandle?.kind === kind) return true;
-    if (handlesLeaving) return shownSetRef.current === 'all' || shownSetRef.current === kind;
-    return false;
-  };
+  // …or holding KEYBOARD focus (T / S), whatever the pointer does — or
+  // a fade handle's (F, ghostHandles). Then, where the pointer rule
+  // shows none, ALL FOUR are mounted but only THE PAIR IN HAND IS LIVE:
+  // the other kind is DIMMED and takes no pointer (user decisions
+  // 2026-10-12: "when the clip isn't selected perhaps we only show the
+  // control the user pressed?", then "we can show both sides at the same
+  // time", then "maybe we do show the other handles, but disabled
+  // transparent" — the whole set in view says where T, S and F go,
+  // without four live controls on an unselected clip). With a fade
+  // handle held, both pairs are the dimmed ones.
+  const handlesShown = pointerHandles || keyboardHandle !== null || ghostHandles;
   const { mounted: handlesMounted, leaving: handlesLeaving } = useLeaveDelay(handlesShown);
+  // The dimmed state, per kind: never under the pointer rule, and never
+  // for the kind in hand. Held across the leave tail — a dimmed handle
+  // fades out from dim, not up to full first.
+  const dimmedKindRef = useRef<'trim' | 'stretch' | 'both' | null>(null);
+  if (pointerHandles) dimmedKindRef.current = null;
+  else if (keyboardHandle) dimmedKindRef.current = keyboardHandle.kind === 'trim' ? 'stretch' : 'trim';
+  else if (ghostHandles) dimmedKindRef.current = 'both';
+  const dimmedAttr = (kind: 'trim' | 'stretch') =>
+    (dimmedKindRef.current === 'both' || dimmedKindRef.current === kind) ? 'true' : undefined;
   const leavingAttr = handlesLeaving ? 'true' : undefined;
   // The handle buttons by kind and edge, for the keyboard focus
   const handleRefs = useRef(new Map<string, HTMLButtonElement | null>());
@@ -534,7 +540,7 @@ const ClipComponent: React.FC<ClipProps> = ({
               they linger a moment with data-leaving, fading (Clip.css). */}
           {!handlesHiddenAt?.left && (
             <>
-              {onTrimEdge && showHandle('trim') && (
+              {onTrimEdge && (
                 <button
                   type="button"
                   tabIndex={-1}
@@ -542,6 +548,8 @@ const ClipComponent: React.FC<ClipProps> = ({
                   aria-label="Trim left edge"
                   {...handleKeyboardProps('trim', 'left')}
                   data-leaving={leavingAttr}
+                  data-disabled={dimmedAttr('trim')}
+                  aria-disabled={dimmedAttr('trim') ? true : undefined}
                   onMouseDown={handleVisibleTrimMouseDown('left')}
                   onMouseEnter={() => onHandleHover?.('trim')}
                   onMouseLeave={() => onHandleHover?.(null)}
@@ -549,7 +557,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   <TrimLeftIcon />
                 </button>
               )}
-              {showHandle('stretch') && (
+              {(
               <button
                 type="button"
                 tabIndex={-1}
@@ -557,6 +565,8 @@ const ClipComponent: React.FC<ClipProps> = ({
                 aria-label="Stretch left edge"
                 {...handleKeyboardProps('stretch', 'left')}
                 data-leaving={leavingAttr}
+                data-disabled={dimmedAttr('stretch')}
+                aria-disabled={dimmedAttr('stretch') ? true : undefined}
                 onMouseDown={handleStretchMouseDown('left')}
                 onMouseEnter={() => onHandleHover?.('stretch')}
                 onMouseLeave={() => onHandleHover?.(null)}
@@ -568,7 +578,7 @@ const ClipComponent: React.FC<ClipProps> = ({
           )}
           {!handlesHiddenAt?.right && (
             <>
-              {onTrimEdge && showHandle('trim') && (
+              {onTrimEdge && (
                 <button
                   type="button"
                   tabIndex={-1}
@@ -576,6 +586,8 @@ const ClipComponent: React.FC<ClipProps> = ({
                   aria-label="Trim right edge"
                   {...handleKeyboardProps('trim', 'right')}
                   data-leaving={leavingAttr}
+                  data-disabled={dimmedAttr('trim')}
+                  aria-disabled={dimmedAttr('trim') ? true : undefined}
                   onMouseDown={handleVisibleTrimMouseDown('right')}
                   onMouseEnter={() => onHandleHover?.('trim')}
                   onMouseLeave={() => onHandleHover?.(null)}
@@ -583,7 +595,7 @@ const ClipComponent: React.FC<ClipProps> = ({
                   <TrimRightIcon />
                 </button>
               )}
-              {showHandle('stretch') && (
+              {(
               <button
                 type="button"
                 tabIndex={-1}
@@ -591,6 +603,8 @@ const ClipComponent: React.FC<ClipProps> = ({
                 aria-label="Stretch right edge"
                 {...handleKeyboardProps('stretch', 'right')}
                 data-leaving={leavingAttr}
+                data-disabled={dimmedAttr('stretch')}
+                aria-disabled={dimmedAttr('stretch') ? true : undefined}
                 onMouseDown={handleStretchMouseDown('right')}
                 onMouseEnter={() => onHandleHover?.('stretch')}
                 onMouseLeave={() => onHandleHover?.(null)}

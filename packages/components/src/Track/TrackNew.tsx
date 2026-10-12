@@ -2139,6 +2139,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             handlesHiddenAt={{ left: isCrossfadedEdge(clip.id, 'left'), right: isCrossfadedEdge(clip.id, 'right') }}
             onHandleHover={setHintHover}
             keyboardHandle={handleKeyFocus?.clipId === clip.id ? { kind: handleKeyFocus.kind, edge: handleKeyFocus.edge } : null}
+            ghostHandles={fadeKeyFocus?.clipId === clip.id}
             onHandleKeyDown={(kind, edge, e) => handleKeyOnHandle(clip, clipIndex, kind, edge, e)}
             onHandleFocus={(kind, edge) => setHandleKeyFocus((prev) => (prev?.clipId === clip.id && prev.kind === kind && prev.edge === edge ? prev : { clipId: clip.id, kind, edge }))}
             onHandleBlur={(kind, edge, to) => {
@@ -2243,9 +2244,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // fading (Track.css). One key set per control; the render functions
   // draw active ∪ leaving. (Clip's in-clip trim/stretch pair does the
   // same for itself.)
+  // (…and, DIMMED, for a clip whose TRIM or STRETCH handle the keyboard
+  // holds — the whole set in view, 2026-10-12: `fadeHandleGhosted`.)
   const fadeHandleActive = clips
-    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id || fadeKeyFocus?.clipId === c.id) && !hidesHandlesOf(c.id))
+    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id || fadeKeyFocus?.clipId === c.id || handleKeyFocus?.clipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
+  // A fade handle mounted ONLY because T / S holds one of the clip's
+  // other handles: drawn dimmed, taking no pointer (user decision
+  // 2026-10-12, "maybe we do show the other handles, but disabled
+  // transparent"); the pointer, a drag or F make it live.
+  const fadeHandleGhosted = (clipId: string | number) =>
+    handleKeyFocus?.clipId === clipId && fadeHoverClipId !== clipId && fadeDragClipId !== clipId && fadeKeyFocus?.clipId !== clipId;
   const leavingFadeHandles = useLeavingKeys(fadeHandleActive);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
@@ -2494,6 +2503,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const clipActive = fadeHandleActive.includes(String(clip.id));
       const leaving = !clipActive && leavingFadeHandles.has(String(clip.id));
       if (!clipActive && !leaving) continue;
+      const ghosted = clipActive && fadeHandleGhosted(clip.id);
       const clipWidth = clip.duration * pixelsPerSecond;
       if (clipWidth < FADE_HANDLE_MIN_CLIP_PX) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
@@ -2555,6 +2565,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-fade-clip={clip.id}
             data-track-index={trackIndex}
             data-leaving={leaving ? 'true' : undefined}
+            data-disabled={ghosted ? 'true' : undefined}
+            aria-disabled={ghosted ? true : undefined}
             // Keyboard-focusable (F on the clip, 2026-10-12), never in
             // the tab order: the clip is the tab stop, F is the way in
             tabIndex={-1}
@@ -2811,6 +2823,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // gridline. The dash is Track.css; it fades with the handles.
       const guidelineSides: Array<'in' | 'out'> = fadeDragClipId === clip.id && fadeDragSide
         ? [fadeDragSide]
+        : ghosted ? []
         : (['in', 'out'] as const).filter((side) =>
           (side === 'in' ? fadeInSec : fadeOutSec) > 0 && !crossfadedEdges.has(`${clip.id}:${side}`));
       for (const side of guidelineSides) {

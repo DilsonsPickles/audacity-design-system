@@ -251,6 +251,15 @@
   opacity: 1;
 }
 
+/* A fade handle DIMMED beside a held trim or stretch handle (T / S on
+   the clip, 2026-10-12, "show the other handles, but disabled
+   transparent"): in view, no pointer. Clip.css dims the trim and
+   stretch handles to the same strength; keep them in step. */
+.track-fade-handle[data-disabled] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 [data-leaving] {
   opacity: 0 !important;
   pointer-events: none !important;

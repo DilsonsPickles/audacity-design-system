@@ -198,12 +198,21 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(handle('in')).toBeNull();
   });
 
-  it('held by the keyboard alone, both fade handles are mounted — the pair, as T mounts both trim handles (2026-10-12)', () => {
-    const { clip, handle } = setup();
+  it('held by the keyboard alone, both fade handles are mounted live — and the clip\'s trim and stretch handles dimmed (2026-10-12)', () => {
+    const { clip, handle, container } = setup();
     fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
     expect(handle('in')).not.toBeNull();
     expect(handle('out')).not.toBeNull();
+    expect(handle('in')!.hasAttribute('data-disabled')).toBe(false);
+    expect(handle('out')!.hasAttribute('data-disabled')).toBe(false);
     expect(document.activeElement).toBe(handle('in'));
+    // The host wires no edge trim here, so only the stretch pair can mount — dimmed
+    const ghosts = [...container.querySelectorAll('[data-clip-id="1"] [data-handle-kind]')];
+    expect(ghosts.map((g) => g.getAttribute('data-handle-kind'))).toEqual(['stretch', 'stretch']);
+    expect(ghosts.every((g) => g.getAttribute('data-disabled') === 'true' && g.getAttribute('aria-disabled') === 'true')).toBe(true);
+    // Escape: everything goes
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(container.querySelectorAll('[data-clip-id="1"] [data-handle-kind], [data-fade-handle]').length).toBe(0);
   });
 
   it('the focused handle reads back as a slider with its length and curve', () => {

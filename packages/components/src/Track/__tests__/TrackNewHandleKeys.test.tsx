@@ -88,19 +88,36 @@ describe('T and S focus the trim and stretch handles (2026-10-12)', () => {
     expect(document.activeElement).toBe(handle('stretch', 'right'));
   });
 
-  it('on an UNSELECTED clip only the PAIR in hand is mounted (2026-10-12, "we can show both sides at the same time"); a selected single clip keeps its set', () => {
+  it('on an UNSELECTED clip the whole set is mounted, the PAIR in hand live and the rest DIMMED (2026-10-12, "show the other handles, but disabled transparent"); a selected single clip keeps its live set', () => {
     const { clip, container } = setup();
+    // Live and dimmed, by `kind-edge` — the fade handles join the set
+    const live = () => [...container.querySelectorAll('[data-clip-id="1"] [data-handle-kind]:not([data-disabled]), [data-fade-handle][data-fade-clip="1"]:not([data-disabled])')]
+      .map((h) => h.hasAttribute('data-fade-handle') ? `fade-${h.getAttribute('data-fade-handle')}` : `${h.getAttribute('data-handle-kind')}-${h.getAttribute('data-handle-edge')}`);
+    const dimmed = () => [...container.querySelectorAll('[data-clip-id="1"] [data-handle-kind][data-disabled], [data-fade-handle][data-fade-clip="1"][data-disabled]')]
+      .map((h) => h.hasAttribute('data-fade-handle') ? `fade-${h.getAttribute('data-fade-handle')}` : `${h.getAttribute('data-handle-kind')}-${h.getAttribute('data-handle-edge')}`);
+    expect(container.querySelectorAll('[data-clip-id="1"] [data-handle-kind], [data-fade-handle]').length).toBe(0);
     fireEvent.keyDown(clip, { key: 't', code: 'KeyT' });
-    const mounted = () => [...container.querySelectorAll('[data-clip-id="1"] [data-handle-kind]')].map((h) => `${h.getAttribute('data-handle-kind')}-${h.getAttribute('data-handle-edge')}`);
-    expect(mounted()).toEqual(['trim-left', 'trim-right']);
+    expect(live()).toEqual(['trim-left', 'trim-right']);
+    expect(dimmed().sort()).toEqual(['fade-in', 'fade-out', 'stretch-left', 'stretch-right']);
+    // A dimmed handle says so to assistive tech, and no guideline is drawn beside it
+    expect(container.querySelector('[data-fade-handle][data-disabled]')!.getAttribute('aria-disabled')).toBe('true');
+    expect(container.querySelector('[data-fade-guideline]')).toBeNull();
     fireEvent.keyDown(document.activeElement!, { key: 't', code: 'KeyT' });
-    expect(mounted()).toEqual(['trim-left', 'trim-right']);
+    expect(live()).toEqual(['trim-left', 'trim-right']);
     fireEvent.keyDown(document.activeElement!, { key: 's', code: 'KeyS' });
-    expect(mounted()).toEqual(['stretch-left', 'stretch-right']);
+    expect(live()).toEqual(['stretch-left', 'stretch-right']);
+    expect(dimmed().sort()).toEqual(['fade-in', 'fade-out', 'trim-left', 'trim-right']);
+    // F from the (right) handle: the fade at that edge goes live with its
+    // pair, and both clip pairs dim
+    fireEvent.keyDown(document.activeElement!, { key: 'f', code: 'KeyF' });
+    expect(document.activeElement?.getAttribute('data-fade-handle')).toBe('out');
+    expect(live().sort()).toEqual(['fade-in', 'fade-out']);
+    expect(dimmed().sort()).toEqual(['stretch-left', 'stretch-right', 'trim-left', 'trim-right']);
     cleanup();
     const sel = setup({ selected: true }, { singleSelection: true });
     fireEvent.keyDown(sel.clip, { key: 't', code: 'KeyT' });
     expect(sel.container.querySelectorAll('[data-clip-id="1"] [data-handle-kind]').length).toBe(4);
+    expect(sel.container.querySelectorAll('[data-clip-id="1"] [data-handle-kind][data-disabled]').length).toBe(0);
   });
 
   it('Shift+S on the clip is NOT taken (Solo is app-wide)', () => {
