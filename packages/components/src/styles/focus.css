@@ -23,8 +23,8 @@
   /* the app's black-and-white frame (styles/focusFrame.css draws the
      same for every keyboard focus; this keeps the class meaningful) */
   outline: 1px solid #fff;
-  outline-offset: 0;
-  box-shadow: 0 0 0 2px #000;
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 2px #000;
 }
 
 /**

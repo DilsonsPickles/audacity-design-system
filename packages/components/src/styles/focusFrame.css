@@ -2,10 +2,14 @@
  * THE FOCUS FRAME IS BLACK AND WHITE, EVERYWHERE (user decision 2026-10-12,
  * "ALL focus state frames should be black and white outline"): one rule
  * for every keyboard-focused element in the app — a 1px WHITE stroke at
- * the element's edge with a 1px BLACK stroke outside it (2px combined —
+ * the element's edge with a 1px BLACK stroke just inside it (2px combined —
  * "2px is a bit much, should be 2px combined", the same day), so it reads on
- * the light chrome and the dark canvas alike (the pattern the vertical
- * and timeline rulers already drew, inset). It beats the per-component
+ * the light chrome and the dark canvas alike — the pattern the vertical
+ * and timeline rulers already drew. INSIDE the box, as theirs is (later the
+ * same day, "the focus state just isn't showing on the Home / Project
+ * tabs": drawn outside, the frame was clipped by the toolbar's overflow
+ * and the window's edge wherever an element fills its container; inside,
+ * nothing can clip it). It beats the per-component
  * rings (the theme's blue, outline or box-shadow) with !important, so a
  * component need not know about it; the per-component rules keep only
  * their geometry. Mouse focus draws nothing (:focus-visible), as before.
@@ -20,6 +24,6 @@
  */
 :focus-visible:not(.track):not(.track-control-panel):not(.dialog):not([data-clip-id]):not(.vertical-ruler-panel__track):not([aria-label="Timeline ruler"]):not([data-no-focus-frame]) {
   outline: 1px solid #fff !important;
-  outline-offset: 0 !important;
-  box-shadow: 0 0 0 2px #000 !important;
+  outline-offset: -1px !important;
+  box-shadow: inset 0 0 0 2px #000 !important;
 }
