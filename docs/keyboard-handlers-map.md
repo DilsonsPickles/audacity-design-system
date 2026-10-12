@@ -140,7 +140,7 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 - **ArrowUp/Down** - Move track focus outline (only when focus is NOT inside a tab group, and never inside an open `[role="menu"]` — the menu walks its own items, 2026-10-12)
 - **Shift+ArrowUp/Down** - Extend track range selection (only when focus is NOT inside a tab group)
 - **ArrowLeft/Right** - Move playhead / manipulate time selection (also works when timeline ruler is focused)
-- **[ / ]** - Set the time selection's left / right boundary at the playhead (AU3's Selection: Set Left/Right Boundary). Bare keys only; row scope untouched; edges swap if they'd cross; with no selection, creates a zero-width range at the playhead seeded from the track selection
+- ~~[ / ]~~ - Removed 2026-10-12 (set the time selection's boundary at the playhead; 'pretty much useless'). The focused clip's bracket trim / stretch keys remain. Row scope untouched; edges swap if they'd cross; with no selection, creates a zero-width range at the playhead seeded from the track selection
 - **Delete/Backspace** - Delete focused clip (reads `data-clip-id` from `document.activeElement`)
 
 **Tab group guard:** The global ArrowUp/Down handler checks `target.closest('[role="toolbar"], [role="group"], [role="menubar"]')` and exits early if focus is inside any tab group. This prevents the track focus outline from moving when the user is navigating within a toolbar, menubar, or track header panel.

@@ -8,7 +8,7 @@ import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers
 import { handleDelete } from './handlers/deleteHandlers';
 import { handleSpacebar, handlePlaySelection, handlePlayToCursor, handlePlayStopSetCursor, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
-import { handlePlayheadMove, handleEscape, handleDeleteTimeRange, handleSetSelectionBoundary } from './handlers/playheadSelectionHandlers';
+import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
 import { scrollPlayheadIntoView } from '../utils/scrollPlayheadIntoView';
 import { handleTrackCreation } from './handlers/trackCreationHandlers';
 import { handleEffectsKey } from './handlers/effectsPanelHandlers';
@@ -777,15 +777,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // --- [ / ] : set selection left / right boundary at the playhead ---
-      // Audacity 3's Selection: Set Left/Right Boundary. Bare keys only —
-      // Cmd+[ / Cmd+] belong to the browser (history nav).
-      if ((e.key === '[' || e.key === ']') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        if (e.defaultPrevented) return;
-        e.preventDefault();
-        handleSetSelectionBoundary(e.key === '[' ? 'left' : 'right', playheadDeps);
-        return;
-      }
+      // ([ and ] used to set the time selection's left / right boundary
+      // at the playhead — Audacity 3's Selection: Set Left/Right Boundary,
+      // which in the real build opens a "Playback position" dialog that
+      // defaults to 0 and silently does nothing. Dropped 2026-10-12, "I
+      // think these shortcuts are pretty much useless": the bare bracket
+      // keys are free again. A focused clip's bracket keys — trim, with
+      // Cmd stretch — are TrackNew's and unaffected.)
 
       // --- ArrowLeft / ArrowRight: nudge the playhead ---
       // Plain arrow → 0.1 s playhead nudge.
