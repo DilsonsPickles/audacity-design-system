@@ -149,34 +149,52 @@ describe('handleTrackFocus — folder headers are never a focus stop', () => {
 });
 
 describe('handleF6 — next / previous section, every profile, the selection bar a stop (2026-10-12)', () => {
-  const labels = ['File', 'Home', 'Play', 'Add Track', 'Track 1 track controls', 'Selection start'];
-  const mount = () => {
-    const els = labels.map((label) => {
-      const el = document.createElement('div');
-      el.setAttribute('aria-label', label);
-      el.tabIndex = 0;
-      document.body.appendChild(el);
-      return el;
-    });
-    return { els, unmount: () => els.forEach((el) => el.remove()) };
+  /** The real landmarks, as the app renders them */
+  const mount = (opts: { withTracks?: boolean } = {}) => {
+    const { withTracks = true } = opts;
+    const make = (html: string) => { const t = document.createElement('div'); t.innerHTML = html; const el = t.firstElementChild as HTMLElement; document.body.appendChild(el); return el; };
+    const menubar = make('<div role="menubar"><button tabindex="0">File</button><button tabindex="-1">Edit</button></div>');
+    const mainMenu = make('<div aria-label="Main menu" role="group"><button tabindex="0">Home</button><button tabindex="-1">Project</button></div>');
+    const play = make('<button aria-label="Play" tabindex="0">▶</button>');
+    const add = make('<button aria-label="Add track" tabindex="0">+</button>');
+    const header = withTracks ? make('<div class="track-control-side-panel"><div aria-label="Track 1 track controls" tabindex="0"></div></div>') : null;
+    const bar = make('<div class="selection-toolbar"><div aria-label="Selection start" tabindex="0"></div></div>');
+    const stops = [menubar.firstElementChild, mainMenu.firstElementChild, play, add, header?.firstElementChild ?? null, bar.firstElementChild] as (HTMLElement | null)[];
+    return { stops, unmount: () => [menubar, mainMenu, play, add, header, bar].forEach((el) => el?.remove()) };
   };
   const press = (shiftKey = false) => handleF6(keyEvent({ key: 'F6', shiftKey }), makeDeps(makeState()));
 
   it('walks the sections in reading order and wraps, Shift the other way; the selection bar is the last stop', () => {
-    const { els, unmount } = mount();
-    expect(F6_SECTIONS).toHaveLength(labels.length);
-    els[0].focus();
-    for (let i = 1; i < els.length; i++) { press(); expect(document.activeElement).toBe(els[i]); }
-    press(); expect(document.activeElement).toBe(els[0]); // wrap
-    press(true); expect(document.activeElement).toBe(els[els.length - 1]); // Shift: back round to the selection bar
+    const { stops, unmount } = mount();
+    expect(F6_SECTIONS).toHaveLength(stops.length);
+    stops[0]!.focus();
+    for (let i = 1; i < stops.length; i++) { press(); expect(document.activeElement).toBe(stops[i]); }
+    press(); expect(document.activeElement).toBe(stops[0]); // wrap
+    press(true); expect(document.activeElement).toBe(stops[stops.length - 1]); // Shift: back round to the selection bar
+    unmount();
+  });
+
+  it('from inside a section (the second menu, say) the next press leaves that section', () => {
+    const { stops, unmount } = mount();
+    (stops[0]!.nextElementSibling as HTMLElement).focus(); // "Edit"
+    press();
+    expect(document.activeElement).toBe(stops[1]);
+    unmount();
+  });
+
+  it('a missing section is skipped, never stalled on: with no tracks, Add track goes straight to the selection bar', () => {
+    const { stops, unmount } = mount({ withTracks: false });
+    stops[3]!.focus();
+    press();
+    expect(document.activeElement).toBe(stops[5]);
     unmount();
   });
 
   it('from nowhere, lands on the first section', () => {
-    const { els, unmount } = mount();
+    const { stops, unmount } = mount();
     (document.activeElement as HTMLElement | null)?.blur();
     press();
-    expect(document.activeElement).toBe(els[0]);
+    expect(document.activeElement).toBe(stops[0]);
     unmount();
   });
 });

@@ -95,35 +95,39 @@ export function handleHomeEnd(e: KeyboardEvent, deps: NavigationHandlerDeps): vo
  *  selection's edges to the sample ("couldn't they use the bottom bar
  *  selection timecode?"). Reading order, top to bottom; wraps. */
 export const F6_SECTIONS: ReadonlyArray<() => HTMLElement | null> = [
-  () => document.querySelector<HTMLElement>('[aria-label="File"]'),
-  () => document.querySelector<HTMLElement>('[aria-label="Home"]'),
+  // the menu bar's first item (its buttons carry no aria-label)
+  () => document.querySelector<HTMLElement>('[role="menubar"] button, [role="menubar"] [role="menuitem"]'),
+  // the project toolbar's Home / Project / … tabs ("Main menu" group)
+  () => document.querySelector<HTMLElement>('[aria-label="Main menu"] [tabindex="0"], [aria-label="Main menu"] button'),
   () => document.querySelector<HTMLElement>('[aria-label="Play"]'),
-  () => document.querySelector<HTMLElement>('[aria-label="Add Track"]'),
+  () => document.querySelector<HTMLElement>('[aria-label="Add track"]'),
   () => document.querySelector<HTMLElement>('[aria-label*="track controls"]'),
   () => document.querySelector<HTMLElement>('[aria-label="Selection start"]'),
 ];
 
 export function handleF6(e: KeyboardEvent, _deps: NavigationHandlerDeps): void {
   const majorBlocks = F6_SECTIONS;
-
-  const currentElement = document.activeElement as HTMLElement;
+  const currentElement = document.activeElement as HTMLElement | null;
+  // Which section holds the focus: the section's element, or anything
+  // inside the same landmark (its toolbar / list / bar)
+  const sectionOf = (el: HTMLElement | null) => el?.closest<HTMLElement>('[role="menubar"], [aria-label="Main menu"], .transport-toolbar, .track-control-side-panel, .selection-toolbar') ?? null;
   let currentBlockIndex = -1;
-
   for (let i = 0; i < majorBlocks.length; i++) {
     const blockElement = majorBlocks[i]();
-    if (blockElement && (blockElement === currentElement || blockElement.contains(currentElement))) {
+    if (!blockElement || !currentElement) continue;
+    if (blockElement === currentElement || blockElement.contains(currentElement)
+      || (sectionOf(blockElement) !== null && sectionOf(blockElement) === sectionOf(currentElement))) {
       currentBlockIndex = i;
       break;
     }
   }
-
-  const nextBlockIndex = e.shiftKey
-    ? (currentBlockIndex <= 0 ? majorBlocks.length - 1 : currentBlockIndex - 1)
-    : (currentBlockIndex + 1) % majorBlocks.length;
-
-  const nextBlock = majorBlocks[nextBlockIndex]();
-  if (nextBlock) {
-    nextBlock.focus();
+  // Step to the next section THAT EXISTS (a project with no tracks has
+  // no header; a hidden bar is no stop) — never stall on a missing one
+  const step = e.shiftKey ? -1 : 1;
+  for (let n = 1; n <= majorBlocks.length; n++) {
+    const idx = (currentBlockIndex + step * n + majorBlocks.length * n) % majorBlocks.length;
+    const next = majorBlocks[idx]();
+    if (next) { next.focus(); return; }
   }
 }
 
