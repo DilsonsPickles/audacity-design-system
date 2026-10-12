@@ -4,27 +4,27 @@
 }
 
 /* Focus borders - top and bottom only, outside the track (focused track
-   indicator). BLACK AND WHITE since 2026-10-12 ("ALL focus state frames
-   should be black and white outline"): a 1px white line against the
-   track, 2px black beyond it — the app's focus frame, as bars. */
+   indicator). THE TRACK FOCUS STAYS BLUE (2026-10-12, "all focus APART
+   from the track focus because that's actually part of the UI" — the
+   black-and-white frame of styles/focusFrame.css is for keyboard focus
+   rings; the track's bars say which track is current, a UI state). */
 .track-wrapper--focused::before,
 .track-wrapper--focused::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2px;
+  background-color: var(--focus-color);
   pointer-events: none;
 }
 
 .track-wrapper--focused::before {
-  top: -3px;
-  background: linear-gradient(to bottom, #000 0 2px, #fff 2px 3px);
+  top: -2px;
 }
 
 .track-wrapper--focused::after {
-  bottom: -3px;
-  background: linear-gradient(to bottom, #fff 0 1px, #000 1px 3px);
+  bottom: -2px;
 }
 
 /* Container-focused visual (black/white bars) intentionally removed —

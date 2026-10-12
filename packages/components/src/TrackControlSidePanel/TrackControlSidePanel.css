@@ -95,11 +95,11 @@
 }
 
 /* Whole track focus state - outline sits at container edge */
-/* The focused row's frame: the app's black-and-white (2026-10-12) */
+/* The focused row's frame stays BLUE: the track focus is UI state, not a
+   keyboard focus ring (2026-10-12) */
 .track-control-side-panel__track--focused .track-control-panel {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--tcsp-focus-outline);
   outline-offset: 0px;
-  box-shadow: 0 0 0 4px #000;
 }
 
 /* Ensure TrackControlPanel fills the ResizablePanel container */
