@@ -49,6 +49,6 @@ html.pan-active * {
 /* Fade in… / Fade out… duration entry: a single number field. The
    Dialog's 480px floor is for content dialogs; this one is 320
    (user decision 2026-09-24). Scoped by the class the dialog passes. */
-.dialog.fade-duration-dialog {
-  min-width: 320px;
+.dialog.fade-dialog {
+  min-width: 360px;
 }

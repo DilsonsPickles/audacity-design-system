@@ -89,6 +89,19 @@ export interface CrossfadeContextMenuState {
   incomingClipId: number;
 }
 
+/** The FADES dialog (2026-10-13): fade-in and fade-out length and shape
+ *  for the clip — or, when it is selected, every selected audio clip
+ *  (the fade rule). Opened from the clip menu's and the handle menu's
+ *  "length…" items, and by ⌥F on a focused clip or fade handle
+ *  (useFadeDialogHotkey). The targets and values are resolved from the
+ *  live tracks at render (AppContextMenus), so the state is just WHICH
+ *  clip and which side's length field takes the focus. */
+export interface FadeDialogState {
+  trackIndex: number;
+  clipId: number;
+  focusSide: 'in' | 'out';
+}
+
 // --- Return type ---
 
 export interface UseContextMenuStateReturn {
@@ -103,6 +116,10 @@ export interface UseContextMenuStateReturn {
   // Crossfade context menu
   crossfadeContextMenu: CrossfadeContextMenuState | null;
   setCrossfadeContextMenu: React.Dispatch<React.SetStateAction<CrossfadeContextMenuState | null>>;
+
+  // The fades dialog
+  fadeDialog: FadeDialogState | null;
+  setFadeDialog: React.Dispatch<React.SetStateAction<FadeDialogState | null>>;
 
   // Track context menu
   trackContextMenu: TrackContextMenuState | null;
@@ -165,6 +182,7 @@ export function useContextMenuState(): UseContextMenuStateReturn {
 
   // Crossfade context menu state
   const [crossfadeContextMenu, setCrossfadeContextMenu] = useState<CrossfadeContextMenuState | null>(null);
+  const [fadeDialog, setFadeDialog] = useState<FadeDialogState | null>(null);
 
   // Track context menu state
   const [trackContextMenu, setTrackContextMenu] = useState<TrackContextMenuState | null>(null);
@@ -227,6 +245,8 @@ export function useContextMenuState(): UseContextMenuStateReturn {
     setFadeContextMenu,
     crossfadeContextMenu,
     setCrossfadeContextMenu,
+    fadeDialog,
+    setFadeDialog,
     trackContextMenu,
     setTrackContextMenu,
     timelineRulerContextMenu,

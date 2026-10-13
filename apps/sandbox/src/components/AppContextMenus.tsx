@@ -11,7 +11,7 @@ import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { useTracks } from '../contexts/TracksContext';
 import type { Track, Clip } from '../contexts/TracksContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
-import { FadeDurationDialog } from './FadeDurationDialog';
+import { FadeDialog, FADE_MIXED, type FadeDialogEdits, type FadeDialogValues } from './FadeDialog';
 import { fadeTargets } from '../utils/fadeTargets';
 import { FADE_SHAPE_PRESETS, fadeShapePresetOf, CROSSFADE_SHAPE_PRESETS, crossfadeShapePresetOf } from '../utils/fadeShapePresets';
 
@@ -63,24 +63,14 @@ export function AppContextMenus({
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
 
-  // "Fade in…" / "Fade out…" from the clip menu: the clicked clip, or —
-  // when it is part of the clip selection — every selected audio clip
-  // (the same rule a row's Create group follows).
-  const [fadeDialog, setFadeDialog] = React.useState<{
-    side: 'in' | 'out';
-    targets: Array<{ trackIndex: number; clipId: number; duration: number }>;
-    initialSeconds: number | undefined;
-  } | null>(null);
+  // "Fade-in length…" / "Fade-out length…" from the clip menu and the
+  // handle menu, and ⌥F (useFadeDialogHotkey): the FADES dialog on the
+  // clicked clip — or, when it is part of the clip selection, every
+  // selected audio clip (fadeTargets, the fade rule). The state is the
+  // context-menu state's (which clip, which side's field takes focus);
+  // the targets and their values are read from the live tracks here.
   const openFadeDialogFor = (trackIndex: number, clipId: number, side: 'in' | 'out') => {
-    const track = tracks[trackIndex];
-    const clicked = track?.clips.find((c: Clip) => c.id === clipId);
-    if (!clicked) return;
-    const selected: Array<{ trackIndex: number; clipId: number; duration: number }> = [];
-    tracks.forEach((t: Track, ti: number) => t.clips.forEach((c: Clip) => { if (c.selected) selected.push({ trackIndex: ti, clipId: c.id, duration: c.duration }); }));
-    const targets = clicked.selected && selected.length > 0
-      ? selected
-      : [{ trackIndex, clipId: clicked.id, duration: clicked.duration }];
-    setFadeDialog({ side, targets, initialSeconds: side === 'in' ? clicked.fadeIn : clicked.fadeOut });
+    setFadeDialog({ trackIndex, clipId, focusSide: side });
   };
   // The fade menu's two edits, shared by the clip menu's Fade ▸ submenus
   // and the handle's right-click menu (one list, FadeMenuItems): every
@@ -107,6 +97,7 @@ export function AppContextMenus({
     clipContextMenu, setClipContextMenu,
     fadeContextMenu, setFadeContextMenu,
     crossfadeContextMenu, setCrossfadeContextMenu,
+    fadeDialog, setFadeDialog,
     trackContextMenu, setTrackContextMenu,
     timelineRulerContextMenu, setTimelineRulerContextMenu,
     effectSelectorMenu, setEffectSelectorMenu,
@@ -630,23 +621,52 @@ export function AppContextMenus({
           </ContextMenu>
         );
       })()}
-      {/* Fade in… / Fade out… duration entry — lives OUTSIDE the clip menu's
-          conditional: opening it closes the menu. */}
-      <FadeDurationDialog
-        isOpen={fadeDialog !== null}
-        side={fadeDialog?.side ?? 'in'}
-        targetCount={fadeDialog?.targets.length ?? 0}
-        initialSeconds={fadeDialog?.initialSeconds}
-        maxSeconds={fadeDialog ? Math.min(...fadeDialog.targets.map((t) => t.duration)) : 0}
-        os={os}
-        onClose={() => setFadeDialog(null)}
-        onApply={(seconds) => {
-        if (!fadeDialog) return;
-        for (const t of fadeDialog.targets) {
-        dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: fadeDialog.side, seconds: Math.min(seconds, t.duration) } });
-        }
-        }}
-      />
+      {/* The FADES dialog — lives OUTSIDE the clip menu's conditional:
+          opening it closes the menu. Its targets are the fade rule's,
+          read live; it stays closed for a clip with no fades (MIDI). */}
+      {(() => {
+        const targets = fadeDialog
+          ? fadeTargets(tracks, fadeDialog.trackIndex, fadeDialog.clipId)
+            .map((t) => ({ ...t, clip: tracks[t.trackIndex]?.clips.find((c: Clip) => c.id === t.clipId) }))
+            .filter((t): t is typeof t & { clip: Clip } => !!t.clip)
+          : [];
+        const merge = <T,>(vals: T[]): T | typeof FADE_MIXED => (vals.every((v) => v === vals[0]) ? vals[0] : FADE_MIXED);
+        const values: FadeDialogValues = {
+          in: { seconds: merge(targets.map((t) => t.clip.fadeIn ?? 0)), shape: merge(targets.map((t) => fadeShapePresetOf(t.clip.fadeInShape))) },
+          out: { seconds: merge(targets.map((t) => t.clip.fadeOut ?? 0)), shape: merge(targets.map((t) => fadeShapePresetOf(t.clip.fadeOutShape))) },
+        };
+        const close = () => {
+          const was = fadeDialog;
+          setFadeDialog(null);
+          // Focus back to the clip (the global rule for a closing menu;
+          // the fade handle it may have come from is gone by now)
+          if (was) requestAnimationFrame(() => {
+            document.querySelector<HTMLElement>(`[data-clip-id="${was.clipId}"][data-track-index="${was.trackIndex}"]`)?.focus();
+          });
+        };
+        return (
+          <FadeDialog
+            isOpen={fadeDialog !== null && targets.length > 0}
+            targetCount={targets.length}
+            values={values}
+            maxSeconds={targets.length > 0 ? Math.min(...targets.map((t) => t.clip.duration)) : 0}
+            presets={FADE_SHAPE_PRESETS}
+            focusSide={fadeDialog?.focusSide ?? 'in'}
+            os={os}
+            onClose={close}
+            onApply={(edits: FadeDialogEdits) => {
+              for (const t of targets) {
+                if (edits.fadeIn !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'in', seconds: Math.min(edits.fadeIn, t.clip.duration) } });
+                if (edits.fadeOut !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'out', seconds: Math.min(edits.fadeOut, t.clip.duration) } });
+                const inPreset = edits.fadeInShape ? FADE_SHAPE_PRESETS.find((p) => p.id === edits.fadeInShape) : undefined;
+                if (inPreset) dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'in', shape: inPreset.shape } });
+                const outPreset = edits.fadeOutShape ? FADE_SHAPE_PRESETS.find((p) => p.id === edits.fadeOutShape) : undefined;
+                if (outPreset) dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'out', shape: outPreset.shape } });
+              }
+            }}
+          />
+        );
+      })()}
     </>
   );
 }
