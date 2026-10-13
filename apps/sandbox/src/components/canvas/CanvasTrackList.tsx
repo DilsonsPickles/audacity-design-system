@@ -132,6 +132,7 @@ export interface CanvasTrackListProps {
   wasJustStretching: () => boolean;
   /** Track-level keyboard nav/reorder — from useTrackKeyboardHandlers (Task 5.7). */
   onTrackNavigateVertical: (trackIndex: number, direction: 1 | -1, shiftKey?: boolean, decouple?: boolean) => void;
+  onClipNavigateVertical: (trackIndex: number, clipId: number, direction: 1 | -1) => boolean;
   onTrackReorder: (trackIndex: number, direction: 1 | -1, wasContainerFocused: boolean) => void;
   /**
    * Cross-hook ref contracts, threaded in verbatim from Canvas so the
@@ -469,6 +470,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
   wasMarqueeing,
   wasJustStretching,
   onTrackNavigateVertical,
+  onClipNavigateVertical,
   onTrackReorder,
   didDragRef,
   justSelectedOnMouseDownRef,
@@ -608,6 +610,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         onTrackNavigateVertical={(direction, shiftKey, decouple) =>
           onTrackNavigateVertical(trackIndex, direction, shiftKey, decouple)
         }
+        onClipNavigateVertical={(clipId, direction) => onClipNavigateVertical(trackIndex, clipId as number, direction)}
         onTrackReorder={(direction, wasContainerFocused) =>
           onTrackReorder(trackIndex, direction, wasContainerFocused)
         }
@@ -716,44 +719,6 @@ const CanvasTrack = React.memo(function CanvasTrack({
               }
             });
           });
-        }}
-        onClipNavigateVertical={(clipId, direction) => {
-          // Find the source clip's start time
-          const sourceClip = track.clips.find(c => c.id === clipId);
-          const sourceStart = sourceClip?.start ?? 0;
-
-          // Search tracks in the given direction, wrapping around
-          const trackCount = tracksRef.current.length;
-          for (let i = 1; i <= trackCount; i++) {
-            const candidateIndex = ((trackIndex + direction * i) % trackCount + trackCount) % trackCount;
-            const candidateTrackData = tracksRef.current[candidateIndex];
-            if (candidateTrackData.clips.length === 0) continue;
-
-            // Find the clip closest in start time
-            let closestClip = candidateTrackData.clips[0];
-            let closestDist = Math.abs(closestClip.start - sourceStart);
-            for (const c of candidateTrackData.clips) {
-              const dist = Math.abs(c.start - sourceStart);
-              if (dist < closestDist) {
-                closestClip = c;
-                closestDist = dist;
-              }
-            }
-
-            // Focus the closest clip element
-            const candidateTrack = document.querySelector(`[data-track-index="${candidateIndex}"]`);
-            if (candidateTrack) {
-              const clipEl = candidateTrack.querySelector(`[data-clip-id="${closestClip.id}"]`) as HTMLElement;
-              if (clipEl) {
-                setTimeout(() => {
-                  clipEl.focus({ preventScroll: true });
-                  // onFocus handler on the clip handles scroll-into-view
-                }, 0);
-                return;
-              }
-            }
-          }
-          // No track with clips found — don't move focus
         }}
         onClipTrim={(clipId, edge, deltaSeconds) => {
           // The FOCUSED clip's edit, by the mouse trim's rule

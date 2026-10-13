@@ -322,7 +322,7 @@ export function Canvas({
   // Track-level keyboard navigation (Arrow/Shift+Arrow) and reorder
   // (Cmd+Arrow) handlers — extracted so the per-track render loop below
   // just wires each TrackNew's trackIndex through a thin arrow.
-  const { onTrackNavigateVertical, onTrackReorder } = useTrackKeyboardHandlers({
+  const { onTrackNavigateVertical, onTrackReorder, onClipNavigateVertical } = useTrackKeyboardHandlers({
     tracks,
     selectedTrackIndices,
     focusedTrackIndex,
@@ -913,6 +913,7 @@ export function Canvas({
           wasMarqueeing={marquee.wasMarqueeing}
           wasJustStretching={wasJustStretching}
           onTrackNavigateVertical={onTrackNavigateVertical}
+          onClipNavigateVertical={onClipNavigateVertical}
           onTrackReorder={onTrackReorder}
           onClipMenuClick={onClipMenuClick}
           didDragRef={didDragRef}

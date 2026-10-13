@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { nearestFocusableTrack } from '../utils/trackFocus';
+import { nearestClipOnNeighbourTrack } from '../utils/clipVerticalNav';
 import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
@@ -29,6 +30,10 @@ export interface UseTrackKeyboardHandlersReturn {
     shiftKey?: boolean,
     decouple?: boolean,
   ) => void;
+  /** ↑ / ↓ on a FOCUSED CLIP (2026-10-13): the clip focus to the nearest
+   *  clip on the nearest track above / below that has one; returns
+   *  false when none does, and the caller falls back to the track row */
+  onClipNavigateVertical: (trackIndex: number, clipId: number, direction: 1 | -1) => boolean;
   onTrackReorder: (
     trackIndex: number,
     direction: 1 | -1,
@@ -335,5 +340,29 @@ export function useTrackKeyboardHandlers(
     }, 0);
   }, [tracks, selectedTrackIndices, focusedTrackIndex, timeSelection, selectionAnchor, setSelectionAnchor, trackSelectionMode, onTrackContainerFocusChange, beginCmdMove, buildTrackForDrop, dispatch]);
 
-  return { onTrackNavigateVertical, onTrackReorder };
+  // ↑ / ↓ ON A FOCUSED CLIP MOVE THE CLIP FOCUS (2026-10-13, "can we move
+  // the clip focus up and down to the nearest clip?"): the nearest clip
+  // on the nearest track with one (utils/clipVerticalNav.ts); the track
+  // focus goes with it, by the plain arrow's own rule (the track
+  // selection follows in follows-focus mode); the CLIP selection is
+  // untouched — arrowing between clips never selects, Enter does.
+  const onClipNavigateVertical = useCallback((trackIndex: number, clipId: number, direction: 1 | -1): boolean => {
+    const target = nearestClipOnNeighbourTrack(tracks, trackIndex, clipId, direction);
+    if (!target) return false;
+    dispatch({ type: 'SET_FOCUSED_TRACK', payload: target.trackIndex });
+    if (trackSelectionMode === 'follows-focus') {
+      dispatch({ type: 'SELECT_TRACK', payload: target.trackIndex });
+      setSelectionAnchor?.(target.trackIndex);
+    }
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-clip-id="${target.clipId}"][data-track-index="${target.trackIndex}"]`);
+      if (el) {
+        el.focus({ preventScroll: true });
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 0);
+    return true;
+  }, [tracks, trackSelectionMode, setSelectionAnchor, dispatch]);
+
+  return { onTrackNavigateVertical, onTrackReorder, onClipNavigateVertical };
 }

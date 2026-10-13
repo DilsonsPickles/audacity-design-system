@@ -522,9 +522,13 @@ export interface TrackProps {
   onClipMoveToTrack?: (clipId: string | number, direction: 1 | -1) => void;
 
   /**
-   * Callback when navigating vertically between tracks (Arrow Up/Down without modifiers)
+   * ↑ / ↓ on a FOCUSED CLIP (2026-10-13, "move the clip focus up and down
+   * to the nearest clip"): the host moves the clip focus to the nearest
+   * clip on the nearest track above / below with one and returns true;
+   * false (or no host) falls back to the track-row focus
+   * (onTrackNavigateVertical).
    */
-  onClipNavigateVertical?: (clipId: string | number, direction: 1 | -1) => void;
+  onClipNavigateVertical?: (clipId: string | number, direction: 1 | -1) => boolean | void;
 
   /**
    * Time selection range (for rendering vibrant clip colors within selection)
@@ -2173,6 +2177,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.stopPropagation();
               (e.currentTarget as HTMLElement).removeAttribute('data-focus-mouse');
               const direction = e.key === 'ArrowDown' ? 1 : -1;
+              // The nearest CLIP on the track above / below first
+              // (2026-10-13); the track row when none has a clip
+              if (onClipNavigateVertical?.(clip.id, direction) === true) return;
               onTrackNavigateVertical?.(direction, false, false);
               return;
             }

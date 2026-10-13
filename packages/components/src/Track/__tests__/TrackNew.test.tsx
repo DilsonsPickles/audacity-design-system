@@ -182,6 +182,22 @@ describe('track container keyboard', () => {
   });
 });
 
+describe('↑ / ↓ on a focused clip move the clip focus (2026-10-13)', () => {
+  it('asks the host for the nearest clip on the track below / above; when the host has none it falls back to the track row', () => {
+    const onClipNavigateVertical = vi.fn((_: string | number, direction: 1 | -1) => direction === 1);
+    const onTrackNavigateVertical = vi.fn();
+    const { container } = renderTrack({ onClipNavigateVertical, onTrackNavigateVertical });
+    const clip = container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: 'ArrowDown' });
+    expect(onClipNavigateVertical).toHaveBeenLastCalledWith(1, 1);
+    expect(onTrackNavigateVertical).not.toHaveBeenCalled();
+    fireEvent.keyDown(clip, { key: 'ArrowUp' });
+    expect(onClipNavigateVertical).toHaveBeenLastCalledWith(1, -1);
+    expect(onTrackNavigateVertical).toHaveBeenCalledWith(-1, false, false);
+  });
+});
+
 // ---------- 6. Escape from clip to track ----------
 //
 // "Escape on clip moves focus to track container" was removed here.
