@@ -8,18 +8,19 @@ afterEach(cleanup);
 
 type Seen = { clips: Array<[number, number, number, number, number, boolean]> };
 
-function Probe({ seen }: { seen: Seen }) {
+function Probe({ seen, playhead = 1 }: { seen: Seen; playhead?: number }) {
   usePlayheadClipHotkeys();
   const { state, dispatch } = useTracks();
   seen.clips = state.tracks[0].clips.map((c) => [c.id, c.start, c.duration, c.fadeIn ?? 0, c.fadeOut ?? 0, !!c.selected]);
   React.useEffect(() => {
-    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 1 });
+    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: playhead });
     dispatch({ type: 'SET_FOCUSED_TRACK', payload: 0 });
-  }, [dispatch]);
+  }, [dispatch, playhead]);
   return (
     <div>
       <div data-track-panel-index="0" tabIndex={0} data-testid="header0" />
       <div data-clip-id="11" data-track-index="0" tabIndex={0} data-testid="clip" />
+      <div data-clip-id="12" data-track-index="0" tabIndex={0} data-testid="clipB" />
       <input data-testid="field" />
     </div>
   );
@@ -27,6 +28,12 @@ function Probe({ seen }: { seen: Seen }) {
 
 const seed = (): Track[] => [
   { id: 1, name: 'Track 1', clips: [{ id: 11, name: 'Clip A', start: 0, duration: 4, trimStart: 0, fullDuration: 4 } as Track['clips'][number]] },
+];
+const seedTwo = (): Track[] => [
+  { id: 1, name: 'Track 1', clips: [
+    { id: 11, name: 'Clip A', start: 0, duration: 4, trimStart: 0, fullDuration: 4 } as Track['clips'][number],
+    { id: 12, name: 'Clip B', start: 6, duration: 4, trimStart: 0, fullDuration: 4 } as Track['clips'][number],
+  ] },
 ];
 const press = (el: Element, code: string, key = 'x') => fireEvent.keyDown(el, { code, key, altKey: true });
 
@@ -60,7 +67,8 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     // ⌥S from the clip's start at 1 with the playhead at 1: nothing to stretch (refused, not clamped)
     act(() => { press(header, 'KeyS'); });
     expect(seen.clips[0].slice(1, 3)).toEqual([1, 3]);
-    // From a focused clip the document listener leaves the edits to TrackNew
+    // From a focused clip the chord is the clip under the playhead on ITS
+    // track — here the same clip, at 1 s, its start already there
     act(() => { getByTestId('clip').focus(); });
     act(() => { press(getByTestId('clip'), 'KeyT'); });
     expect(seen.clips[0].slice(1, 3)).toEqual([1, 3]);
@@ -92,5 +100,19 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     expect(seen.clips[0][5]).toBe(true);
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
     expect(document.activeElement).toBe(getByTestId('clip'));
+  });
+});
+
+describe('the chord takes the clip UNDER THE PLAYHEAD, whichever clip is focused (2026-10-13)', () => {
+  it('⌥F with clip A focused and the playhead over clip B fades B, selects it and moves the focus to it; A is untouched', async () => {
+    const seen: Seen = { clips: [] };
+    const { getByTestId } = render(<TracksProvider initialTracks={seedTwo()}><Probe seen={seen} playhead={7} /></TracksProvider>);
+    act(() => { getByTestId('clip').focus(); });
+    act(() => { press(getByTestId('clip'), 'KeyF'); });
+    // Clip B (6..10), playhead at 7: its first half → a 1 s fade-in on B
+    expect(seen.clips.find((c) => c[0] === 12)?.slice(3, 6)).toEqual([1, 0, true]);
+    expect(seen.clips.find((c) => c[0] === 11)?.slice(3, 6)).toEqual([0, 0, false]);
+    await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
+    expect(document.activeElement).toBe(getByTestId('clipB'));
   });
 });

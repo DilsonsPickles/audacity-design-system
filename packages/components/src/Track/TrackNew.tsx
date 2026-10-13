@@ -2155,17 +2155,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             const isBracketRight = e.code === 'BracketRight'
               || e.key === ']' || e.key === '}'
               || (e as any).keyCode === 221; // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
-            // ⌥F: a fade to the playhead (2026-10-13) — the clip infers
-            // which from where the playhead sits, so there is no side to
-            // remember; ⌥⇧F (the dialog) is the host's document listener
-            if (isOptionF(e) && onClipFadeToPlayhead) {
-              e.preventDefault();
-              e.stopPropagation();
-              fadeToPlayheadByKeys(clip.id, 'auto');
-              return;
-            }
-            // ⌥T / ⌥S: the NEARER edge trimmed / stretched to the playhead
-            if (edgeToPlayheadByKeys(e, clip.id, 'auto')) return;
+            // ⌥F / ⌥T / ⌥S on the CLIP are NOT taken here (2026-10-13, "I
+            // want the action to happen on the clip under the playhead
+            // cursor": with a clip focused and the playhead over ANOTHER
+            // clip of its track, the chord went to the focused clip and
+            // shook it). They are the host's document listener's, which
+            // takes the clip under the playhead on the track you are on
+            // — the focused clip's track — whichever clip is focused. A
+            // focused HANDLE still takes its own edge (below): a handle
+            // is a deliberate pick, and the screen reader has said which.
             // ⌘[ / ⌘]: the PLAYHEAD to this clip's start / end (2026-10-13)
             if ((isBracketLeft || isBracketRight) && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && onPlayheadToClipEdge) {
               e.preventDefault();

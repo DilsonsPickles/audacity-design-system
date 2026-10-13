@@ -4,11 +4,13 @@
  * I use alt + F to fade in/out on any clip?", then "can we have that to
  * trim and stretch too?", then "if my cursor and focus state allow me to
  * pinpoint a single clip, give me a shortcut that can select the clip
- * that I'm over"): with the focus on a TRACK — its header or row, or the
- * app's focused track with nothing more specific focused — and NOT on a
- * clip or a handle (those have TrackNew's own ⌥F / ⌥T / ⌥S, which stop
- * the key before it gets here), the playhead is x and the track is y,
- * and the clip under the playhead on that track is the chord's:
+ * that I'm over"): with the focus on a TRACK — its header or row, a CLIP
+ * (its track), or the app's focused track with nothing more specific
+ * focused — and NOT on a handle (a focused handle has TrackNew's own ⌥F /
+ * ⌥T / ⌥S for its edge, which stop the key before it gets here), the
+ * playhead is x and the track is y, and the clip under the playhead on
+ * that track is the chord's — WHICHEVER clip is focused (2026-10-13, "I
+ * want the action to happen on the clip under the playhead cursor"):
  *
  *   ⌥F      fades it to the playhead — the fade-in in its first half,
  *           the fade-out in its second (utils/fadeToPlayhead.ts)
@@ -34,7 +36,6 @@
 import React from 'react';
 import { announce } from '@audacity-ui/components';
 import { useTracks } from '../contexts/TracksContext';
-import { clipOfElement } from './useFocusedClip';
 import { dialogOwnsKeyboard } from '../utils/focusRouting';
 import { fadeTargets } from '../utils/fadeTargets';
 import { keyboardEditTargets } from '../utils/keyboardEditTargets';
@@ -73,9 +74,12 @@ export function usePlayheadClipHotkeys(): void {
       if (dialogOwnsKeyboard(e.target, document)) return;
       const target = e.target instanceof Element ? e.target : null;
       if (target?.closest('input, textarea, [contenteditable="true"]')) return;
-      // A focused clip or handle has TrackNew's own edits; ⌥Enter from
-      // one still means the clip under the playhead on ITS track
-      if (chord !== 'select' && clipOfElement(document.activeElement)) return;
+      // A focused HANDLE has TrackNew's own ⌥F / ⌥T / ⌥S (its edge, said
+      // by the screen reader); a focused CLIP does not (2026-10-13, "I
+      // want the action to happen on the clip under the playhead
+      // cursor"): the chord takes the clip under the playhead on the
+      // focused clip's track, whichever clip is focused
+      if (chord !== 'select' && document.activeElement?.closest('[data-fade-handle], [data-handle-kind]')) return;
       const { state: s, dispatch: d } = live.current;
       const time = s.playheadPosition;
       const hit = resolveTrackFadeToPlayhead(s.tracks, s.focusedTrackIndex, document.activeElement, time);

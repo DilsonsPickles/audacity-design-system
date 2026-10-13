@@ -350,15 +350,18 @@ describe('⌥F takes a fade to the playhead (2026-10-13)', () => {
   }
   const chord = (el: Element) => fireEvent.keyDown(el, { code: 'KeyF', key: 'ƒ', altKey: true });
 
-  it('from the focused clip the side is the host\'s to infer (auto); bare F and ⌥⇧F are not it', () => {
+  it('on the focused CLIP the chord is not taken here — it is the host\'s, for the clip under the playhead (2026-10-13); bare F and ⌥⇧F are not it either', () => {
     const toPlayhead = vi.fn(() => true);
     const { clip, container } = setupWith(toPlayhead);
+    const seen = vi.fn();
+    document.addEventListener('keydown', seen);
     chord(clip);
-    expect(toPlayhead).toHaveBeenLastCalledWith(1, 'auto');
-    expect(container.querySelector('[data-fade-handle]')).toBeNull(); // the chord did not focus a handle
-    toPlayhead.mockClear();
+    expect(toPlayhead).not.toHaveBeenCalled();
+    expect(seen).toHaveBeenCalledTimes(1); // the key reached the document
+    expect(container.querySelector('[data-fade-handle]')).toBeNull(); // and focused no handle
     fireEvent.keyDown(clip, { code: 'KeyF', key: 'Ï', altKey: true, shiftKey: true }); // the dialog's, left to the document
     expect(toPlayhead).not.toHaveBeenCalled();
+    document.removeEventListener('keydown', seen);
   });
 
   it('from a focused fade handle it is THAT fade; nothing moved shakes that edge and the handle keeps the focus', () => {
@@ -377,16 +380,15 @@ describe('⌥F takes a fade to the playhead (2026-10-13)', () => {
 
 describe('⌥T / ⌥S: an edge to the playhead (2026-10-13, "can we have that to trim and stretch too?")', () => {
   const chord = (el: Element, letter: 'T' | 'S' | 'F') => fireEvent.keyDown(el, { key: letter.toLowerCase(), code: `Key${letter}`, altKey: true });
-  it('from the focused clip the edge is the host\'s to pick (auto); from a fade handle it is that side\'s edge; a refused edit shakes', () => {
+  it('on the focused clip the chords are the host\'s (the clip under the playhead); from a fade handle they take that side\'s edge; a refused edit shakes', () => {
     const onClipTrimToPlayhead = vi.fn(() => true);
     const onClipStretchToPlayhead = vi.fn(() => false);
     const { clip, handle } = setup({}, { onClipTrimToPlayhead, onClipStretchToPlayhead });
     act(() => { clip.focus(); });
     chord(clip, 'T');
-    expect(onClipTrimToPlayhead).toHaveBeenLastCalledWith(1, 'auto');
     chord(clip, 'S');
-    expect(onClipStretchToPlayhead).toHaveBeenLastCalledWith(1, 'auto');
-    expect(clip.querySelector('[data-shake]') ?? clip.getAttribute('data-shake-edge') ?? 'shaken').toBeTruthy();
+    expect(onClipTrimToPlayhead).not.toHaveBeenCalled();
+    expect(onClipStretchToPlayhead).not.toHaveBeenCalled();
     // On the fade-out handle (F twice): the right edge
     fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
     fireEvent.keyDown(handle('in')!, { key: 'f', code: 'KeyF' });
