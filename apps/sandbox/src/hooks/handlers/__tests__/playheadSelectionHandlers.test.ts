@@ -57,21 +57,21 @@ describe('handlePlayheadMove — scope stamping', () => {
     expect(payload.tracks).toEqual([0, 1, 2]);
   });
 
-  it('Shift+ArrowRight preserves an existing scope instead of restamping', () => {
+  it('Shift+ArrowRight keeps an existing scope that contains the focused track (2026-10-13: a focused track outside it takes the range over — see below)', () => {
     const state = makeState({
       tracks: [
         { id: 1, name: 't1', clips: [] },
         { id: 2, name: 't2', clips: [] },
       ] as TracksState['tracks'],
-      focusedTrackIndex: 0,
+      focusedTrackIndex: 1,
       playheadPosition: 5,
-      timeSelection: { startTime: 2, endTime: 5, tracks: [1] },
+      timeSelection: { startTime: 2, endTime: 5, tracks: [0, 1] },
     });
     const deps = makeDeps(state);
     handlePlayheadMove(keyEvent(), false, 0.1, deps);
 
     const [payload] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
-    expect(payload.tracks).toEqual([1]);
+    expect(payload.tracks).toEqual([0, 1]);
     const types = (deps.dispatch as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0].type);
     expect(types).not.toContain('SET_SELECTED_TRACKS');
   });
@@ -122,5 +122,56 @@ describe('handleBracketEdge — [ ] walk the clip edges, Shift grows the selecti
     expect(tsPayloads(deps3.dispatch as ReturnType<typeof vi.fn>)[0]).toMatchObject({ startTime: 1.5, endTime: 4 });
     // The playhead follows the start when it moves
     expect(playheadOf(deps3.dispatch as ReturnType<typeof vi.fn>)).toEqual([1.5]);
+  });
+});
+
+describe('Shift+[ ] — the range follows the track you are on (2026-10-13)', () => {
+  const tracks = [
+    { id: 1, name: 't1', clips: [{ id: 1, start: 1, duration: 2 }] }, // 1..3
+    { id: 2, name: 't2', clips: [{ id: 2, start: 3, duration: 1 }, { id: 3, start: 6, duration: 1 }] }, // 3..4, 6..7
+    { id: 3, name: 't3', clips: [{ id: 5, start: 5, duration: 1 }] }, // 5..6
+  ] as unknown as TracksState['tracks'];
+  it('a focused track outside the selection\'s scope takes the range over; one inside it keeps a multi-track scope', () => {
+    // A range on t1 (scope [0]); the focus moves to t2 and Shift+] is pressed from inside it
+    const onT1 = { startTime: 2, endTime: 3, tracks: [0] };
+    const deps = makeDeps(makeState({ tracks, playheadPosition: 2.5, focusedTrackIndex: 1, selectedTrackIndices: [0], timeSelection: onT1 }));
+    handleBracketEdge(keyEvent({ shiftKey: true }), false, deps);
+    const [p] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
+    expect(p.tracks).toEqual([1]); // t2's now
+    expect(p.endTime).toBe(4); // the range was 2..3; t2's next edge after 3 is 4
+    // A multi-track range (scope [0, 1]) with t1 focused keeps both tracks
+    const multi = { startTime: 2, endTime: 3, tracks: [0, 1] };
+    const deps2 = makeDeps(makeState({ tracks, playheadPosition: 2.5, focusedTrackIndex: 0, selectedTrackIndices: [0, 1], timeSelection: multi }));
+    handleBracketEdge(keyEvent({ shiftKey: true }), true, deps2);
+    expect(tsPayloads(deps2.dispatch as ReturnType<typeof vi.fn>)[0].tracks).toEqual([0, 1]);
+  });
+});
+
+describe('Shift+Arrow — the range follows the track you are on too (2026-10-13)', () => {
+  it('a focused track outside the selection\'s scope takes the range over', () => {
+    const tracks = [
+      { id: 1, name: 't1', clips: [] },
+      { id: 2, name: 't2', clips: [] },
+    ] as unknown as TracksState['tracks'];
+    const onT1 = { startTime: 2, endTime: 3, tracks: [0] };
+    const deps = makeDeps(makeState({ tracks, playheadPosition: 2.5, focusedTrackIndex: 1, selectedTrackIndices: [0], timeSelection: onT1 }));
+    handlePlayheadMove(keyEvent(), false, 0.1, deps);
+    const [p] = tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>);
+    expect(p.tracks).toEqual([1]);
+  });
+});
+
+describe('the track I\'m on is the DOM-focused clip\'s track first (2026-10-13)', () => {
+  it('a clip focused on track 2 while track 1 holds the track focus: the brackets walk track 2 and the range selects it', () => {
+    const tracks = [
+      { id: 1, name: 't1', clips: [{ id: 1, start: 1, duration: 2 }] }, // 1..3
+      { id: 2, name: 't2', clips: [{ id: 2, start: 5, duration: 1 }] }, // 5..6
+    ] as unknown as TracksState['tracks'];
+    const deps = { ...makeDeps(makeState({ tracks, playheadPosition: 0, focusedTrackIndex: 0, selectedTrackIndices: [0] })), trackImOn: () => 1 };
+    handleBracketEdge(keyEvent({ shiftKey: false }), false, deps);
+    const playheads = deps.dispatch.mock.calls.filter((c) => c[0].type === 'SET_PLAYHEAD_POSITION').map((c) => c[0].payload);
+    expect(playheads).toEqual([5]); // t2's first edge, not t1's 1
+    handleBracketEdge(keyEvent({ shiftKey: true }), false, deps);
+    expect(tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>)[0]).toMatchObject({ startTime: 0, endTime: 5, tracks: [1] });
   });
 });

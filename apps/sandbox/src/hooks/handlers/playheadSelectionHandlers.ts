@@ -7,6 +7,30 @@ export interface PlayheadSelectionHandlerDeps {
   selectionAnchorRef: React.MutableRefObject<number | null>;
   selectionEdgesRef: React.MutableRefObject<{ startTime: number; endTime: number } | null>;
   scrollPlayheadIntoView: () => void;
+  /** "The track I'm on", read at the press: the track of the clip or
+   *  header with DOM focus, else the focused track (App's
+   *  resolveTracksImOn order — clip focus and track focus are separate
+   *  state, and a clip focused on another track must count) */
+  trackImOn?: () => number | null;
+}
+
+/** The track a keyboard range or edge walk belongs to */
+function trackImOnOf(deps: PlayheadSelectionHandlerDeps): number | null {
+  const fromDom = deps.trackImOn?.();
+  if (fromDom != null) return fromDom;
+  return deps.state.focusedTrackIndex ?? null;
+}
+
+/** The track scope a keyboard range takes: the existing scope (the
+ *  selection's, else the selected tracks) when it CONTAINS the focused
+ *  track, the focused track alone when it does not, the existing chain
+ *  when nothing is focused (2026-10-13). */
+export function rangeScopeFor(state: TracksState, trackImOn: number | null = state.focusedTrackIndex ?? null): number[] | undefined {
+  const fti = trackImOn;
+  const existing = state.timeSelection?.tracks
+    ?? (state.selectedTrackIndices.length > 0 ? state.selectedTrackIndices : undefined);
+  if (fti == null) return existing;
+  return existing && existing.includes(fti) ? existing : [fti];
 }
 
 /**
@@ -80,16 +104,14 @@ export function handlePlayheadMove(
       payload: {
         startTime: selectionEdgesRef.current.startTime,
         endTime: selectionEdgesRef.current.endTime,
-        // Preserve an existing scope. A FRESH keyboard range inherits
-        // the selection the user already built (Shift+Arrow extends —
-        // it must never shrink the footprint the mirror will write
-        // back), falling back to the focused track when nothing is
-        // selected. No scope when neither exists — consumers fall
-        // back to all tracks.
-        tracks: state.timeSelection?.tracks
-          ?? (state.selectedTrackIndices.length > 0
-            ? state.selectedTrackIndices
-            : state.focusedTrackIndex != null ? [state.focusedTrackIndex] : undefined),
+        // The range follows the track you are on (2026-10-13, the
+        // bracket keys' rule, below: "I'm moving focus up, making the
+        // selection and it's happening on my selected track which
+        // catches me out every single time"): an existing scope that
+        // CONTAINS the focused track is kept (a multi-track selection
+        // goes on growing); a focused track outside it takes the range
+        // over; no focused track keeps the existing chain.
+        tracks: rangeScopeFor(state, trackImOnOf(deps)),
       },
     });
     scrollPlayheadIntoView();
@@ -149,8 +171,8 @@ export function handleBracketEdge(
   deps: PlayheadSelectionHandlerDeps,
 ): void {
   const { state, dispatch, selectionAnchorRef, selectionEdgesRef, scrollPlayheadIntoView } = deps;
-  // The focused track's edges; every track's when none is focused
-  const fti = state.focusedTrackIndex;
+  // The edges of the track I'm on; every track's when there is none
+  const fti = trackImOnOf(deps);
   const scope = fti != null && state.tracks[fti] ? [state.tracks[fti]] : state.tracks;
   if (!e.shiftKey) {
     const target = isLeftward ? prevClipEdge(scope, state.playheadPosition) : nextClipEdge(scope, state.playheadPosition);
@@ -182,15 +204,20 @@ export function handleBracketEdge(
     if (target === null) return;
     selectionEdgesRef.current.endTime = target;
   }
+  // THE RANGE FOLLOWS THE TRACK YOU ARE ON (user decision 2026-10-13,
+  // "what if making a selection on another track using shift + [ / ]
+  // selected that track?"): the edges stepped are the focused track's,
+  // so the range belongs to it. A focused track INSIDE the existing
+  // scope keeps that scope (a Shift+Down multi-track selection goes on
+  // growing); a focused track OUTSIDE it takes the range over — the
+  // scope becomes that track alone, which the reducer mirrors into the
+  // track selection. With no focused track the extend's chain holds.
   dispatch({
     type: 'SET_TIME_SELECTION',
     payload: {
       startTime: selectionEdgesRef.current.startTime,
       endTime: selectionEdgesRef.current.endTime,
-      tracks: state.timeSelection?.tracks
-        ?? (state.selectedTrackIndices.length > 0
-          ? state.selectedTrackIndices
-          : state.focusedTrackIndex != null ? [state.focusedTrackIndex] : undefined),
+      tracks: rangeScopeFor(state, trackImOnOf(deps)),
     },
   });
   scrollPlayheadIntoView();

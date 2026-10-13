@@ -137,7 +137,19 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
   useEffect(() => {
     const transportDeps = { state, handlePlay, handleRecord, handleStopRecording, setEffectsPanel, toggleLoopRegion };
     const navDeps = { state, dispatch, selectionAnchor, setSelectionAnchor, selectionAnchorRef, selectionEdgesRef, isFlatNavigation, scrollPlayheadIntoView, trackSelectionMode };
-    const playheadDeps = { state, dispatch, selectionAnchorRef, selectionEdgesRef, scrollPlayheadIntoView };
+    const playheadDeps = {
+      state, dispatch, selectionAnchorRef, selectionEdgesRef, scrollPlayheadIntoView,
+      // The track of the clip or header with DOM focus, else the focused
+      // track (App's resolveTracksImOn order) — for the bracket keys and
+      // a Shift range, read at the press
+      trackImOn: () => {
+        const active = document.activeElement;
+        const raw = active?.closest<HTMLElement>('[data-track-index]')?.getAttribute('data-track-index')
+          ?? active?.closest<HTMLElement>('[data-track-panel-index]')?.getAttribute('data-track-panel-index');
+        const n = raw != null ? Number(raw) : NaN;
+        return Number.isFinite(n) ? n : (state.focusedTrackIndex ?? null);
+      },
+    };
     const clipboardDeps = { state, dispatch, clipboard, setClipboard, audioManagerRef };
 
     const handleKeyDown = (e: KeyboardEvent) => {
