@@ -89,7 +89,17 @@ export interface TimeCodeProps {
    * left on must be seen where the time is read, not only on its chip
    */
   accent?: boolean;
+  /** Begin editing at the first digit as soon as the control mounts —
+   *  for a dialog that exists to take a typed time (Go to…, 2026-10-13:
+   *  "I have to click, and I'd rather not have to") */
+  autoEdit?: boolean;
+  /** Enter while editing a digit: the edit is finished AND this fires —
+   *  a dialog's "go" without a second Enter on the control at rest */
+  onCommit?: () => void;
 }
+
+/** autoEdit's delay — after a host dialog's focus trap (10ms), see the effect */
+export const AUTO_EDIT_DELAY_MS = 50;
 
 interface TimeCodeSegment {
   value: string;
@@ -117,6 +127,8 @@ export function TimeCode({
   variant = 'dark',
   className = '',
   accent = false,
+  autoEdit = false,
+  onCommit,
 }: TimeCodeProps) {
   const { theme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
@@ -132,6 +144,34 @@ export function TimeCode({
 
   const segments = formatTimeToSegments(value, format, sampleRate, frameRate);
   const segmentsRef = useRef(segments);
+  // The latest onCommit, read by the one editing listener (ref-mirror)
+  const onCommitRef = useRef(onCommit);
+  useEffect(() => { onCommitRef.current = onCommit; }, [onCommit]);
+  /** Into edit mode at the first editable digit */
+  const beginEditing = useCallback(() => {
+    const firstDigitIndex = findNextEditableDigit(-1, segmentsRef.current);
+    if (firstDigitIndex === null) return;
+    const firstDigitElement = digitRefsMap.current.get(firstDigitIndex);
+    if (!firstDigitElement) return;
+    firstDigitElement.focus();
+    setIsEditing(true);
+    setEditingDigitIndex(firstDigitIndex);
+  }, []);
+  // autoEdit: a control that exists to take a typed time starts editing
+  // on mount, so the first keystroke is a digit, not a click or a Space
+  useEffect(() => {
+    if (!autoEdit || disabled) return;
+    // A TIMER, not frames: the Dialog's focus trap seeds focus onto the
+    // first tabbable (a titlebar control) on a 10ms timer, and two
+    // animation frames can land either side of it — when they landed
+    // before, the trap took the focus back to the close button while
+    // the digit went on being edited (seen live 2026-10-13). Timers
+    // fire in delay order, so 50ms always follows the trap's 10ms.
+    const id = window.setTimeout(beginEditing, AUTO_EDIT_DELAY_MS);
+    return () => window.clearTimeout(id);
+    // on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Keep segmentsRef up to date
   useEffect(() => {
@@ -341,6 +381,7 @@ export function TimeCode({
         setIsEditing(false);
         setEditingDigitIndex(null);
         containerRef.current?.focus();
+        onCommitRef.current?.();
       }
     };
 
@@ -390,16 +431,7 @@ export function TimeCode({
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
-      const currentSegments = segmentsRef.current;
-      const firstDigitIndex = findNextEditableDigit(-1, currentSegments);
-      if (firstDigitIndex !== null) {
-        const firstDigitElement = digitRefsMap.current.get(firstDigitIndex);
-        if (firstDigitElement) {
-          firstDigitElement.focus();
-          setIsEditing(true);
-          setEditingDigitIndex(firstDigitIndex);
-        }
-      }
+      beginEditing();
     }
     // Shift+F10: Open format dropdown menu
     else if (e.key === 'F10' && e.shiftKey && showFormatSelector) {

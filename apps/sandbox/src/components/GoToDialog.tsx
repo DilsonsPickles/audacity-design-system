@@ -19,10 +19,11 @@ export interface GoToDialogProps {
  * › Go to…) opens it with the playhead's position in the transport's
  * own TimeCode control, in the transport's format; Go (or Enter on the
  * control) parks the playhead there, Escape leaves it. The control is
- * the toolbar's: Space, a click or an arrow edits a digit, Enter
- * finishes the digit edit — so the dialog takes Enter only from the
- * control at REST (its wrapper, in the capture phase), never from a
- * digit mid-edit. Focus returns to whatever had it when the dialog
+ * the toolbar's, opened already EDITING its first digit (TimeCode's
+ * autoEdit — "I have to click, and I'd rather not have to"), so the
+ * first keystroke is a digit; Enter mid-edit commits through TimeCode's
+ * onCommit, and Enter on the control at rest (its wrapper, capture
+ * phase) goes too. Focus returns to whatever had it when the dialog
  * opened (the clip, the handle, the toolbar). The real build has no
  * such dialog — its "Playback position" is the typed toolbar timecode,
  * which we also have (F6 to it); this is the modal, one-chord form.
@@ -35,9 +36,10 @@ export function GoToDialog({ isOpen, initialSeconds, format, onFormatChange, onG
     if (!isOpen) return;
     setSeconds(initialSeconds);
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    // Onto the control, once the dialog is up
-    const id = requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>('.timecode')?.focus());
-    return () => cancelAnimationFrame(id);
+    // The focus is the control's own: TimeCode's autoEdit puts it on the
+    // first digit (a focus-the-container step here ran after it and
+    // pulled the focus back to the control at rest, where typing did
+    // nothing)
     // Read at OPEN only: the playhead moving while the dialog is up must
     // not overwrite a half-typed position
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,8 +99,12 @@ export function GoToDialog({ isOpen, initialSeconds, format, onFormatChange, onG
           onFormatChange={onFormatChange}
           ariaLabel="Playhead position"
           variant="light"
+          // Editing from the first keystroke, and Enter mid-edit goes
+          // (2026-10-13, "I have to click, and I'd rather not have to")
+          autoEdit
+          onCommit={go}
         />
-        <span style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.55)' }}>Space or a click edits the digits · Enter goes</span>
+        <span style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.55)' }}>Type the position · ← → move between digits · Enter goes</span>
       </div>
     </Dialog>
   );
