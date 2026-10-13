@@ -8,7 +8,7 @@ import { handleCopy, handleCut, handlePaste } from './handlers/clipboardHandlers
 import { handleDelete } from './handlers/deleteHandlers';
 import { handleSpacebar, handlePlaySelection, handlePlayToCursor, handlePlayStopSetCursor, handleRecordToggle, handleLoopToggle } from './handlers/transportHandlers';
 import { handleHomeEnd, handleF6, handleTrackFocus, handleEnterSelection } from './handlers/navigationHandlers';
-import { handlePlayheadMove, handleEscape, handleDeleteTimeRange } from './handlers/playheadSelectionHandlers';
+import { handlePlayheadMove, handleEscape, handleDeleteTimeRange, handleBracketEdge } from './handlers/playheadSelectionHandlers';
 import { scrollPlayheadIntoView } from '../utils/scrollPlayheadIntoView';
 import { handleTrackCreation } from './handlers/trackCreationHandlers';
 import { handleEffectsKey } from './handlers/effectsPanelHandlers';
@@ -698,112 +698,27 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // --- J / K: Playhead jump.
-      //   - Plain J   → previous clip edge on the focused track
-      //   - Plain K   → next     clip edge on the focused track
-      //   - Shift+J   → start of the earliest clip on the focused
-      //                 track (or project 0 as a fresh-load fallback)
-      //   - Shift+K   → end   of the latest   clip on the focused
-      //                 track (or project end as a fresh-load fallback)
-      if (e.key === 'j' || e.key === 'J' || e.key === 'k' || e.key === 'K') {
-        if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // --- [ / ] : the playhead to the previous / next CLIP EDGE on any
+      // track; Shift+[ / ] grow the time selection edge by edge
+      // (user decision 2026-10-13, "use [ and ] to jump between clip
+      // edges and shift + [ / ] to select in between" — the bracket is
+      // the edge: [ ] go to it, ⇧[ ] select to it, ⌥[ ] trim to it, the
+      // last TrackNew's on a focused clip). J / K did the jump for the
+      // focused track alone until then; unbound now ("just unlink j and
+      // k for now"). Matched on the code: a layout may put another
+      // character on the key. Option is left alone (TrackNew's trims).
+      const bracket = e.code === 'BracketLeft' || e.key === '[' || e.key === '{' ? 'left'
+        : e.code === 'BracketRight' || e.key === ']' || e.key === '}' ? 'right' : null;
+      if (bracket && !e.metaKey && !e.ctrlKey && !e.altKey) {
         if (e.defaultPrevented) return;
         const target = e.target as HTMLElement;
         const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
           target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';
         if (isTextInput) return;
         e.preventDefault();
-        const isLeftward = e.key === 'j' || e.key === 'J';
-
-        const fti = state.focusedTrackIndex;
-        const trackForBounds =
-          fti !== null && fti !== undefined ? state.tracks[fti] : null;
-
-        if (!e.shiftKey) {
-          // Plain J / K → jump the playhead to the previous / next
-          // clip edge (start or end of any clip) on the focused
-          // track. Snap-to-clip-boundary navigation.
-          if (!trackForBounds) return;
-          const allClips = [
-            ...(trackForBounds.clips || []),
-            ...(trackForBounds.midiClips || []),
-          ];
-          if (allClips.length === 0) return;
-          // Collect every edge, dedupe so coincident start/end pairs
-          // don't make the playhead stick.
-          const edges = Array.from(
-            new Set<number>(
-              allClips.flatMap((c) => [c.start, c.start + c.duration]),
-            ),
-          ).sort((a, b) => a - b);
-          const playhead = state.playheadPosition;
-          const EPSILON = 0.0001;
-          let target: number | null = null;
-          if (isLeftward) {
-            for (let i = edges.length - 1; i >= 0; i--) {
-              if (edges[i] < playhead - EPSILON) {
-                target = edges[i];
-                break;
-              }
-            }
-          } else {
-            for (const edge of edges) {
-              if (edge > playhead + EPSILON) {
-                target = edge;
-                break;
-              }
-            }
-          }
-          if (target !== null) {
-            dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: target });
-            scrollPlayheadIntoView();
-          }
-          return;
-        }
-
-        // Shift+J / Shift+K → jump to the outer edge of the focused
-        // track's clip cluster:
-        //   Shift+J → start of the earliest clip on that track
-        //   Shift+K → end of the latest clip on that track
-        // Falls back to the equivalent project-wide bound when no
-        // track is focused, so the shortcut still does something
-        // sensible from a fresh load.
-        let targetTime = 0;
-        if (trackForBounds) {
-          const allClips = [
-            ...(trackForBounds.clips || []),
-            ...(trackForBounds.midiClips || []),
-          ];
-          if (allClips.length > 0) {
-            targetTime = isLeftward
-              ? Math.min(...allClips.map((c) => c.start))
-              : Math.max(...allClips.map((c) => c.start + c.duration));
-          }
-        } else if (!isLeftward) {
-          // Project end fallback when no focused track.
-          for (const t of state.tracks) {
-            for (const c of t.clips) {
-              const end = c.start + c.duration;
-              if (end > targetTime) targetTime = end;
-            }
-            for (const c of (t.midiClips || [])) {
-              const end = c.start + c.duration;
-              if (end > targetTime) targetTime = end;
-            }
-          }
-        }
-        dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: targetTime });
-        scrollPlayheadIntoView();
+        handleBracketEdge(e, bracket === 'left', playheadDeps);
         return;
       }
-
-      // ([ and ] used to set the time selection's left / right boundary
-      // at the playhead — Audacity 3's Selection: Set Left/Right Boundary,
-      // which in the real build opens a "Playback position" dialog that
-      // defaults to 0 and silently does nothing. Dropped 2026-10-12, "I
-      // think these shortcuts are pretty much useless": the bare bracket
-      // keys are free again. A focused clip's bracket keys — trim, with
-      // Cmd stretch — are TrackNew's and unaffected.)
 
       // --- ArrowLeft / ArrowRight: nudge the playhead ---
       // Plain arrow → 0.1 s playhead nudge.
