@@ -1,0 +1,250 @@
+/* The keyboard map overlay (2026-10-13): the app's shortcuts on a Mac
+   keyboard, over the project. Theme tokens come in as --km-* from the
+   component. */
+.keyboard-map__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.keyboard-map {
+  width: min(1040px, 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 20px;
+  background: var(--km-bg);
+  color: var(--km-ink);
+  border: 1px solid var(--km-line);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.keyboard-map__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.keyboard-map__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.keyboard-map__sub {
+  margin: 2px 0 0;
+  color: var(--km-ink-2);
+}
+
+.keyboard-map__close {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--km-line);
+  border-radius: 6px;
+  background: var(--km-cap);
+  color: var(--km-ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.keyboard-map__states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.keyboard-map__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--km-line);
+  border-radius: 999px;
+  background: var(--km-cap);
+  color: var(--km-ink);
+  cursor: pointer;
+  font: 500 12px/1 Inter, sans-serif;
+}
+
+.keyboard-map__chip[aria-pressed="true"] {
+  background: var(--km-accent);
+  border-color: var(--km-accent);
+  color: var(--km-accent-ink);
+}
+
+.keyboard-map__chip-n {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.keyboard-map__board-wrap {
+  overflow-x: auto;
+  flex: 0 0 auto;
+}
+
+.keyboard-map__board {
+  min-width: 820px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.keyboard-map__row {
+  display: flex;
+  gap: 5px;
+}
+
+.keyboard-map__key {
+  position: relative;
+  flex: 0 0 auto;
+  height: 48px;
+  width: calc(var(--u, 1) * 50px + (var(--u, 1) - 1) * 5px);
+  padding: 5px 6px;
+  border: 1px solid var(--km-cap-edge);
+  border-radius: 6px;
+  background: var(--km-cap);
+  color: var(--km-ink);
+  box-shadow: 0 1px 0 var(--km-cap-edge);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  text-align: left;
+  font: inherit;
+  cursor: default;
+}
+
+.keyboard-map__key:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.keyboard-map__key--fn {
+  height: 40px;
+}
+
+.keyboard-map__cap {
+  font: 500 12px/1 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+.keyboard-map__what {
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--km-ink);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.keyboard-map__key--fn .keyboard-map__what {
+  -webkit-line-clamp: 1;
+}
+
+.keyboard-map__key--bound {
+  background: color-mix(in srgb, var(--km-accent) 16%, var(--km-cap));
+  border-color: color-mix(in srgb, var(--km-accent) 55%, var(--km-cap-edge));
+  cursor: pointer;
+}
+
+.keyboard-map__key--bound .keyboard-map__cap {
+  color: var(--km-accent);
+}
+
+.keyboard-map__key--other {
+  cursor: pointer;
+}
+
+.keyboard-map__key--other::after {
+  content: '';
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--km-accent) 60%, var(--km-cap-edge));
+}
+
+.keyboard-map__key--selected {
+  outline: 2px solid var(--km-accent);
+  outline-offset: 1px;
+}
+
+.keyboard-map__key--mod {
+  color: var(--km-ink-2);
+}
+
+.keyboard-map__key--mod .keyboard-map__cap {
+  font-family: Inter, sans-serif;
+}
+
+.keyboard-map__key--active {
+  background: var(--km-accent);
+  border-color: var(--km-accent);
+  color: var(--km-accent-ink);
+  box-shadow: none;
+}
+
+.keyboard-map__detail {
+  min-height: 64px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--km-line);
+  border-radius: 8px;
+}
+
+.keyboard-map__detail-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.keyboard-map__binding {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid var(--km-line);
+  align-items: baseline;
+}
+
+.keyboard-map__binding:first-of-type {
+  border-top: 0;
+}
+
+.keyboard-map__binding kbd {
+  font: 500 12px/1 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  padding: 3px 6px;
+  border: 1px solid var(--km-cap-edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--km-cap);
+  white-space: nowrap;
+}
+
+.keyboard-map__empty {
+  margin: 0;
+  color: var(--km-ink-2);
+}
+
+.keyboard-map__key:focus-visible,
+.keyboard-map__chip:focus-visible,
+.keyboard-map__close:focus-visible {
+  outline: 2px solid var(--km-ink);
+  outline-offset: 2px;
+}

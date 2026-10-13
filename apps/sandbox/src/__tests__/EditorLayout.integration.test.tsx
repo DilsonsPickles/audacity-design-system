@@ -499,6 +499,32 @@ describe('Bottom drawer', () => {
     expect(drawer.style.height).toBe('326px');
   });
 
+  it('the keyboard map opens from the command palette, built from the Shortcuts page; Escape closes it (2026-10-13)', async () => {
+    const rendered = renderApp();
+    await gotoProject(rendered);
+    expect(document.body.querySelector('[data-keyboard-map]')).toBeNull();
+    fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP', metaKey: true });
+    const palette = await waitFor(() => {
+      const p = document.body.querySelector<HTMLElement>('[data-command-palette]');
+      if (!p) throw new Error('not yet');
+      return p;
+    });
+    const input = palette.querySelector<HTMLInputElement>('.search-field__input')!;
+    fireEvent.change(input, { target: { value: 'keyboard map' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    const map = await waitFor(() => {
+      const m = document.body.querySelector<HTMLElement>('[data-keyboard-map]');
+      if (!m) throw new Error('not yet');
+      return m;
+    });
+    // The brackets, bound plain, are lit; the palette's own chord is on P with Cmd
+    expect(map.querySelector('[data-key="["]')?.className).toContain('keyboard-map__key--bound');
+    fireEvent.click(map.querySelector('[data-state="cmd"]')!);
+    expect(map.querySelector('[data-key="P"]')?.className).toContain('keyboard-map__key--bound');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(document.body.querySelector('[data-keyboard-map]')).toBeNull());
+  });
+
   it('Cmd+P opens the command palette; typing "go to" and Enter opens Go to… on the playhead; Escape leaves it (2026-10-13)', async () => {
     const rendered = renderApp();
     await gotoProject(rendered);

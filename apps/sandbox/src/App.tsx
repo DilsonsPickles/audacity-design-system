@@ -19,6 +19,7 @@ import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
 import { GoToDialog } from './components/GoToDialog';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
+import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
@@ -117,6 +118,7 @@ function CanvasDemoContent() {
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
     isGoToOpen, setIsGoToOpen,
     setIsCommandPaletteOpen,
+    isKeyboardMapOpen, setIsKeyboardMapOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
     setIsPluginManagerOpen,
     setAlertDialogOpen,
@@ -843,6 +845,7 @@ function CanvasDemoContent() {
     setIsLabelEditorOpen,
     setIsPreferencesModalOpen,
     setIsGoToOpen,
+    setIsKeyboardMapOpen,
     effectsPanel,
     setEffectsPanel,
     showRmsInWaveform,
@@ -1244,6 +1247,9 @@ function CanvasDemoContent() {
       )}
 
       {/* Toast Container */}
+      {/* The keyboard map (View › Keyboard map, so a palette command;
+          2026-10-13): the Shortcuts page's rows on a Mac keyboard */}
+      <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} />
       {/* The command palette (⌘P, 2026-10-13): the menus' items and the
           keyboard-only commands by name, with their chords */}
       <CommandPaletteHost menuDefinitions={menuDefinitions} os={preferences.operatingSystem} />

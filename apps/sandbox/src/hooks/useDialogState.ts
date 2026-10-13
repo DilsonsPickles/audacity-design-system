@@ -22,6 +22,7 @@ const DIALOG_IDS = [
   'missingPluginsModal',
   'goTo',
   'commandPalette',
+  'keyboardMap',
 ] as const;
 
 export type DialogId = (typeof DIALOG_IDS)[number];
@@ -83,6 +84,10 @@ export interface UseDialogStateReturn {
   /** The command palette (⌘P, 2026-10-13) */
   isCommandPaletteOpen: boolean;
   setIsCommandPaletteOpen: (open: boolean) => void;
+
+  /** The keyboard map overlay (⌘/, 2026-10-13) */
+  isKeyboardMapOpen: boolean;
+  setIsKeyboardMapOpen: (open: boolean) => void;
 
   isPluginBrowserOpen: boolean;
   setIsPluginBrowserOpen: (open: boolean) => void;
@@ -183,6 +188,7 @@ export function useDialogState(): UseDialogStateReturn {
       setIsSpectrogramSettingsOpen: makeSetter('spectrogramSettings'),
       setIsGoToOpen: makeSetter('goTo'),
       setIsCommandPaletteOpen: makeSetter('commandPalette'),
+      setIsKeyboardMapOpen: makeSetter('keyboardMap'),
       setIsPluginBrowserOpen: makeSetter('pluginBrowser'),
       setIsMissingPluginsModalOpen: makeSetter('missingPluginsModal'),
     }),
@@ -219,6 +225,7 @@ export function useDialogState(): UseDialogStateReturn {
     isSpectrogramSettingsOpen: openDialogs.has('spectrogramSettings'),
     isGoToOpen: openDialogs.has('goTo'),
     isCommandPaletteOpen: openDialogs.has('commandPalette'),
+    isKeyboardMapOpen: openDialogs.has('keyboardMap'),
     isPluginBrowserOpen: openDialogs.has('pluginBrowser'),
     isMissingPluginsModalOpen: openDialogs.has('missingPluginsModal'),
     missingPluginNames,

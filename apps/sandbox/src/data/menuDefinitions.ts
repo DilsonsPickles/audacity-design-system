@@ -12,6 +12,7 @@ export interface MenuDefinitionDeps {
   // Edit menu deps
   onOpenLabelEditor: () => void;
   onOpenGoTo: () => void;
+  onOpenKeyboardMap: () => void;
   onOpenPreferences: () => void;
 
   // View menu deps
@@ -163,6 +164,10 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Zoom out',
       shortcut: 'Ctrl+-',
       onClick: deps.onZoomOut,
+    },
+    {
+      label: 'Keyboard map',
+      onClick: deps.onOpenKeyboardMap,
     },
   ];
 

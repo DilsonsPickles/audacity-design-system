@@ -79,6 +79,7 @@ export * from './ApplicationHeader';
 export * from './Menu';
 export * from './SaveProjectModal';
 export * from './PreferencesModal';
+export * from './KeyboardMap';
 export * from './PreferencePanel';
 export * from './ExportModal';
 export * from './PluginBrowserDialog';
