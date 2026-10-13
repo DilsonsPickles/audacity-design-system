@@ -67,7 +67,7 @@ describe('the command palette (2026-10-13)', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  it('a click on a row runs it; no match says so', () => {
+  it('a click on a row runs it; no match says so', async () => {
     const onRun = vi.fn();
     const { container } = render(
       <ThemeProvider>
@@ -75,11 +75,27 @@ describe('the command palette (2026-10-13)', () => {
       </ThemeProvider>,
     );
     fireEvent.click(container.querySelector('[data-command-id="edit:go-to"]')!);
-    return act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); }).then(() => {
-      expect(onRun).toHaveBeenCalledWith('edit:go-to');
-      const input = container.querySelector<HTMLInputElement>('.command-palette__input')!;
-      fireEvent.change(input, { target: { value: 'nothing like this' } });
-      expect(container.querySelector('.command-palette__empty')?.textContent).toBe('No matching command');
-    });
+    await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
+    expect(onRun).toHaveBeenCalledWith('edit:go-to');
+    const input = container.querySelector<HTMLInputElement>('.command-palette__input')!;
+    fireEvent.change(input, { target: { value: 'nothing like this' } });
+    expect(container.querySelector('.command-palette__empty')?.textContent).toBe('No matching command');
+  });
+});
+
+describe('an empty query shows the host\'s short list (2026-10-13)', () => {
+  it('lists the suggested ids in order, skipping unknown ones, and the whole catalogue only once you type', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <CommandPalette isOpen commands={COMMANDS} suggestedIds={['clip:fades', 'nope', 'edit:go-to']} onRun={vi.fn()} onClose={vi.fn()} />
+      </ThemeProvider>,
+    );
+    const rows = () => [...container.querySelectorAll('[role="option"]')].map((r) => r.getAttribute('data-command-id'));
+    const input = container.querySelector<HTMLInputElement>('.command-palette__input')!;
+    expect(rows()).toEqual(['clip:fades', 'edit:go-to']);
+    fireEvent.change(input, { target: { value: 'imp' } });
+    expect(rows()).toEqual(['file:import']);
+    fireEvent.change(input, { target: { value: '' } });
+    expect(rows()).toEqual(['clip:fades', 'edit:go-to']);
   });
 });

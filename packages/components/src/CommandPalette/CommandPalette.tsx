@@ -23,6 +23,12 @@ export interface CommandPaletteProps {
   onClose: () => void;
   os?: 'macos' | 'windows';
   placeholder?: string;
+  /** What an EMPTY query shows, in this order (ids; unknown ones are
+   *  skipped): the host's recents and its curated common commands —
+   *  a short list, not the whole catalogue (user decision 2026-10-13,
+   *  "not show so many options, just the common ones"). Unset, an empty
+   *  query lists everything. */
+  suggestedIds?: ReadonlyArray<string>;
 }
 
 /** The chord in the OS's own glyphs: 'Ctrl+Shift+F' → '⌘⇧F' on macOS;
@@ -74,11 +80,14 @@ export function rankPaletteCommands<T extends PaletteCommand>(commands: Readonly
  * run with Enter, the chord shown beside each so the palette teaches
  * the shortcuts. ↑ ↓ move the highlight (wrapping), Enter runs it,
  * Escape leaves, a click runs a row; the list is a combobox + listbox
- * for assistive tech. The palette CLOSES AND RESTORES FOCUS to what had
+ * for assistive tech. Centred in the window; an empty query shows the
+ * host's SHORT list (recents, then its common commands — `suggestedIds`),
+ * never the whole catalogue (2026-10-13, "in the middle of the screen
+ * and not show so many options, just the common ones"). The palette CLOSES AND RESTORES FOCUS to what had
  * it BEFORE it runs the command, so a command that acts on the focus
  * (a clip's dialog) acts on the right thing.
  */
-export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos', placeholder = 'Type a command…' }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos', placeholder = 'Type a command…', suggestedIds }: CommandPaletteProps) {
   const { theme } = useTheme();
   const [query, setQuery] = React.useState('');
   const [highlight, setHighlight] = React.useState(0);
@@ -98,7 +107,12 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
     return () => cancelAnimationFrame(id);
   }, [isOpen]);
 
-  const results = React.useMemo(() => rankPaletteCommands(commands, query), [commands, query]);
+  const results = React.useMemo(() => {
+    if (!query.trim() && suggestedIds) {
+      return suggestedIds.map((id) => commands.find((c) => c.id === id)).filter((c): c is PaletteCommand => !!c);
+    }
+    return rankPaletteCommands(commands, query);
+  }, [commands, query, suggestedIds]);
   const clampedHighlight = results.length === 0 ? 0 : Math.min(highlight, results.length - 1);
 
   // The highlighted row stays in view
