@@ -1249,7 +1249,7 @@ function CanvasDemoContent() {
       {/* Toast Container */}
       {/* The keyboard map (View › Keyboard map, so a palette command;
           2026-10-13): the Shortcuts page's rows on a Mac keyboard */}
-      <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} />
+      <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} timeSelected={!!state.timeSelection} />
       {/* The command palette (⌘P, 2026-10-13): the menus' items and the
           keyboard-only commands by name, with their chords */}
       <CommandPaletteHost menuDefinitions={menuDefinitions} os={preferences.operatingSystem} />

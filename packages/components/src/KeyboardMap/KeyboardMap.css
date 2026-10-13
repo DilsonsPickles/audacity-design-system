@@ -59,10 +59,38 @@
   font: inherit;
 }
 
+.keyboard-map__contexts,
 .keyboard-map__states {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* The context tabs: a segmented row above the modifier chips */
+.keyboard-map__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--km-line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--km-ink-2);
+  cursor: pointer;
+  font: 500 12px/1 Inter, sans-serif;
+}
+
+.keyboard-map__tab[aria-pressed="true"] {
+  background: var(--km-cap);
+  border-color: var(--km-ink);
+  color: var(--km-ink);
+}
+
+.keyboard-map__ctx {
+  font-style: normal;
+  color: var(--km-ink-2);
+  font-size: 11px;
 }
 
 .keyboard-map__chip {
@@ -244,6 +272,7 @@
 
 .keyboard-map__key:focus-visible,
 .keyboard-map__chip:focus-visible,
+.keyboard-map__tab:focus-visible,
 .keyboard-map__close:focus-visible {
   outline: 2px solid var(--km-ink);
   outline-offset: 2px;

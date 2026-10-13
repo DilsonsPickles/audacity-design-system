@@ -1,7 +1,7 @@
 import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { KeyboardMap, parseShortcutRow, stateOf } from '../KeyboardMap';
+import { KeyboardMap, parseShortcutRow, stateOf, contextOfOpener } from '../KeyboardMap';
 import { SHORTCUT_ROWS } from '../../PreferencesModal/pages/shortcutsData';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
@@ -67,5 +67,48 @@ describe('the keyboard map overlay (2026-10-13)', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
     expect(document.activeElement).toBe(opener);
+  });
+});
+
+describe('the context filter (2026-10-13, "controls filtered by context")', () => {
+  const rows = [
+    { id: '1', action: 'Play', shortcut: 'Space' },
+    { id: '2', action: 'Fade handles', shortcut: 'F', contexts: ['clip' as const] },
+    { id: '3', action: 'Delete', shortcut: '⌫', contexts: ['clip' as const, 'time' as const] },
+    { id: '4', action: 'Fade handle: length', shortcut: '← →', contexts: ['fade-handle' as const] },
+  ];
+  it('shows only the chords that work in the picked context, counts them, and labels them in the detail', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <KeyboardMap isOpen onClose={vi.fn()} rows={rows} />
+      </ThemeProvider>,
+    );
+    const lit = () => [...container.querySelectorAll('.keyboard-map__key--bound')].map((k) => k.getAttribute('data-key'));
+    expect(container.querySelector('[data-context="all"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(lit().sort()).toEqual(['Delete', 'F', 'Space', '←', '→'].sort());
+    fireEvent.click(container.querySelector('[data-context="time"]')!);
+    expect(lit()).toEqual(['Delete']);
+    expect(container.querySelector('[data-context="time"]')!.textContent).toContain('1');
+    fireEvent.click(container.querySelector('[data-context="clip"]')!);
+    expect(lit().sort()).toEqual(['Delete', 'F'].sort());
+    fireEvent.click(container.querySelector('[data-key="Delete"]')!);
+    expect(container.querySelector('.keyboard-map__ctx')?.textContent).toBe('Clip focused · Time selected');
+  });
+  it('opens on the context of what had the focus: a fade handle, a trim handle, a clip, else a time selection, else all', () => {
+    const el = (html: string) => { const d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d); return d.firstElementChild as Element; };
+    expect(contextOfOpener(el('<div data-fade-handle="in"><button>x</button></div>').querySelector('button'), false)).toBe('fade-handle');
+    expect(contextOfOpener(el('<button data-handle-kind="trim"></button>'), false)).toBe('edge-handle');
+    expect(contextOfOpener(el('<div data-clip-id="1"><span></span></div>').querySelector('span'), true)).toBe('clip');
+    expect(contextOfOpener(el('<button></button>'), true)).toBe('time');
+    expect(contextOfOpener(null, false)).toBe('all');
+    // Live: a clip focused when the map opens
+    const clip = el('<div data-clip-id="9" tabindex="0"></div>') as HTMLElement;
+    clip.focus();
+    const { container } = render(
+      <ThemeProvider>
+        <KeyboardMap isOpen onClose={vi.fn()} rows={rows} />
+      </ThemeProvider>,
+    );
+    expect(container.querySelector('[data-context="clip"]')!.getAttribute('aria-pressed')).toBe('true');
   });
 });
