@@ -175,3 +175,27 @@ describe('the track I\'m on is the DOM-focused clip\'s track first (2026-10-13)'
     expect(tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>)[0]).toMatchObject({ startTime: 0, endTime: 5, tracks: [1] });
   });
 });
+
+describe('Cmd+Shift+[ ] shrink the range edge by edge (2026-10-13, "like the arrow selection shortcut")', () => {
+  const tracks = [
+    { id: 1, name: 't1', clips: [{ id: 1, start: 1, duration: 2 }, { id: 2, start: 4, duration: 2 }, { id: 3, start: 8, duration: 1 }] }, // 1..3, 4..6, 8..9
+  ] as unknown as TracksState['tracks'];
+  it('⌘⇧[ takes the start forward to the next edge inside the range, ⌘⇧] the end back; the edges never cross; nothing with no selection', () => {
+    const range = { startTime: 1, endTime: 9, tracks: [0] };
+    const deps = makeDeps(makeState({ tracks, playheadPosition: 1, focusedTrackIndex: 0, selectedTrackIndices: [0], timeSelection: range }));
+    handleBracketEdge(keyEvent({ shiftKey: true, metaKey: true }), true, deps);
+    expect(tsPayloads(deps.dispatch as ReturnType<typeof vi.fn>)[0]).toMatchObject({ startTime: 3, endTime: 9 });
+    const deps2 = { ...makeDeps(makeState({ tracks, playheadPosition: 3, focusedTrackIndex: 0, timeSelection: { startTime: 3, endTime: 9, tracks: [0] } })), selectionEdgesRef: deps.selectionEdgesRef };
+    handleBracketEdge(keyEvent({ shiftKey: true, metaKey: true }), false, deps2);
+    expect(tsPayloads(deps2.dispatch as ReturnType<typeof vi.fn>)[0]).toMatchObject({ startTime: 3, endTime: 8 });
+    // Shrinking the end past the start stops at the start
+    const tight = { startTime: 5, endTime: 6, tracks: [0] };
+    const deps3 = makeDeps(makeState({ tracks, playheadPosition: 5, focusedTrackIndex: 0, timeSelection: tight }));
+    handleBracketEdge(keyEvent({ shiftKey: true, metaKey: true }), false, deps3);
+    expect(tsPayloads(deps3.dispatch as ReturnType<typeof vi.fn>)[0]).toMatchObject({ startTime: 5, endTime: 5 });
+    // No selection: nothing to shrink
+    const deps4 = makeDeps(makeState({ tracks, playheadPosition: 2, focusedTrackIndex: 0 }));
+    handleBracketEdge(keyEvent({ shiftKey: true, ctrlKey: true }), false, deps4);
+    expect(deps4.dispatch).not.toHaveBeenCalled();
+  });
+});

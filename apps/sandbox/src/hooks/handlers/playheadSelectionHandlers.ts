@@ -158,9 +158,9 @@ export function handleDeleteTimeRange(deps: PlayheadSelectionHandlerDeps): void 
  * selection edge by edge: ⇧] takes the selection's END to the next
  * edge after it, ⇧[ its START to the previous edge before it, from the
  * playhead when there is no selection (or the playhead is outside it),
- * and again on every press; the range's track scope is the selection
- * extend's (the existing scope, then the selected tracks, then the
- * focused track). Nothing beyond the last edge: the key does nothing.
+ * and again on every press; ⌘⇧[ / ⌘⇧] SHRINK the range edge by edge
+ * instead, as ⌘⇧Arrow does. Nothing beyond the last edge: the key does
+ * nothing.
  * (Bare [ ] were Audacity 3's selection-boundary setters until
  * 2026-10-12; J / K did this jump for the focused track alone until
  * the same day the brackets took it — J and K are unbound for now.)
@@ -183,26 +183,38 @@ export function handleBracketEdge(
     scrollPlayheadIntoView();
     return;
   }
+  // CMD/CTRL+SHIFT SHRINKS, as it does for the arrows (user decision
+  // 2026-10-13, "like the arrow selection shortcut"): ⌘⇧[ takes the
+  // START forward to the next edge inside the range, ⌘⇧] the END back
+  // to the previous one; the edges never cross, and a shrink with no
+  // selection to shrink is nothing — decided before anything is reset.
+  const reduce = e.metaKey || e.ctrlKey;
+  if (reduce && !state.timeSelection) return;
   const playheadOutsideSelection = state.timeSelection && (
     state.playheadPosition < state.timeSelection.startTime - 0.001 ||
     state.playheadPosition > state.timeSelection.endTime + 0.001
   );
-  if (!state.timeSelection || playheadOutsideSelection) {
+  if (!state.timeSelection || (playheadOutsideSelection && !reduce)) {
     dispatch({ type: 'DESELECT_ALL_CLIPS' });
     selectionEdgesRef.current = { startTime: state.playheadPosition, endTime: state.playheadPosition };
   }
   if (!selectionEdgesRef.current) {
     selectionEdgesRef.current = { startTime: state.timeSelection!.startTime, endTime: state.timeSelection!.endTime };
   }
+  const edges = selectionEdgesRef.current;
   if (isLeftward) {
-    const target = prevClipEdge(scope, selectionEdgesRef.current.startTime);
+    const target = reduce
+      ? nextClipEdge(scope, edges.startTime)
+      : prevClipEdge(scope, edges.startTime);
     if (target === null) return;
-    selectionEdgesRef.current.startTime = target;
-    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: target });
+    edges.startTime = reduce ? Math.min(edges.endTime, target) : target;
+    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: edges.startTime });
   } else {
-    const target = nextClipEdge(scope, selectionEdgesRef.current.endTime);
+    const target = reduce
+      ? prevClipEdge(scope, edges.endTime)
+      : nextClipEdge(scope, edges.endTime);
     if (target === null) return;
-    selectionEdgesRef.current.endTime = target;
+    edges.endTime = reduce ? Math.max(edges.startTime, target) : target;
   }
   // THE RANGE FOLLOWS THE TRACK YOU ARE ON (user decision 2026-10-13,
   // "what if making a selection on another track using shift + [ / ]

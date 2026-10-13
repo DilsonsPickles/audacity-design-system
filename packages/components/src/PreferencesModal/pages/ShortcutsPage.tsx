@@ -85,6 +85,7 @@ export function ShortcutsPage() {
     { id: '45', action: 'Join', shortcut: '⌘J' },
     { id: '44a', action: 'Playhead to the previous / next clip edge on the focused track', shortcut: '[ / ]' },
     { id: '44b', action: 'Select to the previous / next clip edge (grows edge by edge)', shortcut: '⇧[ / ⇧]' },
+    { id: '44c', action: 'Shrink the selection from its start / end to the next clip edge inside it', shortcut: '⌘⇧[ / ⌘⇧]' },
     { id: '45a', action: 'Trim clip start / end to playhead (focused clip)', shortcut: '⌥[ / ⌥]' },
     { id: '46', action: 'Labels to selections', shortcut: '' },
     { id: '47', action: 'Leveller', shortcut: '' },

@@ -718,7 +718,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       // character on the key. Option is left alone (TrackNew's trims).
       const bracket = e.code === 'BracketLeft' || e.key === '[' || e.key === '{' ? 'left'
         : e.code === 'BracketRight' || e.key === ']' || e.key === '}' ? 'right' : null;
-      if (bracket && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // (Cmd/Ctrl rides only WITH Shift — the shrink; a bare Cmd+bracket
+      // is nothing here, and Option+bracket is TrackNew's trim.)
+      if (bracket && !e.altKey && (e.shiftKey || (!e.metaKey && !e.ctrlKey))) {
         if (e.defaultPrevented) return;
         const target = e.target as HTMLElement;
         const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
