@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogFooter, Dropdown } from '@audacity-ui/components';
+import { Dialog, DialogFooter, Dropdown, NumberStepper } from '@audacity-ui/components';
 
 /** A field whose targets disagree */
 export const FADE_MIXED = 'mixed';
@@ -127,20 +127,24 @@ export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, f
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', fontWeight: 400 }}>
           Length (seconds)
-          <input
-            ref={ref}
-            data-fade-dialog-length={key}
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step={0.1}
-            value={text}
-            placeholder={v.seconds === FADE_MIXED ? 'Mixed' : undefined}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onInputKeyDown}
-            onFocus={(e) => e.currentTarget.select()}
-            style={{ padding: '7px 8px', fontSize: '12px', border: '1px solid #D2D6DD', borderRadius: '3px', outline: 'none', minWidth: 0 }}
-          />
+          {/* The design system's stepper (user request 2026-10-13, "in the
+              clip fade dialog, can we use our steppers please?"), as the
+              Clip properties panel's fields: a tenth per arrow, held to
+              0..the shortest target. The wrapper carries the test hook;
+              Enter still applies (the stepper's own Enter toggles its
+              edit mode and lets the key bubble), Escape still cancels. */}
+          <div data-fade-dialog-length={key} onKeyDown={onInputKeyDown} style={{ minWidth: 0 }}>
+            <NumberStepper
+              ref={ref}
+              value={text}
+              placeholder={v.seconds === FADE_MIXED ? 'Mixed' : undefined}
+              onChange={setText}
+              min={0}
+              max={maxSeconds}
+              step={0.1}
+              width="100%"
+            />
+          </div>
         </label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', fontWeight: 400 }} data-fade-dialog-shape={key} data-shape={shape || undefined}>
           Shape

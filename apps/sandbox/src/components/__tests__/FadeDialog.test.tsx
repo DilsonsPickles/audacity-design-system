@@ -29,7 +29,7 @@ function setup(values: FadeDialogValues, extra: Partial<React.ComponentProps<typ
       />
     </ThemeProvider>,
   );
-  const length = (side: 'in' | 'out') => document.body.querySelector<HTMLInputElement>(`[data-fade-dialog-length="${side}"]`)!;
+  const length = (side: 'in' | 'out') => document.body.querySelector<HTMLInputElement>(`[data-fade-dialog-length="${side}"] input`)!;
   const shape = (side: 'in' | 'out') => document.body.querySelector<HTMLElement>(`[data-fade-dialog-shape="${side}"]`)!;
   const applyButton = () => screen.getByRole('button', { name: 'Apply' }) as HTMLButtonElement;
   return { ...utils, onApply, onClose, length, shape, applyButton };
