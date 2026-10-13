@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider/ThemeProvider';
-import { useFocusTrap } from '../hooks/useFocusTrap';
+import { Dialog } from '../Dialog/Dialog';
 import { SHORTCUT_CONTEXTS, type ShortcutRow, type ShortcutContext } from '../PreferencesModal/pages/shortcutsData';
 import './KeyboardMap.css';
 
@@ -63,16 +63,33 @@ const LAYOUT: Array<{ fn?: boolean; keys: Array<string | KeySpec> }> = [
 ];
 const STATE_ORDER = ['plain', 'shift', 'opt', 'cmd', 'opt+shift', 'shift+cmd', 'opt+cmd', 'opt+shift+cmd', 'ctrl', 'ctrl+shift'];
 
-export type KeyboardMapContext = ShortcutContext | 'all';
+export type KeyboardMapContext = ShortcutContext | 'all' | 'follow';
 
-/** The context the map should open in, from what had the focus when it
- *  opened: a fade handle, a trim / stretch handle, a clip — else, with
- *  a time selection, that; else all */
+/** The handle- or clip-context an element with the focus is in, if any */
+function focusContext(el: Element | null): ShortcutContext | null {
+  if (el?.closest('[data-fade-handle]')) return 'fade-handle';
+  if (el?.closest('[data-handle-kind]')) return 'edge-handle';
+  if (el?.closest('[data-clip-id]')) return 'clip';
+  return null;
+}
+
+/** The contexts that apply RIGHT NOW: everywhere, what the focus is on
+ *  (a fade handle, a trim / stretch handle, a clip), and the time
+ *  selection when there is one */
+export function liveContexts(focused: Element | null, timeSelected: boolean): ShortcutContext[] {
+  const out: ShortcutContext[] = ['global'];
+  const f = focusContext(focused);
+  if (f) out.push(f);
+  if (timeSelected) out.push('time');
+  return out;
+}
+
+/** The ONE context the map would open on from what had the focus: a
+ *  fade handle, a trim / stretch handle, a clip — else, with a time
+ *  selection, that; else all. (The map follows the app live now; this
+ *  is the single-tab reading of the same question.) */
 export function contextOfOpener(opener: Element | null, timeSelected: boolean): KeyboardMapContext {
-  if (opener?.closest('[data-fade-handle]')) return 'fade-handle';
-  if (opener?.closest('[data-handle-kind]')) return 'edge-handle';
-  if (opener?.closest('[data-clip-id]')) return 'clip';
-  return timeSelected ? 'time' : 'all';
+  return focusContext(opener) ?? (timeSelected ? 'time' : 'all');
 }
 
 export interface KeyboardMapProps {
@@ -83,20 +100,30 @@ export interface KeyboardMapProps {
   /** Is there a time selection? The map opens on "Time selected" when
    *  nothing more specific had the focus */
   timeSelected?: boolean;
+  /** The window chrome's OS style */
+  os?: 'macos' | 'windows';
 }
 
 /**
  * THE KEYBOARD MAP (user request 2026-10-13, "I wouldn't mind seeing it
- * overlayed in the demo"): the app's shortcuts on a Mac keyboard, as an
- * overlay — ⌘/ and View › Keyboard map. Pick a modifier state (or HOLD
- * the modifier: the map follows the keys you are holding) and the bound
- * keys light up with a short caption; a dot marks a key bound in another
- * state; click a key to see everything on it in every state. Built from
- * the same rows as Preferences › Shortcuts, so the two never disagree.
- * Escape, the close button or a click outside closes it; it owns the
- * keyboard while open (`data-owns-keyboard`).
+ * overlayed in the demo"): the app's shortcuts on a Mac keyboard —
+ * View › Keyboard map and the command palette. Pick a modifier state
+ * (or HOLD the modifier: the map follows the keys you are holding) and
+ * the bound keys light up with a short caption; a dot marks a key bound
+ * in another state; click a key to see everything on it, BY CONTEXT
+ * (2026-10-13, "when I select a key, show the shortcuts by context": one
+ * section per context the key has chords in — Everywhere, Clip focused…
+ * — in the contexts' order, each chord once per context it works in).
+ * Built from the same rows as Preferences › Shortcuts, so the two never
+ * disagree. IT IS AN IN-APP WINDOW (2026-10-13, "it should be using our
+ * in-app windows as containers"): the design system's Dialog in its
+ * NON-MODAL form, as the Macro windows are — dragged by its header,
+ * resized by its edges, the app behind it still in use (so the map can
+ * sit beside the project while you try the keys), Tab going round it;
+ * Escape closes it while it is the window in use, as does the header's
+ * close button; focus returns to the opener.
  */
-export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: KeyboardMapProps) {
+export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false, os = 'macos' }: KeyboardMapProps) {
   const { theme } = useTheme();
   const rootRef = React.useRef<HTMLDivElement>(null);
   const openerRef = React.useRef<HTMLElement | null>(null);
@@ -104,12 +131,24 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
   // THE CONTEXT FILTER (2026-10-13, "in games they have controls filtered
   // by context, so perhaps we want to do the same with clip selected? …
   // or time selected?"): All, or one context — the map then shows only
-  // the chords that work there; it OPENS on the context you came from
-  const [context, setContext] = React.useState<KeyboardMapContext>('all');
-  const bindings = React.useMemo(
-    () => (context === 'all' ? allBindings : allBindings.filter((b) => b.contexts.includes(context))),
-    [allBindings, context],
-  );
+  // the chords that work there. IT FOLLOWS THE APP (the same day, "can
+  // the keyboard map be cognisant of what I have selected in the app so
+  // it shows me all available shortcuts?"): the default tab, "Where you
+  // are", is the UNION of the contexts that apply right now — everywhere,
+  // plus the clip or handle with the focus, plus the time selection when
+  // there is one — read live from the document's focus and the host's
+  // `timeSelected`, so a click on a clip or a drag of a range changes
+  // the map while the window sits beside the project. Focus moving INTO
+  // the window (a chip, a key) keeps the app's last contexts, or every
+  // click on the map would drop the clip it was about.
+  const [context, setContext] = React.useState<KeyboardMapContext>('follow');
+  const [focused, setFocused] = React.useState<Element | null>(null);
+  const live = React.useMemo(() => liveContexts(focused, timeSelected), [focused, timeSelected]);
+  const bindings = React.useMemo(() => {
+    if (context === 'all') return allBindings;
+    if (context === 'follow') return allBindings.filter((b) => b.contexts.some((c) => live.includes(c)));
+    return allBindings.filter((b) => b.contexts.includes(context));
+  }, [allBindings, context, live]);
   const states = React.useMemo(() => {
     const set = [...new Set(allBindings.map((b) => b.state))];
     return set.sort((a, b) => (STATE_ORDER.indexOf(a) + 1 || 99) - (STATE_ORDER.indexOf(b) + 1 || 99));
@@ -118,7 +157,6 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
   const [held, setHeld] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<KeySpec | null>(null);
   const state = held ?? picked;
-  useFocusTrap(rootRef, isOpen);
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -126,9 +164,30 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
     setHeld(null);
     setSelected(null);
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setContext(contextOfOpener(openerRef.current, timeSelected));
-    const id = requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>('[data-keyboard-map-close]')?.focus());
+    setContext('follow');
+    setFocused(openerRef.current);
+    // The app's focus, followed live; focus inside this window is not
+    // the app's and leaves the reading alone
+    const insideMap = (el: Element | null) => !!el?.closest('.keyboard-map-window');
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target instanceof Element ? e.target : null;
+      if (insideMap(t)) return;
+      setFocused(t);
+    };
+    const onFocusOut = (e: FocusEvent) => {
+      // Focus going NOWHERE (a click on empty canvas, a blur) — unless
+      // it is leaving the app for this window
+      if (e.relatedTarget) return;
+      const t = e.target instanceof Element ? e.target : null;
+      if (insideMap(t)) return;
+      requestAnimationFrame(() => { if (!insideMap(document.activeElement) && (!document.activeElement || document.activeElement === document.body)) setFocused(null); });
+    };
+    document.addEventListener('focusin', onFocusIn, true);
+    document.addEventListener('focusout', onFocusOut, true);
+    const id = requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>('.keyboard-map__tab[aria-pressed="true"]')?.focus());
     // The modifiers you HOLD pick the state, as long as you hold them
+    // (wherever the focus is — the window is non-modal, and a Shift
+    // held over the project still lights the map)
     const read = (e: KeyboardEvent) => {
       const mods: Modifier[] = [];
       if (e.ctrlKey) mods.push('ctrl');
@@ -137,10 +196,7 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
       if (e.metaKey) mods.push('cmd');
       setHeld(mods.length ? stateOf(mods) : null);
     };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
-      read(e);
-    };
+    const onKeyDown = (e: KeyboardEvent) => read(e);
     const onKeyUp = (e: KeyboardEvent) => read(e);
     const onBlur = () => setHeld(null);
     document.addEventListener('keydown', onKeyDown, true);
@@ -148,6 +204,8 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
     window.addEventListener('blur', onBlur);
     return () => {
       cancelAnimationFrame(id);
+      document.removeEventListener('focusin', onFocusIn, true);
+      document.removeEventListener('focusout', onFocusOut, true);
       document.removeEventListener('keydown', onKeyDown, true);
       document.removeEventListener('keyup', onKeyUp, true);
       window.removeEventListener('blur', onBlur);
@@ -179,29 +237,33 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
   const onKey = (spec: KeySpec) => bindings.filter((b) => matches(b, spec));
   const selectedBindings = selected ? onKey(selected) : [];
   const contextLabel = (c: ShortcutContext) => SHORTCUT_CONTEXTS.find((x) => x.id === c)?.label ?? c;
-  const contextCount = (c: KeyboardMapContext) => (c === 'all' ? allBindings : allBindings.filter((b) => b.contexts.includes(c))).length;
+  // The contexts a key's chords belong to, in the contexts' own order
+  const contextsOf = (bs: ParsedBinding[]) => SHORTCUT_CONTEXTS.map((x) => x.id).filter((c) => bs.some((b) => b.contexts.includes(c)));
+  const contextCount = (c: KeyboardMapContext) => (c === 'all' ? allBindings : c === 'follow' ? allBindings.filter((b) => b.contexts.some((x) => live.includes(x))) : allBindings.filter((b) => b.contexts.includes(c))).length;
+  const tabLabel = (c: KeyboardMapContext) => (c === 'all' ? 'All' : c === 'follow' ? 'Where you are' : contextLabel(c));
 
   return (
-    <div className="keyboard-map__overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div
-        ref={rootRef}
-        className="keyboard-map"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Keyboard map"
-        data-owns-keyboard=""
-        data-keyboard-map
-        style={style}
-      >
-        <div className="keyboard-map__head">
-          <div>
-            <h2 className="keyboard-map__title">Keyboard map</h2>
-            <p className="keyboard-map__sub">Pick where you are and a modifier state, or hold the modifier. Click a lit key to see everything on it. {bindings.length} bindings{context === 'all' ? '' : ' here'}.</p>
-          </div>
-          <button type="button" className="keyboard-map__close" data-keyboard-map-close aria-label="Close keyboard map" onClick={close}>✕</button>
-        </div>
+    <Dialog
+      isOpen={isOpen}
+      title="Keyboard map"
+      onClose={close}
+      os={os}
+      nonModal
+      loopTab
+      closeOnClickOutside={false}
+      className="keyboard-map-window"
+      width={1040}
+      minHeight={0}
+      noPadding
+    >
+      <div ref={rootRef} className="keyboard-map" data-keyboard-map style={style}>
+        <p className="keyboard-map__sub" data-keyboard-map-sub>
+          {context === 'follow'
+            ? <>Following the app — <strong>{live.map(contextLabel).join(' · ')}</strong>: {bindings.length} bindings work now. Pick a modifier state, or hold the modifier; click a lit key to see everything on it.</>
+            : <>Pick where you are and a modifier state, or hold the modifier. Click a lit key to see everything on it. {bindings.length} bindings{context === 'all' ? '' : ' here'}.</>}
+        </p>
         <div className="keyboard-map__contexts" role="group" aria-label="Context">
-          {(['all', ...SHORTCUT_CONTEXTS.map((c) => c.id)] as KeyboardMapContext[]).map((c) => (
+          {(['follow', 'all', ...SHORTCUT_CONTEXTS.map((c) => c.id)] as KeyboardMapContext[]).map((c) => (
             <button
               key={c}
               type="button"
@@ -210,7 +272,7 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
               data-context={c}
               onClick={() => { setContext(c); setSelected(null); }}
             >
-              {c === 'all' ? 'All' : contextLabel(c)} <span className="keyboard-map__chip-n">{contextCount(c)}</span>
+              {tabLabel(c)} <span className="keyboard-map__chip-n">{contextCount(c)}</span>
             </button>
           ))}
         </div>
@@ -271,12 +333,13 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
           {selected ? (
             <>
               <h3 className="keyboard-map__detail-title">{selected.cap ?? selected.k} <span className="keyboard-map__chip-n">{selectedBindings.length}</span></h3>
-              {states.filter((s) => selectedBindings.some((b) => b.state === s)).map((s) => (
-                <React.Fragment key={s}>
-                  {selectedBindings.filter((b) => b.state === s).map((b, i) => (
-                    <div key={`${s}-${i}`} className="keyboard-map__binding"><kbd>{b.text}</kbd><span>{b.action} <em className="keyboard-map__ctx">{b.contexts.map(contextLabel).join(' · ')}</em></span></div>
+              {contextsOf(selectedBindings).map((c) => (
+                <section key={c} className="keyboard-map__ctx-group" data-detail-context={c}>
+                  <h4 className="keyboard-map__ctx-title">{contextLabel(c)}</h4>
+                  {states.flatMap((s) => selectedBindings.filter((b) => b.state === s && b.contexts.includes(c))).map((b, i) => (
+                    <div key={`${c}-${i}`} className="keyboard-map__binding"><kbd>{b.text}</kbd><span>{b.action}</span></div>
                   ))}
-                </React.Fragment>
+                </section>
               ))}
             </>
           ) : (
@@ -284,6 +347,6 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false }: Key
           )}
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

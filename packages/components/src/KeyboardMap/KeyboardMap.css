@@ -1,62 +1,35 @@
-/* The keyboard map overlay (2026-10-13): the app's shortcuts on a Mac
-   keyboard, over the project. Theme tokens come in as --km-* from the
-   component. */
-.keyboard-map__overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
+/* The keyboard map (2026-10-13): the app's shortcuts on a Mac keyboard,
+   in an in-app WINDOW — the design system's non-modal Dialog supplies
+   the chrome (header drag, edge resize, close); this is its body. Theme
+   tokens come in as --km-* from the component. */
+.dialog.keyboard-map-window {
+  min-width: 480px;
+}
+
+/* The Dialog's no-padding body hides overflow; the map scrolls itself
+   when the window is shorter than it */
+.dialog.keyboard-map-window .dialog__body {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.32);
+  flex-direction: column;
+  min-height: 0;
 }
 
 .keyboard-map {
-  width: min(1040px, 100%);
-  max-height: calc(100vh - 32px);
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px 20px 20px;
-  background: var(--km-bg);
+  padding: 12px 16px 16px;
   color: var(--km-ink);
-  border: 1px solid var(--km-line);
-  border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
-  overflow: hidden;
-}
-
-.keyboard-map__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.keyboard-map__title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  overflow: auto;
 }
 
 .keyboard-map__sub {
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--km-ink-2);
-}
-
-.keyboard-map__close {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--km-line);
-  border-radius: 6px;
-  background: var(--km-cap);
-  color: var(--km-ink);
-  cursor: pointer;
-  font: inherit;
 }
 
 .keyboard-map__contexts,
@@ -87,10 +60,18 @@
   color: var(--km-ink);
 }
 
-.keyboard-map__ctx {
-  font-style: normal;
-  color: var(--km-ink-2);
+/* The clicked key's chords, one section per context */
+.keyboard-map__ctx-group + .keyboard-map__ctx-group {
+  margin-top: 8px;
+}
+
+.keyboard-map__ctx-title {
+  margin: 0 0 2px;
   font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--km-ink-2);
 }
 
 .keyboard-map__chip {
@@ -272,8 +253,7 @@
 
 .keyboard-map__key:focus-visible,
 .keyboard-map__chip:focus-visible,
-.keyboard-map__tab:focus-visible,
-.keyboard-map__close:focus-visible {
+.keyboard-map__tab:focus-visible {
   outline: 2px solid var(--km-ink);
   outline-offset: 2px;
 }

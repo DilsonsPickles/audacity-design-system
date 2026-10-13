@@ -521,6 +521,9 @@ describe('Bottom drawer', () => {
     expect(map.querySelector('[data-key="["]')?.className).toContain('keyboard-map__key--bound');
     fireEvent.click(map.querySelector('[data-state="cmd"]')!);
     expect(map.querySelector('[data-key="P"]')?.className).toContain('keyboard-map__key--bound');
+    // A non-modal window (2026-10-13): Escape closes it while it is the
+    // window in use — a real click on the chip focuses it; here by hand
+    act(() => { map.querySelector<HTMLElement>('[data-state="cmd"]')!.focus(); });
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(document.body.querySelector('[data-keyboard-map]')).toBeNull());
   });
