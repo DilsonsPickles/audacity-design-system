@@ -177,3 +177,17 @@ describe('T and S focus the trim and stretch handles (2026-10-12)', () => {
     expect(document.activeElement).toBe(clip);
   });
 });
+
+describe('an edit selects its clip (2026-10-13): F / T / S report the clip to the host as they take a handle', () => {
+  it('each letter calls onClipEditSelect with the clip', () => {
+    const onClipEditSelect = vi.fn();
+    const { clip } = setup({}, { onClipEditSelect });
+    fireEvent.keyDown(clip, { key: 't', code: 'KeyT' });
+    expect(onClipEditSelect).toHaveBeenLastCalledWith(1);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    fireEvent.keyDown(clip, { key: 's', code: 'KeyS' });
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    expect(onClipEditSelect).toHaveBeenCalledTimes(3);
+  });
+});

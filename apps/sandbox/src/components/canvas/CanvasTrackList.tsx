@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCollapseTransition, type SpectrogramScale, type ClipHandleHint } from '@audacity-ui/components';
 import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, groupLabelIndent, type GroupRowLayout } from '@audacity-ui/core';
-import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '../../contexts/TracksContext';
+import { useTracksDispatch, type Clip, type Track, type TimeSelection, type TracksAction } from '../../contexts/TracksContext';
 import { buildTrimParticipants } from '../../utils/trimParticipants';
 import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
@@ -177,6 +177,29 @@ export interface CanvasTrackListProps {
 /** Shared empty set so tracks the marquee isn't touching keep a
  *  stable prop identity and stay memo-skipped for the whole drag. */
 const NO_MARQUEE_CLIPS: ReadonlySet<number> = new Set<number>();
+
+
+/**
+ * AN EDIT SELECTS ITS CLIP (user decision 2026-10-13, "moving clips selects
+ * them and that feels OK"): a fade, trim or stretch on an UNSELECTED clip
+ * selects it — exclusively, as a move does on the press — so whatever you
+ * touch becomes the selection and the handles you see are the handles that
+ * act. Called BEFORE the edit: the targets are then still computed from the
+ * clip as it was (unselected → alone), which is the same clip. A clip that
+ * is already selected is left as it is, and its edit takes every selected
+ * clip, as before. Until then trims, stretches and fades never selected
+ * (2026-09-29 / 09-30), so the selection and the focus could drift apart.
+ */
+function selectForEdit(
+  tracksRef: { readonly current: ReadonlyArray<Track> },
+  dispatch: React.Dispatch<TracksAction>,
+  trackIndex: number,
+  clipId: number | string,
+): void {
+  const t = tracksRef.current[trackIndex];
+  const c = t?.clips.find((x) => x.id === clipId) ?? t?.midiClips?.find((x) => x.id === clipId);
+  if (c && !c.selected) dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId: clipId as number } });
+}
 
 export function CanvasTrackList(props: CanvasTrackListProps) {
   // marqueePreview is pulled OUT of the spread: each row gets only its
@@ -611,6 +634,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           onTrackNavigateVertical(trackIndex, direction, shiftKey, decouple)
         }
         onClipNavigateVertical={(clipId, direction) => onClipNavigateVertical(trackIndex, clipId as number, direction)}
+        onClipEditSelect={(clipId) => selectForEdit(tracksRef, dispatch, trackIndex, clipId)}
         onTrackReorder={(direction, wasContainerFocused) =>
           onTrackReorder(trackIndex, direction, wasContainerFocused)
         }
@@ -721,6 +745,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           });
         }}
         onClipTrim={(clipId, edge, deltaSeconds) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // The FOCUSED clip's edit, by the mouse trim's rule
           // (utils/keyboardEditTargets.ts, 2026-10-01): a selected
           // focused clip trims with every selected clip; an unselected
@@ -765,6 +790,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           }
         }}
         onClipFadeToPlayhead={(clipId, requested) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // A FADE TO THE PLAYHEAD (⌥F, 2026-10-13): the fade rule's
           // targets, each boundary to the SAME playhead; from the clip the
           // SIDE is inferred from where the playhead sits in the FOCUSED
@@ -787,6 +813,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           return updates.length > 0;
         }}
         onClipTrimToPlayhead={(clipId, requested) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // TRIM TO THE PLAYHEAD (Option+[ / ], 2026-10-12; ⌥T with the
           // edge 'auto', 2026-10-13 — the NEARER edge of the focused
           // clip, first half = the start): the trim's targets
@@ -816,6 +843,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         }}
         getPlayheadTime={() => playheadRef.current}
         onClipStretchToPlayhead={(clipId, requested) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // ⌥S: STRETCH TO THE PLAYHEAD (2026-10-13, "can we have that to
           // trim and stretch too?"): the trim's targets, each edge to the
           // same playhead; 'auto' = the focused clip's nearer edge
@@ -835,6 +863,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           return updates.length > 0;
         }}
         onClipStretch={(clipId, edge, deltaSeconds) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // Keyboard time-stretch (Cmd+[ ]). Sign convention
           // matches onClipTrim: positive delta shrinks the clip
           // from `edge`, negative grows it. The targets are the
@@ -960,6 +989,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
 
           // Initialize trim state on first call
           if (!clipTrimStateRef.current) {
+            selectForEdit(tracksRef, dispatch, trackIndex, clipId);
             // Trimming does NOT select (user decision 2026-09-29,
             // reversing the select-on-trim this seed used to do). A
             // selected clip — grabbed by its trim handle — trims with
@@ -981,6 +1011,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           // The actual trimming happens in the mousemove handler
         }}
         onClipFadeShapeChange={showQuickFadeHandles ? (clipId, side, shape) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // A fade edit on a SELECTED clip applies to every selected
           // clip (utils/fadeTargets.ts, 2026-09-30) — shape included
           for (const target of fadeTargets(tracksRef.current, trackIndex, clipId as number)) {
@@ -1014,6 +1045,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           });
         }}
         onClipFadeChange={showQuickFadeHandles ? (clipId, side, seconds) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // A fade edit on a SELECTED clip applies to every selected
           // clip (utils/fadeTargets.ts, 2026-09-30), each held to the
           // room it has; the dragged clip's own value is already clamped
@@ -1045,6 +1077,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         // menu's preset at that place, by the fade-edit rule (a selected
         // clip's fade is every selected clip's)
         onFadeShapePreset={showQuickFadeHandles ? (clipId, side, index) => {
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           const preset = FADE_SHAPE_PRESETS[index];
           if (!preset) return;
           for (const target of fadeTargets(tracksRef.current, trackIndex, clipId as number)) {
@@ -1061,6 +1094,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           if (clipStretchStateRef.current) return;
           const clip = track.clips.find(c => c.id === clipId);
           if (!clip) return;
+          selectForEdit(tracksRef, dispatch, trackIndex, clipId);
           // Stretching does NOT select (2026-09-30, the trim rule —
           // reversing the select-on-stretch this seed used to do). A
           // SELECTED clip, grabbed by its stretch handle, stretches

@@ -52,9 +52,10 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     // ⌥T: the nearer edge (the start) to the playhead — the clip now runs 1..4
     act(() => { press(header, 'KeyT'); });
     expect(seen.clips[0].slice(1, 3)).toEqual([1, 3]);
-    // …and the edited clip takes the focus (2026-10-13)
+    // …and the edited clip takes the focus AND the selection (2026-10-13)
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
     expect(document.activeElement).toBe(getByTestId('clip'));
+    expect(seen.clips[0][5]).toBe(true);
     act(() => { header.focus(); });
     // ⌥S from the clip's start at 1 with the playhead at 1: nothing to stretch (refused, not clamped)
     act(() => { press(header, 'KeyS'); });

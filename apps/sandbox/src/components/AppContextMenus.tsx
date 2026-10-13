@@ -655,6 +655,12 @@ export function AppContextMenus({
             os={os}
             onClose={close}
             onApply={(edits: FadeDialogEdits) => {
+              // An edit selects its clip (2026-10-13): the dialog's clip,
+              // when it was not already selected (the targets are then
+              // that clip alone)
+              if (fadeDialog && targets.length === 1 && !targets[0].clip.selected) {
+                dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: fadeDialog.trackIndex, clipId: fadeDialog.clipId } });
+              }
               for (const t of targets) {
                 if (edits.fadeIn !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'in', seconds: Math.min(edits.fadeIn, t.clip.duration) } });
                 if (edits.fadeOut !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'out', seconds: Math.min(edits.fadeOut, t.clip.duration) } });

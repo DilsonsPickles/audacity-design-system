@@ -85,7 +85,13 @@ export function usePlayheadClipHotkeys(): void {
         announce('No clip under the playhead on this track');
         return;
       }
-      // The clip edited (or selected) becomes the clip you are on
+      // The clip edited (or selected) becomes the clip you are on — and
+      // AN EDIT SELECTS ITS CLIP (2026-10-13): the three edits select it
+      // too, exclusively, as a move does
+      if (chord !== 'select') {
+        const c = s.tracks[hit.trackIndex]?.clips.find((x) => x.id === hit.clipId);
+        if (c && !c.selected) d({ type: 'SELECT_CLIP', payload: { trackIndex: hit.trackIndex, clipId: hit.clipId } });
+      }
       const focusIt = () => requestAnimationFrame(() => {
         document.querySelector<HTMLElement>(`[data-clip-id="${hit.clipId}"][data-track-index="${hit.trackIndex}"]`)?.focus({ preventScroll: true });
       });
