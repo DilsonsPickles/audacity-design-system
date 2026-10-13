@@ -49,6 +49,7 @@ export function ShortcutsPage() {
     { id: '33', action: 'Export selection', shortcut: '' },
     { id: '34', action: 'Fade in', shortcut: '' },
     { id: '35', action: 'Fade out', shortcut: '' },
+    { id: '35z', action: 'Clip: select; on a selected clip, playhead to its start', shortcut: 'Enter' },
     { id: '35a', action: 'Fade handles (focus; F again: fade-out, then back)', shortcut: 'F · ⇧F' },
     { id: '35e', action: 'Trim handles (focus left; ⇧T right; T again: next, then back)', shortcut: 'T · ⇧T' },
     { id: '35f', action: 'Stretch handles (focus left; S again: right, then back)', shortcut: 'S' },

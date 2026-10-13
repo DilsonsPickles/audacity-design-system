@@ -18,7 +18,7 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-function setup(overrides: Record<string, unknown> = {}) {
+function setup(overrides: Record<string, unknown> = {}, trackProps: Record<string, unknown> = {}) {
   const onClipFadeChange = vi.fn();
   const onClipFadeShapeChange = vi.fn();
   const onFadeShapePreset = vi.fn();
@@ -34,6 +34,7 @@ function setup(overrides: Record<string, unknown> = {}) {
         onClipFadeShapeChange={onClipFadeShapeChange}
         onFadeShapePreset={onFadeShapePreset}
         onHandleHint={onHandleHint}
+        {...trackProps}
       />
     </Providers>,
   );
@@ -225,12 +226,32 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(out.getAttribute('data-track-index')).toBe('0');
   });
 
-  it('F is a no-op where no handle can render: a clip too narrow for the handles keeps the focus', () => {
-    const { clip, handle } = setup({ duration: 0.3 });
+  it('F works on a clip too narrow for the pointer\'s handles, the focused one above its twin (2026-10-13)', () => {
+    const { clip, handle } = setup({ duration: 0.3 }); // 30px: under the 60px width floor
+    act(() => { clip.focus(); });
+    expect(handle('in')).toBeNull(); // the pointer rule: no handles
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    expect(handle('in')).not.toBeNull();
+    expect(handle('out')).not.toBeNull();
+    expect(document.activeElement).toBe(handle('in'));
+    expect(handle('in')!.style.zIndex).toBe('456');
+    expect(handle('out')!.style.zIndex).toBe('455');
+    fireEvent.keyDown(handle('in')!, { key: 'f', code: 'KeyF' });
+    expect(handle('out')!.style.zIndex).toBe('456');
+    expect(handle('in')!.style.zIndex).toBe('455');
+  });
+
+  it('F works on a clip at the 44px floor too, with its shape dot; the pointer still gets nothing there', () => {
+    const { clip, handle, container } = setup({}, { height: 44 });
+    fireEvent.mouseEnter(clip, { buttons: 0 });
+    expect(handle('in')).toBeNull();
+    expect(container.querySelector('[data-quickfade-node]')).toBeNull();
+    fireEvent.mouseLeave(clip);
     act(() => { clip.focus(); });
     fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
-    expect(handle('in')).toBeNull();
-    expect(document.activeElement).toBe(clip);
+    expect(handle('in')).not.toBeNull();
+    expect(document.activeElement).toBe(handle('in'));
+    expect(container.querySelector('[data-quickfade-node="in"]')).not.toBeNull();
   });
 });
 

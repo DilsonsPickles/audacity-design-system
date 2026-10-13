@@ -353,6 +353,12 @@ export interface TrackProps {
    * Callback when a clip is clicked
    */
   onClipClick?: (clipId: string | number, shiftKey?: boolean, metaKey?: boolean) => void;
+  /** Enter on a clip that is ALREADY SELECTED (plain, no modifier): the
+   *  playhead to the clip's start (user decision 2026-10-13, "a double
+   *  enter press to move cursor to start of clip" — stateful, no timer:
+   *  the first Enter selects, the second parks). Unset, Enter stays the
+   *  toggle it was (which deselected a single selected clip). */
+  onPlayheadToClipStart?: (clipId: string | number) => void;
   /** Callback when the user commits a clip rename inline. */
   onClipRename?: (clipId: string | number, newName: string) => void;
 
@@ -697,6 +703,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   width,
   backgroundColor = 'rgba(255,255,255,0.05)',
   onClipClick,
+  onPlayheadToClipStart,
   onClipRename,
   onTrackClick,
   onEnvelopePointsChange,
@@ -1366,7 +1373,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const renderQuickFadeNodes = () => {
     if (!onClipFadeShapeChange) return null;
     // A clip at the FLOOR shows its edge handles only (2026-10-07, below)
-    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
+    // — unless the keyboard holds a fade handle on it (2026-10-13)
+    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT && fadeKeyFocus === null) return null;
     const NODE_R = 5;
     // Under the pointer or mid-drag the handle ENLARGES, subtly, and
     // nothing else (user decision 2026-09-29, replacing the envelope
@@ -1379,6 +1387,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const clipActive = shapeActive.includes(String(clip.id));
       const leaving = !clipActive && leavingShape.has(String(clip.id));
       if (!clipActive && !leaving) continue;
+      if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT && fadeKeyFocus?.clipId !== clip.id) continue;
       const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(clip.id));
       const eff = clipQuickFadeGeometry(clip);
       for (const side of ['in', 'out'] as const) {
@@ -1982,6 +1991,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // - Plain Enter: toggle selection (deselect if single clip selected)
               // - Shift+Enter: range selection
               // - Cmd/Ctrl+Enter: toggle in/out of multi-selection
+              // - Plain Enter on a SELECTED clip: the playhead to its start
+              //   (2026-10-13; the host that wires it gives up Enter as a
+              //   deselect — Escape and Cmd+Enter still deselect)
+              if (!e.shiftKey && !e.metaKey && !e.ctrlKey && clip.selected && onPlayheadToClipStart) {
+                onPlayheadToClipStart(clip.id);
+                return;
+              }
               onClipClick?.(clip.id, e.shiftKey, e.metaKey || e.ctrlKey);
               return;
             }
@@ -2022,9 +2038,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // track, a clip at the floor or one too narrow for them
             // leaves the press alone. Matched on the code too (a layout
             // may put another letter on the key).
+            // …and since 2026-10-13 on ANY audio clip ("if the clip is too
+            // short, I think the F key should still work"): the width and
+            // height floors are the POINTER's (overlapping hit boxes); a
+            // keyboard-held handle has no hit box to overlap, so the
+            // render functions lift both floors for it
             if ((e.code === 'KeyF' || e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) {
-              if (!isMidiTrack && onClipFadeChange && height > FADE_CONTROLS_MIN_CLIP_HEIGHT
-                && clip.duration * pixelsPerSecond >= FADE_HANDLE_MIN_CLIP_PX) {
+              if (!isMidiTrack && onClipFadeChange) {
                 e.preventDefault();
                 e.stopPropagation();
                 setFadeKeyFocus({ clipId: clip.id, side: e.shiftKey ? 'out' : 'in' });
@@ -2508,8 +2528,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // panel. It was "collapsed" until 2026-10-08; when the collapse
     // point moved to the real app's 72 the fades went with it, and that
     // was "culling the fade handles too early" — a 60px collapsed clip
-    // has room for them. So the cut is its own number, the floor.
-    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
+    // has room for them. So the cut is its own number, the floor —
+    // for the POINTER: a KEYBOARD-held handle mounts whatever the clip's
+    // height or width (2026-10-13, "if the clip is too short, I think the
+    // F key should still work"), the focused one drawn above its twin
+    // where the two boxes overlap.
+    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT && fadeKeyFocus === null) return null;
     const HEADER_H = 20;
     const nodes: React.ReactNode[] = [];
     // The handle's BODY rests FADE_HANDLE_BODY_INSET inside the clip's
@@ -2553,7 +2577,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       if (!clipActive && !leaving) continue;
       const ghosted = clipActive && fadeHandleGhosted(clip.id);
       const clipWidth = clip.duration * pixelsPerSecond;
-      if (clipWidth < FADE_HANDLE_MIN_CLIP_PX) continue;
+      const keyHeld = fadeKeyFocus?.clipId === clip.id;
+      if (clipWidth < FADE_HANDLE_MIN_CLIP_PX && !keyHeld) continue;
+      if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT && !keyHeld) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       // Positions use EFFECTIVE fades (clamped to the free window and
       // to each other) so the controls sit on the drawn curves
@@ -2830,8 +2856,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               width: boxRight - boxLeft,
               height: FADE_ROW_H,
               cursor: 'ew-resize',
-              // Above the fade veils (450), beside the shape dots (460)
-              zIndex: 455,
+              // Above the fade veils (450), beside the shape dots (460);
+              // the keyboard-held one above its twin (they overlap on a
+              // clip under the pointer's width floor)
+              zIndex: keyHeld && fadeKeyFocus?.side === side ? 456 : 455,
             }}
           >
             {/* Hover and press grow the GLYPH (Track.css), never the box

@@ -896,6 +896,15 @@ const CanvasTrack = React.memo(function CanvasTrack({
             },
           });
         }}
+        onPlayheadToClipStart={(clipId) => {
+          // Enter on a selected clip (2026-10-13): the playhead to its
+          // start — audio or MIDI clip, whichever this track's is
+          const t = tracksRef.current[trackIndex];
+          const c = t?.clips.find((x) => x.id === clipId) ?? t?.midiClips?.find((x) => x.id === clipId);
+          if (!c) return;
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: c.start });
+          announce(`Playhead at clip start, ${c.start.toFixed(2)} seconds`);
+        }}
         onClipClick={(clipId, shiftKey, metaKey) => {
           // Don't change selection if we just finished dragging
           if (didDragRef.current) {
