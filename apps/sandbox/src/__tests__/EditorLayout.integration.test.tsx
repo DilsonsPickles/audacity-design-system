@@ -1469,6 +1469,50 @@ describe('Selection playback', () => {
     audioSpies.getIsPlaying.mockReturnValue(false);
   });
 
+  it('P plays, and while playing PAUSES with the cursor left where playback paused — unlike Space (2026-10-13)', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
+    act(() => { ruler.focus(); });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight' });
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: 'p' });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const positionCb = audioSpies.setPositionUpdateCallback.mock.calls.at(-1)![0] as (p: number) => void;
+    act(() => { positionCb(5); });
+    await waitFor(() => {
+      expect((ruler.querySelector('.playhead-cursor') as HTMLElement).style.left).toBe('512px');
+    });
+    // P again while "playing": the pause branch, and the playhead STAYS at 5 s
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    fireEvent.keyDown(document.body, { key: 'p' });
+    await waitFor(() => expect(container.querySelector('[data-testid="playback-start-indicator"]')).toBeNull());
+    expect((ruler.querySelector('.playhead-cursor') as HTMLElement).style.left).toBe('512px');
+    audioSpies.getIsPlaying.mockReturnValue(false);
+  });
+
+  it('M opens the mixer drawer and M again closes it (2026-10-13)', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    expect(container.querySelector('.panel-header')).toBeNull();
+    fireEvent.keyDown(document.body, { key: 'm' });
+    const panelHeader = await waitFor(() => {
+      const el = container.querySelector('.panel-header');
+      if (!el) throw new Error('drawer did not open');
+      return el as HTMLElement;
+    });
+    expect([...panelHeader.querySelectorAll('.panel-header__tab-label')].map((el) => el.textContent)).toContain('Mixer');
+    fireEvent.keyDown(document.body, { key: 'm' });
+    await waitFor(() => expect(container.querySelector('.panel-header')).toBeNull());
+  });
+
   it('Skip to start / Skip to end move the playhead to 0 and to the project end', async () => {
     const rendered = renderApp();
     const { container } = rendered;

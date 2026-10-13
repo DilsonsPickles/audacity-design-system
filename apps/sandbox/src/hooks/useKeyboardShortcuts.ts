@@ -75,6 +75,8 @@ export interface UseKeyboardShortcutsOptions {
    *  the real app's Ctrl+= / Ctrl+-; Cmd+1 / Cmd+3 were Audacity 3's) */
   /** ⌘P: the command palette (2026-10-13) */
   onCommandPalette?: () => void;
+  /** M: the mixer panel on / off (2026-10-13) */
+  onToggleMixer?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
 }
@@ -115,6 +117,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,
     onCommandPalette,
+    onToggleMixer,
     onZoomIn,
     onZoomOut,
   } = options;
@@ -488,6 +491,36 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         if (!isTextInput) {
           e.preventDefault();
           dispatch({ type: 'SET_SPLIT_MODE', payload: !state.splitMode });
+          return;
+        }
+      }
+
+      // --- P: PLAY / PAUSE (2026-10-13, "P needs to map to play/pause") ---
+      // Play from the playhead; while playing, PAUSE — the cursor stays
+      // where playback paused (X's behaviour, Audacity 3's "Play/Stop and
+      // Set Cursor"), unlike Space, whose stop returns the playhead to
+      // where the run began. The row said "Pause" and nothing was bound.
+      if ((e.key === 'p' || e.key === 'P') && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
+          target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';
+        if (!isTextInput) {
+          e.preventDefault();
+          handlePlayStopSetCursor(transportDeps);
+          return;
+        }
+      }
+
+      // --- M: THE MIXER PANEL on / off (2026-10-13, "M will bring up the
+      //     mixer") — the toolbar's Mixer button as a key; with E (the
+      //     effects panel) the bare letters that open panels.
+      if ((e.key === 'm' || e.key === 'M') && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && onToggleMixer) {
+        const target = e.target as HTMLElement;
+        const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
+          target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';
+        if (!isTextInput) {
+          e.preventDefault();
+          onToggleMixer();
           return;
         }
       }

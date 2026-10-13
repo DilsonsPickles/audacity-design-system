@@ -16,6 +16,7 @@ export interface UseMenuDefinitionsOptions {
   setIsPreferencesModalOpen: (open: boolean) => void;
   setIsGoToOpen: (open: boolean) => void;
   setIsKeyboardMapOpen: (open: boolean) => void;
+  setMixerPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
   effectsPanel: EffectsPanelState | null;
   setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
   showRmsInWaveform: boolean;
@@ -63,6 +64,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     setIsPreferencesModalOpen,
     setIsGoToOpen,
     setIsKeyboardMapOpen,
+    setMixerPanelOpen,
     effectsPanel,
     setEffectsPanel,
     showRmsInWaveform,
@@ -154,6 +156,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),
     onOpenKeyboardMap: () => setIsKeyboardMapOpen(true),
+    onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
     effectsPanelOpen: effectsPanel?.isOpen ?? false,
     showRmsInWaveform,
     showVerticalRulers,

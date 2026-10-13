@@ -13,6 +13,8 @@ export interface MenuDefinitionDeps {
   onOpenLabelEditor: () => void;
   onOpenGoTo: () => void;
   onOpenKeyboardMap: () => void;
+  /** View › Mixer (M): the mixer panel on / off */
+  onToggleMixer: () => void;
   onOpenPreferences: () => void;
 
   // View menu deps
@@ -164,6 +166,11 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Zoom out',
       shortcut: 'Ctrl+-',
       onClick: deps.onZoomOut,
+    },
+    {
+      label: 'Mixer',
+      shortcut: 'M',
+      onClick: deps.onToggleMixer,
     },
     {
       label: 'Keyboard map',

@@ -2503,15 +2503,25 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const z = clipZIndex.get(clip.id) ?? 2;
       const clipWidth = clip.duration * pixelsPerSecond;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
-      const covered = (t: number) => clips.some((d) =>
+      // THE HANDLE'S WHOLE BOX, not just the edge point (2026-10-13,
+      // "selected clip's handles MUST have the highest z-index"): a
+      // higher clip painted over ANY of the 30px box — the 24 outside
+      // included, so a clip that merely BUTTS against this one, or sits
+      // within 24px of its edge, covers the handle's outside part — gets
+      // the duplicate above the stack. (Only the edge point was tested
+      // until then, so an adjacent later clip hid the handle.)
+      const outside = 24 / pixelsPerSecond;
+      const inside = EDGE_HIT_INSIDE_PX / pixelsPerSecond;
+      const coveredSpan = (a: number, b: number) => clips.some((d) =>
         d.id !== clip.id
         && (clipZIndex.get(d.id) ?? 2) > z
-        && d.start < t && t < d.start + d.duration);
+        && d.start < b && d.start + d.duration > a);
+      const clipEnd = clip.start + clip.duration;
       // A crossfaded edge gets no duplicates either: the crossfade owns
       // it, and its zone reaches through the top clip (2026-10-01)
       const edges: Array<'left' | 'right'> = [];
-      if (covered(clip.start) && !isCrossfadedEdge(clip.id, 'left')) edges.push('left');
-      if (covered(clip.start + clip.duration) && !isCrossfadedEdge(clip.id, 'right')) edges.push('right');
+      if (coveredSpan(clip.start - outside, clip.start + inside) && !isCrossfadedEdge(clip.id, 'left')) edges.push('left');
+      if (coveredSpan(clipEnd - inside, clipEnd + outside) && !isCrossfadedEdge(clip.id, 'right')) edges.push('right');
       for (const edge of edges) {
         // Same geometry as Clip.css: 30px boxes STRADDLING the edge, 24
         // outside (the app's) and EDGE_HIT_INSIDE_PX inside (the edge
