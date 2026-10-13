@@ -34,7 +34,7 @@ export function handleHintText(hint: ClipHandleHint, os: HintOperatingSystem, op
       return join('Drag up or down to shape the crossfade', `${alt}-drag to roll`, `${cmd}-click to toggle linear`, 'Double-click to reset');
     case 'fade-keys':
       // The legend for a KEYBOARD-focused fade handle (F on the clip)
-      return join('← → length', '↑ ↓ curve', '1–5 shape', '0 reset', 'Delete removes', 'Shift+F10 menu', 'F next', 'T trim', 'S stretch', 'Esc back');
+      return join('← → length', '↑ ↓ curve', '1–5 shape', '0 reset', `${alt}+Shift+[ ] to playhead`, `${alt}+F dialog`, 'Delete removes', 'Shift+F10 menu', 'F next', 'T trim', 'S stretch', 'Esc back');
     case 'trim-keys':
       // The legend for a KEYBOARD-focused trim handle (T on the clip)
       return join('← → move edge (Shift 1 s)', 'T next', 'S stretch', 'F fades', 'Shift+F10 menu', 'Esc back');

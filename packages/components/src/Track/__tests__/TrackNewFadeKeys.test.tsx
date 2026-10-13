@@ -285,3 +285,51 @@ describe('Option+[ / Option+] trim the focused clip to the playhead (2026-10-12)
     expect(onClipTrim).not.toHaveBeenCalled();
   });
 });
+
+describe('Option+Shift+[ / ] take the fade-in / fade-out to the playhead (2026-10-13)', () => {
+  function setupWith(onClipFadeToPlayhead: (clipId: string | number, side: 'in' | 'out') => boolean) {
+    const utils = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'Clip 1', start: 0, duration: 4, fadeIn: 1 }]}
+          width={800}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipTrimToPlayhead={vi.fn()}
+          onClipFadeToPlayhead={onClipFadeToPlayhead}
+        />
+      </Providers>,
+    );
+    const clip = utils.container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
+    act(() => { clip.focus(); });
+    return { ...utils, clip };
+  }
+  const chord = (el: Element, which: 'left' | 'right') =>
+    fireEvent.keyDown(el, { code: which === 'left' ? 'BracketLeft' : 'BracketRight', key: which === 'left' ? '{' : '}', altKey: true, shiftKey: true });
+
+  it('from the focused clip: [ is the fade-in, ] the fade-out — and the plain Option bracket stays the trim', () => {
+    const toPlayhead = vi.fn(() => true);
+    const { clip } = setupWith(toPlayhead);
+    chord(clip, 'left');
+    expect(toPlayhead).toHaveBeenLastCalledWith(1, 'in');
+    chord(clip, 'right');
+    expect(toPlayhead).toHaveBeenLastCalledWith(1, 'out');
+    toPlayhead.mockClear();
+    fireEvent.keyDown(clip, { code: 'BracketLeft', key: '“', altKey: true });
+    expect(toPlayhead).not.toHaveBeenCalled();
+  });
+
+  it('from a focused fade handle too; nothing moved shakes that edge', () => {
+    const toPlayhead = vi.fn(() => false);
+    const { clip, container } = setupWith(toPlayhead);
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    const handle = container.querySelector<HTMLElement>('[data-fade-handle="in"][data-fade-clip="1"]')!;
+    expect(document.activeElement).toBe(handle);
+    chord(handle, 'right');
+    expect(toPlayhead).toHaveBeenLastCalledWith(1, 'out');
+    expect(container.querySelector('[data-shake-edge="right"]')).not.toBeNull();
+    // The handle keeps the focus — the chord is not a leave
+    expect(document.activeElement).toBe(handle);
+  });
+});

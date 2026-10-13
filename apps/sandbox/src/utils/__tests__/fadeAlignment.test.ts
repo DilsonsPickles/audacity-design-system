@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nearestClipEdge, nearestClipEdgeOnOtherTracks, FADE_ALIGN_THRESHOLD_PX } from '../fadeAlignment';
+import { nearestFadeAlignment, nearestClipEdge, nearestClipEdgeOnOtherTracks, FADE_ALIGN_THRESHOLD_PX } from '../fadeAlignment';
 
 describe('nearestClipEdgeOnOtherTracks — a fade boundary\'s alignment targets (2026-10-01)', () => {
   const tracks = [
@@ -46,5 +46,26 @@ describe('nearestClipEdge — the cursor\'s magnet, every track (2026-10-07)', (
     expect(nearestClipEdge(tracks, 2.95, 0.06)).toBe(3);
     expect(nearestClipEdge(tracks, 6.05, 0.06)).toBe(6);
     expect(nearestClipEdge(tracks, 4, 0.06)).toBeNull();
+  });
+});
+
+describe('nearestFadeAlignment — the playhead joins the fade boundary\'s targets (2026-10-13)', () => {
+  const tracks = [
+    { clips: [{ start: 0, duration: 4 }] },
+    { clips: [{ start: 2, duration: 2 }] },
+  ];
+  it('snaps to the playhead within reach, to the nearer of it and a clip edge, and to neither out of reach', () => {
+    // Near the playhead alone
+    expect(nearestFadeAlignment(tracks, 0, 1.02, 0.06, 1)).toBe(1);
+    // Nearer the other track's clip edge (2) than the playhead (2.05)
+    expect(nearestFadeAlignment(tracks, 0, 2.01, 0.06, 2.05)).toBe(2);
+    // Nearer the playhead than the edge
+    expect(nearestFadeAlignment(tracks, 0, 2.04, 0.06, 2.05)).toBe(2.05);
+    // A tie goes to the playhead
+    expect(nearestFadeAlignment(tracks, 0, 2.025, 0.06, 2.05)).toBe(2.05);
+    // Out of reach of both
+    expect(nearestFadeAlignment(tracks, 0, 1, 0.06, 3)).toBeNull();
+    // No playhead: the edge rule alone
+    expect(nearestFadeAlignment(tracks, 0, 2.01, 0.06, null)).toBe(2);
   });
 });

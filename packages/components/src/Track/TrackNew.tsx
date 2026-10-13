@@ -496,6 +496,10 @@ export interface TrackProps {
    * as a blocked nudge does.
    */
   onClipTrimToPlayhead?: (clipId: string | number, edge: 'left' | 'right') => boolean | void;
+  /** Option+Shift+[ / ]: the clip's FADE-IN / FADE-OUT boundary to the
+   *  playhead (2026-10-13), the fade's form of the trim brackets; the host
+   *  returns whether any fade moved — false shakes that edge. */
+  onClipFadeToPlayhead?: (clipId: string | number, side: 'in' | 'out') => boolean | void;
 
   /**
    * Callback when a clip should be moved to a different track (Cmd+Arrow Up/Down)
@@ -717,6 +721,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipMove,
   onClipTrim,
   onClipTrimToPlayhead,
+  onClipFadeToPlayhead,
   onClipStretch,
   onClipMoveToTrack,
   onClipNavigateVertical,
@@ -767,6 +772,28 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // the animation completes.
   const [shakeState, setShakeState] = React.useState<{ clipId: string | number; edge: 'left' | 'right'; token: number } | null>(null);
   const shakeTimeoutRef = React.useRef<number | null>(null);
+  // Bump the shake state so React remounts the shake element (each
+  // token change → fresh DOM node → fresh animation); clear after the
+  // animation completes. A blocked keyboard edit's "no" at that edge.
+  const shakeClipEdge = (clipId: string | number, edge: 'left' | 'right') => {
+    setShakeState((prev) => ({ clipId, edge, token: (prev?.token ?? 0) + 1 }));
+    if (shakeTimeoutRef.current !== null) window.clearTimeout(shakeTimeoutRef.current);
+    shakeTimeoutRef.current = window.setTimeout(() => {
+      setShakeState(null);
+      shakeTimeoutRef.current = null;
+    }, 180);
+  };
+  // OPTION+SHIFT+[ / ]: the fade-in / fade-out boundary to the playhead
+  // (2026-10-13), from the clip or from a fade handle; nothing moved
+  // (the playhead outside the clip) shakes the fade's edge
+  const fadeToPlayheadByKeys = (clipId: string | number, side: 'in' | 'out') => {
+    const moved = onClipFadeToPlayhead?.(clipId, side);
+    if (moved === false) shakeClipEdge(clipId, side === 'in' ? 'left' : 'right');
+  };
+  const isBracketKey = (e: React.KeyboardEvent): 'left' | 'right' | null =>
+    (e.code === 'BracketLeft' || e.key === '[' || e.key === '{' || (e as any).keyCode === 219) ? 'left' // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
+      : (e.code === 'BracketRight' || e.key === ']' || e.key === '}' || (e as any).keyCode === 221) ? 'right' // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
+        : null;
   const trackRef = React.useRef<HTMLDivElement>(null);
   const focusFromMouseRef = React.useRef(false);
   const trackClickXRef = React.useRef<number | null>(null);
@@ -2037,6 +2064,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             const isBracketRight = e.code === 'BracketRight'
               || e.key === ']' || e.key === '}'
               || (e as any).keyCode === 221; // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
+            // OPTION+SHIFT+[ / ]: the FADE-IN / FADE-OUT boundary to the
+            // playhead (2026-10-13) — the fade's form of the chord below
+            if ((isBracketLeft || isBracketRight) && e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              fadeToPlayheadByKeys(clip.id, isBracketLeft ? 'in' : 'out');
+              return;
+            }
             // OPTION+[ / OPTION+]: the START / END to the playhead. Matched
             // on the code — Option+[ types a quotation mark on macOS.
             if ((isBracketLeft || isBracketRight) && e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
@@ -2044,23 +2079,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               e.stopPropagation();
               const edge: 'left' | 'right' = isBracketLeft ? 'left' : 'right';
               const moved = onClipTrimToPlayhead?.(clip.id, edge);
-              if (moved === false) {
-                // Bump the shake state so React remounts the shake
-                // element (each token change → fresh DOM node → fresh
-                // animation). Clear after the animation completes.
-                setShakeState((prev) => ({
-                  clipId: clip.id,
-                  edge,
-                  token: (prev?.token ?? 0) + 1,
-                }));
-                if (shakeTimeoutRef.current !== null) {
-                  window.clearTimeout(shakeTimeoutRef.current);
-                }
-                shakeTimeoutRef.current = window.setTimeout(() => {
-                  setShakeState(null);
-                  shakeTimeoutRef.current = null;
-                }, 180);
-              }
+              if (moved === false) shakeClipEdge(clip.id, edge);
               return;
             }
 
@@ -2608,7 +2627,17 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               setFadeKeyFocus((prev) => (prev?.clipId === clip.id ? null : prev));
             }}
             onKeyDown={(e) => {
-              // The app's chords (Cmd+…, Option+…) pass through untouched
+              // OPTION+SHIFT+[ / ]: this clip's fade-in / fade-out to the
+              // playhead, as on the clip (the handle sits outside the
+              // wrapper, so the clip's handler never sees it)
+              const bracket = isBracketKey(e);
+              if (bracket && e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                fadeToPlayheadByKeys(clip.id, bracket === 'left' ? 'in' : 'out');
+                return;
+              }
+              // The app's other chords (Cmd+…, Option+…) pass through untouched
               if (e.metaKey || e.ctrlKey || e.altKey) return;
               const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
               const shape = (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE;

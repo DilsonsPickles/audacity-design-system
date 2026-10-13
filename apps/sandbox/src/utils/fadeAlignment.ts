@@ -61,3 +61,22 @@ export function nearestClipEdge(
 ): number | null {
   return nearestClipEdgeOnOtherTracks(tracks, -1, time, thresholdSec);
 }
+
+/** The fade boundary's magnet (2026-10-13, "we also need fade to snap to
+ *  the cursor"): the nearest of the clip edges on OTHER tracks and the
+ *  PLAYHEAD within `thresholdSec` of `time`, or null. The playhead wins
+ *  a tie — it is where the user just put the cursor. */
+export function nearestFadeAlignment(
+  tracks: ReadonlyArray<AlignableTrack>,
+  trackIndex: number,
+  time: number,
+  thresholdSec: number,
+  playhead: number | null | undefined,
+): number | null {
+  const edge = nearestClipEdgeOnOtherTracks(tracks, trackIndex, time, thresholdSec);
+  if (playhead == null || !Number.isFinite(playhead)) return edge;
+  const dPlayhead = Math.abs(playhead - time);
+  if (dPlayhead >= thresholdSec) return edge;
+  if (edge === null || dPlayhead <= Math.abs(edge - time)) return playhead;
+  return edge;
+}

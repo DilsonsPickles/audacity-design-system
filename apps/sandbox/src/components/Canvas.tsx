@@ -25,7 +25,7 @@ import { SplitPreviewLine } from './canvas/SplitPreviewLine';
 import { MarqueeRect } from './canvas/MarqueeRect';
 import { computeCanvasHeights } from '../utils/canvasLayout';
 import { resolveSnapGuideline } from '../utils/snapGuideline';
-import { nearestClipEdgeOnOtherTracks, nearestClipEdge, FADE_ALIGN_THRESHOLD_PX } from '../utils/fadeAlignment';
+import { nearestFadeAlignment, nearestClipEdge, FADE_ALIGN_THRESHOLD_PX } from '../utils/fadeAlignment';
 import { countSelectedClips } from '../utils/clipSelectionCount';
 import { snapToGrid } from '../utils/snapToGrid';
 import { deriveEnvelopePointSizes } from '../utils/envelopePointSizes';
@@ -432,8 +432,10 @@ export function Canvas({
     () => (time: number | null, kind: 'grid' | 'alignment' | null) => setFadeSnapGuideline(time === null || kind === null ? null : { time, kind }),
     [],
   );
+  // …and the PLAYHEAD (2026-10-13, "fade to snap to the cursor"), read
+  // live from its ref: the cursor the user just parked is a target
   const alignFadeBoundary = useMemo(
-    () => (time: number, trackIndex: number) => nearestClipEdgeOnOtherTracks(tracks, trackIndex, time, FADE_ALIGN_THRESHOLD_PX / pixelsPerSecond),
+    () => (time: number, trackIndex: number) => nearestFadeAlignment(tracks, trackIndex, time, FADE_ALIGN_THRESHOLD_PX / pixelsPerSecond, playheadRef.current),
     [tracks, pixelsPerSecond],
   );
   // The cursor's clip-edge magnet (2026-10-07): a plain click and a

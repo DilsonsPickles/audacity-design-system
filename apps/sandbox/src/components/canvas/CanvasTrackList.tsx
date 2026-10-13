@@ -5,6 +5,7 @@ import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '..
 import { buildTrimParticipants } from '../../utils/trimParticipants';
 import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
+import { computeFadeToTime } from '../../utils/fadeToPlayhead';
 import { computeKeyboardTrimToTimeBatch, computeKeyboardTrimToTimeAnnouncement } from '../../utils/clipKeyboardEdit';
 import { FADE_SHAPE_PRESETS } from '../../utils/fadeShapePresets';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
@@ -794,6 +795,22 @@ const CanvasTrack = React.memo(function CanvasTrack({
           if (focused) {
             announce(computeKeyboardTrimAnnouncement(focused.clip, deltaSeconds));
           }
+        }}
+        onClipFadeToPlayhead={(clipId, side) => {
+          // A FADE TO THE PLAYHEAD (Option+Shift+[ / ], 2026-10-13): the
+          // fade rule's targets, each boundary to the SAME playhead; a
+          // playhead outside a clip is refused for it (utils/fadeToPlayhead.ts)
+          const tracksNow = tracksRef.current;
+          const targets = fadeTargets(tracksNow, trackIndex, clipId as number)
+            .map((t) => ({ ...t, clip: tracksNow[t.trackIndex]?.clips.find((c) => c.id === t.clipId) }))
+            .filter((t) => !!t.clip)
+            .map((t) => ({ trackIndex: t.trackIndex, clipId: t.clipId, start: t.clip!.start, duration: t.clip!.duration }));
+          const updates = computeFadeToTime(targets, side, playheadRef.current);
+          for (const u of updates) {
+            dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: u.trackIndex, clipId: u.clipId, side, seconds: u.seconds } });
+          }
+          if (updates.length > 0) announce(`${side === 'in' ? 'Fade-in' : 'Fade-out'} ${updates[0].seconds.toFixed(2)} seconds, to the playhead`);
+          return updates.length > 0;
         }}
         onClipTrimToPlayhead={(clipId, edge) => {
           // TRIM TO THE PLAYHEAD (Option+[ / ], 2026-10-12): the trim's
