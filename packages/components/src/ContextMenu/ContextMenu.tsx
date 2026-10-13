@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
 import './ContextMenu.css';
 
@@ -32,6 +33,14 @@ export interface ContextMenuProps {
    * Optional CSS class name
    */
   className?: string;
+  /** Render the menu into this element (its document's body, usually)
+   *  instead of in place. A `position: fixed` menu inside an ancestor
+   *  that is a containing block — a Dialog, whose `container-type:
+   *  inline-size` makes it one — is placed relative to that ancestor and
+   *  clipped by its overflow (the Go to dialog's timecode menu opened
+   *  under the dialog, 2026-10-13). Pass the trigger's own document's
+   *  body so a popout window's menu stays in its window. */
+  portalTo?: Element | null;
 
   /**
    * Whether to auto-focus first item (when opened via keyboard)
@@ -55,6 +64,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   y,
   children,
   className = '',
+  portalTo = null,
   autoFocus = true,
   style: externalStyle,
 }) => {
@@ -302,7 +312,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  const menu = (
     <div
       ref={menuRef}
       className={`context-menu ${className}`}
@@ -318,4 +328,5 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       {children}
     </div>
   );
+  return portalTo ? createPortal(menu, portalTo) : menu;
 };

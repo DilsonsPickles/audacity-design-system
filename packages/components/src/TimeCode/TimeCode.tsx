@@ -513,6 +513,10 @@ export function TimeCode({
 
           <ContextMenu
             isOpen={showMenu}
+            // Into the document's body: inside a Dialog (a containing
+            // block for fixed descendants) the menu was placed relative
+            // to the dialog and clipped by it (Go to, 2026-10-13)
+            portalTo={containerRef.current?.ownerDocument.body ?? null}
             onClose={() => {
               setShowMenu(false);
               // When closing menu, restore focus to TimeCode container

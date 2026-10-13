@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, cleanup } from '@testing-library/react';
-import { describe, it, expect, afterEach } from 'vitest';
+import { render, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { lightTheme, darkTheme, type ThemeTokens } from '@audacity-ui/tokens';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { TimeCode } from '../TimeCode';
@@ -39,5 +39,22 @@ describe('TimeCode — theme-aware dark-variant background', () => {
   it('token values: dark #171F25, light preserves the original #212433', () => {
     expect(darkTheme.background.control.timecode.idle).toBe('#171F25');
     expect(lightTheme.background.control.timecode.idle).toBe('#212433');
+  });
+});
+
+describe('the format menu is portaled to the body (2026-10-13)', () => {
+  it('opens outside the control\'s own subtree, so a Dialog ancestor cannot place or clip it', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <div style={{ containerType: 'inline-size', overflow: 'hidden' }} data-testid="host">
+          <TimeCode value={5} format="hh:mm:ss" onChange={vi.fn()} />
+        </div>
+      </ThemeProvider>,
+    );
+    fireEvent.click(container.querySelector('.timecode__format-button')!);
+    const menu = document.body.querySelector('[role="menu"]');
+    expect(menu).not.toBeNull();
+    expect(container.querySelector('[data-testid="host"]')!.contains(menu)).toBe(false);
+    expect(menu!.querySelectorAll('[role="menuitem"]').length).toBeGreaterThan(5);
   });
 });
