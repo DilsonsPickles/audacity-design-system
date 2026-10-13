@@ -60,10 +60,30 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     expect(document.activeElement).toBe(clip);
     expect(onHandleHint).toHaveBeenLastCalledWith(null);
 
+    // Shift+F is nothing now (2026-10-13): the press falls through
     fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true });
-    expect(document.activeElement).toBe(handle('out'));
-    fireEvent.keyDown(handle('out')!, { key: 'Escape' });
     expect(document.activeElement).toBe(clip);
+    expect(handle('out')).toBeNull();
+  });
+
+  it('F / T / S start at the edge NEARER the playhead, and the letter cycles from there: the other edge, then the clip (2026-10-13)', () => {
+    const { clip, handle, container } = setup({}, { getPlayheadTime: () => 3.5, onClipTrimEdge: vi.fn(), onClipStretchEdge: vi.fn() });
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    expect(document.activeElement).toBe(handle('out'));
+    fireEvent.keyDown(handle('out')!, { key: 'f', code: 'KeyF' });
+    expect(document.activeElement).toBe(handle('in'));
+    fireEvent.keyDown(handle('in')!, { key: 'f', code: 'KeyF' });
+    expect(document.activeElement).toBe(clip);
+    fireEvent.keyDown(clip, { key: 't', code: 'KeyT' });
+    const right = container.querySelector<HTMLElement>('[data-handle-kind="trim"][data-handle-edge="right"]')!;
+    expect(document.activeElement).toBe(right);
+    fireEvent.keyDown(right, { key: 't', code: 'KeyT' });
+    expect(document.activeElement).toBe(container.querySelector('[data-handle-kind="trim"][data-handle-edge="left"]'));
+    fireEvent.keyDown(document.activeElement!, { key: 't', code: 'KeyT' });
+    expect(document.activeElement).toBe(clip);
+    fireEvent.keyDown(clip, { key: 's', code: 'KeyS' });
+    expect(document.activeElement).toBe(container.querySelector('[data-handle-kind="stretch"][data-handle-edge="right"]'));
   });
 
   it('on a focused handle ← → move the boundary (→ = later): a tenth, Shift a second, clamped, never past the window', () => {
@@ -163,7 +183,8 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
     );
     const clip = container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
     act(() => { clip.focus(); });
-    fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true });
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    fireEvent.keyDown(document.activeElement!, { key: 'f', code: 'KeyF' });
     const out = container.querySelector<HTMLElement>('[data-fade-handle="out"][data-fade-clip="1"]')!;
     expect(document.activeElement).toBe(out);
     fireEvent.keyDown(out, { key: 'F10', shiftKey: true });
@@ -219,7 +240,8 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
   it('the focused handle reads back as a slider with its length and curve', () => {
     const { clip, handle } = setup({ fadeOutShape: 'linear' });
     act(() => { clip.focus(); });
-    fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true });
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    fireEvent.keyDown(handle('in')!, { key: 'f', code: 'KeyF' }); // F again: the fade-out
     const out = handle('out')!;
     expect(out.getAttribute('role')).toBe('slider');
     expect(out.getAttribute('aria-valuetext')).toBe('0.5 seconds, linear');
@@ -342,7 +364,8 @@ describe('⌥F takes a fade to the playhead (2026-10-13)', () => {
   it('from a focused fade handle it is THAT fade; nothing moved shakes that edge and the handle keeps the focus', () => {
     const toPlayhead = vi.fn(() => false);
     const { clip, container } = setupWith(toPlayhead);
-    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF', shiftKey: true }); // ⇧F: the fade-out handle
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    fireEvent.keyDown(document.activeElement!, { key: 'f', code: 'KeyF' }); // F again: the fade-out handle
     const handle = container.querySelector<HTMLElement>('[data-fade-handle="out"][data-fade-clip="1"]')!;
     expect(document.activeElement).toBe(handle);
     chord(handle);
@@ -364,8 +387,9 @@ describe('⌥T / ⌥S: an edge to the playhead (2026-10-13, "can we have that to
     chord(clip, 'S');
     expect(onClipStretchToPlayhead).toHaveBeenLastCalledWith(1, 'auto');
     expect(clip.querySelector('[data-shake]') ?? clip.getAttribute('data-shake-edge') ?? 'shaken').toBeTruthy();
-    // On the fade-out handle: the right edge
-    fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true });
+    // On the fade-out handle (F twice): the right edge
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
+    fireEvent.keyDown(handle('in')!, { key: 'f', code: 'KeyF' });
     expect(document.activeElement).toBe(handle('out'));
     chord(handle('out')!, 'T');
     expect(onClipTrimToPlayhead).toHaveBeenLastCalledWith(1, 'right');

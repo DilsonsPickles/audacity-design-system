@@ -17,6 +17,11 @@
  *   ⌥Enter  SELECTS it and gives it the focus — the clip becomes the
  *           one you have, so F / T / S and Enter follow
  *
+ * EVERY ONE OF THEM MOVES THE FOCUS TO THAT CLIP (2026-10-13, "if we do
+ * that option + enter, we can move the focus to the new target"): after
+ * a cursor-based edit the clip you just edited is the clip you are on,
+ * so the two ways of pointing — the focus and the cursor — meet.
+ *
  * The edits take the fade / trim rule's targets (the clip, or every
  * selected audio clip when it is selected), each to the same playhead.
  * A playhead on no clip of the track does nothing and says so. A
@@ -80,15 +85,18 @@ export function usePlayheadClipHotkeys(): void {
         announce('No clip under the playhead on this track');
         return;
       }
+      // The clip edited (or selected) becomes the clip you are on
+      const focusIt = () => requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(`[data-clip-id="${hit.clipId}"][data-track-index="${hit.trackIndex}"]`)?.focus({ preventScroll: true });
+      });
       if (chord === 'select') {
         d({ type: 'SELECT_CLIP', payload: { trackIndex: hit.trackIndex, clipId: hit.clipId } });
         const name = s.tracks[hit.trackIndex]?.clips.find((c) => c.id === hit.clipId)?.name ?? 'Clip';
         announce(`${name} selected`);
-        requestAnimationFrame(() => {
-          document.querySelector<HTMLElement>(`[data-clip-id="${hit.clipId}"][data-track-index="${hit.trackIndex}"]`)?.focus({ preventScroll: true });
-        });
+        focusIt();
         return;
       }
+      focusIt();
       if (chord === 'fade') {
         const targets = fadeTargets(s.tracks, hit.trackIndex, hit.clipId)
           .map((t) => ({ ...t, clip: s.tracks[t.trackIndex]?.clips.find((c) => c.id === t.clipId) }))

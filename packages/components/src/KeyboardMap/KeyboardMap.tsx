@@ -54,7 +54,7 @@ export function parseShortcutRows(rows: ReadonlyArray<ShortcutRow>): ParsedBindi
 
 interface KeySpec { k: string; u?: number; cap?: string; mod?: Modifier | 'caps'; note?: string }
 const LAYOUT: Array<{ fn?: boolean; keys: Array<string | KeySpec> }> = [
-  { fn: true, keys: ['Escape', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'] },
+  { fn: true, keys: ['Escape', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', { k: 'Home', u: 0.9 }, { k: 'End', u: 0.9 }] },
   { keys: ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', { k: 'Delete', u: 1.6, cap: '⌫' }] },
   { keys: [{ k: 'Tab', u: 1.6 }, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', { k: '\\', u: 1 }] },
   { keys: [{ k: 'Caps', u: 1.9, mod: 'caps', cap: 'Caps' }, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", { k: 'Return', u: 1.8, cap: '↩ Return' }] },

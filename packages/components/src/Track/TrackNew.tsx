@@ -508,6 +508,11 @@ export interface TrackProps {
    *  (the host picks the nearer: first half = the start), from a trim /
    *  stretch / fade handle it is that handle's edge. False shakes it. */
   onClipStretchToPlayhead?: (clipId: string | number, edge: 'left' | 'right' | 'auto') => boolean | void;
+  /** The playhead's time, read at a keypress (2026-10-13): F / T / S
+   *  focus the handle at the clip's edge NEARER the playhead — the start
+   *  in the clip's first half, the end in its second — the same halves
+   *  ⌥F / ⌥T / ⌥S use. Absent, the left / fade-in handle, as before. */
+  getPlayheadTime?: () => number;
   /** ⌥F: a fade's boundary to the playhead (2026-10-13). From the clip
    *  the side is 'auto' — the host infers it from where the playhead
    *  sits (its first half = the fade-in); from a focused fade handle it
@@ -742,6 +747,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipTrim,
   onClipTrimToPlayhead,
   onClipStretchToPlayhead,
+  getPlayheadTime,
   onClipFadeToPlayhead,
   onClipStretch,
   onClipMoveToTrack,
@@ -955,7 +961,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // MOUNTED whatever the pointer does (fadeHandleActive below) and, on
   // it, the arrows are the handle's: ← → the boundary, ↑ ↓ the curve;
   // 1–5 the presets, 0 reset, Delete removes, Shift+F10 the fade's menu.
-  const [fadeKeyFocus, setFadeKeyFocus] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
+  // `second`: the letter has already crossed to the other edge this
+  // cycle — the next press goes back to the clip (2026-10-13: the cycle
+  // is this edge → the other → the clip, from whichever edge it began)
+  const [fadeKeyFocus, setFadeKeyFocus] = React.useState<{ clipId: string | number; side: 'in' | 'out'; second?: boolean } | null>(null);
   // THE TRIM AND STRETCH HANDLES TAKE KEYBOARD FOCUS TOO (2026-10-12, "F for
   // fade, T for trim, S for stretch" — the split tool moved to C for it):
   // T on a focused clip focuses its LEFT trim handle, Shift+T the right;
@@ -965,7 +974,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // the nudge's callbacks and clamps; Escape the clip; Tab the clip's Tab;
   // Shift+F10 the clip's menu. The Clip keeps the handles mounted and
   // focused while this is set (`keyboardHandle`).
-  const [handleKeyFocus, setHandleKeyFocus] = React.useState<{ clipId: string | number; kind: 'trim' | 'stretch'; edge: 'left' | 'right' } | null>(null);
+  const [handleKeyFocus, setHandleKeyFocus] = React.useState<{ clipId: string | number; kind: 'trim' | 'stretch'; edge: 'left' | 'right'; second?: boolean } | null>(null);
+  // THE EDGE NEARER THE PLAYHEAD (2026-10-13, "I don't like the Shift
+  // other-side behaviour"): where F / T / S start — the clip's start in
+  // its first half, its end in its second; the left edge when the host
+  // gives no playhead
+  const nearerEdgeOf = (clip: { start: number; duration: number }): 'left' | 'right' => {
+    if (!getPlayheadTime) return 'left';
+    return getPlayheadTime() < clip.start + clip.duration / 2 ? 'left' : 'right';
+  };
   React.useEffect(() => {
     if (!handleKeyFocus) return;
     // The focus settling anywhere that is not this clip's handles or a
@@ -1803,12 +1820,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const isT = e.code === 'KeyT' || e.key === 't' || e.key === 'T';
       const isS = e.code === 'KeyS' || e.key === 's' || e.key === 'S';
       const isF = e.code === 'KeyF' || e.key === 'f' || e.key === 'F';
-      // The same letter cycles: left → right → clip (Shift the other way);
-      // the other letter switches kind at the same edge; F goes to the fades
+      // The same letter cycles: this edge → the other → the clip (2026-10-13,
+      // from whichever edge it began; no Shift reverse — a Shift+letter
+      // falls through, Shift+S being Solo); the other letter switches kind
+      // at the same edge; F goes to the fades
+      if (e.shiftKey && (isT || isS || isF)) return;
       if ((isT && kind === 'trim') || (isS && kind === 'stretch')) {
         stop();
-        if (!e.shiftKey && edge === 'left') setHandleKeyFocus({ clipId: clip.id, kind, edge: 'right' });
-        else if (e.shiftKey && edge === 'right') setHandleKeyFocus({ clipId: clip.id, kind, edge: 'left' });
+        if (!handleKeyFocus?.second) setHandleKeyFocus({ clipId: clip.id, kind, edge: edge === 'left' ? 'right' : 'left', second: true });
         else focusClip();
         return;
       }
@@ -2048,16 +2067,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // (Shift+S is Solo, app-wide — not taken here). Where a handle
             // can exist: trim needs the host's edge trim, stretch an audio
             // track. Matched on the code too.
-            if ((e.code === 'KeyT' || e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !e.altKey && onClipTrimEdge) {
+            // …at the edge NEARER the playhead (2026-10-13); no Shift forms —
+            // Shift+T / Shift+S fall through (Shift+S is Solo, app-wide)
+            if ((e.code === 'KeyT' || e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && onClipTrimEdge) {
               e.preventDefault();
               e.stopPropagation();
-              setHandleKeyFocus({ clipId: clip.id, kind: 'trim', edge: e.shiftKey ? 'right' : 'left' });
+              setHandleKeyFocus({ clipId: clip.id, kind: 'trim', edge: nearerEdgeOf(clip) });
               return;
             }
             if ((e.code === 'KeyS' || e.key === 's') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !isMidiTrack && onClipStretchEdge) {
               e.preventDefault();
               e.stopPropagation();
-              setHandleKeyFocus({ clipId: clip.id, kind: 'stretch', edge: 'left' });
+              setHandleKeyFocus({ clipId: clip.id, kind: 'stretch', edge: nearerEdgeOf(clip) });
               return;
             }
 
@@ -2072,11 +2093,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // height floors are the POINTER's (overlapping hit boxes); a
             // keyboard-held handle has no hit box to overlap, so the
             // render functions lift both floors for it
-            if ((e.code === 'KeyF' || e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            // …the fade at the edge NEARER the playhead (2026-10-13); Shift+F
+            // is no longer the fade-out, it falls through
+            if ((e.code === 'KeyF' || e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
               if (!isMidiTrack && onClipFadeChange) {
                 e.preventDefault();
                 e.stopPropagation();
-                setFadeKeyFocus({ clipId: clip.id, side: e.shiftKey ? 'out' : 'in' });
+                setFadeKeyFocus({ clipId: clip.id, side: nearerEdgeOf(clip) === 'left' ? 'in' : 'out' });
                 return;
               }
             }
@@ -2731,11 +2754,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 clipEl?.focus({ preventScroll: true });
                 return;
               }
-              // F cycles: in → out → clip; Shift+F the other way
-              if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+              // F cycles: this fade → the other → the clip (2026-10-13, from
+              // whichever it began; Shift+F falls through)
+              if ((e.code === 'KeyF' || e.key === 'f' || e.key === 'F') && !e.shiftKey) {
                 stop();
-                if (!e.shiftKey && side === 'in') setFadeKeyFocus({ clipId: clip.id, side: 'out' });
-                else if (e.shiftKey && side === 'out') setFadeKeyFocus({ clipId: clip.id, side: 'in' });
+                if (!fadeKeyFocus?.second) setFadeKeyFocus({ clipId: clip.id, side: side === 'in' ? 'out' : 'in', second: true });
                 else focusClip();
                 return;
               }

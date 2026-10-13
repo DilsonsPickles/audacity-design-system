@@ -814,6 +814,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
           if (own) announce(computeKeyboardTrimToTimeAnnouncement(own.newDuration));
           return updates.length > 0;
         }}
+        getPlayheadTime={() => playheadRef.current}
         onClipStretchToPlayhead={(clipId, requested) => {
           // ⌥S: STRETCH TO THE PLAYHEAD (2026-10-13, "can we have that to
           // trim and stretch too?"): the trim's targets, each edge to the

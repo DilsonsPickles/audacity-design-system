@@ -57,10 +57,10 @@ describe('T and S focus the trim and stretch handles (2026-10-12)', () => {
     fireEvent.keyDown(handle('trim', 'right')!, { key: 't', code: 'KeyT' });
     expect(document.activeElement).toBe(clip);
     expect(onHandleHint).toHaveBeenLastCalledWith(null);
+    // Shift+T is nothing now (2026-10-13, no "other side" Shift): the press falls through
     fireEvent.keyDown(clip, { key: 'T', code: 'KeyT', shiftKey: true });
-    expect(document.activeElement).toBe(handle('trim', 'right'));
-    fireEvent.keyDown(handle('trim', 'right')!, { key: 'Escape' });
     expect(document.activeElement).toBe(clip);
+    expect(handle('trim', 'right')).toBeNull();
   });
 
   it('S focuses the left stretch handle; S and T switch kind at the same edge; F goes to the fade at that edge', () => {
@@ -78,7 +78,8 @@ describe('T and S focus the trim and stretch handles (2026-10-12)', () => {
 
   it('T and S on a FADE handle swap to the trim / stretch handle at that edge, and F swaps back', () => {
     const { clip, handle } = setup();
-    fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true }); // the fade-out handle
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' }); // the fade-in handle, then F again: the fade-out
+    fireEvent.keyDown(document.activeElement!, { key: 'f', code: 'KeyF' });
     expect(document.activeElement?.getAttribute('data-fade-handle')).toBe('out');
     fireEvent.keyDown(document.activeElement!, { key: 't', code: 'KeyT' });
     expect(document.activeElement).toBe(handle('trim', 'right'));

@@ -41,7 +41,7 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     expect(playheadClipChordOf(ev({ code: 'KeyT', metaKey: true }))).toBeNull();
     expect(playheadClipChordOf(ev({ code: 'KeyT', altKey: false }))).toBeNull();
   });
-  it('⌥F fades, ⌥T trims and ⌥S stretches the clip under the playhead from the focused header; not from a clip, not from a text field', () => {
+  it('⌥F fades, ⌥T trims and ⌥S stretches the clip under the playhead from the focused header, and the clip takes the focus; not from a clip, not from a text field', async () => {
     const seen: Seen = { clips: [] };
     const { getByTestId } = render(<TracksProvider initialTracks={seed()}><Probe seen={seen} /></TracksProvider>);
     const header = getByTestId('header0');
@@ -52,6 +52,10 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     // ⌥T: the nearer edge (the start) to the playhead — the clip now runs 1..4
     act(() => { press(header, 'KeyT'); });
     expect(seen.clips[0].slice(1, 3)).toEqual([1, 3]);
+    // …and the edited clip takes the focus (2026-10-13)
+    await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
+    expect(document.activeElement).toBe(getByTestId('clip'));
+    act(() => { header.focus(); });
     // ⌥S from the clip's start at 1 with the playhead at 1: nothing to stretch (refused, not clamped)
     act(() => { press(header, 'KeyS'); });
     expect(seen.clips[0].slice(1, 3)).toEqual([1, 3]);
