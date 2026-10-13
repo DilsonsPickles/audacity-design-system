@@ -560,7 +560,7 @@ describe('Keyboard trim — the T handle with the arrows (the bare brackets were
     expect(clip.style.width).toBe('190px');
   });
 
-  it('on an UNSELECTED focused clip the handle trims that clip alone and SELECTS it, exclusively (2026-10-13, an edit selects its clip; until then the selection was left as it was)', () => {
+  it('on an UNSELECTED focused clip the handle trims that clip alone and DROPS the selection — nothing is selected after (2026-10-13; it selected the clip for an hour, and before that left the selection as it was)', () => {
     const tracks: Track[] = [
       {
         id: 1,
@@ -578,8 +578,8 @@ describe('Keyboard trim — the T handle with the arrows (the bare brackets were
     shrinkRightEdge(clip2);
     expect(clip2.style.width).toBe('190px'); // the focused clip
     expect(clip1.style.width).toBe('200px'); // the previously selected one is untouched…
-    // …and the edit made clip 2 THE selection (exclusive, as a move does)
-    expect(clip2.querySelector('[data-selected="true"]')).toBeTruthy();
+    // …and the edit dropped the selection: clip 1 no longer, clip 2 not either
+    expect(clip2.querySelector('[data-selected="true"]')).toBeNull();
     expect(clip1.querySelector('[data-selected="true"]')).toBeNull();
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' });
     expect(clip2.style.width).toBe('180px');

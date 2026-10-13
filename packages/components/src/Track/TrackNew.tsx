@@ -366,11 +366,12 @@ export interface TrackProps {
    *  first the same day and rejected: "I want home and end for start and
    *  end of project". */
   onPlayheadToClipEdge?: (clipId: string | number, edge: 'start' | 'end') => void;
-  /** AN EDIT SELECTS ITS CLIP (2026-10-13): called as F / T / S take a
-   *  handle on the clip by keyboard — the host selects the clip if it is
-   *  not already, so the handles you see are the handles that act. The
-   *  pointer's edits select through their own host callbacks. */
-  onClipEditSelect?: (clipId: string | number) => void;
+  /** AN EDIT BEGINS ON THIS CLIP (2026-10-13): called as F / T / S take a
+   *  handle on the clip by keyboard — the host drops a selection the clip
+   *  is not in ("interacting with another clip… should deselect the
+   *  selected clip"), so the handles you see are the handles that act.
+   *  The pointer's edits do the same through their own host callbacks. */
+  onClipEditBegin?: (clipId: string | number) => void;
   /** Callback when the user commits a clip rename inline. */
   onClipRename?: (clipId: string | number, newName: string) => void;
 
@@ -732,7 +733,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipClick,
   onPlayheadToClipStart,
   onPlayheadToClipEdge,
-  onClipEditSelect,
+  onClipEditBegin,
   onClipRename,
   onTrackClick,
   onEnvelopePointsChange,
@@ -2086,14 +2087,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             if ((e.code === 'KeyT' || e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && onClipTrimEdge) {
               e.preventDefault();
               e.stopPropagation();
-              onClipEditSelect?.(clip.id);
+              onClipEditBegin?.(clip.id);
               setHandleKeyFocus({ clipId: clip.id, kind: 'trim', edge: nearerEdgeOf(clip) });
               return;
             }
             if ((e.code === 'KeyS' || e.key === 's') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !isMidiTrack && onClipStretchEdge) {
               e.preventDefault();
               e.stopPropagation();
-              onClipEditSelect?.(clip.id);
+              onClipEditBegin?.(clip.id);
               setHandleKeyFocus({ clipId: clip.id, kind: 'stretch', edge: nearerEdgeOf(clip) });
               return;
             }
@@ -2115,7 +2116,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               if (!isMidiTrack && onClipFadeChange) {
                 e.preventDefault();
                 e.stopPropagation();
-                onClipEditSelect?.(clip.id);
+                onClipEditBegin?.(clip.id);
                 setFadeKeyFocus({ clipId: clip.id, side: nearerEdgeOf(clip) === 'left' ? 'in' : 'out' });
                 return;
               }

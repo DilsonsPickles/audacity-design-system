@@ -90,12 +90,13 @@ export function usePlayheadClipHotkeys(): void {
         announce('No clip under the playhead on this track');
         return;
       }
-      // The clip edited (or selected) becomes the clip you are on — and
-      // AN EDIT SELECTS ITS CLIP (2026-10-13): the three edits select it
-      // too, exclusively, as a move does
+      // The clip edited becomes the clip you are on — and AN EDIT ON
+      // ANOTHER CLIP DROPS THE SELECTION (2026-10-13): the three edits on
+      // an unselected clip clear whatever was selected, selecting nothing
       if (chord !== 'select') {
         const c = s.tracks[hit.trackIndex]?.clips.find((x) => x.id === hit.clipId);
-        if (c && !c.selected) d({ type: 'SELECT_CLIP', payload: { trackIndex: hit.trackIndex, clipId: hit.clipId } });
+        const anySelected = s.tracks.some((tr) => tr.clips.some((x) => x.selected) || (tr.midiClips ?? []).some((x) => x.selected));
+        if (c && !c.selected && anySelected) d({ type: 'DESELECT_ALL_CLIPS' });
       }
       const focusIt = () => requestAnimationFrame(() => {
         document.querySelector<HTMLElement>(`[data-clip-id="${hit.clipId}"][data-track-index="${hit.trackIndex}"]`)?.focus({ preventScroll: true });

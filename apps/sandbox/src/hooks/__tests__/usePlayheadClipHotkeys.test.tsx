@@ -59,10 +59,10 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     // ⌥T: the nearer edge (the start) to the playhead — the clip now runs 1..4
     act(() => { press(header, 'KeyT'); });
     expect(seen.clips[0].slice(1, 3)).toEqual([1, 3]);
-    // …and the edited clip takes the focus AND the selection (2026-10-13)
+    // …and the edited clip takes the focus — not the selection (2026-10-13)
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
     expect(document.activeElement).toBe(getByTestId('clip'));
-    expect(seen.clips[0][5]).toBe(true);
+    expect(seen.clips[0][5]).toBe(false);
     act(() => { header.focus(); });
     // ⌥S from the clip's start at 1 with the playhead at 1: nothing to stretch (refused, not clamped)
     act(() => { press(header, 'KeyS'); });
@@ -109,13 +109,16 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
 });
 
 describe('the chord takes the clip UNDER THE PLAYHEAD, whichever clip is focused (2026-10-13)', () => {
-  it('⌥F with clip A focused and the playhead over clip B fades B, selects it and moves the focus to it; A is untouched', async () => {
+  it('⌥F with clip A focused AND SELECTED and the playhead over clip B fades B, drops the selection (B is not selected either) and moves the focus to B; A is otherwise untouched', async () => {
     const seen: Seen = { clips: [] };
-    const { getByTestId } = render(<TracksProvider initialTracks={seedTwo()}><Probe seen={seen} playhead={7} /></TracksProvider>);
+    const tracks = seedTwo();
+    tracks[0].clips[0].selected = true;
+    const { getByTestId } = render(<TracksProvider initialTracks={tracks}><Probe seen={seen} playhead={7} /></TracksProvider>);
     act(() => { getByTestId('clip').focus(); });
+    expect(seen.clips.find((c) => c[0] === 11)?.[5]).toBe(true);
     act(() => { press(getByTestId('clip'), 'KeyF'); });
-    // Clip B (6..10), playhead at 7: its first half → a 1 s fade-in on B
-    expect(seen.clips.find((c) => c[0] === 12)?.slice(3, 6)).toEqual([1, 0, true]);
+    // Clip B (6..10), playhead at 7: its first half → a 1 s fade-in on B; nothing selected after
+    expect(seen.clips.find((c) => c[0] === 12)?.slice(3, 6)).toEqual([1, 0, false]);
     expect(seen.clips.find((c) => c[0] === 11)?.slice(3, 6)).toEqual([0, 0, false]);
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
     expect(document.activeElement).toBe(getByTestId('clipB'));
