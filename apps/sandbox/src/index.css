@@ -52,3 +52,7 @@ html.pan-active * {
 .dialog.fade-dialog {
   min-width: 360px;
 }
+
+.dialog.go-to-dialog {
+  min-width: 360px;
+}

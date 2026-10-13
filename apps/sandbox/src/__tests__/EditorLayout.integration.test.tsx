@@ -499,6 +499,22 @@ describe('Bottom drawer', () => {
     expect(drawer.style.height).toBe('326px');
   });
 
+  it('Cmd+P opens Go to… on the playhead; Escape leaves it where it was (2026-10-13)', async () => {
+    const rendered = renderApp();
+    await gotoProject(rendered);
+    expect(document.body.querySelector('.go-to-dialog')).toBeNull();
+    fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP', metaKey: true });
+    const dialog = await waitFor(() => {
+      const d = document.body.querySelector<HTMLElement>('.go-to-dialog');
+      if (!d) throw new Error('not yet');
+      return d;
+    });
+    const timecode = dialog.querySelector<HTMLElement>('[data-go-to-dialog] .timecode')!;
+    expect(timecode.getAttribute('aria-label')).toBe('Playhead position');
+    fireEvent.keyDown(timecode, { key: 'Escape' });
+    await waitFor(() => expect(document.body.querySelector('.go-to-dialog')).toBeNull());
+  });
+
   it('Cmd+= zooms in and Cmd+- zooms out (2026-10-12, the real app\'s Ctrl+= / Ctrl+-): a clip grows and shrinks on screen', async () => {
     const rendered = renderApp();
     const { container } = rendered;

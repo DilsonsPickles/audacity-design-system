@@ -11,6 +11,7 @@ export interface MenuDefinitionDeps {
 
   // Edit menu deps
   onOpenLabelEditor: () => void;
+  onOpenGoTo: () => void;
   onOpenPreferences: () => void;
 
   // View menu deps
@@ -80,6 +81,11 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Edit Labels...',
       shortcut: 'Ctrl+B',
       onClick: deps.onOpenLabelEditor,
+    },
+    {
+      label: 'Go to...',
+      shortcut: 'Ctrl+P',
+      onClick: deps.onOpenGoTo,
     },
     {
       label: 'Preferences',

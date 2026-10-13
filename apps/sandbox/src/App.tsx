@@ -17,6 +17,7 @@ import { DevInspector } from './components/DevInspector';
 import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
+import { GoToDialog } from './components/GoToDialog';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
@@ -113,6 +114,7 @@ function CanvasDemoContent() {
     isSaveToCloudDialogOpen,
     setIsShareDialogOpen,
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
+    isGoToOpen, setIsGoToOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
     setIsPluginManagerOpen,
     setAlertDialogOpen,
@@ -579,6 +581,7 @@ function CanvasDemoContent() {
     toggleLoopRegion,
     audioManagerRef,
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
+    onGoTo: () => setIsGoToOpen(true),
     onFitTracksToHeight: handleFitTracksToHeight,
     onExpandAllTracks: handleExpandAllTracks,
     onCollapseAllTracks: handleCollapseAllTracks,
@@ -837,6 +840,7 @@ function CanvasDemoContent() {
     handleSaveToComputer,
     setIsLabelEditorOpen,
     setIsPreferencesModalOpen,
+    setIsGoToOpen,
     effectsPanel,
     setEffectsPanel,
     showRmsInWaveform,
@@ -1238,6 +1242,16 @@ function CanvasDemoContent() {
       )}
 
       {/* Toast Container */}
+      {/* Go to… (⌘P, Edit › Go to…): the playhead to a typed position (2026-10-13) */}
+      <GoToDialog
+        isOpen={isGoToOpen}
+        initialSeconds={state.playheadPosition}
+        format={timeCodeFormat}
+        onFormatChange={setTimeCodeFormat}
+        onGo={(seconds) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: seconds })}
+        onClose={() => setIsGoToOpen(false)}
+        os={preferences.operatingSystem}
+      />
       <ToastContainer />
 
       <Dialog

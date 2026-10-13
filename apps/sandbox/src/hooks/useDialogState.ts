@@ -20,6 +20,7 @@ const DIALOG_IDS = [
   'spectrogramSettings',
   'pluginBrowser',
   'missingPluginsModal',
+  'goTo',
 ] as const;
 
 export type DialogId = (typeof DIALOG_IDS)[number];
@@ -73,6 +74,10 @@ export interface UseDialogStateReturn {
 
   isSpectrogramSettingsOpen: boolean;
   setIsSpectrogramSettingsOpen: (open: boolean) => void;
+
+  /** Go to… — the playhead to a typed position (⌘P, 2026-10-13) */
+  isGoToOpen: boolean;
+  setIsGoToOpen: (open: boolean) => void;
 
   isPluginBrowserOpen: boolean;
   setIsPluginBrowserOpen: (open: boolean) => void;
@@ -171,6 +176,7 @@ export function useDialogState(): UseDialogStateReturn {
       setIsVSTOptionsDialogOpen: makeSetter('vstOptionsDialog'),
       setIsDebugPanelOpen: makeSetter('debugPanel'),
       setIsSpectrogramSettingsOpen: makeSetter('spectrogramSettings'),
+      setIsGoToOpen: makeSetter('goTo'),
       setIsPluginBrowserOpen: makeSetter('pluginBrowser'),
       setIsMissingPluginsModalOpen: makeSetter('missingPluginsModal'),
     }),
@@ -205,6 +211,7 @@ export function useDialogState(): UseDialogStateReturn {
     isVSTOptionsDialogOpen: openDialogs.has('vstOptionsDialog'),
     isDebugPanelOpen: openDialogs.has('debugPanel'),
     isSpectrogramSettingsOpen: openDialogs.has('spectrogramSettings'),
+    isGoToOpen: openDialogs.has('goTo'),
     isPluginBrowserOpen: openDialogs.has('pluginBrowser'),
     isMissingPluginsModalOpen: openDialogs.has('missingPluginsModal'),
     missingPluginNames,

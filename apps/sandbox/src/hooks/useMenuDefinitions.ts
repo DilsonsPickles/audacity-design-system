@@ -14,6 +14,7 @@ export interface UseMenuDefinitionsOptions {
   handleSaveToComputer: () => Promise<void>;
   setIsLabelEditorOpen: (open: boolean) => void;
   setIsPreferencesModalOpen: (open: boolean) => void;
+  setIsGoToOpen: (open: boolean) => void;
   effectsPanel: EffectsPanelState | null;
   setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
   showRmsInWaveform: boolean;
@@ -59,6 +60,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     handleSaveToComputer,
     setIsLabelEditorOpen,
     setIsPreferencesModalOpen,
+    setIsGoToOpen,
     effectsPanel,
     setEffectsPanel,
     showRmsInWaveform,
@@ -148,6 +150,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onSaveToComputer: handleSaveToComputer,
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
+    onOpenGoTo: () => setIsGoToOpen(true),
     effectsPanelOpen: effectsPanel?.isOpen ?? false,
     showRmsInWaveform,
     showVerticalRulers,
