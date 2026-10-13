@@ -39,6 +39,7 @@ import { useClipProperties } from '../contexts/ClipPropertiesContext';
 import { ClipPropertiesDockPanel } from './editor/ClipPropertiesDockPanel';
 import { useClipPropertiesHotkey } from '../hooks/useClipPropertiesHotkey';
 import { useFadeDialogHotkey } from '../hooks/useFadeDialogHotkey';
+import { useFadeToPlayheadHotkey } from '../hooks/useFadeToPlayheadHotkey';
 import { type DockPanelId, type PanelSide, DOCK_PANEL_LABELS, docksBottom } from './editor/dockPanels';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
 import {
@@ -252,8 +253,10 @@ export function EditorLayout(props: EditorLayoutProps) {
   } = useClipProperties();
   // ⌥⌘I toggles the panel (2026-10-07) — here, inside the provider
   useClipPropertiesHotkey();
-  // ⌥F opens the fades dialog on the focused clip (2026-10-13)
+  // ⌥⇧F opens the fades dialog on the focused clip (2026-10-13)
   useFadeDialogHotkey();
+  // ⌥F from a TRACK fades the clip under the playhead (2026-10-13)
+  useFadeToPlayheadHotkey();
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<DockPanelId>('effects');
   const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'macros', 'clip-properties']);
   // Effects panel placement — docked left (the classic position), docked

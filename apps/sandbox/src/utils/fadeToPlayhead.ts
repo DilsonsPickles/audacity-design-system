@@ -51,3 +51,62 @@ export function computeFadeToTime(
 export function fadeSideForTime(clip: { start: number; duration: number }, time: number): 'in' | 'out' {
   return time < clip.start + clip.duration / 2 ? 'in' : 'out';
 }
+
+/**
+ * ⌥F FROM A TRACK (user request 2026-10-13, "if I have a track focus and
+ * a cursor, it means I have x,y coordinates — so can't I use alt + F to
+ * fade in/out on any clip?"): with NO clip focused, the chord takes the
+ * clip UNDER THE PLAYHEAD on the track you are on — the track of the
+ * header or row with the DOM focus, else the focused track — the side
+ * inferred as from a focused clip (first half = fade-in). The playhead
+ * is x, the track is y; the clip is theirs. Overlapping clips: the top
+ * one (last in the array, the z-order rule). A playhead on no clip of
+ * that track is nothing to fade; the caller says so.
+ */
+export interface TrackLike {
+  name: string;
+  type?: 'audio' | 'label' | 'midi' | 'folder';
+  clips: ReadonlyArray<{ id: number; start: number; duration: number }>;
+}
+
+/** The track you are on, as a document listener sees it: the header or
+ *  row with the focus (data-track-panel-index / data-track-index), else
+ *  the focused track */
+export function trackImOnOf(active: Element | null, focusedTrackIndex: number | null | undefined, trackCount: number): number | null {
+  const fromDom = active?.closest<HTMLElement>('[data-track-index]')?.getAttribute('data-track-index')
+    ?? active?.closest<HTMLElement>('[data-track-panel-index]')?.getAttribute('data-track-panel-index');
+  if (fromDom !== null && fromDom !== undefined && Number(fromDom) >= 0 && Number(fromDom) < trackCount) return Number(fromDom);
+  if (focusedTrackIndex !== null && focusedTrackIndex !== undefined && focusedTrackIndex >= 0 && focusedTrackIndex < trackCount) return focusedTrackIndex;
+  return null;
+}
+
+/** The top-most audio clip STRICTLY containing `time` on the track */
+export function clipAtTime<C extends { start: number; duration: number }>(track: { type?: string; clips: ReadonlyArray<C> }, time: number): C | null {
+  if (track.type && track.type !== 'audio') return null;
+  for (let i = track.clips.length - 1; i >= 0; i--) {
+    const c = track.clips[i];
+    if (time > c.start && time < c.start + c.duration) return c;
+  }
+  return null;
+}
+
+export interface TrackFadeToPlayhead {
+  trackIndex: number;
+  clipId: number;
+  side: 'in' | 'out';
+}
+
+/** What ⌥F from a track would fade: the clip under the playhead on the
+ *  track you are on, and which side — or null (no track, no clip there) */
+export function resolveTrackFadeToPlayhead(
+  tracks: ReadonlyArray<TrackLike>,
+  focusedTrackIndex: number | null | undefined,
+  active: Element | null,
+  time: number,
+): TrackFadeToPlayhead | null {
+  const trackIndex = trackImOnOf(active, focusedTrackIndex, tracks.length);
+  if (trackIndex === null) return null;
+  const clip = clipAtTime(tracks[trackIndex], time);
+  if (!clip) return null;
+  return { trackIndex, clipId: clip.id, side: fadeSideForTime(clip, time) };
+}

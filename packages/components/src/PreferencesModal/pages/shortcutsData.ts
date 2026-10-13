@@ -76,6 +76,7 @@ export const SHORTCUT_ROWS: ReadonlyArray<ShortcutRow> = [
     { id: '35c', action: 'Fade handle: shape preset / reset', shortcut: '1–5 / 0', contexts: ['fade-handle'] },
     { id: '35d', action: 'Fade handle: remove / menu / back to the clip', shortcut: '⌫ / ⇧F10 / Esc', contexts: ['fade-handle'] },
     { id: '35h', action: 'Fade to the playhead (focused clip: the fade-in in its first half, the fade-out in its second; a focused fade handle: that fade)', shortcut: '⌥F', contexts: ['clip', 'fade-handle'] },
+    { id: '35j', action: 'Fade to the playhead on the track you are on, with no clip focused: the clip under the playhead (the fade-in in its first half, the fade-out in its second)', shortcut: '⌥F' },
     { id: '35i', action: 'Fades dialog (fade-in and fade-out length and shape) for the focused clip', shortcut: '⌥⇧F', contexts: ['clip', 'fade-handle'] },
     { id: '36', action: 'Find clipping', shortcut: '' },
     { id: '36a', action: 'Context menu (focused clip, track or handle)', shortcut: '⇧F10 · Menu key', contexts: ['clip', 'fade-handle', 'edge-handle'] },
