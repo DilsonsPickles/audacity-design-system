@@ -65,3 +65,23 @@ describe('Enter on a clip (2026-10-13): select, then the playhead to its start',
     expect(onClipClick).toHaveBeenCalledWith(1, false, false);
   });
 });
+
+describe('⌘[ / ⌘] on a focused clip take the playhead to its start / end (2026-10-13)', () => {
+  it('⌘[ → start, ⌘] → end; the Shift and Option forms are not it', () => {
+    const onPlayheadToClipEdge = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew clips={[{ id: 1, name: 'A', start: 1, duration: 3 }]} width={800} trackIndex={0} pixelsPerSecond={100} onPlayheadToClipEdge={onPlayheadToClipEdge} />
+      </Providers>,
+    );
+    const clip = container.querySelector<HTMLElement>('[data-clip-id="1"]')!;
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: '[', code: 'BracketLeft', metaKey: true });
+    expect(onPlayheadToClipEdge).toHaveBeenLastCalledWith(1, 'start');
+    fireEvent.keyDown(clip, { key: ']', code: 'BracketRight', metaKey: true });
+    expect(onPlayheadToClipEdge).toHaveBeenLastCalledWith(1, 'end');
+    fireEvent.keyDown(clip, { key: '{', code: 'BracketLeft', metaKey: true, shiftKey: true });
+    fireEvent.keyDown(clip, { key: '“', code: 'BracketLeft', altKey: true });
+    expect(onPlayheadToClipEdge).toHaveBeenCalledTimes(2);
+  });
+});

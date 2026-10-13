@@ -116,6 +116,7 @@ export const SHORTCUT_ROWS: ReadonlyArray<ShortcutRow> = [
     { id: '44b', action: 'Select to the previous / next clip edge (grows edge by edge)', shortcut: '⇧[ / ⇧]' },
     { id: '44c', action: 'Shrink the selection from its start / end to the next clip edge inside it', shortcut: '⌘⇧[ / ⌘⇧]', contexts: ['time'] },
     { id: '45a', action: 'Trim clip start / end to playhead (focused clip)', shortcut: '⌥[ / ⌥]', contexts: ['clip'] },
+    { id: '44d', action: 'Playhead to the focused clip\'s start / end', shortcut: '⌘[ / ⌘]', contexts: ['clip'] },
     { id: '46', action: 'Labels to selections', shortcut: '' },
     { id: '47', action: 'Leveller', shortcut: '' },
     { id: '48', action: 'Limiter', shortcut: '' },

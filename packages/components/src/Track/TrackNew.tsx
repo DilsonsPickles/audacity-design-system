@@ -359,6 +359,13 @@ export interface TrackProps {
    *  the first Enter selects, the second parks). Unset, Enter stays the
    *  toggle it was (which deselected a single selected clip). */
   onPlayheadToClipStart?: (clipId: string | number) => void;
+  /** ⌘[ / ⌘] ON A FOCUSED CLIP (user decision 2026-10-13, "move cursor to
+   *  focused clip?" — in the bracket family, which is the cursor and the
+   *  clip edges: [ ] step the cursor along the focused track's edges,
+   *  ⌘[ ⌘] take it to THIS clip's own start / end). Home / End were tried
+   *  first the same day and rejected: "I want home and end for start and
+   *  end of project". */
+  onPlayheadToClipEdge?: (clipId: string | number, edge: 'start' | 'end') => void;
   /** Callback when the user commits a clip rename inline. */
   onClipRename?: (clipId: string | number, newName: string) => void;
 
@@ -719,6 +726,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   backgroundColor = 'rgba(255,255,255,0.05)',
   onClipClick,
   onPlayheadToClipStart,
+  onPlayheadToClipEdge,
   onClipRename,
   onTrackClick,
   onEnvelopePointsChange,
@@ -2149,6 +2157,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             }
             // ⌥T / ⌥S: the NEARER edge trimmed / stretched to the playhead
             if (edgeToPlayheadByKeys(e, clip.id, 'auto')) return;
+            // ⌘[ / ⌘]: the PLAYHEAD to this clip's start / end (2026-10-13)
+            if ((isBracketLeft || isBracketRight) && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && onPlayheadToClipEdge) {
+              e.preventDefault();
+              e.stopPropagation();
+              onPlayheadToClipEdge(clip.id, isBracketLeft ? 'start' : 'end');
+              return;
+            }
             // OPTION+[ / OPTION+]: the START / END to the playhead. Matched
             // on the code — Option+[ types a quotation mark on macOS.
             if ((isBracketLeft || isBracketRight) && e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
