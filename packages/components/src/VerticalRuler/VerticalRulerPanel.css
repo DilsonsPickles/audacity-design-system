@@ -7,11 +7,14 @@
   flex-direction: column;
   width: var(--panel-width);
   height: 100%;
-  /* Sourced from the same idle overlay the tracks use, so the panel
-     background composites at the same tone as an unselected track
-     row — no dark strip peeking through the gaps. */
-  background-color: var(--panel-track-idle) !important;
-  border-left: 1px solid #323644;
+  /* THE CANVAS FLOOR (2026-10-13, "should be same bg color as dark mode
+     canvas"): the column's own background is the canvas's, so the gaps
+     between tracks and the space below them match the canvas beside
+     it; the track rows composite the canvas's track overlay over that
+     floor (VerticalRulerPanel.tsx). It was the idle-row tone until then,
+     so the column sat a shade lighter than the canvas. */
+  background-color: var(--panel-canvas-bg) !important;
+  border-left: 1px solid var(--panel-grid-border);
   flex-shrink: 0;
   overflow: hidden; /* Hide overflow on the panel itself */
   position: relative;
@@ -35,8 +38,8 @@
   width: 100%;
   overflow: visible; /* Allow all tracks to render */
   padding-top: var(--panel-track-gap);
-  border-left: 1px solid #323644;
-  background-color: var(--panel-track-idle);
+  border-left: 1px solid var(--panel-grid-border);
+  background-color: var(--panel-canvas-bg);
 }
 
 /* Individual track */
@@ -101,7 +104,7 @@
   width: 100%;
   height: var(--panel-track-gap);
   flex-shrink: 0;
-  background-color: rgba(0, 0, 0, 0.1); /* 10% black to separate rulers */
+  background-color: transparent; /* the canvas floor shows through, as between the canvas tracks (2026-10-13) */
 }
 
 /* Stereo track container */

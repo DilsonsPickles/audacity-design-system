@@ -11,6 +11,29 @@ import { useCollapseTransition } from '../hooks/useCollapseTransition';
 import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING } from '@audacity-ui/core';
 import './VerticalRulerPanel.css';
 
+
+/** A colour composited over an opaque base, as the canvas paints a
+ *  track overlay over its floor: `rgba(...)` or `#rrggbb[aa]` over
+ *  `#rrggbb` / `rgb(...)`. Returns a hex colour; an unparseable input
+ *  returns the overlay itself. */
+export function compositeOver(overlay: string, base: string): string {
+  const parse = (c: string): [number, number, number, number] | null => {
+    const hex = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(c.trim());
+    if (hex) {
+      const n = parseInt(hex[1], 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255, hex[2] ? parseInt(hex[2], 16) / 255 : 1];
+    }
+    const rgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(c.trim());
+    if (rgb) return [+rgb[1], +rgb[2], +rgb[3], rgb[4] === undefined ? 1 : +rgb[4]];
+    return null;
+  };
+  const o = parse(overlay);
+  const b = parse(base);
+  if (!o || !b) return overlay;
+  const mix = (i: number) => Math.round(o[i] * o[3] + b[i] * (1 - o[3]));
+  return `#${[mix(0), mix(1), mix(2)].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
 export interface TrackRulerConfig {
   /** Track ID */
   id: string;
@@ -157,6 +180,8 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
   const isFlatNavigation = activeProfile.config.tabNavigation === 'sequential';
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  const trackIdle = compositeOver(theme.background.canvas.track.idle, theme.background.canvas.default);
+  const trackSelected = compositeOver(theme.background.canvas.track.selected, theme.background.canvas.default);
   const style = {
     '--panel-width': `${width}px`,
     '--panel-header-height': `${headerHeight}px`,
@@ -164,17 +189,21 @@ export const VerticalRulerPanel: React.FC<VerticalRulerPanelProps> = ({
     '--panel-header-bg': theme.background.surface.subtle,
     '--panel-header-border': theme.border.default,
     '--panel-canvas-bg': theme.background.canvas.default,
-    '--panel-grid-border': '#323644',
+    '--panel-grid-border': theme.background.canvas.grid.major,
     // Solid pre-composited equivalents of the canvas track overlays.
     // The vertical ruler doesn't render a grid underneath so it
     // paints solid values that match what the canvas track pixel
-    // composites to when the overlay hits the dark canvas floor.
+    // composites to when the overlay hits the canvas floor — COMPUTED
+    // FROM THE THEME (2026-10-13, "what colour is the track ruler over
+    // on the right? Should be same bg color as dark mode canvas": the
+    // values were hard-coded to the light theme's canvas, so in dark
+    // mode the column sat a shade lighter than the canvas beside it).
     // Header (spacer) sits a shade darker than the body in every
     // state so the header vs body hierarchy stays legible.
-    '--panel-track-idle': '#31333F',
-    '--panel-track-selected': '#454752',
-    '--panel-track-spacer-idle': '#2A2C36',
-    '--panel-track-spacer-selected': '#3A3C46',
+    '--panel-track-idle': trackIdle,
+    '--panel-track-selected': trackSelected,
+    '--panel-track-spacer-idle': compositeOver('rgba(0, 0, 0, 0.14)', trackIdle),
+    '--panel-track-spacer-selected': compositeOver('rgba(0, 0, 0, 0.14)', trackSelected),
   } as React.CSSProperties;
 
   return (
