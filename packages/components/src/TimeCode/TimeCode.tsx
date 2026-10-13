@@ -73,12 +73,16 @@ export interface TimeCodeProps {
    */
   disabled?: boolean;
   /**
-   * Visual variant
+   * Visual variant — 'dark' is the toolbar chip, 'light' the label
+   * editor's, 'alt' the Figma "Timecode Alt" (8997:81285, 2026-10-13):
+   * the INPUT form — white field, 1px input border, 2px radius, 14px
+   * bold digits, the unit letters in the secondary text colour, a 16px
+   * bordered caret button — used by the Go to dialog
    * - dark: Dark background with light text (transport controls)
    * - light: Light background with dark text (label editor)
    * @default 'dark'
    */
-  variant?: 'dark' | 'light';
+  variant?: 'dark' | 'light' | 'alt';
   /**
    * Optional className for custom styling
    */
@@ -404,20 +408,22 @@ export function TimeCode({
   }, [isEditing, editingDigitIndex, disabled, segments, handleDigitChange]);
 
 
-  const caretColor = variant === 'light' ? theme.foreground.text.primary : '#f4f5f9';
+  const isLight = variant !== 'dark';
+  const caretColor = isLight ? theme.foreground.text.primary : '#f4f5f9';
 
   const style = {
     // Dark-variant chip background is theme-aware: #212433 in the light app
     // theme (unchanged) and #171F25 in dark. The light variant (label editor)
     // stays white.
-    '--timecode-bg': accent ? theme.background.control.button.primary.idle : variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
-    '--timecode-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
-    '--timecode-hover': accent ? theme.background.control.button.primary.hover : variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
-    '--timecode-border': variant === 'light' ? '#D4D5D9' : 'transparent',
-    '--timecode-unit-bg': accent ? theme.background.control.button.primary.idle : variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
-    '--timecode-unit-text': variant === 'light' ? theme.foreground.text.primary : '#c5c6cd',
-    '--timecode-unit-hover-bg': accent ? theme.background.control.button.primary.hover : variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
-    '--timecode-unit-hover-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
+    '--timecode-bg': accent ? theme.background.control.button.primary.idle : variant === 'alt' ? theme.background.control.input.idle : isLight ? '#FFFFFF' : theme.background.control.timecode.idle,
+    '--timecode-text': isLight ? theme.foreground.text.primary : '#f4f5f9',
+    '--timecode-hover': accent ? theme.background.control.button.primary.hover : isLight ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
+    '--timecode-border': variant === 'alt' ? theme.border.input.idle : variant === 'light' ? '#D4D5D9' : 'transparent',
+    '--timecode-border-focus': theme.border.focus,
+    '--timecode-unit-bg': accent ? theme.background.control.button.primary.idle : variant === 'alt' ? theme.background.control.input.idle : isLight ? '#FFFFFF' : theme.background.control.timecode.idle,
+    '--timecode-unit-text': variant === 'alt' ? theme.foreground.text.secondary : isLight ? theme.foreground.text.primary : '#c5c6cd',
+    '--timecode-unit-hover-bg': accent ? theme.background.control.button.primary.hover : isLight ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
+    '--timecode-unit-hover-text': isLight ? theme.foreground.text.primary : '#f4f5f9',
   } as React.CSSProperties;
 
   // Handle arrow key navigation within TimeCode

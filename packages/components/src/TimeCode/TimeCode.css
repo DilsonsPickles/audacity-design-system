@@ -78,3 +78,52 @@
   opacity: 0.4;
   pointer-events: none;
 }
+
+/* The ALT variant (the Figma "Timecode Alt", 8997:81285 — 2026-10-13):
+   the INPUT form of the control, for a dialog that takes a typed time
+   (Go to…). A white field with the input border, 2px corners, 6px of
+   inner padding; 14px bold digits in the primary text colour; the unit
+   letters in the secondary colour; the caret button bordered off from
+   the digits. The field's border is its focus cue. */
+.timecode--alt {
+  border: 1px solid var(--timecode-border);
+  border-radius: 2px;
+}
+
+.timecode--alt:focus-within {
+  border-color: var(--timecode-border-focus);
+}
+
+.timecode--alt .timecode__display {
+  padding: 0 6px;
+}
+
+.timecode--alt .timecode-digit {
+  width: 10px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.timecode--alt .timecode-unit {
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.timecode--alt .timecode-unit[data-unit="hours"],
+.timecode--alt .timecode-unit[data-unit="seconds"],
+.timecode--alt .timecode-unit[data-unit="days"] {
+  width: 10px;
+}
+
+.timecode--alt .timecode-unit[data-unit="minutes"] {
+  width: 14px;
+}
+
+.timecode--alt .timecode__separator {
+  font-size: 14px;
+}
+
+.timecode--alt .timecode__format-button {
+  border-left: 1px solid var(--timecode-border);
+}

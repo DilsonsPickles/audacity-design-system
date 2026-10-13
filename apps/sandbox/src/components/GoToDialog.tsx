@@ -98,7 +98,9 @@ export function GoToDialog({ isOpen, initialSeconds, format, onFormatChange, onG
           onChange={setSeconds}
           onFormatChange={onFormatChange}
           ariaLabel="Playhead position"
-          variant="light"
+          // The Figma "Timecode Alt" (8997:81285): the input form of the
+          // control (user request 2026-10-13)
+          variant="alt"
           // Editing from the first keystroke, and Enter mid-edit goes
           // (2026-10-13, "I have to click, and I'd rather not have to")
           autoEdit
