@@ -212,28 +212,25 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           dispatch({ type: 'SET_SPLIT_MODE', payload: false });
           return;
         }
-        // Next: clear any active "selection-ish" state — time selection,
-        // selected clips, AND the track selection. All go in one Escape
-        // press so the user has a single "deselect everything" gesture
-        // (parity with clicking the empty space below the tracks, which
-        // clears the same set). Track selection joins the press because
-        // it now mirrors the range's scope — leaving tracks selected
-        // after clearing the range was a leftover of the old decoupling.
+        // Next: clear the time selection and the selected clips — and
+        // LEAVE THE TRACK SELECTION (user decision 2026-10-13, "pressing
+        // esc should remove selection, but not deselect the track": the
+        // track you are on stays yours, so the next Shift+bracket or
+        // Shift+Arrow range lands there; until then Escape cleared all
+        // three in one press, parity with a click on the empty space
+        // below the tracks, which still clears the set). Neither the
+        // range clear nor DESELECT_ALL_CLIPS touches selectedTrackIndices.
         const hasTimeSelection = !!state.timeSelection;
         const hasSelectedClips = state.tracks.some(
           (t) =>
             t.clips.some((c) => c.selected)
             || t.midiClips?.some((c) => c.selected),
         );
-        const selectedTrackIndices = state.selectedTrackIndices || [];
-        if (hasTimeSelection || hasSelectedClips || selectedTrackIndices.length > 0) {
+        if (hasTimeSelection || hasSelectedClips) {
           e.preventDefault();
           if (hasTimeSelection) handleEscape(playheadDeps);
           if (hasSelectedClips) dispatch({ type: 'DESELECT_ALL_CLIPS' });
-          if (selectedTrackIndices.length > 0) {
-            dispatch({ type: 'SET_SELECTED_TRACKS', payload: [] });
-            setSelectionAnchor(null);
-          }
+          setSelectionAnchor(null);
           return;
         }
         // Progressive Escape:
