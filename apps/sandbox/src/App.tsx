@@ -5,6 +5,7 @@ import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, Accessibi
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
+import { countSelectedClips } from './utils/clipSelectionCount';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
@@ -1249,7 +1250,7 @@ function CanvasDemoContent() {
       {/* Toast Container */}
       {/* The keyboard map (View › Keyboard map, so a palette command;
           2026-10-13): the Shortcuts page's rows on a Mac keyboard */}
-      <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} timeSelected={!!state.timeSelection} os={preferences.operatingSystem} />
+      <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} timeSelected={!!state.timeSelection} clipsSelected={countSelectedClips(state.tracks) > 0} os={preferences.operatingSystem} />
       {/* The command palette (⌘P, 2026-10-13): the menus' items and the
           keyboard-only commands by name, with their chords */}
       <CommandPaletteHost menuDefinitions={menuDefinitions} os={preferences.operatingSystem} />

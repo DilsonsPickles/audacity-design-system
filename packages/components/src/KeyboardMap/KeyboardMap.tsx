@@ -74,12 +74,14 @@ function focusContext(el: Element | null): ShortcutContext | null {
 }
 
 /** The contexts that apply RIGHT NOW: everywhere, what the focus is on
- *  (a fade handle, a trim / stretch handle, a clip), and the time
- *  selection when there is one */
-export function liveContexts(focused: Element | null, timeSelected: boolean): ShortcutContext[] {
+ *  (a fade handle, a trim / stretch handle, a clip), the clip SELECTION
+ *  when there is one (the host's count — selection is state, not focus),
+ *  and the time selection when there is one */
+export function liveContexts(focused: Element | null, timeSelected: boolean, clipsSelected = false): ShortcutContext[] {
   const out: ShortcutContext[] = ['global'];
   const f = focusContext(focused);
   if (f) out.push(f);
+  if (clipsSelected) out.push('clip-selected');
   if (timeSelected) out.push('time');
   return out;
 }
@@ -100,6 +102,9 @@ export interface KeyboardMapProps {
   /** Is there a time selection? The map opens on "Time selected" when
    *  nothing more specific had the focus */
   timeSelected?: boolean;
+  /** Are any clips selected? "Clips selected" is a context of its own,
+   *  beside the focused clip (2026-10-13) */
+  clipsSelected?: boolean;
   /** The window chrome's OS style */
   os?: 'macos' | 'windows';
 }
@@ -123,7 +128,7 @@ export interface KeyboardMapProps {
  * Escape closes it while it is the window in use, as does the header's
  * close button; focus returns to the opener.
  */
-export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false, os = 'macos' }: KeyboardMapProps) {
+export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false, clipsSelected = false, os = 'macos' }: KeyboardMapProps) {
   const { theme } = useTheme();
   const rootRef = React.useRef<HTMLDivElement>(null);
   const openerRef = React.useRef<HTMLElement | null>(null);
@@ -143,7 +148,7 @@ export function KeyboardMap({ isOpen, onClose, rows, timeSelected = false, os = 
   // click on the map would drop the clip it was about.
   const [context, setContext] = React.useState<KeyboardMapContext>('follow');
   const [focused, setFocused] = React.useState<Element | null>(null);
-  const live = React.useMemo(() => liveContexts(focused, timeSelected), [focused, timeSelected]);
+  const live = React.useMemo(() => liveContexts(focused, timeSelected, clipsSelected), [focused, timeSelected, clipsSelected]);
   const bindings = React.useMemo(() => {
     if (context === 'all') return allBindings;
     if (context === 'follow') return allBindings.filter((b) => b.contexts.some((c) => live.includes(c)));

@@ -82,6 +82,7 @@ describe('the context filter (2026-10-13, "controls filtered by context")', () =
     { id: '2', action: 'Fade handles', shortcut: 'F', contexts: ['clip' as const] },
     { id: '3', action: 'Delete', shortcut: '⌫', contexts: ['clip' as const, 'time' as const] },
     { id: '4', action: 'Fade handle: length', shortcut: '← →', contexts: ['fade-handle' as const] },
+    { id: '5', action: 'Copy', shortcut: '⌘C', contexts: ['clip-selected' as const, 'time' as const] },
   ];
   it('shows only the chords that work in the picked context, counts them, and labels them in the detail', () => {
     const { container } = render(
@@ -97,7 +98,7 @@ describe('the context filter (2026-10-13, "controls filtered by context")', () =
     expect(lit().sort()).toEqual(['Delete', 'F', 'Space', '←', '→'].sort());
     fireEvent.click(container.querySelector('[data-context="time"]')!);
     expect(lit()).toEqual(['Delete']);
-    expect(container.querySelector('[data-context="time"]')!.textContent).toContain('1');
+    expect(container.querySelector('[data-context="time"]')!.textContent).toContain('2');
     fireEvent.click(container.querySelector('[data-context="clip"]')!);
     expect(lit().sort()).toEqual(['Delete', 'F'].sort());
     // The clicked key's chords are listed BY CONTEXT, one section each
@@ -115,6 +116,7 @@ describe('the context filter (2026-10-13, "controls filtered by context")', () =
     expect(contextOfOpener(el('<button></button>'), true)).toBe('time');
     expect(contextOfOpener(null, false)).toBe('all');
     expect(liveContexts(el('<div data-clip-id="2" tabindex="0"></div>'), true)).toEqual(['global', 'clip', 'time']);
+    expect(liveContexts(null, false, true)).toEqual(['global', 'clip-selected']);
     // Live: a clip focused and a range when the map opens
     const clip = el('<div data-clip-id="9" tabindex="0"></div>');
     const other = el('<button>app</button>');
@@ -142,6 +144,21 @@ describe('the context filter (2026-10-13, "controls filtered by context")', () =
       </ThemeProvider>,
     );
     expect(lit()).toEqual(['Space']);
+    // Clips SELECTED (state, not focus): Copy lights in the ⌘ state, with nothing focused
+    rerender(
+      <ThemeProvider>
+        <KeyboardMap isOpen onClose={vi.fn()} rows={rows} timeSelected={false} clipsSelected />
+      </ThemeProvider>,
+    );
+    expect(container.querySelector('[data-keyboard-map-sub]')!.textContent).toContain('Everywhere · Clips selected');
+    fireEvent.click(container.querySelector('[data-state="cmd"]')!);
+    expect(lit()).toEqual(['C']);
+    fireEvent.click(container.querySelector('[data-state="plain"]')!);
+    rerender(
+      <ThemeProvider>
+        <KeyboardMap isOpen onClose={vi.fn()} rows={rows} timeSelected={false} />
+      </ThemeProvider>,
+    );
     // Back on the clip (Delete is a clip chord too)
     act(() => { clip.focus(); });
     expect(lit()).toEqual(['Delete', 'F', 'Space'].sort());

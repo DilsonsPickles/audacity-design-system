@@ -9,13 +9,18 @@
 /** WHERE a chord works — the keyboard map's context filter (2026-10-13,
  *  "in games they have controls filtered by context": a clip in focus,
  *  a time selection, a handle in hand). A row with no contexts works
- *  everywhere; a row may belong to several (Delete takes the focused
- *  clips or the selected range). */
-export type ShortcutContext = 'global' | 'clip' | 'time' | 'fade-handle' | 'edge-handle';
+ *  everywhere; a row may belong to several. FOCUS AND SELECTION ARE TWO
+ *  CONTEXTS (the same day, "focused vs selected clip, are they different
+ *  contexts?" — yes): 'clip' is the ONE clip with DOM focus, where the
+ *  handle keys, Enter, ⌥F and ⌥[ ] start; 'clip-selected' is the SET
+ *  with the selected flag, what Copy, Cut and Duplicate take; Delete
+ *  takes both, and the selected range. */
+export type ShortcutContext = 'global' | 'clip' | 'clip-selected' | 'time' | 'fade-handle' | 'edge-handle';
 
 export const SHORTCUT_CONTEXTS: ReadonlyArray<{ id: ShortcutContext; label: string }> = [
   { id: 'global', label: 'Everywhere' },
   { id: 'clip', label: 'Clip focused' },
+  { id: 'clip-selected', label: 'Clips selected' },
   { id: 'time', label: 'Time selected' },
   { id: 'fade-handle', label: 'Fade handle' },
   { id: 'edge-handle', label: 'Trim / stretch handle' },
@@ -52,12 +57,12 @@ export const SHORTCUT_ROWS: ReadonlyArray<ShortcutRow> = [
     { id: '19a', action: 'Clip properties', shortcut: '⌥⌘I', contexts: ['global', 'clip'] },
     { id: '20', action: 'Close project', shortcut: '⌘W' },
     { id: '21', action: 'Compressor', shortcut: '' },
-    { id: '22', action: 'Copy', shortcut: '⌘C', contexts: ['clip', 'time'] },
-    { id: '23', action: 'Cut', shortcut: '⌘X', contexts: ['clip', 'time'] },
+    { id: '22', action: 'Copy', shortcut: '⌘C', contexts: ['clip-selected', 'time'] },
+    { id: '23', action: 'Cut', shortcut: '⌘X', contexts: ['clip-selected', 'time'] },
     { id: '23a', action: 'Split tool (cut) on / off', shortcut: 'C' },
-    { id: '24', action: 'Delete', shortcut: '⌫', contexts: ['clip', 'time'] },
+    { id: '24', action: 'Delete', shortcut: '⌫', contexts: ['clip', 'clip-selected', 'time'] },
     { id: '25', action: 'Distortion', shortcut: '' },
-    { id: '26', action: 'Duplicate', shortcut: '⌘D', contexts: ['clip', 'time'] },
+    { id: '26', action: 'Duplicate', shortcut: '⌘D', contexts: ['clip-selected', 'time'] },
     { id: '27', action: 'Echo', shortcut: '' },
     { id: '28', action: 'Edit labels', shortcut: '' },
     { id: '29', action: 'Effect last used', shortcut: '⌘R' },
