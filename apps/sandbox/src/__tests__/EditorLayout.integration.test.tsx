@@ -1226,7 +1226,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Option+Cmd+F fits the SELECTED track into the REST of the viewport, the others untouched; with Shift every track (2026-10-08)', async () => {
+  it('Option+Cmd+0 fits the SELECTED track into the REST of the viewport, the others untouched; with Shift every track (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1244,21 +1244,21 @@ describe('Selection playback', () => {
 
     // The REST of the viewport: 500 - TOP_GAP 2 - the other track's
     // 114 + TRACK_GAP 2 - its own TRACK_GAP 2 = 380 for the one track
-    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('380px');
     });
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
 
     // Shift: all, 247 each as ⌘⇧F gives
-    fireEvent.keyDown(document.body, { key: 'Ï', code: 'KeyF', metaKey: true, altKey: true, shiftKey: true });
+    fireEvent.keyDown(document.body, { key: ')', code: 'Digit0', metaKey: true, altKey: true, shiftKey: true });
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('247px');
       expect((panels()[1] as HTMLElement).style.height).toBe('247px');
     });
   });
 
-  it('successive Option+Cmd+F presses SHARE the room: the track fitted last joins the next (2026-10-08)', async () => {
+  it('successive Option+Cmd+0 presses SHARE the room: the track fitted last joins the next (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1275,13 +1275,13 @@ describe('Selection playback', () => {
 
     // Fit track 2 into what tracks 0 and 1 leave: 500 - 2 - 2×116 - 2 = 264
     act(() => { (headers()[2] as HTMLElement).focus(); });
-    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
     await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('264px'));
 
     // Now fit track 1: it SHARES with track 2 rather than finding no
     // room — (500 - 2 - 116 - 2×2) / 2 = 189 each; track 0 untouched
     act(() => { (headers()[1] as HTMLElement).focus(); });
-    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('189px');
       expect((panels()[2] as HTMLElement).style.height).toBe('189px');
@@ -1293,7 +1293,7 @@ describe('Selection playback', () => {
     fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
     await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('114px'));
     act(() => { (headers()[0] as HTMLElement).focus(); });
-    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
     await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('264px'));
     expect((panels()[1] as HTMLElement).style.height).toBe('114px');
   });

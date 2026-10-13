@@ -7,7 +7,7 @@
  * on the lighter chord — TrackNew's, with the clip inferring the side),
  * ⌥⇧F is the typed form, the dialog (Shift = the fuller form, as
  * elsewhere); ⌘F reads as Find on a Mac (and as Fit to width to
- * Audacity 3 users), ⌘⇧F and ⌥⌘F are the track-height commands.
+ * Audacity 3 users), ⌘⇧F and ⌥⌘0 are the track-height commands.
  *
  * From a focused FADE HANDLE it opens on that side's length field; from
  * the clip, on the fade-in's. Matched on `e.code` — Option+F types "ƒ"

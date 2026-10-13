@@ -364,3 +364,37 @@ describe('label copy / cut / paste', () => {
     expect(deps.dispatch).not.toHaveBeenCalled();
   });
 });
+
+describe('selection, else focus (2026-10-13)', () => {
+  const focusClip = (id: number, trackIndex: number) => {
+    const el = document.createElement('div');
+    el.setAttribute('data-clip-id', String(id));
+    el.setAttribute('data-track-index', String(trackIndex));
+    el.setAttribute('tabindex', '-1');
+    document.body.appendChild(el);
+    el.focus();
+    return el;
+  };
+  it('copy takes the focused clip when nothing is selected, and the selection when there is one whatever is focused', () => {
+    const state: TracksState = { ...initialState, tracks: [{ id: 1, name: 't', clips: [clip({ id: 1 }), clip({ id: 2, start: 2 }), clip({ id: 3, start: 4 })] }] };
+    const el = focusClip(1, 0);
+    const a = makeDeps(state);
+    handleCopy(a.deps);
+    expect(a.getClipboard()?.clips.map((c) => c.id)).toEqual([1]);
+    const withSelection: TracksState = { ...state, tracks: [{ ...state.tracks[0], clips: state.tracks[0].clips.map((c) => (c.id === 1 ? c : { ...c, selected: true })) }] };
+    const b = makeDeps(withSelection);
+    handleCopy(b.deps);
+    expect(b.getClipboard()?.clips.map((c) => c.id)).toEqual([2, 3]);
+    el.remove();
+  });
+  it('cut takes the focused clip when nothing is selected and removes it', () => {
+    const state: TracksState = { ...initialState, tracks: [{ id: 1, name: 't', clips: [clip({ id: 1 }), clip({ id: 2, start: 2 })] }] };
+    const el = focusClip(2, 0);
+    const a = makeDeps(state);
+    handleCut(a.deps);
+    expect(a.getClipboard()?.clips.map((c) => c.id)).toEqual([2]);
+    const replaced = a.deps.dispatch.mock.calls.find((c) => c[0].type === 'REPLACE_TRACKS_EDIT')?.[0].payload;
+    expect(replaced[0].clips.map((c: Clip) => c.id)).toEqual([1]);
+    el.remove();
+  });
+});

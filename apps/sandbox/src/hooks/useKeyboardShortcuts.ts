@@ -340,7 +340,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
       }
 
-      // --- Option+Cmd/Ctrl+C / X: collapse / expand the SELECTED tracks ---
+      // --- Option+Cmd/Ctrl+C / X / 0: collapse / expand / fit the track you are on ---
+      // FIT IS ⌥⌘0 (2026-10-13, the shortcut review: F belongs to the clip
+      // family — F / ⌥F / ⌥⇧F are the fades — so fit left the letter; 0 is
+      // "fit" the way ⌘0 is in browsers and Figma); ⌥⌘⇧0 fits all, and
+      // ⌘⇧F stays as Audacity 3's chord for the same.
       // and with SHIFT every track (2026-10-08, "collapse just the
       // selected track", then "Shift is a great perform-this-to-all
       // modifier"): one family, base chord = the track you are on, Shift
@@ -351,9 +355,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       // falls back to the key letter.)
       const letter = e.code === 'KeyC' || (!e.code && e.key.toLowerCase() === 'c') ? 'c'
         : e.code === 'KeyX' || (!e.code && e.key.toLowerCase() === 'x') ? 'x'
-        : e.code === 'KeyF' || (!e.code && e.key.toLowerCase() === 'f') ? 'f' : null;
+        : e.code === 'Digit0' || e.code === 'Numpad0' || (!e.code && (e.key === '0' || e.key === ')')) ? '0' : null;
       if ((e.metaKey || e.ctrlKey) && e.altKey && letter) {
-        // F too (Option+F types "ƒ"): fit the track I'm on, Shift = all
+        // 0: fit the track I'm on, Shift = all
         const cb = letter === 'c'
           ? (e.shiftKey ? onCollapseAllTracks : onCollapseSelectedTracks)
           : letter === 'x'

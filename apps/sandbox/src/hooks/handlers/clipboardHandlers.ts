@@ -6,6 +6,7 @@ import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { applySplitCut } from '../../utils/cutOperations';
 import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
 import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
+import { clipOfElement } from '../useFocusedClip';
 import type { ClipboardState } from '../useKeyboardShortcuts';
 
 export interface ClipboardHandlerDeps {
@@ -27,6 +28,16 @@ function resolveSelectedLabels(state: TracksState): (Label & { trackIndex: numbe
     if (label) out.push({ ...label, trackIndex });
   });
   return out;
+}
+
+/** The audio clip with the keyboard focus, for the selection-else-focus
+ *  rule (2026-10-13): the wrapper (or one of its handles) carrying
+ *  data-clip-id + data-track-index */
+function focusedAudioClip(state: TracksState): (Clip & { trackIndex: number }) | null {
+  const f = clipOfElement(typeof document === 'undefined' ? null : document.activeElement);
+  if (!f) return null;
+  const clip = state.tracks[f.trackIndex]?.clips.find((c) => c.id === f.clipId);
+  return clip ? { ...clip, trackIndex: f.trackIndex } : null;
 }
 
 export function handleCopy(deps: ClipboardHandlerDeps): void {
@@ -77,7 +88,7 @@ export function handleCopy(deps: ClipboardHandlerDeps): void {
     return;
   }
 
-  // Priority 2: Copy selected clips
+  // Priority 2: Copy selected clips…
   const selectedClips: (Clip & { trackIndex: number })[] = [];
   state.tracks.forEach((track, trackIndex) => {
     track.clips.forEach(clip => {
@@ -86,6 +97,11 @@ export function handleCopy(deps: ClipboardHandlerDeps): void {
       }
     });
   });
+  // …else the FOCUSED clip (2026-10-13, selection else focus)
+  if (selectedClips.length === 0) {
+    const f = focusedAudioClip(state);
+    if (f) selectedClips.push(f);
+  }
 
   if (selectedClips.length > 0) {
     setClipboard({
@@ -166,7 +182,7 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
     return;
   }
 
-  // Priority 2: Cut selected clips
+  // Priority 2: Cut selected clips…
   const selectedClips: (Clip & { trackIndex: number })[] = [];
   state.tracks.forEach((track, trackIndex) => {
     track.clips.forEach(clip => {
@@ -175,6 +191,11 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
       }
     });
   });
+  // …else the FOCUSED clip (2026-10-13, selection else focus)
+  if (selectedClips.length === 0) {
+    const f = focusedAudioClip(state);
+    if (f) selectedClips.push(f);
+  }
 
   if (selectedClips.length > 0) {
     setClipboard({

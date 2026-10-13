@@ -1,5 +1,6 @@
 import type { TracksState, TracksAction } from '../../contexts/TracksContext';
 import { confirmTrackDelete } from '../../utils/confirmTrackDelete';
+import { selectionElseFocus } from '../../utils/selectionElseFocus';
 
 export interface DeleteHandlerDeps {
   state: TracksState;
@@ -168,20 +169,10 @@ function handleDeleteClips(deps: DeleteHandlerDeps): void {
     });
   });
 
-  // Model 3 decision:
-  //   - focused ∈ selection      → delete the selection (batch intent)
-  //   - focused ∉ selection      → delete only the focused clip
-  //   - no focused, has selection → delete the selection
-  //   - nothing focused, nothing selected → fall through to track delete
-  let clipsToDelete: Array<{ trackIndex: number; clipId: number }> = [];
-  if (focusedClipInfo) {
-    const focusedIsSelected = selectedClips.some(
-      (c) => c.clipId === focusedClipInfo!.clipId && c.trackIndex === focusedClipInfo!.trackIndex,
-    );
-    clipsToDelete = focusedIsSelected ? selectedClips : [focusedClipInfo];
-  } else if (selectedClips.length > 0) {
-    clipsToDelete = selectedClips;
-  }
+  // SELECTION, ELSE FOCUS (2026-10-13, utils/selectionElseFocus.ts):
+  // the selected clips when there are any, else the focused clip;
+  // nothing focused, nothing selected → fall through to track delete
+  const clipsToDelete = selectionElseFocus(selectedClips, focusedClipInfo);
 
   if (clipsToDelete.length > 0) {
     // Pick the next clip to focus BEFORE we dispatch the deletes, so

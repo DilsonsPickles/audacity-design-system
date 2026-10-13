@@ -70,8 +70,30 @@ describe('handleDuplicate', () => {
     expect(dups[0].groupId).not.toBe('g1');
   });
 
-  it('duplicating a focused-out-of-selection grouped clip yields an UNGROUPED copy', () => {
-    // Focused clip 10 is NOT selected -> only it is duplicated -> partial group.
+  it('with a selection, ⌘D duplicates the SELECTION, whatever is focused (2026-10-13, selection else focus)', () => {
+    const state = makeState({
+      focusedTrackIndex: 0,
+      tracks: [{ id: 1, name: 't', clips: [
+        { id: 10, name: 'a', start: 0, duration: 1, envelopePoints: [] },
+        { id: 11, name: 'b', start: 2, duration: 1, envelopePoints: [], selected: true },
+        { id: 12, name: 'c', start: 4, duration: 1, envelopePoints: [], selected: true },
+      ] }],
+    });
+    const el = document.createElement('div');
+    el.setAttribute('data-clip-id', '10');
+    el.setAttribute('data-track-index', '0');
+    el.setAttribute('tabindex', '-1');
+    document.body.appendChild(el);
+    el.focus();
+    const dispatch = vi.fn();
+    handleDuplicate(keyEvent(), { state, dispatch });
+    const dups = dispatch.mock.calls.filter(c => c[0].type === 'ADD_CLIP').map(c => c[0].payload.clip);
+    expect(dups.map((d) => d.sourceClipId)).toEqual([11, 12]);
+    el.remove();
+  });
+
+  it('duplicating a focused grouped clip with nothing selected yields an UNGROUPED copy', () => {
+    // Focused clip 10, nothing selected -> only it is duplicated -> partial group.
     const state = makeState({
       focusedTrackIndex: 0,
       tracks: [{ id: 1, name: 't', clips: [

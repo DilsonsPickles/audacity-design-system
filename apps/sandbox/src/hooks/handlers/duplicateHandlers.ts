@@ -2,6 +2,8 @@ import { announce } from '@audacity-ui/components';
 import type { TracksState, TracksAction, Clip, Track } from '../../contexts/TracksContext';
 import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
 import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
+import { selectionElseFocus } from '../../utils/selectionElseFocus';
+import { clipOfElement } from '../useFocusedClip';
 
 export interface DuplicateHandlerDeps {
   state: TracksState;
@@ -123,9 +125,10 @@ function duplicateTimeSelectionToNewTracks(
  * Ctrl/Cmd+D: Duplicate the time selection, focused clip(s), or track(s).
  *
  * Priority order matches the clipboard handlers: an active time selection
- * wins (duplicates the selected range to new tracks); otherwise the
- * Model-3 rule used by delete and split applies — clip duplication when
- * focus is on a clip, falling through to track duplication.
+ * wins (duplicates the selected range to new tracks); otherwise
+ * SELECTION, ELSE FOCUS (2026-10-13, utils/selectionElseFocus.ts): the
+ * selected clips when there are any, else the focused clip; with
+ * neither, track duplication.
  */
 export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): void {
   const { state, dispatch } = deps;
@@ -133,33 +136,20 @@ export function handleDuplicate(e: KeyboardEvent, deps: DuplicateHandlerDeps): v
   // Time-selection path — duplicate the selected range to new tracks.
   if (duplicateTimeSelectionToNewTracks(e, state, dispatch)) return;
 
-  // Clip duplication path — when DOM focus is on a clip.
-  const active = document.activeElement as HTMLElement | null;
-  const focusedWrapper = active?.closest('[data-clip-id]') as HTMLElement | null;
-  if (focusedWrapper) {
-    const clipIdAttr = focusedWrapper.getAttribute('data-clip-id');
-    const trackIdxAttr = focusedWrapper.getAttribute('data-track-index');
-    if (clipIdAttr && trackIdxAttr) {
+  // Clip duplication path — the selected clips, else the focused clip.
+  type ClipTarget = { trackIndex: number; clip: Clip };
+  const selected: ClipTarget[] = [];
+  state.tracks.forEach((t, ti) => {
+    t.clips.forEach((c) => {
+      if (c.selected) selected.push({ trackIndex: ti, clip: c });
+    });
+  });
+  const f = clipOfElement(document.activeElement);
+  const focusedClip = f ? state.tracks[f.trackIndex]?.clips.find((c) => c.id === f.clipId) : undefined;
+  const targets = selectionElseFocus(selected, focusedClip && f ? { trackIndex: f.trackIndex, clip: focusedClip } : null);
+  if (targets.length > 0) {
+    {
       e.preventDefault();
-      const fti = Number(trackIdxAttr);
-      const focusedClip = state.tracks[fti]?.clips.find(
-        (c) => String(c.id) === clipIdAttr,
-      );
-      if (!focusedClip) return;
-
-      // Model 3: focused-in-selection → duplicate selection;
-      // focused-out-of-selection → duplicate only focused.
-      type ClipTarget = { trackIndex: number; clip: Clip };
-      const targets: ClipTarget[] = [];
-      if (focusedClip.selected) {
-        state.tracks.forEach((t, ti) => {
-          t.clips.forEach((c) => {
-            if (c.selected) targets.push({ trackIndex: ti, clip: c });
-          });
-        });
-      } else {
-        targets.push({ trackIndex: fti, clip: focusedClip });
-      }
 
       // Allocate fresh clip ids in one pass over all tracks.
       let nextClipId = 1;

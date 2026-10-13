@@ -151,7 +151,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     },
     {
       label: 'Fit selected tracks to height',
-      shortcut: 'Ctrl+Alt+F',
+      shortcut: 'Ctrl+Alt+0',
       onClick: deps.onFitSelectedTracksToHeight,
     },
     // Horizontal zoom (2026-10-12): the real app's Ctrl+= / Ctrl+-
